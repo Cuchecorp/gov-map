@@ -12,13 +12,13 @@ Requisitos del milestone 1. Cada uno mapea a una fase del roadmap.
 ### Fundaciones e Infraestructura (FND)
 
 - [ ] **FND-01**: El sistema ingesta datos mediante un framework de conector aislado por fuente que aplica rate-limit de 2–3s, User-Agent identificatorio y respeto de robots.txt
-- [ ] **FND-02**: El sistema guarda todo el dato crudo (XML/JSON/HTML) en object storage (Cloudflare R2), inmutable y append-only, sin meterlo en Postgres
+- [x] **FND-02**: El sistema guarda todo el dato crudo (XML/JSON/HTML) en object storage (Cloudflare R2), inmutable y append-only, sin meterlo en Postgres
 - [ ] **FND-03**: Cada respuesta de fuente queda cacheada (caché diaria) y versionada como snapshot, para re-procesamiento sin re-scrapear
 - [ ] **FND-04**: El sistema detecta cambios de esquema (drift) en una fuente y los registra en lugar de fallar en silencio
 - [ ] **FND-05**: La ingesta pesada corre dirigida por cola (pgmq) y chunking vía pg_cron + Edge Functions, con backoff exponencial ante 429
 - [ ] **FND-06**: Todo acceso LLM pasa por una interfaz enchufable `LLMProvider` con salida estructurada validada por-proveedor (zod), seleccionable por configuración
 - [ ] **FND-07**: Todo embedding pasa por una interfaz `EmbeddingProvider` que fija y versiona modelo/dimensiones en los metadatos del vector
-- [ ] **FND-08**: Cada dato normalizado conserva trazabilidad a su fuente (origen, fecha de captura, enlace original) capturada en el momento de ingesta
+- [x] **FND-08**: Cada dato normalizado conserva trazabilidad a su fuente (origen, fecha de captura, enlace original) capturada en el momento de ingesta
 
 ### Identidad de Parlamentarios (ID)
 
@@ -99,11 +99,11 @@ Poblada durante la creación del roadmap (2026-06-17). Cada requisito mapea a ex
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | FND-01 | Phase 1 | Pending |
-| FND-02 | Phase 1 | Pending |
+| FND-02 | Phase 1 | Complete |
 | FND-03 | Phase 1 | Pending |
 | FND-04 | Phase 1 | Pending |
 | FND-05 | Phase 1 | Pending |
-| FND-08 | Phase 1 | Pending |
+| FND-08 | Phase 1 | Complete |
 | FND-06 | Phase 2 | Pending |
 | FND-07 | Phase 2 | Pending |
 | ID-01 | Phase 3 | Pending |
@@ -132,11 +132,13 @@ Poblada durante la creación del roadmap (2026-06-17). Cada requisito mapea a ex
 | SEM-06 | Phase 7 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 32 total (FND 8, ID 9, TRAM 9, SEM 6)
 - Mapped to phases: 32 ✓
 - Unmapped: 0
 
 **Por fase:**
+
 - Phase 1 (Framework + Almacenamiento + Orquestación): FND-01, FND-02, FND-03, FND-04, FND-05, FND-08 (6)
 - Phase 2 (Providers LLM/Embeddings): FND-06, FND-07 (2)
 - Phase 3 (Maestra + Identidad Determinista): ID-01, ID-02, ID-09 (3)
