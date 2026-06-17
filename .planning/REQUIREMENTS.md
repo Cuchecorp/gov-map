@@ -94,20 +94,57 @@ Excluidos explícitamente. Documentados para evitar scope creep.
 
 ## Traceability
 
-Poblada durante la creación del roadmap.
+Poblada durante la creación del roadmap (2026-06-17). Cada requisito mapea a exactamente una fase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FND-01..08 | TBD | Pending |
-| ID-01..09 | TBD | Pending |
-| TRAM-01..09 | TBD | Pending |
-| SEM-01..06 | TBD | Pending |
+| FND-01 | Phase 1 | Pending |
+| FND-02 | Phase 1 | Pending |
+| FND-03 | Phase 1 | Pending |
+| FND-04 | Phase 1 | Pending |
+| FND-05 | Phase 1 | Pending |
+| FND-08 | Phase 1 | Pending |
+| FND-06 | Phase 2 | Pending |
+| FND-07 | Phase 2 | Pending |
+| ID-01 | Phase 3 | Pending |
+| ID-02 | Phase 3 | Pending |
+| ID-09 | Phase 3 | Pending |
+| ID-03 | Phase 4 | Pending |
+| ID-04 | Phase 4 | Pending |
+| ID-05 | Phase 4 | Pending |
+| ID-06 | Phase 4 | Pending |
+| ID-07 | Phase 4 | Pending |
+| ID-08 | Phase 4 | Pending |
+| TRAM-01 | Phase 5 | Pending |
+| TRAM-02 | Phase 5 | Pending |
+| TRAM-03 | Phase 5 | Pending |
+| TRAM-04 | Phase 5 | Pending |
+| TRAM-05 | Phase 5 | Pending |
+| TRAM-06 | Phase 5 | Pending |
+| TRAM-09 | Phase 5 | Pending |
+| TRAM-07 | Phase 6 | Pending |
+| TRAM-08 | Phase 6 | Pending |
+| SEM-01 | Phase 7 | Pending |
+| SEM-02 | Phase 7 | Pending |
+| SEM-03 | Phase 7 | Pending |
+| SEM-04 | Phase 7 | Pending |
+| SEM-05 | Phase 7 | Pending |
+| SEM-06 | Phase 7 | Pending |
 
 **Coverage:**
 - v1 requirements: 32 total (FND 8, ID 9, TRAM 9, SEM 6)
-- Mapped to phases: 0 (roadmap pendiente)
-- Unmapped: 32 ⚠️ (se resuelve al crear el roadmap)
+- Mapped to phases: 32 ✓
+- Unmapped: 0
+
+**Por fase:**
+- Phase 1 (Framework + Almacenamiento + Orquestación): FND-01, FND-02, FND-03, FND-04, FND-05, FND-08 (6)
+- Phase 2 (Providers LLM/Embeddings): FND-06, FND-07 (2)
+- Phase 3 (Maestra + Identidad Determinista): ID-01, ID-02, ID-09 (3)
+- Phase 4 (Adjudicación + Compuerta + Golden Set): ID-03, ID-04, ID-05, ID-06, ID-07, ID-08 (6)
+- Phase 5 (Tramitación Core): TRAM-01, TRAM-02, TRAM-03, TRAM-04, TRAM-05, TRAM-06, TRAM-09 (7)
+- Phase 6 (Citaciones + Tabla de Sala): TRAM-07, TRAM-08 (2)
+- Phase 7 (Búsqueda Semántica): SEM-01, SEM-02, SEM-03, SEM-04, SEM-05, SEM-06 (6)
 
 ---
 *Requirements defined: 2026-06-17*
-*Last updated: 2026-06-17 after initial definition*
+*Last updated: 2026-06-17 after roadmap creation (traceability populated)*
