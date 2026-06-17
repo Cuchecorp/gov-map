@@ -1,3 +1,4 @@
-// @obs/core — tipos compartidos del Observatorio.
-// Los contratos de Provenance y control plane se agregan en la implementacion del paquete.
-export {};
+// @obs/core — contrato compartido del Observatorio (tipos + helpers puros).
+// Consumible por /packages/ingest y futuras fases (Plan 02/03).
+export * from "./provenance";
+export * from "./domain";
