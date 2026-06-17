@@ -1,0 +1,23 @@
+{
+  "name": "@obs/ingest",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@obs/core": "workspace:*",
+    "aws4fetch": "^1.0.20",
+    "robots-parser": "^3.0.1"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}
