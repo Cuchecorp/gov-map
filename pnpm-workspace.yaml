@@ -1,0 +1,13 @@
+packages:
+  - "app"
+  - "packages/*"
+
+# No verificar/instalar dependencias automaticamente al correr scripts: evita que
+# el gate de build-scripts ignorados aborte `pnpm -w typecheck`/`test`.
+verifyDepsBeforeRun: false
+
+# Build scripts nativos no requeridos para typecheck/test en este monorepo.
+ignoredBuiltDependencies:
+  - esbuild
+  - sharp
+  - unrs-resolver

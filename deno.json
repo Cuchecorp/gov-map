@@ -1,0 +1,18 @@
+{
+  "tasks": {
+    "test": "deno test --allow-none"
+  },
+  "imports": {
+    "@obs/core/": "./packages/core/src/"
+  },
+  "fmt": {
+    "useTabs": false,
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  }
+}

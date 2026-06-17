@@ -1,0 +1,30 @@
+# Secrets — NUNCA commitear
+.env
+.env.local
+.env.*.local
+
+# Dependencias
+node_modules/
+.pnpm/
+.pnpm-store/
+
+# Next.js
+app/.next/
+app/out/
+app/next-env.d.ts
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# Build artifacts
+dist/
+*.tsbuildinfo
+
+# Deno
+.deno/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.log
