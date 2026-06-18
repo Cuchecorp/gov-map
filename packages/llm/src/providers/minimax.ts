@@ -82,6 +82,11 @@ export class MiniMaxProvider implements LLMProvider {
       const res = await this.client.chat.completions.create({
         model: this.model,
         messages,
+        // A1: spread CONDICIONAL — solo fija temperature cuando el caller la pasa,
+        // para no alterar el comportamiento por defecto de los callers existentes.
+        ...(req.temperature !== undefined
+          ? { temperature: req.temperature }
+          : {}),
         tools: [
           {
             type: "function",

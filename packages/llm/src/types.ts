@@ -33,6 +33,11 @@ export interface CompletionRequest {
   sensitivity: Sensitivity;
   /** Maximo de reintentos del repair loop ante salida invalida. Default: 1. */
   maxRepairAttempts?: number;
+  /**
+   * Temperatura del modelo; default del adapter (no se pasa si es undefined).
+   * Usar baja/0 para adjudicacion determinista (A1, @obs/adjudication).
+   */
+  temperature?: number;
 }
 
 /**
