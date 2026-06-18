@@ -57,6 +57,28 @@ describe("fusionarTimeline (TRAM-05)", () => {
     ]);
     expect(out.map((e) => e.descripcion)).toEqual(["jun03", "jun15"]);
   });
+
+  it("WR-01: dd/mm/yyyy con día>12 se ordena por el día correcto (no como US mm/dd)", () => {
+    // "13/05/2026" = 13 de MAYO. Solo es interpretable como dd/mm (no hay mes 13).
+    // parseFechaCL lo fija: 01/05 < 13/05 < 20/05. `new Date("13/05/2026")` lo rompería.
+    const out = fusionarTimeline([
+      evento({ fecha: "20/05/2026", descripcion: "may20" }),
+      evento({ fecha: "13/05/2026", descripcion: "may13" }),
+      evento({ fecha: "01/05/2026", descripcion: "may01" }),
+    ]);
+    expect(out.map((e) => e.descripcion)).toEqual(["may01", "may13", "may20"]);
+  });
+
+  it("WR-01: dd/mm/yyyy NUNCA se lee como US mm/dd (el bug que el módulo dice defender)", () => {
+    // Si `tiempo` usara `new Date("06/03/2026")` primero, lo leería como 3 de JUNIO (mm/dd),
+    // ordenándolo DESPUÉS de "10/03/2026" (10 de marzo). Con parseFechaCL, "06/03/2026" es
+    // 6 de MARZO → va ANTES. Este orden distingue la rama correcta de la regresión Pitfall 3.
+    const out = fusionarTimeline([
+      evento({ fecha: "10/03/2026", descripcion: "mar10" }),
+      evento({ fecha: "06/03/2026", descripcion: "mar06" }),
+    ]);
+    expect(out.map((e) => e.descripcion)).toEqual(["mar06", "mar10"]);
+  });
 });
 
 describe("eventoDesdeVotacion", () => {

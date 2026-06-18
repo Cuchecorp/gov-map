@@ -27,11 +27,14 @@ function aplanar(entrada: EntradaTimeline): TramitacionEvento[] {
 /** ms desde epoch, o null si la fecha no parsea (ISO directo o dd/mm/yyyy). */
 function tiempo(fecha: string): number | null {
   if (!fecha) return null;
-  // Las fechas de los parsers ya son ISO; tolerar dd/mm/yyyy por robustez.
-  const iso = new Date(fecha);
-  if (!Number.isNaN(iso.getTime())) return iso.getTime();
-  const d = parseFechaCL(fecha);
-  return d ? d.getTime() : null;
+  // WR-01 (Pitfall 3): parsear con el parser chileno EXPLÍCITO PRIMERO. `new Date("03/06/2026")`
+  // NO devuelve NaN — V8 lo interpreta como mm/dd (03 de junio → 06 de marzo), ordenando el
+  // evento en la fecha equivocada. `parseFechaCL` reconoce dd/mm/yyyy E ISO sin ambigüedad.
+  const cl = parseFechaCL(fecha);
+  if (cl) return cl.getTime();
+  // Último recurso para formatos que parseFechaCL no cubre (p.ej. ISO con zona explícita).
+  const d = new Date(fecha);
+  return Number.isNaN(d.getTime()) ? null : d.getTime();
 }
 
 /** Rango de cámara para el desempate estable: Cámara (Diputados) = 0, Senado/otros = 1. */
