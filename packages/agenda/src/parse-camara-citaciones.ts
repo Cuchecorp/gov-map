@@ -22,8 +22,14 @@ import {
 
 const ORIGEN = "camara-citaciones-semana";
 
-/** Regex de boletín en la materia: `N°18296-05`, `N° 18.296-05`, `18296-05`. */
-const BOLETIN_RE = /\bN?[°ºo]?\s?(\d{3,5})[.\s]?-?(\d{1,2})\b/gi;
+/**
+ * Regex de boletín en la materia: `N°18296-05`, `N° 18.296-05`, `18296-05`.
+ * Número de 3–5 dígitos (con posible punto de miles) + guión OBLIGATORIO + 2 dígitos.
+ * El guión obligatorio y el sufijo de 2 dígitos evitan capturar años/leyes/números
+ * pelados como falso boletín (#5, code-review v1.0) — antes `2026`→`202-6`,
+ * `ley 21000`→`2100-0`.
+ */
+const BOLETIN_RE = /\bN?[°ºo]?\s*(\d{1,2}\.\d{3}|\d{3,5})-(\d{2})\b/gi;
 
 const MESES_ES: Record<string, number> = {
   ENERO: 0,
@@ -63,15 +69,26 @@ function hashCorto(s: string): string {
  * Parsea "LUNES, 15 DE JUNIO DE 2026" → "2026-06-15" (ISO date). Devuelve el texto
  * normalizado tal cual si no casa (no fabrica una fecha falsa).
  */
-export function parseFechaEsCl(texto: string): string {
+export function parseFechaEsCl(texto: string): string | null {
   const t = normWs(texto).toUpperCase();
   const m = t.match(/(\d{1,2})\s+DE\s+([A-ZÁÉÍÓÚÜÑ]+)\s+DE\s+(\d{4})/);
-  if (!m) return normWs(texto);
+  if (!m) return null;
   const dia = Number(m[1]);
   const mes = MESES_ES[m[2]!];
   const anio = Number(m[3]);
   if (mes === undefined || !Number.isFinite(dia) || !Number.isFinite(anio)) {
-    return normWs(texto);
+    return null;
+  }
+  // Valida día-vs-mes (#24): construye la fecha en UTC y verifica que no haya
+  // desbordado (p.ej. 31 DE FEBRERO → marzo). No fabrica una fecha falsa: ante
+  // input imposible devuelve null y el caller descarta (espeja al parser del Senado).
+  const d = new Date(Date.UTC(anio, mes, dia));
+  if (
+    d.getUTCFullYear() !== anio ||
+    d.getUTCMonth() !== mes ||
+    d.getUTCDate() !== dia
+  ) {
+    return null;
   }
   const dd = String(dia).padStart(2, "0");
   const mm = String(mes + 1).padStart(2, "0");
@@ -85,7 +102,7 @@ function extraerBoletines(materia: string): string[] {
   BOLETIN_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = BOLETIN_RE.exec(materia)) !== null) {
-    const boletin = `${m[1]}-${m[2]}`;
+    const boletin = `${m[1].replace(/\./g, "")}-${m[2]}`;
     if (!seen.has(boletin)) {
       seen.add(boletin);
       out.push(boletin);
@@ -120,10 +137,17 @@ function leerCitacionInvitados(
     if (pares.length > 0) return pares;
   }
 
-  // Forma B: la columna 4 es materia y la columna 5 (hermana) es invitados.
-  const materia = normWs(last.text());
-  const invitados = tds.length >= 5 ? normWs($(tds[4]).text()) : "";
-  pares.push({ materia, invitados });
+  // Forma B: <td> hermanos. Con ≥5 columnas, las DOS ÚLTIMAS son materia/invitados
+  // (#28: antes ambos leían `tds[4]`, colapsando la materia y perdiendo el boletín del
+  // cruce). Si solo llega la columna de materia (4 columnas), invitados queda vacío.
+  if (tds.length >= 5) {
+    pares.push({
+      materia: normWs($(tds[tds.length - 2]).text()),
+      invitados: normWs(last.text()),
+    });
+  } else {
+    pares.push({ materia: normWs(last.text()), invitados: "" });
+  }
   return pares;
 }
 
@@ -152,6 +176,15 @@ export function parseCamaraCitaciones(
   $("article.citaciones").each((_ai, art) => {
     const diaTexto = $(art).find("p.fecha").first().text();
     const fecha = parseFechaEsCl(diaTexto);
+    if (fecha === null) {
+      // Sin fecha válida no se puede ubicar la citación en el tiempo. Se descarta
+      // el día entero en vez de persistir texto crudo en la columna `timestamptz`
+      // (#6, code-review v1.0) — drift, no se fabrica una fecha.
+      console.warn(
+        `[parse-camara-citaciones] artículo descartado (fecha no parseable): "${normWs(diaTexto)}"`,
+      );
+      return;
+    }
 
     $(art)
       .find("table.tabla > tbody > tr")
