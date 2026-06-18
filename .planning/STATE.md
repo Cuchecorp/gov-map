@@ -10,8 +10,8 @@ progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
-  percent: 14
+  completed_plans: 5
+  percent: 16
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-17)
 ## Current Position
 
 Phase: 02 (capa-de-providers-llm-embeddings) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-06-18
 
@@ -56,6 +56,7 @@ Progress: [██████████] 100% (3/3 planes de la fase 01 comple
 | Phase 01 P02 | 9min | 3 tasks | 25 files |
 | Phase 01 P03 | 18min | 2 tasks | 9 files |
 | Phase 02 P01 | 8min | 3 tasks | 18 files |
+| Phase 02 P02 | 3min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [01-03]: worker.ts comparte buildConnector entre Edge Function y GitHub Actions (mismo conector); index.ts solo bootstrap Deno.serve
 - [Phase ?]: [02-01]: compuerta zod UNICA y externa al adapter (parseAndValidate); ningun provider hace su propio safeParse
 - [Phase ?]: [02-01]: router fail-closed sin fallback (personal+trainsOnInputs -> SensitiveRoutingError); barrel index.ts propiedad de 02-01
+- [Phase 02]: [02-02]: MiniMax structured output = tool-calling forzado (tool_choice fija emit_result), NO response_format; lee tool_calls[0].function.arguments y valida por la misma compuerta externa
+- [Phase 02]: [02-02]: data-routing en codigo — assertNoRutInLlmInput (RUT nunca al LLM, error sin el RUT) + assertSensitivityAllowed reusa SensitiveRoutingError; smoke test live gated por LLM_SMOKE (skip default)
 
 ### Pending Todos
 
@@ -101,5 +104,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-06-18T01:56:54.706Z
-Stopped at: Roadmap and STATE created; requirements traceability populated
+Stopped at: Completed 02-02-PLAN.md (MiniMax tool-calling + data-routing + smoke gated)
 Resume file: None
