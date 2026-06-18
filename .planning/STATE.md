@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-01-PLAN.md (scaffold @obs/tramitacion + modelo comun + migracion 0008 RLS public-read + 5 fixtures reales cross-camara + slice E2E RED)
-last_updated: "2026-06-18T16:23:57.232Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-06-18T16:33:54.066Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 18
-  completed_plans: 14
+  completed_plans: 15
   percent: 57
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-17)
 ## Current Position
 
 Phase: 05 (tramitacion-core-ficha-timeline-votaciones) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-06-18
 
@@ -66,6 +66,7 @@ Progress: [██████████] 100% (3/3 planes de la fase 04 comple
 | Phase 04 P02 | 4min | 2 tasks | 2 files |
 | Phase 04 P03 | 12min | 3 tasks | 10 files |
 | Phase 05 P01 | 8min | 3 tasks | 16 files |
+| Phase 05 P02 | 7min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 05]: [05-01]: RLS public-read EXPLICITO (policy for select to anon using(true)) + GRANT SELECT en las 4 tablas de tramitacion — el deny-by-default heredado dejaria la ficha en blanco (Pitfall 5/T-05-01); parlamentario intacta
 - [Phase ?]: [Phase 05]: [05-01]: voto.parlamentario_id nullable+FK a la maestra — NULL salvo vinculo determinista/confirmado; mencion_nombre crudo se conserva para display (T-05-02, guarda LOCKED)
 - [Phase ?]: [Phase 05]: [05-01]: slice.e2e.test.ts en RED por imports ausentes — diana walking-skeleton que olas 2-4 vuelven verde; fixtures reales cross-camara 14309/18296 capturados live
+- [Phase ?]: 05-02: parsers leen ambos juegos de nombres de totales (TotalAfirmativos/TotalSi) — fixture = ground truth
+- [Phase ?]: 05-02: fusionarTimeline empate estable Cámara-antes-Senado; fechas null al final
 
 ### Pending Todos
 
@@ -140,6 +143,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T16:23:57.224Z
-Stopped at: Completed 05-01-PLAN.md (scaffold @obs/tramitacion + modelo comun + migracion 0008 RLS public-read + 5 fixtures reales cross-camara + slice E2E RED)
+Last session: 2026-06-18T16:33:54.059Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None

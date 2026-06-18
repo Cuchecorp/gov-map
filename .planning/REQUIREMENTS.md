@@ -34,12 +34,12 @@ Requisitos del milestone 1. Cada uno mapea a una fase del roadmap.
 
 ### Tramitación de Proyectos — P2 (TRAM)
 
-- [ ] **TRAM-01**: El sistema ingesta votaciones y sesiones de la Cámara vía el WS JSON `doGet.asmx`
-- [ ] **TRAM-02**: El sistema ingesta tramitación y votaciones del Senado vía `wspublico` (`tramitacion.php`/`votaciones.php`), parseando el XML
+- [x] **TRAM-01**: El sistema ingesta votaciones y sesiones de la Cámara vía el WS JSON `doGet.asmx`
+- [x] **TRAM-02**: El sistema ingesta tramitación y votaciones del Senado vía `wspublico` (`tramitacion.php`/`votaciones.php`), parseando el XML
 - [x] **TRAM-03**: El sistema modela `Proyecto` con clave de boletín y `Votacion`, normalizando ambas cámaras a un modelo común
-- [ ] **TRAM-04**: Un usuario puede ver la ficha de un proyecto con su estado/etapa actual de tramitación
-- [ ] **TRAM-05**: Un usuario puede ver el timeline de tramitación de un proyecto cruzando ambas cámaras por número de boletín
-- [ ] **TRAM-06**: Un usuario puede ver los resultados de votación (totales SI/NO/Abstención y resultado) asociados a un proyecto
+- [x] **TRAM-04**: Un usuario puede ver la ficha de un proyecto con su estado/etapa actual de tramitación
+- [x] **TRAM-05**: Un usuario puede ver el timeline de tramitación de un proyecto cruzando ambas cámaras por número de boletín
+- [x] **TRAM-06**: Un usuario puede ver los resultados de votación (totales SI/NO/Abstención y resultado) asociados a un proyecto
 - [ ] **TRAM-07**: El sistema ingesta y muestra las citaciones de comisiones de la Cámara (`citaciones_semana.aspx`) y del Senado (portal Next.js, con autodetección de `buildId`)
 - [ ] **TRAM-08**: Un usuario puede ver la tabla semanal de sala (orden del día)
 - [x] **TRAM-09**: Cada ficha y dato de tramitación muestra un indicador de frescura por fuente y enlace a la fuente original
@@ -115,12 +115,12 @@ Poblada durante la creación del roadmap (2026-06-17). Cada requisito mapea a ex
 | ID-06 | Phase 4 | Complete |
 | ID-07 | Phase 4 | Complete |
 | ID-08 | Phase 4 | Complete |
-| TRAM-01 | Phase 5 | Pending |
-| TRAM-02 | Phase 5 | Pending |
+| TRAM-01 | Phase 5 | Complete |
+| TRAM-02 | Phase 5 | Complete |
 | TRAM-03 | Phase 5 | Complete |
-| TRAM-04 | Phase 5 | Pending |
-| TRAM-05 | Phase 5 | Pending |
-| TRAM-06 | Phase 5 | Pending |
+| TRAM-04 | Phase 5 | Complete |
+| TRAM-05 | Phase 5 | Complete |
+| TRAM-06 | Phase 5 | Complete |
 | TRAM-09 | Phase 5 | Complete |
 | TRAM-07 | Phase 6 | Pending |
 | TRAM-08 | Phase 6 | Pending |
