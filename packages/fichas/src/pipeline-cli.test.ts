@@ -41,6 +41,14 @@ describe("pipeline-cli: parseArgs — validación fail-fast", () => {
     expect(() => parseArgs(["--no-existe"])).toThrow(FichasCliArgsError);
   });
 
+  it("--service-key sin valor (último token) → FichasCliArgsError, no dry-run silencioso (WR-05)", () => {
+    expect(() => parseArgs(["--service-key"])).toThrow(FichasCliArgsError);
+  });
+
+  it("--service-key con valor vacío → FichasCliArgsError", () => {
+    expect(() => parseArgs(["--service-key", "   "])).toThrow(FichasCliArgsError);
+  });
+
   it("sin flags → objeto vacío (defaults aplicados aguas abajo)", () => {
     expect(parseArgs([])).toEqual({});
   });

@@ -96,9 +96,17 @@ export function parseArgs(argv: string[]): FichasCliOptions {
         opts.boletines = lista;
         break;
       }
-      case "--service-key":
-        opts.serviceKey = argv[++i];
+      case "--service-key": {
+        // Fail-fast como --limite/--boletines: sin valor, `argv[++i]` es undefined
+        // y `decidirDryRun` degradaría SILENCIOSAMENTE a dry-run — el operador cree
+        // estar escribiendo a la DB y no persiste nada. Mejor error explícito (WR-05).
+        const raw = argv[++i];
+        if (raw == null || raw.trim().length === 0) {
+          throw new FichasCliArgsError("--service-key vacío (esperado una key)");
+        }
+        opts.serviceKey = raw;
         break;
+      }
       default:
         if (a != null && a.startsWith("--")) {
           throw new FichasCliArgsError(`flag desconocido: ${a}`);
