@@ -52,13 +52,19 @@ export function makeMockFetch(routes: Record<string, MockResponseSpec>): MockFet
   const calls: CapturedRequest[] = [];
 
   const fn = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const isRequest = typeof Request !== "undefined" && input instanceof Request;
     const url = typeof input === "string"
       ? input
       : input instanceof URL
         ? input.toString()
         : input.url;
-    const method = (init?.method ?? "GET").toUpperCase();
-    calls.push({ url, method, headers: normalizeHeaders(init?.headers), body: init?.body ?? null });
+    // Cuando se pasa un Request firmado (aws4fetch), method/headers viven en el
+    // Request, no en `init`. Soportar ambos.
+    const method = (init?.method ?? (isRequest ? input.method : "GET")).toUpperCase();
+    const headers = isRequest
+      ? normalizeHeaders(input.headers)
+      : normalizeHeaders(init?.headers);
+    calls.push({ url, method, headers, body: init?.body ?? null });
 
     const spec = routes[url];
     if (!spec) {

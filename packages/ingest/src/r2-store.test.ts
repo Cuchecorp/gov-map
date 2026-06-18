@@ -13,7 +13,8 @@ describe("R2Store.putImmutable", () => {
   it("Test 1a: key content-addressed {source}/{resource}/{date}/{sha}.{ext}", async () => {
     const body = new TextEncoder().encode("crudo");
     const sha = await sha256Hex(body);
-    const mock = makeMockFetch({});
+    const url = `${CFG.endpoint}/${CFG.bucket}/camara/proyectos/2026-06-17/${sha}.json`;
+    const mock = makeMockFetch({ [url]: { status: 200 } });
     const store = new R2Store(CFG, { fetchFn: mock.fn });
 
     const r2path = await store.putImmutable(
@@ -37,7 +38,8 @@ describe("R2Store.putImmutable", () => {
   it("Test 1c: el PUT incluye header If-None-Match: *", async () => {
     const body = new TextEncoder().encode("x");
     const sha = await sha256Hex(body);
-    const mock = makeMockFetch({});
+    const url = `${CFG.endpoint}/${CFG.bucket}/s/r/2026-06-17/${sha}.json`;
+    const mock = makeMockFetch({ [url]: { status: 200 } });
     const store = new R2Store(CFG, { fetchFn: mock.fn });
     await store.putImmutable("s", "r", "2026-06-17", sha, "json", body);
 
