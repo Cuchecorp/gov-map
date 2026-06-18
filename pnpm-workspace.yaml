@@ -11,3 +11,10 @@ ignoredBuiltDependencies:
   - esbuild
   - sharp
   - unrs-resolver
+
+minimumReleaseAgeExclude:
+  - openai@6.44.0
+
+allowBuilds:
+  '@google/genai': set this to true or false
+  protobufjs: set this to true or false

@@ -3,7 +3,8 @@
     "test": "deno test --allow-none"
   },
   "imports": {
-    "@obs/core/": "./packages/core/src/"
+    "@obs/core/": "./packages/core/src/",
+    "@obs/llm/": "./packages/llm/src/"
   },
   "fmt": {
     "useTabs": false,
