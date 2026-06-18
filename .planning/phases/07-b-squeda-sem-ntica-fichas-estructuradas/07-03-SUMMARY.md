@@ -190,3 +190,9 @@ Cada task se commiteó atómicamente (Task 1 TDD: test → feat):
 ---
 *Phase: 07-b-squeda-sem-ntica-fichas-estructuradas*
 *Tasks 1-3 completed: 2026-06-18 — Task 4 (verificación visual) pendiente como checkpoint:human-verify*
+
+---
+
+## Checkpoint Task 4 (visual) — RESUELTO (2026-06-18): aprobado con evidencia automática
+
+El operador aprobó el checkpoint visual sobre la base de la evidencia automática (67 tests de app verdes + `pnpm build` OK + server-only confirmado + slice E2E read-half verde). La **verificación visual con datos reales queda diferida** hasta: (1) wiring del anon/publishable key de nube en la app, y (2) backfill de corpus (Ola 2 con GEMINI_API_KEY) sobre proyectos cargados en la nube. Hasta entonces la UI muestra los estados vacíos honestos (correcto por diseño). Plan 07-03 marcado COMPLETO. SEM-04/05/06 entregados.
