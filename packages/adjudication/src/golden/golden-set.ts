@@ -494,7 +494,9 @@ export interface MetricasGolden {
 
 /** Writer no-op in-memory: el golden set evalúa el pipeline sin tocar la DB. */
 class NoopWriter implements PipelineWriter {
-  async upsertVinculo(_v: FilaVinculo): Promise<void> {}
+  async upsertVinculo(_v: FilaVinculo): Promise<number | null> {
+    return null;
+  }
   async appendAudit(_row: FilaAudit): Promise<void> {}
   async enqueueRevision(_caso: CasoRevision): Promise<void> {}
 }

@@ -24,9 +24,12 @@ class SpyWriter {
   vinculos: FilaVinculo[] = [];
   audits: FilaAudit[] = [];
   colas: CasoRevision[] = [];
+  /** id simulado que `upsertVinculo` devuelve (incremental), para verificar el enlace audit. */
+  private nextId = 1;
 
-  async upsertVinculo(v: FilaVinculo): Promise<void> {
+  async upsertVinculo(v: FilaVinculo): Promise<number | null> {
     this.vinculos.push(v);
+    return this.nextId++;
   }
   async appendAudit(row: FilaAudit): Promise<void> {
     this.audits.push(row);
@@ -102,6 +105,8 @@ describe("correrPipeline — Etapa 0 (determinista, reuse Fase 3)", () => {
     expect(writer.vinculos[0]!.parlamentario_id).toBe("P00042");
     expect(writer.audits).toHaveLength(1);
     expect(writer.audits[0]!.metodo).toBe("determinista");
+    // WR-01: el audit referencia el vínculo recién escrito (no null).
+    expect(writer.audits[0]!.vinculo_id).toBe(1);
     expect(writer.colas).toHaveLength(0);
   });
 });
@@ -182,6 +187,8 @@ describe("correrPipeline — Etapas 2/3 (LLM + compuerta)", () => {
     expect(writer.audits[0]!.metodo).toBe("llm");
     expect(writer.audits[0]!.confidence).toBe(0.97);
     expect(writer.audits[0]!.modelo_version).toBe("minimax-mock");
+    // WR-01: el audit del probable referencia el vínculo escrito (no null).
+    expect(writer.audits[0]!.vinculo_id).toBe(1);
     expect(writer.colas).toHaveLength(0);
   });
 

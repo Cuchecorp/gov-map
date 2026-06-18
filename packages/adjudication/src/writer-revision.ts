@@ -123,14 +123,30 @@ export class RevisionWriter {
     }
   }
 
-  /** UPSERT del vínculo final mención→id (estado + metodo). */
-  async upsertVinculo(v: FilaVinculo): Promise<void> {
-    const { error } = await this.client
+  /**
+   * UPSERT del vínculo final mención→id (estado + metodo). Devuelve el `id` de la fila
+   * escrita para enlazarlo en el audit (WR-01).
+   *
+   * Idempotencia (WR-02): el conflicto se resuelve sobre la CLAVE NATURAL
+   * `(camara, periodo, mencion_normalizada)` — el índice único parcial de 0006
+   * (`where parlamentario_id is not null`). Re-procesar la misma mención con id
+   * asignado ACTUALIZA la fila en vez de duplicarla. Las filas `no_confirmado` (sin
+   * `parlamentario_id`) quedan fuera del índice parcial: no compiten por la unicidad,
+   * así que se insertan como filas nuevas (no hay clave de conflicto que las una, lo
+   * cual es correcto: una mención sin id no es un hecho idempotente).
+   */
+  async upsertVinculo(v: FilaVinculo): Promise<number | null> {
+    const onConflict =
+      v.parlamentario_id != null ? "camara,periodo,mencion_normalizada" : undefined;
+    const { data, error } = await this.client
       .from(TABLA_VINCULO)
-      .upsert([v], { onConflict: "id" });
+      .upsert([v], onConflict ? { onConflict } : undefined)
+      .select("id");
     if (error) {
       throw new Error(`upsertVinculo falló: ${error.message}`);
     }
+    const filas = (data ?? []) as { id: number }[];
+    return filas[0]?.id ?? null;
   }
 
   /**

@@ -58,9 +58,16 @@ function fakeClient(opts: { error?: { message: string } } = {}): {
             },
           };
         },
-        upsert(rows: unknown, options: { onConflict?: string }) {
+        upsert(rows: unknown, options?: { onConflict?: string }) {
           upserts.push({ table, rows, onConflict: options?.onConflict });
-          return Promise.resolve({ error: err });
+          return {
+            select() {
+              return Promise.resolve({
+                data: err ? null : [{ id: 7 }],
+                error: err,
+              });
+            },
+          };
         },
         update(patch: Record<string, unknown>) {
           const call: UpdateCall = { table, patch, eqCol: "", eqVal: undefined };
@@ -145,10 +152,10 @@ describe("RevisionWriter.enqueueRevision", () => {
 });
 
 describe("RevisionWriter.upsertVinculo", () => {
-  it("upsert en vinculo_identidad con estado + metodo", async () => {
+  it("upsert en vinculo_identidad con estado + metodo, devuelve el id de la fila (WR-01)", async () => {
     const { client, upserts } = fakeClient();
     const w = new RevisionWriter({ url: "x", serviceKey: "x", client });
-    await w.upsertVinculo(VINCULO);
+    const id = await w.upsertVinculo(VINCULO);
 
     expect(upserts).toHaveLength(1);
     expect(upserts[0]!.table).toBe("vinculo_identidad");
@@ -156,6 +163,27 @@ describe("RevisionWriter.upsertVinculo", () => {
     expect(row.estado).toBe("probable");
     expect(row.metodo).toBe("llm");
     expect(row.parlamentario_id).toBe("P00042");
+    // WR-01: devuelve el id para enlazar el audit.
+    expect(id).toBe(7);
+  });
+
+  it("WR-02: con parlamentario_id, onConflict usa la clave natural del índice único parcial", async () => {
+    const { client, upserts } = fakeClient();
+    const w = new RevisionWriter({ url: "x", serviceKey: "x", client });
+    await w.upsertVinculo(VINCULO); // parlamentario_id = P00042
+
+    // Idempotencia real: el conflicto se resuelve sobre (camara, periodo, mencion_normalizada),
+    // que es el índice único parcial de 0006 — NO sobre "id" (que el pipeline nunca fija).
+    expect(upserts[0]!.onConflict).toBe("camara,periodo,mencion_normalizada");
+  });
+
+  it("WR-02: sin parlamentario_id (no_confirmado) no usa onConflict (fila fuera del índice parcial)", async () => {
+    const { client, upserts } = fakeClient();
+    const w = new RevisionWriter({ url: "x", serviceKey: "x", client });
+    await w.upsertVinculo({ ...VINCULO, parlamentario_id: null, estado: "no_confirmado" });
+
+    // Las filas sin id quedan fuera del índice único parcial: insert plano, sin clave de conflicto.
+    expect(upserts[0]!.onConflict).toBeUndefined();
   });
 });
 

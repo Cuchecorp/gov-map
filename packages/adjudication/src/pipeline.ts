@@ -42,7 +42,8 @@ import type {
 
 /** Subconjunto del RevisionWriter que el pipeline necesita (inyectable/espía en tests). */
 export interface PipelineWriter {
-  upsertVinculo(v: FilaVinculo): Promise<void>;
+  /** Devuelve el `id` del vínculo escrito (o null) para enlazarlo en el audit (WR-01). */
+  upsertVinculo(v: FilaVinculo): Promise<number | null>;
   appendAudit(row: FilaAudit): Promise<void>;
   enqueueRevision(caso: CasoRevision): Promise<void>;
 }
@@ -98,14 +99,14 @@ export async function correrPipeline(
   };
   const det = matchDeterminista(mention, maestra);
   if (det.estado === "confirmado") {
-    await writer.upsertVinculo({
+    const vinculoId = await writer.upsertVinculo({
       ...baseVinculo(mencion),
       parlamentario_id: det.id,
       estado: "confirmado",
       metodo: "determinista",
     });
     await writer.appendAudit({
-      vinculo_id: null,
+      vinculo_id: vinculoId,
       metodo: "determinista",
       decision: "confirmado",
       confidence: null,
@@ -120,14 +121,14 @@ export async function correrPipeline(
   // ── Etapa 1: blocking. Sin candidatos → no_confirmado. NO toca el LLM. ──
   const candidatos = generarCandidatos(mencion, maestra);
   if (candidatos.length === 0) {
-    await writer.upsertVinculo({
+    const vinculoId = await writer.upsertVinculo({
       ...baseVinculo(mencion),
       parlamentario_id: null,
       estado: "no_confirmado",
       metodo: "llm",
     });
     await writer.appendAudit({
-      vinculo_id: null,
+      vinculo_id: vinculoId,
       metodo: "llm",
       decision: "no_confirmado",
       confidence: null,
@@ -159,14 +160,14 @@ export async function correrPipeline(
   const decision = aplicarCompuerta(llm, mencion, candidatos);
   if (decision.ruta === "auto-aceptar") {
     // A4: auto-aceptar NUNCA produce 'confirmado'; lo máximo es 'probable'.
-    await writer.upsertVinculo({
+    const vinculoId = await writer.upsertVinculo({
       ...baseVinculo(mencion),
       parlamentario_id: decision.chosenId,
       estado: "probable",
       metodo: "llm",
     });
     await writer.appendAudit({
-      vinculo_id: null,
+      vinculo_id: vinculoId,
       metodo: "llm",
       decision: "probable",
       confidence: llm.confidence,
@@ -195,6 +196,9 @@ export async function correrPipeline(
     motivo: decision.razones.join("; "),
   });
   await writer.appendAudit({
+    // WR-01: la rama de revisión NO crea un vínculo (la promoción a confirmado es
+    // exclusiva del humano vía revisor-cli). Por eso `vinculo_id` es null aquí por
+    // diseño explícito: el enlace audit→vínculo se establece al confirmar/corregir.
     vinculo_id: null,
     metodo: "llm",
     decision: "revision",

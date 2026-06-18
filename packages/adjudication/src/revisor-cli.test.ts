@@ -55,7 +55,9 @@ function fakeClient(pendientes: CasoRevisionRow[]): {
         },
         upsert(rows: unknown) {
           caps.upserts.push({ table, rows });
-          return Promise.resolve({ error: null });
+          return {
+            select: () => Promise.resolve({ data: [{ id: 1 }], error: null }),
+          };
         },
         update(patch: Record<string, unknown>) {
           const eqs: [string, unknown][] = [];
