@@ -1,0 +1,16 @@
+{
+  "unstable": ["sloppy-imports"],
+  "tasks": {
+    "test": "deno test --allow-env --allow-net --no-check ingest-worker/"
+  },
+  "imports": {
+    "@obs/core": "../../packages/core/src/index.ts",
+    "@obs/core/": "../../packages/core/src/",
+    "@obs/ingest": "../../packages/ingest/src/index.ts",
+    "@obs/ingest/": "../../packages/ingest/src/",
+    "aws4fetch": "npm:aws4fetch@1",
+    "robots-parser": "npm:robots-parser@3",
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
+    "zod": "npm:zod@3"
+  }
+}

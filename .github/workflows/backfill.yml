@@ -1,0 +1,49 @@
+name: backfill
+
+# Escape hatch para backfill masivo (RESEARCH §6 / T-01-13).
+# GitHub Actions NO tiene el limite de ~400s de Edge Functions, asi que aqui
+# corremos el MISMO DummyConnector/BaseConnector de @obs/ingest (mismo codigo
+# TS/Deno, mismo rate-limit 2-3s serial por host) para crawls grandes o el
+# snapshot inicial. Disparo manual (workflow_dispatch) — NO programado.
+# En M1 corre el DummyConnector (NO fuentes reales — Camara/Senado/BCN son
+# Fases 5-7).
+
+on:
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: "Numero de iteraciones del DummyConnector (acotado)"
+        required: false
+        default: "1"
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run backfill (mismo conector + rate-limit)
+        working-directory: supabase/functions
+        env:
+          # Secrets via repo secrets — NUNCA en claro en el workflow.
+          SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          BACKFILL_ITERATIONS: ${{ github.event.inputs.iterations }}
+        run: |
+          deno run \
+            --allow-env --allow-net \
+            --unstable-sloppy-imports --no-check \
+            ingest-worker/backfill.ts
