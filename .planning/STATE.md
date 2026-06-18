@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-06-18T18:55:47.426Z"
+last_updated: "2026-06-18T19:07:35.548Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 22
-  completed_plans: 19
+  completed_plans: 20
   percent: 71
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-17)
 ## Current Position
 
 Phase: 06 (citaciones-tabla-semanal-de-sala) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-18
 
@@ -71,6 +71,7 @@ Progress: [██████████] 100% (3/3 planes de la fase 04 comple
 | Phase 05 P04 | 30min | 4 tasks | 36 files |
 | Phase 05 P05 | 19min | 3 tasks | 15 files |
 | Phase 06 P01 | 12min | 3 tasks | 15 files |
+| Phase 06 P02 | 9 | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 06]: [06-01]: citacion_invitado SIN parlamentario_id ni reconciliacion — invitados son gestores de interes/terceros, texto crudo (T-06-02); @obs/agenda NO depende de @obs/adjudication/@obs/identity
 - [Phase ?]: [Phase 06]: [06-01]: cheerio@1.2.0 instalado del registro (LOCKED en STACK.md) — el plan asumia que ya estaba en el lockfile pero tramitacion usa fast-xml-parser, no cheerio
 - [Phase ?]: [Phase 06]: [06-01]: slice.e2e.test.ts RED por imports ausentes (parseCamaraCitaciones/parseSenadoCitaciones/parseSenadoTabla) — diana ciudadana; 3 fixtures reales LIVE (Camara 235KB anti-CF + 2 JSON Senado)
+- [Phase ?]: 06-02: helper ISO anclado al jueves; enumerarSemanas cruza bordes de año y respeta 53-week years (2020/2026/2032) sin huecos
+- [Phase ?]: 06-02: 3 parsers contra fixtures reales con zod por fila (drift se descarta, no fabrica); boletin = llave de cruce con Fase 5; slice E2E verde
 
 ### Pending Todos
 
@@ -155,6 +158,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T18:55:47.416Z
+Last session: 2026-06-18T19:07:10.549Z
 Stopped at: Completed 06-01-PLAN.md
 Resume file: None
