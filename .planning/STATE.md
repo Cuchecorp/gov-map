@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Roadmap and STATE created; requirements traceability populated
-last_updated: "2026-06-17T23:54:25.874Z"
-last_activity: 2026-06-17
+last_updated: "2026-06-18T00:06:49.727Z"
+last_activity: 2026-06-18
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-17)
 ## Current Position
 
 Phase: 01 (framework-de-conectores-almacenamiento-orquestaci-n) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
-Last activity: 2026-06-17
+Last activity: 2026-06-18
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 11min | 3 tasks | 16 files |
+| Phase 01 P02 | 9min | 3 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [01-01]: verifyDepsBeforeRun:false en pnpm-workspace.yaml para que el gate de build-scripts no aborte typecheck/test
 - [Phase ?]: [01-01]: puertos locales de Supabase remapeados a 544xx para evitar colision con otro proyecto activo
 - [Phase ?]: [01-01]: raw-immutable/normalized-derived — source_snapshot guarda solo r2_path/content_hash, crudo nunca en Postgres (FND-02)
+- [Phase 01]: [01-02]: rate-limiter serial por host (Map host->cola encadenada); primer request sin espera, subsiguientes 2-3s+jitter (FND-01)
+- [Phase 01]: [01-02]: BaseConnector Template Method fija el flujo invariante; ningun conector puede saltarse rateLimiter.wait
+- [Phase 01]: [01-02]: R2 inmutable via aws4fetch + If-None-Match:* (412=idempotente); drift no-bloqueante (FND-02/FND-04)
 
 ### Pending Todos
 
@@ -89,6 +93,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-17T23:52:24.845Z
+Last session: 2026-06-18T00:06:49.721Z
 Stopped at: Roadmap and STATE created; requirements traceability populated
 Resume file: None

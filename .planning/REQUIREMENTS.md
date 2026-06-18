@@ -11,10 +11,10 @@ Requisitos del milestone 1. Cada uno mapea a una fase del roadmap.
 
 ### Fundaciones e Infraestructura (FND)
 
-- [ ] **FND-01**: El sistema ingesta datos mediante un framework de conector aislado por fuente que aplica rate-limit de 2–3s, User-Agent identificatorio y respeto de robots.txt
+- [x] **FND-01**: El sistema ingesta datos mediante un framework de conector aislado por fuente que aplica rate-limit de 2–3s, User-Agent identificatorio y respeto de robots.txt
 - [x] **FND-02**: El sistema guarda todo el dato crudo (XML/JSON/HTML) en object storage (Cloudflare R2), inmutable y append-only, sin meterlo en Postgres
-- [ ] **FND-03**: Cada respuesta de fuente queda cacheada (caché diaria) y versionada como snapshot, para re-procesamiento sin re-scrapear
-- [ ] **FND-04**: El sistema detecta cambios de esquema (drift) en una fuente y los registra en lugar de fallar en silencio
+- [x] **FND-03**: Cada respuesta de fuente queda cacheada (caché diaria) y versionada como snapshot, para re-procesamiento sin re-scrapear
+- [x] **FND-04**: El sistema detecta cambios de esquema (drift) en una fuente y los registra en lugar de fallar en silencio
 - [ ] **FND-05**: La ingesta pesada corre dirigida por cola (pgmq) y chunking vía pg_cron + Edge Functions, con backoff exponencial ante 429
 - [ ] **FND-06**: Todo acceso LLM pasa por una interfaz enchufable `LLMProvider` con salida estructurada validada por-proveedor (zod), seleccionable por configuración
 - [ ] **FND-07**: Todo embedding pasa por una interfaz `EmbeddingProvider` que fija y versiona modelo/dimensiones en los metadatos del vector
@@ -98,10 +98,10 @@ Poblada durante la creación del roadmap (2026-06-17). Cada requisito mapea a ex
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FND-01 | Phase 1 | Pending |
+| FND-01 | Phase 1 | Complete |
 | FND-02 | Phase 1 | Complete |
-| FND-03 | Phase 1 | Pending |
-| FND-04 | Phase 1 | Pending |
+| FND-03 | Phase 1 | Complete |
+| FND-04 | Phase 1 | Complete |
 | FND-05 | Phase 1 | Pending |
 | FND-08 | Phase 1 | Complete |
 | FND-06 | Phase 2 | Pending |
