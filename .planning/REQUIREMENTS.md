@@ -49,9 +49,9 @@ Requisitos del milestone 1. Cada uno mapea a una fase del roadmap.
 - [x] **SEM-01**: El sistema descarga el texto íntegro de mensajes y mociones (links del XML del Senado y BCN `obtxml`)
 - [x] **SEM-02**: El sistema extrae idea matriz y cuerpos legales afectados de cada proyecto mediante parsing + LLM (DeepSeek con prompt-cache)
 - [x] **SEM-03**: El sistema genera embeddings (Gemini, 768-dim) de las fichas e indexa en pgvector con índice HNSW
-- [ ] **SEM-04**: Un usuario puede buscar proyectos en lenguaje natural y recibir fichas estructuradas con trazabilidad a la fuente
-- [ ] **SEM-05**: Un usuario puede ver "proyectos similares" a uno dado, por vecindad semántica (kNN)
-- [ ] **SEM-06**: Cada ficha unifica boletín, título, iniciativa, autores, cámara de origen, materia, idea matriz, cuerpos legales, estado y enlace a fuente
+- [x] **SEM-04**: Un usuario puede buscar proyectos en lenguaje natural y recibir fichas estructuradas con trazabilidad a la fuente
+- [x] **SEM-05**: Un usuario puede ver "proyectos similares" a uno dado, por vecindad semántica (kNN)
+- [x] **SEM-06**: Cada ficha unifica boletín, título, iniciativa, autores, cámara de origen, materia, idea matriz, cuerpos legales, estado y enlace a fuente
 
 ## v2 Requirements
 
@@ -127,9 +127,9 @@ Poblada durante la creación del roadmap (2026-06-17). Cada requisito mapea a ex
 | SEM-01 | Phase 7 | Complete |
 | SEM-02 | Phase 7 | Complete |
 | SEM-03 | Phase 7 | Complete |
-| SEM-04 | Phase 7 | Pending |
-| SEM-05 | Phase 7 | Pending |
-| SEM-06 | Phase 7 | Pending |
+| SEM-04 | Phase 7 | Complete |
+| SEM-05 | Phase 7 | Complete |
+| SEM-06 | Phase 7 | Complete |
 
 **Coverage:**
 
