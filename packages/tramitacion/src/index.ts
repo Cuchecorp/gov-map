@@ -52,3 +52,21 @@ export {
   reconciliarVotosSenado,
   type ReconciliarSenadoOpts,
 } from "./reconciliar-senado";
+
+// ── Ola 4: conectores (reusan @obs/ingest, NO BaseConnector.run) ──────────────
+export {
+  CamaraConnector,
+  RobotsDisallowError,
+  type CamaraConnectorDeps,
+} from "./connector-camara";
+export { SenadoConnector, type SenadoConnectorDeps } from "./connector-senado";
+
+// ── Ola 4: writer idempotente por clave natural ───────────────────────────────
+export {
+  type TramitacionWriter,
+  InMemoryTramitacionWriter,
+} from "./writer";
+export {
+  SupabaseTramitacionWriter,
+  type SupabaseTramitacionWriterOptions,
+} from "./writer-supabase";
