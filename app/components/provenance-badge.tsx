@@ -4,7 +4,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn, safeExternalHref } from "@/lib/utils";
 import { relativeTimeEs, esStale } from "@/lib/format";
 
 /**
@@ -32,6 +32,9 @@ export function ProvenanceBadge({
 }: ProvenanceBadgeProps) {
   const stale = capturedAt !== null && esStale(capturedAt);
   const displaySource = capturedAt === null ? "fuente desconocida" : sourceName;
+  // #9: solo se enlaza si el href es http(s) seguro; un `javascript:`/`data:`
+  // proveniente de la fuente se degrada a "sin enlace" en vez de inyectar script.
+  const safeUrl = safeExternalHref(sourceUrl);
 
   const badge = (
     <span
@@ -52,11 +55,11 @@ export function ProvenanceBadge({
       )}
       <span aria-hidden="true">·</span>
       <span>{displaySource}</span>
-      {sourceUrl !== null && (
+      {safeUrl !== null && (
         <>
           <span aria-hidden="true">—</span>
           <a
-            href={sourceUrl}
+            href={safeUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:text-foreground"
@@ -70,7 +73,7 @@ export function ProvenanceBadge({
   );
 
   // Sin procedencia: no hay timestamp/URL crudos que mostrar en tooltip.
-  if (capturedAt === null && sourceUrl === null) {
+  if (capturedAt === null && safeUrl === null) {
     return badge;
   }
 
@@ -81,7 +84,7 @@ export function ProvenanceBadge({
         <TooltipContent>
           <div className="font-mono text-xs leading-relaxed">
             {capturedAt !== null && <div>{capturedAt.toISOString()}</div>}
-            {sourceUrl !== null && <div>{sourceUrl}</div>}
+            {safeUrl !== null && <div>{safeUrl}</div>}
           </div>
         </TooltipContent>
       </Tooltip>

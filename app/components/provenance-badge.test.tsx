@@ -49,4 +49,19 @@ describe("ProvenanceBadge — frescura + fuente (TRAM-09, UI-SPEC §4)", () => {
     expect(screen.getByText("fuente desconocida")).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
+
+  it("#9: un sourceUrl con esquema peligroso (javascript:) NO se enlaza (anti-XSS)", () => {
+    const capturedAt = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    render(
+      <ProvenanceBadge
+        capturedAt={capturedAt}
+        sourceName="Cámara"
+        // eslint-disable-next-line no-script-url
+        sourceUrl={"javascript:alert(1)"}
+      />
+    );
+    // El dato sigue mostrándose, pero degradado a "sin enlace" (no inyecta script).
+    expect(screen.getByText(/Cámara/)).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
 });
