@@ -177,13 +177,15 @@ describe("RevisionWriter.upsertVinculo", () => {
     expect(upserts[0]!.onConflict).toBe("camara,periodo,mencion_normalizada");
   });
 
-  it("WR-02: sin parlamentario_id (no_confirmado) no usa onConflict (fila fuera del índice parcial)", async () => {
+  it("#19: sin parlamentario_id (no_confirmado) TAMBIÉN usa onConflict (índice parcial 0014, dedup)", async () => {
     const { client, upserts } = fakeClient();
     const w = new RevisionWriter({ url: "x", serviceKey: "x", client });
     await w.upsertVinculo({ ...VINCULO, parlamentario_id: null, estado: "no_confirmado" });
 
-    // Las filas sin id quedan fuera del índice único parcial: insert plano, sin clave de conflicto.
-    expect(upserts[0]!.onConflict).toBeUndefined();
+    // Con el índice único parcial `where parlamentario_id is null` (0014), re-procesar
+    // la misma mención huérfana ACTUALIZA en vez de duplicar. ON CONFLICT por las mismas
+    // columnas; Postgres infiere el índice por el predicado que la fila satisface.
+    expect(upserts[0]!.onConflict).toBe("camara,periodo,mencion_normalizada");
   });
 });
 
