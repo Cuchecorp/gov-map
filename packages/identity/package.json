@@ -10,15 +10,19 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "seed:live": "tsx src/seed-cli.ts"
   },
   "dependencies": {
     "@obs/core": "workspace:*",
     "@obs/ingest": "workspace:*",
+    "@supabase/supabase-js": "^2.108.2",
     "fast-xml-parser": "^5.9.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/node": "^20.19.43",
+    "tsx": "^4.22.4",
     "vitest": "^3.0.0"
   }
 }

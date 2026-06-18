@@ -27,6 +27,14 @@ export type {
   ExportResult,
 } from "./backup";
 
+// Writers REALES (impls de los inyectables de Plan 03) + CLI de siembra LIVE (Plan 04).
+export { SupabaseMaestraWriter } from "./writer-supabase";
+export type { SupabaseMaestraWriterOptions } from "./writer-supabase";
+export { FsSeedFileWriter } from "./writer-fs";
+export type { FsSeedFileWriterOptions } from "./writer-fs";
+export { main as runSeedCli } from "./seed-cli";
+export type { SeedCliOptions, SeedCliResult } from "./seed-cli";
+
 // Re-exporta los tipos de dominio de identidad desde @obs/core por conveniencia.
 export type {
   Parlamentario,
