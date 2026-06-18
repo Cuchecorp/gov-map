@@ -78,3 +78,43 @@ describe("parseSenadoCitaciones (JSON real de commissions_citations)", () => {
     expect(c.enlace).toContain("commissions_citations");
   });
 });
+
+// WR-02: sin ID_CITACION, dos citaciones distintas del mismo slot NO deben colapsar.
+describe("parseSenadoCitaciones — clave de fallback sin ID_CITACION (WR-02)", () => {
+  function dia(...cits: Record<string, unknown>[]) {
+    return JSON.stringify({ data: [{ FECHA: "18/06/2026", CITACIONES: cits }] });
+  }
+  const base = {
+    COMINOMBRE: "Comisión de Hacienda",
+    HORARIO: "10:00",
+    // ID_CITACION ausente a propósito
+  };
+
+  it("dos citaciones mismo comisión+fecha+horario con materias distintas → 2 ids distintos", () => {
+    const res = parseSenadoCitaciones(
+      dia(
+        { ...base, LUGAR: "Sala A", MATERIA: "Estudio del proyecto AAA" },
+        { ...base, LUGAR: "Sala A", MATERIA: "Estudio del proyecto BBB" },
+      ),
+    );
+    expect(res.length).toBe(2);
+    expect(new Set(res.map((c) => c.id)).size).toBe(2);
+  });
+
+  it("id de fallback es estable bajo reordenamiento (no swap)", () => {
+    const cA = { ...base, LUGAR: "Sala A", MATERIA: "AAA" };
+    const cB = { ...base, LUGAR: "Sala A", MATERIA: "BBB" };
+    const r1 = parseSenadoCitaciones(dia(cA, cB));
+    const r2 = parseSenadoCitaciones(dia(cB, cA));
+    const idDe = (r: typeof r1, m: string) => r.find((c) => c.materia === m)!.id;
+    expect(idDe(r1, "AAA")).toBe(idDe(r2, "AAA"));
+    expect(idDe(r1, "BBB")).toBe(idDe(r2, "BBB"));
+  });
+
+  it("con ID_CITACION presente la clave sigue siendo el id de la fuente", () => {
+    const res = parseSenadoCitaciones(
+      dia({ ...base, ID_CITACION: "9999", LUGAR: "Sala A", MATERIA: "X" }),
+    );
+    expect(res[0]!.id).toBe("senado:citacion:9999");
+  });
+});

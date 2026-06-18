@@ -51,6 +51,19 @@ function asIntOrNull(v: unknown): number | null {
 }
 
 /**
+ * Hash corto y estable (djb2 → base36) de un texto. Determinista entre corridas:
+ * se usa para disambiguar la clave natural de fallback cuando falta ID_CITACION
+ * (WR-02), evitando que dos citaciones distintas del mismo slot colapsen en una.
+ */
+function hashCorto(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  }
+  return (h >>> 0).toString(36);
+}
+
+/**
  * Parsea el JSON (string u objeto ya parseado) de `commissions_citations` a `Citacion[]`.
  */
 export function parseSenadoCitaciones(
@@ -95,10 +108,18 @@ export function parseSenadoCitaciones(
         };
       });
 
+      const lugar = asStringOrNull(c.LUGAR);
+      const materia = asStringOrNull(c.MATERIA);
       const idCitacion = asStringOrNull(c.ID_CITACION);
+      // WR-02: sin ID_CITACION, la clave de fallback incorpora un disambiguador
+      // de campos intrínsecos (lugar + hash de materia) para que dos citaciones
+      // distintas del mismo slot (comisión+fecha+horario) NO colapsen en una sola
+      // (el writer es last-write-wins por id). El hash es estable entre corridas.
+      const discLugar = lugar ? `:${lugar}` : "";
+      const discMateria = materia ? `:${hashCorto(materia)}` : "";
       const id = idCitacion
         ? `senado:citacion:${idCitacion}`
-        : `senado:citacion:${comision}:${fecha}:${horario}`;
+        : `senado:citacion:${comision}:${fecha}:${horario}${discLugar}${discMateria}`;
 
       const candidata: Citacion = {
         id,
@@ -106,8 +127,8 @@ export function parseSenadoCitaciones(
         comision,
         fecha,
         horario,
-        sala: asStringOrNull(c.LUGAR),
-        materia: asStringOrNull(c.MATERIA),
+        sala: lugar,
+        materia,
         estado: sinEfecto ? "Sin efecto" : null,
         semana_iso: semanaIsoDeFechaIso(fecha),
         invitados: [], // la API de citaciones del Senado no expone invitados (T-06-02)
