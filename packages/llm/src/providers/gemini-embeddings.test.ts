@@ -139,6 +139,30 @@ describe("GeminiEmbeddingProvider", () => {
     expect(String(call.body)).not.toContain("super-secret-key");
   });
 
+  // WR-03: dimensionalidad real != EMBEDDING_DIMS -> lanza (protege el indice).
+  it("WR-03 vector con dims != 768 (p.ej. 3072) -> lanza dim mismatch, no persiste mal", async () => {
+    const wrong = unnormalizedVector(3072); // Gemini default si ignora outputDimensionality
+    const mock = makeMockFetch({ [URL]: { status: 200, body: embedResponse([wrong]) } });
+    const p = new GeminiEmbeddingProvider({ apiKey: "k", fetchFn: mock.fn });
+    await expect(p.embed(["texto publico"])).rejects.toThrow(/dim mismatch|expected 768/i);
+  });
+
+  it("WR-03 vector truncado (dims < 768) -> lanza dim mismatch", async () => {
+    const wrong = unnormalizedVector(512);
+    const mock = makeMockFetch({ [URL]: { status: 200, body: embedResponse([wrong]) } });
+    const p = new GeminiEmbeddingProvider({ apiKey: "k", fetchFn: mock.fn });
+    await expect(p.embed(["texto publico"])).rejects.toThrow(/dim mismatch|expected 768/i);
+  });
+
+  // WR-04: lote vacio -> [] sin POST.
+  it("WR-04 embed([]) -> [] sin llamar a la API (cero fetches)", async () => {
+    const mock = makeMockFetch({ [URL]: { status: 200, body: embedResponse([]) } });
+    const p = new GeminiEmbeddingProvider({ apiKey: "k", fetchFn: mock.fn });
+    const out = await p.embed([]);
+    expect(out).toEqual([]);
+    expect(mock.calls).toHaveLength(0);
+  });
+
   it("error HTTP no expone la API key en el mensaje", async () => {
     const mock = makeMockFetch({
       [URL]: { status: 403, body: JSON.stringify({ error: { message: "forbidden" } }) },

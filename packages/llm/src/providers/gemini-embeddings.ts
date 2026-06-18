@@ -65,6 +65,10 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
   }
 
   async embed(texts: string[]): Promise<EmbeddingResult[]> {
+    // WR-04: lote vacio -> no se hace POST (Gemini puede responder 400 a un
+    // `requests: []`, y un caller no distingue "nada que embeber" de un bug).
+    if (texts.length === 0) return [];
+
     const url =
       `${API_BASE}/${API_VERSION}/models/${EMBEDDING_MODEL}:batchEmbedContents`;
     const body = {
@@ -104,6 +108,15 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
       const values = e.values;
       if (!values || values.length === 0) {
         throw new Error("Gemini embeddings response missing vector values");
+      }
+      // WR-03: la dimensionalidad real DEBE coincidir con EMBEDDING_DIMS antes de
+      // estampar `dims: 768`. Si Gemini ignora/mal-maneja outputDimensionality
+      // (cambio de API, fallback a 3072, truncado parcial), un vector con dims
+      // reales != registradas corrompe el indice pgvector(768) en Fase 7 (FND-07).
+      if (values.length !== EMBEDDING_DIMS) {
+        throw new Error(
+          `Gemini embedding dim mismatch: expected ${EMBEDDING_DIMS}, got ${values.length}`,
+        );
       }
       // Versionado SIEMPRE: ningun vector sin model/dims/version (FND-07).
       return {
