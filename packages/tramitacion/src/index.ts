@@ -46,3 +46,9 @@ export { fusionarTimeline, eventoDesdeVotacion } from "./timeline";
 // ── Ola 3: reconciliación del voto-a-voto contra la maestra ───────────────────
 // Cámara: cruce DETERMINISTA por Diputado/Id (sin LLM, sin riesgo de identidad).
 export { reconciliarVotosCamara } from "./reconciliar-camara";
+// Senado: cruce por NOMBRE vía correrPipeline (Fase 4); guarda LOCKED — solo
+// determinista/confirmado puebla parlamentario_id (T-05-06).
+export {
+  reconciliarVotosSenado,
+  type ReconciliarSenadoOpts,
+} from "./reconciliar-senado";
