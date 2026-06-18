@@ -43,4 +43,37 @@ describe("RobotsGuard", () => {
     const robots = new RobotsGuard({ fetchFn: mock.fn });
     expect(await robots.isAllowed("https://sinrobots.cl/x")).toBe(true);
   });
+
+  // --- WR-03 ---
+
+  it("WR-03: URL malformada => false (skip controlado, no throw generico)", async () => {
+    const mock = makeMockFetch({});
+    const robots = new RobotsGuard({ fetchFn: mock.fn });
+    expect(await robots.isAllowed("no-es-una-url")).toBe(false);
+  });
+
+  it("WR-03: error de RED al traer robots.txt => fail-CLOSED (false)", async () => {
+    // fetch que lanza (DNS/timeout): NO debe asumirse allow-all.
+    const throwingFetch = (async () => {
+      throw new TypeError("network error");
+    }) as unknown as typeof fetch;
+    const robots = new RobotsGuard({ fetchFn: throwingFetch });
+    expect(await robots.isAllowed("https://caido.cl/x")).toBe(false);
+  });
+
+  it("WR-03: tras un error de red NO se cachea allow-all (reintenta la proxima)", async () => {
+    let attempts = 0;
+    const flaky = (async (input: RequestInfo | URL) => {
+      attempts++;
+      if (attempts === 1) throw new TypeError("network error");
+      // 2da vez: responde 200 con robots que permite todo.
+      void input;
+      return new Response("User-agent: *\nAllow: /", { status: 200 });
+    }) as unknown as typeof fetch;
+    const robots = new RobotsGuard({ fetchFn: flaky });
+
+    expect(await robots.isAllowed("https://flaky.cl/x")).toBe(false); // fail-closed
+    expect(await robots.isAllowed("https://flaky.cl/x")).toBe(true); // reintenta, ok
+    expect(attempts).toBe(2);
+  });
 });

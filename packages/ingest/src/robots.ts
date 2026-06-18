@@ -16,6 +16,13 @@ interface ParsedRobots {
   isAllowed(url: string, ua?: string): boolean | undefined;
 }
 
+/**
+ * Sentinela: la carga de robots.txt fallo por error de RED (no 404). El caller
+ * hace fail-closed (skip) en vez de asumir allow-all (WR-03).
+ */
+const NETWORK_ERROR = Symbol("robots-network-error");
+type RobotsResult = ParsedRobots | typeof NETWORK_ERROR;
+
 export interface RobotsGuardOptions {
   /** fetch inyectable para tests sin red. Default: fetch global. */
   fetchFn?: typeof fetch;
@@ -27,7 +34,7 @@ export class RobotsGuard {
   private readonly fetchFn: typeof fetch;
   private readonly ua: string;
   /** Cache de parsers por host (origin). */
-  private readonly cache = new Map<string, Promise<ParsedRobots>>();
+  private readonly cache = new Map<string, Promise<RobotsResult>>();
 
   constructor(opts: RobotsGuardOptions = {}) {
     this.fetchFn = opts.fetchFn ?? fetch;
@@ -36,16 +43,32 @@ export class RobotsGuard {
 
   /**
    * Devuelve true si la URL puede pedirse segun robots.txt del host.
-   * Fail-open: si robots.txt no existe (404) o falla, se permite por defecto.
+   *
+   * WR-03:
+   *   - URL malformada => false (skip controlado, no un throw generico).
+   *   - robots.txt ausente (404/empty) => fail-OPEN (permitir): es el caso
+   *     legitimo de "el host no publica robots".
+   *   - error de RED al traer robots.txt (DNS/timeout) => fail-CLOSED (skip):
+   *     no asumimos "permite todo" para una request que justo fallo; se difiere.
    */
   async isAllowed(url: string): Promise<boolean> {
-    const origin = new URL(url).origin;
+    let origin: string;
+    try {
+      origin = new URL(url).origin;
+    } catch {
+      // URL malformada: skip controlado, no propagar un error generico.
+      return false;
+    }
     const parser = await this.parserFor(origin);
+    if (parser === NETWORK_ERROR) {
+      // Fail-closed ante error de red al cargar robots.txt.
+      return false;
+    }
     // robots-parser devuelve undefined si no hay regla aplicable => permitido.
     return parser.isAllowed(url, this.ua) !== false;
   }
 
-  private parserFor(origin: string): Promise<ParsedRobots> {
+  private parserFor(origin: string): Promise<RobotsResult> {
     let cached = this.cache.get(origin);
     if (!cached) {
       cached = this.loadRobots(origin);
@@ -54,20 +77,26 @@ export class RobotsGuard {
     return cached;
   }
 
-  private async loadRobots(origin: string): Promise<ParsedRobots> {
+  private async loadRobots(origin: string): Promise<RobotsResult> {
     const robotsUrl = `${origin}/robots.txt`;
+    let res: Response;
     try {
-      const res = await this.fetchFn(robotsUrl, {
+      res = await this.fetchFn(robotsUrl, {
         headers: { "User-Agent": this.ua },
       });
-      if (!res.ok) {
-        // Sin robots.txt accesible => permitir todo (fail-open).
-        return robotsParser(robotsUrl, "");
-      }
-      const body = await res.text();
-      return robotsParser(robotsUrl, body);
     } catch {
+      // Error de RED (DNS/timeout/conn refused): NO asumir allow-all. Devolver
+      // el sentinela para que isAllowed haga fail-closed (skip) — WR-03. No se
+      // cachea un resultado de red transitorio (se descarta abajo).
+      this.cache.delete(origin);
+      return NETWORK_ERROR;
+    }
+    if (!res.ok) {
+      // Sin robots.txt accesible (404/410/etc.): permitir todo (fail-open).
+      // Es el caso legitimo de "el host no publica robots".
       return robotsParser(robotsUrl, "");
     }
+    const body = await res.text();
+    return robotsParser(robotsUrl, body);
   }
 }
