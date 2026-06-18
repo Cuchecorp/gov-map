@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": true,
+    "noEmit": false,
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"]
+  },
+  "references": [
+    { "path": "../core" },
+    { "path": "../ingest" },
+    { "path": "../llm" },
+    { "path": "../tramitacion" }
+  ],
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "test", "dist"]
+}
