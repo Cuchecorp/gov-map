@@ -10,7 +10,8 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "revisor": "tsx src/revisor-cli.ts"
   },
   "dependencies": {
     "@obs/core": "workspace:*",
