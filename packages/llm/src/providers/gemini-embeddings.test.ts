@@ -126,6 +126,59 @@ describe("GeminiEmbeddingProvider", () => {
     expect(body.requests[1].content.parts[0].text).toBe("dos publico");
   });
 
+  it("SEM-03: sin taskType el body NO incluye taskType (callers existentes intactos)", async () => {
+    const raw = unnormalizedVector(EMBEDDING_DIMS);
+    const mock = makeMockFetch({ [URL]: { status: 200, body: embedResponse([raw]) } });
+    const p = new GeminiEmbeddingProvider({ apiKey: "k", fetchFn: mock.fn });
+
+    await p.embed(["texto publico"]);
+
+    const body = JSON.parse(String(mock.calls[0]!.body));
+    expect(body.requests[0]).not.toHaveProperty("taskType");
+    expect(body.requests[0].outputDimensionality).toBe(768);
+  });
+
+  it("SEM-03: embed(texts, 'RETRIEVAL_DOCUMENT') incluye taskType en cada request", async () => {
+    const raw = unnormalizedVector(EMBEDDING_DIMS);
+    const mock = makeMockFetch({ [URL]: { status: 200, body: embedResponse([raw, raw]) } });
+    const p = new GeminiEmbeddingProvider({ apiKey: "k", fetchFn: mock.fn });
+
+    await p.embed(["doc uno", "doc dos"], "RETRIEVAL_DOCUMENT");
+
+    const body = JSON.parse(String(mock.calls[0]!.body));
+    expect(body.requests).toHaveLength(2);
+    for (const reqItem of body.requests) {
+      expect(reqItem.taskType).toBe("RETRIEVAL_DOCUMENT");
+      expect(reqItem.outputDimensionality).toBe(768);
+    }
+  });
+
+  it("SEM-03: embed(texts, 'RETRIEVAL_QUERY') incluye taskType de consulta", async () => {
+    const raw = unnormalizedVector(EMBEDDING_DIMS);
+    const mock = makeMockFetch({ [URL]: { status: 200, body: embedResponse([raw]) } });
+    const p = new GeminiEmbeddingProvider({ apiKey: "k", fetchFn: mock.fn });
+
+    await p.embed(["consulta del usuario"], "RETRIEVAL_QUERY");
+
+    const body = JSON.parse(String(mock.calls[0]!.body));
+    expect(body.requests[0].taskType).toBe("RETRIEVAL_QUERY");
+  });
+
+  it("SEM-03: el guard de dim-mismatch y l2normalize permanecen con taskType (verde)", async () => {
+    const raw = unnormalizedVector(EMBEDDING_DIMS);
+    const mock = makeMockFetch({ [URL]: { status: 200, body: embedResponse([raw]) } });
+    const p = new GeminiEmbeddingProvider({ apiKey: "k", fetchFn: mock.fn });
+
+    const out = await p.embed(["doc"], "RETRIEVAL_DOCUMENT");
+    expect(out[0]!.vector).toHaveLength(EMBEDDING_DIMS);
+    expect(norm(out[0]!.vector)).toBeCloseTo(1.0, 6);
+
+    // dim mismatch con taskType sigue lanzando (protege el índice).
+    const wrong = makeMockFetch({ [URL]: { status: 200, body: embedResponse([unnormalizedVector(3072)]) } });
+    const p2 = new GeminiEmbeddingProvider({ apiKey: "k", fetchFn: wrong.fn });
+    await expect(p2.embed(["doc"], "RETRIEVAL_DOCUMENT")).rejects.toThrow(/dim mismatch|expected 768/i);
+  });
+
   it("la API key viaja por header x-goog-api-key, nunca en la URL ni en el body", async () => {
     const raw = unnormalizedVector(EMBEDDING_DIMS);
     const mock = makeMockFetch({ [URL]: { status: 200, body: embedResponse([raw]) } });

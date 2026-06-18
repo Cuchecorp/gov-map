@@ -57,7 +57,18 @@ function iniciativaDe(s: string | null): Iniciativa | null {
 export function parseSenadoTramitacion(
   xml: string,
   enlace?: string,
-): { proyecto: Proyecto; eventos: TramitacionEvento[] } {
+): {
+  proyecto: Proyecto;
+  eventos: TramitacionEvento[];
+  /**
+   * Link primario al texto íntegro del mensaje/moción del proyecto (SEM-01), extraído del
+   * `<descripcion><link_mensaje_mocion>`. Se devuelve como SIDECAR (no en ProyectoSchema) para
+   * mínimo blast-radius: el writer/reconciliación de la Fase 5 no conocen este campo y siguen
+   * intactos; la ola 2 (extracción de fichas) lo consume desde aquí para descargar el texto.
+   * `null` cuando el XML no lo trae (degradación honesta).
+   */
+  linkMensajeMocion: string | null;
+} {
   const doc = parser.parse(xml);
   const proyectoRaw = (doc?.proyectos?.proyecto ??
     doc?.proyecto ??
@@ -66,6 +77,10 @@ export function parseSenadoTramitacion(
 
   const boletin = txt(desc.boletin) ?? "";
   const boletinNum = boletin.replace(/-\d+$/, ""); // base sin sufijo de comisión (Pitfall 1)
+
+  // SEM-01: link al texto íntegro del mensaje/moción (sidecar, nullable). Es el punto de
+  // entrada de la ola 2 para descargar el texto que alimenta la extracción de la ficha.
+  const linkMensajeMocion = txt(desc.link_mensaje_mocion);
 
   const link = enlace ?? URL_TRAMITACION;
   const p = makeProvenance(ORIGEN, link);
@@ -180,5 +195,5 @@ export function parseSenadoTramitacion(
     });
   }
 
-  return { proyecto, eventos };
+  return { proyecto, eventos, linkMensajeMocion };
 }

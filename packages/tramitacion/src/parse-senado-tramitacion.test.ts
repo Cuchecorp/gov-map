@@ -33,6 +33,21 @@ describe("parseSenadoTramitacion — Proyecto (descripcion)", () => {
   });
 });
 
+describe("parseSenadoTramitacion — link_mensaje_mocion (SEM-01, sidecar)", () => {
+  it("extrae link_mensaje_mocion del <descripcion> cuando el XML lo trae", () => {
+    const { linkMensajeMocion } = parseSenadoTramitacion(xml);
+    expect(linkMensajeMocion).toContain("tipodoc=mensaje_mocion");
+    expect(linkMensajeMocion).toContain("iddocto=18974");
+  });
+
+  it("link_mensaje_mocion es null cuando el <descripcion> no lo trae (degradación)", () => {
+    const sinLink = `<?xml version="1.0"?><proyectos><proyecto><descripcion>` +
+      `<boletin>99999-99</boletin><titulo>Sin link</titulo></descripcion></proyecto></proyectos>`;
+    const { linkMensajeMocion } = parseSenadoTramitacion(sinLink);
+    expect(linkMensajeMocion).toBeNull();
+  });
+});
+
 describe("parseSenadoTramitacion — TramitacionEvento[]", () => {
   const { eventos } = parseSenadoTramitacion(xml);
 

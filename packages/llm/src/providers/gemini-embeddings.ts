@@ -26,6 +26,14 @@ export const EMBEDDING_MODEL = "gemini-embedding-001";
 export const EMBEDDING_DIMS = 768;
 export const EMBEDDING_VERSION = "v1";
 
+/**
+ * Tipo de tarea para embedding ASIMÉTRICO (SEM-03): las fichas se embeben como
+ * `RETRIEVAL_DOCUMENT` (escritura) y la consulta del usuario como `RETRIEVAL_QUERY` (lectura).
+ * Gemini lo recibe por-request en `batchEmbedContents`. Opcional: omitirlo preserva el
+ * comportamiento de los callers existentes (embedding simétrico).
+ */
+export type EmbeddingTaskType = "RETRIEVAL_DOCUMENT" | "RETRIEVAL_QUERY";
+
 const API_BASE = "https://generativelanguage.googleapis.com";
 const API_VERSION = "v1beta";
 
@@ -64,7 +72,10 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
     this.fetchFn = opts.fetchFn ?? fetch;
   }
 
-  async embed(texts: string[]): Promise<EmbeddingResult[]> {
+  async embed(
+    texts: string[],
+    taskType?: EmbeddingTaskType,
+  ): Promise<EmbeddingResult[]> {
     // WR-04: lote vacio -> no se hace POST (Gemini puede responder 400 a un
     // `requests: []`, y un caller no distingue "nada que embeber" de un bug).
     if (texts.length === 0) return [];
@@ -76,6 +87,9 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
         model: `models/${EMBEDDING_MODEL}`,
         content: { parts: [{ text }] },
         outputDimensionality: EMBEDDING_DIMS,
+        // SEM-03: taskType ADITIVO por-request. Sin taskType -> body idéntico al previo
+        // (callers existentes intactos); con taskType -> embedding asimétrico doc/query.
+        ...(taskType ? { taskType } : {}),
       })),
     };
 
