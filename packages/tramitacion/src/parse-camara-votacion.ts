@@ -167,9 +167,18 @@ function totalesDesdeDetalle(detalleXml: string): Map<string, Totales> {
 }
 
 /**
- * Parsea el voto-a-voto de `retornarVotacionDetalle` (ns v1). La ola 3 lo consume para
- * vincular `parlamentario_id` por `diputadoId` (cruce determinista, sin reconciliación por
- * nombre). `OpcionVoto Valor`: 1=Afirmativo→si, 0=En Contra→no.
+ * Parsea el voto-a-voto del detalle de votación. La ola 3 lo consume para vincular
+ * `parlamentario_id` por `diputadoId` (cruce determinista por identificador oficial).
+ *
+ * Soporta DOS shapes del WS (ambos verificados):
+ *   (a) v1 (fixture 05-02): `Diputado/Id` + `OpcionVoto Valor` (1=Afirmativo→si, 0→no),
+ *       apellidos `ApellidoPaterno`/`ApellidoMaterno`.
+ *   (b) REAL `getVotacion_Detalle` (ns tempuri.org, LIVE 2026-06-18): `Diputado/DIPID` +
+ *       `Opcion Codigo` (0=En Contra→no, 1=A Favor→si, otros [No Vota/Abstención/dispensado]
+ *       NO afirman un sí/no nominal → se omiten para no fabricar un voto), apellidos
+ *       `Apellido_Paterno`/`Apellido_Materno`.
+ *
+ * El cruce es por id (DIPID/Id), no por nombre; el `nombreCrudo` es para display/fallback.
  */
 export function parseCamaraVotoDetalle(detalleXml: string): CamaraVotoDetalle[] {
   const doc = parser.parse(detalleXml);
@@ -189,26 +198,52 @@ export function parseCamaraVotoDetalle(detalleXml: string): CamaraVotoDetalle[] 
     );
     for (const voto of votos) {
       const dip = (voto.Diputado ?? {}) as Record<string, unknown>;
-      const diputadoId = txt(dip.Id) ?? txt(dip.ID);
+      // (a) v1 usa Id; (b) real usa DIPID.
+      const diputadoId = txt(dip.Id) ?? txt(dip.ID) ?? txt(dip.DIPID);
       if (diputadoId == null) continue;
-      const opcionRaw = voto.OpcionVoto as Record<string, unknown> | string;
-      const valor =
-        typeof opcionRaw === "object"
-          ? String(opcionRaw["@_Valor"] ?? "")
-          : "";
+
+      // Opción: (a) <OpcionVoto Valor="1|0">; (b) <Opcion Codigo="1|0">texto.
+      const opcion = opcionDeVoto(voto);
+      if (opcion == null) continue; // No Vota / Abstención / dispensado → no afirma sí/no nominal
+
       const nombreCrudo = [
         txt(dip.Nombre),
-        txt(dip.ApellidoPaterno),
-        txt(dip.ApellidoMaterno),
+        txt(dip.ApellidoPaterno) ?? txt(dip.Apellido_Paterno),
+        txt(dip.ApellidoMaterno) ?? txt(dip.Apellido_Materno),
       ]
         .filter(Boolean)
         .join(" ");
-      out.push({
-        diputadoId,
-        opcion: valor === "1" ? "si" : "no",
-        nombreCrudo,
-      });
+      out.push({ diputadoId, opcion, nombreCrudo });
     }
   }
   return out;
+}
+
+/**
+ * Deriva 'si'|'no' del nodo de opción de voto, soportando ambos shapes. Devuelve null cuando
+ * la opción NO es un sí/no nominal (No Vota/Abstención/dispensado) — el caller la omite para
+ * no fabricar un voto afirmativo/negativo inexistente (T-05-06, fail-closed sobre el sentido).
+ */
+function opcionDeVoto(voto: Record<string, unknown>): "si" | "no" | null {
+  // (a) v1: <OpcionVoto Valor="1|0">.
+  const opcionVoto = voto.OpcionVoto as Record<string, unknown> | string | undefined;
+  if (opcionVoto != null) {
+    const valor =
+      typeof opcionVoto === "object" ? String(opcionVoto["@_Valor"] ?? "") : "";
+    if (valor === "1") return "si";
+    if (valor === "0") return "no";
+    return null;
+  }
+  // (b) real: <Opcion Codigo="1|0">A Favor|En Contra|No Vota|Abstención.
+  const opcion = voto.Opcion as Record<string, unknown> | string | undefined;
+  if (opcion != null) {
+    const codigo =
+      typeof opcion === "object" ? String(opcion["@_Codigo"] ?? "") : "";
+    const texto =
+      typeof opcion === "object" ? String(opcion["#text"] ?? "") : String(opcion);
+    if (codigo === "1" || /a favor|afirmativ/i.test(texto)) return "si";
+    if (codigo === "0" || /en contra|negativ/i.test(texto)) return "no";
+    return null; // No Vota (4) / Abstención / dispensado → no nominal
+  }
+  return null;
 }

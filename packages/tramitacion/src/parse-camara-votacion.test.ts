@@ -65,6 +65,33 @@ describe("parseCamaraVotoDetalle (ns v1, voto-a-voto por Diputado/Id)", () => {
   });
 });
 
+describe("parseCamaraVotoDetalle (ns tempuri REAL: getVotacion_Detalle, DIPID + Opcion Codigo)", () => {
+  const detalleReal = leer("camara-votacion-detalle-real.xml");
+
+  it("lee DIPID + <Opcion Codigo> de la forma REAL del WS (LIVE 2026-06-18)", () => {
+    const votos = parseCamaraVotoDetalle(detalleReal);
+    expect(votos.length).toBeGreaterThan(50); // ~139 con sí/no nominal (No Vota se omite)
+    // DIPID 815 = "En Contra" (Codigo=0) → no; presente.
+    const bobadilla = votos.find((v) => v.diputadoId === "815");
+    expect(bobadilla?.opcion).toBe("no");
+    expect(bobadilla?.nombreCrudo).toContain("Bobadilla");
+  });
+
+  it("omite las opciones NO nominales (No Vota / Abstención / dispensado)", () => {
+    const votos = parseCamaraVotoDetalle(detalleReal);
+    // DIPID 803 = "No Vota" (Codigo=4) → se omite (no fabrica sí/no).
+    expect(votos.find((v) => v.diputadoId === "803")).toBeUndefined();
+    // Todos los devueltos son si|no.
+    for (const v of votos) expect(["si", "no"]).toContain(v.opcion);
+  });
+
+  it("los DIPID cruzan determinísticamente contra id_diputado_camara de la maestra", () => {
+    const votos = parseCamaraVotoDetalle(detalleReal);
+    // Los DIPID son numéricos oficiales (803/815/843…) — el cruce lo hace reconciliarVotosCamara.
+    for (const v of votos) expect(v.diputadoId).toMatch(/^\d+$/);
+  });
+});
+
 describe("parseCamaraVotacion con detalleXml (totales del detalle pisan boletín)", () => {
   it("usa los totales del detalle para la votación coincidente (id 89178 no está en boletín → solo boletín)", () => {
     // El detalle es de la votación 89178 (boletín 18296), no presente en el fixture de boletín

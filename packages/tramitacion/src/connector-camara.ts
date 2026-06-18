@@ -39,8 +39,10 @@ export interface CamaraConnectorDeps {
 
 const BASE = "https://opendata.camara.cl/wscamaradiputados.asmx";
 
-/** Regex del boletín en el texto libre de `<Descripcion>` (solo proyectos de ley lo traen). */
+/** Regex del boletín en texto libre (`Boletín N° 14309-04`). */
 const RE_BOLETIN = /Bolet[íi]n N°\s*(\d+-\d+)/g;
+/** Regex del boletín en nodo estructurado (`<Boletin>14309-04</Boletin>`). */
+const RE_BOLETIN_NODO = /<Boletin>\s*(\d+-\d+)\s*<\/Boletin>/g;
 
 /**
  * Conector de la Cámara: descubre boletines de una legislatura/año y fetchea las votaciones
@@ -63,20 +65,47 @@ export class CamaraConnector {
   }
 
   /**
-   * Descubre los boletines (base con sufijo, p.ej. "14309-04") votados en `anno`, extrayéndolos
-   * del texto libre de `<Descripcion>` de `retornarVotacionesXAnno`. Dedup, orden de aparición.
-   * Solo proyectos de ley traen boletín; resoluciones/acuerdos se ignoran naturalmente.
+   * Descubre boletines (con sufijo, p.ej. "14309-04") de una legislatura, recorriendo sus
+   * sesiones (`getSesiones?prmLegislaturaId={leg}`) y, por cada sesión, las votaciones de su
+   * detalle (`getSesionDetalle`/`getSesionBoletinXML`) en busca de nodos `<Boletin>` o del
+   * texto libre `Boletín N° …`. Dedup, orden de aparición; `maxSesiones` acota el recorrido.
+   *
+   * NOTA (verificado LIVE 2026-06-18): el método `retornarVotacionesXAnno` que asumía RESEARCH
+   * NO existe en este `.asmx` (500 "nombre de método no válido"). El descubrimiento por sesiones
+   * es best-effort: si el WS no expone boletines por esa vía, devuelve []. La corrida acotada
+   * soportada de forma robusta es vía `--boletines` explícitos (cross-cámara garantizado).
    */
-  async descubrirBoletines(anno: number): Promise<string[]> {
-    const url = `${BASE}/retornarVotacionesXAnno?prmAnno=${encodeURIComponent(String(anno))}`;
-    const xml = await this.fetch(url);
+  async descubrirBoletines(legislaturaId: number, maxSesiones = 10): Promise<string[]> {
     const vistos = new Set<string>();
     const out: string[] = [];
-    for (const m of xml.matchAll(RE_BOLETIN)) {
-      const bol = m[1];
-      if (bol != null && !vistos.has(bol)) {
-        vistos.add(bol);
-        out.push(bol);
+    const recolectar = (xml: string) => {
+      for (const re of [RE_BOLETIN_NODO, RE_BOLETIN]) {
+        for (const m of xml.matchAll(re)) {
+          const bol = m[1];
+          if (bol != null && !vistos.has(bol)) {
+            vistos.add(bol);
+            out.push(bol);
+          }
+        }
+      }
+    };
+
+    const sesionesXml = await this.fetch(
+      `${BASE}/getSesiones?prmLegislaturaId=${encodeURIComponent(String(legislaturaId))}`,
+    );
+    const sesionIds = [...sesionesXml.matchAll(/<ID>(\d+)<\/ID>/g)]
+      .map((m) => m[1])
+      .filter((x): x is string => x != null)
+      .slice(0, maxSesiones);
+
+    for (const sid of sesionIds) {
+      try {
+        const det = await this.fetch(
+          `${BASE}/getSesionDetalle?prmSesionId=${encodeURIComponent(sid)}`,
+        );
+        recolectar(det);
+      } catch {
+        // sesión sin detalle accesible → se omite (best-effort, no aborta el descubrimiento).
       }
     }
     return out;
@@ -88,9 +117,14 @@ export class CamaraConnector {
     return this.fetch(url);
   }
 
-  /** Fetch del XML de detalle voto-a-voto por id de votación (`retornarVotacionDetalle`). */
+  /**
+   * Fetch del XML de detalle voto-a-voto por id de votación. El método REAL del WS es
+   * `getVotacion_Detalle?prmVotacionId={id}` (ns tempuri.org) — verificado LIVE 2026-06-18.
+   * (El `retornarVotacionDetalle` del fixture v1 de 05-02 NO existe en este .asmx: devuelve
+   * 500 "nombre de método no válido"; `parseCamaraVotoDetalle` parsea AMBAS formas.)
+   */
   async fetchVotacionDetalle(votacionId: string): Promise<string> {
-    const url = `${BASE}/retornarVotacionDetalle?prmVotacionID=${encodeURIComponent(votacionId)}`;
+    const url = `${BASE}/getVotacion_Detalle?prmVotacionId=${encodeURIComponent(votacionId)}`;
     return this.fetch(url);
   }
 }

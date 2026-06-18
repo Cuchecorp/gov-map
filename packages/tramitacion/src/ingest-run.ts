@@ -40,11 +40,36 @@ import { fusionarTimeline, eventoDesdeVotacion } from "./timeline";
 /** Provider LLM (derivado de la firma de reconciliarVotosSenado para no atar @obs/llm directo). */
 type LLMProvider = NonNullable<ReconciliarSenadoOpts["provider"]>;
 
+/**
+ * Provider de degradación fail-closed para la corrida LIVE SIN MiniMax (gated por credencial):
+ * cuando una mención del Senado es AMBIGUA (homónimo → el blocking generó candidatos pero no
+ * hay match determinista) y no se inyectó un LLM real, este provider devuelve `no_match`
+ * (confianza 0) en vez de LANZAR. Resultado: el voto degrada a `no_confirmado` + mención cruda
+ * (NUNCA vincula a la ficha — la guarda LOCKED se mantiene), y la corrida del boletín no se
+ * aborta por un solo homónimo. Los votos deterministas NUNCA tocan este provider (correrPipeline
+ * corta antes del LLM). Espeja la salida untrusted del modelo (validada por AdjudicacionSchema).
+ */
+const PROVIDER_DEGRADA_FAIL_CLOSED: LLMProvider = {
+  id: "degrada-fail-closed",
+  trainsOnInputs: false,
+  async complete<T>(_req: unknown, schema: { parse(v: unknown): T }): Promise<T> {
+    return schema.parse({
+      decision: "no_match",
+      chosen_id: null,
+      confidence: 0,
+      evidence: [],
+      conflicts: ["sin adjudicador LLM en la corrida (gated); degrada fail-closed"],
+    });
+  },
+} as unknown as LLMProvider;
+
 export interface RunIngestOpts {
   /** Lista explícita de boletines (con o sin sufijo). Si falta, se descubren por `anno`. */
   boletines?: string[];
-  /** Año/legislatura a descubrir si no se pasan `boletines`. Default 2026 (Leg 58). */
+  /** Año (display) si no se pasan `boletines`. Default 2026. */
   anno?: number;
+  /** Id de legislatura para el descubrimiento por sesiones (default 58, Leg vigente). */
+  legislaturaId?: number;
   /** Recorte del conjunto descubierto (alcance ACOTADO — WAF + tiempo). */
   limite?: number;
   /** Maestra ya cargada (de la DB o el seed). */
@@ -86,10 +111,16 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
   // 1. Lista de boletines: explícita o descubierta + recortada al límite.
   let boletines = opts.boletines ?? [];
   if (boletines.length === 0) {
-    const anno = opts.anno ?? 2026;
-    log(`ingest: descubriendo boletines de ${anno} (Leg 58)…`);
-    boletines = await opts.camara.descubrirBoletines(anno);
+    const legId = opts.legislaturaId ?? 58;
+    log(`ingest: descubriendo boletines de la legislatura ${legId} (por sesiones)…`);
+    boletines = await opts.camara.descubrirBoletines(legId);
     log(`ingest: ${boletines.length} boletines descubiertos`);
+    if (boletines.length === 0) {
+      log(
+        "ingest: descubrimiento por sesiones no devolvió boletines (el WS no expone " +
+          "enumeración por año/sesión); pasa --boletines explícitos para la corrida acotada",
+      );
+    }
   }
   if (opts.limite != null && opts.limite > 0) {
     boletines = boletines.slice(0, opts.limite);
@@ -101,9 +132,12 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
   let nVotos = 0;
   let nEventos = 0;
 
+  // Provider para la reconciliación del Senado: el real (MiniMax) si se inyectó; si no, el de
+  // degradación fail-closed (un homónimo NO aborta el boletín — degrada a no_confirmado).
+  const senadoProvider = opts.provider ?? PROVIDER_DEGRADA_FAIL_CLOSED;
   const reconcOpts = (votacionId: string): ReconciliarSenadoOpts => ({
     votacionId,
-    ...(opts.provider !== undefined ? { provider: opts.provider } : {}),
+    provider: senadoProvider,
     ...(opts.pipelineWriter !== undefined ? { writer: opts.pipelineWriter } : {}),
   });
 

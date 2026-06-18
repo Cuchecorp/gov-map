@@ -55,28 +55,31 @@ function makeDeps(opts: {
 }
 
 describe("CamaraConnector — reuso de @obs/ingest (orden LOCKED)", () => {
-  it("descubre boletines de Leg 58 desde <Descripcion> y respeta robots→wait→fetch", async () => {
-    const xml = leer("camara-votacion-boletin.xml");
-    // El fixture de boletín no trae <Descripcion> con regex; simulamos la respuesta del
-    // endpoint de descubrimiento con dos boletines en texto libre + un acuerdo sin boletín.
-    const descubrimiento = `<?xml version="1.0"?><Votaciones>
-      <Votacion><Descripcion>Proyecto de ley. Boletín N° 14309-04 sobre X</Descripcion></Votacion>
-      <Votacion><Descripcion>Acuerdo de comité, sin boletín</Descripcion></Votacion>
-      <Votacion><Descripcion>Boletín N° 18296-05, segundo trámite</Descripcion></Votacion>
-      <Votacion><Descripcion>Boletín N° 14309-04 (repetido)</Descripcion></Votacion>
-    </Votaciones>`;
+  it("descubre boletines de una legislatura recorriendo sesiones (nodo + texto) y respeta robots→wait→fetch", async () => {
+    // getSesiones → 2 sesiones; getSesionDetalle → boletines en <Boletin> y texto libre.
+    const sesiones = `<?xml version="1.0"?><Sesiones>
+      <Sesion><ID>4776</ID></Sesion>
+      <Sesion><ID>4777</ID></Sesion>
+    </Sesiones>`;
+    const det4776 = `<Detalle><Boletin>14309-04</Boletin> y Boletín N° 18296-05</Detalle>`;
+    const det4777 = `<Detalle><Boletin>14309-04</Boletin></Detalle>`; // repetido → dedup
     const { deps, calls, urls } = makeDeps({
-      responder: (url) =>
-        url.includes("retornarVotacionesXAnno") ? descubrimiento : xml,
+      responder: (url) => {
+        if (url.includes("getSesiones")) return sesiones;
+        if (url.includes("prmSesionId=4776")) return det4776;
+        if (url.includes("prmSesionId=4777")) return det4777;
+        return "";
+      },
     });
 
     const conn = new CamaraConnector(deps);
-    const boletines = await conn.descubrirBoletines(2026);
+    const boletines = await conn.descubrirBoletines(58);
 
-    expect(boletines).toEqual(["14309-04", "18296-05"]); // dedup, sin el acuerdo
-    expect(urls[0]).toContain("prmAnno=2026");
-    // ORDEN LOCKED: robots ANTES de wait, wait ANTES de fetch.
-    expect(calls).toEqual(["robots", "wait", "fetch"]);
+    expect(boletines).toEqual(["14309-04", "18296-05"]); // dedup cross-sesión
+    expect(urls[0]).toContain("getSesiones");
+    expect(urls[0]).toContain("prmLegislaturaId=58");
+    // ORDEN LOCKED en el primer fetch: robots ANTES de wait, wait ANTES de fetch.
+    expect(calls.slice(0, 3)).toEqual(["robots", "wait", "fetch"]);
   });
 
   it("fetchVotacionesBoletin arma la URL con prmBoletin y reusa la política", async () => {
@@ -91,14 +94,14 @@ describe("CamaraConnector — reuso de @obs/ingest (orden LOCKED)", () => {
     expect(calls.indexOf("wait")).toBeLessThan(calls.indexOf("fetch")); // wait antes de fetch
   });
 
-  it("fetchVotacionDetalle arma la URL con prmVotacionID", async () => {
+  it("fetchVotacionDetalle arma la URL con el método REAL getVotacion_Detalle?prmVotacionId", async () => {
     const xml = leer("camara-votacion-detalle.xml");
     const { deps, urls } = makeDeps({ responder: () => xml });
     const conn = new CamaraConnector(deps);
 
     await conn.fetchVotacionDetalle("89178");
-    expect(urls[0]).toContain("retornarVotacionDetalle");
-    expect(urls[0]).toContain("prmVotacionID=89178");
+    expect(urls[0]).toContain("getVotacion_Detalle");
+    expect(urls[0]).toContain("prmVotacionId=89178");
   });
 
   it("lanza RobotsDisallowError sin tocar el fetcher si robots prohíbe", async () => {
