@@ -43,7 +43,8 @@ describe("normalizarNombre — folding ñ→n y acentos", () => {
   });
 
   it("trata puntos y comas como separadores", () => {
-    const r = normalizarNombre({ libre: "Gomez, Juan." });
+    // Campos estructurados: puntuación residual no debe sobrevivir al fold.
+    const r = normalizarNombre({ apellidoPaterno: "Gomez.", nombres: "Juan," });
     expect(r.tokens).toEqual(expect.arrayContaining(["gomez", "juan"]));
     expect(r.nombre_normalizado).not.toContain(".");
     expect(r.nombre_normalizado).not.toContain(",");

@@ -3,3 +3,4 @@
 export * from "./provenance";
 export * from "./domain";
 export * from "./parlamentario";
+export * from "./nombre";
