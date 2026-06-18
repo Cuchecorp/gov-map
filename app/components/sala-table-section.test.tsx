@@ -8,22 +8,25 @@ import {
 
 afterEach(cleanup);
 
+const CAMARA_PDF =
+  "https://www.camara.cl/verDoc.aspx?prmTipo=TABLASEMANAL";
+
 const availableProps: SalaTableSectionProps = {
   mode: "available",
   items: [
     {
+      key: "s1:1",
       posicion: 1,
       parteSesion: "ORDEN DEL DÍA",
       materia: "Reforma al sistema de pensiones",
       boletin: "15480-13",
-      etapa: "Segundo trámite",
     },
     {
+      key: "s1:2",
       posicion: 2,
       parteSesion: "ORDEN DEL DÍA",
       materia: "Proyecto sin boletín asociado",
       boletin: null,
-      etapa: null,
     },
   ],
   provenance: {
@@ -57,45 +60,48 @@ describe("SalaTableSection — modo available (tabla del Senado)", () => {
     expect(screen.getByText(/Actualizado/)).toBeInTheDocument();
   });
 
-  it("no muestra el copy de degradación cuando hay datos", () => {
+  it("no muestra el copy de degradación de Cámara cuando hay datos del Senado", () => {
     render(<SalaTableSection {...availableProps} />);
     expect(
-      screen.queryByText(/Tabla de sala no disponible/)
+      screen.queryByText(/tabla no disponible como dato estructurado/i)
     ).not.toBeInTheDocument();
   });
 });
 
-describe("SalaTableSection — modo degraded (degradación honesta de Cámara)", () => {
-  it("muestra el copy honesto 'Tabla de sala no disponible'", () => {
-    render(<SalaTableSection mode="degraded" />);
+describe("SalaTableSection — modo degraded (degradación honesta, acotada a Cámara)", () => {
+  it("muestra el copy honesto acotado a la Cámara (no afirma que el Senado falló)", () => {
+    render(<SalaTableSection mode="degraded" camaraPdfUrl={CAMARA_PDF} />);
     expect(
-      screen.getByText("Tabla de sala no disponible")
+      screen.getByText("Cámara: tabla no disponible como dato estructurado")
     ).toBeInTheDocument();
   });
 
-  it("incluye un enlace al PDF / fuente oficial de Cámara", () => {
-    const { container } = render(<SalaTableSection mode="degraded" />);
-    const camaraLink = Array.from(container.querySelectorAll("a")).find((a) =>
-      /camara\.cl/.test(a.getAttribute("href") ?? "")
+  it("enlaza al PDF oficial canónico que la ingesta registró (CR-01)", () => {
+    render(<SalaTableSection mode="degraded" camaraPdfUrl={CAMARA_PDF} />);
+    const link = Array.from(document.querySelectorAll("a")).find(
+      (a) => a.getAttribute("href") === CAMARA_PDF
     );
-    expect(camaraLink).toBeDefined();
-    expect(camaraLink).toHaveAttribute("target", "_blank");
+    expect(link).toBeDefined();
+    expect(link).toHaveAttribute("target", "_blank");
   });
 
   it("NO dice 'próximamente' (no implica compromiso)", () => {
-    const { container } = render(<SalaTableSection mode="degraded" />);
+    const { container } = render(
+      <SalaTableSection mode="degraded" camaraPdfUrl={CAMARA_PDF} />
+    );
     expect(container.textContent).not.toMatch(/próximamente/i);
   });
 
   it("NO usa estilo destructive para la degradación (no es un error)", () => {
-    const { container } = render(<SalaTableSection mode="degraded" />);
+    const { container } = render(
+      <SalaTableSection mode="degraded" camaraPdfUrl={CAMARA_PDF} />
+    );
     expect(container.innerHTML).not.toMatch(/destructive/);
-    // Usa el contenedor neutro border-border bg-muted/40.
     expect(container.innerHTML).toMatch(/bg-muted/);
   });
 
   it("no renderiza una tabla en modo degraded (no fabrica filas)", () => {
-    render(<SalaTableSection mode="degraded" />);
+    render(<SalaTableSection mode="degraded" camaraPdfUrl={CAMARA_PDF} />);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 });
