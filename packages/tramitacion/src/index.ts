@@ -32,3 +32,10 @@ export {
   type CamaraVotoDetalle,
 } from "./parse-camara-votacion";
 export { parseCamaraSesion, type SesionCamara } from "./parse-camara-sesion";
+export { parseSenadoTramitacion } from "./parse-senado-tramitacion";
+export {
+  parseSenadoVotacion,
+  parseSenadoVotaciones,
+  type VotoSenadoCrudo,
+  type VotacionSenado,
+} from "./parse-senado-votacion";
