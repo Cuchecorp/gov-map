@@ -8,7 +8,8 @@
 //
 // Cruce por boletín: `TABLA[].BOLETIN` (nullable, p.ej. sesiones especiales sin proyecto)
 // → proyecto.boletin (Fase 5). El `FECHA` viene como texto largo ("Martes 16 de Junio de
-// 2026"); se conserva normalizado (la /agenda navega por sesión, no por semana ISO aquí).
+// 2026") y se NORMALIZA a ISO "YYYY-MM-DD" (`parseFechaLargaEs`): la columna
+// `sesion_sala.fecha` es timestamptz y rechaza el texto crudo en español.
 // zod por fila: una sesión que no valida se descarta (T-06-04).
 
 import {
@@ -22,6 +23,43 @@ const ENLACE = "https://web-back.senado.cl/api/weekly_table?limit=100";
 
 function normWs(s: string): string {
   return s.replace(/\s+/g, " ").trim();
+}
+
+// Meses en español (de la FECHA larga del weekly_table) → mes 01..12.
+const MESES_ES: Record<string, string> = {
+  enero: "01",
+  febrero: "02",
+  marzo: "03",
+  abril: "04",
+  mayo: "05",
+  junio: "06",
+  julio: "07",
+  agosto: "08",
+  septiembre: "09",
+  setiembre: "09",
+  octubre: "10",
+  noviembre: "11",
+  diciembre: "12",
+};
+
+/**
+ * Normaliza la FECHA larga del Senado ("Martes 16 de Junio de 2026") a ISO
+ * "YYYY-MM-DD". La columna `sesion_sala.fecha` es `timestamptz`: persistir el
+ * texto crudo en español hace fallar el upsert (Postgres no lo parsea). Sin
+ * `new Date(str)` ambiguo: se extraen día/mes/año con regex tolerante a tildes
+ * y mayúsculas. Devuelve `null` si no casa (la sesión se descarta, no fabrica).
+ */
+export function parseFechaLargaEs(texto: unknown): string | null {
+  if (texto === null || texto === undefined) return null;
+  const s = normWs(String(texto)).toLowerCase();
+  // "<dia-semana> DD de <mes> de YYYY" o "DD de <mes> de YYYY".
+  const m = s.match(/(\d{1,2})\s+de\s+([a-záéíóú]+)\s+de\s+(\d{4})/i);
+  if (!m) return null;
+  const dia = m[1]!.padStart(2, "0");
+  const mes = MESES_ES[m[2]!];
+  const anio = m[3]!;
+  if (!mes) return null;
+  return `${anio}-${mes}-${dia}`;
 }
 
 function asStringOrNull(v: unknown): string | null {
@@ -56,7 +94,10 @@ export function parseSenadoTabla(
     const idSesion = asStringOrNull(s.ID_SESION);
     if (!idSesion) continue; // sin clave natural → descarta (no fabrica)
 
-    const fecha = asStringOrNull(s.FECHA);
+    // FECHA larga en español ("Martes 16 de Junio de 2026") → ISO para que la
+    // columna timestamptz `sesion_sala.fecha` la acepte. Si no normaliza, se
+    // descarta la sesión (no se fabrica una fecha).
+    const fecha = parseFechaLargaEs(s.FECHA);
     if (!fecha) continue;
 
     const tablaRaw: unknown[] = Array.isArray(s.TABLA) ? s.TABLA : [];

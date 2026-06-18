@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { parseSenadoTabla } from "./parse-senado-tabla";
+import { parseSenadoTabla, parseFechaLargaEs } from "./parse-senado-tabla";
 import { SesionSalaSchema } from "./model";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "../test/fixtures");
@@ -69,5 +69,30 @@ describe("parseSenadoTabla (JSON real de weekly_table)", () => {
     const s = sesiones[0]!;
     expect(s.origen).toContain("senado");
     expect(s.enlace).toContain("weekly_table");
+  });
+
+  it("normaliza FECHA a ISO 'YYYY-MM-DD' (timestamptz-persistible, no texto en español)", () => {
+    for (const s of sesiones) {
+      // Debe ser persistible por Postgres: ISO date, NO "Martes 16 de Junio de 2026".
+      expect(s.fecha).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(s.fecha).not.toMatch(/[a-záéíóú]/i);
+    }
+  });
+});
+
+describe("parseFechaLargaEs — FECHA larga del Senado → ISO", () => {
+  it("convierte 'Martes 16 de Junio de 2026' → '2026-06-16'", () => {
+    expect(parseFechaLargaEs("Martes 16 de Junio de 2026")).toBe("2026-06-16");
+  });
+
+  it("tolera sin día de semana y minúsculas: '4 de enero de 2026' → '2026-01-04'", () => {
+    expect(parseFechaLargaEs("4 de enero de 2026")).toBe("2026-01-04");
+  });
+
+  it("devuelve null para texto no reconocible (no fabrica)", () => {
+    expect(parseFechaLargaEs("")).toBeNull();
+    expect(parseFechaLargaEs(null)).toBeNull();
+    expect(parseFechaLargaEs("16/06/2026")).toBeNull();
+    expect(parseFechaLargaEs("Martes 16 de Smarch de 2026")).toBeNull();
   });
 });

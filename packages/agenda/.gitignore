@@ -1,0 +1,4 @@
+# Capturas LIVE transitorias del egreso (HTML crudo de Cámara para el fallback
+# documentado del checkpoint 06-04). NO se versionan: son datos efímeros de una
+# corrida, no artefactos del repo. El loader scripts/load-camara-live.mts las lee.
+.live-capture/
