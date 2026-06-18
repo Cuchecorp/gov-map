@@ -5,9 +5,14 @@ import { createServerSupabase } from "@/lib/supabase";
 import { FichaHeader } from "@/components/ficha-header";
 import { TimelineView } from "@/components/timeline-view";
 import { VotacionCard } from "@/components/votacion-card";
+import { IdeaMatrizBlock } from "@/components/idea-matriz-block";
+import { CuerposLegalesList } from "@/components/cuerpos-legales-list";
+import { ProyectosSimilares } from "@/components/proyectos-similares";
 import { Skeleton } from "@/components/ui/skeleton";
+import { sourceLabel } from "@/lib/types";
 import type {
   ProyectoRow,
+  ProyectoFichaRow,
   TramitacionEventoRow,
   VotacionRow,
 } from "@/lib/types";
@@ -47,8 +52,60 @@ export default async function ProyectoPage({ params }: PageProps) {
           <VotacionesSection boletin={boletin} />
         </Suspense>
       </section>
+
+      <section id="idea-matriz" className="mt-12">
+        <h2 className="text-xl font-semibold mb-4">Idea matriz</h2>
+        <Suspense fallback={<IdeaMatrizSkeleton />}>
+          <IdeaMatrizSection boletin={boletin} />
+        </Suspense>
+      </section>
+
+      <section id="cuerpos-legales" className="mt-12">
+        <h2 className="text-xl font-semibold mb-4">Cuerpos legales afectados</h2>
+        <Suspense fallback={<IdeaMatrizSkeleton />}>
+          <CuerposLegalesSection boletin={boletin} />
+        </Suspense>
+      </section>
+
+      <section id="similares" className="mt-12">
+        <h2 className="text-xl font-semibold mb-4">Proyectos similares</h2>
+        <Suspense fallback={<SimilaresSkeleton />}>
+          <ProyectosSimilares boletin={boletin} />
+        </Suspense>
+      </section>
     </main>
   );
+}
+
+// ── Ficha estructurada: idea matriz + cuerpos legales (proyecto_ficha 0011) ──
+async function leerFicha(boletin: string): Promise<ProyectoFichaRow | null> {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("proyecto_ficha")
+    .select("*")
+    .eq("boletin", boletin)
+    .maybeSingle<ProyectoFichaRow>();
+  return data ?? null;
+}
+
+async function IdeaMatrizSection({ boletin }: { boletin: string }) {
+  const ficha = await leerFicha(boletin);
+  const ideaMatriz = ficha?.idea_matriz ?? null;
+  // La cita lleva su propia procedencia (el texto del que se extrajo).
+  const provenance =
+    ideaMatriz !== null
+      ? {
+          capturedAt: ficha?.fecha_captura ? new Date(ficha.fecha_captura) : null,
+          sourceName: sourceLabel(ficha?.origen ?? null),
+          sourceUrl: ficha?.texto_r2_path ?? null,
+        }
+      : undefined;
+  return <IdeaMatrizBlock ideaMatriz={ideaMatriz} provenance={provenance} />;
+}
+
+async function CuerposLegalesSection({ boletin }: { boletin: string }) {
+  const ficha = await leerFicha(boletin);
+  return <CuerposLegalesList cuerpos={ficha?.cuerpos_legales ?? []} />;
 }
 
 // ── Ficha header (proyecto) ──────────────────────────────────────────────────
@@ -141,6 +198,26 @@ function VotacionesSkeleton() {
     <div className="space-y-4" aria-hidden="true">
       <Skeleton className="h-32 w-full rounded-lg" />
       <Skeleton className="h-32 w-full rounded-lg" />
+    </div>
+  );
+}
+
+function IdeaMatrizSkeleton() {
+  return (
+    <div className="space-y-2" aria-hidden="true">
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-11/12" />
+      <Skeleton className="h-4 w-2/3" />
+    </div>
+  );
+}
+
+function SimilaresSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden="true">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Skeleton key={i} className="h-32 w-full rounded-lg" />
+      ))}
     </div>
   );
 }
