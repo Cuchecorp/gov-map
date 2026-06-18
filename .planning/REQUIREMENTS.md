@@ -26,10 +26,10 @@ Requisitos del milestone 1. Cada uno mapea a una fase del roadmap.
 - [x] **ID-02**: El sistema reconcilia un registro foráneo por match determinista (RUT exacto, o nombre normalizado dentro de cámara+periodo sin homónimo) sin invocar LLM
 - [x] **ID-03**: Para matches dudosos, el sistema genera candidatos por blocking (apellido + cámara + periodo + región) y los adjudica con LLM (MiniMax) devolviendo decisión/confianza/evidencia/conflictos en JSON validado
 - [x] **ID-04**: Una compuerta de validación enruta a revisión humana todo match con confianza < umbral, con conflictos, o inconsistencia de cámara/periodo — nada bajo el umbral se auto-acepta
-- [ ] **ID-05**: Un revisor humano puede confirmar/rechazar/corregir un match, registrándose con revisor y timestamp
+- [x] **ID-05**: Un revisor humano puede confirmar/rechazar/corregir un match, registrándose con revisor y timestamp
 - [x] **ID-06**: Cada vínculo nombre→id tiene estado `confirmado`/`probable`/`no_confirmado`, y solo `confirmado` se muestra como hecho en la capa pública
-- [ ] **ID-07**: El sistema corre un golden set de casos difíciles (homónimos, nombres de casada, abreviaturas) y bloquea el deploy si la precisión baja del umbral
-- [ ] **ID-08**: Cada match guarda procedencia (método determinista/llm/humano, confianza, timestamp, versión de modelo) para auditoría
+- [x] **ID-07**: El sistema corre un golden set de casos difíciles (homónimos, nombres de casada, abreviaturas) y bloquea el deploy si la precisión baja del umbral
+- [x] **ID-08**: Cada match guarda procedencia (método determinista/llm/humano, confianza, timestamp, versión de modelo) para auditoría
 - [x] **ID-09**: La tabla maestra de identidades se respalda fuera de Supabase
 
 ### Tramitación de Proyectos — P2 (TRAM)
@@ -111,10 +111,10 @@ Poblada durante la creación del roadmap (2026-06-17). Cada requisito mapea a ex
 | ID-09 | Phase 3 | Complete |
 | ID-03 | Phase 4 | Complete |
 | ID-04 | Phase 4 | Complete |
-| ID-05 | Phase 4 | Pending |
+| ID-05 | Phase 4 | Complete |
 | ID-06 | Phase 4 | Complete |
-| ID-07 | Phase 4 | Pending |
-| ID-08 | Phase 4 | Pending |
+| ID-07 | Phase 4 | Complete |
+| ID-08 | Phase 4 | Complete |
 | TRAM-01 | Phase 5 | Pending |
 | TRAM-02 | Phase 5 | Pending |
 | TRAM-03 | Phase 5 | Pending |

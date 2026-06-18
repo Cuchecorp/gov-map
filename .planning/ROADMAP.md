@@ -18,7 +18,7 @@
 - [x] **Phase 1: Framework de Conectores + Almacenamiento + Orquestación** - Ingesta respetuosa con crudo inmutable en R2, snapshots, drift y cola pgmq/pg_cron (completed 2026-06-18)
 - [x] **Phase 2: Capa de Providers LLM/Embeddings** - Interfaces enchufables con salida estructurada per-proveedor y versionado de vectores (completed 2026-06-18)
 - [ ] **Phase 3: Tabla Maestra Parlamentario + Identidad Determinista** - Maestra sembrada (Cámara + Senado), match determinista y respaldo externo
-- [ ] **Phase 4: Adjudicación de Identidad + Compuerta Humana + Golden Set** - Subsistema crítico aislado: LLM MiniMax, umbral, revisión humana, auditoría, gate de deploy
+- [x] **Phase 4: Adjudicación de Identidad + Compuerta Humana + Golden Set** - Subsistema crítico aislado: LLM MiniMax, umbral, revisión humana, auditoría, gate de deploy (completed 2026-06-18)
 - [ ] **Phase 5: Tramitación Core — Ficha + Timeline + Votaciones** - Conectores JSON/XML, modelo Proyecto/Votacion, ficha + timeline cross-cámara + frescura (primer valor ciudadano visible)
 - [ ] **Phase 6: Citaciones + Tabla Semanal de Sala** - Conectores frágiles (WebForms __VIEWSTATE + Next.js __NEXT_DATA__) con agenda de comisiones y sala
 - [ ] **Phase 7: Búsqueda Semántica + Fichas Estructuradas** - Extracción LLM, embeddings Gemini + HNSW, búsqueda NL y "proyectos similares"
@@ -100,12 +100,12 @@ Plans:
   4. Cada vínculo nombre→id tiene estado `confirmado`/`probable`/`no_confirmado` y solo `confirmado` se muestra como hecho en la capa pública
   5. El golden set de casos difíciles (homónimos, nombres de casada, abreviaturas) corre como test de regresión y bloquea el deploy si la precisión baja del umbral (sella riesgo existencial #1)
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 
 - [x] 04-01-PLAN.md — Scaffold @obs/adjudication + blocking + AdjudicacionSchema/prompt + compuerta fail-closed (borde 0.90) + slice e2e con mock + temperature? en @obs/llm (ID-03, ID-04, ID-06)
 - [x] 04-02-PLAN.md — Migración 0006: vinculo_identidad + revision_identidad + identidad_audit append-only (trigger+REVOKE+RLS) + pgTAP de inmutabilidad (ID-05, ID-06, ID-08)
-- [ ] 04-03-PLAN.md — Pipeline etapas 0-3 + writers + revisor-cli (confirm/reject/correct con revisor+timestamp) + golden set que bloquea deploy (Walker P., Matías) + LIVE gated (ID-03..08)
+- [x] 04-03-PLAN.md — Pipeline etapas 0-3 + writers + revisor-cli (confirm/reject/correct con revisor+timestamp) + golden set que bloquea deploy (Walker P., Matías) + LIVE gated (ID-03..08)
 
 ### Phase 5: Tramitación Core — Ficha + Timeline + Votaciones
 
@@ -163,7 +163,7 @@ Plans:
 | 1. Framework de Conectores + Almacenamiento + Orquestación | 3/3 | Complete   | 2026-06-18 |
 | 2. Capa de Providers LLM/Embeddings | 3/3 | Complete   | 2026-06-18 |
 | 3. Tabla Maestra Parlamentario + Identidad Determinista | 4/4 | Complete   | 2026-06-18 |
-| 4. Adjudicación de Identidad + Compuerta Humana + Golden Set | 1/3 | In Progress|  |
+| 4. Adjudicación de Identidad + Compuerta Humana + Golden Set | 3/3 | Complete   | 2026-06-18 |
 | 5. Tramitación Core — Ficha + Timeline + Votaciones | 0/? | Not started | - |
 | 6. Citaciones + Tabla Semanal de Sala | 0/? | Not started | - |
 | 7. Búsqueda Semántica + Fichas Estructuradas | 0/? | Not started | - |

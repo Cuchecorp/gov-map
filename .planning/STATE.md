@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: "Completed 04-02-PLAN.md (migracion 0006: vinculo_identidad + revision_identidad + identidad_audit append-only por trigger+REVOKE; pgTAP de inmutabilidad verde)"
-last_updated: "2026-06-18T14:23:30.000Z"
+status: verifying
+stopped_at: "Completed 04-03-PLAN.md (pipeline etapas 0-3 + revisor-cli + golden set gate de deploy; 54 tests verdes @obs/adjudication, LIVE gated). Fase 04 completa — ready for verification"
+last_updated: "2026-06-18T14:39:07.358Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 12
-  percent: 46
+  completed_plans: 13
+  percent: 57
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-06-17)
 
 ## Current Position
 
-Phase: 04 (adjudicacion-identidad-compuerta-humana-golden-set) — EXECUTING
+Phase: 04 (adjudicacion-identidad-compuerta-humana-golden-set) — READY FOR VERIFICATION
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-18
 
-Progress: [██████████] 100% (4/4 planes de la fase 03 completos)
+Progress: [██████████] 100% (3/3 planes de la fase 04 completos)
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [██████████] 100% (4/4 planes de la fase 03 comple
 | Phase 03 P04 | 14min | 3 tasks | 13 files |
 | Phase 04 P01 | 9min | 3 tasks | 13 files |
 | Phase 04 P02 | 4min | 2 tasks | 2 files |
+| Phase 04 P03 | 12min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,10 @@ Recent decisions affecting current work:
 - [Phase 04]: [04-02]: identidad_audit inmutable por trigger BEFORE UPDATE OR DELETE (RAISE EXCEPTION, errcode restrict_violation=23001) — unica defensa que aplica al service role que bypassa RLS — MAS REVOKE update/delete/truncate (defensa en profundidad, ID-08/Pitfall 4)
 - [Phase 04]: [04-02]: vinculo_identidad.estado default no_confirmado + parlamentario_id nullable; indice unico PARCIAL (camara,periodo,mencion_normalizada) where id is not null para idempotencia del vinculo resuelto (ID-06)
 - [Phase 04]: [04-02]: candidatos jsonb SIN rut (minimizacion); pgTAP prueba inmutabilidad con throws_ok 23001 sobre UPDATE y DELETE como superuser (peor caso = service role)
+- [Phase 04]: [04-03]: correrPipeline orquesta etapas 0-3 (determinista reuse corta antes del LLM; RUT aborta antes de complete con 0 llamadas) y devuelve resultado discriminado; escribe una fila de identidad_audit por decision
+- [Phase 04]: [04-03]: auto-aceptar del LLM mapea SOLO a 'probable'; promocion a 'confirmado' es EXCLUSIVA de humano (revisor-cli confirm/correct) o determinista (A4/ID-06)
+- [Phase 04]: [04-03]: revisor-cli valida id numerico + revisor no vacio + chosen-id /^P\\d{5}$/ ANTES de tocar la DB; resolverRevision atomico contra estado='pendiente' (afectadas===0 -> error sin colaterales); cada resolucion escribe audit metodo='humano' con revisor_id+timestamp
+- [Phase 04]: [04-03]: golden set 22 casos = gate de deploy mockeado (precision>=0.95 toBeGreaterThanOrEqual -> falla bloquea CI; auto-aceptar id equivocado = fp); LIVE gated por IDENTITY_GOLDEN_LIVE no quema cuota; region fail-open SOLO ante ausencia de region (no entre dos regiones distintas)
 
 ### Pending Todos
 
@@ -131,6 +136,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T14:23:30.000Z
+Last session: 2026-06-18T14:39:07.350Z
 Stopped at: Completed 04-02-PLAN.md (migracion 0006: vinculo_identidad + revision_identidad + identidad_audit append-only por trigger+REVOKE; pgTAP de inmutabilidad verde)
 Resume file: None
