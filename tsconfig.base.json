@@ -15,7 +15,9 @@
     "noUncheckedIndexedAccess": true,
     "paths": {
       "@obs/core": ["./packages/core/src/index.ts"],
-      "@obs/core/*": ["./packages/core/src/*"]
+      "@obs/core/*": ["./packages/core/src/*"],
+      "@obs/identity": ["./packages/identity/src/index.ts"],
+      "@obs/identity/*": ["./packages/identity/src/*"]
     }
   }
 }

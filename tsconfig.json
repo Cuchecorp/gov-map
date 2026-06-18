@@ -3,6 +3,7 @@
   "references": [
     { "path": "./packages/core" },
     { "path": "./packages/ingest" },
-    { "path": "./packages/llm" }
+    { "path": "./packages/llm" },
+    { "path": "./packages/identity" }
   ]
 }
