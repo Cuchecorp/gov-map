@@ -121,7 +121,13 @@ Plans:
   4. Un usuario puede ver los resultados de votación (totales SI/NO/Abstención y resultado) asociados a un proyecto
   5. Cada ficha y dato de tramitación muestra indicador de frescura por fuente y enlace a la fuente original, con copy en lenguaje neutro (sin framing causal — guardarraíl riesgo existencial #2)
 
-**Plans:** TBD
+**Plans:** 5 plans
+Plans:
+- [ ] 05-01-PLAN.md — Scaffold @obs/tramitacion + migración 0008 (proyecto/votacion/voto/tramitacion_evento) + RLS public-read pgTAP + fixtures XML reales + test E2E del slice (RED)
+- [ ] 05-02-PLAN.md — Parsers XML Cámara(opendata)+Senado(wspublico) → modelo común + parseo fechas dd/mm/yyyy + fusión timeline cross-cámara
+- [ ] 05-03-PLAN.md — Reconciliación voto-a-voto: Cámara determinista por Diputado/Id; Senado por correrPipeline (guarda: solo confirmado vincula)
+- [ ] 05-04-PLAN.md — Frontend Next.js 16: shadcn+tokens cívicos, ficha /proyecto/[boletin] (header+timeline+votaciones) + ProvenanceBadge + IdentityMarker (UI-SPEC)
+- [ ] 05-05-PLAN.md — Conectores reusando @obs/ingest + writer idempotente + corrida LIVE acotada (Leg 58) produciendo datos reales en Supabase local
 **UI hint**: yes
 
 ### Phase 6: Citaciones + Tabla Semanal de Sala
@@ -164,7 +170,7 @@ Plans:
 | 2. Capa de Providers LLM/Embeddings | 3/3 | Complete   | 2026-06-18 |
 | 3. Tabla Maestra Parlamentario + Identidad Determinista | 4/4 | Complete   | 2026-06-18 |
 | 4. Adjudicación de Identidad + Compuerta Humana + Golden Set | 3/3 | Complete   | 2026-06-18 |
-| 5. Tramitación Core — Ficha + Timeline + Votaciones | 0/? | Not started | - |
+| 5. Tramitación Core — Ficha + Timeline + Votaciones | 0/5 | Planned | - |
 | 6. Citaciones + Tabla Semanal de Sala | 0/? | Not started | - |
 | 7. Búsqueda Semántica + Fichas Estructuradas | 0/? | Not started | - |
 
