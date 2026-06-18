@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-06-18T20:42:02.592Z"
-last_activity: 2026-06-18 -- Phase 7 planning complete
+stopped_at: 07-01 Tasks 1-4 complete; Task 5 (aplicar migración 0011 al LOCAL) pendiente — checkpoint humano bloqueante
+last_updated: "2026-06-18T21:20:00.000Z"
+last_activity: 2026-06-18 -- 07-01 Tasks 1-4 ejecutadas; pausa en checkpoint human-action (Task 5)
 progress:
   total_phases: 7
   completed_phases: 6
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-17)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 06 — citaciones-tabla-semanal-de-sala
+**Current focus:** Phase 07 — Búsqueda Semántica + Fichas Estructuradas
 
 ## Current Position
 
-Phase: 06 (citaciones-tabla-semanal-de-sala) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-06-18 -- Phase 7 planning complete
+Phase: 07 (Búsqueda Semántica + Fichas Estructuradas) — EXECUTING
+Plan: 1 of 3 — Tasks 1-4 ✓; Task 5 (checkpoint human-action bloqueante) PENDIENTE
+Status: Pausado en checkpoint — aplicar migración 0011 al Supabase LOCAL
+Last activity: 2026-06-18 -- 07-01 Tasks 1-4 ejecutadas, pausa en Task 5
 
-Progress: [██████████] 100% (3/3 planes de la fase 04 completos)
+Progress: [█████████░] 22/25 planes (07-01 parcial: 4/5 tasks; falta Task 5 LOCAL)
 
 ## Performance Metrics
 
@@ -140,6 +140,12 @@ Recent decisions affecting current work:
 - [Phase ?]: 06-02: 3 parsers contra fixtures reales con zod por fila (drift se descarta, no fabrica); boletin = llave de cruce con Fase 5; slice E2E verde
 - [Phase ?]: Conectores de agenda reusan @obs/ingest en orden LOCKED; Cámara con header-set anti-Cloudflare, Senado vía web-back.senado.cl/api
 - [Phase ?]: runIngest degrada honestamente: tabla de Cámara→PDF sin fabricar filas; 403 persistente de Cámara degrada esa fuente sin abortar el Senado
+- [Phase 07]: [07-01]: gate de extracción literal (flag P7 sellado) — golden 17+2 casos; idea_matriz por SUBSTRING literal normalizado (NFD+strip diacríticos+whitespace), cuerpos por F1 norma+artículos; `precision>=0.95` BLOQUEA CI; meta-test prueba fp alcanzable; LIVE gated por FICHAS_GOLDEN_LIVE (no quema cuota)
+- [Phase 07]: [07-01]: extraer usa criticality:'bulk' + sensitivity:'public' (contrato real CompletionRequest, no 'publico'); sin safeParse propio — la compuerta zod + repair viven en DeepSeekProvider (SEM-02)
+- [Phase 07]: [07-01]: link_mensaje_mocion devuelto como SIDECAR en parseSenadoTramitacion (no en ProyectoSchema) → mínimo blast-radius, writer/reconciliación de Fase 5 intactos (SEM-01)
+- [Phase 07]: [07-01]: Gemini embed(texts, taskType?) aditivo (RETRIEVAL_DOCUMENT/QUERY) — callers sin taskType producen body idéntico; guard de dims + l2normalize sin cambios (SEM-03)
+- [Phase 07]: [07-01]: 0011 — RPC match_proyectos ordena por distancia CRUDA `<=>` ASC (usa HNSW, Pitfall 3); grant execute a anon sobre la firma exacta (Pitfall 2/T-07-04); RLS public-read en ambas tablas; sin datos personales (parlamentario intacta)
+- [Phase 07]: [07-01]: slice.e2e.test.ts en RED por imports ausentes (correrPipeline/buscarProyectos) — diana walking-skeleton que olas 2-3 vuelven verde
 
 ### Pending Todos
 
@@ -147,8 +153,9 @@ None yet.
 
 ### Blockers/Concerns
 
+- [07-01 Task 5 — BLOQUEANTE PENDIENTE]: aplicar migración 0011 al Supabase LOCAL (Docker). El build/typecheck pasan SIN aplicarla (falso-positivo de verificación) → obligatorio aplicar al LOCAL antes de la ola 2 (escritura de fichas/embeddings) y la ola 3 (RPC). Push REMOTO de DDL bloqueado (service key, no PAT de management — probado 2026-06-18); es paso de operador separado. Señal de resume: "aplicada".
 - [Research flag P5/P6]: conectores WebForms y portal Next.js del Senado son frágiles — spike de validación end-to-end antes de planificar
-- [Research flag P7]: calidad de extracción LLM sobre texto legal en español es el cuello de botella — construir golden set y benchmarkear antes de comprometer el prompt
+- [Research flag P7]: RESUELTO en 07-01 — golden set de extracción + gate CI bloqueante (precision>=0.95) sellado; benchmark LIVE de DeepSeek gated por FICHAS_GOLDEN_LIVE
 - [v2/anotado]: `opendata.camara.cl` (voto individual) sin validar — bloquea P3/M2, no M1
 - [Pre-release bloqueante]: pasada de asesoría legal (framing UI + manejo de datos, Ley 21.719) antes del lanzamiento público
 
