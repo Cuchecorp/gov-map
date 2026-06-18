@@ -26,6 +26,12 @@ export interface FetchSpec {
   url: string;
   host?: string;
   params?: Record<string, unknown>;
+  /**
+   * Headers extra a fusionar sobre el `User-Agent` por defecto (p.ej. el header-set
+   * de navegador anti-Cloudflare de Cámara). Las claves provistas SOBRESCRIBEN las
+   * por defecto (un `User-Agent` propio reemplaza el del Fetcher).
+   */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -91,7 +97,9 @@ export class Fetcher {
     const url = assertAllowedUrl(spec.url, this.allowlist);
     const res = await this.fetchFn(url.toString(), {
       method: "GET",
-      headers: { "User-Agent": this.ua },
+      // El UA por defecto identifica el bot; los headers de la spec se fusionan
+      // encima (el header-set anti-Cloudflare de Cámara puede traer su propio UA).
+      headers: { "User-Agent": this.ua, ...(spec.headers ?? {}) },
     });
     if (res.ok) {
       const buf = await res.arrayBuffer();
