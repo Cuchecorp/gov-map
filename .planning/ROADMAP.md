@@ -170,9 +170,15 @@ Plans:
 
 **Plans:** 3 plans
 Plans:
+**Wave 1**
+
 - [ ] 07-01-PLAN.md — Scaffold @obs/fichas + FichaSchema + prompt restrictivo + golden gate (flag P7) + migración 0011 (HNSW + RPC + RLS) aplicada en LOCAL + parser/provider extendidos + slice E2E (RED) (SEM-01, SEM-02, SEM-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 07-02-PLAN.md — Write-path: texto-fuente (@obs/ingest + R2 gate) + embed-ficha (RETRIEVAL_DOCUMENT) + pipeline reanudable + writer idempotente + CLI + workflow backfill (SEM-01, SEM-02, SEM-03)
 - [ ] 07-03-PLAN.md — Read-path: lib/buscar (embed query + kNN server-only) + landing + /buscar + SearchResultCard + secciones de ficha (idea matriz/cuerpos/similares) (SEM-04, SEM-05, SEM-06)
+
 **UI hint**: yes
 
 ## Progress
