@@ -30,7 +30,7 @@ Requisitos del milestone 1. Cada uno mapea a una fase del roadmap.
 - [ ] **ID-06**: Cada vínculo nombre→id tiene estado `confirmado`/`probable`/`no_confirmado`, y solo `confirmado` se muestra como hecho en la capa pública
 - [ ] **ID-07**: El sistema corre un golden set de casos difíciles (homónimos, nombres de casada, abreviaturas) y bloquea el deploy si la precisión baja del umbral
 - [ ] **ID-08**: Cada match guarda procedencia (método determinista/llm/humano, confianza, timestamp, versión de modelo) para auditoría
-- [ ] **ID-09**: La tabla maestra de identidades se respalda fuera de Supabase
+- [x] **ID-09**: La tabla maestra de identidades se respalda fuera de Supabase
 
 ### Tramitación de Proyectos — P2 (TRAM)
 
@@ -108,7 +108,7 @@ Poblada durante la creación del roadmap (2026-06-17). Cada requisito mapea a ex
 | FND-07 | Phase 2 | Complete |
 | ID-01 | Phase 3 | Complete |
 | ID-02 | Phase 3 | Complete |
-| ID-09 | Phase 3 | Pending |
+| ID-09 | Phase 3 | Complete |
 | ID-03 | Phase 4 | Pending |
 | ID-04 | Phase 4 | Pending |
 | ID-05 | Phase 4 | Pending |

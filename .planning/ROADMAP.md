@@ -78,12 +78,12 @@ Plans:
   2. El sistema reconcilia un registro foráneo por match determinista (RUT exacto, o nombre normalizado dentro de cámara+periodo sin homónimo) sin invocar LLM
   3. La tabla maestra de identidades tiene un job de respaldo periódico fuera de Supabase (R2/git/otro) — el activo más caro de reconstruir nunca depende solo del free tier
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 Plans:
 
 - [x] 03-01-PLAN.md — @obs/identity + normalizarNombre + matchDeterminista (lógica pura fail-closed, tests golden) (ID-02)
 - [x] 03-02-PLAN.md — Migración 0005 parlamentario + parlamentario_alias + RLS deny-by-default + pgTAP (ID-01)
-- [ ] 03-03-PLAN.md — Parsers Senado/Cámara (fixtures reales) + seeder idempotente (reusa @obs/ingest) + exportMaestra (ID-01, ID-02, ID-09)
+- [x] 03-03-PLAN.md — Parsers Senado/Cámara (fixtures reales) + seeder idempotente (reusa @obs/ingest) + exportMaestra (ID-01, ID-02, ID-09)
 - [ ] 03-04-PLAN.md — Corrida LIVE: writers reales + carga local + snapshot git + checkpoint de revisión humana + cadencia de respaldo (ID-01, ID-09)
 
 ### Phase 4: Adjudicación de Identidad + Compuerta Humana + Golden Set
@@ -157,7 +157,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Framework de Conectores + Almacenamiento + Orquestación | 3/3 | Complete   | 2026-06-18 |
 | 2. Capa de Providers LLM/Embeddings | 3/3 | Complete   | 2026-06-18 |
-| 3. Tabla Maestra Parlamentario + Identidad Determinista | 2/4 | In Progress|  |
+| 3. Tabla Maestra Parlamentario + Identidad Determinista | 3/4 | In Progress|  |
 | 4. Adjudicación de Identidad + Compuerta Humana + Golden Set | 0/? | Not started | - |
 | 5. Tramitación Core — Ficha + Timeline + Votaciones | 0/? | Not started | - |
 | 6. Citaciones + Tabla Semanal de Sala | 0/? | Not started | - |

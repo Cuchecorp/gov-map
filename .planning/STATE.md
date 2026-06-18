@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: "Completed 03-01-PLAN.md (identidad pura: normalizarNombre + matchDeterminista fail-closed)"
-last_updated: "2026-06-18T12:45:58.786Z"
+last_updated: "2026-06-18T12:56:58.660Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 29
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-17)
 ## Current Position
 
 Phase: 03 (tabla-maestra-parlamentario-identidad-determinista) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-06-18
 
@@ -60,6 +60,7 @@ Progress: [██████████] 100% (3/3 planes de la fase 01 comple
 | Phase 02 P03 | 5min | 1 tasks | 2 files |
 | Phase 03 P01 | 14min | 3 tasks | 13 files |
 | Phase 03 P02 | 2min | 2 tasks | 2 files |
+| Phase 03 P03 | 18min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [03-01]: apellido materno fuera del blocking key → catálogo y formato-votación convergen; materno va a alias_capturados
 - [Phase ?]: [03-02]: estado default no_confirmado por DDL — promocion a confirmado es revision humana (ID-01)
 - [Phase ?]: [03-02]: claves naturales via indices unicos PARCIALES → upsert idempotente sin obligar NOT NULL
+- [Phase ?]: [03-03]: seeder reusa @obs/ingest (assertAllowedUrl->robots->rateLimiter.wait->fetcher.get), NO BaseConnector; idempotencia en clave natural del upsert
+- [Phase ?]: [03-03]: periodo senadores='senado-vigente-2026', diputados='2026-2030'; partidoVigente filtra la Militancia que cubre el corte 2026-03-11 (Pitfall 5)
+- [Phase ?]: [03-03]: exportMaestra determinista -> snapshot git autoritativo (ID-09 HOY); R2 gateado por r2Enabled=false (401 diferido)
 
 ### Pending Todos
 
@@ -113,6 +117,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T12:45:44.593Z
+Last session: 2026-06-18T12:56:51.572Z
 Stopped at: Completed 03-01-PLAN.md (identidad pura: normalizarNombre + matchDeterminista fail-closed)
 Resume file: None
