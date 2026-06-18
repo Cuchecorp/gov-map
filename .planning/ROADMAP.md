@@ -115,7 +115,7 @@ Plans:
 **Requirements:** TRAM-01, TRAM-02, TRAM-03, TRAM-04, TRAM-05, TRAM-06, TRAM-09
 **Success Criteria** (what must be TRUE):
 
-  1. El sistema ingesta votaciones/sesiones de la Cámara vía WS JSON `doGet.asmx` y tramitación/votaciones del Senado vía `wspublico` XML (conectores en orden ascendente de fragilidad: JSON → XML)
+  1. El sistema ingesta votaciones/sesiones de la Cámara vía `opendata.camara.cl` WS XML (`getVotaciones_Boletin`, `retornarVotacionDetalle`, incl. voto-a-voto por `Diputado/Id`; `doGet.asmx` quedó obsoleto 302→404) y tramitación/votaciones del Senado vía `wspublico` XML
   2. Existe modelo `Proyecto` con clave de boletín y `Votacion`, normalizando ambas cámaras a un modelo común; los votos atribuidos a parlamentarios pasan por `identity.reconcile()`
   3. Un usuario puede ver la ficha de un proyecto con estado/etapa actual y el timeline de tramitación cruzando ambas cámaras por número de boletín (RPC recursive CTE)
   4. Un usuario puede ver los resultados de votación (totales SI/NO/Abstención y resultado) asociados a un proyecto

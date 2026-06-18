@@ -546,9 +546,11 @@ export default async function FichaProyecto({ params }: { params: Promise<{ bole
 | A3 | shadcn/ui + Tailwind se integran limpio en el scaffold Next 16 existente (no verificado el estado de Tailwind en `/app`). | Standard Stack | Si Tailwind no está configurado, +1 paso de setup. Verificar `app/` antes de planificar componentes. |
 | A4 | `visx`/`recharts` no fueron pasados por slopcheck en esta sesión (entorno Windows). | Package Legitimacy | Bajo: ambos son librerías masivas y conocidas; el planner debe gatear su install si los adopta. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **¿Incluir voto-individual-Cámara (A1) en esta fase o respetar el deferral?**
+> Resueltas vía el ADDENDUM de 05-CONTEXT.md (decisión del usuario 2026-06-18): **Q1 RESUELTA → INCLUIR voto-individual-Cámara** (determinista por `Diputado/Id`); **Q2 RESUELTA → materializar el timeline en `tramitacion_evento`**; **Q3 RESUELTA → descubrir boletines con `retornarVotacionesXAnno?prmAnno=2026`**.
+
+1. **¿Incluir voto-individual-Cámara (A1) en esta fase o respetar el deferral?** — RESUELTA: INCLUIR (usuario, ADDENDUM).
    - What we know: está disponible, validado, cruza por `Diputado/Id` (match determinista, sin reconciliación por nombre, sin riesgo de identidad).
    - What's unclear: si el usuario prefiere mantener el scope acotado de CONTEXT.
    - Recommendation: el planner lo plantea como decisión explícita al usuario en discuss/plan; default = respetar CONTEXT (totales solamente) y dejar el voto-individual-Cámara como tarea opcional/diferida.

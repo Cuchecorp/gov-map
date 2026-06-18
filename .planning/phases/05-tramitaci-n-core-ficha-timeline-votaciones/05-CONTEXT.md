@@ -70,6 +70,6 @@ Primer valor ciudadano end-to-end VISIBLE: conectores reales de tramitación + v
 
 - Citaciones de comisiones + tabla semanal de sala → Fase 6.
 - Búsqueda semántica + fichas estructuradas por idea matriz → Fase 7.
-- Voto individual por diputado (opendata.camara.cl votaciones) → v2/P3 (sin validar).
+- ~~Voto individual por diputado (opendata.camara.cl votaciones) → v2/P3~~ — **SUPERSEDED por el ADDENDUM**: incluido en Fase 5 vía `Diputado/Id` determinista (endpoint sí existe y validado).
 - Deploy a remoto + R2 live → pendiente credenciales.
 </deferred>
