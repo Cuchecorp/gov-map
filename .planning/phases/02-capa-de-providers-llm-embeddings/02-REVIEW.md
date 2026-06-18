@@ -19,7 +19,14 @@ findings:
   warning: 5
   info: 3
   total: 11
-status: issues_found
+status: fixed
+resolved:
+  fixed_at: 2026-06-17
+  critical_fixed: [CR-01, CR-02, CR-03]
+  warning_fixed: [WR-01, WR-02, WR-03, WR-04, WR-05]
+  info_resolved: [IN-02]
+  info_deferred: [IN-01, IN-03]
+  tests: "68 passed (was 37), 3 skipped; pnpm -w typecheck clean"
 ---
 
 # Phase 02: Code Review Report
@@ -27,7 +34,7 @@ status: issues_found
 **Reviewed:** 2026-06-17
 **Depth:** standard
 **Files Reviewed:** 10
-**Status:** issues_found
+**Status:** fixed (2026-06-17) — 3 Blockers + 5 Warnings resolved; IN-02 resolved as side-effect; IN-01/IN-03 deferred (hardening, non-blocking)
 
 ## Summary
 
@@ -52,7 +59,9 @@ would silently leak even if the gate were wired.
 
 ## Critical Issues
 
-### CR-01: RUT gate is never wired into the provider call path — RUT reaches the LLM
+### CR-01: RUT gate is never wired into the provider call path — RUT reaches the LLM — RESOLVED (commit 0c6d1ce)
+
+> **Resolved:** `assertNoRutInLlmInput(req.user)` + `if (req.system) assertNoRutInLlmInput(req.system)` now run at the top of both `DeepSeekProvider.complete` and `MiniMaxProvider.complete`, before any network call. Provider-level tests assert a RUT in `req.user`/`req.system` throws `RutInLlmInputError` with zero fetches.
 
 **File:** `packages/llm/src/providers/deepseek.ts:55-86`, `packages/llm/src/providers/minimax.ts:59-107`, `packages/llm/src/data-routing.ts:43-47`
 
@@ -84,7 +93,9 @@ concatenated into the repair message (here only zod issues are, so the initial
 assert suffices). Add a provider-level test proving a RUT in `req.user` throws
 `RutInLlmInputError` and emits zero fetches.
 
-### CR-02: Sensitivity gate is not enforced at the provider boundary — personal data can reach a training tier
+### CR-02: Sensitivity gate is not enforced at the provider boundary — personal data can reach a training tier — RESOLVED (commit 0c6d1ce)
+
+> **Resolved:** `assertSensitivityAllowed({ sensitivity: req.sensitivity }, this)` now runs intrinsically inside both providers' `complete()`. Tests force `trainsOnInputs=true` on a provider instance and assert a `personal` request throws `SensitiveRoutingError` with zero fetches. The router-level gate is kept as defense in depth (e2e test).
 
 **File:** `packages/llm/src/providers/deepseek.ts:55`, `packages/llm/src/providers/minimax.ts:59`, `packages/llm/src/data-routing.ts:54-63`, `packages/llm/src/router.ts:41-59`
 
@@ -112,7 +123,9 @@ contract. This guarantees the gate regardless of how the provider was obtained.
 Keep the router check too (defense in depth), but do not rely on it as the sole
 gate.
 
-### CR-03: RUT regex false negatives — short-body RUTs and spaced separators leak to the LLM
+### CR-03: RUT regex false negatives — short-body RUTs and spaced separators leak to the LLM — RESOLVED (commit 93fd590)
+
+> **Resolved:** `RUT_REGEX` broadened to `/\b\d{1,3}(?:\.?\d{3})*\s*-\s*[\dkK]\b/i` (1-8 body digits, optional thousands dots, optional spaces around the hyphen, DV 0-9/K). New fixtures cover `123.456-7`, `12345-6`, `1.234-5`, `123.456-K`, and the spaced forms `12.345.678 - 9`, `7.654.321 -K`, `7654321- K`, each asserting `RutInLlmInputError`. Error message still never exposes the matched RUT.
 
 **File:** `packages/llm/src/data-routing.ts:37`
 
@@ -143,7 +156,9 @@ prefer over-blocking to leaking.)
 
 ## Warnings
 
-### WR-01: `maxRepairAttempts` / `maxAttempts` accepts unvalidated values; negative yields empty-issue error, no upper clamp
+### WR-01: `maxRepairAttempts` / `maxAttempts` accepts unvalidated values; negative yields empty-issue error, no upper clamp — RESOLVED (commit 7e4dd04)
+
+> **Resolved:** Added `clampRepairAttempts()` (range `[0, MAX_REPAIR_ATTEMPTS_CEILING=3]`; undefined→1, negative/NaN→0, fractional truncated) applied at both provider boundaries, and `parseAndValidate` now clamps `maxAttempts` to `>= 0` internally so a negative value runs the initial validation and produces a real-issue error instead of `LLMValidationError([])`. Tests cover negative/NaN/over-ceiling/fractional and the empty-issue regression. (Also fixes IN-02 comment.)
 
 **File:** `packages/llm/src/validate.ts:64-85`, `packages/llm/src/providers/deepseek.ts:77`, `packages/llm/src/providers/minimax.ts:98`
 
@@ -164,7 +179,9 @@ const maxAttempts = Math.max(0, Math.min(req.maxRepairAttempts ?? 1, 3));
 and in `parseAndValidate` treat `maxAttempts < 0` as `0`. Keep an explicit upper
 ceiling so cost cannot be driven up by a bad config value.
 
-### WR-02: MiniMax tool-call parse ignores extra/duplicate tool_calls and wrong function name
+### WR-02: MiniMax tool-call parse ignores extra/duplicate tool_calls and wrong function name — RESOLVED (commit 5afaf82)
+
+> **Resolved:** The parser now uses `calls.find((c) => c.type === "function" && c.function.name === TOOL_NAME)` instead of `tool_calls[0]`. A wrong/hallucinated function name (or `emit_result` not in position 0) is matched by name; if absent the result is `undefined` and routed into the repair loop. Tests cover the reordered-call and wrong-name-only cases.
 
 **File:** `packages/llm/src/providers/minimax.ts:86-89`
 
@@ -186,7 +203,9 @@ const toolCall = calls.find(
 return toolCall?.type === "function" ? toolCall.function.arguments : undefined;
 ```
 
-### WR-03: Gemini per-vector dimensionality is never validated — wrong-dims vector persisted as `dims: 768`
+### WR-03: Gemini per-vector dimensionality is never validated — wrong-dims vector persisted as `dims: 768` — RESOLVED (commit 73fc6e7)
+
+> **Resolved:** Added `if (values.length !== EMBEDDING_DIMS) throw ...` before L2-normalizing/stamping `dims: 768`. Tests assert both an over-sized (3072) and truncated (512) vector throw a dim-mismatch error, preventing the FND-07 pgvector(768) corruption.
 
 **File:** `packages/llm/src/providers/gemini-embeddings.ts:103-115`
 
@@ -208,7 +227,9 @@ if (values.length !== EMBEDDING_DIMS) {
 }
 ```
 
-### WR-04: Empty `texts` array silently returns `[]` without calling the API; no input guard
+### WR-04: Empty `texts` array silently returns `[]` without calling the API; no input guard — RESOLVED (commit 73fc6e7)
+
+> **Resolved:** `embed()` now early-returns `[]` on `texts.length === 0` before building/POSTing any request. Test asserts `embed([])` yields `[]` with zero fetches. (Max-batch chunking left as a future hardening, see note below.)
 
 **File:** `packages/llm/src/providers/gemini-embeddings.ts:67-101`
 
@@ -227,7 +248,9 @@ if (texts.length === 0) return [];
 // optionally: chunk texts into batches of <= MAX_BATCH before posting.
 ```
 
-### WR-05: `loadRouterConfigFromEnv` ignores its `env` argument — config is hardcoded, not swappable from env
+### WR-05: `loadRouterConfigFromEnv` ignores its `env` argument — config is hardcoded, not swappable from env — RESOLVED (commit 7ec92e4)
+
+> **Resolved:** The `_env` parameter is now `env` and read for `DEEPSEEK_MODEL`/`DEEPSEEK_BASE_URL`, `MINIMAX_MODEL`/`MINIMAX_BASE_URL`, and `LLM_CRITICAL_PROVIDER`/`LLM_BULK_PROVIDER`, each defaulting to the verified literal. `trainsOnInputs` is deliberately NOT env-configurable (a compliance property, not an operational one) to avoid relaxing the fail-closed gate via a stray env var. New `config.test.ts` covers defaults, overrides, and the non-configurable flag.
 
 **File:** `packages/llm/src/config.ts:36-57`
 
@@ -248,7 +271,9 @@ the criticality mapping if it should be swappable. Keep keys out of this object
 
 ## Info
 
-### IN-01: `zodToToolSchema` does not set `additionalProperties:false` or guarantee `required` for strict tool-calling
+### IN-01: `zodToToolSchema` does not set `additionalProperties:false` or guarantee `required` for strict tool-calling — DEFERRED
+
+> **Deferred:** Hardening suggestion, not a bug — the zod gate still rejects bad shapes downstream (the reviewer says so). Out of scope for this Blocker+Warning fix pass; no compliance/correctness impact.
 
 **File:** `packages/llm/src/json-schema.ts:13-18`
 
@@ -262,7 +287,9 @@ downstream.
 **Fix:** Consider post-processing the JSON schema to force
 `additionalProperties: false` on the root object before returning.
 
-### IN-02: Comment claims "Inalcanzable" but the line is reachable with `maxAttempts < 0`
+### IN-02: Comment claims "Inalcanzable" but the line is reachable with `maxAttempts < 0` — RESOLVED (commit 7e4dd04)
+
+> **Resolved as a side-effect of WR-01:** `maxAttempts` is now clamped to `>= 0`, so the loop always runs attempt 0 and the trailing `throw` is genuinely unreachable. The comment was updated to state why.
 
 **File:** `packages/llm/src/validate.ts:83-84`
 
@@ -272,7 +299,9 @@ comment is misleading. Resolving WR-01 (clamp to >= 0) makes the comment correct
 
 **Fix:** Clamp `maxAttempts` to `>= 0` (per WR-01); the comment then holds.
 
-### IN-03: `EmbeddingResult.version` and `EMBEDDING_VERSION` are hardcoded `"v1"` with no link to model identity
+### IN-03: `EmbeddingResult.version` and `EMBEDDING_VERSION` are hardcoded `"v1"` with no link to model identity — DEFERRED
+
+> **Deferred:** Discipline/documentation suggestion (couple version bumps to model/dims). No correctness impact in this phase (single model, single version); revisit when a second embedding model is introduced. Out of scope for the Blocker+Warning pass.
 
 **File:** `packages/llm/src/providers/gemini-embeddings.ts:27,108-114`
 
