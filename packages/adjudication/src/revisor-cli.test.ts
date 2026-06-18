@@ -129,7 +129,13 @@ describe("revisor-cli list/show", () => {
 
 describe("revisor-cli confirm (promueve a confirmado + audit humano)", () => {
   it("confirm <id> --revisor ana → estado='confirmado', vínculo confirmado metodo='humano', audit revisor_id+created_at", async () => {
-    const { client, caps } = fakeClient([casoPendiente(1)]);
+    // El caso debe traer un chosen_id válido del modelo para que confirm pueda promover
+    // (WR-03: confirmar sin chosen_id lanza; ese vector se cubre aparte).
+    const { client, caps } = fakeClient([
+      casoPendiente(1, {
+        salida_modelo: { decision: "match", chosen_id: "P00042", confidence: 0.97, evidence: [], conflicts: [] },
+      }),
+    ]);
     const w = new RevisionWriter({ url: "x", serviceKey: "x", client });
     await confirmar(w, 1, "ana");
 
@@ -145,12 +151,32 @@ describe("revisor-cli confirm (promueve a confirmado + audit humano)", () => {
     expect(filaV.estado).toBe("confirmado");
     expect(filaV.metodo).toBe("humano");
 
+    // vínculo apunta al chosen_id del modelo (persona real, no null).
+    const filaVid = (vinc.rows as { parlamentario_id: string | null }[])[0]!;
+    expect(filaVid.parlamentario_id).toBe("P00042");
+
     // audit metodo='humano', decision='confirmado', revisor_id='ana'.
     const aud = caps.inserts.find((i) => i.table === "identidad_audit")!;
     const filaA = (aud.rows as { metodo: string; decision: string; revisor_id: string }[])[0]!;
     expect(filaA.metodo).toBe("humano");
     expect(filaA.decision).toBe("confirmado");
     expect(filaA.revisor_id).toBe("ana");
+  });
+
+  it("WR-03: confirm de un caso SIN chosen_id del modelo lanza y NO escribe (no confirma a nadie)", async () => {
+    // El caso llegó a revisión por uncertain/no_match → chosen_id null (lo común en la
+    // cola). confirmar NO puede promover un vínculo confirmado a parlamentario_id null.
+    const { client, caps } = fakeClient([
+      casoPendiente(1, {
+        salida_modelo: { decision: "uncertain", chosen_id: null, confidence: 0.5, evidence: [], conflicts: ["homónimo"] },
+      }),
+    ]);
+    const w = new RevisionWriter({ url: "x", serviceKey: "x", client });
+    await expect(confirmar(w, 1, "ana")).rejects.toThrow(/chosen_id|correct/i);
+    // Nada se resolvió ni se promovió: el caso sigue intacto.
+    expect(caps.updates).toHaveLength(0);
+    expect(caps.upserts).toHaveLength(0);
+    expect(caps.inserts).toHaveLength(0);
   });
 });
 

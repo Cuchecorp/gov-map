@@ -90,6 +90,17 @@ export async function confirmar(
   }
 
   const chosenId = chosenIdDeCaso(caso);
+  if (chosenId == null) {
+    // WR-03: un vínculo `confirmado` es un HECHO público y DEBE apuntar a una persona
+    // real. Si el modelo no fijó un chosen_id válido (el caso llegó a la cola por
+    // uncertain/no_match, que es lo común), `confirm` no puede inventar a quién apunta.
+    // Promover a confirmado con parlamentario_id null sería un hecho corrupto (y la
+    // guarda DB de 0007 lo rechazaría). Se exige usar `correct --chosen-id` para fijarlo.
+    throw new Error(
+      `revisor: el caso ${id} no tiene chosen_id del modelo; use ` +
+        `\`correct ${id} --revisor <quien> --chosen-id Pxxxxx\` para fijar a quién apunta`,
+    );
+  }
   await resolverYAuditar(w, caso, {
     estado: "confirmado",
     revisor,
