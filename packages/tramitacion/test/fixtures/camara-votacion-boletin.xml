@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Votaciones xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://tempuri.org/">
+  <Votacion>
+    <ID>88813</ID>
+    <Fecha>2026-05-11T19:21:07</Fecha>
+    <Tipo Codigo="6">Única</Tipo>
+    <Resultado Codigo="2">Rechazado</Resultado>
+    <Quorum Codigo="1">Quorum Simple</Quorum>
+    <Sesion>
+      <ID>4776</ID>
+      <Numero>21</Numero>
+      <Fecha>2026-05-11T17:00:19</Fecha>
+      <FechaTermino>0001-01-01T00:00:00</FechaTermino>
+      <Tipo Codigo="60">Ordinaria</Tipo>
+    </Sesion>
+    <Boletin>14309-04</Boletin>
+    <Articulo>Enmienda del Senado que agrega un nuevo artículo segundo transitorio, cuya votación separada ha sido solicitada por la diputada Daniela Serrano y el diputado Ricardo Neumann, y que consta en las páginas 24 y 25 del comparado. 
+</Articulo>
+    <Tramite Codigo="3">TERCER TRÁMITE</Tramite>
+    <Informe Codigo="7">SIN INFORME</Informe>
+    <TotalAfirmativos>58</TotalAfirmativos>
+    <TotalNegativos>81</TotalNegativos>
+    <TotalAbstenciones>0</TotalAbstenciones>
+    <TotalDispensados>0</TotalDispensados>
+  </Votacion>
+  <Votacion>
+    <ID>88812</ID>
+    <Fecha>2026-05-11T19:19:17</Fecha>
+    <Tipo Codigo="6">Única</Tipo>
+    <Resultado Codigo="2">Rechazado</Resultado>
+    <Quorum Codigo="1">Quorum Simple</Quorum>
+    <Sesion>
+      <ID>4776</ID>
+      <Numero>21</Numero>
+      <Fecha>2026-05-11T17:00:19</Fecha>
+      <FechaTermino>0001-01-01T00:00:00</FechaTermino>
+      <Tipo Codigo="60">Ordinaria</Tipo>
+    </Sesion>
+    <Boletin>14309-04</Boletin>
+    <Articulo>Enmiendas del Senado al artículo primero transitorio, cuya votación separada ha sido solicitada por el diputado Ricardo Neumann, y que consta en las páginas 20 a 23 del comparado. 
+
+</Articulo>
+    <Tramite Codigo="3">TERCER TRÁMITE</Tramite>
+    <Informe Codigo="7">SIN INFORME</Informe>
+    <TotalAfirmativos>67</TotalAfirmativos>
+    <TotalNegativos>72</TotalNegativos>
+    <TotalAbstenciones>0</TotalAbstenciones>
+    <TotalDispensados>0</TotalDispensados>
+  </Votacion>
+  <Votacion>
+    <ID>88811</ID>
+    <Fecha>2026-05-11T19:18:16</Fecha>
+    <Tipo Codigo="6">Única</Tipo>
+    <Resultado Codigo="1">Aprobado</Resultado>
+    <Quorum Codigo="1">Quorum Simple</Quorum>
+    <Sesion>
+      <ID>4776</ID>
+      <Numero>21</Numero>
+      <Fecha>2026-05-11T17:00:19</Fecha>
+      <FechaTermino>0001-01-01T00:00:00</FechaTermino>
+      <Tipo Codigo="60">Ordinaria</Tipo>
+    </Sesion>
+    <Boletin>14309-04</Boletin>
+    <Articulo>Enmienda del Senado que agrega un nuevo artículo 10 al proyecto, cuya votación separada ha sido solicitada por la diputada Daniela Serrano, y que consta en las páginas 11 y 12 del comparado. 
+</Articulo>
+    <Tramite Codigo="3">TERCER TRÁMITE</Tramite>
+    <Informe Codigo="7">SIN INFORME</Informe>
+    <TotalAfirmativos>116</TotalAfirmativos>
+    <TotalNegativos>0</TotalNegativos>
+    <TotalAbstenciones>23</TotalAbstenciones>
+    <TotalDispensados>0</TotalDispensados>
+  </Votacion>
+  <Votacion>
+    <ID>88810</ID>
+    <Fecha>2026-05-11T19:14:48</Fecha>
+    <Tipo Codigo="6">Única</Tipo>
+    <Resultado Codigo="1">Aprobado</Resultado>
+    <Quorum Codigo="1">Quorum Simple</Quorum>
+    <Sesion>
+      <ID>4776</ID>
+      <Numero>21</Numero>
+      <Fecha>2026-05-11T17:00:19</Fecha>
+      <FechaTermino>0001-01-01T00:00:00</FechaTermino>
+      <Tipo Codigo="60">Ordinaria</Tipo>
+    </Sesion>
+    <Boletin>14309-04</Boletin>
+    <Articulo>Modificaciones incorporadas por el Senado en el proyecto de ley, originado en mensaje, que “Establece un sistema de subvenciones para la modalidad educativa de reingreso.”, con la salvedad de aquellas cuya votación separada ha sido solicitada. 
+</Articulo>
+    <Tramite Codigo="3">TERCER TRÁMITE</Tramite>
+    <Informe Codigo="7">SIN INFORME</Informe>
+    <TotalAfirmativos>120</TotalAfirmativos>
+    <TotalNegativos>0</TotalNegativos>
+    <TotalAbstenciones>12</TotalAbstenciones>
+    <TotalDispensados>0</TotalDispensados>
+  </Votacion>
+  <Votacion>
+    <ID>26352</ID>
+    <Fecha>2021-09-08T13:22:47</Fecha>
+    <Tipo Codigo="1">General</Tipo>
+    <Resultado Codigo="2">Rechazado</Resultado>
+    <Quorum Codigo="5">Ley Organica Constitucional</Quorum>
+    <Sesion>
+      <ID>4122</ID>
+      <Numero>77</Numero>
+      <Fecha>2021-09-08T10:10:15</Fecha>
+      <FechaTermino>0001-01-01T00:00:00</FechaTermino>
+      <Tipo Codigo="60">Ordinaria</Tipo>
+    </Sesion>
+    <Boletin>14309-04</Boletin>
+    <Articulo>artículos 2 y 3 letras a), h) y k), del  proyecto de ley</Articulo>
+    <Tramite Codigo="1">PRIMER TRÁMITE</Tramite>
+    <Informe Codigo="1">PRIMER INFORME</Informe>
+    <TotalAfirmativos>83</TotalAfirmativos>
+    <TotalNegativos>30</TotalNegativos>
+    <TotalAbstenciones>22</TotalAbstenciones>
+    <TotalDispensados>0</TotalDispensados>
+  </Votacion>
+  <Votacion>
+    <ID>26351</ID>
+    <Fecha>2021-09-08T13:20:57</Fecha>
+    <Tipo Codigo="1">General</Tipo>
+    <Resultado Codigo="1">Aprobado</Resultado>
+    <Quorum Codigo="1">Quorum Simple</Quorum>
+    <Sesion>
+      <ID>4122</ID>
+      <Numero>77</Numero>
+      <Fecha>2021-09-08T10:10:15</Fecha>
+      <FechaTermino>0001-01-01T00:00:00</FechaTermino>
+      <Tipo Codigo="60">Ordinaria</Tipo>
+    </Sesion>
+    <Boletin>14309-04</Boletin>
+    <Articulo />
+    <Tramite Codigo="1">PRIMER TRÁMITE</Tramite>
+    <Informe Codigo="1">PRIMER INFORME</Informe>
+    <TotalAfirmativos>86</TotalAfirmativos>
+    <TotalNegativos>27</TotalNegativos>
+    <TotalAbstenciones>21</TotalAbstenciones>
+    <TotalDispensados>0</TotalDispensados>
+  </Votacion>
+</Votaciones>

@@ -1,0 +1,44 @@
+<proyectos><proyecto>
+                 <descripcion>
+                    <boletin>18296-05</boletin>
+                    <titulo>Autoriza mayor endeudamiento del gobierno central durante el año 2026</titulo>
+                    <fecha_ingreso>03/06/2026</fecha_ingreso>
+                    <iniciativa>Mensaje</iniciativa>
+                    <camara_origen>C.Diputados</camara_origen>
+                    <urgencia_actual>Suma</urgencia_actual>
+                    <etapa>Segundo trámite constitucional (Senado)</etapa>
+                    <subetapa>Primer informe de comisión de Hacienda</subetapa>
+                    <leynro></leynro>
+                    <diariooficial></diariooficial>
+                    <estado>En tramitación </estado>
+                    <refundidos></refundidos>
+                    <link_mensaje_mocion>http://www.senado.cl/appsenado/index.php?mo=tramitacion&amp;ac=getDocto&amp;iddocto=18974&amp;tipodoc=mensaje_mocion</link_mensaje_mocion>
+                 </descripcion><autores></autores>
+<tramitacion><tramite><SESION>29/374</SESION><FECHA>03/06/2026</FECHA><DESCRIPCIONTRAMITE>Ingreso de proyecto .  Incluye IF N° 119/03.06.2026.</DESCRIPCIONTRAMITE><ETAPDESCRIPCION>Primer trámite constitucional</ETAPDESCRIPCION><CAMARATRAMITE>C.Diputados</CAMARATRAMITE></tramite>
+<tramite><SESION>/</SESION><FECHA>03/06/2026</FECHA><DESCRIPCIONTRAMITE>Texto del Mensaje.</DESCRIPCIONTRAMITE><ETAPDESCRIPCION>Primer trámite constitucional</ETAPDESCRIPCION><CAMARATRAMITE>C.Diputados</CAMARATRAMITE></tramite>
+<tramite><SESION>29/374</SESION><FECHA>03/06/2026</FECHA><DESCRIPCIONTRAMITE>Cuenta de proyecto . Pasa a Comisión de Hacienda</DESCRIPCIONTRAMITE><ETAPDESCRIPCION>Primer trámite constitucional</ETAPDESCRIPCION><CAMARATRAMITE>C.Diputados</CAMARATRAMITE></tramite>
+<tramite><SESION>29/374</SESION><FECHA>03/06/2026</FECHA><DESCRIPCIONTRAMITE>A solicitud de la diputada Hassler, el proyecto pasará a la Comisión de Economía una vez despachado por la Comisión de Hacienda. ACORDADO</DESCRIPCIONTRAMITE><ETAPDESCRIPCION>Primer trámite constitucional</ETAPDESCRIPCION><CAMARATRAMITE>C.Diputados</CAMARATRAMITE></tramite>
+<tramite><SESION>29/374</SESION><FECHA>03/06/2026</FECHA><DESCRIPCIONTRAMITE>Cuenta del Mensaje 128-374 que hace presente la urgencia Suma</DESCRIPCIONTRAMITE><ETAPDESCRIPCION>Primer trámite constitucional</ETAPDESCRIPCION><CAMARATRAMITE>C.Diputados</CAMARATRAMITE></tramite>
+<tramite><SESION>/</SESION><FECHA>15/06/2026</FECHA><DESCRIPCIONTRAMITE>Primer informe de comisión de Hacienda.  </DESCRIPCIONTRAMITE><ETAPDESCRIPCION>Primer trámite constitucional</ETAPDESCRIPCION><CAMARATRAMITE>C.Diputados</CAMARATRAMITE></tramite>
+<tramite><SESION>33/374</SESION><FECHA>15/06/2026</FECHA><DESCRIPCIONTRAMITE>Cuenta de primer informe de comisión .  (Hacienda). Pasa a Comisión de Economía</DESCRIPCIONTRAMITE><ETAPDESCRIPCION>Primer trámite constitucional</ETAPDESCRIPCION><CAMARATRAMITE>C.Diputados</CAMARATRAMITE></tramite>
+<tramite><SESION>/</SESION><FECHA>16/06/2026</FECHA><DESCRIPCIONTRAMITE>Primer informe de comisión de Economía, Fomento y Desarrollo.  </DESCRIPCIONTRAMITE><ETAPDESCRIPCION>Primer trámite constitucional</ETAPDESCRIPCION><CAMARATRAMITE>C.Diputados</CAMARATRAMITE></tramite>
+<tramite><SESION>35/374</SESION><FECHA>17/06/2026</FECHA><DESCRIPCIONTRAMITE>Discusión general . Aprobado en general y particular a la vez .</DESCRIPCIONTRAMITE><ETAPDESCRIPCION>Primer trámite constitucional</ETAPDESCRIPCION><CAMARATRAMITE>C.Diputados</CAMARATRAMITE></tramite>
+<tramite><SESION>35/374</SESION><FECHA>17/06/2026</FECHA><DESCRIPCIONTRAMITE>Cuenta primer informe complementario .  </DESCRIPCIONTRAMITE><ETAPDESCRIPCION>Primer trámite constitucional</ETAPDESCRIPCION><CAMARATRAMITE>C.Diputados</CAMARATRAMITE></tramite>
+<tramite><SESION>/</SESION><FECHA>17/06/2026</FECHA><DESCRIPCIONTRAMITE>Oficio de ley a Cámara Revisora .  </DESCRIPCIONTRAMITE><ETAPDESCRIPCION>Primer trámite constitucional</ETAPDESCRIPCION><CAMARATRAMITE>C.Diputados</CAMARATRAMITE></tramite>
+<tramite><SESION>32/374</SESION><FECHA>17/06/2026</FECHA><DESCRIPCIONTRAMITE>Cuenta de proyecto . Pasa a Comisión de Hacienda</DESCRIPCIONTRAMITE><ETAPDESCRIPCION>Segundo trámite constitucional</ETAPDESCRIPCION><CAMARATRAMITE>Senado</CAMARATRAMITE></tramite>
+</tramitacion>
+<votaciones></votaciones>
+<urgencias><urgencia><TIPO>Suma</TIPO><FECHAINGRESO>03/06/2026</FECHAINGRESO><MENSAJEINGRESO>128-374</MENSAJEINGRESO><CAMARAINGRESO>C. Diputados</CAMARAINGRESO></urgencia>
+</urgencias>
+<informes><informe><FECHAINFORME>15/06/2026</FECHAINFORME><TRAMITE>Primer informe de comisión de Hacienda </TRAMITE><ETAPA>Primer trámite constitucional</ETAPA><LINK_INFORME>http://www.senado.cl/appsenado/index.php?mo=tramitacion&amp;ac=getDocto&amp;iddocto=28045&amp;tipodoc=info</LINK_INFORME></informe>
+<informe><FECHAINFORME>16/06/2026</FECHAINFORME><TRAMITE>Primer informe de comisión de Economía, Fomento y Desarrollo </TRAMITE><ETAPA>Primer trámite constitucional</ETAPA><LINK_INFORME>http://www.senado.cl/appsenado/index.php?mo=tramitacion&amp;ac=getDocto&amp;iddocto=28047&amp;tipodoc=info</LINK_INFORME></informe>
+</informes>
+<comparados></comparados>
+<oficios><oficio><FECHA>03/06/2026</FECHA><TRAMITE>Primer informe de comisión</TRAMITE><ETAPA>Primer trámite constitucional</ETAPA><TIPO>Otros oficios</TIPO><CAMARA>C. Diputados</CAMARA><DESCRIPCION>Texto del proyecto</DESCRIPCION><LINK_OFICIO>http://www.senado.cl/appsenado/index.php?mo=tramitacion&amp;ac=getDocto&amp;iddocto=36666&amp;tipodoc=ofic</LINK_OFICIO></oficio>
+<oficio><NUMERO>21.320</NUMERO><FECHA>17/06/2026</FECHA><TRAMITE>Oficio de ley a Cámara Revisora</TRAMITE><ETAPA>Primer trámite constitucional</ETAPA><TIPO>Ley</TIPO><CAMARA>C. Diputados</CAMARA><LINK_OFICIO>http://www.senado.cl/appsenado/index.php?mo=tramitacion&amp;ac=getDocto&amp;iddocto=36752&amp;tipodoc=ofic</LINK_OFICIO></oficio>
+</oficios>
+<indicaciones></indicaciones>
+<observaciones></observaciones>
+<materias></materias>
+</proyecto>
+</proyectos>
