@@ -95,6 +95,51 @@ export class SupabaseFichasWriter {
       if (error) throw new Error(`upsert proyecto_embedding falló: ${error.message}`);
     }
   }
+
+  /**
+   * Lee los proyecto_ficha pendientes (estado='pendiente') uniendo título/materia/procedencia
+   * desde proyecto (boletín = FK 1:1). SOLO se ejerce en LIVE (gated por env); no se llama en
+   * los tests offline. Si `boletines` se pasa, restringe a ese conjunto explícito (cualquier
+   * estado). `link_mensaje_mocion` es un SIDECAR no persistido (07-01); se entrega null →
+   * texto-fuente degrada honesto (ficha con idea_matriz null). Wiring del link = follow-up.
+   */
+  async leerPendientes(boletines?: string[]): Promise<PipelinePendienteRow[]> {
+    let query = this.client
+      .from("proyecto_ficha")
+      .select("boletin, estado, proyecto:proyecto(titulo, materia, origen, fecha_captura)");
+    if (boletines && boletines.length > 0) {
+      query = query.in("boletin", boletines);
+    } else {
+      query = query.eq("estado", "pendiente");
+    }
+    const { data, error } = await query;
+    if (error) throw new Error(`leerPendientes falló: ${error.message}`);
+    type JoinRow = {
+      boletin: string;
+      estado: "pendiente" | "embebido";
+      proyecto: { titulo?: string; materia?: string | null; origen?: string; fecha_captura?: string } | null;
+    };
+    return ((data ?? []) as unknown as JoinRow[]).map((r) => ({
+      boletin: r.boletin,
+      titulo: r.proyecto?.titulo ?? "",
+      materia: r.proyecto?.materia ?? null,
+      link_mensaje_mocion: null,
+      estado: r.estado,
+      ...(r.proyecto?.origen != null ? { origen: r.proyecto.origen } : {}),
+      ...(r.proyecto?.fecha_captura != null ? { fecha_captura: r.proyecto.fecha_captura } : {}),
+    }));
+  }
+}
+
+/** Forma de fila leída por `leerPendientes` (= PipelinePendiente que el CLI alimenta). */
+export interface PipelinePendienteRow {
+  boletin: string;
+  titulo: string;
+  materia: string | null;
+  link_mensaje_mocion: string | null;
+  estado: "pendiente" | "embebido";
+  origen?: string;
+  fecha_captura?: string;
 }
 
 /** Contrato mínimo que el pipeline consume (real = SupabaseFichasWriter; tests = espía). */

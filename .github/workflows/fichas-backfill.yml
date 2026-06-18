@@ -1,0 +1,79 @@
+name: fichas-backfill
+
+# Escape hatch para el backfill MASIVO de fichas + embeddings (RESEARCH §6 / regla repo:
+# "lo recurrente y acotado → Edge Functions; lo masivo/largo → GitHub Actions").
+# GitHub Actions NO tiene el límite de ~10 min de Edge Functions, así que aquí corremos el
+# MISMO código del CLI (@obs/fichas pipeline-cli) sobre los proyecto_ficha pendientes, con el
+# mismo orden LOCKED de @obs/ingest (allowlist→robots→rate-limit 2-3s→fetch). Disparo MANUAL
+# (workflow_dispatch) — NO programado. Todos los secrets vía ${{ secrets.* }}, jamás en claro.
+
+on:
+  workflow_dispatch:
+    inputs:
+      limite:
+        description: "Recorte del conjunto de pendientes (acotado)"
+        required: false
+        default: "50"
+      reembed:
+        description: "Re-procesar TODO con bump de versión (true/false)"
+        required: false
+        default: "false"
+      boletines:
+        description: "Lista explícita de boletines separados por coma (opcional)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      # Smoke OPCIONAL del taskType de Gemini ANTES del backfill masivo (Assumption A1 /
+      # Open Question 1: el taskType podría requerir anidamiento). Informativo: NO bloquea el
+      # workflow por defecto (gated por FICHAS_EMBED_LIVE=1 y `continue-on-error`).
+      - name: Smoke embed taskType (gated, no bloquea)
+        if: ${{ github.event.inputs.reembed == 'smoke' }}
+        continue-on-error: true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FICHAS_EMBED_LIVE: "1"
+        run: pnpm --filter @obs/fichas exec vitest run src/embed-ficha.test.ts
+
+      - name: Run fichas backfill (mismo código del CLI)
+        env:
+          # Secrets vía repo secrets — NUNCA en claro en el workflow.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          ARGS="--limite ${{ github.event.inputs.limite }}"
+          if [ "${{ github.event.inputs.reembed }}" = "true" ]; then
+            ARGS="$ARGS --reembed"
+          fi
+          if [ -n "${{ github.event.inputs.boletines }}" ]; then
+            ARGS="$ARGS --boletines ${{ github.event.inputs.boletines }}"
+          fi
+          pnpm --filter @obs/fichas exec tsx src/pipeline-cli.ts $ARGS

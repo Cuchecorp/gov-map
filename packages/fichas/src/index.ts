@@ -66,4 +66,15 @@ export {
   type FichasWriter,
   type FichaRow,
   type EmbeddingRow,
+  type PipelinePendienteRow,
 } from "./writer-supabase";
+
+// ── Ola 2: CLI reanudable del backfill (fail-fast en flags, degradación sin key) ──────────────
+export {
+  parseArgs,
+  main,
+  decidirDryRun,
+  FichasCliArgsError,
+  type FichasCliOptions,
+  type FichasCliResult,
+} from "./pipeline-cli";
