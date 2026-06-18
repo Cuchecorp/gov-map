@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
+status: verifying
 stopped_at: Roadmap and STATE created; requirements traceability populated
-last_updated: "2026-06-18T00:06:49.727Z"
+last_updated: "2026-06-18T00:22:17.022Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 0
+  completed_plans: 3
+  percent: 14
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-06-17)
 
 Phase: 01 (framework-de-conectores-almacenamiento-orquestaci-n) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-18
 
-Progress: [███████░░░] 67%
+Progress: [██████████] 100% (3/3 planes de la fase 01 completos)
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [███████░░░] 67%
 *Updated after each plan completion*
 | Phase 01 P01 | 11min | 3 tasks | 16 files |
 | Phase 01 P02 | 9min | 3 tasks | 25 files |
+| Phase 01 P03 | 18min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,9 @@ Recent decisions affecting current work:
 - [Phase 01]: [01-02]: rate-limiter serial por host (Map host->cola encadenada); primer request sin espera, subsiguientes 2-3s+jitter (FND-01)
 - [Phase 01]: [01-02]: BaseConnector Template Method fija el flujo invariante; ningun conector puede saltarse rateLimiter.wait
 - [Phase 01]: [01-02]: R2 inmutable via aws4fetch + If-None-Match:* (412=idempotente); drift no-bloqueante (FND-02/FND-04)
+- [Phase ?]: [01-03]: orquestacion clon de automatic embeddings — pg_cron -> dispatcher SQL -> pgmq.read(vt) -> pg_net -> Edge Function; vt=backoff, read_ct>5 -> ingest_dlq (FND-05)
+- [Phase ?]: [01-03]: service_key/project_url via helpers util.* (vault/GUC), nunca literal en la migracion (T-01-09/T-01-10)
+- [Phase ?]: [01-03]: worker.ts comparte buildConnector entre Edge Function y GitHub Actions (mismo conector); index.ts solo bootstrap Deno.serve
 
 ### Pending Todos
 
@@ -93,6 +97,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T00:06:49.721Z
+Last session: 2026-06-18T00:21:43.783Z
 Stopped at: Roadmap and STATE created; requirements traceability populated
 Resume file: None

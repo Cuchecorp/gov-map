@@ -15,7 +15,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Framework de Conectores + Almacenamiento + Orquestación** - Ingesta respetuosa con crudo inmutable en R2, snapshots, drift y cola pgmq/pg_cron
+- [x] **Phase 1: Framework de Conectores + Almacenamiento + Orquestación** - Ingesta respetuosa con crudo inmutable en R2, snapshots, drift y cola pgmq/pg_cron (completed 2026-06-18)
 - [ ] **Phase 2: Capa de Providers LLM/Embeddings** - Interfaces enchufables con salida estructurada per-proveedor y versionado de vectores
 - [ ] **Phase 3: Tabla Maestra Parlamentario + Identidad Determinista** - Maestra sembrada (Cámara + Senado), match determinista y respaldo externo
 - [ ] **Phase 4: Adjudicación de Identidad + Compuerta Humana + Golden Set** - Subsistema crítico aislado: LLM MiniMax, umbral, revisión humana, auditoría, gate de deploy
@@ -39,12 +39,12 @@
   4. Un cambio de esquema en una fuente dispara una alerta de drift en lugar de corromper en silencio
   5. La ingesta pesada corre dirigida por pgmq + pg_cron con chunking y backoff exponencial ante 429, y cada dato normalizado conserva su procedencia (origen, fecha de captura, enlace) capturada al ingestar
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 
 - [x] 01-01-PLAN.md — Scaffold monorepo pnpm + tooling de test + @obs/core (Provenance + tipos de control) + migraciones de extensiones y tablas de control (FND-02, FND-08)
 - [x] 01-02-PLAN.md — Framework @obs/ingest: rate-limit/robots/fetcher, R2 content-addressed, cache diaria, drift, snapshot + DummyConnector E2E (FND-01, FND-02, FND-03, FND-04, FND-08)
-- [ ] 01-03-PLAN.md — Orquestación pgmq + pg_cron + pg_net + Edge Function ingest-worker + escape hatch CI + checkpoint R2 real (FND-05)
+- [x] 01-03-PLAN.md — Orquestación pgmq + pg_cron + pg_net + Edge Function ingest-worker + escape hatch CI + checkpoint R2 real (FND-05)
 
 ### Phase 2: Capa de Providers LLM/Embeddings
 
@@ -144,7 +144,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Framework de Conectores + Almacenamiento + Orquestación | 2/3 | In Progress|  |
+| 1. Framework de Conectores + Almacenamiento + Orquestación | 3/3 | Complete   | 2026-06-18 |
 | 2. Capa de Providers LLM/Embeddings | 0/? | Not started | - |
 | 3. Tabla Maestra Parlamentario + Identidad Determinista | 0/? | Not started | - |
 | 4. Adjudicación de Identidad + Compuerta Humana + Golden Set | 0/? | Not started | - |
