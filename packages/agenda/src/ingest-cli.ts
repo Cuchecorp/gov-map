@@ -148,7 +148,7 @@ export async function main(opts: IngestCliOptions = {}): Promise<IngestCliResult
     conectorSenado = opts.conectores.conectorSenado;
   } else {
     const rateLimiter = new HostRateLimiter();
-    const robots = new RobotsGuard();
+    const robots = new RobotsGuard({ allowlist: {} });
     // WR-03: el conector de Cámara usa un Fetcher con transporte `curl` para PASAR
     // el bot-management de Cloudflare (el fetch nativo recibe 403 por fingerprint
     // TLS/JA3). El resto de hosts (Senado) usa el Fetcher con fetch nativo.

@@ -6,6 +6,7 @@
  * respetuosa centralizada: el framework decide si una URL puede pedirse.
  */
 import robotsParser from "robots-parser";
+import { type AllowlistOptions, assertAllowedUrl } from "./allowlist";
 
 /** User-Agent identificatorio LOCKED (PROJECT.md / RESEARCH). */
 export const IDENTIFIED_UA =
@@ -21,24 +22,41 @@ interface ParsedRobots {
  * hace fail-closed (skip) en vez de asumir allow-all (WR-03).
  */
 const NETWORK_ERROR = Symbol("robots-network-error");
-type RobotsResult = ParsedRobots | typeof NETWORK_ERROR;
+/**
+ * Sentinela: el origin del fetch de robots.txt no pasa el allowlist (host interno
+ * o no-allowlisted). Deny PERMANENTE (cacheable) — la URL real también será
+ * rechazada por el fetcher; aquí se evita siquiera emitir el GET (#1).
+ */
+const HOST_BLOCKED = Symbol("robots-host-blocked");
+type RobotsResult = ParsedRobots | typeof NETWORK_ERROR | typeof HOST_BLOCKED;
 
 export interface RobotsGuardOptions {
   /** fetch inyectable para tests sin red. Default: fetch global. */
   fetchFn?: typeof fetch;
   /** UA con el que se evalua robots.txt. Default: IDENTIFIED_UA. */
   ua?: string;
+  /**
+   * Allowlist para gatear el fetch de robots.txt (#1, code-review v1.0). Cuando
+   * se provee, el GET a `${origin}/robots.txt` pasa por `assertAllowedUrl` ANTES
+   * de emitirse: un origin interno (loopback, 169.254.169.254, RFC1918) o no
+   * gubernamental se rechaza sin tocar la red, cerrando la grieta SSRF previa al
+   * gate principal del fetcher (que corre recién en el paso 4). Si se omite, no
+   * se gatea — comportamiento histórico usado por tests con hosts ficticios.
+   */
+  allowlist?: AllowlistOptions;
 }
 
 export class RobotsGuard {
   private readonly fetchFn: typeof fetch;
   private readonly ua: string;
+  private readonly allowlist?: AllowlistOptions;
   /** Cache de parsers por host (origin). */
   private readonly cache = new Map<string, Promise<RobotsResult>>();
 
   constructor(opts: RobotsGuardOptions = {}) {
     this.fetchFn = opts.fetchFn ?? fetch;
     this.ua = opts.ua ?? IDENTIFIED_UA;
+    this.allowlist = opts.allowlist;
   }
 
   /**
@@ -60,8 +78,9 @@ export class RobotsGuard {
       return false;
     }
     const parser = await this.parserFor(origin);
-    if (parser === NETWORK_ERROR) {
-      // Fail-closed ante error de red al cargar robots.txt.
+    if (parser === NETWORK_ERROR || parser === HOST_BLOCKED) {
+      // Fail-closed: error de red al cargar robots.txt, u origin bloqueado por
+      // el allowlist (#1). En ambos casos no se permite la URL.
       return false;
     }
     // robots-parser devuelve undefined si no hay regla aplicable => permitido.
@@ -79,6 +98,17 @@ export class RobotsGuard {
 
   private async loadRobots(origin: string): Promise<RobotsResult> {
     const robotsUrl = `${origin}/robots.txt`;
+    // #1: gatea el fetch de robots.txt contra el allowlist ANTES de tocar la red.
+    // Un origin interno/no-allowlisted se rechaza aquí, sin emitir el GET (la
+    // grieta SSRF que existía porque base-connector evalúa robots ANTES del
+    // assertAllowedUrl del fetcher). Solo aplica si se configuró un allowlist.
+    if (this.allowlist !== undefined) {
+      try {
+        assertAllowedUrl(robotsUrl, this.allowlist);
+      } catch {
+        return HOST_BLOCKED;
+      }
+    }
     let res: Response;
     try {
       res = await this.fetchFn(robotsUrl, {

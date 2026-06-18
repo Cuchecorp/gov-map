@@ -218,7 +218,7 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
   const deps = {
     fetcher: new Fetcher(),
     rateLimiter: new HostRateLimiter(),
-    robots: new RobotsGuard(),
+    robots: new RobotsGuard({ allowlist: {} }),
   };
 
   // 2. Corrida LIVE: fetch ambos catálogos → parse → match (sin auto-confirmar).

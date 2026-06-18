@@ -233,14 +233,15 @@ export function buildConnector(sb: SupabaseClient): DummyConnector {
       return (data as number) ?? 0;
     },
   });
-  const robots = new RobotsGuard();
   // CR-03: allowlist gubernamental + bloqueo SSRF. extraHosts (p.ej. dummy.local
   // para E2E) habilitados SOLO via env en dev/CI; en prod la lista queda vacia.
-  const fetcher = new Fetcher({
-    allowlist: {
-      extraHosts: extraHostsFromEnv(Deno.env.get("INGEST_ALLOW_TEST_HOSTS")),
-    },
-  });
+  const allowlist = {
+    extraHosts: extraHostsFromEnv(Deno.env.get("INGEST_ALLOW_TEST_HOSTS")),
+  };
+  // #1: el RobotsGuard comparte el MISMO allowlist que el Fetcher, así el fetch
+  // de robots.txt también queda gateado contra SSRF antes de tocar la red.
+  const robots = new RobotsGuard({ allowlist });
+  const fetcher = new Fetcher({ allowlist });
 
   return new DummyConnector({
     cache,

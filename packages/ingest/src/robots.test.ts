@@ -61,6 +61,36 @@ describe("RobotsGuard", () => {
     expect(await robots.isAllowed("https://caido.cl/x")).toBe(false);
   });
 
+  // --- #1 (code-review v1.0): gate de allowlist sobre el fetch de robots.txt ---
+
+  it("#1: con allowlist, un origin interno NO emite el fetch de robots.txt (false)", async () => {
+    const mock = makeMockFetch({});
+    const robots = new RobotsGuard({ fetchFn: mock.fn, allowlist: {} });
+    expect(
+      await robots.isAllowed("http://169.254.169.254/latest/meta-data"),
+    ).toBe(false);
+    // Cierra la grieta SSRF: ningún request emitido al host interno.
+    expect(mock.calls.length).toBe(0);
+  });
+
+  it("#1: con allowlist, un host gubernamental sí consulta robots.txt y permite", async () => {
+    const mock = makeMockFetch({
+      "https://www.camara.cl/robots.txt": {
+        status: 200,
+        body: "User-agent: *\nAllow: /",
+      },
+    });
+    const robots = new RobotsGuard({ fetchFn: mock.fn, allowlist: {} });
+    expect(await robots.isAllowed("https://www.camara.cl/x")).toBe(true);
+  });
+
+  it("#1: sin allowlist, el comportamiento histórico no gatea (hosts ficticios)", async () => {
+    const mock = makeMockFetch({});
+    const robots = new RobotsGuard({ fetchFn: mock.fn });
+    // host.cl no es gubernamental pero sin allowlist se consulta igual (fail-open 404).
+    expect(await robots.isAllowed("https://host.cl/x")).toBe(true);
+  });
+
   it("WR-03: tras un error de red NO se cachea allow-all (reintenta la proxima)", async () => {
     let attempts = 0;
     const flaky = (async (input: RequestInfo | URL) => {
