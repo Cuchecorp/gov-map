@@ -45,6 +45,10 @@ export { parseSenadoTabla } from "./parse-senado-tabla";
 // Header-set anti-Cloudflare de Cámara.
 export { BROWSER_HEADERS_CAMARA } from "./headers-camara";
 
+// Transporte `curl` anti-Cloudflare para Cámara (WR-03) — se inyecta como `fetchFn`.
+export { createCurlTransport, CurlUnavailableError } from "./transport-curl";
+export type { CurlTransportOptions } from "./transport-curl";
+
 // Conectores (reusan @obs/ingest en el ORDEN LOCKED, NO BaseConnector.run).
 export {
   CitacionesCamaraConnector,
