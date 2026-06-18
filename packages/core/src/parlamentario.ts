@@ -75,30 +75,53 @@ const CAMARA_VALUES = ["diputados", "senado"] as const;
 const ESTADO_VALUES = ["confirmado", "probable", "no_confirmado"] as const;
 
 /**
+ * Cotas de longitud y forma para los campos libres (WR-06). La compuerta de contrato no solo
+ * valida nullability: rechaza contenido implausible (un CURRICULUM mal mapeado en `nombres`, un
+ * EMAIL basura) antes de que aterrice en el snapshot/DB. No es defensa contra inyección
+ * (PostgREST parametriza; JSON.stringify escapa), sino integridad del dato en la frontera.
+ */
+const MAX_NOMBRE = 120;
+const MAX_NORMALIZADO = 240;
+const MAX_CAMPO = 160;
+const MAX_EMAIL = 254; // longitud máxima de email (RFC 5321)
+const MAX_ENLACE = 2048;
+
+/** Validación de forma de email, agnóstica a la versión de zod. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
  * Valida el shape de UNA fila normalizada antes del upsert a la maestra.
  * `rut`/`distrito`/`circunscripcion`/`region`/`partido`/`email` son nullable
  * (Pitfall 4: los catálogos no traen RUT ni la Cámara trae distrito).
  */
 export const ParlamentarioSeedSchema = z.object({
-  id: z.string().min(1),
-  nombre_normalizado: z.string().min(1),
-  nombres: z.string(),
-  apellido_paterno: z.string(),
-  apellido_materno: z.string(),
+  id: z.string().min(1).max(MAX_CAMPO),
+  nombre_normalizado: z.string().min(1).max(MAX_NORMALIZADO),
+  nombres: z.string().max(MAX_NOMBRE),
+  apellido_paterno: z.string().max(MAX_NOMBRE),
+  apellido_materno: z.string().max(MAX_NOMBRE),
   camara: z.enum(CAMARA_VALUES),
-  periodo: z.string().min(1),
-  region: z.string().nullable(),
-  distrito: z.string().nullable(),
-  circunscripcion: z.string().nullable(),
-  partido: z.string().nullable(),
-  rut: z.string().nullable(),
-  parlid_senado: z.string().nullable(),
-  id_diputado_camara: z.string().nullable(),
+  periodo: z.string().min(1).max(MAX_CAMPO),
+  region: z.string().max(MAX_CAMPO).nullable(),
+  distrito: z.string().max(MAX_CAMPO).nullable(),
+  circunscripcion: z.string().max(MAX_CAMPO).nullable(),
+  partido: z.string().max(MAX_CAMPO).nullable(),
+  rut: z.string().max(MAX_CAMPO).nullable(),
+  parlid_senado: z.string().max(MAX_CAMPO).nullable(),
+  id_diputado_camara: z.string().max(MAX_CAMPO).nullable(),
   estado: z.enum(ESTADO_VALUES),
-  email: z.string().nullable(),
-  origen: z.string().min(1),
-  fecha_captura: z.string().min(1),
-  enlace: z.string().min(1),
+  // WR-06: un string no vacío DEBE tener forma de email; "" (nodo vacío del catálogo) o null
+  // son aceptables. Rechaza un EMAIL basura/mal mapeado en la frontera.
+  email: z
+    .string()
+    .max(MAX_EMAIL)
+    .refine((v) => v === "" || EMAIL_RE.test(v), {
+      message: "email con formato inválido",
+    })
+    .nullable(),
+  origen: z.string().min(1).max(MAX_CAMPO),
+  fecha_captura: z.string().min(1).max(MAX_CAMPO),
+  enlace: z.string().min(1).max(MAX_ENLACE),
 });
 
 /** Tipo inferido del schema de seed (debe ser asignable a `Parlamentario`). */
