@@ -50,6 +50,8 @@ export interface Degradacion {
   motivo: string;
   /** Enlace al artefacto disponible (p.ej. el PDF de la tabla de Cámara), si aplica. */
   enlace?: string;
+  /** Semanas ISO omitidas por bloqueo persistente (WR-04): "bloqueada" ≠ "vacía". */
+  semanasOmitidas?: string[];
 }
 
 export interface RunIngestResult {
@@ -88,9 +90,12 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
   if (opts.soloSenado === true) {
     log("ingest: --solo-senado → se omite la fuente Cámara");
   } else {
-    let camaraDegradada = false;
+    // WR-04: las semanas de Cámara se ingestan de forma AISLADA. Un 403 persistente
+    // en una semana DEGRADA/OMITE esa semana y CONTINÚA con la siguiente (con backoff),
+    // en vez de abortar toda la fuente Cámara. Se registran las semanas omitidas para
+    // que el reporte distinga "bloqueada" de "obtenida-y-vacía".
+    const semanasBloqueadas: string[] = [];
     for (const semana of opts.semanas) {
-      if (camaraDegradada) break; // 403 persistente → no insistir el resto de la corrida
       const clave = semanaIsoKey(semana.year, semana.week);
       let html: string | null = null;
       // Reintento con backoff SOLO ante 403 del WAF (Cloudflare endurecido).
@@ -105,13 +110,10 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
               await sleep(backoffMs * (intento + 1));
               continue;
             }
-            // 403 PERSISTE → degrada la fuente Cámara y CONTINÚA con el Senado (no aborta).
-            log(`ingest: Cámara 403 PERSISTENTE en ${clave} → fuente degradada (sigue Senado)`);
-            degradaciones.push({
-              fuente: "camara-citaciones",
-              motivo: "Cloudflare bloqueó la fuente (403 persistente) durante esta corrida",
-            });
-            camaraDegradada = true;
+            // 403 PERSISTE en ESTA semana → omite SOLO esta semana y CONTINÚA con la
+            // siguiente (WR-04). No aborta el resto de Cámara ni el Senado.
+            log(`ingest: Cámara 403 PERSISTENTE en ${clave} → semana omitida (sigue la próxima)`);
+            semanasBloqueadas.push(clave);
           } else {
             errores.push({
               fuente: "camara-citaciones",
@@ -135,6 +137,18 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
           mensaje: err instanceof Error ? err.message : String(err),
         });
       }
+    }
+    // WR-04: si alguna semana quedó bloqueada por 403 persistente, se registra UNA
+    // degradación que enumera las semanas omitidas (distingue "bloqueada" de
+    // "obtenida-y-vacía"); las demás semanas sí se ingestaron.
+    if (semanasBloqueadas.length > 0) {
+      degradaciones.push({
+        fuente: "camara-citaciones",
+        motivo:
+          `Cloudflare bloqueó (403 persistente) ${semanasBloqueadas.length} semana(s) ` +
+          `durante esta corrida; las demás semanas sí se ingestaron`,
+        semanasOmitidas: semanasBloqueadas,
+      });
     }
   }
 
