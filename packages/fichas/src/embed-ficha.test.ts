@@ -94,4 +94,16 @@ describe("embed-ficha: embedFicha — RETRIEVAL_DOCUMENT", () => {
     expect(taskType).toBe("RETRIEVAL_DOCUMENT");
     expect(out).toEqual(result);
   });
+
+  it("texto compuesto vacío (título+materia null, idea null) → LANZA y NO llama a Gemini (WR-01)", async () => {
+    const gemini = { embed: vi.fn(async () => [{ vector: [0], model: "m", dims: 1, version: "v1" }]) };
+    const ficha: Ficha = { idea_matriz: null, cuerpos_legales: [] };
+    const degradado = proyecto({ titulo: "", materia: null });
+
+    await expect(
+      embedFicha(degradado, ficha, gemini as never),
+    ).rejects.toThrow(/texto compuesto vacío/);
+    // No se manda "" a Gemini: el guard corta antes del embed.
+    expect(gemini.embed).not.toHaveBeenCalled();
+  });
 });

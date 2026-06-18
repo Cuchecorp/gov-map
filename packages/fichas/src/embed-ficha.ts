@@ -67,6 +67,15 @@ export async function embedFicha(
   gemini: FichaEmbedder,
 ): Promise<EmbeddingResult> {
   const texto = componerTextoEmbed(proyecto, ficha);
+  // Guarda contra el caso degradado total (título+materia null/empty e idea_matriz
+  // null → texto compuesto vacío). Mandar "" a Gemini puede 400 o devolver un vector
+  // degenerado: se lanza para que el pipeline lo colecte como error por-boletín
+  // (no aborta el batch) en vez de persistir un embedding sin contenido semántico.
+  if (texto.trim().length === 0) {
+    throw new Error(
+      "embedFicha: texto compuesto vacío (sin título/materia/idea) — no se embebe",
+    );
+  }
   const [result] = await gemini.embed([texto], "RETRIEVAL_DOCUMENT");
   if (!result) {
     throw new Error("embedFicha: Gemini no devolvió embedding para el texto compuesto");
