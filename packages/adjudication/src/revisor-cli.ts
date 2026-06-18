@@ -216,6 +216,12 @@ async function resolverYAuditar(
     );
   }
 
+  // WR-06: el enlace audit→vínculo NO depende de `caso.vinculo_id` (que la ruta de
+  // `enqueueRevision` nunca puebla). Se deriva del UPSERT en sí: `upsertVinculo`
+  // resuelve el conflicto sobre la clave natural (camara, periodo, mencion_normalizada;
+  // WR-02) — sobreescribe en su sitio cualquier `probable` previo de la misma mención —
+  // y devuelve el `id` de la fila escrita, que es lo que enlazamos en el audit (WR-01).
+  let vinculoId: number | null = caso.vinculo_id ?? null;
   if (opts.promoverVinculo) {
     // A4: la promoción a 'confirmado' es EXCLUSIVA del humano. metodo='humano'.
     const vinculo: FilaVinculo = {
@@ -229,11 +235,11 @@ async function resolverYAuditar(
       ...provenanceDesde(caso),
     };
     if (caso.vinculo_id != null) vinculo.id = caso.vinculo_id;
-    await w.upsertVinculo(vinculo);
+    vinculoId = (await w.upsertVinculo(vinculo)) ?? vinculoId;
   }
 
   await w.appendAudit({
-    vinculo_id: caso.vinculo_id ?? null,
+    vinculo_id: vinculoId,
     metodo: "humano",
     decision: opts.decisionAudit,
     confidence: null,

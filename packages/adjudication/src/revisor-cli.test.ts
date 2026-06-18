@@ -157,10 +157,13 @@ describe("revisor-cli confirm (promueve a confirmado + audit humano)", () => {
 
     // audit metodo='humano', decision='confirmado', revisor_id='ana'.
     const aud = caps.inserts.find((i) => i.table === "identidad_audit")!;
-    const filaA = (aud.rows as { metodo: string; decision: string; revisor_id: string }[])[0]!;
+    const filaA = (aud.rows as { metodo: string; decision: string; revisor_id: string; vinculo_id: number | null }[])[0]!;
     expect(filaA.metodo).toBe("humano");
     expect(filaA.decision).toBe("confirmado");
     expect(filaA.revisor_id).toBe("ana");
+    // WR-06/WR-01: el audit se enlaza al id del vínculo recién upserteado (no null),
+    // aunque el caso entró a la cola SIN vinculo_id (enqueueRevision no lo puebla).
+    expect(filaA.vinculo_id).toBe(1);
   });
 
   it("WR-03: confirm de un caso SIN chosen_id del modelo lanza y NO escribe (no confirma a nadie)", async () => {
