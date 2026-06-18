@@ -25,9 +25,18 @@ Entrega las interfaces enchufables que aíslan todo cómputo LLM y de embeddings
   - El router debe rechazar/abortar si una tarea marcada como sensible se enruta a un provider/tier no permitido (fail-closed).
 - **Capa enchufable real**: agregar un modelo nuevo = un adapter nuevo + entrada de config; **cero cambios aguas arriba**.
 
+### MiniMax-M3 — hechos verificados en vivo (browseros, 2026-06-17, doc oficial platform.minimax.io)
+El usuario tiene **MiniMax-M3 validado y funcionando**. Datos confirmados contra la doc oficial (NO asumir):
+- **Model id exacto:** `MiniMax-M3` (1M context, multimodal, agentic/coding). Otros disponibles: `MiniMax-M2.7`, `MiniMax-M2.5` (204.8K).
+- **Base URL OpenAI-compatible:** `https://api.minimax.io/v1` (internacional; China: `https://api.minimaxi.com/v1`).
+- **Base URL Anthropic-compatible (RECOMENDADA por MiniMax):** `https://api.minimax.io/anthropic` — soporta thinking/interleaved thinking + tool use. Auth: `Authorization: Bearer $MINIMAX_API_KEY`.
+- **Structured output = tool calling forzado** (documentado: `tools` con function schema; respuesta trae `tool_calls[].function.arguments` como **string JSON**). NO depende de `response_format`. → parsear `arguments` + **validar con zod** (compuerta única); retry/repair ante inválido.
+- El `content` de M3 puede traer tags `<think>`; con OpenAI SDK preservarlos en el historial multi-turn; opción `reasoning_split=true` separa el thinking en `reasoning_details`. Para una sola llamada de extracción estructurada (no agente multi-turno) esto no complica: basta leer `tool_calls`.
+- Adapter MiniMax: preferir la vía OpenAI-compatible (`openai` SDK, `baseURL=https://api.minimax.io/v1`, `model="MiniMax-M3"`, `tool_choice` forzado) para uniformidad con el adapter DeepSeek; la vía Anthropic-compatible queda como alternativa si se quiere interleaved thinking.
+
 ### Claude's Discretion
 - Nombres exactos de paquete/módulo, firma fina de las interfaces, mecánica del retry/reparación de JSON, y forma del objeto de config de routing quedan a discreción del planner, respetando lo anterior.
-- SDK concreto: usar OpenAI-compatible SDK (`openai` v5) con `baseURL` por proveedor (verificado en research); confirmar `baseURL`/nombre de modelo de MiniMax y DeepSeek al implementar.
+- SDK concreto: usar OpenAI-compatible SDK (`openai`, v6 según research más reciente) con `baseURL` por proveedor; MiniMax fijado arriba; confirmar `baseURL`/model id de DeepSeek al implementar.
 </decisions>
 
 <code_context>
