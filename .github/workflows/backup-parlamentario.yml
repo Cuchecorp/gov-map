@@ -69,6 +69,9 @@ jobs:
         # Solo corre si HAY credencial R2 en repo secrets. Mientras la credencial S3 dé 401
         # (03-CONTEXT) este step queda inerte. Cuando exista una válida, sube el snapshot a R2
         # vía el R2Store de Fase 1 (segundo destino de ID-09 + cierra el checkpoint R2 de Fase 1).
+        # WR-02: `--r2` YA se parsea y se cablea en seed-cli (antes era un no-op silencioso);
+        # `buildR2Target` además re-gatea por presencia de las 4 credenciales R2 en el entorno,
+        # de modo que el flag no enmascara un leg inerte como funcional.
         if: ${{ secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.R2_BUCKET != '' }}
         env:
           R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
