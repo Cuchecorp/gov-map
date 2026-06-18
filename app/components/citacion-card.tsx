@@ -72,19 +72,22 @@ export function CitacionCard({
       </CardHeader>
 
       <CardContent className="space-y-2">
-        {materia && (
-          <div className="text-base leading-relaxed">
-            <p className="line-clamp-3">{materia}</p>
-            {materia.length > 220 && (
-              <details className="mt-1 text-sm text-muted-foreground">
-                <summary className="cursor-pointer text-primary underline underline-offset-2">
-                  ver más
-                </summary>
-                <p className="mt-1 leading-relaxed">{materia}</p>
-              </details>
-            )}
-          </div>
-        )}
+        {materia &&
+          (materia.length > 220 ? (
+            // IN-03: una sola fuente del texto. Cerrado → párrafo clampeado;
+            // abierto (`group-open`) → se oculta el clampeado y se muestra el
+            // completo, sin duplicar la materia.
+            <details className="group text-base leading-relaxed">
+              <p className="line-clamp-3 group-open:hidden">{materia}</p>
+              <p className="hidden leading-relaxed group-open:block">{materia}</p>
+              <summary className="mt-1 cursor-pointer text-sm text-primary underline underline-offset-2 list-none">
+                <span className="group-open:hidden">ver más</span>
+                <span className="hidden group-open:inline">ver menos</span>
+              </summary>
+            </details>
+          ) : (
+            <p className="text-base leading-relaxed">{materia}</p>
+          ))}
 
         {invitados.length > 0 && (
           <div className="text-sm text-muted-foreground">

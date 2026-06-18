@@ -181,6 +181,26 @@ async function SalaTableServer({ year, week }: ISOWeek) {
   const sesiones = (data as SesionSalaRow[]) ?? [];
   const weekLabel = formatWeekLabel(year, week);
 
+  // WR-05: la tabla de sala del Senado es FORWARD-ONLY (sin histórico por esa
+  // fuente). Si la semana navegada no tiene filas, hay que distinguir "fuera de
+  // la ventana capturada" (la semana es anterior a la primera sesión jamás
+  // capturada) de "sin sesión" (dentro de la ventana, pero no hubo). Se consulta
+  // la fecha de la primera sesión capturada.
+  let fueraDeVentana = false;
+  if (sesiones.length === 0) {
+    const { data: primera } = await sb
+      .from("sesion_sala")
+      .select("fecha")
+      .eq("camara", "senado")
+      .order("fecha", { ascending: true })
+      .limit(1);
+    const primeraFecha = (primera as { fecha: string }[] | null)?.[0]?.fecha;
+    if (primeraFecha && nextMonday.toISOString() <= new Date(primeraFecha).toISOString()) {
+      // Toda la semana navegada termina antes de la primera captura → nunca ingestada.
+      fueraDeVentana = true;
+    }
+  }
+
   // Aplanar los ítems de todas las sesiones del Senado de la semana.
   const items: SalaTablaItem[] = [];
   let provenance: { capturedAt: Date | null; sourceName: string; sourceUrl: string | null } | null =
@@ -219,6 +239,16 @@ async function SalaTableServer({ year, week }: ISOWeek) {
           provenance={provenance}
           weekLabel={weekLabel}
         />
+      )}
+      {/* WR-05: distingue "fuera de la ventana capturada" de "sin sesión". El
+          Senado es forward-only: una semana anterior a la primera captura nunca
+          se ingestó (no equivale a "no hubo sesión"). */}
+      {items.length === 0 && fueraDeVentana && (
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          La tabla de sala del Senado se publica con ventana hacia adelante (sin
+          histórico){weekLabel ? ` — ${weekLabel}` : ""} es anterior al inicio de
+          la captura, por lo que no se registró su orden del día.
+        </p>
       )}
       {/* CR-02: la degradación es ACOTADA A LA CÁMARA (no afirma que el Senado
           falló). Si el Senado tiene filas, se muestran arriba; este bloque sólo
