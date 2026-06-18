@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { DeepSeekProvider } from "./deepseek";
+import { RutInLlmInputError } from "./../data-routing";
+import { SensitiveRoutingError } from "./../router";
 import { makeMockFetch } from "../../test/_helpers";
 
 const URL = "https://api.deepseek.com/chat/completions";
@@ -66,5 +68,47 @@ describe("DeepSeekProvider", () => {
     );
     expect(data).toEqual({ decision: "match", confidence: 0.9 });
     expect(mock.calls).toHaveLength(2);
+  });
+
+  // CR-01: el gate RUT es intrinseco al provider (fail-closed), corre ANTES de
+  // cualquier fetch.
+  it("CR-01 RUT en req.user -> RutInLlmInputError y CERO fetches", async () => {
+    const mock = makeMockFetch({ [URL]: { status: 200, body: chatResponse(VALID_CONTENT) } });
+    const p = new DeepSeekProvider({ apiKey: "k", fetchFn: mock.fn });
+    await expect(
+      p.complete(
+        { user: "el sujeto 12.345.678-9 declara", criticality: "bulk", sensitivity: "public" },
+        schema,
+      ),
+    ).rejects.toBeInstanceOf(RutInLlmInputError);
+    expect(mock.calls).toHaveLength(0);
+  });
+
+  it("CR-01 RUT en req.system -> RutInLlmInputError y CERO fetches", async () => {
+    const mock = makeMockFetch({ [URL]: { status: 200, body: chatResponse(VALID_CONTENT) } });
+    const p = new DeepSeekProvider({ apiKey: "k", fetchFn: mock.fn });
+    await expect(
+      p.complete(
+        { system: "contexto rut 12345-6", user: "compara", criticality: "bulk", sensitivity: "public" },
+        schema,
+      ),
+    ).rejects.toBeInstanceOf(RutInLlmInputError);
+    expect(mock.calls).toHaveLength(0);
+  });
+
+  // CR-02: el gate de sensibilidad es intrinseco al provider. Un provider que
+  // entrena con inputs (config swappeada) debe rechazar dato personal sin red.
+  it("CR-02 dato personal a un provider que entrena -> SensitiveRoutingError y CERO fetches", async () => {
+    const mock = makeMockFetch({ [URL]: { status: 200, body: chatResponse(VALID_CONTENT) } });
+    const p = new DeepSeekProvider({ apiKey: "k", fetchFn: mock.fn });
+    // Simula la config swappeada a un tier que entrena con inputs.
+    Object.defineProperty(p, "trainsOnInputs", { value: true });
+    await expect(
+      p.complete(
+        { user: "compara A y B", criticality: "bulk", sensitivity: "personal" },
+        schema,
+      ),
+    ).rejects.toBeInstanceOf(SensitiveRoutingError);
+    expect(mock.calls).toHaveLength(0);
   });
 });

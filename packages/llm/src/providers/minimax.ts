@@ -21,6 +21,10 @@ import type { ZodType } from "zod";
 import type { CompletionRequest, LLMProvider } from "./../types";
 import { parseAndValidate } from "./../validate";
 import { zodToToolSchema } from "./../json-schema";
+import {
+  assertNoRutInLlmInput,
+  assertSensitivityAllowed,
+} from "./../data-routing";
 
 const DEFAULT_BASE_URL = "https://api.minimax.io/v1";
 const DEFAULT_MODEL = "MiniMax-M3";
@@ -57,6 +61,16 @@ export class MiniMaxProvider implements LLMProvider {
   }
 
   async complete<T>(req: CompletionRequest, schema: ZodType<T>): Promise<T> {
+    // FAIL-CLOSED por construccion (CR-01/CR-02): los gates de cumplimiento
+    // corren ANTES de cualquier llamada de red, dentro del unico punto de
+    // entrada del provider. Asi es imposible enviar un RUT o dato personal a un
+    // tier prohibido aunque el caller no pase por el router.
+    // 1. El RUT NUNCA cruza a un prompt (se matchea aparte).
+    assertNoRutInLlmInput(req.user);
+    if (req.system) assertNoRutInLlmInput(req.system);
+    // 2. Dato personal NUNCA a un provider que entrena con inputs.
+    assertSensitivityAllowed({ sensitivity: req.sensitivity }, this);
+
     const parameters = zodToToolSchema(schema);
     const system = req.system ?? DEFAULT_SYSTEM;
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [

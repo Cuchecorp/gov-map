@@ -14,6 +14,10 @@ import OpenAI from "openai";
 import type { ZodType } from "zod";
 import type { CompletionRequest, LLMProvider } from "./../types";
 import { parseAndValidate } from "./../validate";
+import {
+  assertNoRutInLlmInput,
+  assertSensitivityAllowed,
+} from "./../data-routing";
 
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
 const DEFAULT_MODEL = "deepseek-v4-flash";
@@ -53,6 +57,16 @@ export class DeepSeekProvider implements LLMProvider {
   }
 
   async complete<T>(req: CompletionRequest, schema: ZodType<T>): Promise<T> {
+    // FAIL-CLOSED por construccion (CR-01/CR-02): los gates de cumplimiento
+    // corren ANTES de cualquier llamada de red, dentro del unico punto de
+    // entrada del provider. Asi es imposible enviar un RUT o dato personal a un
+    // tier prohibido aunque el caller no pase por el router.
+    // 1. El RUT NUNCA cruza a un prompt (se matchea aparte).
+    assertNoRutInLlmInput(req.user);
+    if (req.system) assertNoRutInLlmInput(req.system);
+    // 2. Dato personal NUNCA a un provider que entrena con inputs.
+    assertSensitivityAllowed({ sensitivity: req.sensitivity }, this);
+
     const system = req.system ?? DEFAULT_SYSTEM;
     // system PRIMERO = prefijo estable para prompt-cache.
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
