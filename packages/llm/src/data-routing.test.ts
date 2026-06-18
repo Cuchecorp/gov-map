@@ -26,6 +26,36 @@ describe("assertNoRutInLlmInput", () => {
     expect(() => assertNoRutInLlmInput("9.876.543-K")).toThrow(RutInLlmInputError);
   });
 
+  // CR-03: cuerpos cortos (1-6 digitos) que la regex anterior dejaba pasar.
+  it.each([
+    ["RUT cuerpo corto con puntos (123.456-7)", "el rut 123.456-7 figura"],
+    ["RUT cuerpo corto sin puntos (12345-6)", "rut 12345-6 asociado"],
+    ["RUT muy corto con punto (1.234-5)", "registro 1.234-5 en acta"],
+    ["RUT cuerpo corto DV K (123.456-K)", "rut 123.456-K"],
+  ])("CR-03 %s -> lanza RutInLlmInputError", (_label, text) => {
+    expect(() => assertNoRutInLlmInput(text)).toThrow(RutInLlmInputError);
+  });
+
+  // CR-03: espacios alrededor del guion (forma comun OCR de documentos).
+  it.each([
+    ["espacios alrededor del guion (12.345.678 - 9)", "sujeto 12.345.678 - 9 declara"],
+    ["espacio antes del guion (7.654.321 -K)", "rut 7.654.321 -K"],
+    ["espacio despues del guion (7654321- K)", "rut 7654321- K"],
+  ])("CR-03 %s -> lanza RutInLlmInputError", (_label, text) => {
+    expect(() => assertNoRutInLlmInput(text)).toThrow(RutInLlmInputError);
+  });
+
+  it("CR-03 el mensaje NO expone el RUT de cuerpo corto", () => {
+    try {
+      assertNoRutInLlmInput("el rut 123.456-7 figura");
+      throw new Error("debio lanzar");
+    } catch (e) {
+      expect(e).toBeInstanceOf(RutInLlmInputError);
+      expect((e as Error).message).not.toContain("123.456-7");
+      expect((e as Error).message).not.toContain("123456");
+    }
+  });
+
   it("el mensaje de error NO incluye el RUT ni el texto completo", () => {
     try {
       assertNoRutInLlmInput("el sujeto 12.345.678-9 declara");

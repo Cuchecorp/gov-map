@@ -29,12 +29,21 @@ export class RutInLlmInputError extends Error {
 }
 
 /**
- * RUT chileno: 7-8 digitos del cuerpo (con o sin separadores de miles `.`),
- * guion, y digito verificador (0-9 o K/k). Deteccion determinista.
+ * RUT chileno: cuerpo de 1-8 digitos (con o sin separadores de miles `.`),
+ * guion (con o sin espacios alrededor), y digito verificador (0-9 o K/k).
+ * Deteccion DETERMINISTA y deliberadamente AMPLIA: para una compuerta fail-closed
+ * de identificador duro, sobre-bloquear es la direccion segura (preferir un falso
+ * positivo a filtrar un RUT real).
  *
- * Ejemplos que matchean: `12.345.678-9`, `12345678-9`, `9.876.543-K`, `1.234.567-8`.
+ * Matchea cuerpos cortos (personas/empresas antiguas) que la version anterior
+ * dejaba pasar: `1.234-5`, `12345-6`, `123.456-7`, ademas de los clasicos
+ * `12.345.678-9`, `12345678-9`, `9.876.543-K`, y la forma OCR con espacios
+ * alrededor del guion `12.345.678 - 9`, `7.654.321 - K`.
+ *
+ * Estructura: 1-3 digitos iniciales, luego cero o mas grupos de 3 digitos con
+ * punto opcional, espacios opcionales, guion, espacios opcionales, DV [0-9Kk].
  */
-const RUT_REGEX = /\b\d{1,2}(?:\.\d{3}){2}-[\dkK]\b|\b\d{7,8}-[\dkK]\b/;
+const RUT_REGEX = /\b\d{1,3}(?:\.?\d{3})*\s*-\s*[\dkK]\b/i;
 
 /**
  * Lanza `RutInLlmInputError` si `text` contiene un RUT chileno. Sin RUT, no hace
