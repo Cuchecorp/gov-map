@@ -95,11 +95,18 @@ export class MiniMaxProvider implements LLMProvider {
         // FUERZA la function unica (MiniMax structured output).
         tool_choice: { type: "function", function: { name: TOOL_NAME } },
       });
-      // Salida estructurada = tool_calls[0].function.arguments (string JSON).
-      // undefined si el provider no forzo la function -> repair loop lo maneja.
-      const toolCall = res.choices[0]?.message?.tool_calls?.[0];
+      // Salida estructurada = arguments del tool_call cuya function.name ===
+      // TOOL_NAME (WR-02). Se MATCHEA POR NOMBRE, no por posicion: si el modelo
+      // devuelve multiples tool_calls, o uno con un nombre de funcion
+      // alucinado, no se debe reenviar el call equivocado a la compuerta zod.
+      // Si el `emit_result` esperado no esta presente -> undefined -> el repair
+      // loop lo maneja (nunca se acepta salida no estructurada).
+      const calls = res.choices[0]?.message?.tool_calls ?? [];
       // El union del SDK v6 incluye un custom tool-call sin `.function`; se acota
-      // a la function tool (la unica que forzamos).
+      // a la function tool con el nombre forzado (la unica que pedimos).
+      const toolCall = calls.find(
+        (c) => c.type === "function" && c.function.name === TOOL_NAME,
+      );
       return toolCall?.type === "function" ? toolCall.function.arguments : undefined;
     };
 

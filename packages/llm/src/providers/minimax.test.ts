@@ -38,6 +38,51 @@ function toolResponse(args: string): string {
   });
 }
 
+/**
+ * Respuesta con tool_calls cuyo PRIMER call es de OTRA funcion (alucinada) y el
+ * `emit_result` correcto viene despues — cubre WR-02 (matchear por nombre, no [0]).
+ */
+function reorderedToolResponse(args: string, wrongName = "other_tool"): string {
+  return JSON.stringify({
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: "assistant",
+          content: "",
+          tool_calls: [
+            { id: "call_0", type: "function", function: { name: wrongName, arguments: args } },
+            { id: "call_1", type: "function", function: { name: "emit_result", arguments: args } },
+          ],
+        },
+        finish_reason: "tool_calls",
+      },
+    ],
+  });
+}
+
+/**
+ * Respuesta con UN solo tool_call de nombre equivocado (sin `emit_result`) —
+ * cubre WR-02: debe tratarse como ausente (undefined) y entrar al repair.
+ */
+function wrongNameOnlyResponse(args: string): string {
+  return JSON.stringify({
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: "assistant",
+          content: "",
+          tool_calls: [
+            { id: "call_0", type: "function", function: { name: "other_tool", arguments: args } },
+          ],
+        },
+        finish_reason: "tool_calls",
+      },
+    ],
+  });
+}
+
 /** Respuesta SIN tool_calls (el provider no forzo la funcion) — cubre A1. */
 function noToolResponse(): string {
   return JSON.stringify({
@@ -123,6 +168,37 @@ describe("MiniMaxProvider", () => {
       ),
     ).rejects.toBeInstanceOf(LLMValidationError);
     // 1 inicial + 1 reprompt = 2 llamadas.
+    expect(mock.calls).toHaveLength(2);
+  });
+
+  // WR-02: matchear el tool_call por function.name === "emit_result", no por [0].
+  it("WR-02 emit_result NO es el primer tool_call -> lo selecciona por nombre y valida", async () => {
+    const mock = makeMockFetch({
+      [URL]: { status: 200, body: reorderedToolResponse(VALID_ARGS) },
+    });
+    const p = new MiniMaxProvider({ apiKey: "k", fetchFn: mock.fn });
+    const data = await p.complete(
+      { user: "compara A y B", criticality: "critical", sensitivity: "personal" },
+      schema,
+    );
+    expect(data).toEqual({ decision: "match", confidence: 0.9 });
+    expect(mock.calls).toHaveLength(1);
+  });
+
+  it("WR-02 solo un tool_call de nombre equivocado -> ausente, entra al repair y persiste -> LLMValidationError", async () => {
+    const mock = makeMockFetch({
+      [URL]: [
+        { status: 200, body: wrongNameOnlyResponse(VALID_ARGS) },
+        { status: 200, body: wrongNameOnlyResponse(VALID_ARGS) },
+      ],
+    });
+    const p = new MiniMaxProvider({ apiKey: "k", fetchFn: mock.fn });
+    await expect(
+      p.complete(
+        { user: "compara A y B", criticality: "critical", sensitivity: "personal", maxRepairAttempts: 1 },
+        schema,
+      ),
+    ).rejects.toBeInstanceOf(LLMValidationError);
     expect(mock.calls).toHaveLength(2);
   });
 
