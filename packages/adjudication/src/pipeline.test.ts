@@ -256,4 +256,44 @@ describe("correrPipeline — fail-closed PII (T-04-09)", () => {
     expect(provider.callCount).toBe(0);
     expect(writer.vinculos.every((v) => v.estado !== "confirmado")).toBe(true);
   });
+
+  it("WR-05: un RUT en el campo de nombre de un CANDIDATO (maestra sucia) → lanza ANTES de complete (0 llamadas)", async () => {
+    // Vector distinto: el RUT no viene en la mención sino inyectado en un campo de la
+    // maestra (dato sucio aguas arriba) que fluye a las líneas de candidatos del prompt.
+    // El gate corre sobre el payload completo (WR-05) y aborta igual con 0 llamadas.
+    const maestraSucia = [
+      maestro({
+        id: "P00042",
+        nombre_normalizado: "walker matias",
+        nombres: "Matías 12.345.678-9", // RUT colado en el nombre del candidato
+        apellido_paterno: "Walker",
+        apellido_materno: "Prieto",
+        camara: "senado",
+        periodo: "senado-vigente-2026",
+      }),
+      maestro({
+        id: "P00099",
+        nombre_normalizado: "walker matias",
+        nombres: "Matías",
+        apellido_paterno: "Walker",
+        apellido_materno: "Errazuriz",
+        camara: "senado",
+        periodo: "senado-vigente-2026",
+      }),
+    ];
+    const provider = new MockMiniMaxProvider({
+      decision: "match",
+      chosen_id: "P00042",
+      confidence: 0.97,
+      evidence: [],
+      conflicts: [],
+    });
+    const writer = new SpyWriter();
+
+    await expect(
+      correrPipeline(mencionWalker, maestraSucia, provider, writer),
+    ).rejects.toThrow();
+    expect(provider.callCount).toBe(0);
+    expect(writer.vinculos.every((v) => v.estado !== "confirmado")).toBe(true);
+  });
 });

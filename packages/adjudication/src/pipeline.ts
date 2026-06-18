@@ -140,9 +140,14 @@ export async function correrPipeline(
     return { tipo: "no_confirmado", razon: "sin-candidatos" };
   }
 
-  // ── Etapa 2: LLM. Gate fail-closed de RUT sobre el prompt EXACTO ANTES de complete. ──
+  // ── Etapa 2: LLM. Gate fail-closed de RUT sobre el payload EXACTO ANTES de complete. ──
+  // WR-05: corre el gate sobre TODO lo que se envía (system + user), no solo el user.
+  // El user lleva la mención + las líneas de candidatos (nombres/región de la maestra);
+  // si un campo de la maestra trajera un RUT (dato sucio aguas arriba) viaja por el user,
+  // y el system también se reverifica por completitud. Si se cuela un RUT, lanza con 0
+  // llamadas y nada se escribe como confirmado.
   const userPrompt = construirPromptAdjudicacion(mencion, candidatos);
-  assertNoRutInLlmInput(userPrompt);
+  assertNoRutInLlmInput(`${SYSTEM_ADJUDICACION}\n${userPrompt}`);
   assertSensitivityAllowed({ sensitivity: "personal" }, provider);
 
   const llm: Adjudicacion = await provider.complete(
