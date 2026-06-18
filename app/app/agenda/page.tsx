@@ -17,9 +17,10 @@ import {
   type ISOWeek,
 } from "@/lib/week-utils";
 import { sourceLabel } from "@/lib/types";
-import type {
-  CitacionRow,
-  SesionSalaRow,
+import {
+  CAMARA_TABLA_PDF_URL,
+  type CitacionRow,
+  type SesionSalaRow,
 } from "@/lib/agenda-types";
 
 /**
@@ -161,13 +162,20 @@ function primerBoletin(c: CitacionRow): string | null {
 // ── Tabla de sala (Senado available / Cámara siempre degradada) ──────────────
 async function SalaTableServer({ year, week }: ISOWeek) {
   const { start, end } = getWeekBounds(year, week);
+  // WR-06: en vez de un `lte` sobre el fin del domingo (que asume `fecha` a
+  // medianoche UTC exacta), se usa un rango semi-abierto [lunes 00:00Z, lunes
+  // SIGUIENTE 00:00Z). Así cualquier `fecha` con componente horario dentro del
+  // domingo (no-medianoche / DB TZ ≠ UTC) sigue cayendo dentro de la semana.
+  const nextMonday = new Date(end);
+  nextMonday.setUTCDate(nextMonday.getUTCDate() + 1);
+  nextMonday.setUTCHours(0, 0, 0, 0);
   const sb = createServerSupabase();
   const { data } = await sb
     .from("sesion_sala")
     .select("*, sesion_tabla_item(*)")
     .eq("camara", "senado")
     .gte("fecha", start.toISOString())
-    .lte("fecha", endOfDay(end))
+    .lt("fecha", nextMonday.toISOString())
     .order("fecha", { ascending: true });
 
   const sesiones = (data as SesionSalaRow[]) ?? [];
@@ -190,11 +198,14 @@ async function SalaTableServer({ year, week }: ISOWeek) {
       .sort((a, b) => a.posicion - b.posicion);
     for (const it of tabla) {
       items.push({
+        // IN-01: clave compuesta (sesión + posición) — única en la semana aunque
+        // dos sesiones repitan posiciones 1,2,3… La clave única DB es
+        // (sesion_id, posicion), no posicion sola.
+        key: `${s.id}:${it.posicion}`,
         posicion: it.posicion,
         parteSesion: it.parte_sesion,
         materia: it.materia,
         boletin: it.boletin,
-        etapa: it.parte_sesion,
       });
     }
   }
@@ -209,18 +220,17 @@ async function SalaTableServer({ year, week }: ISOWeek) {
           weekLabel={weekLabel}
         />
       )}
-      {/* La tabla de sala de Cámara no tiene fuente estructurada: degradación
-          honesta SIEMPRE visible (UI-SPEC §6.2, T-06-09). */}
-      <SalaTableSection mode="degraded" weekLabel={weekLabel} />
+      {/* CR-02: la degradación es ACOTADA A LA CÁMARA (no afirma que el Senado
+          falló). Si el Senado tiene filas, se muestran arriba; este bloque sólo
+          dice que la Cámara no publica la tabla como dato estructurado y enlaza
+          al PDF oficial recordado por la ingesta (CR-01). */}
+      <SalaTableSection
+        mode="degraded"
+        weekLabel={weekLabel}
+        camaraPdfUrl={CAMARA_TABLA_PDF_URL}
+      />
     </div>
   );
-}
-
-/** Fin del día (23:59:59.999Z) de una fecha para el filtro de rango inclusivo. */
-function endOfDay(d: Date): string {
-  const e = new Date(d);
-  e.setUTCHours(23, 59, 59, 999);
-  return e.toISOString();
 }
 
 // ── Skeletons (UI-SPEC §7.2) ─────────────────────────────────────────────────

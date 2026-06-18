@@ -67,3 +67,19 @@ export interface SesionTablaItemRow {
   alias: string | null;
   quorum: string | null;
 }
+
+/**
+ * URL canónica del PDF de la tabla semanal de sala de la Cámara (CR-01).
+ *
+ * Es la MISMA URL que la ingesta registra como `degradaciones[].enlace` para la
+ * fuente `camara-tabla-sala` (ver `CAMARA_TABLA_PDF_URL` en
+ * `packages/agenda/src/connector-camara.ts`). Se mantiene como fuente única aquí
+ * — espejando el patrón de tipos del frontend, que no acopla con `@obs/agenda` —
+ * para que el enlace que ve el usuario sea exactamente el que el sistema validó/
+ * registró (trazabilidad a la fuente). NO usar la página genérica de sesiones
+ * (`trabajamos/sala_sesion.aspx`): no es la TABLASEMANAL.
+ *
+ * INVARIANTE: debe coincidir verbatim con `CAMARA_TABLA_PDF_URL` del conector.
+ */
+export const CAMARA_TABLA_PDF_URL =
+  "https://www.camara.cl/verDoc.aspx?prmId=0&prmTipo=TABLASEMANAL";

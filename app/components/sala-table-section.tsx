@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { EtapaBadge } from "@/components/etapa-badge";
 import {
   ProvenanceBadge,
   type ProvenanceBadgeProps,
@@ -10,20 +9,21 @@ import {
  * SalaTableSection — tabla semanal de sala (UI-SPEC §6). Dos modos excluyentes:
  *
  *  - `available`: la fuente del Senado trajo filas → render de la tabla
- *    estructurada (N° / Boletín / Materia / Etapa), boletín enlazado a la ficha,
- *    + ProvenanceBadge de la sesión.
- *  - `degraded`: la tabla NO está disponible (Cámara no publica un endpoint
- *    estructurado, o la semana no tiene sesión) → empty-state HONESTO con el
- *    enlace al PDF / portal oficial. NUNCA fabrica filas, NUNCA dice
- *    "próximamente", NUNCA usa estilo destructive (no es un error — T-06-09).
+ *    estructurada (N° / Boletín / Materia / Parte de sesión), boletín enlazado a
+ *    la ficha, + ProvenanceBadge de la sesión.
+ *  - `degraded`: la tabla NO está disponible como dato estructurado para la
+ *    Cámara → marcador HONESTO **acotado a la Cámara** con el enlace al PDF
+ *    oficial. NUNCA fabrica filas, NUNCA dice "próximamente", NUNCA usa estilo
+ *    destructive (no es un error — T-06-09), y NUNCA afirma que el Senado falló.
  */
 
 export interface SalaTablaItem {
+  /** Clave compuesta única en la semana (sesión + posición) — IN-01. */
+  key: string;
   posicion: number;
   parteSesion: string;
   materia: string | null;
   boletin: string | null;
-  etapa: string | null;
 }
 
 export type SalaTableSectionProps =
@@ -35,25 +35,23 @@ export type SalaTableSectionProps =
     }
   | {
       mode: "degraded";
+      /** La degradación de la Cámara enlaza al PDF oficial recordado por la ingesta (CR-01). */
+      camaraPdfUrl: string;
       items?: undefined;
       provenance?: undefined;
       weekLabel?: string;
     };
 
-// PDF oficial de la tabla semanal de Cámara (degradación, UI-SPEC §6.2).
-const CAMARA_TABLA_PDF =
-  "https://www.camara.cl/trabajamos/sala_sesion.aspx";
-const SENADO_SALA_URL = "https://www.senado.cl/actividad-legislativa/sala";
-
 export function SalaTableSection(props: SalaTableSectionProps) {
   if (props.mode === "degraded") {
-    return <DegradedState weekLabel={props.weekLabel} />;
+    return <CamaraDegradedState weekLabel={props.weekLabel} camaraPdfUrl={props.camaraPdfUrl} />;
   }
 
   const { items, provenance, weekLabel } = props;
 
   if (items.length === 0) {
-    return <DegradedState weekLabel={weekLabel} />;
+    // available sin filas: no fabricar; el contenedor decide qué mostrar.
+    return null;
   }
 
   return (
@@ -77,14 +75,14 @@ export function SalaTableSection(props: SalaTableSectionProps) {
                 Materia
               </th>
               <th scope="col" className="py-2">
-                Etapa
+                Parte de sesión
               </th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
               <tr
-                key={item.posicion}
+                key={item.key}
                 className="border-b border-border last:border-0 hover:bg-muted/50"
               >
                 <td className="py-2 pr-4 font-mono text-sm align-top">
@@ -107,8 +105,10 @@ export function SalaTableSection(props: SalaTableSectionProps) {
                   {item.materia ?? "—"}
                 </td>
                 <td className="py-2 align-top">
-                  {item.etapa ? (
-                    <EtapaBadge estado={item.etapa} />
+                  {item.parteSesion ? (
+                    <span className="text-sm text-muted-foreground">
+                      {item.parteSesion}
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
@@ -122,39 +122,40 @@ export function SalaTableSection(props: SalaTableSectionProps) {
   );
 }
 
-function DegradedState({ weekLabel }: { weekLabel?: string }) {
+/**
+ * Marcador de degradación HONESTA acotado a la CÁMARA (CR-01, CR-02): la Cámara no
+ * publica la tabla de sala como dato estructurado; su único artefacto es el PDF
+ * oficial (`verDoc.aspx?prmTipo=TABLASEMANAL`), cuya URL canónica es la MISMA que la
+ * ingesta registró (`camaraPdfUrl`). No afirma que el Senado falló: si el Senado tiene
+ * datos, se renderizan arriba; este bloque sólo habla de la Cámara.
+ */
+function CamaraDegradedState({
+  weekLabel,
+  camaraPdfUrl,
+}: {
+  weekLabel?: string;
+  camaraPdfUrl: string;
+}) {
   return (
-    <div className="rounded-lg border border-border bg-muted/40 px-6 py-8 text-center space-y-2">
+    <div className="rounded-lg border border-border bg-muted/40 px-6 py-8 space-y-2">
       <p className="text-base font-semibold text-foreground">
-        Tabla de sala no disponible
+        Cámara: tabla no disponible como dato estructurado
       </p>
       <p className="text-sm text-muted-foreground leading-relaxed">
-        El organismo no ha publicado el orden del día de sala
-        {weekLabel ? ` para ${weekLabel}` : " para esta semana"}, o la fuente no
-        pudo obtenerse de forma confiable.
+        La Cámara no publica el orden del día de sala
+        {weekLabel ? ` de ${weekLabel}` : " de esta semana"} en un formato de datos
+        estructurado. Consúltalo en el PDF oficial.
       </p>
       <p className="text-sm text-muted-foreground">
-        Puedes consultar directamente en{" "}
         <a
-          href={CAMARA_TABLA_PDF}
+          href={camaraPdfUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="text-primary underline underline-offset-2"
-          aria-label="Sala de la Cámara (abre en nueva pestaña)"
+          aria-label="Tabla semanal de sala de la Cámara, PDF oficial (abre en nueva pestaña)"
         >
-          Cámara ↗
-        </a>{" "}
-        o{" "}
-        <a
-          href={SENADO_SALA_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary underline underline-offset-2"
-          aria-label="Sala del Senado (abre en nueva pestaña)"
-        >
-          Senado ↗
+          Ver tabla semanal de sala (PDF oficial de la Cámara) ↗
         </a>
-        .
       </p>
     </div>
   );
