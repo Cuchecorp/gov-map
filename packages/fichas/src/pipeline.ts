@@ -21,7 +21,7 @@ import type { LLMProvider, EmbeddingResult } from "@obs/llm";
 import type { Ficha } from "./model";
 import { extraer } from "./extraer";
 import { embedFicha, type FichaEmbedder } from "./embed-ficha";
-import type { FichasWriter, FichaRow, EmbeddingRow } from "./writer-supabase";
+import type { FichasWriter, FichaRow, EmbeddingRow, FichaEstado } from "./writer-supabase";
 
 /** Versión base del embedding (bump con --reembed para re-embeddizar sin mezclar). */
 export const EMBED_VERSION_BASE = "v1";
@@ -34,7 +34,7 @@ export interface PipelinePendiente {
   /** Link al texto íntegro (sidecar SEM-01). null/ausente → degradación honesta. */
   link_mensaje_mocion: string | null;
   /** Estado actual en DB; el pipeline solo procesa 'pendiente' (salvo reembed). */
-  estado: "pendiente" | "embebido";
+  estado: FichaEstado;
   /** Procedencia inline (provenance) para la fila proyecto_ficha. */
   origen?: string;
   fecha_captura?: string;
@@ -173,12 +173,19 @@ export async function correrPipeline(
       embebidos += 1;
       log(`fichas: ${p.boletin} → embebido (${texto == null ? "degradado/título+materia" : "literal"})`);
     } catch (err) {
-      errores.push({
-        boletin: p.boletin,
-        etapa: "pipeline",
-        mensaje: err instanceof Error ? err.message : String(err),
-      });
-      log(`fichas: ERROR ${p.boletin}: ${err instanceof Error ? err.message : String(err)}`);
+      const mensaje = err instanceof Error ? err.message : String(err);
+      errores.push({ boletin: p.boletin, etapa: "pipeline", mensaje });
+      // #42: marca el boletín 'error' para que el resume normal no lo reintente a
+      // ciegas (evita el loop infinito gastando LLM). Best-effort: si el writer no
+      // soporta marcarError o la marca falla, se sigue (el error ya quedó colectado).
+      try {
+        await opts.writer.marcarError?.(p.boletin, mensaje);
+      } catch (markErr) {
+        log(
+          `fichas: no se pudo marcar 'error' ${p.boletin}: ${markErr instanceof Error ? markErr.message : String(markErr)}`,
+        );
+      }
+      log(`fichas: ERROR ${p.boletin}: ${mensaje}`);
     }
   }
 

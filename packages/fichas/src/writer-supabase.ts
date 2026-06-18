@@ -12,13 +12,16 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+/** Estado del pipeline de extracción/embedding (migración 0011 + 0013). */
+export type FichaEstado = "pendiente" | "procesando" | "embebido" | "error";
+
 /** Fila de proyecto_ficha (1:1 con proyecto, migración 0011). */
 export interface FichaRow {
   boletin: string;
   idea_matriz: string | null;
   cuerpos_legales: unknown;
   texto_r2_path: string | null;
-  estado: "pendiente" | "embebido";
+  estado: FichaEstado;
   origen: string;
   fecha_captura: string;
 }
@@ -97,6 +100,19 @@ export class SupabaseFichasWriter {
   }
 
   /**
+   * Marca un boletín como 'error' con el mensaje del fallo (#42). El resume normal
+   * (estado='pendiente') NO lo reintenta a ciegas: el fallo queda visible y solo
+   * `--reembed` lo recupera. Best-effort: no lanza si la fila aún no existe.
+   */
+  async marcarError(boletin: string, mensaje: string): Promise<void> {
+    const { error } = await this.client
+      .from("proyecto_ficha")
+      .update({ estado: "error", error_msg: mensaje.slice(0, 2000) })
+      .eq("boletin", boletin);
+    if (error) throw new Error(`marcarError proyecto_ficha falló: ${error.message}`);
+  }
+
+  /**
    * Lee los proyecto_ficha pendientes (estado='pendiente') uniendo título/materia/procedencia
    * desde proyecto (boletín = FK 1:1). SOLO se ejerce en LIVE (gated por env); no se llama en
    * los tests offline. Si `boletines` se pasa, restringe a ese conjunto explícito (cualquier
@@ -116,7 +132,7 @@ export class SupabaseFichasWriter {
     if (error) throw new Error(`leerPendientes falló: ${error.message}`);
     type JoinRow = {
       boletin: string;
-      estado: "pendiente" | "embebido";
+      estado: FichaEstado;
       proyecto: { titulo?: string; materia?: string | null; origen?: string; fecha_captura?: string } | null;
     };
     return ((data ?? []) as unknown as JoinRow[]).map((r) => ({
@@ -137,7 +153,7 @@ export interface PipelinePendienteRow {
   titulo: string;
   materia: string | null;
   link_mensaje_mocion: string | null;
-  estado: "pendiente" | "embebido";
+  estado: FichaEstado;
   origen?: string;
   fecha_captura?: string;
 }
@@ -146,4 +162,6 @@ export interface PipelinePendienteRow {
 export interface FichasWriter {
   upsertFicha(filas: FichaRow[]): Promise<void>;
   upsertEmbedding(filas: EmbeddingRow[]): Promise<void>;
+  /** Marca 'error' un boletín cuyo procesamiento falló (#42). Opcional (tests). */
+  marcarError?(boletin: string, mensaje: string): Promise<void>;
 }
