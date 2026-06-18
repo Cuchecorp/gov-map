@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-06-18T16:33:54.066Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-06-18T16:43:55.446Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 16
   percent: 57
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-17)
 ## Current Position
 
 Phase: 05 (tramitacion-core-ficha-timeline-votaciones) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-06-18
 
@@ -67,6 +67,7 @@ Progress: [██████████] 100% (3/3 planes de la fase 04 comple
 | Phase 04 P03 | 12min | 3 tasks | 10 files |
 | Phase 05 P01 | 8min | 3 tasks | 16 files |
 | Phase 05 P02 | 7min | 3 tasks | 13 files |
+| Phase 05 P03 | 8min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 05]: [05-01]: slice.e2e.test.ts en RED por imports ausentes — diana walking-skeleton que olas 2-4 vuelven verde; fixtures reales cross-camara 14309/18296 capturados live
 - [Phase ?]: 05-02: parsers leen ambos juegos de nombres de totales (TotalAfirmativos/TotalSi) — fixture = ground truth
 - [Phase ?]: 05-02: fusionarTimeline empate estable Cámara-antes-Senado; fechas null al final
+- [Phase 05]: 05-03: voto Cámara cruza determinísticamente por Diputado/Id (sin LLM); Senado por nombre vía correrPipeline con guarda LOCKED — solo determinista/confirmado puebla parlamentario_id
 
 ### Pending Todos
 
@@ -143,6 +145,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T16:33:54.059Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-06-18T16:43:55.438Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
