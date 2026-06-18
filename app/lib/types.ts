@@ -63,6 +63,37 @@ export interface VotacionRow {
   voto?: VotoRow[];
 }
 
+/** Un cuerpo legal afectado (norma + artículos), tal como lo serializa la ficha. */
+export interface CuerpoLegalRow {
+  norma: string;
+  articulos: string[];
+}
+
+/**
+ * Fila de `proyecto_ficha` (migración 0011). 1:1 con proyecto por boletín.
+ * `idea_matriz` null = degradación honesta first-class (texto íntegro no
+ * disponible), NUNCA un resumen fabricado. `cuerpos_legales` es jsonb.
+ */
+export interface ProyectoFichaRow {
+  boletin: string;
+  idea_matriz: string | null;
+  cuerpos_legales: CuerpoLegalRow[];
+  texto_r2_path: string | null;
+  estado: string;
+  origen: string;
+  fecha_captura: string;
+}
+
+/**
+ * Fila del RPC `match_proyectos` (migración 0011). El RPC retorna SOLO
+ * (boletin, similarity) — nunca columnas no públicas (T-07-03). `similarity`
+ * se usa server-side para el orden; NUNCA se muestra al usuario (UI-SPEC §5).
+ */
+export interface MatchProyectoRow {
+  boletin: string;
+  similarity: number;
+}
+
 /** Etiqueta legible de la fuente para el ProvenanceBadge. */
 export function sourceLabel(origen: string | null): string {
   const o = (origen ?? "").toLowerCase();
