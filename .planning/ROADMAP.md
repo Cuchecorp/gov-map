@@ -100,11 +100,11 @@ Plans:
   4. Cada vínculo nombre→id tiene estado `confirmado`/`probable`/`no_confirmado` y solo `confirmado` se muestra como hecho en la capa pública
   5. El golden set de casos difíciles (homónimos, nombres de casada, abreviaturas) corre como test de regresión y bloquea el deploy si la precisión baja del umbral (sella riesgo existencial #1)
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 Plans:
 
 - [x] 04-01-PLAN.md — Scaffold @obs/adjudication + blocking + AdjudicacionSchema/prompt + compuerta fail-closed (borde 0.90) + slice e2e con mock + temperature? en @obs/llm (ID-03, ID-04, ID-06)
-- [ ] 04-02-PLAN.md — Migración 0006: vinculo_identidad + revision_identidad + identidad_audit append-only (trigger+REVOKE+RLS) + pgTAP de inmutabilidad (ID-05, ID-06, ID-08)
+- [x] 04-02-PLAN.md — Migración 0006: vinculo_identidad + revision_identidad + identidad_audit append-only (trigger+REVOKE+RLS) + pgTAP de inmutabilidad (ID-05, ID-06, ID-08)
 - [ ] 04-03-PLAN.md — Pipeline etapas 0-3 + writers + revisor-cli (confirm/reject/correct con revisor+timestamp) + golden set que bloquea deploy (Walker P., Matías) + LIVE gated (ID-03..08)
 
 ### Phase 5: Tramitación Core — Ficha + Timeline + Votaciones
