@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 03-01-PLAN.md (identidad pura: normalizarNombre + matchDeterminista fail-closed)"
-last_updated: "2026-06-18T12:56:58.660Z"
+stopped_at: "Completed 03-04-PLAN.md (corrida LIVE: maestra real 186 filas confirmada + snapshot git + cadencia de respaldo)"
+last_updated: "2026-06-18T13:12:38.000Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 10
-  completed_plans: 9
-  percent: 29
+  completed_plans: 10
+  percent: 43
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-06-17)
 
 ## Current Position
 
-Phase: 03 (tabla-maestra-parlamentario-identidad-determinista) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
+Phase: 03 (tabla-maestra-parlamentario-identidad-determinista) — COMPLETE
+Plan: 4 of 4 (complete)
+Status: Phase 03 complete — ready for Phase 04
 Last activity: 2026-06-18
 
-Progress: [██████████] 100% (3/3 planes de la fase 01 completos)
+Progress: [██████████] 100% (4/4 planes de la fase 03 completos)
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [██████████] 100% (3/3 planes de la fase 01 comple
 | Phase 03 P01 | 14min | 3 tasks | 13 files |
 | Phase 03 P02 | 2min | 2 tasks | 2 files |
 | Phase 03 P03 | 18min | 3 tasks | 14 files |
+| Phase 03 P04 | 14min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,10 @@ Recent decisions affecting current work:
 - [Phase ?]: [03-03]: seeder reusa @obs/ingest (assertAllowedUrl->robots->rateLimiter.wait->fetcher.get), NO BaseConnector; idempotencia en clave natural del upsert
 - [Phase ?]: [03-03]: periodo senadores='senado-vigente-2026', diputados='2026-2030'; partidoVigente filtra la Militancia que cubre el corte 2026-03-11 (Pitfall 5)
 - [Phase ?]: [03-03]: exportMaestra determinista -> snapshot git autoritativo (ID-09 HOY); R2 gateado por r2Enabled=false (401 diferido)
+- [Phase 03]: [03-04]: upsert por PK `id` (derivada de la clave natural), NO por la clave natural directa — ON CONFLICT no puede targetear los indices unicos PARCIALES de 0005
+- [Phase 03]: [03-04]: corrida LIVE real -> maestra de 186 filas (31 senadores + 155 diputados, 0 errores 403/429) cargada en Supabase local + snapshot git autoritativo (ID-09)
+- [Phase 03]: [03-04]: lote promovido a confirmado por operador-accept de la orquestacion (conteos = catalogos oficiales autoritativos); el seeder nunca auto-confirma (ID-01)
+- [Phase 03]: [03-04]: backup-parlamentario.yml (cron semanal) usa --preserve-estado sin --promote -> nunca revierte la compuerta humana; R2 gateado por presencia de credencial (401 hoy)
 
 ### Pending Todos
 
@@ -117,6 +122,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T12:56:51.572Z
-Stopped at: Completed 03-01-PLAN.md (identidad pura: normalizarNombre + matchDeterminista fail-closed)
+Last session: 2026-06-18T13:12:38.000Z
+Stopped at: Completed 03-04-PLAN.md (corrida LIVE: maestra real 186 filas confirmada + snapshot git autoritativo + cadencia de respaldo)
 Resume file: None
