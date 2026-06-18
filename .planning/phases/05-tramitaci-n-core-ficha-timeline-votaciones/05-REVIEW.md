@@ -24,7 +24,13 @@ findings:
   warning: 5
   info: 4
   total: 11
-status: issues_found
+status: resolved
+resolution:
+  fixed_at: 2026-06-18
+  fixed: [CR-01, CR-02, WR-01, WR-02, WR-03, WR-04, WR-05]
+  deferred: [IN-01, IN-02, IN-03, IN-04]
+  tests: "100 passed (@obs/tramitacion); typecheck clean; pgTAP voto CR-02 ok"
+  live_reingest: "boletines 14309-04 + 18296-05 → 10 votaciones / 1213 votos / 115 eventos, 0 errores; idempotente en 2ª corrida (sin duplicar); 1213 votos == 1213 claves distintas (sin colapso de votantes); 7 votaciones distintas el mismo día preservadas en 14309-04"
 ---
 
 # Phase 5: Code Review Report
@@ -32,7 +38,7 @@ status: issues_found
 **Reviewed:** 2026-06-18
 **Depth:** standard
 **Files Reviewed:** 15
-**Status:** issues_found
+**Status:** resolved (2 Critical + 5 Warning fixed; 4 Info deferred)
 
 ## Summary
 
@@ -231,6 +237,29 @@ add the same tie-break (`camara` rank, then a stable secondary key) to the query
 
 ---
 
+## Resolution (2026-06-18)
+
+All 2 Critical + 5 Warning findings fixed; the 4 Info findings deferred (low risk, see reasons).
+
+| ID | Status | Fix |
+|----|--------|-----|
+| CR-01 | fixed | Senado votación `id` ahora incorpora un discriminador estable (SESION/TIPOVOTACION/ETAPA/QUORUM + índice posicional por grupo boletín+fecha). Dos votaciones del mismo día ya NO colisionan; re-ingerir es idempotente. Verificado live: 14309-04 conserva 7 votaciones distintas (6 Cámara + 1 Senado). |
+| CR-02 | fixed | Nueva columna `voto.fuente_voter_id` (DIPID en Cámara, `seq:<n>` posicional en Senado) + unique `(votacion_id, fuente_voter_id)` (migración 0009). Writer de-duplica el lote por la clave de conflicto. Dos votantes distintos jamás colapsan; live: 1213 votos == 1213 claves distintas, idempotente en 2ª corrida. |
+| WR-01 | fixed | `timeline.tiempo()` enruta TODA fecha por `parseFechaCL` ANTES de `new Date` (Pitfall 3). Test añadido con dd/mm donde el día>12 / mm>12 desambigua dd vs mm. |
+| WR-02 | fixed | `reconciliarVotosCamara` indexa SOLO filas `camara='diputados'` y, con `opts.periodo`, SOLO ese periodo (fail-closed cruzando periodos/cámaras). Precondición documentada. Tests cross-period y cross-chamber. |
+| WR-03 | fixed | `mapSeleccion` devuelve `null` para tokens desconocidos/garbled → el voto se OMITE (espeja la Cámara) en vez de fabricar `abstencion`. Test con `???`/vacío. |
+| WR-04 | fixed | `intOf` distingue ausente (→0 legítimo) de presente-pero-ilegible (separador de millar / no numérico → no se fabrica un total falso). Test con `SI=1.234` → 0, no 1. |
+| WR-05 | fixed | `VotacionCard` renderiza `VotoDetalle` para AMBAS cámaras (el voto-a-voto de la Cámara, vínculo determinista más fuerte, ya no queda persistido pero oculto). Guarda de identidad de `VotoRow` intacta (solo `confirmado` enlaza). |
+| IN-01 | deferred | RLS `using(true)` expone columnas de linkage-confidence. Bajo riesgo; requiere decidir una vista pública dedicada — fuera del alcance crítico de este fix. |
+| IN-02 | deferred | `descubrirBoletines` traga errores con `catch {}`. Diagnosticabilidad; no afecta corrección del dato. |
+| IN-03 | deferred | `voto(*)` trae columnas de más. Optimización de payload; no afecta corrección (la guarda vive en `VotoRow`). |
+| IN-04 | deferred | Orden del timeline en SQL no reproduce el desempate de `fusionarTimeline`. Cosmético. |
+
+**Verificación:** `pnpm --filter @obs/tramitacion test --run` → 100 passed (eran 82; +18 tests nuevos para cada finding). `pnpm -w typecheck` → limpio. Migración 0009 + pgTAP `voto` (CR-02) verificados contra el Postgres local. Re-ingesta LIVE acotada (14309-04, 18296-05) → 2 corridas idénticas, sin duplicar, sin votantes colapsados, votaciones distintas del mismo día preservadas. La guarda de identidad NO se debilitó.
+
+---
+
 _Reviewed: 2026-06-18_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+_Fixed: 2026-06-18 — Claude (gsd-code-fixer)_
