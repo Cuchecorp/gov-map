@@ -56,8 +56,18 @@ begin
 end;
 $$;
 
--- Service role key (Bearer del worker). Solo se usa server-side, nunca al cliente.
-create or replace function util.service_key()
+-- Secreto DEDICADO de invocacion del worker (CR-04).
+--
+-- NO usamos el service_role key como Bearer: pg_net persiste los headers de
+-- cada request en sus tablas internas (net._http_request / net._http_response),
+-- de modo que mandar el service_role por ahi lo deja legible en una tabla
+-- Postgres (y en backups/logs) — viola "el service_role nunca se expone".
+--
+-- En su lugar usamos INGEST_WORKER_SECRET: un secreto de minimo privilegio,
+-- separado del service_role, cuyo UNICO poder es invocar el worker. El worker
+-- lo valida (authorized()). Aunque se filtre por las tablas de pg_net, no da
+-- acceso a la DB; ademas hacemos cleanup periodico de esas tablas (abajo).
+create or replace function util.worker_secret()
 returns text
 language plpgsql
 stable
@@ -70,17 +80,17 @@ begin
   begin
     select decrypted_secret into v
       from vault.decrypted_secrets
-     where name = 'service_key'
+     where name = 'ingest_worker_secret'
      limit 1;
   exception when others then
     v := null;
   end;
   if v is null or v = '' then
-    v := current_setting('app.settings.service_key', true);
+    v := current_setting('app.settings.ingest_worker_secret', true);
   end if;
   -- Sin literal hardcodeado: si no esta configurado, devuelve cadena vacia
-  -- (la invocacion fallara con 401 y el mensaje reaparecera via vt — visible,
-  -- no un secreto filtrado).
+  -- (el worker rechazara con 401 fail-closed; el mensaje reaparece via vt —
+  -- visible, no un secreto filtrado).
   return coalesce(nullif(v, ''), '');
 end;
 $$;
@@ -138,13 +148,14 @@ begin
     return;
   end if;
 
-  -- Invocar el worker via pg_net (HTTP async). El service_key viaja como
-  -- Bearer SOLO en este request server-side (nunca al cliente, nunca al log).
+  -- Invocar el worker via pg_net (HTTP async). CR-04: el Bearer es el secreto
+  -- DEDICADO de invocacion (minimo privilegio), NO el service_role. Aunque
+  -- pg_net persista este header en sus tablas internas, no expone la DB.
   perform net.http_post(
     url     := util.project_url() || '/functions/v1/ingest-worker',
     headers := jsonb_build_object(
                  'Content-Type', 'application/json',
-                 'Authorization', 'Bearer ' || util.service_key()
+                 'Authorization', 'Bearer ' || util.worker_secret()
                ),
     body    := jsonb_build_object('batch', batch),
     timeout_milliseconds := timeout_ms
@@ -153,11 +164,83 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- 3b. Cleanup de las tablas internas de pg_net (CR-04).
+--     pg_net guarda request/response (incluidos headers) en net._http_request
+--     y net._http_response. Aunque ahora el Bearer es el secreto de invocacion
+--     (no el service_role), igual purgamos esas filas para no acumular headers
+--     en una tabla queryable / backups. Best-effort: si el esquema de pg_net
+--     difiere por version, no rompemos la migracion.
+-- ---------------------------------------------------------------------------
+create or replace function util.cleanup_net_http(retain_minutes int default 60)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  begin
+    delete from net._http_response
+     where created < now() - make_interval(mins => retain_minutes);
+  exception when undefined_table then
+    null; -- otra version de pg_net: ignorar.
+  end;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 4. Cron schedule: dispara el dispatcher cada 30 segundos.
 --    Definido en SQL (versionado), no clickeado en el dashboard (Pitfall 5).
+--
+--    WR-07: el formato de intervalo '30 seconds' (sub-minuto) requiere
+--    pg_cron >= 1.5. Si la version desplegada es menor, cron.schedule con ese
+--    string falla o se ignora silenciosamente => el loop de orquestacion nunca
+--    corre y NADA se ingesta sin senal. Guardamos la version explicitamente y
+--    caemos a un schedule estandar de 1 minuto si el sub-minuto no esta
+--    disponible, dejando rastro en un NOTICE.
 -- ---------------------------------------------------------------------------
-select cron.schedule(
-  'process-ingest-jobs',
-  '30 seconds',
-  $$ select util.process_ingest_jobs(); $$
-);
+do $$
+declare
+  v_ext_version text;
+begin
+  select extversion into v_ext_version
+    from pg_extension where extname = 'pg_cron';
+
+  if v_ext_version is null then
+    raise exception 'pg_cron no esta instalado: no se puede programar la orquestacion';
+  end if;
+
+  -- string_to_array para comparar mayor.menor numericamente (1.5 > 1.4).
+  if (string_to_array(v_ext_version, '.')::int[]) >= array[1,5] then
+    perform cron.schedule(
+      'process-ingest-jobs',
+      '30 seconds',
+      $cron$ select util.process_ingest_jobs(); $cron$
+    );
+  else
+    raise notice 'pg_cron % < 1.5: sub-minuto no soportado, usando schedule de 1 minuto', v_ext_version;
+    perform cron.schedule(
+      'process-ingest-jobs',
+      '* * * * *',
+      $cron$ select util.process_ingest_jobs(); $cron$
+    );
+  end if;
+
+  -- Cleanup de las tablas internas de pg_net cada 15 minutos (CR-04).
+  perform cron.schedule(
+    'cleanup-net-http',
+    '*/15 * * * *',
+    $cron$ select util.cleanup_net_http(); $cron$
+  );
+end;
+$$;
+
+-- WR-07: verificacion post-migracion — el job DEBE existir en cron.job. Si la
+-- programacion fallo silenciosamente, esto rompe la migracion en vez de dejar
+-- la orquestacion muerta sin aviso.
+do $$
+begin
+  if not exists (select 1 from cron.job where jobname = 'process-ingest-jobs') then
+    raise exception 'cron job process-ingest-jobs no quedo registrado: orquestacion no programada';
+  end if;
+end;
+$$;
