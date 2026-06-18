@@ -42,6 +42,10 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           BACKFILL_ITERATIONS: ${{ github.event.inputs.iterations }}
+          # CR-03: el DummyConnector pide https://dummy.local (host de prueba no
+          # gubernamental). Solo en este job de M1 lo habilitamos explicitamente;
+          # en prod la allowlist queda en solo-https-gobierno.
+          INGEST_ALLOW_TEST_HOSTS: dummy.local
         run: |
           deno run \
             --allow-env --allow-net \
