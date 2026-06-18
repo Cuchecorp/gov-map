@@ -66,3 +66,16 @@ export {
 export type { AgendaWriter } from "./writer";
 export { SupabaseAgendaWriter } from "./writer-supabase";
 export type { SupabaseAgendaWriterOptions } from "./writer-supabase";
+
+// Orquestación de la ingesta (tolerante a fuentes vacías + degradación honesta).
+export { runIngest } from "./ingest-run";
+export type { RunIngestOpts, RunIngestResult, Degradacion } from "./ingest-run";
+
+// CLI de ingesta (flags validados antes de red/DB; backfill por rango de semanas).
+export {
+  parseArgs,
+  parseSemanaIso,
+  main as ingestMain,
+  IngestCliArgsError,
+} from "./ingest-cli";
+export type { IngestCliOptions, IngestCliResult } from "./ingest-cli";
