@@ -74,12 +74,41 @@ describe("pipeline: correrPipeline — orquestación reanudable", () => {
     expect(res.counts.procesados).toBe(1);
     expect(res.counts.embebidos).toBe(1);
     expect(res.errores).toHaveLength(0);
-    expect(writer.upsertFicha).toHaveBeenCalledTimes(1);
+    // #7: 3-step a prueba de crash → ficha 'pendiente', embedding, ficha 'embebido'.
+    expect(writer.upsertFicha).toHaveBeenCalledTimes(2);
     expect(writer.upsertEmbedding).toHaveBeenCalledTimes(1);
-    const fila = writer.fichas[0] as { boletin: string; estado: string; texto_r2_path: string | null };
-    expect(fila.boletin).toBe("18296-05");
-    expect(fila.estado).toBe("embebido");
-    expect(fila.texto_r2_path).toBe("r2/x.txt");
+    const primera = writer.fichas[0] as { boletin: string; estado: string };
+    const ultima = writer.fichas[1] as { boletin: string; estado: string; texto_r2_path: string | null };
+    expect(primera.estado).toBe("pendiente");
+    expect(ultima.boletin).toBe("18296-05");
+    expect(ultima.estado).toBe("embebido");
+    expect(ultima.texto_r2_path).toBe("r2/x.txt");
+  });
+
+  it("#7: marca 'embebido' SOLO tras el embedding (orden a prueba de crash)", async () => {
+    const writer = fakeWriter();
+    const gemini = fakeEmbedder();
+    const orden: string[] = [];
+    writer.upsertFicha.mockImplementation(async (filas: unknown[]) => {
+      const f = filas[0] as { estado: string };
+      orden.push(`ficha:${f.estado}`);
+      writer.fichas.push(...filas);
+    });
+    writer.upsertEmbedding.mockImplementation(async (filas: unknown[]) => {
+      orden.push("embedding");
+      writer.embeddings.push(...filas);
+    });
+
+    await correrPipeline({
+      pendientes: [pendiente()],
+      obtenerTexto: vi.fn(async () => ({ texto: TEXTO, r2Path: "r2/x.txt" })),
+      provider: new MockDeepSeekProvider(FICHA),
+      gemini: gemini as never,
+      writer: writer as never,
+    });
+
+    // El embedding queda ESTRICTAMENTE antes del marcado 'embebido'.
+    expect(orden).toEqual(["ficha:pendiente", "embedding", "ficha:embebido"]);
   });
 
   it("un error en un boletín NO aborta; se colecta y los demás continúan", async () => {

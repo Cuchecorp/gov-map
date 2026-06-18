@@ -143,16 +143,22 @@ export async function correrPipeline(
       // 3. Embedding asimétrico (sobre idea_matriz si hay; si no, título+materia — nunca fabrica).
       const emb: EmbeddingResult = await embedFicha(proyecto, ficha, opts.gemini);
 
-      // 4. Upsert idempotente por boletín (ficha → embedding).
-      const fichaRow: FichaRow = {
+      // 4. Upsert idempotente por boletín, ordenado para ser a prueba de crash (#7).
+      //    Sin transacción cross-tabla en PostgREST, el ORDEN garantiza el invariante
+      //    "estado='embebido' ⟹ embedding existe":
+      //      (a) ficha 'pendiente' (asegura la fila + datos extraídos, reanudable),
+      //      (b) embedding,
+      //      (c) marcar 'embebido' SOLO tras el embedding.
+      //    Un crash entre (a)/(b)/(c) deja la ficha en 'pendiente' (se reintenta sola);
+      //    nunca un boletín 'embebido' huérfano invisible a la búsqueda semántica.
+      const fichaBase = {
         boletin: p.boletin,
         idea_matriz: ficha.idea_matriz,
         cuerpos_legales: ficha.cuerpos_legales,
         texto_r2_path: r2Path,
-        estado: "embebido",
         origen: p.origen ?? "fichas-pipeline",
         fecha_captura: p.fecha_captura ?? new Date().toISOString(),
-      };
+      } satisfies Omit<FichaRow, "estado">;
       const embRow: EmbeddingRow = {
         boletin: p.boletin,
         embedding: emb.vector,
@@ -161,8 +167,9 @@ export async function correrPipeline(
         embedding_version: version,
       };
 
-      await opts.writer.upsertFicha([fichaRow]);
+      await opts.writer.upsertFicha([{ ...fichaBase, estado: "pendiente" }]);
       await opts.writer.upsertEmbedding([embRow]);
+      await opts.writer.upsertFicha([{ ...fichaBase, estado: "embebido" }]);
       embebidos += 1;
       log(`fichas: ${p.boletin} → embebido (${texto == null ? "degradado/título+materia" : "literal"})`);
     } catch (err) {
