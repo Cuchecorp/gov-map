@@ -18,6 +18,15 @@ export type { MilitanciaRaw } from "./parse-camara";
 export { runSeeder, upsertMaestra, RobotsDisallowError } from "./seeder";
 export type { SeederDeps, MaestraWriter } from "./seeder";
 
+// Backup: exportMaestra → snapshot JSON git (ID-09) + R2 gateado.
+export { exportMaestra, serializeMaestra, SEED_PATH } from "./backup";
+export type {
+  SeedFileWriter,
+  R2BackupTarget,
+  ExportOptions,
+  ExportResult,
+} from "./backup";
+
 // Re-exporta los tipos de dominio de identidad desde @obs/core por conveniencia.
 export type {
   Parlamentario,
