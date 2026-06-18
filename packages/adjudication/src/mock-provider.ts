@@ -30,9 +30,21 @@ export class MockMiniMaxProvider implements LLMProvider {
     // Selección de la respuesta fijada: mapa por mención o respuesta única.
     let fijada: Adjudicacion;
     if (this.esMapa(this.respuesta)) {
-      const clave = Object.keys(this.respuesta).find((k) => req.user.includes(k));
+      // Keying ROBUSTO (CR-02): el prompt embebe el nombre en una línea exacta
+      // `- nombre: <nombreOriginal>`; matcheamos por IGUALDAD de esa línea, no por
+      // substring. El substring (`req.user.includes(k)`) era order- y prefijo-frágil:
+      // un nombre substring de otro devolvía el fixture equivocado en silencio.
+      const nombreDelPrompt = MockMiniMaxProvider.extraerNombre(req.user);
+      const clave =
+        nombreDelPrompt != null && nombreDelPrompt in this.respuesta
+          ? nombreDelPrompt
+          : undefined;
       if (clave === undefined) {
-        throw new Error(`MockMiniMaxProvider: sin respuesta fijada para el prompt`);
+        throw new Error(
+          `MockMiniMaxProvider: sin respuesta fijada para la mención ${
+            nombreDelPrompt != null ? `"${nombreDelPrompt}"` : "(nombre no hallado en el prompt)"
+          }`,
+        );
       }
       fijada = this.respuesta[clave]!;
     } else {
@@ -46,5 +58,19 @@ export class MockMiniMaxProvider implements LLMProvider {
   private esMapa(r: RespuestaMock): r is Record<string, Adjudicacion> {
     // Una Adjudicacion tiene la propiedad `decision`; un mapa no.
     return !("decision" in r);
+  }
+
+  /**
+   * Extrae el `nombreOriginal` de la línea `- nombre: <...>` que
+   * `construirPromptAdjudicacion` emite en el bloque REGISTRO. Devuelve null si no
+   * existe (prompt con otro formato). El matcheo por igualdad de esta línea hace el
+   * keying del mock robusto a substrings/prefijos (CR-02).
+   */
+  static extraerNombre(user: string): string | null {
+    for (const linea of user.split("\n")) {
+      const m = /^- nombre:\s*(.+)$/.exec(linea);
+      if (m) return m[1]!.trim();
+    }
+    return null;
   }
 }

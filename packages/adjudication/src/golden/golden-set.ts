@@ -310,7 +310,7 @@ export const GOLDEN_SET: CasoGolden[] = [
     categoria: "no-match",
     // El apellido existe pero en la OTRA cámara: el blocking duro de cámara lo excluye.
     mencion: men({
-      nombreOriginal: "Walker, Matías",
+      nombreOriginal: "Walker, Matías (cámara diputados)", // único: evita colisión con g20
       nombreNormalizado: "walker matias",
       tokens: ["walker", "matias"],
       camara: "diputados", // Walker está en senado
@@ -384,7 +384,7 @@ export const GOLDEN_SET: CasoGolden[] = [
   {
     id: "g20-no-match-otro-periodo",
     categoria: "no-match",
-    mencion: men({ nombreOriginal: "Walker, Matías", nombreNormalizado: "walker matias", tokens: ["walker", "matias"], camara: "senado", periodo: "senado-vigente-2018" }),
+    mencion: men({ nombreOriginal: "Walker, Matías (periodo 2018)", nombreNormalizado: "walker matias", tokens: ["walker", "matias"], camara: "senado", periodo: "senado-vigente-2018" }),
     maestraRelevante: [WALKER_MATIAS],
     llmEsperado: noMatch(),
     expected: { tipo: "no_match" },
@@ -405,7 +405,80 @@ export const GOLDEN_SET: CasoGolden[] = [
     llmEsperado: match("P00261", 0.91),
     expected: { tipo: "match", chosenId: "P00261" },
   },
+
+  // ───── ADVERSARIO (CR-02): el modelo elige el id EQUIVOCADO con alta confianza ─────
+  // Dos candidatos plausibles (mismo apellido/nombre, distinta región). El "modelo"
+  // (mock) afirma P00998 con 0.99 cuando el correcto es P00999. La compuerta NO tiene
+  // forma de saber que es erróneo (confianza alta, sin conflicts) → auto-acepta P00998
+  // como `probable`. El golden lo etiqueta como match a P00999, así `afirmoId !==
+  // chosenId` → FALSO POSITIVO. Este caso prueba que la rama `fp` ES alcanzable y que
+  // un auto-aceptar de un id equivocado BAJA la precisión: el gate puede FALLAR de
+  // verdad, no es una tautología. La meta-prueba `gate puede fallar` lo corre AISLADO.
+  {
+    id: "g23-adversario-id-equivocado",
+    categoria: "homonimo",
+    mencion: men({
+      nombreOriginal: "Adversario Homónimo, Test",
+      nombreNormalizado: "adversario test",
+      tokens: ["adversario", "test"],
+      camara: "senado",
+    }),
+    maestraRelevante: [
+      p({ id: "P00999", nombre_normalizado: "adversario uno test", nombres: "Test", apellido_paterno: "Adversario", apellido_materno: "Uno", camara: "senado", region: "Coquimbo" }),
+      p({ id: "P00998", nombre_normalizado: "adversario dos test", nombres: "Test", apellido_paterno: "Adversario", apellido_materno: "Dos", camara: "senado", region: "Maule" }),
+    ],
+    llmEsperado: match("P00998", 0.99, ["el modelo afirma (erróneamente) el candidato Dos"]),
+    expected: { tipo: "match", chosenId: "P00999" }, // correcto = Uno → afirmar P00998 es fp
+  },
+  {
+    // Segundo adversario: el modelo auto-acepta a alguien en un caso que DEBÍA ir a
+    // revisión (homónimo sin desempate). Auto-aceptar en un caso de revisión también
+    // cuenta como fp. Con DOS fp el set del gate cae bajo 0.95 de forma demostrable.
+    id: "g24-adversario-auto-acepta-en-revision",
+    categoria: "homonimo",
+    mencion: men({
+      nombreOriginal: "Adversario Revisión, Test",
+      nombreNormalizado: "adversario revision test",
+      tokens: ["adversario", "revision", "test"],
+      camara: "senado",
+    }),
+    maestraRelevante: [
+      p({ id: "P00997", nombre_normalizado: "adversario tres test", nombres: "Test", apellido_paterno: "Adversario", apellido_materno: "Tres", camara: "senado", region: "Biobío" }),
+      p({ id: "P00996", nombre_normalizado: "adversario cuatro test", nombres: "Test", apellido_paterno: "Adversario", apellido_materno: "Cuatro", camara: "senado", region: "Ñuble" }),
+    ],
+    // Alta confianza, sin conflicts → la compuerta auto-acepta (no enruta a revisión).
+    llmEsperado: match("P00997", 0.99, ["el modelo decide sin desempate real"]),
+    expected: { tipo: "revision" }, // debía ir a revisión → auto-aceptar es fp
+  },
 ];
+
+/**
+ * GATE REAL (CR-02): el golden de CI debe medir discriminación, no re-probar el
+ * plumbing determinista. El set incluye casos ADVERSARIOS donde el mock afirma un id
+ * EQUIVOCADO (o auto-acepta en un caso que debía ir a revisión) con alta confianza; la
+ * compuerta lo auto-acepta y el conteo lo cuenta como `fp`. Con esos casos adentro la
+ * precisión cae bajo 0.95, lo que BLOQUEARÍA el deploy. Por eso los casos adversarios se
+ * EXCLUYEN del set que mide el umbral de deploy (`GOLDEN_SET_GATE`) y se usan AISLADOS en
+ * la meta-prueba `el gate puede fallar`, para demostrar que la rama `fp` es real (la
+ * métrica está VIVA, no es teatro).
+ */
+export const IDS_CASOS_ADVERSARIOS: readonly string[] = [
+  "g23-adversario-id-equivocado",
+  "g24-adversario-auto-acepta-en-revision",
+];
+
+/** Compat: el id del primer caso adversario (id equivocado de alta confianza). */
+export const ID_CASO_ADVERSARIO = IDS_CASOS_ADVERSARIOS[0]!;
+
+/** El set que mide el umbral de deploy: el golden SIN los casos adversarios inyectados. */
+export const GOLDEN_SET_GATE: CasoGolden[] = GOLDEN_SET.filter(
+  (c) => !IDS_CASOS_ADVERSARIOS.includes(c.id),
+);
+
+/** Solo los casos adversarios: alimentan la meta-prueba de que el gate puede fallar. */
+export const GOLDEN_SET_ADVERSARIO: CasoGolden[] = GOLDEN_SET.filter(
+  (c) => IDS_CASOS_ADVERSARIOS.includes(c.id),
+);
 
 /** Métricas de la corrida del golden set (precision/recall + detalle por caso). */
 export interface MetricasGolden {
