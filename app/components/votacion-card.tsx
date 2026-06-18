@@ -22,7 +22,11 @@ export function VotacionCard({ votacion }: { votacion: VotacionRow }) {
   const capturedAt = votacion.fecha_captura
     ? new Date(votacion.fecha_captura)
     : null;
-  const esSenado = votacion.camara === "senado";
+  // WR-05: el voto-a-voto se renderiza para AMBAS cámaras. El de la Cámara es el vínculo de
+  // identidad MÁS fuerte (determinista por DIPID, confirmado) y se persiste en `voto`; ocultarlo
+  // desperdiciaba la escritura y privaba al ciudadano del roll-call. La guarda de identidad de
+  // VotoRow es la misma para ambas (solo 'confirmado' enlaza), así que es seguro mostrarlo.
+  const tieneDesglose = (votacion.voto?.length ?? 0) > 0;
 
   return (
     <Card className="mb-6 last:mb-0">
@@ -73,7 +77,7 @@ export function VotacionCard({ votacion }: { votacion: VotacionRow }) {
           />
         </div>
 
-        {esSenado && <VotoDetalle votos={votacion.voto ?? []} />}
+        {tieneDesglose && <VotoDetalle votos={votacion.voto ?? []} />}
       </CardContent>
     </Card>
   );
