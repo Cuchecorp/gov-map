@@ -35,14 +35,13 @@ export interface SupabaseMaestraWriterOptions {
   client?: SupabaseClient;
 }
 
-/** Filas de senadores: tienen `parlid_senado` no nulo. */
-function senadoRows(rows: Parlamentario[]): Parlamentario[] {
-  return rows.filter((r) => r.parlid_senado != null);
-}
+/** Tamaño de lote para el `in("id", ...)` de promoción (evita URLs/queries gigantes). */
+const PROMOTE_CHUNK = 100;
 
-/** Filas de diputados: tienen `id_diputado_camara` no nulo. */
-function camaraRows(rows: Parlamentario[]): Parlamentario[] {
-  return rows.filter((r) => r.id_diputado_camara != null);
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
 
 /**
@@ -76,41 +75,32 @@ export class SupabaseMaestraWriter implements MaestraWriter {
   }
 
   /**
-   * Promueve a `confirmado` las filas vigentes del lote (acotado a sus claves naturales).
-   * La promoción es REVISIÓN HUMANA (ID-01): solo se invoca tras el visto bueno del operador.
-   * Devuelve el nº de filas promovidas por cámara.
+   * Promueve a `confirmado` EXACTAMENTE las filas cuyos `id` se pasan en `ids` (CR-01).
+   *
+   * El caller (seed-cli) DEBE construir `ids` de forma PRINCIPIADA — solo identidades
+   * confirmadas por una de las dos fuentes legítimas:
+   *   (a) la regla seed-from-authoritative-vigentes-catalog (`vigentesDeCatalogo`), o
+   *   (b) la reconciliación que devolvió `confirmado` (`reconciliarMaestra`).
+   * Esta función NO infiere qué promover: NO toca filas fuera de `ids`, NUNCA confirma el
+   * lote completo, y promueve por la PK ESTABLE `id` (no por clave natural en IN-lists que
+   * podrían sobre-emparejar). Devuelve el nº de filas efectivamente actualizadas.
+   *
+   * `ids` vacío es un no-op (0 promovidas) — nunca un "promueve todo".
    */
-  async promoteToConfirmado(
-    rows: Parlamentario[],
-  ): Promise<{ senado: number; camara: number }> {
-    const senadoIds = senadoRows(rows)
-      .map((r) => r.parlid_senado)
-      .filter((x): x is string => x != null);
-    const camaraIds = camaraRows(rows)
-      .map((r) => r.id_diputado_camara)
-      .filter((x): x is string => x != null);
+  async promoteToConfirmado(ids: string[]): Promise<{ promovidos: number }> {
+    const unicos = [...new Set(ids.filter((x) => x != null && x !== ""))];
+    if (unicos.length === 0) return { promovidos: 0 };
 
-    let senado = 0;
-    let camara = 0;
-
-    if (senadoIds.length > 0) {
+    let promovidos = 0;
+    for (const lote of chunk(unicos, PROMOTE_CHUNK)) {
       const { data, error } = await this.client
         .from(this.table)
         .update({ estado: "confirmado" })
-        .in("parlid_senado", senadoIds)
+        .in("id", lote)
         .select("id");
-      if (error) throw new Error(`promote senado falló: ${error.message}`);
-      senado = data?.length ?? 0;
+      if (error) throw new Error(`promote falló: ${error.message}`);
+      promovidos += data?.length ?? 0;
     }
-    if (camaraIds.length > 0) {
-      const { data, error } = await this.client
-        .from(this.table)
-        .update({ estado: "confirmado" })
-        .in("id_diputado_camara", camaraIds)
-        .select("id");
-      if (error) throw new Error(`promote cámara falló: ${error.message}`);
-      camara = data?.length ?? 0;
-    }
-    return { senado, camara };
+    return { promovidos };
   }
 }

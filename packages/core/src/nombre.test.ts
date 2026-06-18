@@ -87,3 +87,27 @@ describe("normalizarNombre — captura de alias (inicial del materno en formato 
     expect(r.tokens).not.toContain("p");
   });
 });
+
+describe("normalizarNombre — clave_estricta (WR-01: incluye el materno)", () => {
+  it("la clave estricta INCLUYE el materno; el nombre_normalizado NO", () => {
+    const r = normalizarNombre({
+      nombres: "Juan",
+      apellidoPaterno: "Perez",
+      apellidoMaterno: "Gonzalez",
+    });
+    expect(r.nombre_normalizado).toBe("juan perez");
+    expect(r.clave_estricta).toBe("gonzalez juan perez");
+  });
+
+  it("dos homónimos por nombre materno-less tienen clave_estricta DISTINTA si difieren en materno", () => {
+    const a = normalizarNombre({ nombres: "Juan", apellidoPaterno: "Perez", apellidoMaterno: "Gonzalez" });
+    const b = normalizarNombre({ nombres: "Juan", apellidoPaterno: "Perez", apellidoMaterno: "Soto" });
+    expect(a.nombre_normalizado).toBe(b.nombre_normalizado); // colisión materno-less
+    expect(a.clave_estricta).not.toBe(b.clave_estricta); // pero distinguibles por materno
+  });
+
+  it("sin materno, la clave estricta coincide con el nombre_normalizado (sin info espuria)", () => {
+    const r = normalizarNombre({ nombres: "Ana", apellidoPaterno: "Gomez" });
+    expect(r.clave_estricta).toBe(r.nombre_normalizado);
+  });
+});

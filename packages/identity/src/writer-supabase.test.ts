@@ -107,16 +107,36 @@ describe("SupabaseMaestraWriter.upsert", () => {
   });
 });
 
-describe("SupabaseMaestraWriter.promoteToConfirmado", () => {
-  it("promueve por clave natural y cuenta filas por cámara", async () => {
+describe("SupabaseMaestraWriter.promoteToConfirmado (CR-01: allow-list por id)", () => {
+  it("promueve EXACTAMENTE los ids del allow-list, por la PK `id`", async () => {
     const { client, updates } = fakeClient();
     const w = new SupabaseMaestraWriter({ url: "x", serviceKey: "x", client });
-    const res = await w.promoteToConfirmado(LOTE);
+    const res = await w.promoteToConfirmado(["S1", "D1"]);
 
-    expect(res).toEqual({ senado: 2, camara: 1 });
-    // Ambas updates ponen estado=confirmado.
+    expect(res).toEqual({ promovidos: 2 });
+    // Todas las updates ponen estado=confirmado y targetean la columna `id`.
     expect(updates.every((u) => u.patch.estado === "confirmado")).toBe(true);
-    const senadoUpd = updates.find((u) => u.column === "parlid_senado");
-    expect(senadoUpd?.values).toEqual(["100", "101"]);
+    expect(updates.every((u) => u.column === "id")).toBe(true);
+    const targeted = updates.flatMap((u) => u.values);
+    expect(targeted.sort()).toEqual(["D1", "S1"]);
+  });
+
+  it("allow-list vacío es un no-op (0 promovidos, sin update) — NUNCA promueve todo", async () => {
+    const { client, updates } = fakeClient();
+    const w = new SupabaseMaestraWriter({ url: "x", serviceKey: "x", client });
+    const res = await w.promoteToConfirmado([]);
+
+    expect(res).toEqual({ promovidos: 0 });
+    expect(updates).toHaveLength(0);
+  });
+
+  it("deduplica ids y descarta vacíos antes de promover", async () => {
+    const { client, updates } = fakeClient();
+    const w = new SupabaseMaestraWriter({ url: "x", serviceKey: "x", client });
+    const res = await w.promoteToConfirmado(["S1", "S1", "", "D1"]);
+
+    expect(res).toEqual({ promovidos: 2 });
+    const targeted = updates.flatMap((u) => u.values);
+    expect(targeted.sort()).toEqual(["D1", "S1"]);
   });
 });

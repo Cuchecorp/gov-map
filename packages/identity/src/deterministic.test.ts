@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import type { Parlamentario } from "@obs/core";
-import { matchDeterminista } from "./deterministic";
+import { matchDeterminista, isRutValido, type MaestraRow } from "./deterministic";
 
 /** Helper para fabricar un Parlamentario de prueba con defaults razonables. */
-function p(overrides: Partial<Parlamentario>): Parlamentario {
+function p(overrides: Partial<MaestraRow>): MaestraRow {
   return {
     id: "P00000",
     nombre_normalizado: "",
@@ -119,5 +119,82 @@ describe("matchDeterminista — fail-closed", () => {
       maestra,
     );
     expect(homonimo.estado).not.toBe("confirmado");
+  });
+});
+
+describe("matchDeterminista — WR-01 desempate por clave estricta (materno)", () => {
+  // Dos homónimos por nombre materno-less ("juan perez") pero distinto materno.
+  const conMaterno: MaestraRow[] = [
+    p({ id: "P1", nombre_normalizado: "juan perez", clave_estricta: "gonzalez juan perez", camara: "diputados", periodo: "2026-2030" }),
+    p({ id: "P2", nombre_normalizado: "juan perez", clave_estricta: "juan perez soto", camara: "diputados", periodo: "2026-2030" }),
+  ];
+
+  it("homónimo por nombre, pero clave estricta única → confirma por nombre-estricto", () => {
+    const r = matchDeterminista(
+      {
+        nombreNormalizado: "juan perez",
+        claveEstricta: "gonzalez juan perez",
+        camara: "diputados",
+        periodo: "2026-2030",
+      },
+      conMaterno,
+    );
+    expect(r).toEqual({ estado: "confirmado", metodo: "nombre-estricto", id: "P1" });
+  });
+
+  it("sin claveEstricta en la mención → se mantiene fail-closed (homonimo)", () => {
+    const r = matchDeterminista(
+      { nombreNormalizado: "juan perez", camara: "diputados", periodo: "2026-2030" },
+      conMaterno,
+    );
+    expect(r).toEqual({ estado: "no_confirmado", razon: "homonimo" });
+  });
+
+  it("verdaderos homónimos (misma clave estricta) → fail-closed, NUNCA confirma", () => {
+    const dobles: MaestraRow[] = [
+      p({ id: "Q1", nombre_normalizado: "juan perez", clave_estricta: "juan perez soto", camara: "diputados", periodo: "2026-2030" }),
+      p({ id: "Q2", nombre_normalizado: "juan perez", clave_estricta: "juan perez soto", camara: "diputados", periodo: "2026-2030" }),
+    ];
+    const r = matchDeterminista(
+      { nombreNormalizado: "juan perez", claveEstricta: "juan perez soto", camara: "diputados", periodo: "2026-2030" },
+      dobles,
+    );
+    expect(r).toEqual({ estado: "no_confirmado", razon: "homonimo" });
+  });
+
+  it("un candidato sin clave_estricta → NO se desempata (fail-closed)", () => {
+    const parcial: MaestraRow[] = [
+      p({ id: "R1", nombre_normalizado: "juan perez", clave_estricta: "gonzalez juan perez", camara: "diputados", periodo: "2026-2030" }),
+      p({ id: "R2", nombre_normalizado: "juan perez", camara: "diputados", periodo: "2026-2030" }), // sin clave_estricta
+    ];
+    const r = matchDeterminista(
+      { nombreNormalizado: "juan perez", claveEstricta: "gonzalez juan perez", camara: "diputados", periodo: "2026-2030" },
+      parcial,
+    );
+    expect(r.estado).toBe("no_confirmado");
+  });
+});
+
+describe("isRutValido (IN-04, utilidad para Fase 4)", () => {
+  it("acepta RUTs estructuralmente válidos (DV módulo-11)", () => {
+    expect(isRutValido("11.111.111-1")).toBe(true);
+    expect(isRutValido("11111111-1")).toBe(true);
+  });
+
+  it("rechaza RUTs con DV incorrecto", () => {
+    expect(isRutValido("12.345.678-9")).toBe(false); // DV real es 5
+    expect(isRutValido("12345678-5")).toBe(true);
+  });
+
+  it("rechaza basura que normaliza a vacío o forma inválida", () => {
+    expect(isRutValido("---")).toBe(false);
+    expect(isRutValido("")).toBe(false);
+    expect(isRutValido("abc")).toBe(false);
+  });
+
+  it("acepta DV 'k' (mayúscula o minúscula)", () => {
+    // 10.000.013-K es un RUT con DV k válido (módulo-11).
+    expect(isRutValido("10.000.013-K")).toBe(true);
+    expect(isRutValido("10000013-k")).toBe(true);
   });
 });

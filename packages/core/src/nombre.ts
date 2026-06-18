@@ -19,8 +19,20 @@
 const PARTICULAS = new Set(["de", "del", "la", "las", "los", "y", "da", "do"]);
 
 export interface NombreNormalizado {
-  /** Clave de comparación: tokens de blocking ordenados canónicamente. */
+  /** Clave de comparación: tokens de blocking ordenados canónicamente (SIN materno). */
   nombre_normalizado: string;
+  /**
+   * Clave ESTRICTA = paterno + materno + nombres (WR-01). A diferencia de
+   * `nombre_normalizado` (que omite el materno para converger catálogo↔votación), esta clave
+   * INCLUYE el apellido materno cuando está disponible. Úsala para el match interno del
+   * catálogo (self-match de la maestra), donde el materno SÍ está presente en ambos lados:
+   * distingue homónimos que comparten paterno + nombres pero difieren en materno (p.ej.
+   * "Juan Pérez González" vs "Juan Pérez Soto"), evitando un falso match único. La clave
+   * materno-less se reserva para la reconciliación cross-source (votación) de Fase 4.
+   *
+   * Si no hay materno, coincide con `nombre_normalizado` (no agrega información espuria).
+   */
+  clave_estricta: string;
   /** Tokens de blocking (sin partículas, sin materno, sin iniciales). */
   tokens: string[];
   /** Variantes capturadas (apellido materno completo o su inicial). */
@@ -51,11 +63,18 @@ function tokenize(folded: string): string[] {
   return folded.length === 0 ? [] : folded.split(" ").filter((t) => t.length > 0);
 }
 
-/** Construye el resultado a partir de tokens de blocking + alias ya separados. */
+/**
+ * Construye el resultado a partir de tokens de blocking + alias (materno) ya separados.
+ * `nombre_normalizado` omite el materno (convergencia cross-source); `clave_estricta`
+ * lo INCLUYE para el self-match del catálogo (WR-01). Ambas claves ordenan sus tokens
+ * canónicamente para ser estables ante reordenamientos de la fuente.
+ */
 function build(blockingRaw: string[], alias: string[]): NombreNormalizado {
   const tokens = blockingRaw.filter((t) => t.length > 0 && !PARTICULAS.has(t));
   const nombre_normalizado = [...tokens].sort().join(" ");
-  return { nombre_normalizado, tokens, alias_capturados: alias };
+  const maternoTokens = alias.filter((t) => t.length > 0 && !PARTICULAS.has(t));
+  const clave_estricta = [...tokens, ...maternoTokens].sort().join(" ");
+  return { nombre_normalizado, clave_estricta, tokens, alias_capturados: alias };
 }
 
 /**

@@ -1,13 +1,14 @@
 // @obs/identity — subsistema de identidad de parlamentarios (lógica pura).
 // Matcher determinista fail-closed (Etapa 0, ID-02) — único escritor de `estado`.
-export { matchDeterminista, normRut } from "./deterministic";
-export type { Mention, Resolution } from "./deterministic";
+export { matchDeterminista, normRut, isRutValido } from "./deterministic";
+export type { Mention, Resolution, MaestraRow } from "./deterministic";
 
 // Parsers de catálogo (XML real → modelo Parlamentario).
 export { parseSenado, SENADO_URL, SENADO_PERIODO } from "./parse-senado";
 export {
   parseCamara,
   partidoVigente,
+  FechaInvalidaError,
   CAMARA_URL,
   CAMARA_PERIODO,
   CORTE_VIGENCIA,
@@ -15,7 +16,15 @@ export {
 export type { MilitanciaRaw } from "./parse-camara";
 
 // Seeder idempotente (fetch reusa @obs/ingest → parse → match → upsert).
-export { runSeeder, upsertMaestra, RobotsDisallowError } from "./seeder";
+export {
+  runSeeder,
+  upsertMaestra,
+  reconciliarMaestra,
+  vigentesDeCatalogo,
+  conClaveEstricta,
+  derivarClaveEstricta,
+  RobotsDisallowError,
+} from "./seeder";
 export type { SeederDeps, MaestraWriter } from "./seeder";
 
 // Backup: exportMaestra → snapshot JSON git (ID-09) + R2 gateado.

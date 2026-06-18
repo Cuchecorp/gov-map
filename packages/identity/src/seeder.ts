@@ -17,7 +17,7 @@
  * `@obs/ingest` (T-03-07/T-03-08).
  */
 
-import type { Parlamentario } from "@obs/core";
+import { type Parlamentario, normalizarNombre } from "@obs/core";
 import {
   Fetcher,
   HostRateLimiter,
@@ -25,7 +25,7 @@ import {
   assertAllowedUrl,
   type AllowlistOptions,
 } from "@obs/ingest";
-import { matchDeterminista } from "./deterministic";
+import { matchDeterminista, type MaestraRow, type Resolution } from "./deterministic";
 import { parseSenado, SENADO_URL } from "./parse-senado";
 import { parseCamara, CAMARA_URL } from "./parse-camara";
 
@@ -66,9 +66,80 @@ async function fetchCatalogo(url: string, deps: SeederDeps): Promise<string> {
 }
 
 /**
- * Corre la siembra: fetch ambos catálogos, parsea, combina, y corre
- * `matchDeterminista` por fila contra la maestra combinada. Devuelve la maestra
- * (no persiste: la persistencia es `upsertMaestra`, separable y testeable).
+ * Deriva la `clave_estricta` (paterno + materno + nombres, vía `normalizarNombre`) de una
+ * fila de la maestra. A diferencia de `nombre_normalizado`, INCLUYE el materno → permite el
+ * desempate de homónimos del self-match del catálogo (WR-01).
+ */
+export function derivarClaveEstricta(row: Parlamentario): string {
+  return normalizarNombre({
+    nombres: row.nombres,
+    apellidoPaterno: row.apellido_paterno,
+    apellidoMaterno: row.apellido_materno,
+  }).clave_estricta;
+}
+
+/** Maestra ampliada con la `clave_estricta` por fila (entrada del matcher para WR-01). */
+export function conClaveEstricta(maestra: Parlamentario[]): MaestraRow[] {
+  return maestra.map((row) => ({ ...row, clave_estricta: derivarClaveEstricta(row) }));
+}
+
+/**
+ * Reconciliación determinista de la maestra contra SÍ MISMA (self-match del catálogo).
+ * PURA. Corre `matchDeterminista` por fila con la clave estricta (WR-01) y devuelve la
+ * Resolution por `id` (IN-01: NO se descarta — es la fuente que GATEA la promoción de
+ * registros que no provienen directamente del catálogo de vigentes). NO muta `estado`.
+ */
+export function reconciliarMaestra(
+  maestra: Parlamentario[],
+): Map<string, Resolution> {
+  const conClave = conClaveEstricta(maestra);
+  const audit = new Map<string, Resolution>();
+  for (const row of conClave) {
+    const res = matchDeterminista(
+      {
+        nombreNormalizado: row.nombre_normalizado,
+        claveEstricta: row.clave_estricta,
+        camara: row.camara,
+        periodo: row.periodo,
+      },
+      conClave,
+    );
+    audit.set(row.id, res);
+  }
+  return audit;
+}
+
+/**
+ * REGLA EXPLÍCITA "seed-from-authoritative-vigentes-catalog" (CR-01, fuente de confirmación (a)).
+ *
+ * Una fila que proviene DIRECTAMENTE del catálogo oficial de miembros vigentes
+ * (Senado `senadores_vigentes` / Cámara `retornarDiputadosPeriodoActual`) es, POR DEFINICIÓN,
+ * un miembro ACTUAL confirmado: el catálogo autoritativo del propio órgano es la prueba de
+ * vigencia. Esta es la única confirmación masiva legítima, y se encoda como una regla AUDITABLE
+ * (predicado por `origen`), NO como un `for (row) estado="confirmado"` ciego.
+ *
+ * Devuelve el conjunto de `id` confirmables por esta regla. NO confirma identidades de
+ * registros FORÁNEOS (votación/InfoProbidad) — esos pasan por `reconciliarMaestra` + revisión
+ * humana (Fase 4). Que un nombre sea homónimo dentro del catálogo NO invalida la vigencia del
+ * miembro (sigue siendo un miembro actual real); solo afecta la reconciliación de menciones
+ * externas, que es un problema distinto y diferido.
+ */
+const ORIGENES_VIGENTES = new Set(["senado", "diputados"]);
+
+export function vigentesDeCatalogo(maestra: Parlamentario[]): Set<string> {
+  const ids = new Set<string>();
+  for (const row of maestra) {
+    if (ORIGENES_VIGENTES.has(row.origen)) ids.add(row.id);
+  }
+  return ids;
+}
+
+/**
+ * Corre la siembra: fetch ambos catálogos, parsea, combina. Devuelve la maestra con
+ * `estado` inicial `no_confirmado` (el seeder NUNCA auto-confirma un lote — ID-01). La
+ * reconciliación (`reconciliarMaestra`) y la confirmación de vigentes (`vigentesDeCatalogo`)
+ * son pasos EXPLÍCITOS y separados que el operador/CLI invoca con intención, no efectos
+ * laterales de la siembra. No persiste: la persistencia es `upsertMaestra`.
  */
 export async function runSeeder(deps: SeederDeps): Promise<Parlamentario[]> {
   const fechaCaptura = deps.fechaCaptura ?? new Date().toISOString();
@@ -81,22 +152,8 @@ export async function runSeeder(deps: SeederDeps): Promise<Parlamentario[]> {
     ...parseCamara(camaraXml, { fechaCaptura }),
   ];
 
-  // Corre el matcher determinista sobre cada fila contra la propia maestra.
-  // Fail-closed: sólo confirmaría un nombre ÚNICO en (cámara, periodo); aún así
-  // la promoción a `confirmado` es compuerta humana, por lo que el seeder NO la
-  // aplica al lote — deja `no_confirmado` y registra el resultado para auditoría.
-  for (const row of maestra) {
-    matchDeterminista(
-      {
-        nombreNormalizado: row.nombre_normalizado,
-        camara: row.camara,
-        periodo: row.periodo,
-      },
-      maestra,
-    );
-    // Estado inicial NO auto-confirmado (ID-01): la promoción la hace el operador.
-    row.estado = "no_confirmado";
-  }
+  // Estado inicial NO auto-confirmado (ID-01): la promoción es un paso explícito posterior.
+  for (const row of maestra) row.estado = "no_confirmado";
 
   return maestra;
 }

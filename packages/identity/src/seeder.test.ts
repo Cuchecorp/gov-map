@@ -7,7 +7,14 @@ import {
   HostRateLimiter,
   RobotsGuard,
 } from "@obs/ingest";
-import { runSeeder, upsertMaestra, type MaestraWriter } from "./seeder";
+import {
+  runSeeder,
+  upsertMaestra,
+  reconciliarMaestra,
+  vigentesDeCatalogo,
+  derivarClaveEstricta,
+  type MaestraWriter,
+} from "./seeder";
 
 const SENADO_XML = readFileSync(
   fileURLToPath(new URL("../test/fixtures/senado-real.xml", import.meta.url)),
@@ -78,6 +85,70 @@ describe("runSeeder", () => {
     for (const r of rows) {
       expect(r.estado).not.toBe("confirmado");
     }
+  });
+});
+
+describe("reconciliarMaestra (IN-01: la Resolution NO se descarta)", () => {
+  it("devuelve una Resolution por cada fila, indexada por id", async () => {
+    const rows = await runSeeder(makeDeps());
+    const audit = reconciliarMaestra(rows);
+    expect(audit.size).toBe(rows.length);
+    for (const r of rows) {
+      expect(audit.has(r.id)).toBe(true);
+    }
+  });
+
+  it("ninguna fila auto-confirmada por el seeder muta su estado a 'confirmado'", async () => {
+    const rows = await runSeeder(makeDeps());
+    reconciliarMaestra(rows); // pura: no muta
+    for (const r of rows) expect(r.estado).toBe("no_confirmado");
+  });
+
+  it("WR-01: un homónimo materno-less con materno distinto SÍ se confirma por clave estricta", () => {
+    const base = {
+      camara: "diputados" as const,
+      periodo: "2026-2030",
+      origen: "diputados",
+      fecha_captura: "2026-06-18T00:00:00.000Z",
+      enlace: "https://example.test",
+      estado: "no_confirmado" as const,
+      region: null, distrito: null, circunscripcion: null, partido: null,
+      rut: null, parlid_senado: null, email: null,
+    };
+    // Mismo paterno + nombres (nombre_normalizado = "juan perez"), distinto materno.
+    const a: Parlamentario = {
+      ...base, id: "D1", id_diputado_camara: "1",
+      nombres: "Juan", apellido_paterno: "Perez", apellido_materno: "Gonzalez",
+      nombre_normalizado: "juan perez",
+    };
+    const b: Parlamentario = {
+      ...base, id: "D2", id_diputado_camara: "2",
+      nombres: "Juan", apellido_paterno: "Perez", apellido_materno: "Soto",
+      nombre_normalizado: "juan perez",
+    };
+    // Precondición: derivamos clave estricta distinta.
+    expect(derivarClaveEstricta(a)).not.toBe(derivarClaveEstricta(b));
+    const audit = reconciliarMaestra([a, b]);
+    // Ambos se distinguen por materno → confirmados por nombre-estricto.
+    expect(audit.get("D1")).toMatchObject({ estado: "confirmado" });
+    expect(audit.get("D2")).toMatchObject({ estado: "confirmado" });
+  });
+});
+
+describe("vigentesDeCatalogo (CR-01 regla seed-catalog)", () => {
+  it("incluye TODA fila proveniente de los catálogos oficiales (senado/diputados)", async () => {
+    const rows = await runSeeder(makeDeps());
+    const ids = vigentesDeCatalogo(rows);
+    // Los 186 vigentes provienen del catálogo autoritativo → todos confirmables por la regla.
+    expect(ids.size).toBe(rows.length);
+    expect(ids.size).toBe(186);
+  });
+
+  it("NO incluye filas de un origen foráneo (votación/InfoProbidad)", async () => {
+    const rows = await runSeeder(makeDeps());
+    const foraneo = { ...rows[0]!, id: "X-foraneo", origen: "votacion" };
+    const ids = vigentesDeCatalogo([...rows, foraneo]);
+    expect(ids.has("X-foraneo")).toBe(false);
   });
 });
 
