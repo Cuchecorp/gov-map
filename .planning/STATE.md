@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-06-18T16:43:55.446Z"
+stopped_at: Completed 05-04-PLAN.md
+last_updated: "2026-06-18T17:05:48.347Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 18
-  completed_plans: 16
+  completed_plans: 17
   percent: 57
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-17)
 ## Current Position
 
 Phase: 05 (tramitacion-core-ficha-timeline-votaciones) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-06-18
 
@@ -68,6 +68,7 @@ Progress: [██████████] 100% (3/3 planes de la fase 04 comple
 | Phase 05 P01 | 8min | 3 tasks | 16 files |
 | Phase 05 P02 | 7min | 3 tasks | 13 files |
 | Phase 05 P03 | 8min | 2 tasks | 5 files |
+| Phase 05 P04 | 30min | 4 tasks | 36 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,8 @@ Recent decisions affecting current work:
 - [Phase ?]: 05-02: parsers leen ambos juegos de nombres de totales (TotalAfirmativos/TotalSi) — fixture = ground truth
 - [Phase ?]: 05-02: fusionarTimeline empate estable Cámara-antes-Senado; fechas null al final
 - [Phase 05]: 05-03: voto Cámara cruza determinísticamente por Diputado/Id (sin LLM); Senado por nombre vía correrPipeline con guarda LOCKED — solo determinista/confirmado puebla parlamentario_id
+- [Phase ?]: Frontend ficha: Server Components leen Supabase con anon key server-only (sin NEXT_PUBLIC_); Tailwind v4 + shadcn oficial; barra y timeline en CSS puro
+- [Phase ?]: Guarda de identidad en UI (TRAM-06): VotoRow enlaza al parlamentario SOLO si estado_vinculo=confirmado; si no, nombre crudo + IdentityMarker, nunca link
 
 ### Pending Todos
 
@@ -145,6 +148,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T16:43:55.438Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-06-18T17:05:48.338Z
+Stopped at: Completed 05-04-PLAN.md
 Resume file: None
