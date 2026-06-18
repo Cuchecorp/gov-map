@@ -5,6 +5,7 @@
     { "path": "./packages/ingest" },
     { "path": "./packages/llm" },
     { "path": "./packages/identity" },
-    { "path": "./packages/adjudication" }
+    { "path": "./packages/adjudication" },
+    { "path": "./packages/tramitacion" }
   ]
 }

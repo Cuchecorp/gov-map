@@ -21,7 +21,9 @@
       "@obs/identity": ["./packages/identity/src/index.ts"],
       "@obs/identity/*": ["./packages/identity/src/*"],
       "@obs/adjudication": ["./packages/adjudication/src/index.ts"],
-      "@obs/adjudication/*": ["./packages/adjudication/src/*"]
+      "@obs/adjudication/*": ["./packages/adjudication/src/*"],
+      "@obs/tramitacion": ["./packages/tramitacion/src/index.ts"],
+      "@obs/tramitacion/*": ["./packages/tramitacion/src/*"]
     }
   }
 }
