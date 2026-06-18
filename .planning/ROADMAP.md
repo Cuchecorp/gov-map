@@ -20,7 +20,7 @@
 - [ ] **Phase 3: Tabla Maestra Parlamentario + Identidad Determinista** - Maestra sembrada (Cámara + Senado), match determinista y respaldo externo
 - [x] **Phase 4: Adjudicación de Identidad + Compuerta Humana + Golden Set** - Subsistema crítico aislado: LLM MiniMax, umbral, revisión humana, auditoría, gate de deploy (completed 2026-06-18)
 - [x] **Phase 5: Tramitación Core — Ficha + Timeline + Votaciones** - Conectores JSON/XML, modelo Proyecto/Votacion, ficha + timeline cross-cámara + frescura (primer valor ciudadano visible) (completed 2026-06-18)
-- [ ] **Phase 6: Citaciones + Tabla Semanal de Sala** - Conectores frágiles (WebForms __VIEWSTATE + Next.js __NEXT_DATA__) con agenda de comisiones y sala
+- [ ] **Phase 6: Citaciones + Tabla Semanal de Sala** - Conectores frágiles (HTML de Cámara tras Cloudflare + API backend del Senado) con agenda de comisiones y sala
 - [ ] **Phase 7: Búsqueda Semántica + Fichas Estructuradas** - Extracción LLM, embeddings Gemini + HNSW, búsqueda NL y "proyectos similares"
 
 ## Phase Details
@@ -134,17 +134,24 @@ Plans:
 
 ### Phase 6: Citaciones + Tabla Semanal de Sala
 
-**Goal:** Un ciudadano puede ver la agenda de comisiones (citaciones) de Cámara y Senado y la tabla semanal de sala, con conectores que sobreviven a los formatos más frágiles (WebForms con `__VIEWSTATE` y portal Next.js con `buildId` dinámico).
+**Goal:** Un ciudadano puede ver la agenda de comisiones (citaciones) de Cámara y Senado y la tabla semanal de sala, con conectores que sobreviven a los formatos más frágiles (HTML de Cámara tras Cloudflare con header-set de navegador + enumeración de semanas ISO, y API backend del Senado `web-back.senado.cl` con fallback `buildId` dinámico).
 **Mode:** mvp
 **Depends on:** Phase 5
 **Requirements:** TRAM-07, TRAM-08
 **Success Criteria** (what must be TRUE):
 
-  1. El sistema ingesta y muestra las citaciones de comisiones de la Cámara (`citaciones_semana.aspx`, reenviando `__VIEWSTATE`/`__EVENTVALIDATION` en el POST) y del Senado (portal Next.js `__NEXT_DATA__` con autodetección de `buildId` que sobrevive a un deploy)
-  2. Un usuario puede ver la tabla semanal de sala (orden del día) vía `getTablaHTML`/`getSesiones`
+  1. El sistema ingesta y muestra las citaciones de comisiones de la Cámara (`citaciones_semana.aspx?prmSemana={año}-{semana}`, GET con header-set de navegador anti-Cloudflare, enumerando semanas ISO para cobertura completa) y del Senado (API backend `web-back.senado.cl/api/commissions_citations`, con `_next/data`/`buildId` como fallback)
+  2. Un usuario puede ver la tabla semanal de sala (orden del día): el Senado estructurado vía `web-back.senado.cl/api/weekly_table`; la Cámara con degradación honesta al PDF oficial (`verDoc.aspx?prmTipo=TABLASEMANAL`), sin fabricar filas
   3. Cada cita y entrada de tabla muestra frescura por fuente y enlace a la fuente original, en lenguaje neutro
 
-**Plans:** TBD
+**Plans:** 4 plans
+Plans:
+
+- [ ] 06-01-PLAN.md — Scaffold @obs/agenda + modelo común (citaciones+invitados+puntos+tabla) + migración 0010 + RLS public-read pgTAP + fixtures reales (HTML Cámara, JSON Senado) + slice E2E (RED)
+- [ ] 06-02-PLAN.md — Helper de semanas ISO-8601 + parsers contra fixtures reales (cheerio Cámara, JSON commissions_citations + weekly_table del Senado) → modelo común; slice E2E verde
+- [ ] 06-03-PLAN.md — Conectores reusando @obs/ingest (Cámara header-set anti-Cloudflare + enumeración ISO; Senado API backend) + writer idempotente + runIngest (degradación Cámara) + CLI
+- [ ] 06-04-PLAN.md — Frontend /agenda (semana navegable, CitacionCard + ProvenanceBadge + boletín link, SalaTableSection available/degradado) + corrida LIVE acotada
+
 **UI hint**: yes
 
 ### Phase 7: Búsqueda Semántica + Fichas Estructuradas
@@ -173,7 +180,7 @@ Plans:
 | 3. Tabla Maestra Parlamentario + Identidad Determinista | 4/4 | Complete   | 2026-06-18 |
 | 4. Adjudicación de Identidad + Compuerta Humana + Golden Set | 3/3 | Complete   | 2026-06-18 |
 | 5. Tramitación Core — Ficha + Timeline + Votaciones | 5/5 | Complete   | 2026-06-18 |
-| 6. Citaciones + Tabla Semanal de Sala | 0/? | Not started | - |
+| 6. Citaciones + Tabla Semanal de Sala | 0/4 | Not started | - |
 | 7. Búsqueda Semántica + Fichas Estructuradas | 0/? | Not started | - |
 
 ## Dependency Notes
