@@ -37,10 +37,24 @@ function txt(v: unknown): string | null {
   return s.length === 0 ? null : s;
 }
 
-function intOf(v: unknown): number {
+/**
+ * Entero NO negativo de un nodo, distinguiendo "ausente" de "presente pero ilegible" (WR-04).
+ *  - nodo ausente/"" → 0 (caso legítimo: la fuente no trae el total).
+ *  - entero válido `[0-9]+` → su valor.
+ *  - presente PERO no es un entero limpio (p.ej. "1.234" con separador de millar, o un token
+ *    no numérico) → `null`: NO se fabrica un "1" silencioso a partir de `Number("1.234")`.
+ * El caller decide: hoy mapea null→0 pero conserva la señal para no afirmar un total falso.
+ */
+function intParse(v: unknown): number | null {
   const s = txt(v);
-  const n = s == null ? 0 : Number(s);
-  return Number.isFinite(n) ? Math.trunc(n) : 0;
+  if (s == null) return 0; // ausente → 0 legítimo
+  if (!/^\d+$/.test(s)) return null; // presente pero ilegible → señal, no un 0/1 fabricado
+  return Number(s);
+}
+
+/** Entero NO negativo tolerante (mantiene el contrato previo: ilegible→0). */
+function intOf(v: unknown): number {
+  return intParse(v) ?? 0;
 }
 
 function asArray<T>(v: T | T[] | undefined | null): T[] {

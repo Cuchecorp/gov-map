@@ -52,6 +52,14 @@ describe("parseSenadoVotacion (votaciones.php)", () => {
     expect(votacion.boletin).toBe("14309-04");
     expect(votacion.id).toContain("14309-04");
   });
+
+  it("CR-02: cada voto crudo lleva un votoSeq posicional (índice en la fuente)", () => {
+    const { votos } = parseSenadoVotacion(xml, "14309-04");
+    expect(votos[0]!.votoSeq).toBe(0);
+    expect(votos[1]!.votoSeq).toBe(1);
+    const seqs = votos.map((v) => v.votoSeq);
+    expect(new Set(seqs).size).toBe(votos.length); // únicos
+  });
 });
 
 describe("parseSenadoVotaciones — caso vacío (Pitfall 2)", () => {
@@ -59,5 +67,73 @@ describe("parseSenadoVotaciones — caso vacío (Pitfall 2)", () => {
     expect(parseSenadoVotaciones("<votaciones></votaciones>", "18296")).toEqual(
       [],
     );
+  });
+});
+
+describe("CR-01: id único por votación (varias votaciones el mismo día)", () => {
+  // Dos <votacion> del MISMO boletín y MISMA fecha pero distinta TIPOVOTACION
+  // (en general + en particular): sus ids NO deben colisionar.
+  const dosMismoDia = `<votaciones>
+    <votacion><SESION>47/372</SESION><FECHA>27/08/2024</FECHA><TEMA>x</TEMA><SI>30</SI><NO>1</NO><ABSTENCION>0</ABSTENCION><PAREO>0</PAREO><TIPOVOTACION>Discusión general</TIPOVOTACION><ETAPA>Segundo trámite</ETAPA><DETALLE_VOTACION><VOTO><PARLAMENTARIO>A B., C</PARLAMENTARIO><SELECCION>Si</SELECCION></VOTO></DETALLE_VOTACION></votacion>
+    <votacion><SESION>47/372</SESION><FECHA>27/08/2024</FECHA><TEMA>x</TEMA><SI>28</SI><NO>3</NO><ABSTENCION>0</ABSTENCION><PAREO>0</PAREO><TIPOVOTACION>Discusión particular</TIPOVOTACION><ETAPA>Segundo trámite</ETAPA><DETALLE_VOTACION><VOTO><PARLAMENTARIO>A B., C</PARLAMENTARIO><SELECCION>No</SELECCION></VOTO></DETALLE_VOTACION></votacion>
+  </votaciones>`;
+
+  it("dos votaciones del mismo día/boletín → ids DISTINTOS", () => {
+    const out = parseSenadoVotaciones(dosMismoDia, "14309-04");
+    expect(out).toHaveLength(2);
+    expect(out[0]!.votacion.id).not.toBe(out[1]!.votacion.id);
+    expect(out[0]!.votacion.id).toContain("14309-04");
+    expect(out[1]!.votacion.id).toContain("14309-04");
+  });
+
+  it("idempotencia: re-parsear el mismo XML produce los MISMOS ids", () => {
+    const a = parseSenadoVotaciones(dosMismoDia, "14309-04");
+    const b = parseSenadoVotaciones(dosMismoDia, "14309-04");
+    expect(a.map((x) => x.votacion.id)).toEqual(b.map((x) => x.votacion.id));
+  });
+
+  it("metadata idéntica → el índice posicional desambigua igualmente", () => {
+    const identicas = `<votaciones>
+      <votacion><SESION>1/1</SESION><FECHA>01/01/2026</FECHA><TEMA>x</TEMA><SI>1</SI><NO>0</NO><ABSTENCION>0</ABSTENCION><PAREO>0</PAREO><TIPOVOTACION>T</TIPOVOTACION><ETAPA>E</ETAPA><QUORUM>Q</QUORUM><DETALLE_VOTACION><VOTO><PARLAMENTARIO>A B., C</PARLAMENTARIO><SELECCION>Si</SELECCION></VOTO></DETALLE_VOTACION></votacion>
+      <votacion><SESION>1/1</SESION><FECHA>01/01/2026</FECHA><TEMA>x</TEMA><SI>1</SI><NO>0</NO><ABSTENCION>0</ABSTENCION><PAREO>0</PAREO><TIPOVOTACION>T</TIPOVOTACION><ETAPA>E</ETAPA><QUORUM>Q</QUORUM><DETALLE_VOTACION><VOTO><PARLAMENTARIO>A B., C</PARLAMENTARIO><SELECCION>No</SELECCION></VOTO></DETALLE_VOTACION></votacion>
+    </votaciones>`;
+    const out = parseSenadoVotaciones(identicas, "99999-01");
+    expect(out[0]!.votacion.id).not.toBe(out[1]!.votacion.id);
+  });
+});
+
+describe("WR-04: total presente pero ilegible NO se fabrica como un número falso", () => {
+  it("un SI con separador de millar ('1.234') NO se trunca a 1 → cae a 0 (señal, no dato falso)", () => {
+    // `Number("1.234")` = 1.234 → el código viejo truncaba a 1 (un total inventado). Ahora,
+    // al no ser un entero limpio, no se fabrica un "1": se reporta 0 (ausencia de dato fiable).
+    const xmlMal = `<votaciones>
+      <votacion><SESION>1/1</SESION><FECHA>01/01/2026</FECHA><TEMA>x</TEMA><SI>1.234</SI><NO>2</NO><ABSTENCION>0</ABSTENCION><PAREO>0</PAREO><TIPOVOTACION>T</TIPOVOTACION><ETAPA>E</ETAPA><DETALLE_VOTACION></DETALLE_VOTACION></votacion>
+    </votaciones>`;
+    const { votacion } = parseSenadoVotacion(xmlMal, "99999-01");
+    expect(votacion.total_si).toBe(0); // NO 1
+    expect(votacion.total_no).toBe(2); // un entero limpio sí se conserva
+  });
+
+  it("un total ausente sigue siendo 0 legítimo", () => {
+    const xmlSin = `<votaciones>
+      <votacion><SESION>1/1</SESION><FECHA>01/01/2026</FECHA><TEMA>x</TEMA><NO>2</NO><ABSTENCION>0</ABSTENCION><PAREO>0</PAREO><TIPOVOTACION>T</TIPOVOTACION><ETAPA>E</ETAPA><DETALLE_VOTACION></DETALLE_VOTACION></votacion>
+    </votaciones>`;
+    const { votacion } = parseSenadoVotacion(xmlSin, "99999-01");
+    expect(votacion.total_si).toBe(0);
+  });
+});
+
+describe("WR-03: selección desconocida NO se fabrica como 'abstencion'", () => {
+  const conGarbled = `<votaciones>
+    <votacion><SESION>1/1</SESION><FECHA>01/01/2026</FECHA><TEMA>x</TEMA><SI>1</SI><NO>0</NO><ABSTENCION>0</ABSTENCION><PAREO>0</PAREO><TIPOVOTACION>T</TIPOVOTACION><ETAPA>E</ETAPA><DETALLE_VOTACION><VOTO><PARLAMENTARIO>Valido V., Uno</PARLAMENTARIO><SELECCION>Si</SELECCION></VOTO><VOTO><PARLAMENTARIO>Garbled G., Dos</PARLAMENTARIO><SELECCION>???</SELECCION></VOTO><VOTO><PARLAMENTARIO>Blanco B., Tres</PARLAMENTARIO><SELECCION></SELECCION></VOTO></DETALLE_VOTACION></votacion>
+  </votaciones>`;
+
+  it("un token garbled NO se cuenta como abstención: el voto se OMITE", () => {
+    const { votos } = parseSenadoVotacion(conGarbled, "99999-01");
+    // Solo el 'Si' válido sobrevive; '???' y vacío se omiten (no fabricamos abstención).
+    expect(votos).toHaveLength(1);
+    expect(votos[0]!.mencionNombre).toBe("Valido V., Uno");
+    expect(votos.some((v) => v.mencionNombre.startsWith("Garbled"))).toBe(false);
+    expect(votos.every((v) => v.seleccion !== "abstencion")).toBe(true);
   });
 });

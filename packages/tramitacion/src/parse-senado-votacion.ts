@@ -32,10 +32,23 @@ function txt(v: unknown): string | null {
   return s.length === 0 ? null : s;
 }
 
-function intOf(v: unknown): number {
+/**
+ * Entero NO negativo de un nodo, distinguiendo "ausente" de "presente pero ilegible" (WR-04).
+ *  - nodo ausente/"" → 0 (la fuente no trae el total).
+ *  - entero válido `[0-9]+` → su valor.
+ *  - presente PERO no es un entero limpio (separador de millar / token no numérico) → `null`:
+ *    NO se fabrica un valor silencioso a partir de `Number("1.234")`.
+ */
+function intParse(v: unknown): number | null {
   const s = txt(v);
-  const n = s == null ? 0 : Number(s);
-  return Number.isFinite(n) ? Math.trunc(n) : 0;
+  if (s == null) return 0;
+  if (!/^\d+$/.test(s)) return null;
+  return Number(s);
+}
+
+/** Entero NO negativo tolerante (mantiene el contrato previo: ilegible→0). */
+function intOf(v: unknown): number {
+  return intParse(v) ?? 0;
 }
 
 function asArray<T>(v: T | T[] | undefined | null): T[] {
@@ -43,18 +56,57 @@ function asArray<T>(v: T | T[] | undefined | null): T[] {
   return ([] as T[]).concat(v as T | T[]);
 }
 
-function mapSeleccion(s: string | null): Seleccion {
+/**
+ * Mapea el `SELECCION` crudo a una opción nominal, o `null` si el token es desconocido/garbled.
+ *
+ * WR-03: un token que NO sea si/no/abst/pareo NO se coacciona a 'abstencion' — eso fabricaría
+ * una clasificación afirmativa ("Abstención" se cuenta y se muestra en el roll-call) atribuida a
+ * una persona nombrada, presentando interpretación como hecho. Espeja la Cámara
+ * (`opcionDeVoto` devuelve null y el caller OMITE el voto) en lugar de inventar un voto contado.
+ */
+function mapSeleccion(s: string | null): Seleccion | null {
   const v = (s ?? "").toLowerCase();
   if (v.startsWith("si") || v.startsWith("sí")) return "si";
   if (v.startsWith("no")) return "no";
   if (v.startsWith("abst")) return "abstencion";
   if (v.startsWith("pareo")) return "pareo";
-  return "abstencion"; // desconocido → conservador (no afirma un voto)
+  return null; // desconocido/garbled → se OMITE el voto (no se fabrica una clasificación)
+}
+
+/**
+ * Discriminador estable por votación dentro de un mismo (boletín, fecha).
+ * CR-01: el Senado realiza varias votaciones nominales el mismo día para el mismo boletín
+ * (en general + en particular, varios artículos). Combinamos los identificadores que trae la
+ * fuente (SESION + TIPOVOTACION + ETAPA + QUORUM) y, como último recurso para garantizar
+ * unicidad incluso con metadata idéntica, un índice posicional dentro del grupo
+ * (boletín, fecha). El orden del XML de la fuente es determinista → el índice es estable
+ * entre re-ingestas (idempotencia), y dos `<votacion>` distintos NUNCA colapsan al mismo id.
+ */
+function discriminadorVotacion(
+  v: Record<string, unknown>,
+  seqEnGrupo: number,
+): string {
+  return [
+    txt(v.SESION),
+    txt(v.TIPOVOTACION),
+    txt(v.ETAPA),
+    txt(v.QUORUM),
+    String(seqEnGrupo),
+  ]
+    .map((p) => (p ?? "").replace(/[:|\s]+/g, "_"))
+    .join("|");
 }
 
 export interface VotoSenadoCrudo {
   mencionNombre: string;
   seleccion: Seleccion;
+  /**
+   * Índice posicional del voto dentro de su votación (CR-02): discriminador estable para
+   * que dos votantes con `mencionNombre` idéntico/vacío NO colapsen en la misma clave de
+   * upsert `(votacion_id, mencion_nombre, voto_seq)`. El orden del XML es determinista → el
+   * índice es idempotente entre re-ingestas.
+   */
+  votoSeq: number;
 }
 
 export interface VotacionSenado {
@@ -89,6 +141,9 @@ export function parseSenadoVotaciones(
     enlace: p.sourceUrl,
   };
 
+  // CR-01: secuencia por (boletín, fecha) para desambiguar votaciones del mismo día.
+  const seqPorGrupo = new Map<string, number>();
+
   const out: VotacionSenado[] = [];
   for (const v of lista) {
     const fechaRaw = txt(v.FECHA);
@@ -101,8 +156,17 @@ export function parseSenadoVotaciones(
       (txt(v.TEMA)?.match(/Bolet[íi]n N°\s*([\d.]+-\d+)/)?.[1]?.replace(/\./g, "") ??
         "");
 
+    // CR-01: índice posicional dentro del grupo (boletín, fecha) — último recurso de unicidad.
+    const grupoKey = boletinKey + "|" + (fechaRaw ?? "");
+    const seqEnGrupo = seqPorGrupo.get(grupoKey) ?? 0;
+    seqPorGrupo.set(grupoKey, seqEnGrupo + 1);
+
+    const disc = discriminadorVotacion(v, seqEnGrupo);
+
     const votacion: Votacion = VotacionSchema.parse({
-      id: "senado:" + boletinKey + ":" + (fechaRaw ?? ""),
+      // CR-01: el id incorpora un discriminador estable por votación (SESION/TIPO/ETAPA/QUORUM
+      // + índice posicional) → dos votaciones del mismo día NO colapsan, y re-ingerir es idempotente.
+      id: "senado:" + boletinKey + ":" + (fechaRaw ?? "") + ":" + disc,
       boletin: boletinKey,
       fecha,
       etapa: txt(v.ETAPA),
@@ -118,14 +182,19 @@ export function parseSenadoVotaciones(
     }) as Votacion;
 
     const detalle = (v.DETALLE_VOTACION ?? {}) as Record<string, unknown>;
-    const votos: VotoSenadoCrudo[] = asArray<Record<string, unknown>>(
+    const votos: VotoSenadoCrudo[] = [];
+    // CR-02: `votoSeq` es el índice posicional EN LA FUENTE (antes de filtrar) → estable e
+    // idempotente. WR-03: las selecciones desconocidas se OMITEN (mapSeleccion → null) en vez de
+    // fabricar 'abstencion'.
+    asArray<Record<string, unknown>>(
       detalle.VOTO as Record<string, unknown> | Record<string, unknown>[],
-    )
-      .map((voto) => ({
-        mencionNombre: txt(voto.PARLAMENTARIO) ?? "",
-        seleccion: mapSeleccion(txt(voto.SELECCION)),
-      }))
-      .filter((voto) => voto.mencionNombre.length > 0);
+    ).forEach((voto, idx) => {
+      const mencionNombre = txt(voto.PARLAMENTARIO) ?? "";
+      if (mencionNombre.length === 0) return;
+      const seleccion = mapSeleccion(txt(voto.SELECCION));
+      if (seleccion == null) return; // WR-03: token garbled/desconocido → se omite el voto
+      votos.push({ mencionNombre, seleccion, votoSeq: idx });
+    });
 
     out.push({ votacion, votos });
   }
