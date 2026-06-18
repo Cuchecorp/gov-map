@@ -23,3 +23,12 @@ export {
   VotoSchema,
   TramitacionEventoSchema,
 } from "./model";
+
+// ── Ola 2: parseo de fechas + parsers de Cámara ──────────────────────────────
+export { parseFechaCL, toIso } from "./fecha";
+export {
+  parseCamaraVotacion,
+  parseCamaraVotoDetalle,
+  type CamaraVotoDetalle,
+} from "./parse-camara-votacion";
+export { parseCamaraSesion, type SesionCamara } from "./parse-camara-sesion";
