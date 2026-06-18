@@ -34,6 +34,23 @@ export class LLMValidationError extends Error {
   }
 }
 
+/**
+ * Techo de reintentos del repair loop. Acota el costo: aun con una config/metadata
+ * de tarea no confiable, no se pueden encadenar round-trips de red pagados sin
+ * limite (WR-01).
+ */
+export const MAX_REPAIR_ATTEMPTS_CEILING = 3;
+
+/**
+ * Sanea `maxRepairAttempts` al rango [0, MAX_REPAIR_ATTEMPTS_CEILING] (WR-01).
+ * Negativos/NaN -> 0 (corre solo la validacion inicial, sin reprompt). Valores
+ * grandes -> el techo (no se permite inflar el costo via config).
+ */
+export function clampRepairAttempts(value: number | undefined): number {
+  if (value === undefined || !Number.isFinite(value)) return value === undefined ? 1 : 0;
+  return Math.max(0, Math.min(Math.trunc(value), MAX_REPAIR_ATTEMPTS_CEILING));
+}
+
 /** Contexto del repair loop: como repromptear y cuantos reintentos quedan. */
 export interface ValidateContext {
   /** Re-llama al provider con los errores zod; devuelve la nueva respuesta cruda. */
@@ -67,19 +84,28 @@ export async function parseAndValidate<T>(
   ctx: ValidateContext,
 ): Promise<T> {
   let current = raw;
+  // WR-01: sanea el limite. Un valor negativo (o NaN) haria que el `for` no
+  // ejecute el cuerpo y lance LLMValidationError([]) (error sin issues, sin que
+  // corra validacion alguna). Se clampa a >= 0 para que SIEMPRE corra al menos
+  // el intento 0 (validacion de la respuesta inicial).
+  const maxAttempts = Number.isFinite(ctx.maxAttempts)
+    ? Math.max(0, Math.trunc(ctx.maxAttempts))
+    : 0;
   // attempt 0 = respuesta inicial; 1..maxAttempts = reprompts.
-  for (let attempt = 0; attempt <= ctx.maxAttempts; attempt++) {
+  for (let attempt = 0; attempt <= maxAttempts; attempt++) {
     const parsed = safeJsonParse(current);
     const result = schema.safeParse(parsed);
     if (result.success) {
       return result.data;
     }
-    if (attempt === ctx.maxAttempts) {
+    if (attempt === maxAttempts) {
       throw new LLMValidationError(result.error.issues);
     }
     const errorMsg = formatIssues(result.error.issues);
     current = await ctx.reprompt(errorMsg);
   }
-  // Inalcanzable (el loop siempre retorna o lanza), pero satisface el control de flujo.
+  // Inalcanzable: `maxAttempts` esta clampado a >= 0, asi que el loop SIEMPRE
+  // corre el intento 0 y retorna o lanza dentro de el (IN-02). Se conserva solo
+  // para satisfacer el control de flujo del compilador.
   throw new LLMValidationError([]);
 }

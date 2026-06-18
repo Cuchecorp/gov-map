@@ -19,7 +19,7 @@
 import OpenAI from "openai";
 import type { ZodType } from "zod";
 import type { CompletionRequest, LLMProvider } from "./../types";
-import { parseAndValidate } from "./../validate";
+import { clampRepairAttempts, parseAndValidate } from "./../validate";
 import { zodToToolSchema } from "./../json-schema";
 import {
   assertNoRutInLlmInput,
@@ -109,7 +109,8 @@ export class MiniMaxProvider implements LLMProvider {
     // agregando un mensaje de usuario con los errores zod y devuelve los nuevos
     // arguments del tool_call.
     return parseAndValidate(schema, first, {
-      maxAttempts: req.maxRepairAttempts ?? 1,
+      // WR-01: clamp al rango [0, ceiling] para acotar costo de round-trips.
+      maxAttempts: clampRepairAttempts(req.maxRepairAttempts),
       reprompt: async (errors) => {
         messages.push({
           role: "user",
