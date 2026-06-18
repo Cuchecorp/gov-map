@@ -168,7 +168,7 @@ Plans:
   4. Un usuario puede buscar proyectos en lenguaje natural y recibir fichas estructuradas con trazabilidad, y ver "proyectos similares" por vecindad semántica (kNN)
   5. Cada ficha unifica boletín, título, iniciativa, autores, cámara de origen, materia, idea matriz, cuerpos legales, estado y enlace a fuente
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 Plans:
 **Wave 1**
 
@@ -176,7 +176,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 07-02-PLAN.md — Write-path: texto-fuente (@obs/ingest + R2 gate) + embed-ficha (RETRIEVAL_DOCUMENT) + pipeline reanudable + writer idempotente + CLI + workflow backfill (SEM-01, SEM-02, SEM-03)
+- [x] 07-02-PLAN.md — Write-path: texto-fuente (@obs/ingest + R2 gate) + embed-ficha (RETRIEVAL_DOCUMENT) + pipeline reanudable + writer idempotente + CLI + workflow backfill (SEM-01, SEM-02, SEM-03)
 - [ ] 07-03-PLAN.md — Read-path: lib/buscar (embed query + kNN server-only) + landing + /buscar + SearchResultCard + secciones de ficha (idea matriz/cuerpos/similares) (SEM-04, SEM-05, SEM-06)
 
 **UI hint**: yes
@@ -191,7 +191,7 @@ Plans:
 | 4. Adjudicación de Identidad + Compuerta Humana + Golden Set | 3/3 | Complete   | 2026-06-18 |
 | 5. Tramitación Core — Ficha + Timeline + Votaciones | 5/5 | Complete   | 2026-06-18 |
 | 6. Citaciones + Tabla Semanal de Sala | 4/4 | Complete   | 2026-06-18 |
-| 7. Búsqueda Semántica + Fichas Estructuradas | 1/3 | In Progress|  |
+| 7. Búsqueda Semántica + Fichas Estructuradas | 2/3 | In Progress|  |
 
 ## Dependency Notes
 

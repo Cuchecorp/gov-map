@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: 07-01 Tasks 1-4 complete; Task 5 (aplicar migración 0011 al LOCAL) pendiente — checkpoint humano bloqueante
-last_updated: "2026-06-18T21:20:00.000Z"
-last_activity: 2026-06-18 -- 07-01 Tasks 1-4 ejecutadas; pausa en checkpoint human-action (Task 5)
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-06-18T21:51:19.666Z"
+last_activity: 2026-06-18
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 25
-  completed_plans: 22
+  completed_plans: 24
   percent: 86
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-17)
 ## Current Position
 
 Phase: 07 (Búsqueda Semántica + Fichas Estructuradas) — EXECUTING
-Plan: 1 of 3 — Tasks 1-4 ✓; Task 5 (checkpoint human-action bloqueante) PENDIENTE
-Status: Pausado en checkpoint — aplicar migración 0011 al Supabase LOCAL
-Last activity: 2026-06-18 -- 07-01 Tasks 1-4 ejecutadas, pausa en Task 5
+Plan: 2 of 3 — Tasks 1-4 ✓; Task 5 (checkpoint human-action bloqueante) PENDIENTE
+Status: Ready to execute
+Last activity: 2026-06-18
 
 Progress: [█████████░] 22/25 planes (07-01 parcial: 4/5 tasks; falta Task 5 LOCAL)
 
@@ -74,6 +74,7 @@ Progress: [█████████░] 22/25 planes (07-01 parcial: 4/5 task
 | Phase 06 P02 | 9 | 3 tasks | 10 files |
 | Phase 06 P03 | 9min | 2 tasks | 14 files |
 | Phase 06 P04 | 17 | 4 tasks | 14 files |
+| Phase 07 P02 | 11min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,9 @@ Recent decisions affecting current work:
 - [Phase 07]: [07-01]: Gemini embed(texts, taskType?) aditivo (RETRIEVAL_DOCUMENT/QUERY) — callers sin taskType producen body idéntico; guard de dims + l2normalize sin cambios (SEM-03)
 - [Phase 07]: [07-01]: 0011 — RPC match_proyectos ordena por distancia CRUDA `<=>` ASC (usa HNSW, Pitfall 3); grant execute a anon sobre la firma exacta (Pitfall 2/T-07-04); RLS public-read en ambas tablas; sin datos personales (parlamentario intacta)
 - [Phase 07]: [07-01]: slice.e2e.test.ts en RED por imports ausentes (correrPipeline/buscarProyectos) — diana walking-skeleton que olas 2-3 vuelven verde
+- [Phase ?]: [Phase 07]: [07-02]: correrPipeline con sobrecarga TS (batch {counts,errores} + conveniencia {boletin,titulo,textoFuente,provider}→Ficha) → slice E2E write-half verde offline con MockDeepSeekProvider
+- [Phase ?]: [Phase 07]: [07-02]: texto-fuente reusa @obs/ingest en orden LOCKED con SSRF guard antes de red; R2 gateado best-effort (401→texto en memoria, no aborta); degradacion encadenada texto null→idea_matriz null→embed titulo+materia (nunca fabrica)
+- [Phase ?]: [Phase 07]: [07-02]: writer idempotente onConflict 'boletin' (1:1); link_mensaje_mocion sidecar no persistido → leerPendientes da null, wiring del link = follow-up; backfill LIVE gated por env (no ejecutado)
 
 ### Pending Todos
 
@@ -169,6 +173,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T19:39:52.936Z
+Last session: 2026-06-18T21:50:57.110Z
 Stopped at: Completed 06-01-PLAN.md
 Resume file: None
