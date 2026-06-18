@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
+status: executing
 stopped_at: Roadmap and STATE created; requirements traceability populated
-last_updated: "2026-06-18T00:22:17.022Z"
+last_updated: "2026-06-18T01:57:18.837Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 6
+  completed_plans: 4
   percent: 14
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-17)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 01 — framework-de-conectores-almacenamiento-orquestaci-n
+**Current focus:** Phase 02 — capa-de-providers-llm-embeddings
 
 ## Current Position
 
-Phase: 01 (framework-de-conectores-almacenamiento-orquestaci-n) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 02 (capa-de-providers-llm-embeddings) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-06-18
 
 Progress: [██████████] 100% (3/3 planes de la fase 01 completos)
@@ -55,6 +55,7 @@ Progress: [██████████] 100% (3/3 planes de la fase 01 comple
 | Phase 01 P01 | 11min | 3 tasks | 16 files |
 | Phase 01 P02 | 9min | 3 tasks | 25 files |
 | Phase 01 P03 | 18min | 2 tasks | 9 files |
+| Phase 02 P01 | 8min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [01-03]: orquestacion clon de automatic embeddings — pg_cron -> dispatcher SQL -> pgmq.read(vt) -> pg_net -> Edge Function; vt=backoff, read_ct>5 -> ingest_dlq (FND-05)
 - [Phase ?]: [01-03]: service_key/project_url via helpers util.* (vault/GUC), nunca literal en la migracion (T-01-09/T-01-10)
 - [Phase ?]: [01-03]: worker.ts comparte buildConnector entre Edge Function y GitHub Actions (mismo conector); index.ts solo bootstrap Deno.serve
+- [Phase ?]: [02-01]: compuerta zod UNICA y externa al adapter (parseAndValidate); ningun provider hace su propio safeParse
+- [Phase ?]: [02-01]: router fail-closed sin fallback (personal+trainsOnInputs -> SensitiveRoutingError); barrel index.ts propiedad de 02-01
 
 ### Pending Todos
 
@@ -97,6 +100,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T00:21:43.783Z
+Last session: 2026-06-18T01:56:54.706Z
 Stopped at: Roadmap and STATE created; requirements traceability populated
 Resume file: None

@@ -16,8 +16,8 @@ Requisitos del milestone 1. Cada uno mapea a una fase del roadmap.
 - [x] **FND-03**: Cada respuesta de fuente queda cacheada (caché diaria) y versionada como snapshot, para re-procesamiento sin re-scrapear
 - [x] **FND-04**: El sistema detecta cambios de esquema (drift) en una fuente y los registra en lugar de fallar en silencio
 - [x] **FND-05**: La ingesta pesada corre dirigida por cola (pgmq) y chunking vía pg_cron + Edge Functions, con backoff exponencial ante 429
-- [ ] **FND-06**: Todo acceso LLM pasa por una interfaz enchufable `LLMProvider` con salida estructurada validada por-proveedor (zod), seleccionable por configuración
-- [ ] **FND-07**: Todo embedding pasa por una interfaz `EmbeddingProvider` que fija y versiona modelo/dimensiones en los metadatos del vector
+- [x] **FND-06**: Todo acceso LLM pasa por una interfaz enchufable `LLMProvider` con salida estructurada validada por-proveedor (zod), seleccionable por configuración
+- [x] **FND-07**: Todo embedding pasa por una interfaz `EmbeddingProvider` que fija y versiona modelo/dimensiones en los metadatos del vector
 - [x] **FND-08**: Cada dato normalizado conserva trazabilidad a su fuente (origen, fecha de captura, enlace original) capturada en el momento de ingesta
 
 ### Identidad de Parlamentarios (ID)
@@ -104,8 +104,8 @@ Poblada durante la creación del roadmap (2026-06-17). Cada requisito mapea a ex
 | FND-04 | Phase 1 | Complete |
 | FND-05 | Phase 1 | Complete |
 | FND-08 | Phase 1 | Complete |
-| FND-06 | Phase 2 | Pending |
-| FND-07 | Phase 2 | Pending |
+| FND-06 | Phase 2 | Complete |
+| FND-07 | Phase 2 | Complete |
 | ID-01 | Phase 3 | Pending |
 | ID-02 | Phase 3 | Pending |
 | ID-09 | Phase 3 | Pending |
