@@ -136,6 +136,39 @@ describe("BaseConnector via DummyConnector", () => {
     await new DummyConnector(deps).run(RUN_CTX);
     expect(deps.rateLimiter.wait).toHaveBeenCalledWith(expect.any(String));
   });
+
+  it("WR-01: el host de rate-limit se DERIVA de la URL (no de spec.host)", async () => {
+    const { deps } = makeDeps();
+    await new DummyConnector(deps).run(RUN_CTX);
+    // El DummyConnector pide https://dummy.local/echo => host derivado dummy.local.
+    expect(deps.rateLimiter.wait).toHaveBeenCalledWith("dummy.local");
+  });
+
+  it("CR-02: hostThrottle (gate durable) corre ANTES del rateLimiter en proceso", async () => {
+    const { deps, order } = makeDeps();
+    deps.hostThrottle = {
+      reserve: vi.fn(async (host: string) => {
+        order.push(`hostThrottle.reserve:${host}`);
+      }),
+    };
+    await new DummyConnector(deps).run(RUN_CTX);
+    expect(order).toContain("hostThrottle.reserve:dummy.local");
+    expect(order.indexOf("hostThrottle.reserve:dummy.local")).toBeLessThan(
+      order.indexOf("rateLimiter.wait"),
+    );
+    expect(order.indexOf("rateLimiter.wait")).toBeLessThan(order.indexOf("fetcher.get"));
+  });
+
+  it("CR-02: si hostThrottle.reserve lanza (diferir), NO se hace fetch", async () => {
+    const { deps } = makeDeps();
+    deps.hostThrottle = {
+      reserve: vi.fn(async () => {
+        throw new Error("ThrottleDefer");
+      }),
+    };
+    await expect(new DummyConnector(deps).run(RUN_CTX)).rejects.toThrow();
+    expect(deps.fetcher.get).not.toHaveBeenCalled();
+  });
 });
 
 // Type-only check: RequestSpec sigue exportado con la forma esperada.

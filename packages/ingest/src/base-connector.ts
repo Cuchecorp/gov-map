@@ -22,7 +22,13 @@ import type { SnapshotRef } from "./snapshot";
 /** Spec de un request a una fuente. */
 export interface RequestSpec {
   url: string;
-  host: string;
+  /**
+   * Host del request. DEPRECATED como fuente de verdad (WR-01): el framework
+   * deriva SIEMPRE el host de `new URL(url).host` para rate-limit/robots, de
+   * modo que un conector no pueda spoofear un host distinto del fetcheado y
+   * saltarse el rate-limiter. Se conserva opcional por compatibilidad.
+   */
+  host?: string;
   /** Recurso logico (mapea a source_snapshot.resource). */
   resource: string;
   /** Llave logica del endpoint (para drift por source,resource). */
@@ -40,6 +46,13 @@ export interface ConnectorDeps {
   };
   robots: { isAllowed(url: string): Promise<boolean> };
   rateLimiter: { wait(host: string): Promise<void> };
+  /**
+   * Gate de rate-limit DURABLE compartido entre invocaciones/isolates (CR-02).
+   * El `rateLimiter` en proceso es solo un fast-path dentro de un batch; este
+   * gate (respaldado en Postgres) es la AUTORIDAD del 2-3s/host cross-invocacion.
+   * Opcional: si no se inyecta (tests), solo aplica el limiter en proceso.
+   */
+  hostThrottle?: { reserve(host: string): Promise<void> };
   fetcher: { get(spec: RequestSpec): Promise<Uint8Array> };
   drift: {
     check(source: string, resource: string, fp: string): Promise<DriftResult>;
@@ -103,6 +116,10 @@ export abstract class BaseConnector<Raw> {
     const now = this.nowDate();
 
     for (const spec of this.endpoints()) {
+      // Host DERIVADO de la URL real (WR-01): nunca se confia en spec.host,
+      // para que el rate-limit/robots no puedan spoofearse contra el target.
+      const host = new URL(spec.url).host;
+
       // 1. Cache diaria (FND-03): si ya hay snapshot de hoy, no re-pedir.
       if (await this.deps.cache.hasToday(this.sourceId, spec, now)) continue;
 
@@ -112,8 +129,15 @@ export abstract class BaseConnector<Raw> {
         continue;
       }
 
-      // 3. Rate-limit serial por host (FND-01) — NUNCA opcional.
-      await this.deps.rateLimiter.wait(spec.host);
+      // 3a. Gate DURABLE por host (CR-02): la autoridad del 2-3s/host vive en
+      //     Postgres y serializa entre invocaciones/isolates, no solo en proceso.
+      if (this.deps.hostThrottle) {
+        await this.deps.hostThrottle.reserve(host);
+      }
+
+      // 3b. Rate-limit serial por host EN PROCESO (FND-01) — fast-path dentro
+      //     del batch. NUNCA opcional; host derivado de la URL (no spec.host).
+      await this.deps.rateLimiter.wait(host);
 
       // 4. Fetch con UA identificatorio; 429/5xx => throw (backoff via cola).
       const body = await this.deps.fetcher.get(spec);
