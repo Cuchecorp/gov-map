@@ -143,8 +143,9 @@ export function parseSenadoVotacion(
   enlace?: string,
 ): VotacionSenado {
   const todas = parseSenadoVotaciones(xml, boletin, enlace);
-  if (todas.length === 0) {
+  const primera = todas[0];
+  if (primera === undefined) {
     throw new Error("parseSenadoVotacion: el XML no contiene votaciones");
   }
-  return todas[0];
+  return primera;
 }

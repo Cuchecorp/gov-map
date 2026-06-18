@@ -39,3 +39,6 @@ export {
   type VotoSenadoCrudo,
   type VotacionSenado,
 } from "./parse-senado-votacion";
+
+// ── Ola 2: fusión cronológica del timeline ───────────────────────────────────
+export { fusionarTimeline, eventoDesdeVotacion } from "./timeline";
