@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 03-04-PLAN.md (corrida LIVE: maestra real 186 filas confirmada + snapshot git + cadencia de respaldo)"
-last_updated: "2026-06-18T13:12:38.000Z"
+stopped_at: "Completed 03-04-PLAN.md (corrida LIVE: maestra real 186 filas confirmada + snapshot git autoritativo + cadencia de respaldo)"
+last_updated: "2026-06-18T14:17:57.104Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 13
+  completed_plans: 11
   percent: 43
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-17)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 03 — tabla-maestra-parlamentario-identidad-determinista
+**Current focus:** Phase 04 — adjudicacion-identidad-compuerta-humana-golden-set
 
 ## Current Position
 
-Phase: 03 (tabla-maestra-parlamentario-identidad-determinista) — COMPLETE
-Plan: 4 of 4 (complete)
-Status: Phase 03 complete — ready for Phase 04
+Phase: 04 (adjudicacion-identidad-compuerta-humana-golden-set) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-06-18
 
 Progress: [██████████] 100% (4/4 planes de la fase 03 completos)
@@ -62,6 +62,7 @@ Progress: [██████████] 100% (4/4 planes de la fase 03 comple
 | Phase 03 P02 | 2min | 2 tasks | 2 files |
 | Phase 03 P03 | 18min | 3 tasks | 14 files |
 | Phase 03 P04 | 14min | 3 tasks | 13 files |
+| Phase 04 P01 | 9min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,10 @@ Recent decisions affecting current work:
 - [Phase 03]: [03-04]: corrida LIVE real -> maestra de 186 filas (31 senadores + 155 diputados, 0 errores 403/429) cargada en Supabase local + snapshot git autoritativo (ID-09)
 - [Phase 03]: [03-04]: lote promovido a confirmado por operador-accept de la orquestacion (conteos = catalogos oficiales autoritativos); el seeder nunca auto-confirma (ID-01)
 - [Phase 03]: [03-04]: backup-parlamentario.yml (cron semanal) usa --preserve-estado sin --promote -> nunca revierte la compuerta humana; R2 gateado por presencia de credencial (401 hoy)
+- [Phase 04]: [04-01]: UMBRAL=0.90 con < ESTRICTO — confidence===0.90 auto-acepta, 0.8999 revision (bug existencial #1 sellado con test de borde mandatorio)
+- [Phase 04]: [04-01]: auto-aceptar mapea SOLO a 'probable', NUNCA 'confirmado' (A4); la compuerta es pura, el orquestador mapea el estado
+- [Phase 04]: [04-01]: mencion foranea SIN rut por diseno; assertNoRutInLlmInput sobre el prompt final ensamblado; region fail-open en el blocking
+- [Phase 04]: [04-01]: CompletionRequest.temperature? opcional via spread condicional en MiniMax (A1) — 68 tests @obs/llm verdes sin cambios
 
 ### Pending Todos
 
@@ -122,6 +127,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T13:12:38.000Z
+Last session: 2026-06-18T14:17:37.860Z
 Stopped at: Completed 03-04-PLAN.md (corrida LIVE: maestra real 186 filas confirmada + snapshot git autoritativo + cadencia de respaldo)
 Resume file: None
