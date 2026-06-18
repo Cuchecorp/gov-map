@@ -42,3 +42,7 @@ export {
 
 // ── Ola 2: fusión cronológica del timeline ───────────────────────────────────
 export { fusionarTimeline, eventoDesdeVotacion } from "./timeline";
+
+// ── Ola 3: reconciliación del voto-a-voto contra la maestra ───────────────────
+// Cámara: cruce DETERMINISTA por Diputado/Id (sin LLM, sin riesgo de identidad).
+export { reconciliarVotosCamara } from "./reconciliar-camara";
