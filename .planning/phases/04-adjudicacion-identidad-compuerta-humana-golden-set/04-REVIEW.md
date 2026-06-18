@@ -20,7 +20,14 @@ findings:
   warning: 6
   info: 4
   total: 12
-status: issues_found
+status: fixed
+fix:
+  fixed_at: 2026-06-18T00:00:00Z
+  critical_fixed: 2
+  warning_fixed: 6
+  info_deferred: 4
+  tests_passed: true
+  notes: "Todos los Critical+Warning corregidos con tests añadidos. Suite workspace verde (274 pass + 4 live-skip) y pgTAP 100. Info IN-01..IN-04 diferidos (fuera del scope Critical+Warning)."
 ---
 
 # Phase 4: Code Review Report
@@ -28,7 +35,7 @@ status: issues_found
 **Reviewed:** 2026-06-18T00:00:00Z
 **Depth:** standard
 **Files Reviewed:** 11
-**Status:** issues_found
+**Status:** fixed (2 Critical + 6 Warning resueltos; 4 Info diferidos)
 
 ## Summary
 
@@ -361,6 +368,39 @@ reuse it; populate or omit `enlace` meaningfully.
 
 ---
 
+## Resolución de fixes (2026-06-18)
+
+Estado: **2 Critical + 6 Warning corregidos**, cada uno con tests añadidos. Suite
+workspace verde (274 pass + 4 live-skip; baseline 268) y pgTAP en 100 asserts. Los 4
+Info quedan diferidos (fuera del scope Critical+Warning del fix).
+
+| ID | Estado | Commit | Resumen del fix |
+|----|--------|--------|-----------------|
+| CR-01 | fixed | `603b0a8` | Migración 0007: trigger BEFORE UPDATE/INSERT en `vinculo_identidad` bloquea demotion silenciosa de `confirmado` y reescritura de su `parlamentario_id`, y exige humano/determinista + persona para confirmar (A4 al DB-tier). Inmutabilidad de `identidad_audit` cerrada con trigger BEFORE TRUNCATE + REVOKE a `service_role`. pgTAP 0006 (13 asserts) prueba UPDATE/DELETE/TRUNCATE del audit lanzan, demotion/reescritura de confirmado lanzan, y la transición humana legítima vive. El trigger (no REVOKE/RLS) es el control vinculante, probado como superuser (peor caso). |
+| CR-02 | fixed | `e451246` | Gate del golden provablemente capaz de fallar: casos adversarios (g23 id equivocado alta confianza; g24 auto-acepta en caso de revisión) que la compuerta auto-acepta → cuentan `fp`. Meta-prueba aislada prueba que la rama `fp` es alcanzable (precision=0) y que inyectarlos al set del gate lo hace caer < 0.95. Mock keying robusto (igualdad de la línea `- nombre:` en vez de substring); `mockDelGolden` rechaza claves duplicadas; desambiguadas las claves `Walker, Matías` (g12/g20). |
+| WR-01 | fixed | `8543223` | `upsertVinculo` devuelve el `id` (`.select('id')`); el pipeline lo enlaza en `appendAudit({ vinculo_id })` (ramas determinista/no_confirmado/probable). La rama de revisión deja `vinculo_id` null por diseño explícito documentado. |
+| WR-02 | fixed | `8543223` | `onConflict='camara,periodo,mencion_normalizada'` (clave natural del índice parcial de 0006) en vez de `'id'` (que el pipeline nunca fija → degeneraba en INSERT duplicado). Filas `no_confirmado` (sin id) quedan fuera del índice parcial → insert plano. |
+| WR-03 | fixed | `c217704` | `confirmar` lanza antes de escribir si `chosen_id` del modelo es null (no promueve `confirmado` a NADIE); exige `correct --chosen-id`. |
+| WR-04 | fixed | `8fd3f3a` | Vocabulario cerrado de `identidad_audit.decision`: `DECISIONES_AUDIT` (TS) + `DecisionAudit` tipo + CHECK espejo en 0007. Comentario de 0006 alineado. |
+| WR-05 | fixed | `7895c7d` | Gate de RUT sobre el payload completo (`system + user`); test nuevo cubre un RUT inyectado en el campo `nombres` de un CANDIDATO → aborta con 0 llamadas. |
+| WR-06 | fixed | `d85ad83` | El enlace audit→vínculo del revisor se deriva del `id` del UPSERT (clave natural) en vez de `caso.vinculo_id` (que `enqueueRevision` nunca puebla). |
+
+### Info diferidos (fuera de scope)
+
+El objetivo del fix acotó a Critical+Warning. Los 4 Info se difieren:
+
+- **IN-01** (LLM `complete` sin try/catch → sin audit en fallo): mejora de robustez;
+  requiere decidir la política de retry/encolado del fallo. Diferido a un fix dedicado.
+- **IN-02** (CLI acepta `--revisor --motivo` como valor de flag): hardening menor de
+  parsing; bajo riesgo (uso operativo manual). Diferido.
+- **IN-03** (`obtenerCaso` usa `[0]` en vez de `.maybeSingle()`): robustez menor; el
+  `id` es PK y no hay duplicados hoy. Diferido.
+- **IN-04** (regex `P\d{5}` duplicado en 3 sitios; `enlace=""`): deuda de DRY/limpieza;
+  sin impacto funcional inmediato. Diferido.
+
+---
+
 _Reviewed: 2026-06-18T00:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+_Fixed: 2026-06-18 — Claude (gsd-code-fixer); 2 Critical + 6 Warning resueltos, 4 Info diferidos_
