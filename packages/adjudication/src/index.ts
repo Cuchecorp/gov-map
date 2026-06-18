@@ -34,3 +34,7 @@ export type {
   FilaVinculo,
   FilaAudit,
 } from "./writer-revision";
+
+// Golden set + evaluador de regresión (gate de deploy, ID-07).
+export { GOLDEN_SET, evaluarGolden } from "./golden/golden-set";
+export type { CasoGolden, Esperado, MetricasGolden } from "./golden/golden-set";
