@@ -214,6 +214,13 @@ export function buildConnector(sb: SupabaseClient): DummyConnector {
             .eq("date_bucket", row.date_bucket as string)
             .maybeSingle();
           if (existing) return { id: existing.id as number };
+          // 23505 pero la fila no aparece en el SELECT de recuperación: carrera
+          // extrema (borrado out-of-band entre el INSERT y el SELECT). Error
+          // RETRYABLE explícito — no se cae a `undefined`/TypeError (#40); reaparece
+          // vía vt y el reintento reinserta limpiamente.
+          throw new Error(
+            `source_snapshot 23505 sin fila recuperable (carrera): ${row.source as string}/${row.resource as string}/${row.date_bucket as string}`,
+          );
         }
         throw new Error(`insert source_snapshot fallo: ${error.message}`);
       }
@@ -326,13 +333,20 @@ export async function processBatch(
   return { acked, failed };
 }
 
-/** WR-04: errores NO recuperables que deben ackearse en vez de reintentar. */
+/**
+ * WR-04: errores NO recuperables que deben ackearse en vez de reintentar.
+ *
+ * `TypeError` se EXCLUYE a propósito (#41): un bug de programación que lance
+ * TypeError, si se ackeara, drenaría la cola en silencio sin pasar nunca por la
+ * DLQ. Al NO ackearlo, el mensaje reaparece vía vt y el dispatcher de pgmq lo
+ * mueve a `ingest_dlq` tras `max_read_ct` — el bug queda visible para diagnóstico
+ * en vez de desaparecer.
+ */
 function isPermanent(errorName: string): boolean {
   return (
     errorName === "FetchError" || // 4xx no-429
     errorName === "HostNotAllowedError" || // SSRF/allowlist (CR-03)
-    errorName === "ZodError" || // payload/forma invalida
-    errorName === "TypeError" // bug de programacion (no reintentar a ciegas)
+    errorName === "ZodError" // payload/forma invalida
   );
 }
 
