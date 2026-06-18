@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: "Completed 04-03-PLAN.md (pipeline etapas 0-3 + revisor-cli + golden set gate de deploy; 54 tests verdes @obs/adjudication, LIVE gated). Fase 04 completa — ready for verification"
-last_updated: "2026-06-18T14:39:07.358Z"
+status: executing
+stopped_at: Completed 05-01-PLAN.md (scaffold @obs/tramitacion + modelo comun + migracion 0008 RLS public-read + 5 fixtures reales cross-camara + slice E2E RED)
+last_updated: "2026-06-18T16:23:57.232Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 18
+  completed_plans: 14
   percent: 57
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-17)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 04 — adjudicacion-identidad-compuerta-humana-golden-set
+**Current focus:** Phase 05 — tramitacion-core-ficha-timeline-votaciones
 
 ## Current Position
 
-Phase: 04 (adjudicacion-identidad-compuerta-humana-golden-set) — READY FOR VERIFICATION
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 05 (tramitacion-core-ficha-timeline-votaciones) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
 Last activity: 2026-06-18
 
 Progress: [██████████] 100% (3/3 planes de la fase 04 completos)
@@ -65,6 +65,7 @@ Progress: [██████████] 100% (3/3 planes de la fase 04 comple
 | Phase 04 P01 | 9min | 3 tasks | 13 files |
 | Phase 04 P02 | 4min | 2 tasks | 2 files |
 | Phase 04 P03 | 12min | 3 tasks | 10 files |
+| Phase 05 P01 | 8min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,9 @@ Recent decisions affecting current work:
 - [Phase 04]: [04-03]: auto-aceptar del LLM mapea SOLO a 'probable'; promocion a 'confirmado' es EXCLUSIVA de humano (revisor-cli confirm/correct) o determinista (A4/ID-06)
 - [Phase 04]: [04-03]: revisor-cli valida id numerico + revisor no vacio + chosen-id /^P\\d{5}$/ ANTES de tocar la DB; resolverRevision atomico contra estado='pendiente' (afectadas===0 -> error sin colaterales); cada resolucion escribe audit metodo='humano' con revisor_id+timestamp
 - [Phase 04]: [04-03]: golden set 22 casos = gate de deploy mockeado (precision>=0.95 toBeGreaterThanOrEqual -> falla bloquea CI; auto-aceptar id equivocado = fp); LIVE gated por IDENTITY_GOLDEN_LIVE no quema cuota; region fail-open SOLO ante ausencia de region (no entre dos regiones distintas)
+- [Phase ?]: [Phase 05]: [05-01]: RLS public-read EXPLICITO (policy for select to anon using(true)) + GRANT SELECT en las 4 tablas de tramitacion — el deny-by-default heredado dejaria la ficha en blanco (Pitfall 5/T-05-01); parlamentario intacta
+- [Phase ?]: [Phase 05]: [05-01]: voto.parlamentario_id nullable+FK a la maestra — NULL salvo vinculo determinista/confirmado; mencion_nombre crudo se conserva para display (T-05-02, guarda LOCKED)
+- [Phase ?]: [Phase 05]: [05-01]: slice.e2e.test.ts en RED por imports ausentes — diana walking-skeleton que olas 2-4 vuelven verde; fixtures reales cross-camara 14309/18296 capturados live
 
 ### Pending Todos
 
@@ -136,6 +140,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T14:39:07.350Z
-Stopped at: Completed 04-02-PLAN.md (migracion 0006: vinculo_identidad + revision_identidad + identidad_audit append-only por trigger+REVOKE; pgTAP de inmutabilidad verde)
+Last session: 2026-06-18T16:23:57.224Z
+Stopped at: Completed 05-01-PLAN.md (scaffold @obs/tramitacion + modelo comun + migracion 0008 RLS public-read + 5 fixtures reales cross-camara + slice E2E RED)
 Resume file: None
