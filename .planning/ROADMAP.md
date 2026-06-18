@@ -59,7 +59,12 @@ Plans:
   3. Todo embedding pasa por `EmbeddingProvider` que fija y persiste `embedding_model`/`embedding_dims`/`embedding_version` junto al vector — no existe vector anónimo
   4. La política "qué dato va a qué proveedor/tier" queda documentada: ningún dato personal (RUT/nombres) puede dirigirse a un tier que entrena con inputs
 
-**Plans:** TBD
+**Plans:** 3 plans (2 waves)
+Plans:
+
+- [ ] 02-01-PLAN.md — Scaffold @obs/llm + contratos + compuerta zod unica (repair loop) + adapter DeepSeek (json_object) + router fail-closed + e2e de la rebanada LLM (FND-06, FND-07 contrato)
+- [ ] 02-02-PLAN.md — Adapter MiniMax (tool-calling forzado) + zod->JSON-schema + politica data-routing (RUT nunca al LLM, PII nunca a tier que entrena) + smoke test live gated (FND-06)
+- [ ] 02-03-PLAN.md — EmbeddingProvider Gemini 768-dim L2-normalizado con vector versionado {model,dims,version} (FND-07)
 
 ### Phase 3: Tabla Maestra Parlamentario + Identidad Determinista
 
@@ -145,7 +150,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Framework de Conectores + Almacenamiento + Orquestación | 3/3 | Complete   | 2026-06-18 |
-| 2. Capa de Providers LLM/Embeddings | 0/? | Not started | - |
+| 2. Capa de Providers LLM/Embeddings | 0/3 | Planned | - |
 | 3. Tabla Maestra Parlamentario + Identidad Determinista | 0/? | Not started | - |
 | 4. Adjudicación de Identidad + Compuerta Humana + Golden Set | 0/? | Not started | - |
 | 5. Tramitación Core — Ficha + Timeline + Votaciones | 0/? | Not started | - |
