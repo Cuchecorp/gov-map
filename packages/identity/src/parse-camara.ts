@@ -55,31 +55,79 @@ export interface MilitanciaRaw {
   Partido?: PartidoRaw;
 }
 
-/** Lee FechaTermino tolerando el nodo self-closing `xsi:nil` (llega como objeto/""). */
-function fechaTerminoOf(m: MilitanciaRaw): Date | null {
-  const v = m.FechaTermino;
-  if (v == null) return null;
-  if (typeof v === "object") return null; // <FechaTermino xsi:nil="true" /> -> {}
-  const s = String(v).trim();
-  return s.length === 0 ? null : new Date(s);
+/**
+ * Error de fecha de militancia malformada (CR-02). Se lanza ante un string de fecha que
+ * NO parsea (`Invalid Date`), en vez de dejarlo pasar silenciosamente.
+ */
+export class FechaInvalidaError extends Error {
+  constructor(readonly valor: string) {
+    super(`militancia: fecha inválida "${valor}"`);
+    this.name = "FechaInvalidaError";
+  }
 }
 
 /**
- * Elige el partido de la militancia cuyo rango cubre `corte`. FechaTermino nil/ausente
- * = vigente (sin fin). Devuelve el Alias (o Nombre) del partido, o null si ninguna cubre.
+ * Parsea una fecha de militancia FAIL-CLOSED (CR-02). Devuelve `null` si está ausente/vacía
+ * (semántica legítima: sin inicio o sin término = vigente), un `Date` válido si parsea, y
+ * LANZA `FechaInvalidaError` si el string no es parseable.
+ *
+ * Crucial: NUNCA devuelve un `Invalid Date`. Un `Invalid Date` hace que toda comparación
+ * (`<=`, `>=`) sea `false`, lo que descartaría en silencio la militancia correcta y dejaría
+ * que la selección caiga a un partido ANTERIOR — una asignación de partido equivocada sin
+ * error (riesgo T-03). Fallar cerrado evita la adivinanza silenciosa.
+ */
+function parseFecha(v: unknown): Date | null {
+  if (v == null) return null;
+  if (typeof v === "object") return null; // nodo self-closing xsi:nil -> {}
+  const s = String(v).trim();
+  if (s.length === 0) return null;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) {
+    throw new FechaInvalidaError(s); // fail-closed: nunca un Invalid Date silencioso
+  }
+  return d;
+}
+
+/** Lee FechaTermino tolerando el nodo self-closing `xsi:nil` (llega como objeto/""). */
+function fechaTerminoOf(m: MilitanciaRaw): Date | null {
+  return parseFecha(m.FechaTermino);
+}
+
+/** Lee FechaInicio (fail-closed ante fecha malformada). */
+function fechaInicioOf(m: MilitanciaRaw): Date | null {
+  return parseFecha(m.FechaInicio);
+}
+
+/**
+ * Elige el partido de la militancia VIGENTE al `corte`. FechaTermino nil/ausente = vigente
+ * (sin fin). Entre TODAS las militancias cuyo rango cubre `corte`, elige la de `FechaInicio`
+ * MÁS RECIENTE (WR-04: el orden del XML no garantiza recencia; con militancias solapadas la
+ * primera encontrada podía ser la obsoleta). Una FechaInicio ausente se trata como la más
+ * antigua para no desplazar a una militancia fechada. Devuelve el Alias (o Nombre) del
+ * partido, o null si ninguna cubre. Lanza `FechaInvalidaError` si una fecha es malformada
+ * (CR-02, fail-closed).
  */
 export function partidoVigente(
   militancias: MilitanciaRaw[],
   corte: Date,
 ): string | null {
-  const activa = militancias.find((m) => {
-    const ini = m.FechaInicio != null ? new Date(String(m.FechaInicio)) : null;
+  const candidatas = militancias.filter((m) => {
+    const ini = fechaInicioOf(m);
     const fin = fechaTerminoOf(m);
     const tras = ini == null || ini <= corte;
     const antes = fin == null || fin >= corte;
     return tras && antes;
   });
-  if (!activa?.Partido) return null;
+  if (candidatas.length === 0) return null;
+
+  // Selecciona por recencia (FechaInicio más reciente), no por orden de aparición en el XML.
+  const activa = candidatas.reduce((mejor, m) => {
+    const iniM = fechaInicioOf(m)?.getTime() ?? -Infinity;
+    const iniMejor = fechaInicioOf(mejor)?.getTime() ?? -Infinity;
+    return iniM > iniMejor ? m : mejor;
+  });
+
+  if (!activa.Partido) return null;
   return str(activa.Partido.Alias) ?? str(activa.Partido.Nombre);
 }
 
@@ -95,13 +143,25 @@ interface DiputadoPeriodoRaw {
   Diputado?: DiputadoRaw;
 }
 
+/** Piso de plausibilidad: el catálogo vigente trae ~155 diputados (WR-05). */
+const MIN_DIPUTADOS = 10;
+
 /**
  * Parsea el XML de la Cámara a un array de `Parlamentario` (155 vigentes). Cada fila se
  * valida con `ParlamentarioSeedSchema`; un shape inválido lanza (compuerta de contrato).
+ *
+ * Robustez:
+ *  - CR-03: un `<Diputado>` sin `Id` no tiene clave natural estable → se LANZA (no se fabrica
+ *    un id `"D?"` que colisionaría en el upsert por PK).
+ *  - CR-02: una fecha de militancia malformada NO produce un partido equivocado en silencio;
+ *    se captura por diputado, se deja `partido=null` y se registra vía `opts.log`.
+ *  - WR-05: si el conteo final es implausiblemente bajo (`< MIN_DIPUTADOS`), se LANZA — una
+ *    respuesta malformada (HTML de error con 200, wrapper renombrado) no debe producir un
+ *    snapshot vacío/recortado que borre la maestra en el commit de backup.
  */
 export function parseCamara(
   xml: string,
-  opts: { fechaCaptura?: string; corte?: Date } = {},
+  opts: { fechaCaptura?: string; corte?: Date; log?: (msg: string) => void } = {},
 ): Parlamentario[] {
   const doc = parser.parse(xml) as {
     DiputadosPeriodoColeccion?: {
@@ -113,11 +173,19 @@ export function parseCamara(
   );
   const fechaCaptura = opts.fechaCaptura ?? new Date().toISOString();
   const corte = opts.corte ?? CORTE_VIGENCIA;
+  const log = opts.log ?? (() => {});
 
   const out: Parlamentario[] = [];
   for (const per of periodos) {
     const d = per.Diputado;
     if (!d) continue;
+
+    // CR-03: sin Id no hay clave natural estable; jamás fabricar un id colisionable `"D?"`.
+    const idDiputado = str(d.Id);
+    if (idDiputado == null) {
+      throw new Error("diputado sin Id — no se puede derivar un id estable (CR-03)");
+    }
+
     const nombre2 = str(d.Nombre2);
     const nombres = [str(d.Nombre), nombre2].filter((x): x is string => x != null).join(" ");
     const apellidoPaterno = str(d.ApellidoPaterno) ?? "";
@@ -131,8 +199,23 @@ export function parseCamara(
       apellidoMaterno,
     });
 
+    // CR-02: ante una fecha malformada NO adivinamos un partido anterior. Dejamos null + log.
+    let partido: string | null = null;
+    try {
+      partido = partidoVigente(militancias, corte);
+    } catch (err) {
+      if (err instanceof FechaInvalidaError) {
+        log(
+          `parseCamara: diputado Id=${idDiputado} con ${err.message} -> partido=null (CR-02)`,
+        );
+        partido = null;
+      } else {
+        throw err;
+      }
+    }
+
     const row: Parlamentario = {
-      id: `D${str(d.Id) ?? "?"}`,
+      id: `D${idDiputado}`,
       nombre_normalizado,
       nombres,
       apellido_paterno: apellidoPaterno,
@@ -142,10 +225,10 @@ export function parseCamara(
       region: null,
       distrito: null,
       circunscripcion: null,
-      partido: partidoVigente(militancias, corte),
+      partido,
       rut: null,
       parlid_senado: null,
-      id_diputado_camara: str(d.Id),
+      id_diputado_camara: idDiputado,
       estado: "no_confirmado",
       email: null,
       origen: ORIGEN,
@@ -153,6 +236,14 @@ export function parseCamara(
       enlace: CAMARA_URL,
     };
     out.push(ParlamentarioSeedSchema.parse(row));
+  }
+
+  // WR-05: piso de plausibilidad. Una respuesta inesperada (HTML de error 200, wrapper
+  // renombrado) produciría 0/pocos diputados; fallar evita committear un snapshot vacío.
+  if (out.length < MIN_DIPUTADOS) {
+    throw new Error(
+      `parseCamara: ${out.length} diputados (< ${MIN_DIPUTADOS}) — XML inesperado (WR-05)`,
+    );
   }
   return out;
 }

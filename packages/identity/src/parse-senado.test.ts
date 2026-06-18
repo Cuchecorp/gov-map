@@ -57,3 +57,26 @@ describe("parseSenado (fixture real)", () => {
     }
   });
 });
+
+describe("parseSenado — robustez (CR-03, WR-05)", () => {
+  function xmlSenado(inner: string): string {
+    return `<?xml version="1.0"?><senadores>${inner}</senadores>`;
+  }
+  function senador(opts: { parlid?: string }): string {
+    const id = opts.parlid != null ? `<PARLID>${opts.parlid}</PARLID>` : "";
+    return `<senador>${id}<PARLAPELLIDOPATERNO>Apellido</PARLAPELLIDOPATERNO><PARLAPELLIDOMATERNO>Materno</PARLAPELLIDOMATERNO><PARLNOMBRE>Test</PARLNOMBRE><PARTIDO>X</PARTIDO></senador>`;
+  }
+  function relleno(n: number): string {
+    return Array.from({ length: n }, (_, i) => senador({ parlid: String(5000 + i) })).join("");
+  }
+
+  it("CR-03: un <senador> sin PARLID LANZA (no fabrica id colisionable 'S?')", () => {
+    const xml = xmlSenado(relleno(12) + senador({}));
+    expect(() => parseSenado(xml)).toThrow(/sin PARLID/);
+  });
+
+  it("WR-05: conteo implausiblemente bajo (< 10) LANZA en vez de devolver snapshot recortado", () => {
+    const xml = xmlSenado(relleno(3));
+    expect(() => parseSenado(xml)).toThrow(/XML inesperado/);
+  });
+});

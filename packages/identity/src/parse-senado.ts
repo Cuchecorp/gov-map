@@ -55,9 +55,19 @@ interface SenadorRaw {
   EMAIL?: unknown;
 }
 
+/** Piso de plausibilidad: el catálogo vigente trae ~31 senadores (WR-05). */
+const MIN_SENADORES = 10;
+
 /**
  * Parsea el XML del Senado a un array de `Parlamentario`. Cada fila se valida con
  * `ParlamentarioSeedSchema`; un shape inválido lanza (compuerta de contrato, T-03-09).
+ *
+ * Robustez:
+ *  - CR-03: un `<senador>` sin `PARLID` no tiene clave natural estable → se LANZA (no se
+ *    fabrica un id `"S?"` que colisionaría en el upsert por PK con otro senador sin PARLID).
+ *  - WR-05: si el conteo final es implausiblemente bajo (`< MIN_SENADORES`), se LANZA — una
+ *    respuesta malformada (HTML de error con 200, wrapper renombrado) no debe producir un
+ *    snapshot vacío/recortado que borre la maestra en el commit de backup.
  */
 export function parseSenado(
   xml: string,
@@ -71,7 +81,13 @@ export function parseSenado(
   );
   const fechaCaptura = opts.fechaCaptura ?? new Date().toISOString();
 
-  return senadores.map((s) => {
+  const out = senadores.map((s) => {
+    // CR-03: sin PARLID no hay clave natural estable; jamás fabricar un id colisionable `"S?"`.
+    const parlid = str(s.PARLID);
+    if (parlid == null) {
+      throw new Error("senador sin PARLID — no se puede derivar un id estable (CR-03)");
+    }
+
     const apellidoPaterno = str(s.PARLAPELLIDOPATERNO) ?? "";
     const apellidoMaterno = str(s.PARLAPELLIDOMATERNO) ?? "";
     const nombres = str(s.PARLNOMBRE) ?? "";
@@ -82,7 +98,7 @@ export function parseSenado(
     });
 
     const row: Parlamentario = {
-      id: `S${str(s.PARLID) ?? "?"}`,
+      id: `S${parlid}`,
       nombre_normalizado,
       nombres,
       apellido_paterno: apellidoPaterno,
@@ -94,7 +110,7 @@ export function parseSenado(
       circunscripcion: str(s.CIRCUNSCRIPCION),
       partido: str(s.PARTIDO),
       rut: null,
-      parlid_senado: str(s.PARLID),
+      parlid_senado: parlid,
       id_diputado_camara: null,
       estado: "no_confirmado",
       email: str(s.EMAIL),
@@ -104,4 +120,12 @@ export function parseSenado(
     };
     return ParlamentarioSeedSchema.parse(row);
   });
+
+  // WR-05: piso de plausibilidad (ver doc arriba).
+  if (out.length < MIN_SENADORES) {
+    throw new Error(
+      `parseSenado: ${out.length} senadores (< ${MIN_SENADORES}) — XML inesperado (WR-05)`,
+    );
+  }
+  return out;
 }
