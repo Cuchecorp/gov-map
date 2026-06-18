@@ -22,9 +22,25 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { Fetcher, HostRateLimiter, RobotsGuard } from "@obs/ingest";
-import { runSeeder, upsertMaestra } from "./seeder";
-import { exportMaestra, serializeMaestra, SEED_PATH } from "./backup";
+import {
+  Fetcher,
+  HostRateLimiter,
+  RobotsGuard,
+  R2Store,
+  sha256Hex,
+} from "@obs/ingest";
+import {
+  runSeeder,
+  upsertMaestra,
+  reconciliarMaestra,
+  vigentesDeCatalogo,
+} from "./seeder";
+import {
+  exportMaestra,
+  serializeMaestra,
+  SEED_PATH,
+  type R2BackupTarget,
+} from "./backup";
 import { SupabaseMaestraWriter } from "./writer-supabase";
 import { FsSeedFileWriter } from "./writer-fs";
 import type { Parlamentario, EstadoIdentidad } from "@obs/core";
@@ -34,13 +50,22 @@ import type { Parlamentario, EstadoIdentidad } from "@obs/core";
  * El snapshot autoritativo (ID-09) vive en `<root>/supabase/seeds/...`, NO en el cwd del
  * paquete: pnpm corre el script con cwd = packages/identity, lo que escribiría el snapshot en
  * el lugar equivocado si se usara cwd directamente.
+ *
+ * IN-02: si NO se encuentra la raíz, se LANZA (en vez de devolver `start`, un path plausible
+ * pero equivocado que escribiría el snapshot en `packages/identity/supabase/seeds/...` y que
+ * git no recogería para el commit de ID-09). Una mala configuración debe fallar, no ocultarse.
  */
-function findWorkspaceRoot(start: string): string {
+export function findWorkspaceRoot(start: string): string {
   let dir = resolve(start);
   for (;;) {
     if (existsSync(resolve(dir, "pnpm-workspace.yaml"))) return dir;
     const parent = dirname(dir);
-    if (parent === dir) return start; // fallback: no se encontró (no rompe el export)
+    if (parent === dir) {
+      throw new Error(
+        `findWorkspaceRoot: no se encontró pnpm-workspace.yaml subiendo desde ${start} ` +
+          "— no se puede ubicar supabase/seeds (IN-02)",
+      );
+    }
     dir = parent;
   }
 }
@@ -55,24 +80,62 @@ function isEstado(v: unknown): v is EstadoIdentidad {
   return typeof v === "string" && ESTADOS_VALIDOS.has(v as EstadoIdentidad);
 }
 
-/** Lee `id -> estado` del snapshot committeado (si existe). Vacío si falta/ilegible. */
-function readEstadoSnapshot(path: string): Map<string, EstadoIdentidad> {
-  const out = new Map<string, EstadoIdentidad>();
-  if (!existsSync(path)) return out;
+/**
+ * Firma de identidad ESTABLE de una fila, independiente de la clave natural (`id`). WR-03:
+ * si el catálogo reemite a un parlamentario bajo un PARLID/Id distinto, su `id` cambia y el
+ * lookup por `id` falla; esta firma (cámara + periodo + nombre_normalizado) sigue empatando,
+ * de modo que un `confirmado` humano no se pierde por una rotación de la clave natural.
+ */
+export function firmaIdentidad(r: {
+  camara?: unknown;
+  periodo?: unknown;
+  nombre_normalizado?: unknown;
+}): string {
+  return `${String(r.camara)}|${String(r.periodo)}|${String(r.nombre_normalizado)}`;
+}
+
+interface SnapshotEstadoIndex {
+  /** estado por `id` (clave natural primaria). */
+  porId: Map<string, EstadoIdentidad>;
+  /** estado por firma de identidad estable (fallback ante rotación de `id`). */
+  porFirma: Map<string, EstadoIdentidad>;
+}
+
+/**
+ * Lee el snapshot committeado (si existe) y devuelve dos índices de `estado`: por `id` y por
+ * firma de identidad estable (WR-03). Vacío si falta. IN-03: un snapshot corrupto/ilegible se
+ * REGISTRA vía `log` (antes se tragaba en silencio, ocultando la pérdida de la compuerta humana).
+ */
+export function readEstadoSnapshot(
+  path: string,
+  log: (msg: string) => void,
+): SnapshotEstadoIndex {
+  const porId = new Map<string, EstadoIdentidad>();
+  const porFirma = new Map<string, EstadoIdentidad>();
+  if (!existsSync(path)) return { porId, porFirma };
   try {
     const rows = JSON.parse(readFileSync(path, "utf8")) as Array<{
       id?: unknown;
       estado?: unknown;
+      camara?: unknown;
+      periodo?: unknown;
+      nombre_normalizado?: unknown;
     }>;
     for (const r of rows) {
-      if (typeof r.id === "string" && isEstado(r.estado)) {
-        out.set(r.id, r.estado);
+      if (isEstado(r.estado)) {
+        if (typeof r.id === "string") porId.set(r.id, r.estado);
+        porFirma.set(firmaIdentidad(r), r.estado);
       }
     }
-  } catch {
-    // Snapshot ausente/corrupto: no se preserva nada (no rompe el export).
+  } catch (err) {
+    // IN-03: snapshot corrupto. No se preserva nada (no rompe el export), pero se visibiliza
+    // en CI: tragarlo en silencio degradaría la preservación de la compuerta humana sin aviso.
+    log(
+      `seed: WARN snapshot previo ilegible/corrupto en ${path} -> no se preserva estado ` +
+        `(${err instanceof Error ? err.message : String(err)}) (IN-03)`,
+    );
   }
-  return out;
+  return { porId, porFirma };
 }
 
 export interface SeedCliOptions {
@@ -89,6 +152,13 @@ export interface SeedCliOptions {
    * Default false. Excluye `--promote` (el operador no corre en CI).
    */
   preserveEstado?: boolean;
+  /**
+   * Habilita el respaldo del snapshot a R2 (WR-02). Solo surte efecto si HAY credenciales R2
+   * válidas en el entorno (`R2_ENDPOINT_URL`/`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/
+   * `R2_BUCKET`); sin ellas, el flag es un no-op explícito (se registra y se omite R2). Default
+   * false.
+   */
+  r2?: boolean;
   /** Raíz para resolver el snapshot (default: cwd). */
   cwd?: string;
   /** Sink de logs (inyectable para tests). Default console.log. */
@@ -100,12 +170,38 @@ export interface SeedCliResult {
   diputados: number;
   senadores: number;
   dbLoaded: boolean;
-  promoted: { senado: number; camara: number } | null;
+  /** Filas promovidas a `confirmado` (allow-list principiada) o null si no se promovió. */
+  promoted: { promovidos: number } | null;
+  /** true si el snapshot se subió a R2 con éxito; false si deshabilitado/sin cred/falló. */
+  r2Ok: boolean;
   snapshotPath: string;
   snapshotBytes: number;
 }
 
 const DEFAULT_LOCAL_URL = "http://127.0.0.1:54421";
+
+/**
+ * Construye el `R2BackupTarget` desde el entorno SOLO si las 4 credenciales R2 están presentes
+ * (WR-02). Devuelve `null` si falta alguna → R2 queda como no-op explícito (sin enmascarar un
+ * leg de respaldo inerte como funcional). Gateado por presencia de credencial, no por el flag.
+ */
+export function buildR2Target(): R2BackupTarget | null {
+  const endpoint = process.env.R2_ENDPOINT_URL ?? "";
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID ?? "";
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY ?? "";
+  const bucket = process.env.R2_BUCKET ?? "";
+  if (!endpoint || !accessKeyId || !secretAccessKey || !bucket) return null;
+
+  const store = new R2Store({ endpoint, accessKeyId, secretAccessKey, bucket });
+  return {
+    async put(content: string): Promise<string> {
+      const body = new TextEncoder().encode(content);
+      const sha = await sha256Hex(body);
+      const date = new Date().toISOString().slice(0, 10);
+      return store.putImmutable("identity", "parlamentario-seed", date, sha, "json", body);
+    },
+  };
+}
 
 /**
  * Corre la siembra live end-to-end. Devuelve un resumen (conteos, si cargó a DB, snapshot).
@@ -134,23 +230,47 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
     `seed: maestra real -> ${maestra.length} filas (${senadores} senadores + ${diputados} diputados)`,
   );
 
+  // 2b. Reconciliación determinista (IN-01): NO se descarta su Resolution. Es la fuente (b)
+  //     que gatea la promoción de identidades que requieren match (no las que vienen directo
+  //     del catálogo de vigentes). Pura: no muta `estado`.
+  const audit = reconciliarMaestra(maestra);
+
   // 3. Carga al Supabase LOCAL (idempotente por clave natural). Si no hay service key,
   //    se omite la DB (pero el snapshot git, autoritativo, SIEMPRE se escribe).
   let dbLoaded = false;
-  let promoted: { senado: number; camara: number } | null = null;
+  let promoted: { promovidos: number } | null = null;
   if (serviceKey.length > 0) {
     const writer = new SupabaseMaestraWriter({ url: localUrl, serviceKey });
     await upsertMaestra(maestra, writer);
     dbLoaded = true;
     log(`seed: maestra cargada en Supabase LOCAL (${localUrl}) — upsert idempotente`);
 
-    // Compuerta humana (ID-01): solo con --promote, tras visto bueno del operador.
+    // Compuerta humana (ID-01) + CR-01: la promoción es PRINCIPIADA, jamás un blanket-confirm.
+    // Dos fuentes legítimas de confirmación, ambas explícitas:
+    //   (a) seed-from-authoritative-vigentes-catalog: una fila que viene DIRECTO del catálogo
+    //       oficial de vigentes ES un miembro actual confirmado por definición.
+    //   (b) reconciliación: filas cuyo `matchDeterminista` devolvió `confirmado` (único por
+    //       nombre/clave estricta en su cámara+periodo). Homónimo/no_confirmado NUNCA entran.
+    // El operador debe correr --promote SOLO tras su visto bueno del lote (Task 2).
     if (opts.promote) {
-      promoted = await writer.promoteToConfirmado(maestra);
-      // Refleja el estado promovido en el dataset que se exporta al snapshot.
-      for (const row of maestra) row.estado = "confirmado";
+      const idsVigentes = vigentesDeCatalogo(maestra); // fuente (a)
+      const idsConfirmadosPorMatch = new Set<string>(); // fuente (b)
+      for (const [id, res] of audit) {
+        if (res.estado === "confirmado") idsConfirmadosPorMatch.add(id);
+      }
+      const allowList = [...new Set([...idsVigentes, ...idsConfirmadosPorMatch])];
+
+      const r = await writer.promoteToConfirmado(allowList);
+      promoted = r;
+
+      // Refleja en memoria SOLO los ids efectivamente promovidos — NUNCA el lote completo.
+      const allowSet = new Set(allowList);
+      for (const row of maestra) {
+        if (allowSet.has(row.id)) row.estado = "confirmado";
+      }
       log(
-        `seed: PROMOVIDAS a confirmado (revisión humana) -> ${promoted.senado} senadores + ${promoted.camara} diputados`,
+        `seed: PROMOVIDAS a confirmado (allow-list principiada) -> ${r.promovidos} filas ` +
+          `[catálogo-vigentes=${idsVigentes.size}, match-confirmado=${idsConfirmadosPorMatch.size}]`,
       );
     }
   } else {
@@ -160,15 +280,25 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
   }
 
   // 3b. Preservar la compuerta humana en backups automáticos (CI): mergea el `estado`
-  //     ya committeado por `id`. Sin esto, una re-siembra revertiría `confirmado` →
-  //     `no_confirmado` en silencio (deshacer la revisión humana es un fallo de corrección).
+  //     ya committeado, primero por `id` y, si falla (WR-03: rotación de la clave natural),
+  //     por la firma de identidad estable (cámara+periodo+nombre_normalizado). Sin esto, una
+  //     re-siembra revertiría `confirmado` → `no_confirmado` en silencio (fallo de corrección).
   const root = opts.cwd ?? findWorkspaceRoot(process.cwd());
   if (opts.preserveEstado && !opts.promote) {
-    const prev = readEstadoSnapshot(resolve(root, SEED_PATH));
+    const prev = readEstadoSnapshot(resolve(root, SEED_PATH), log);
     let preservados = 0;
     for (const row of maestra) {
-      const estadoPrevio = prev.get(row.id);
-      if (estadoPrevio != null && estadoPrevio !== row.estado) {
+      const estadoPrevio =
+        prev.porId.get(row.id) ?? prev.porFirma.get(firmaIdentidad(row));
+      if (estadoPrevio == null) continue;
+      if (estadoPrevio !== row.estado) {
+        // WR-03: visibiliza cualquier caída de `confirmado` que el preserve está reparando.
+        if (estadoPrevio === "confirmado" && row.estado !== "confirmado") {
+          log(
+            `seed: WARN preservando confirmado humano para id=${row.id} ` +
+              `(${row.nombre_normalizado}) que la re-siembra había bajado a ${row.estado} (WR-03)`,
+          );
+        }
         row.estado = estadoPrevio;
         preservados++;
       }
@@ -176,11 +306,22 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
     log(`seed: estado preservado del snapshot previo -> ${preservados} filas`);
   }
 
-  // 4. Snapshot autoritativo en git (ID-09). R2 gateado (r2Enabled=false; credencial 401).
-  //    El destino se resuelve contra la RAÍZ del workspace (no el cwd del paquete).
+  // 4. Snapshot autoritativo en git (ID-09). R2 gateado por flag --r2 Y presencia de credencial
+  //    (WR-02): sin credenciales, R2 es un no-op explícito (no un leg inerte enmascarado).
+  const r2Target = opts.r2 ? buildR2Target() : null;
+  if (opts.r2 && r2Target == null) {
+    log("seed: --r2 pedido pero sin credenciales R2 completas -> R2 OMITIDO (no-op, WR-02)");
+  }
   const fsWriter = new FsSeedFileWriter({ cwd: root });
-  const res = await exportMaestra(maestra, { writer: fsWriter, r2Enabled: false });
-  log(`seed: snapshot escrito -> ${res.path} (${res.bytes} bytes)`);
+  const res = await exportMaestra(maestra, {
+    writer: fsWriter,
+    r2Enabled: r2Target != null,
+    ...(r2Target != null ? { r2: r2Target } : {}),
+  });
+  log(
+    `seed: snapshot escrito -> ${res.path} (${res.bytes} bytes)` +
+      (r2Target != null ? ` | R2 ${res.r2Ok ? "OK" : "FALLÓ (best-effort)"}` : ""),
+  );
 
   return {
     total: maestra.length,
@@ -188,6 +329,7 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
     senadores,
     dbLoaded,
     promoted,
+    r2Ok: res.r2Ok,
     snapshotPath: res.path,
     snapshotBytes: res.bytes,
   };
@@ -196,7 +338,7 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
 // Re-export por conveniencia (round-trip / verificación).
 export { serializeMaestra, SEED_PATH };
 
-// Entry-point CLI: `node seed-cli.js [--promote] [--preserve-estado]`.
+// Entry-point CLI: `node seed-cli.js [--promote] [--preserve-estado] [--r2]`.
 const isMain =
   typeof process !== "undefined" &&
   process.argv[1] != null &&
@@ -204,10 +346,11 @@ const isMain =
 if (isMain) {
   const promote = process.argv.includes("--promote");
   const preserveEstado = process.argv.includes("--preserve-estado");
-  main({ promote, preserveEstado })
+  const r2 = process.argv.includes("--r2"); // WR-02: ahora SÍ se parsea y se cablea
+  main({ promote, preserveEstado, r2 })
     .then((r) => {
       console.log(
-        `\nseed OK: total=${r.total} senadores=${r.senadores} diputados=${r.diputados} dbLoaded=${r.dbLoaded} promoted=${JSON.stringify(r.promoted)}`,
+        `\nseed OK: total=${r.total} senadores=${r.senadores} diputados=${r.diputados} dbLoaded=${r.dbLoaded} promoted=${JSON.stringify(r.promoted)} r2Ok=${r.r2Ok}`,
       );
       process.exit(0);
     })
