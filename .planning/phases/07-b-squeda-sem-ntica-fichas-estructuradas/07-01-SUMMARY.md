@@ -166,3 +166,21 @@ Ver el bloque "CHECKPOINT REACHED" devuelto al orquestador para los pasos exacto
 ---
 *Phase: 07-b-squeda-sem-ntica-fichas-estructuradas*
 *Tasks 1-4 completed: 2026-06-18 — Task 5 pending blocking checkpoint*
+
+---
+
+## Checkpoint Task 5 — RESUELTO (2026-06-18): aplicado a la NUBE (no local)
+
+**Decisión del operador:** cutover a Supabase nube en vez de aplicar a local (el operador no quería datos en local). DB password provisto por el operador para esta sesión (a ROTAR post-sesión — quedó en el transcript).
+
+**Acción ejecutada:** las 11 migraciones (0001..0011) aplicadas en orden al proyecto nube `bctyygbmqcvizyplktuw` (región sa-east-1, vía pooler IPv4 `aws-1-sa-east-1.pooler.supabase.com:5432`; el host directo es IPv6-only y la máquina no tiene IPv6). Tracking registrado en `supabase_migrations.schema_migrations`. El proyecto nube estaba vacío (0 tablas) → cutover limpio.
+
+**Verificación 0011 en vivo (nube):** proyecto_ficha + proyecto_embedding existen; embedding = vector(768); índice HNSW `proyecto_embedding_hnsw`; RPC `match_proyectos` con `anon execute=true`; RLS habilitado + 1 policy public-read por tabla; smoke `match_proyectos(vector cero,5)` ejecuta sin permiso denegado (filas=0, corpus vacío).
+
+**Pendientes operativos (follow-up, no bloquean el código de la fase):**
+- Wiring de env de la app para nube: `SUPABASE_URL`=https://bctyygbmqcvizyplktuw.supabase.co + anon/publishable key de la nube (hoy el .env tiene `SUPABASE_API_URL` + `SUPABASE_SECRET_KEY`). `SUPABASE_DB_URL` (pooler) ya escrita en .env.
+- Carga de corpus a la nube: las tablas están vacías; correr los conectores de Fases 5/6 (proyectos/votaciones) apuntando a la nube + backfill de fichas/embeddings (Ola 2) para tener qué buscar.
+- Orquestación (0003): cron jobs apuntan a Edge Functions no desplegadas; setear vault secrets (project_url, ingest_worker_secret) + deploy de funciones cuando se quiera ingesta automática en nube.
+- **ROTAR el DB password** (quedó expuesto en el chat de esta sesión).
+
+**Estado plan 07-01:** Tasks 1-5 COMPLETAS. SEM-01/02/03 contratos entregados. Listo para Olas 2/3.
