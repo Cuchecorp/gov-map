@@ -24,3 +24,13 @@ export {
   SesionSalaSchema,
   SesionTablaItemSchema,
 } from "./model";
+
+// Helper de semana ISO-8601 (enumeración de la cobertura completa de Cámara).
+export type { SemanaIso } from "./semana-iso";
+export {
+  isoWeekOf,
+  semanaIsoKey,
+  semanasEnAnioIso,
+  prmSemanaParam,
+  enumerarSemanas,
+} from "./semana-iso";

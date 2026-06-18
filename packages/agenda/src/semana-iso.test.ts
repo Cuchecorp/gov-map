@@ -109,10 +109,10 @@ describe("enumerarSemanas", () => {
     expect(r[r.length - 1]).toEqual({ year: 2027, week: 3 });
     const keys = r.map((s) => semanaIsoKey(s.year, s.week));
     expect(new Set(keys).size).toBe(keys.length);
-    // 2024 y 2026 son años de 53 semanas → deben aparecer sus W53.
-    expect(keys).toContain("2024-W53");
+    // 2026 es un año de 53 semanas → debe aparecer su W53.
     expect(keys).toContain("2026-W53");
-    // 2025 es de 52 semanas → NO debe existir 2025-W53.
+    // 2024 y 2025 son de 52 semanas → NO deben existir sus W53.
+    expect(keys).not.toContain("2024-W53");
     expect(keys).not.toContain("2025-W53");
   });
 
