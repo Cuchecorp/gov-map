@@ -82,8 +82,14 @@ insert into proyecto (boletin, boletin_num, titulo, origen, enlace)
   values ('99999-99', '99999', 'Proyecto semilla', 'test', 'http://x');
 insert into proyecto_ficha (boletin, idea_matriz, origen)
   values ('99999-99', 'objeto literal de prueba', 'test');
+-- Vector NO-cero: la distancia coseno (<=>) es indefinida (NaN) para un vector de
+-- norma 0, y el WHERE del RPC `1 - (e.embedding <=> q) >= threshold` se vuelve
+-- `NaN >= 0.0` = false → fila filtrada → el isnt_empty de abajo fallaría. Sembramos
+-- [0,...,0,1] (767 ceros + 1) para que el coseno quede definido (WR-02).
 insert into proyecto_embedding (boletin, embedding, embedding_model, embedding_dims, embedding_version)
-  values ('99999-99', array_fill(0::float4, array[768])::vector, 'gemini-embedding-001', 768, 'v1');
+  values ('99999-99',
+          (array_fill(0::float4, array[767]) || array[1::float4])::vector,
+          'gemini-embedding-001', 768, 'v1');
 
 set local role anon;
 
@@ -95,9 +101,11 @@ select isnt_empty(
   'anon SÍ lee proyecto_embedding (policy public_read)');
 
 -- anon puede invocar el RPC (smoke: no lanza permiso denegado con el rol anon).
+-- Se consulta con el MISMO vector no-cero sembrado arriba: coseno definido (no NaN),
+-- así la fila pasa el WHERE y el isnt_empty prueba de verdad el grant execute (WR-02).
 select isnt_empty(
   $$ select boletin from match_proyectos(
-       (select array_fill(0::float4, array[768])::vector), 5, 0.0, null) $$,
+       (array_fill(0::float4, array[767]) || array[1::float4])::vector, 5, 0.0, null) $$,
   'anon SÍ invoca match_proyectos (grant execute efectivo)');
 
 -- Guarda de identidad: anon NO lee la maestra (rut nunca al público).
