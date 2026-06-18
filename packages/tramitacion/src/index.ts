@@ -70,3 +70,19 @@ export {
   SupabaseTramitacionWriter,
   type SupabaseTramitacionWriterOptions,
 } from "./writer-supabase";
+
+// ── Ola 4: orquestación de la corrida acotada + CLI de ingesta ────────────────
+export {
+  runIngest,
+  type RunIngestOpts,
+  type RunIngestResult,
+} from "./ingest-run";
+export {
+  main as runIngestCli,
+  parseArgs,
+  cargarMaestra,
+  findWorkspaceRoot,
+  IngestCliArgsError,
+  type IngestCliOptions,
+  type IngestCliResult,
+} from "./ingest-cli";
