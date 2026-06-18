@@ -4,7 +4,7 @@
 -- identidad (anon NO lee parlamentario.rut). Corre via `supabase test db` (pgTAP).
 
 begin;
-select plan(21);
+select plan(26);
 
 -- ── Existencia de las 4 tablas ───────────────────────────────────────────────
 select has_table('public', 'proyecto',           'tabla proyecto existe');
@@ -20,6 +20,15 @@ select has_column('public', 'proyecto', 'fecha_captura', 'proyecto.fecha_captura
 select has_column('public', 'proyecto', 'enlace',        'proyecto.enlace presente (provenance)');
 select has_column('public', 'voto',     'parlamentario_id', 'voto.parlamentario_id presente');
 
+-- CR-02: voto.fuente_voter_id presente y NOT NULL (discriminador NO colisionante del votante).
+select has_column('public', 'voto', 'fuente_voter_id',
+  'voto.fuente_voter_id presente (CR-02)');
+select col_not_null('public', 'voto', 'fuente_voter_id',
+  'voto.fuente_voter_id es NOT NULL (clave natural del votante)');
+-- CR-02: la unique correcta es (votacion_id, fuente_voter_id), NO (votacion_id, mencion_nombre).
+select col_is_unique('public', 'voto', ARRAY['votacion_id', 'fuente_voter_id'],
+  'voto unique (votacion_id, fuente_voter_id) — CR-02');
+
 -- voto.parlamentario_id es NULLABLE (solo se puebla si determinista/confirmado).
 select col_is_null('public', 'voto', 'parlamentario_id',
   'voto.parlamentario_id es nullable (NULL salvo vínculo confirmado)');
@@ -31,8 +40,8 @@ select fk_ok('public', 'voto', 'parlamentario_id', 'public', 'parlamentario', 'i
 -- ── Check constraints del dominio ────────────────────────────────────────────
 -- selección inválida revienta.
 select throws_ok(
-  $$ insert into voto (votacion_id, mencion_nombre, seleccion)
-     values ('camara:no-existe', 'x', 'blanco') $$,
+  $$ insert into voto (votacion_id, fuente_voter_id, mencion_nombre, seleccion)
+     values ('camara:no-existe', 'v0', 'x', 'blanco') $$,
   '23514',
   null,
   'voto.seleccion fuera de {si,no,abstencion,pareo} viola el check'
@@ -68,10 +77,27 @@ insert into proyecto (boletin, boletin_num, titulo, origen, enlace)
   values ('99999-99', '99999', 'Proyecto semilla', 'test', 'http://x');
 insert into votacion (id, boletin, camara, origen, enlace)
   values ('camara:seed', '99999-99', 'diputados', 'test', 'http://x');
-insert into voto (votacion_id, mencion_nombre, seleccion)
-  values ('camara:seed', 'Mención Semilla', 'si');
+insert into voto (votacion_id, fuente_voter_id, mencion_nombre, seleccion)
+  values ('camara:seed', 'DIP1', 'Mención Semilla', 'si');
 insert into tramitacion_evento (boletin, tipo, origen)
   values ('99999-99', 'tramite', 'test');
+
+-- CR-02: dos votantes con la MISMA mención cruda pero distinto fuente_voter_id COEXISTEN
+-- (no colapsan). El antiguo unique (votacion_id, mencion_nombre) lo habría impedido.
+insert into voto (votacion_id, fuente_voter_id, mencion_nombre, seleccion)
+  values ('camara:seed', 'DIP2', 'Mención Semilla', 'no');
+select is(
+  (select count(*)::int from voto where votacion_id = 'camara:seed'),
+  2,
+  'CR-02: dos votos con misma mención pero distinto fuente_voter_id coexisten');
+
+-- CR-02: re-insertar el MISMO (votacion_id, fuente_voter_id) viola la unique → idempotencia.
+select throws_ok(
+  $$ insert into voto (votacion_id, fuente_voter_id, mencion_nombre, seleccion)
+     values ('camara:seed', 'DIP1', 'Otra Mención', 'abstencion') $$,
+  '23505',
+  null,
+  'CR-02: clave (votacion_id, fuente_voter_id) duplicada viola la unique');
 
 -- ── RLS público-read EFECTIVA: como rol anon, las 4 tablas SE LEEN ───────────
 set local role anon;

@@ -64,7 +64,7 @@ function maestro(p: Partial<Parlamentario> & { id: string }): Parlamentario {
 }
 
 const votosCrudos: VotoSenadoCrudo[] = [
-  { mencionNombre: "Coloma C., Juan Antonio", seleccion: "si" },
+  { mencionNombre: "Coloma C., Juan Antonio", seleccion: "si", votoSeq: 0 },
 ];
 
 describe("reconciliarVotosSenado — guarda de identidad LOCKED", () => {
@@ -221,5 +221,27 @@ describe("reconciliarVotosSenado — guarda de identidad LOCKED", () => {
     });
     expect(out[0]!.parlamentario_id).toBe("P00500");
     expect(provider.callCount).toBe(0);
+  });
+
+  it("CR-02: dos votos con el MISMO nombre crudo reciben fuente_voter_id distintos (seq) → no colapsan", async () => {
+    const provider = new MockMiniMaxProvider({
+      decision: "no_match",
+      chosen_id: null,
+      confidence: 0,
+      evidence: [],
+      conflicts: [],
+    });
+    const crudos: VotoSenadoCrudo[] = [
+      { mencionNombre: "Homónimo X.", seleccion: "si", votoSeq: 3 },
+      { mencionNombre: "Homónimo X.", seleccion: "no", votoSeq: 7 },
+    ];
+    const out = await reconciliarVotosSenado(crudos, [], {
+      votacionId: "senado:1",
+      provider,
+      writer: new SpyWriter(),
+    });
+    expect(out[0]!.fuente_voter_id).toBe("seq:3");
+    expect(out[1]!.fuente_voter_id).toBe("seq:7");
+    expect(out[0]!.fuente_voter_id).not.toBe(out[1]!.fuente_voter_id);
   });
 });

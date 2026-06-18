@@ -43,6 +43,7 @@ const votacion: Votacion = {
 
 const voto: Voto = {
   votacion_id: "camara:89178",
+  fuente_voter_id: "1234",
   mencion_nombre: "Coloma C., Juan Antonio",
   parlamentario_id: "D123",
   seleccion: "si",
@@ -76,11 +77,11 @@ describe("InMemoryTramitacionWriter — idempotente por clave natural", () => {
     expect(w.eventos.size).toBe(1);
   });
 
-  it("distingue votos por (votacion_id, mencion_nombre) y eventos por su clave natural", async () => {
+  it("distingue votos por (votacion_id, fuente_voter_id) y eventos por su clave natural", async () => {
     const w = new InMemoryTramitacionWriter();
     await w.upsertVotos([
       voto,
-      { ...voto, mencion_nombre: "Otro, Diputado" },
+      { ...voto, fuente_voter_id: "5678", mencion_nombre: "Otro, Diputado" },
     ]);
     await w.upsertEventos([
       evento,
@@ -88,6 +89,23 @@ describe("InMemoryTramitacionWriter — idempotente por clave natural", () => {
     ]);
     expect(w.votos.size).toBe(2);
     expect(w.eventos.size).toBe(2);
+  });
+
+  it("CR-02: dos votantes distintos con el MISMO mencion_nombre NO colapsan (distinto fuente_voter_id)", async () => {
+    const w = new InMemoryTramitacionWriter();
+    // Dos diputados con nombre crudo idéntico/vacío pero DIPID distinto → DOS filas.
+    await w.upsertVotos([
+      { ...voto, fuente_voter_id: "1111", mencion_nombre: "" },
+      { ...voto, fuente_voter_id: "2222", mencion_nombre: "" },
+    ]);
+    expect(w.votos.size).toBe(2);
+  });
+
+  it("CR-02: re-ingerir el mismo voto (mismo fuente_voter_id) es idempotente", async () => {
+    const w = new InMemoryTramitacionWriter();
+    await w.upsertVotos([voto]);
+    await w.upsertVotos([voto]);
+    expect(w.votos.size).toBe(1);
   });
 });
 
@@ -130,9 +148,27 @@ describe("SupabaseTramitacionWriter — onConflict por clave natural (cliente fa
     const byTable = Object.fromEntries(calls.map((c) => [c.table, c.onConflict]));
     expect(byTable["proyecto"]).toBe("boletin");
     expect(byTable["votacion"]).toBe("id");
-    expect(byTable["voto"]).toBe("votacion_id,mencion_nombre");
+    expect(byTable["voto"]).toBe("votacion_id,fuente_voter_id");
     expect(byTable["tramitacion_evento"]).toBe("boletin,fecha,camara,tipo,descripcion");
     expect(calls.filter((c) => c.table === "votacion")).toHaveLength(1); // el vacío no llamó
+  });
+
+  it("CR-02: de-duplica el lote por (votacion_id, fuente_voter_id) antes del upsert", async () => {
+    const { client, calls } = fakeClient();
+    const w = new SupabaseTramitacionWriter({
+      url: "http://local",
+      serviceKey: "k",
+      // @ts-expect-error — cliente fake mínimo.
+      client,
+    });
+    // Dos filas con la MISMA clave de conflicto en un solo lote: Postgres abortaría
+    // (`command cannot affect row a second time`); el writer debe enviar UNA sola.
+    await w.upsertVotos([
+      voto,
+      { ...voto, mencion_nombre: "nombre distinto, mismo DIPID" },
+    ]);
+    const votoCall = calls.find((c) => c.table === "voto");
+    expect(votoCall?.rows).toHaveLength(1);
   });
 
   it("propaga el error de PostgREST sin filtrar la service key", async () => {

@@ -147,6 +147,10 @@ export async function reconciliarVotosSenado(
 
     const voto: Voto = VotoSchema.parse({
       votacion_id: votacionId,
+      // CR-02: el Senado solo trae nombre → el discriminador NO colisionante es el índice
+      // posicional del voto en la fuente (`seq:<n>`). Dos homónimos/menciones vacías ya no
+      // colapsan en la misma clave `(votacion_id, fuente_voter_id)`.
+      fuente_voter_id: `seq:${crudo.votoSeq}`,
       mencion_nombre: mencionNombre,
       parlamentario_id: v.parlamentario_id,
       seleccion: crudo.seleccion,

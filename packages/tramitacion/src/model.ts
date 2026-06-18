@@ -103,6 +103,14 @@ export const VotacionSchema = z.object({
 export interface Voto {
   /** FK a votacion.id. */
   votacion_id: string;
+  /**
+   * Discriminador NO colisionante del votante dentro de su votación (CR-02): NUNCA derivado del
+   * nombre. Cámara → el `Diputado/Id` (DIPID) oficial; Senado (solo nombre) → el índice posicional
+   * del voto en la fuente, prefijado (`seq:<n>`). Es la clave natural del upsert idempotente
+   * `(votacion_id, fuente_voter_id)`: dos votantes distintos jamás colapsan, y re-ingerir el mismo
+   * detalle produce las MISMAS filas.
+   */
+  fuente_voter_id: string;
   /** Nombre crudo tal cual viene de la fuente ("Coloma C., Juan Antonio"). */
   mencion_nombre: string;
   /** Solo poblado si el vínculo es determinista/confirmado; null en otro caso. */
@@ -114,6 +122,7 @@ export interface Voto {
 
 export const VotoSchema = z.object({
   votacion_id: z.string(),
+  fuente_voter_id: z.string(),
   mencion_nombre: z.string(),
   parlamentario_id: z.string().nullable(),
   seleccion: z.enum(["si", "no", "abstencion", "pareo"]),

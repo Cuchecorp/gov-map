@@ -93,6 +93,7 @@ describe("VotoSchema", () => {
   it("acepta un voto con parlamentario_id null (Senado no confirmado)", () => {
     const voto = {
       votacion_id: "senado:47/372:2024-08-27",
+      fuente_voter_id: "seq:0",
       mencion_nombre: "Coloma C., Juan Antonio",
       parlamentario_id: null,
       seleccion: "si",
@@ -105,6 +106,7 @@ describe("VotoSchema", () => {
   it("acepta un voto vinculado determinísticamente (Cámara por Id)", () => {
     const voto = {
       votacion_id: "camara:89178",
+      fuente_voter_id: "1234",
       mencion_nombre: "René Alinco Bustos",
       parlamentario_id: "P00012",
       seleccion: "no",
@@ -114,9 +116,22 @@ describe("VotoSchema", () => {
     expect(VotoSchema.parse(voto).parlamentario_id).toBe("P00012");
   });
 
+  it("CR-02: rechaza un voto sin fuente_voter_id (discriminador obligatorio del votante)", () => {
+    const voto = {
+      votacion_id: "camara:1",
+      mencion_nombre: "x",
+      parlamentario_id: null,
+      seleccion: "si",
+      metodo: null,
+      estado_vinculo: null,
+    };
+    expect(() => VotoSchema.parse(voto)).toThrow();
+  });
+
   it("rechaza una selección fuera de {si,no,abstencion,pareo}", () => {
     const voto = {
       votacion_id: "camara:1",
+      fuente_voter_id: "1",
       mencion_nombre: "x",
       parlamentario_id: null,
       seleccion: "blanco",
