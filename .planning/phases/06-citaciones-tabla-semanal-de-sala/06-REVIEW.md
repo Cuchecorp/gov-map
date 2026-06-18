@@ -22,7 +22,14 @@ findings:
   warning: 6
   info: 4
   total: 12
-status: issues_found
+status: fixed
+fixed_at: 2026-06-18T00:00:00Z
+fixed:
+  critical: 2   # CR-01, CR-02
+  warning: 6    # WR-01..WR-06
+  info: 2       # IN-01, IN-02, IN-03 (IN-04 deferred)
+deferred:
+  info: 1       # IN-04 (smoke test for fetchVia_NextData fallback)
 ---
 
 # Phase 6: Code Review Report
@@ -30,7 +37,20 @@ status: issues_found
 **Reviewed:** 2026-06-18T00:00:00Z
 **Depth:** standard
 **Files Reviewed:** 13
-**Status:** issues_found
+**Status:** fixed (see Resolution below)
+
+> **RESOLUTION (2026-06-18):** All 2 Blockers + 6 Warnings fixed, plus IN-01/IN-02/IN-03.
+> Idempotency keys made order-independent and content-derived (WR-01/WR-02, with
+> reorder + same-slot-distinct tests). Per-week Cámara 403 isolation (WR-04). Frontend
+> single-sources the canonical TABLASEMANAL PDF URL and scopes the degraded state to
+> Cámara (CR-01/CR-02). **WR-03 RESOLVED LIVE:** a curl-subprocess transport injected
+> behind the Fetcher interface fetched Cámara over the real network — 2026-W25 → HTTP 200
+> (237 KB) → 40 citaciones, 2026-W26 → HTTP 200 (143 KB) → 21 citaciones (NOT fixture/
+> fallback, NOT a CF challenge). A full live ingest into local Supabase loaded
+> Cámara=61 / Senado=27 / 4 sesiones with 0 errors; a re-ingest left the scoped row count
+> unchanged (121 → 121) confirming idempotency. Gates: `@obs/agenda` 99 tests pass,
+> `tsc -b` clean, `app` build OK. No migration touched (supabase test db N/A).
+> **Deferred:** IN-04 (smoke test for the unused `fetchVia_NextData` Senado fallback).
 
 ## Summary
 
