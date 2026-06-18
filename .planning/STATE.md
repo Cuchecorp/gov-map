@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 02-02-PLAN.md (MiniMax tool-calling + data-routing + smoke gated)
-last_updated: "2026-06-18T02:09:45.442Z"
+status: executing
+stopped_at: "Completed 03-01-PLAN.md (identidad pura: normalizarNombre + matchDeterminista fail-closed)"
+last_updated: "2026-06-18T12:41:20.047Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 10
+  completed_plans: 7
   percent: 29
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-17)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 02 — capa-de-providers-llm-embeddings
+**Current focus:** Phase 03 — tabla-maestra-parlamentario-identidad-determinista
 
 ## Current Position
 
-Phase: 02 (capa-de-providers-llm-embeddings) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 03 (tabla-maestra-parlamentario-identidad-determinista) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-06-18
 
 Progress: [██████████] 100% (3/3 planes de la fase 01 completos)
@@ -58,6 +58,7 @@ Progress: [██████████] 100% (3/3 planes de la fase 01 comple
 | Phase 02 P01 | 8min | 3 tasks | 18 files |
 | Phase 02 P02 | 3min | 2 tasks | 7 files |
 | Phase 02 P03 | 5min | 1 tasks | 2 files |
+| Phase 03 P01 | 14min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ Recent decisions affecting current work:
 - [Phase 02]: [02-02]: data-routing en codigo — assertNoRutInLlmInput (RUT nunca al LLM, error sin el RUT) + assertSensitivityAllowed reusa SensitiveRoutingError; smoke test live gated por LLM_SMOKE (skip default)
 - [Phase ?]: [02-03]: REST directo (batchEmbedContents) con fetchFn inyectable; @google/genai 2.8.0 no expone inyeccion de fetch publica (Assumption A4)
 - [Phase ?]: [02-03]: GeminiEmbeddingProvider L2-normaliza manual a 768 (Gemini no normaliza a dims!=3072); todo vector versionado, ninguno anonimo (FND-07)
+- [Phase ?]: [03-01]: ñ→n folding solo para la clave de comparación; display usa campos originales (A1)
+- [Phase ?]: [03-01]: matchDeterminista fail-closed, único escritor de estado; confirma solo con length===1 (RUT exacto o nombre único en cámara+periodo)
+- [Phase ?]: [03-01]: apellido materno fuera del blocking key → catálogo y formato-votación convergen; materno va a alias_capturados
 
 ### Pending Todos
 
@@ -106,6 +110,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T02:09:38.277Z
-Stopped at: Completed 02-02-PLAN.md (MiniMax tool-calling + data-routing + smoke gated)
+Last session: 2026-06-18T12:41:20.039Z
+Stopped at: Completed 03-01-PLAN.md (identidad pura: normalizarNombre + matchDeterminista fail-closed)
 Resume file: None
