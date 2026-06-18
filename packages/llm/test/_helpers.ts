@@ -78,9 +78,16 @@ export function makeMockFetch(
     } else {
       spec = entry;
     }
+    // Las respuestas de APIs OpenAI-compatibles son JSON; el SDK openai solo
+    // parsea el body si el content-type lo declara. Default a application/json
+    // (overridable via spec.headers) para que el SDK devuelva el objeto parseado.
+    const responseHeaders: Record<string, string> = {
+      "content-type": "application/json",
+      ...(spec.headers ?? {}),
+    };
     return new Response(spec.body ?? "", {
       status: spec.status,
-      headers: spec.headers,
+      headers: responseHeaders,
     });
   }) as typeof fetch;
 
