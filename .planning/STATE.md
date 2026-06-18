@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 05-04-PLAN.md
-last_updated: "2026-06-18T17:30:21.268Z"
+status: executing
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-06-18T18:55:47.426Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 18
-  completed_plans: 18
+  total_plans: 22
+  completed_plans: 19
   percent: 71
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-17)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 05 — tramitacion-core-ficha-timeline-votaciones
+**Current focus:** Phase 06 — citaciones-tabla-semanal-de-sala
 
 ## Current Position
 
-Phase: 05 (tramitacion-core-ficha-timeline-votaciones) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
+Phase: 06 (citaciones-tabla-semanal-de-sala) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-06-18
 
 Progress: [██████████] 100% (3/3 planes de la fase 04 completos)
@@ -70,6 +70,7 @@ Progress: [██████████] 100% (3/3 planes de la fase 04 comple
 | Phase 05 P03 | 8min | 2 tasks | 5 files |
 | Phase 05 P04 | 30min | 4 tasks | 36 files |
 | Phase 05 P05 | 19min | 3 tasks | 15 files |
+| Phase 06 P01 | 12min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,10 @@ Recent decisions affecting current work:
 - [Phase ?]: Frontend ficha: Server Components leen Supabase con anon key server-only (sin NEXT_PUBLIC_); Tailwind v4 + shadcn oficial; barra y timeline en CSS puro
 - [Phase ?]: Guarda de identidad en UI (TRAM-06): VotoRow enlaza al parlamentario SOLO si estado_vinculo=confirmado; si no, nombre crudo + IdentityMarker, nunca link
 - [Phase ?]: 05-05: conectores reusan @obs/ingest (NO BaseConnector); writer idempotente por clave natural; corrida LIVE Leg 58 → 1213 votos reales en Supabase local con provenance, 0 errores de fetch, idempotente
+- [Phase ?]: [Phase 06]: [06-01]: RLS public-read EXPLICITO (policy for select to anon using(true)) + GRANT SELECT en las 5 tablas de agenda — deny-by-default dejaria la /agenda en blanco (Pitfall 5/T-06-01); parlamentario intacta
+- [Phase ?]: [Phase 06]: [06-01]: citacion_invitado SIN parlamentario_id ni reconciliacion — invitados son gestores de interes/terceros, texto crudo (T-06-02); @obs/agenda NO depende de @obs/adjudication/@obs/identity
+- [Phase ?]: [Phase 06]: [06-01]: cheerio@1.2.0 instalado del registro (LOCKED en STACK.md) — el plan asumia que ya estaba en el lockfile pero tramitacion usa fast-xml-parser, no cheerio
+- [Phase ?]: [Phase 06]: [06-01]: slice.e2e.test.ts RED por imports ausentes (parseCamaraCitaciones/parseSenadoCitaciones/parseSenadoTabla) — diana ciudadana; 3 fixtures reales LIVE (Camara 235KB anti-CF + 2 JSON Senado)
 
 ### Pending Todos
 
@@ -150,6 +155,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T17:30:00.878Z
-Stopped at: Completed 05-04-PLAN.md
+Last session: 2026-06-18T18:55:47.416Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None

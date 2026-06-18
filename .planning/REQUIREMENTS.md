@@ -40,8 +40,8 @@ Requisitos del milestone 1. Cada uno mapea a una fase del roadmap.
 - [x] **TRAM-04**: Un usuario puede ver la ficha de un proyecto con su estado/etapa actual de tramitación
 - [x] **TRAM-05**: Un usuario puede ver el timeline de tramitación de un proyecto cruzando ambas cámaras por número de boletín
 - [x] **TRAM-06**: Un usuario puede ver los resultados de votación (totales SI/NO/Abstención y resultado) asociados a un proyecto
-- [ ] **TRAM-07**: El sistema ingesta y muestra las citaciones de comisiones de la Cámara (`citaciones_semana.aspx`) y del Senado (portal Next.js, con autodetección de `buildId`)
-- [ ] **TRAM-08**: Un usuario puede ver la tabla semanal de sala (orden del día)
+- [x] **TRAM-07**: El sistema ingesta y muestra las citaciones de comisiones de la Cámara (`citaciones_semana.aspx`) y del Senado (portal Next.js, con autodetección de `buildId`)
+- [x] **TRAM-08**: Un usuario puede ver la tabla semanal de sala (orden del día)
 - [x] **TRAM-09**: Cada ficha y dato de tramitación muestra un indicador de frescura por fuente y enlace a la fuente original
 
 ### Búsqueda Semántica y Fichas — P1 (SEM)
@@ -122,8 +122,8 @@ Poblada durante la creación del roadmap (2026-06-17). Cada requisito mapea a ex
 | TRAM-05 | Phase 5 | Complete |
 | TRAM-06 | Phase 5 | Complete |
 | TRAM-09 | Phase 5 | Complete |
-| TRAM-07 | Phase 6 | Pending |
-| TRAM-08 | Phase 6 | Pending |
+| TRAM-07 | Phase 6 | Complete |
+| TRAM-08 | Phase 6 | Complete |
 | SEM-01 | Phase 7 | Pending |
 | SEM-02 | Phase 7 | Pending |
 | SEM-03 | Phase 7 | Pending |
