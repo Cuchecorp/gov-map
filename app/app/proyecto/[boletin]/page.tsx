@@ -97,7 +97,11 @@ async function IdeaMatrizSection({ boletin }: { boletin: string }) {
       ? {
           capturedAt: ficha?.fecha_captura ? new Date(ficha.fecha_captura) : null,
           sourceName: sourceLabel(ficha?.origen ?? null),
-          sourceUrl: ficha?.texto_r2_path ?? null,
+          // texto_r2_path es una key R2 interna (no un enlace público): exponerla
+          // como href produce un "fuente oficial" muerto que contradice el principio
+          // rector (cada dato lleva enlace ORIGINAL). Hasta plumbar el
+          // link_mensaje_mocion (BCN/Senado) real, mostramos fuente+fecha SIN enlace.
+          sourceUrl: null,
         }
       : undefined;
   return <IdeaMatrizBlock ideaMatriz={ideaMatriz} provenance={provenance} />;
