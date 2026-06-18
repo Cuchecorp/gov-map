@@ -18,10 +18,19 @@ export type { DummyRaw } from "./dummy-connector";
 // Colaboradores (politica) — instanciables por el worker de Plan 03
 export { HostRateLimiter } from "./rate-limiter";
 export type { RateLimiterOptions } from "./rate-limiter";
+export { PgHostThrottle, ThrottleDeferError } from "./host-throttle";
+export type { ReserveSlotRpc, HostThrottleOptions } from "./host-throttle";
 export { RobotsGuard, IDENTIFIED_UA } from "./robots";
 export type { RobotsGuardOptions } from "./robots";
 export { Fetcher, RetryableError, FetchError } from "./fetcher";
 export type { FetchSpec, FetcherOptions } from "./fetcher";
+export {
+  assertAllowedUrl,
+  HostNotAllowedError,
+  DEFAULT_ALLOWED_SUFFIXES,
+  extraHostsFromEnv,
+} from "./allowlist";
+export type { AllowlistOptions } from "./allowlist";
 export { DailyCache, dateBucket } from "./cache";
 export type { CacheSpec, SnapshotLookup } from "./cache";
 export { R2Store, sha256Hex } from "./r2-store";

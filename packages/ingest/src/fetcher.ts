@@ -9,11 +9,22 @@
  * 200 devuelve el body crudo como Uint8Array.
  */
 import { IDENTIFIED_UA } from "./robots";
+import {
+  type AllowlistOptions,
+  assertAllowedUrl,
+  HostNotAllowedError,
+} from "./allowlist";
 
-/** Spec minima de request que el fetcher consume. */
+/**
+ * Spec minima de request que el fetcher consume.
+ *
+ * `host` es derivado/redundante: el fetcher NO confia en el — el host efectivo
+ * sale SIEMPRE de `new URL(url)` (ver WR-01). Se conserva opcional por
+ * compatibilidad con specs existentes.
+ */
 export interface FetchSpec {
   url: string;
-  host: string;
+  host?: string;
   params?: Record<string, unknown>;
 }
 
@@ -48,6 +59,8 @@ export interface FetcherOptions {
   fetchFn?: typeof fetch;
   /** UA con el que se identifica el bot. Default: IDENTIFIED_UA. */
   ua?: string;
+  /** Allowlist de origenes (CR-03). Default: sufijos gubernamentales. */
+  allowlist?: AllowlistOptions;
 }
 
 function isRetryableStatus(status: number): boolean {
@@ -57,18 +70,26 @@ function isRetryableStatus(status: number): boolean {
 export class Fetcher {
   private readonly fetchFn: typeof fetch;
   private readonly ua: string;
+  private readonly allowlist: AllowlistOptions;
 
   constructor(opts: FetcherOptions = {}) {
     this.fetchFn = opts.fetchFn ?? fetch;
     this.ua = opts.ua ?? IDENTIFIED_UA;
+    this.allowlist = opts.allowlist ?? {};
   }
 
   /**
    * GET del recurso. 200 => Uint8Array del body. 429/5xx => RetryableError
    * (sin body, para backoff diferido). Otros !ok => FetchError.
+   *
+   * Defensa SSRF (CR-03): antes de cualquier red valida la URL contra el
+   * allowlist gubernamental + bloqueo de targets internos. Host no permitido =>
+   * HostNotAllowedError (no se emite ningun request).
    */
   async get(spec: FetchSpec): Promise<Uint8Array> {
-    const res = await this.fetchFn(spec.url, {
+    // CR-03 / WR-01: el host efectivo sale de la URL real, nunca de spec.host.
+    const url = assertAllowedUrl(spec.url, this.allowlist);
+    const res = await this.fetchFn(url.toString(), {
       method: "GET",
       headers: { "User-Agent": this.ua },
     });
