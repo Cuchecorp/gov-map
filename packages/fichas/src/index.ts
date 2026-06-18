@@ -34,3 +34,36 @@ export {
   evaluarGolden,
   type MetricasGolden,
 } from "./golden/golden-set";
+
+// ── Ola 2: WRITE-PATH (descarga → extracción → embedding asimétrico → upsert) ─────────────────
+export {
+  obtenerTextoFuente,
+  type ObtenerTextoFuenteOpts,
+  type TextoFuenteResult,
+  type TextoFetcher,
+  type TextoRateLimiter,
+  type TextoRobots,
+  type TextoR2Target,
+} from "./texto-fuente";
+export {
+  componerTextoEmbed,
+  embedFicha,
+  MAX_EMBED_CHARS,
+  type FichaEmbedder,
+} from "./embed-ficha";
+export {
+  correrPipeline,
+  EMBED_VERSION_BASE,
+  type PipelinePendiente,
+  type TextoFuenteOutput,
+  type CorrerPipelineBatchOpts,
+  type CorrerPipelineUnoOpts,
+  type CorrerPipelineResult,
+} from "./pipeline";
+export {
+  SupabaseFichasWriter,
+  type SupabaseFichasWriterOptions,
+  type FichasWriter,
+  type FichaRow,
+  type EmbeddingRow,
+} from "./writer-supabase";

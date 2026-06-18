@@ -1,10 +1,10 @@
-// SLICE E2E — RED hasta las olas 2-3; ellas lo vuelven verde.
+// SLICE E2E — write-half VERDE (ola 2); read-half (buscarProyectos) RED hasta la ola 3.
 //
-// Diana walking-skeleton: describe el OBJETIVO CIUDADANO end-to-end de la fase como
-// contrato fallido a propósito. Importa los símbolos que las olas 2-3 implementarán
-// (correrPipeline = extraer→embed→persistir ficha+embedding; buscarProyectos = búsqueda
-// semántica vía el RPC match_proyectos). Hoy esos símbolos NO existen en el barrel → el
-// test FALLA en RED por símbolos ausentes (no por fixtures rotos).
+// Diana walking-skeleton: describe el OBJETIVO CIUDADANO end-to-end de la fase. La ola 2
+// implementa el WRITE-PATH (correrPipeline = extraer→embed→persistir ficha+embedding) → Test 1
+// pasa con un provider mockeado/offline (sin red, sin key). La ola 3 implementa el READ-PATH
+// (buscarProyectos = búsqueda semántica vía el RPC match_proyectos) → Tests 2-3 siguen en RED
+// (símbolo ausente en el barrel) hasta que la ola 3 los vuelva verde.
 //
 // La diana: "la ciudadanía, dada una idea, encuentra proyectos de ley semánticamente
 // cercanos (búsqueda + similares), y cada ficha lleva su idea matriz literal y los
@@ -12,20 +12,27 @@
 
 import { describe, it, expect } from "vitest";
 
-// @ts-expect-error — RED: estos símbolos aún no existen en el barrel (olas 2-3 los añaden).
+// @ts-expect-error — buscarProyectos aún no existe en el barrel (la ola 3 lo añade).
 import {
   correrPipeline,
   buscarProyectos,
   FichaSchema,
+  MockDeepSeekProvider,
 } from "./index";
 
-describe("SLICE E2E — objetivo ciudadano (RED hasta olas 2-3)", () => {
+describe("SLICE E2E — objetivo ciudadano (write-half VERDE; read-half RED hasta ola 3)", () => {
   it("Test 1 (SEM-02): correrPipeline extrae una Ficha literal y la persiste embebida", async () => {
+    // Provider mockeado (offline): devuelve la idea matriz literal del texto fuente.
+    const provider = new MockDeepSeekProvider({
+      idea_matriz: "regular el endeudamiento de las personas",
+      cuerpos_legales: [],
+    });
     const ficha = await correrPipeline({
       boletin: "18296-05",
       titulo: "Proyecto de prueba",
       textoFuente:
         "El proyecto tiene por objeto regular el endeudamiento de las personas.",
+      provider,
     });
     expect(() => FichaSchema.parse(ficha)).not.toThrow();
     expect(ficha.idea_matriz).toBeTruthy();

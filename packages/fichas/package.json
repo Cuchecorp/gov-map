@@ -17,6 +17,7 @@
     "@obs/ingest": "workspace:*",
     "@obs/llm": "workspace:*",
     "@obs/tramitacion": "workspace:*",
+    "@supabase/supabase-js": "^2.108.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
