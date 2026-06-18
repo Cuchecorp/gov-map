@@ -1,0 +1,43 @@
+/*
+ * Civic semantic tokens — UI-SPEC §1.1 "Civic Semantic Tokens".
+ * Unique to Observatorio del Congreso 360; not part of shadcn defaults.
+ * Cámara de Diputadas y Diputados = institutional blue.
+ * Senado de la República = institutional burgundy/wine.
+ * Colors drawn from official institutional identity, NOT political parties.
+ */
+:root {
+  /* Cámara de Diputadas y Diputados — institutional blue */
+  --camara: hsl(213 94% 38%);
+  --camara-foreground: hsl(0 0% 100%);
+  --camara-muted: hsl(213 60% 94%);
+  --camara-muted-foreground: hsl(213 50% 35%);
+
+  /* Senado de la República — institutional burgundy/wine */
+  --senado: hsl(355 65% 38%);
+  --senado-foreground: hsl(0 0% 100%);
+  --senado-muted: hsl(355 40% 94%);
+  --senado-muted-foreground: hsl(355 45% 35%);
+
+  /* Provenance / frescura badge */
+  --provenance-bg: hsl(210 40% 96.1%);
+  --provenance-fg: hsl(215.4 16.3% 46.9%);
+  --provenance-border: hsl(214.3 31.8% 85%);
+
+  /* Identity warning (no confirmada) */
+  --identity-warn-bg: hsl(38 92% 95%);
+  --identity-warn-fg: hsl(32 95% 30%);
+  --identity-warn-border: hsl(38 80% 75%);
+}
+
+.dark {
+  --camara-muted: hsl(213 50% 15%);
+  --camara-muted-foreground: hsl(213 60% 70%);
+  --senado-muted: hsl(355 40% 14%);
+  --senado-muted-foreground: hsl(355 50% 70%);
+  --provenance-bg: hsl(217.2 32.6% 17.5%);
+  --provenance-fg: hsl(215 20.2% 65.1%);
+  --provenance-border: hsl(217.2 32.6% 25%);
+  --identity-warn-bg: hsl(38 50% 12%);
+  --identity-warn-fg: hsl(38 80% 65%);
+  --identity-warn-border: hsl(38 60% 30%);
+}
