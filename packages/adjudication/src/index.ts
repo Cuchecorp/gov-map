@@ -21,3 +21,16 @@ export type { Adjudicacion } from "./prompt";
 export { aplicarCompuerta } from "./compuerta";
 export { MockMiniMaxProvider } from "./mock-provider";
 export type { RespuestaMock } from "./mock-provider";
+
+// Orquestación + persistencia (04-03).
+export { correrPipeline } from "./pipeline";
+export type { ResultadoPipeline, PipelineWriter } from "./pipeline";
+export { RevisionWriter } from "./writer-revision";
+export type {
+  RevisionWriterOptions,
+  CasoRevision,
+  CasoRevisionRow,
+  CandidatoResumen,
+  FilaVinculo,
+  FilaAudit,
+} from "./writer-revision";
