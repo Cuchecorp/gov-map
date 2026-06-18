@@ -22,7 +22,14 @@ findings:
   warning: 6
   info: 4
   total: 13
-status: issues_found
+status: fixed
+fixed_at: 2026-06-18
+fixed:
+  critical: 3
+  warning: 6
+  info: 3
+deferred:
+  info: 1   # IN-04 (RUT mod-11): utilidad isRutValido añadida + testeada, no cableada al matcher (catálogos sin RUT esta fase)
 ---
 
 # Phase 3: Code Review Report
@@ -69,6 +76,15 @@ few robustness gaps in the parsers.
 
 ### CR-01: `promoteToConfirmado` confirms unreviewed rows; `--promote` then force-confirms the entire maestra
 
+> **RESOLVED (3c85d91, fb2e8fb).** Promotion is now PRINCIPLED. `promoteToConfirmado(ids)`
+> takes an explicit allow-list and updates by the stable PK `id` only (empty list = no-op,
+> never "promote all"). seed-cli builds that allow-list from two explicit sources:
+> (a) `vigentesDeCatalogo` — the seed-from-authoritative-vigentes-catalog rule (every row whose
+> `origen` is `senado`/`diputados` is a confirmed current member by definition), and
+> (b) matcher-confirmed ids from `reconciliarMaestra` (only `Resolution.estado === "confirmado"`;
+> homónimo/no_confirmado never enter). The blanket `for (row) row.estado = "confirmado"` is gone —
+> only allow-listed ids are set in memory. Covered by writer-supabase.test.ts + seeder.test.ts.
+
 **File:** `packages/identity/src/writer-supabase.ts:83-115` and `packages/identity/src/seed-cli.ts:148-155`
 
 **Issue:** This is the #1 existential-risk path — auto-promoting an ambiguous/homonym
@@ -107,6 +123,11 @@ operator rather than promoting the full live batch.
 
 ### CR-02: Malformed militancia dates become "vigente" → wrong party assignment
 
+> **RESOLVED (cb52da9).** `parseFecha` now fails closed: an unparseable date throws
+> `FechaInvalidaError` (never returns an `Invalid Date` that silently passes range checks).
+> `parseCamara` catches it per-diputado, sets `partido=null`, and logs — one bad date no longer
+> picks a wrong (former) party nor kills the whole run. Tested in parse-camara.test.ts.
+
 **File:** `packages/identity/src/parse-camara.ts:59-84`
 
 **Issue:** `partidoVigente` parses dates with `new Date(String(...))`. An unparseable
@@ -142,6 +163,10 @@ date silently pick a different party.
 
 ### CR-03: Missing PARLID/Id collapses rows to a single `id` and overwrites on upsert
 
+> **RESOLVED (cb52da9).** A row without `PARLID`/`Id` now throws (`senador sin PARLID` /
+> `diputado sin Id`) — the `"S?"`/`"D?"` fallback is gone, so no two keyless rows can collide on
+> the upsert PK. Tested in parse-senado.test.ts / parse-camara.test.ts.
+
 **File:** `packages/identity/src/parse-senado.ts:85` and `packages/identity/src/parse-camara.ts:135`
 
 **Issue:** `id: \`S${str(s.PARLID) ?? "?"}\`` (and `\`D${str(d.Id) ?? "?"}\``). When the
@@ -173,6 +198,13 @@ acceptable, but emitting an id of `"S?"` is not.
 
 ### WR-01: Name normalization drops apellido materno from the key → false unique-match risk
 
+> **RESOLVED (3c85d91).** `normalizarNombre` now also emits `clave_estricta` (paterno + materno +
+> nombres). `matchDeterminista` uses it as a tiebreak: when the materno-less `nombre_normalizado`
+> yields 2+ candidates AND the mention + all candidates expose `clave_estricta`, it refines by the
+> strict key. This can only confirm FEWER (never more) — true homonyms (same strict key) and any
+> candidate missing the strict key stay fail-closed. The materno-less key is preserved for
+> cross-source (votación) convergence in Phase 4. Tested in nombre.test.ts + deterministic.test.ts.
+
 **File:** `packages/core/src/nombre.ts:55-93` (consumed by `parse-senado.ts:78`, `parse-camara.ts:128`)
 
 **Issue:** `nombre_normalizado` is built from paterno + nombres only (materno is captured
@@ -192,6 +224,11 @@ materno-less key only for cross-source (votación) reconciliation in Phase 4. At
 document that confirm-by-nombre is only sound while both homonyms are present in the batch.
 
 ### WR-02: Workflow passes `--r2` but the CLI never parses it — R2 backup leg is dead, and the env secrets are wired to a no-op
+
+> **RESOLVED (fb2e8fb, 963ad88).** seed-cli now parses `--r2` and threads `r2Enabled` through
+> `exportMaestra`. `buildR2Target()` constructs the R2 target from env ONLY if all 4 credentials
+> are present, else returns null and logs an explicit no-op (R2 gated on credential presence, so
+> the leg is never masked as functional when it isn't). Tested in seed-cli.test.ts.
 
 **File:** `.github/workflows/backup-parlamentario.yml:78` and `packages/identity/src/seed-cli.ts:182,200-207`
 
@@ -217,6 +254,11 @@ masquerade as functional.
 
 ### WR-03: `preserveEstado` loses a human `confirmado` whenever the natural-key id rotates
 
+> **RESOLVED (fb2e8fb).** `readEstadoSnapshot` now builds two indices: by `id` AND by a stable
+> identity signature (`camara|periodo|nombre_normalizado`). The preserve loop falls back to the
+> signature when the `id` lookup misses (natural-key rotation), and logs a WARN whenever it is
+> repairing a `confirmado` that a re-seed had dropped. Tested in seed-cli.test.ts.
+
 **File:** `packages/identity/src/seed-cli.ts:166-177`
 
 **Issue:** `--preserve-estado` merges prior estado by `row.id` (line 170-171). The id is
@@ -234,6 +276,10 @@ committing the regression silently.
 
 ### WR-04: `partidoVigente` returns the FIRST range-satisfying militancia, not the most recent
 
+> **RESOLVED (cb52da9).** `partidoVigente` now filters ALL militancias covering `corte` and picks
+> the one with the latest `FechaInicio` (a militancia with no FechaInicio sorts oldest), instead of
+> the first encountered — recency, not XML order, decides the party. Tested in parse-camara.test.ts.
+
 **File:** `packages/identity/src/parse-camara.ts:75-83`
 
 **Issue:** `.find()` returns the first militancia whose `[FechaInicio, FechaTermino]`
@@ -250,6 +296,10 @@ const activa = candidatas.sort((a, b) => fechaInicio(b) - fechaInicio(a))[0];
 ```
 
 ### WR-05: `<senador>`/`<Diputado>` collapsing — a single-element catalog and a parse failure are indistinguishable
+
+> **RESOLVED (cb52da9).** Both parsers now throw if the final parsed count is implausibly low
+> (`< 10`), so a malformed/error response (HTML-with-200, renamed wrapper) fails the run instead of
+> committing an empty/shrunk snapshot. Tested in parse-senado.test.ts / parse-camara.test.ts.
 
 **File:** `packages/identity/src/parse-senado.ts:69-71` and `packages/identity/src/parse-camara.ts:111-113`
 
@@ -269,6 +319,11 @@ if (senadores.length === 0) throw new Error("parseSenado: 0 senadores — XML in
 
 ### WR-06: `email`/`partido` and free-text fields flow into the snapshot without length/shape bounds
 
+> **RESOLVED (cc26744).** `ParlamentarioSeedSchema` now validates email shape (`""`/null allowed,
+> any non-empty value must match an email regex) and applies `.max()` bounds to all free-text
+> fields. The existing 186-row snapshot still passes the tightened schema (verified). Tested in
+> parlamentario.test.ts.
+
 **File:** `packages/core/src/parlamentario.ts:82-102` (schema) consumed by both parsers
 
 **Issue:** `ParlamentarioSeedSchema` validates nullability but not content. `email` is
@@ -287,6 +342,10 @@ direct injection (PostgREST parametrizes; JSON.stringify escapes), but it weaken
 
 ### IN-01: `matchDeterminista` result discarded in the seeder
 
+> **RESOLVED (3c85d91).** The dead in-loop call is removed. `reconciliarMaestra` now runs the
+> matcher per row and RETURNS a `Map<id, Resolution>` audit, which seed-cli consults to gate the
+> matcher-confirmed promotion source (b). The Resolution is no longer thrown away.
+
 **File:** `packages/identity/src/seeder.ts:88-99`
 
 **Issue:** The loop calls `matchDeterminista(...)` but ignores its return value, then
@@ -298,6 +357,9 @@ Resolution that *should* gate promotion is thrown away).
 dead call and document that promotion is fully deferred to the operator step.
 
 ### IN-02: `findWorkspaceRoot` fallback can silently write the snapshot to the wrong directory
+
+> **RESOLVED (fb2e8fb).** `findWorkspaceRoot` now throws when `pnpm-workspace.yaml` is not found,
+> instead of returning the package cwd — a misconfiguration fails loudly. Tested in seed-cli.test.ts.
 
 **File:** `packages/identity/src/seed-cli.ts:38-46`
 
@@ -311,6 +373,10 @@ resolved root contains the expected `supabase/seeds` ancestor.
 
 ### IN-03: Empty-catch swallows snapshot-corruption signal in `readEstadoSnapshot`
 
+> **RESOLVED (fb2e8fb).** The empty catch now logs a WARN naming the path and the parse error, so a
+> corrupt snapshot is visible in CI rather than silently degrading the human-gate preservation.
+> Tested in seed-cli.test.ts.
+
 **File:** `packages/identity/src/seed-cli.ts:72-75`
 
 **Issue:** A corrupt committed snapshot is swallowed (`catch {}`) and treated as "preserve
@@ -321,6 +387,12 @@ next run. Acceptable as designed, but the corruption is invisible.
 silently degrading the human-gate preservation.
 
 ### IN-04: `normRut` does not validate RUT structure before comparison
+
+> **DEFERRED — partial (3c85d91).** Added and tested `isRutValido` (modulo-11 DV check), exported
+> for Phase 4. NOT wired into `matchDeterminista`'s RUT branch this phase: the catalogs carry no RUT
+> (the branch is inactive today) and enabling it would change the semantics of existing RUT tests
+> that use mod-11-invalid fixtures. The matcher documents the deferral; it is activated when RUTs
+> become a real match source (InfoProbidad, Phase 4).
 
 **File:** `packages/identity/src/deterministic.ts:37-39`
 
