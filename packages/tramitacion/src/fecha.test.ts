@@ -2,24 +2,26 @@ import { describe, it, expect } from "vitest";
 import { parseFechaCL, toIso } from "./fecha";
 
 describe("parseFechaCL (Pitfall 3 — dd/mm/yyyy NO via new Date directo)", () => {
-  it("parsea dd/mm/yyyy como fecha local correcta", () => {
+  it("parsea dd/mm/yyyy como fecha UTC correcta (independiente del TZ del runtime)", () => {
     const d = parseFechaCL("03/06/2026");
     expect(d).not.toBeNull();
-    expect(d!.getFullYear()).toBe(2026);
-    expect(d!.getMonth()).toBe(5); // junio (0-indexed)
-    expect(d!.getDate()).toBe(3);
+    expect(d!.getUTCFullYear()).toBe(2026);
+    expect(d!.getUTCMonth()).toBe(5); // junio (0-indexed)
+    expect(d!.getUTCDate()).toBe(3);
+    // Medianoche UTC exacta (#4): sin hora fantasma ni corrimiento de día.
+    expect(d!.toISOString()).toBe("2026-06-03T00:00:00.000Z");
   });
 
   it("NO confunde día con mes (17/06/2026 = 17 de junio, no día 6)", () => {
     const d = parseFechaCL("17/06/2026")!;
-    expect(d.getDate()).toBe(17);
-    expect(d.getMonth()).toBe(5);
+    expect(d.getUTCDate()).toBe(17);
+    expect(d.getUTCMonth()).toBe(5);
   });
 
-  it("pasa ISO con hora directo a Date", () => {
+  it("ancla ISO date-time sin zona a UTC (#21, no depende del TZ del runtime)", () => {
     const d = parseFechaCL("2026-05-11T19:21:07");
     expect(d).not.toBeNull();
-    expect(d!.getFullYear()).toBe(2026);
+    expect(d!.toISOString()).toBe("2026-05-11T19:21:07.000Z");
   });
 
   it("devuelve null ante 'Invalid' / formato no reconocido", () => {
@@ -37,6 +39,6 @@ describe("parseFechaCL (Pitfall 3 — dd/mm/yyyy NO via new Date directo)", () =
 
   it("toIso emite ISO 8601", () => {
     const iso = toIso(parseFechaCL("03/06/2026")!);
-    expect(iso).toMatch(/^2026-06-0[23]T/);
+    expect(iso).toBe("2026-06-03T00:00:00.000Z");
   });
 });

@@ -10,8 +10,14 @@ const RE_ISO = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}:\d{2})?/;
 
 /**
  * Parsea una fecha chilena a `Date`, o `null` si no reconoce el formato.
- *  - `dd/mm/yyyy`  → `new Date(yyyy, mm-1, dd)` (medianoche local).
- *  - ISO `yyyy-mm-dd[Thh:mm:ss]` → directo a `new Date`.
+ *
+ * Construcción en UTC de forma DETERMINISTA, independiente del TZ del runtime (#4/#21):
+ *  - `dd/mm/yyyy`  → `Date.UTC(yyyy, mm-1, dd)` (medianoche UTC). Antes usaba medianoche
+ *    LOCAL y `toIso()` (UTC) corría el día en TZ negativos (Chile: `T04:00Z`, o el día
+ *    anterior según el offset).
+ *  - ISO `yyyy-mm-dd[Thh:mm:ss]` sin zona → se interpreta como UTC (date-time sin offset
+ *    es LOCAL por la spec ECMAScript; aquí se ancla a UTC añadiendo `Z`). La forma
+ *    date-only ya es UTC por spec. Con zona explícita se respeta.
  *  - cualquier otro / inválido → `null`.
  */
 export function parseFechaCL(s: string | null | undefined): Date | null {
@@ -25,16 +31,27 @@ export function parseFechaCL(s: string | null | undefined): Date | null {
     const mm = Number(m[2]);
     const yyyy = Number(m[3]);
     if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
-    const d = new Date(yyyy, mm - 1, dd);
+    const d = new Date(Date.UTC(yyyy, mm - 1, dd));
     // Rechaza overflow silencioso (p.ej. 31/02 → 03/03).
-    if (d.getFullYear() !== yyyy || d.getMonth() !== mm - 1 || d.getDate() !== dd) {
+    if (
+      d.getUTCFullYear() !== yyyy ||
+      d.getUTCMonth() !== mm - 1 ||
+      d.getUTCDate() !== dd
+    ) {
       return null;
     }
     return d;
   }
 
   if (RE_ISO.test(v)) {
-    const d = new Date(v);
+    const hasTime = /[T ]\d{2}:\d{2}:\d{2}/.test(v);
+    const hasZone = /([zZ])$|[+-]\d{2}:?\d{2}$/.test(v);
+    let iso = v;
+    if (hasTime) {
+      iso = v.replace(" ", "T");
+      if (!hasZone) iso += "Z"; // ancla a UTC el date-time sin offset
+    }
+    const d = new Date(iso);
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
