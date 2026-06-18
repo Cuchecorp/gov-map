@@ -22,7 +22,7 @@ Requisitos del milestone 1. Cada uno mapea a una fase del roadmap.
 
 ### Identidad de Parlamentarios (ID)
 
-- [ ] **ID-01**: El sistema mantiene una tabla maestra `Parlamentario` sembrada desde la Cámara y el Senado (`senadores_vigentes.php`, con PARLID)
+- [x] **ID-01**: El sistema mantiene una tabla maestra `Parlamentario` sembrada desde la Cámara y el Senado (`senadores_vigentes.php`, con PARLID)
 - [x] **ID-02**: El sistema reconcilia un registro foráneo por match determinista (RUT exacto, o nombre normalizado dentro de cámara+periodo sin homónimo) sin invocar LLM
 - [ ] **ID-03**: Para matches dudosos, el sistema genera candidatos por blocking (apellido + cámara + periodo + región) y los adjudica con LLM (MiniMax) devolviendo decisión/confianza/evidencia/conflictos en JSON validado
 - [ ] **ID-04**: Una compuerta de validación enruta a revisión humana todo match con confianza < umbral, con conflictos, o inconsistencia de cámara/periodo — nada bajo el umbral se auto-acepta
@@ -106,7 +106,7 @@ Poblada durante la creación del roadmap (2026-06-17). Cada requisito mapea a ex
 | FND-08 | Phase 1 | Complete |
 | FND-06 | Phase 2 | Complete |
 | FND-07 | Phase 2 | Complete |
-| ID-01 | Phase 3 | Pending |
+| ID-01 | Phase 3 | Complete |
 | ID-02 | Phase 3 | Complete |
 | ID-09 | Phase 3 | Pending |
 | ID-03 | Phase 4 | Pending |

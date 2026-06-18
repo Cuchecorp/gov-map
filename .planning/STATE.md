@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: "Completed 03-01-PLAN.md (identidad pura: normalizarNombre + matchDeterminista fail-closed)"
-last_updated: "2026-06-18T12:41:20.047Z"
+last_updated: "2026-06-18T12:45:58.786Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
   percent: 29
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-17)
 ## Current Position
 
 Phase: 03 (tabla-maestra-parlamentario-identidad-determinista) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-18
 
@@ -59,6 +59,7 @@ Progress: [██████████] 100% (3/3 planes de la fase 01 comple
 | Phase 02 P02 | 3min | 2 tasks | 7 files |
 | Phase 02 P03 | 5min | 1 tasks | 2 files |
 | Phase 03 P01 | 14min | 3 tasks | 13 files |
+| Phase 03 P02 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [03-01]: ñ→n folding solo para la clave de comparación; display usa campos originales (A1)
 - [Phase ?]: [03-01]: matchDeterminista fail-closed, único escritor de estado; confirma solo con length===1 (RUT exacto o nombre único en cámara+periodo)
 - [Phase ?]: [03-01]: apellido materno fuera del blocking key → catálogo y formato-votación convergen; materno va a alias_capturados
+- [Phase ?]: [03-02]: estado default no_confirmado por DDL — promocion a confirmado es revision humana (ID-01)
+- [Phase ?]: [03-02]: claves naturales via indices unicos PARCIALES → upsert idempotente sin obligar NOT NULL
 
 ### Pending Todos
 
@@ -110,6 +113,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-18T12:41:20.039Z
+Last session: 2026-06-18T12:45:44.593Z
 Stopped at: Completed 03-01-PLAN.md (identidad pura: normalizarNombre + matchDeterminista fail-closed)
 Resume file: None
