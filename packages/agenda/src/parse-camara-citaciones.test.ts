@@ -88,3 +88,45 @@ describe("parseCamaraCitaciones (HTML real de Cámara, prmSemana=2026-25)", () =
     expect(otra.map((c) => c.id)).toEqual(citaciones.map((c) => c.id));
   });
 });
+
+// WR-01: la clave natural debe ser estable bajo reordenamiento de la fuente y
+// NO debe fusionar dos citaciones distintas del mismo slot.
+describe("parseCamaraCitaciones — clave natural estable (WR-01)", () => {
+  function fila(comision: string, horario: string, sala: string, materia: string): string {
+    return `<tr><td>${comision}</td><td>${horario}</td><td>${sala}</td>` +
+      `<td colspan="2"><table><tbody><tr><td class="w40">${materia}</td>` +
+      `<td class="w30"></td></tr></tbody></table></td></tr>`;
+  }
+  function doc(...filas: string[]): string {
+    return `<article class="grid-12 citaciones"><p class="fecha">LUNES, 15 DE JUNIO DE 2026</p>` +
+      `<table class="tabla"><tbody>${filas.join("")}</tbody></table></article>`;
+  }
+
+  it("dos citaciones distintas en el MISMO slot (comisión+fecha+horario+sala) NO colapsan", () => {
+    const a = fila("Comisión X", "10:00", "Sala 1", "Materia AAA boletín N°11111-01");
+    const b = fila("Comisión X", "10:00", "Sala 1", "Materia BBB boletín N°22222-02");
+    const res = parseCamaraCitaciones(doc(a, b), "2026-W25");
+    expect(res.length).toBe(2);
+    expect(new Set(res.map((c) => c.id)).size).toBe(2); // ids distintos
+  });
+
+  it("reordenar dos filas del mismo slot mantiene el id ligado a SU materia (no swap)", () => {
+    const a = fila("Comisión X", "10:00", "Sala 1", "Materia AAA");
+    const b = fila("Comisión X", "10:00", "Sala 1", "Materia BBB");
+    const orden1 = parseCamaraCitaciones(doc(a, b), "2026-W25");
+    const orden2 = parseCamaraCitaciones(doc(b, a), "2026-W25");
+    const idDe = (res: typeof orden1, materia: string) =>
+      res.find((c) => c.materia?.includes(materia))!.id;
+    expect(idDe(orden1, "AAA")).toBe(idDe(orden2, "AAA"));
+    expect(idDe(orden1, "BBB")).toBe(idDe(orden2, "BBB"));
+    expect(idDe(orden1, "AAA")).not.toBe(idDe(orden1, "BBB"));
+  });
+
+  it("distinto sala en el mismo horario/comisión NO colisiona (ids distintos)", () => {
+    const a = fila("Comisión Y", "11:00", "Sala 1", "Materia única");
+    const b = fila("Comisión Y", "11:00", "Sala 2", "Materia única");
+    const res = parseCamaraCitaciones(doc(a, b), "2026-W25");
+    expect(res.length).toBe(2);
+    expect(new Set(res.map((c) => c.id)).size).toBe(2);
+  });
+});
