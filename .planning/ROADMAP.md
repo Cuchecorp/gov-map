@@ -16,7 +16,7 @@
 ## Phases
 
 - [x] **Phase 1: Framework de Conectores + Almacenamiento + Orquestación** - Ingesta respetuosa con crudo inmutable en R2, snapshots, drift y cola pgmq/pg_cron (completed 2026-06-18)
-- [ ] **Phase 2: Capa de Providers LLM/Embeddings** - Interfaces enchufables con salida estructurada per-proveedor y versionado de vectores
+- [x] **Phase 2: Capa de Providers LLM/Embeddings** - Interfaces enchufables con salida estructurada per-proveedor y versionado de vectores (completed 2026-06-18)
 - [ ] **Phase 3: Tabla Maestra Parlamentario + Identidad Determinista** - Maestra sembrada (Cámara + Senado), match determinista y respaldo externo
 - [ ] **Phase 4: Adjudicación de Identidad + Compuerta Humana + Golden Set** - Subsistema crítico aislado: LLM MiniMax, umbral, revisión humana, auditoría, gate de deploy
 - [ ] **Phase 5: Tramitación Core — Ficha + Timeline + Votaciones** - Conectores JSON/XML, modelo Proyecto/Votacion, ficha + timeline cross-cámara + frescura (primer valor ciudadano visible)
@@ -59,12 +59,12 @@ Plans:
   3. Todo embedding pasa por `EmbeddingProvider` que fija y persiste `embedding_model`/`embedding_dims`/`embedding_version` junto al vector — no existe vector anónimo
   4. La política "qué dato va a qué proveedor/tier" queda documentada: ningún dato personal (RUT/nombres) puede dirigirse a un tier que entrena con inputs
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 
 - [x] 02-01-PLAN.md — Scaffold @obs/llm + contratos + compuerta zod unica (repair loop) + adapter DeepSeek (json_object) + router fail-closed + e2e de la rebanada LLM (FND-06, FND-07 contrato)
 - [x] 02-02-PLAN.md — Adapter MiniMax (tool-calling forzado) + zod->JSON-schema + politica data-routing (RUT nunca al LLM, PII nunca a tier que entrena) + smoke test live gated (FND-06)
-- [ ] 02-03-PLAN.md — EmbeddingProvider Gemini 768-dim L2-normalizado con vector versionado {model,dims,version} (FND-07)
+- [x] 02-03-PLAN.md — EmbeddingProvider Gemini 768-dim L2-normalizado con vector versionado {model,dims,version} (FND-07)
 
 ### Phase 3: Tabla Maestra Parlamentario + Identidad Determinista
 
@@ -150,7 +150,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Framework de Conectores + Almacenamiento + Orquestación | 3/3 | Complete   | 2026-06-18 |
-| 2. Capa de Providers LLM/Embeddings | 2/3 | In Progress|  |
+| 2. Capa de Providers LLM/Embeddings | 3/3 | Complete   | 2026-06-18 |
 | 3. Tabla Maestra Parlamentario + Identidad Determinista | 0/? | Not started | - |
 | 4. Adjudicación de Identidad + Compuerta Humana + Golden Set | 0/? | Not started | - |
 | 5. Tramitación Core — Ficha + Timeline + Votaciones | 0/? | Not started | - |
