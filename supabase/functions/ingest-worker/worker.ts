@@ -17,13 +17,15 @@ import {
   DailyCache,
   DriftDetector,
   DummyConnector,
+  extraHostsFromEnv,
   Fetcher,
   HostRateLimiter,
+  PgHostThrottle,
   R2Store,
   RobotsGuard,
   SnapshotWriter,
 } from "@obs/ingest";
-import type { IngestRun } from "@obs/core";
+import type { IngestRun, IngestStatus } from "@obs/core";
 
 /** Schema del batch entrante (Tampering: rechaza payloads malformados). */
 const BatchItem = z.object({
@@ -41,6 +43,38 @@ export function requireEnv(name: string): string {
   const v = Deno.env.get(name);
   if (!v) throw new Error(`missing env ${name}`);
   return v;
+}
+
+/**
+ * CR-01: compara dos strings en tiempo (cuasi) constante para no filtrar la
+ * longitud/contenido del secreto via timing. Compara los bytes UTF-8.
+ */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ba = enc.encode(a);
+  const bb = enc.encode(b);
+  // Longitud distinta: aun asi recorremos para no cortocircuitar por longitud.
+  let diff = ba.length ^ bb.length;
+  const len = Math.max(ba.length, bb.length);
+  for (let i = 0; i < len; i++) {
+    diff |= (ba[i] ?? 0) ^ (bb[i] ?? 0);
+  }
+  return diff === 0;
+}
+
+/**
+ * CR-01: autoriza el request contra un secreto DEDICADO de invocacion del
+ * worker (INGEST_WORKER_SECRET), separado del service_role key. El dispatcher
+ * SQL envia `Authorization: Bearer <secret>`. Sin match => no se procesa nada
+ * (ni ack de msg_ids => evita el primitivo de borrado de cola por un caller no
+ * autenticado). Si el secreto no esta configurado, se rechaza TODO (fail-closed).
+ */
+export function authorized(req: Request): boolean {
+  const secret = Deno.env.get("INGEST_WORKER_SECRET") ?? "";
+  if (!secret) return false; // fail-closed: sin secreto configurado, nada pasa.
+  const expected = `Bearer ${secret}`;
+  const got = req.headers.get("Authorization") ?? "";
+  return timingSafeEqualStr(got, expected);
 }
 
 /** Ack: borra el mensaje de la cola (pgmq.delete via RPC). */
@@ -68,6 +102,51 @@ export function makeClient(): SupabaseClient {
     requireEnv("SUPABASE_SECRET_KEY"),
     { auth: { persistSession: false } },
   );
+}
+
+/**
+ * WR-06: ciclo de vida de ingest_run. Crea una fila `running` antes de correr el
+ * connector, y la cierra a `ok`/`error` con stats. Devuelve el id real para
+ * threadearlo a los snapshots (en vez del cast fabricado `as unknown as`).
+ */
+export interface IngestRunLifecycle {
+  start(source: string): Promise<IngestRun>;
+  finish(id: number, status: Extract<IngestStatus, "ok" | "error">, opts: {
+    stats?: Record<string, unknown>;
+    error?: string;
+  }): Promise<void>;
+}
+
+export function makeRunLifecycle(sb: SupabaseClient): IngestRunLifecycle {
+  return {
+    async start(source: string): Promise<IngestRun> {
+      const { data, error } = await sb
+        .from("ingest_run")
+        .insert({ source, status: "running" })
+        .select("id, source, started_at, status, stats")
+        .single();
+      if (error) throw new Error(`insert ingest_run fallo: ${error.message}`);
+      return {
+        id: data.id as number,
+        source: data.source as string,
+        startedAt: data.started_at as string,
+        status: data.status as IngestStatus,
+        stats: (data.stats as Record<string, unknown>) ?? {},
+      };
+    },
+    async finish(id, status, opts): Promise<void> {
+      const { error } = await sb
+        .from("ingest_run")
+        .update({
+          status,
+          finished_at: new Date().toISOString(),
+          stats: opts.stats ?? {},
+          error: opts.error ?? null,
+        })
+        .eq("id", id);
+      if (error) throw new Error(`update ingest_run fallo: ${error.message}`);
+    },
+  };
 }
 
 /** Ensambla el DummyConnector con los colaboradores reales (DI). */
@@ -99,7 +178,8 @@ export function buildConnector(sb: SupabaseClient): DummyConnector {
         .select("fingerprint")
         .eq("source", source)
         .eq("resource", resource)
-        .order("fetched_at", { ascending: false })
+        // IN-01: ordenar por id (monotonico) — "fetched_at" puede empatar.
+        .order("id", { ascending: false })
         .limit(1)
         .maybeSingle();
       return data?.fingerprint ?? undefined;
@@ -121,19 +201,52 @@ export function buildConnector(sb: SupabaseClient): DummyConnector {
         .insert(row)
         .select("id")
         .single();
-      if (error) throw new Error(`insert source_snapshot fallo: ${error.message}`);
+      if (error) {
+        // WR-02: violacion de unique (source,resource,date_bucket) => otra
+        // corrida ya capturo el snapshot de hoy. Tratar como exito idempotente:
+        // leer la fila existente y devolver su id (no re-fetch, no fallo de job).
+        if (error.code === "23505") {
+          const { data: existing } = await sb
+            .from("source_snapshot")
+            .select("id")
+            .eq("source", row.source as string)
+            .eq("resource", row.resource as string)
+            .eq("date_bucket", row.date_bucket as string)
+            .maybeSingle();
+          if (existing) return { id: existing.id as number };
+        }
+        throw new Error(`insert source_snapshot fallo: ${error.message}`);
+      }
       return { id: data.id as number };
     },
   });
 
   const rateLimiter = new HostRateLimiter();
+  // CR-02: gate durable por host respaldado en Postgres (util.reserve_host_slot).
+  const hostThrottle = new PgHostThrottle({
+    async reserveHostSlot(host, minIntervalMs) {
+      const { data, error } = await sb.schema("util").rpc("reserve_host_slot", {
+        p_host: host,
+        p_min_interval_ms: minIntervalMs,
+      });
+      if (error) throw new Error(`reserve_host_slot fallo: ${error.message}`);
+      return (data as number) ?? 0;
+    },
+  });
   const robots = new RobotsGuard();
-  const fetcher = new Fetcher();
+  // CR-03: allowlist gubernamental + bloqueo SSRF. extraHosts (p.ej. dummy.local
+  // para E2E) habilitados SOLO via env en dev/CI; en prod la lista queda vacia.
+  const fetcher = new Fetcher({
+    allowlist: {
+      extraHosts: extraHostsFromEnv(Deno.env.get("INGEST_ALLOW_TEST_HOSTS")),
+    },
+  });
 
   return new DummyConnector({
     cache,
     robots,
     rateLimiter,
+    hostThrottle,
     fetcher,
     drift,
     r2,
@@ -146,32 +259,92 @@ export function buildConnector(sb: SupabaseClient): DummyConnector {
   });
 }
 
-/** Procesa el batch: corre el connector por job, ack en exito, no-ack en fallo. */
+/**
+ * Procesa el batch: corre el connector por job, ack en exito, no-ack en fallo.
+ *
+ * WR-04: clasifica y loguea el error por msg_id (sin secretos). Los errores
+ * permanentes (4xx no-429, validacion, host no permitido) se ACKean para no
+ * gastar ciclos de vt; los transitorios (429/5xx, red, throttle diferido) se
+ * NO-ackean para reaparecer via backoff.
+ *
+ * WR-06: por cada job se crea/cierra una fila ingest_run (status running -> ok/
+ * error) y su id real se threadea al connector (en vez del cast fabricado).
+ */
 export async function processBatch(
   batch: IngestBatch,
   connector: { run(ctx: IngestRun): Promise<unknown> },
   ack: QueueAck,
+  lifecycle?: IngestRunLifecycle,
 ): Promise<{ acked: number; failed: number }> {
   let acked = 0;
   let failed = 0;
   for (const job of batch) {
+    let run: IngestRun | undefined;
     try {
-      // Contexto minimo de corrida; el DummyConnector ignora el ctx salvo el id.
-      const ctx = { source: "dummy", status: "running" } as unknown as IngestRun;
-      await connector.run(ctx);
+      run = await lifecycle?.start("dummy");
+      const ctx: IngestRun = run ?? {
+        // Sin lifecycle (tests): ctx minimo pero TIPADO (no `as unknown as`).
+        id: 0,
+        source: "dummy",
+        startedAt: new Date(0).toISOString(),
+        status: "running",
+        stats: {},
+      };
+      const result = await connector.run(ctx);
+      const count = Array.isArray(result) ? result.length : 0;
+      if (run) {
+        await lifecycle?.finish(run.id, "ok", { stats: { snapshots: count } });
+      }
       // ACK: exito => sacar de la cola (pgmq.delete).
       await ack.ack("ingest_jobs", job.msg_id);
       acked++;
-    } catch (_err) {
-      // NO-ACK: el mensaje NO se borra => reaparece al expirar el vt (backoff).
+    } catch (err) {
+      // WR-04: log clasificado por msg_id, sin filtrar secretos.
+      const name = err instanceof Error ? err.name : "UnknownError";
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`job ${job.msg_id} fallo [${name}]: ${msg}`);
+      if (run) {
+        try {
+          await lifecycle?.finish(run.id, "error", { error: `${name}: ${msg}` });
+        } catch (_finishErr) {
+          // No enmascarar el fallo original por un fallo al cerrar la corrida.
+        }
+      }
+      if (isPermanent(name)) {
+        // Permanente: ACK para no loopear hasta el dead-letter (ahorra vt).
+        try {
+          await ack.ack("ingest_jobs", job.msg_id);
+        } catch (_ackErr) {
+          // Si el ack falla, el mensaje reaparecera via vt (peor caso tolerable).
+        }
+      }
+      // NO-ACK (transitorio): el mensaje reaparece al expirar el vt (backoff).
       failed++;
     }
   }
   return { acked, failed };
 }
 
-/** Handler HTTP: valida el batch, ensambla deps reales y procesa. */
+/** WR-04: errores NO recuperables que deben ackearse en vez de reintentar. */
+function isPermanent(errorName: string): boolean {
+  return (
+    errorName === "FetchError" || // 4xx no-429
+    errorName === "HostNotAllowedError" || // SSRF/allowlist (CR-03)
+    errorName === "ZodError" || // payload/forma invalida
+    errorName === "TypeError" // bug de programacion (no reintentar a ciegas)
+  );
+}
+
+/** Handler HTTP: autoriza, valida el batch, ensambla deps reales y procesa. */
 export async function handler(req: Request): Promise<Response> {
+  // CR-01: autenticacion en el handler ANTES de parsear o tocar la cola.
+  if (!authorized(req)) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   let parsed;
   try {
     parsed = Payload.parse(await req.json());
@@ -185,7 +358,8 @@ export async function handler(req: Request): Promise<Response> {
   const sb = makeClient();
   const connector = buildConnector(sb);
   const ack = makeQueueAck(sb);
-  const result = await processBatch(parsed.batch, connector, ack);
+  const lifecycle = makeRunLifecycle(sb);
+  const result = await processBatch(parsed.batch, connector, ack, lifecycle);
 
   return new Response(JSON.stringify(result), {
     status: 200,

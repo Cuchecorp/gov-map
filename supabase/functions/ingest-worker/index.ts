@@ -12,11 +12,14 @@
  * NO-ACK en fallo (deja expirar el vt => backoff natural ante 429/5xx).
  */
 export {
+  authorized,
   buildConnector,
   handler,
   type IngestBatch,
+  type IngestRunLifecycle,
   makeClient,
   makeQueueAck,
+  makeRunLifecycle,
   processBatch,
   type QueueAck,
   requireEnv,
