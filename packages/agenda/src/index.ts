@@ -34,3 +34,6 @@ export {
   prmSemanaParam,
   enumerarSemanas,
 } from "./semana-iso";
+
+// Parser de citaciones de Cámara (cheerio sobre el HTML real).
+export { parseCamaraCitaciones, parseFechaEsCl } from "./parse-camara-citaciones";
