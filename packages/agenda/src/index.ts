@@ -37,3 +37,7 @@ export {
 
 // Parser de citaciones de Cámara (cheerio sobre el HTML real).
 export { parseCamaraCitaciones, parseFechaEsCl } from "./parse-camara-citaciones";
+
+// Parsers JSON del Senado (citaciones + tabla semanal de sala).
+export { parseSenadoCitaciones, parseFechaDmy } from "./parse-senado-citaciones";
+export { parseSenadoTabla } from "./parse-senado-tabla";

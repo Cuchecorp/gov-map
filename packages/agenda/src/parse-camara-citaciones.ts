@@ -13,7 +13,6 @@
 
 import * as cheerio from "cheerio";
 import type { CheerioAPI } from "cheerio";
-import type { AnyNode } from "domhandler";
 import {
   CitacionSchema,
   type Citacion,
@@ -88,7 +87,7 @@ function extraerBoletines(materia: string): string[] {
  */
 function leerCitacionInvitados(
   $: CheerioAPI,
-  tds: cheerio.Cheerio<AnyNode>,
+  tds: ReturnType<CheerioAPI>,
 ): Array<{ materia: string; invitados: string }> {
   const last = $(tds[tds.length - 1]);
   const nested = last.find("table").first();

@@ -15,7 +15,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-// @ts-expect-error — RED: estos parsers aún no existen en el barrel (olas siguientes los añaden).
+// VERDE (ola 06-02): los 3 parsers ahora existen en el barrel y cumplen el contrato.
 import {
   parseCamaraCitaciones,
   parseSenadoCitaciones,
