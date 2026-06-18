@@ -23,7 +23,9 @@
       "@obs/adjudication": ["./packages/adjudication/src/index.ts"],
       "@obs/adjudication/*": ["./packages/adjudication/src/*"],
       "@obs/tramitacion": ["./packages/tramitacion/src/index.ts"],
-      "@obs/tramitacion/*": ["./packages/tramitacion/src/*"]
+      "@obs/tramitacion/*": ["./packages/tramitacion/src/*"],
+      "@obs/agenda": ["./packages/agenda/src/index.ts"],
+      "@obs/agenda/*": ["./packages/agenda/src/*"]
     }
   }
 }
