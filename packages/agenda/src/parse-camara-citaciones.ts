@@ -46,6 +46,20 @@ function normWs(s: string): string {
 }
 
 /**
+ * Hash corto y estable (djb2 → base36) de un texto, para disambiguar claves
+ * naturales SIN depender del orden de aparición (WR-01). Determinista entre
+ * corridas: dos filas idénticas producen el mismo hash; dos filas distintas en
+ * el mismo slot (comisión+fecha+horario+sala) producen hashes distintos.
+ */
+function hashCorto(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  }
+  return (h >>> 0).toString(36);
+}
+
+/**
  * Parsea "LUNES, 15 DE JUNIO DE 2026" → "2026-06-15" (ISO date). Devuelve el texto
  * normalizado tal cual si no casa (no fabrica una fecha falsa).
  */
@@ -128,8 +142,12 @@ export function parseCamaraCitaciones(
     opciones.enlace ??
     "https://www.camara.cl/legislacion/comisiones/citaciones_semana.aspx";
 
-  const citaciones: Citacion[] = [];
-  const idsUsados = new Set<string>();
+  // Candidatas SIN id final: se acumulan con su `baseId` (clave natural intrínseca)
+  // y se les asigna el id en un post-pase determinista e INDEPENDIENTE DEL ORDEN
+  // (WR-01): dentro de un mismo baseId, los empates se disambiguan por el hash de
+  // la materia ordenado, no por el orden de aparición en el HTML.
+  type Candidata = { baseId: string; materia: string | null; row: Omit<Citacion, "id"> };
+  const candidatas: Candidata[] = [];
 
   $("article.citaciones").each((_ai, art) => {
     const diaTexto = $(art).find("p.fecha").first().text();
@@ -181,44 +199,70 @@ export function parseCamaraCitaciones(
 
         if (!comision || !horario) return; // sin clave mínima → descarta (no fabrica)
 
-        // Id sintético estable: semana | comisión | fecha | horario (clave natural).
-        let id = `camara:${semanaIso}:${comision}:${fecha}:${horario}`;
-        if (idsUsados.has(id)) {
-          let n = 2;
-          while (idsUsados.has(`${id}#${n}`)) n++;
-          id = `${id}#${n}`;
-        }
-
-        const candidata: Citacion = {
-          id,
-          camara: "camara",
-          comision,
-          fecha,
-          horario,
-          sala,
+        // Clave natural INTRÍNSECA (semana|comisión|fecha|horario|sala) — sin el
+        // discriminador de empate aún. El id final se asigna en el post-pase.
+        const discSala = sala ? `:${sala}` : "";
+        const baseId = `camara:${semanaIso}:${comision}:${fecha}:${horario}${discSala}`;
+        candidatas.push({
+          baseId,
           materia,
-          estado,
-          semana_iso: semanaIso,
-          invitados,
-          puntos,
-          origen: ORIGEN,
-          fecha_captura: fechaCaptura,
-          enlace,
-        };
-
-        const parsed = CitacionSchema.safeParse(candidata);
-        if (!parsed.success) {
-          // Drift (T-06-04): no fabricar — registrar y descartar.
-          console.warn(
-            `[parse-camara-citaciones] fila descartada (drift): ${comision} ${fecha} ${horario}`,
-            parsed.error.issues,
-          );
-          return;
-        }
-        idsUsados.add(id);
-        citaciones.push(parsed.data as Citacion);
+          row: {
+            camara: "camara",
+            comision,
+            fecha,
+            horario,
+            sala,
+            materia,
+            estado,
+            semana_iso: semanaIso,
+            invitados,
+            puntos,
+            origen: ORIGEN,
+            fecha_captura: fechaCaptura,
+            enlace,
+          },
+        });
       });
   });
+
+  // Post-pase WR-01: agrupa por baseId; si un baseId tiene >1 candidata, TODAS
+  // reciben el sufijo `#<hash(materia)>` (orden-independiente). Empates exactos de
+  // materia se rompen con un índice estable sobre el orden ya determinista del hash.
+  const porBase = new Map<string, Candidata[]>();
+  for (const cand of candidatas) {
+    const arr = porBase.get(cand.baseId) ?? [];
+    arr.push(cand);
+    porBase.set(cand.baseId, arr);
+  }
+
+  const citaciones: Citacion[] = [];
+  const idsUsados = new Set<string>();
+  for (const cand of candidatas) {
+    const grupo = porBase.get(cand.baseId)!;
+    let id = cand.baseId;
+    if (grupo.length > 1) {
+      id = `${cand.baseId}#${hashCorto(cand.materia ?? "")}`;
+      // Empate exacto (misma materia) → índice incremental determinista.
+      let n = 2;
+      while (idsUsados.has(id)) {
+        id = `${cand.baseId}#${hashCorto(`${cand.materia ?? ""}|${n}`)}`;
+        n++;
+      }
+    }
+
+    const candidata: Citacion = { id, ...cand.row };
+    const parsed = CitacionSchema.safeParse(candidata);
+    if (!parsed.success) {
+      // Drift (T-06-04): no fabricar — registrar y descartar.
+      console.warn(
+        `[parse-camara-citaciones] fila descartada (drift): ${cand.row.comision} ${cand.row.fecha} ${cand.row.horario}`,
+        parsed.error.issues,
+      );
+      continue;
+    }
+    idsUsados.add(id);
+    citaciones.push(parsed.data as Citacion);
+  }
 
   return citaciones;
 }

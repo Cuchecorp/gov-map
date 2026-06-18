@@ -20,6 +20,7 @@ import {
 } from "@obs/ingest";
 import { CitacionesCamaraConnector } from "./connector-camara";
 import { SenadoActividadConnector } from "./connector-senado";
+import { createCurlTransport } from "./transport-curl";
 import { SupabaseAgendaWriter } from "./writer-supabase";
 import { InMemoryAgendaWriter } from "./writer";
 import type { AgendaWriter } from "./writer";
@@ -146,13 +147,26 @@ export async function main(opts: IngestCliOptions = {}): Promise<IngestCliResult
     conectorCamara = opts.conectores.conectorCamara;
     conectorSenado = opts.conectores.conectorSenado;
   } else {
-    const deps = {
+    const rateLimiter = new HostRateLimiter();
+    const robots = new RobotsGuard();
+    // WR-03: el conector de Cámara usa un Fetcher con transporte `curl` para PASAR
+    // el bot-management de Cloudflare (el fetch nativo recibe 403 por fingerprint
+    // TLS/JA3). El resto de hosts (Senado) usa el Fetcher con fetch nativo.
+    // El transporte `fetch`-compatible de curl se inyecta como `fetchFn`.
+    const curlTransport = createCurlTransport();
+    const camaraFetcher = new Fetcher({
+      fetchFn: curlTransport as unknown as typeof fetch,
+    });
+    conectorCamara = new CitacionesCamaraConnector({
+      fetcher: camaraFetcher,
+      rateLimiter,
+      robots,
+    });
+    conectorSenado = new SenadoActividadConnector({
       fetcher: new Fetcher(),
-      rateLimiter: new HostRateLimiter(),
-      robots: new RobotsGuard(),
-    };
-    conectorCamara = new CitacionesCamaraConnector(deps);
-    conectorSenado = new SenadoActividadConnector(deps);
+      rateLimiter,
+      robots,
+    });
   }
 
   let writer: AgendaWriter;

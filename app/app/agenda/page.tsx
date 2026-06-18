@@ -17,9 +17,10 @@ import {
   type ISOWeek,
 } from "@/lib/week-utils";
 import { sourceLabel } from "@/lib/types";
-import type {
-  CitacionRow,
-  SesionSalaRow,
+import {
+  CAMARA_TABLA_PDF_URL,
+  type CitacionRow,
+  type SesionSalaRow,
 } from "@/lib/agenda-types";
 
 /**
@@ -161,17 +162,44 @@ function primerBoletin(c: CitacionRow): string | null {
 // ── Tabla de sala (Senado available / Cámara siempre degradada) ──────────────
 async function SalaTableServer({ year, week }: ISOWeek) {
   const { start, end } = getWeekBounds(year, week);
+  // WR-06: en vez de un `lte` sobre el fin del domingo (que asume `fecha` a
+  // medianoche UTC exacta), se usa un rango semi-abierto [lunes 00:00Z, lunes
+  // SIGUIENTE 00:00Z). Así cualquier `fecha` con componente horario dentro del
+  // domingo (no-medianoche / DB TZ ≠ UTC) sigue cayendo dentro de la semana.
+  const nextMonday = new Date(end);
+  nextMonday.setUTCDate(nextMonday.getUTCDate() + 1);
+  nextMonday.setUTCHours(0, 0, 0, 0);
   const sb = createServerSupabase();
   const { data } = await sb
     .from("sesion_sala")
     .select("*, sesion_tabla_item(*)")
     .eq("camara", "senado")
     .gte("fecha", start.toISOString())
-    .lte("fecha", endOfDay(end))
+    .lt("fecha", nextMonday.toISOString())
     .order("fecha", { ascending: true });
 
   const sesiones = (data as SesionSalaRow[]) ?? [];
   const weekLabel = formatWeekLabel(year, week);
+
+  // WR-05: la tabla de sala del Senado es FORWARD-ONLY (sin histórico por esa
+  // fuente). Si la semana navegada no tiene filas, hay que distinguir "fuera de
+  // la ventana capturada" (la semana es anterior a la primera sesión jamás
+  // capturada) de "sin sesión" (dentro de la ventana, pero no hubo). Se consulta
+  // la fecha de la primera sesión capturada.
+  let fueraDeVentana = false;
+  if (sesiones.length === 0) {
+    const { data: primera } = await sb
+      .from("sesion_sala")
+      .select("fecha")
+      .eq("camara", "senado")
+      .order("fecha", { ascending: true })
+      .limit(1);
+    const primeraFecha = (primera as { fecha: string }[] | null)?.[0]?.fecha;
+    if (primeraFecha && nextMonday.toISOString() <= new Date(primeraFecha).toISOString()) {
+      // Toda la semana navegada termina antes de la primera captura → nunca ingestada.
+      fueraDeVentana = true;
+    }
+  }
 
   // Aplanar los ítems de todas las sesiones del Senado de la semana.
   const items: SalaTablaItem[] = [];
@@ -190,11 +218,14 @@ async function SalaTableServer({ year, week }: ISOWeek) {
       .sort((a, b) => a.posicion - b.posicion);
     for (const it of tabla) {
       items.push({
+        // IN-01: clave compuesta (sesión + posición) — única en la semana aunque
+        // dos sesiones repitan posiciones 1,2,3… La clave única DB es
+        // (sesion_id, posicion), no posicion sola.
+        key: `${s.id}:${it.posicion}`,
         posicion: it.posicion,
         parteSesion: it.parte_sesion,
         materia: it.materia,
         boletin: it.boletin,
-        etapa: it.parte_sesion,
       });
     }
   }
@@ -209,18 +240,27 @@ async function SalaTableServer({ year, week }: ISOWeek) {
           weekLabel={weekLabel}
         />
       )}
-      {/* La tabla de sala de Cámara no tiene fuente estructurada: degradación
-          honesta SIEMPRE visible (UI-SPEC §6.2, T-06-09). */}
-      <SalaTableSection mode="degraded" weekLabel={weekLabel} />
+      {/* WR-05: distingue "fuera de la ventana capturada" de "sin sesión". El
+          Senado es forward-only: una semana anterior a la primera captura nunca
+          se ingestó (no equivale a "no hubo sesión"). */}
+      {items.length === 0 && fueraDeVentana && (
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          La tabla de sala del Senado se publica con ventana hacia adelante (sin
+          histórico){weekLabel ? ` — ${weekLabel}` : ""} es anterior al inicio de
+          la captura, por lo que no se registró su orden del día.
+        </p>
+      )}
+      {/* CR-02: la degradación es ACOTADA A LA CÁMARA (no afirma que el Senado
+          falló). Si el Senado tiene filas, se muestran arriba; este bloque sólo
+          dice que la Cámara no publica la tabla como dato estructurado y enlaza
+          al PDF oficial recordado por la ingesta (CR-01). */}
+      <SalaTableSection
+        mode="degraded"
+        weekLabel={weekLabel}
+        camaraPdfUrl={CAMARA_TABLA_PDF_URL}
+      />
     </div>
   );
-}
-
-/** Fin del día (23:59:59.999Z) de una fecha para el filtro de rango inclusivo. */
-function endOfDay(d: Date): string {
-  const e = new Date(d);
-  e.setUTCHours(23, 59, 59, 999);
-  return e.toISOString();
 }
 
 // ── Skeletons (UI-SPEC §7.2) ─────────────────────────────────────────────────
