@@ -114,6 +114,18 @@ describe("buscarProyectos — flujo normal (embed RETRIEVAL_QUERY + rpc)", () =>
     expect(res).toEqual([]);
   });
 
+  it("rpc devuelve error → LANZA (no [] silencioso; honest degradation error ≠ vacío)", async () => {
+    const emb = fakeEmbedder();
+    // Fallo real del RPC: supabase-js devuelve { data: null, error }.
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: "permission denied for function match_proyectos" },
+    });
+    await expect(
+      buscarProyectos("algo que falla", { embedder: emb }),
+    ).rejects.toThrow(/match_proyectos RPC falló/);
+  });
+
   it("excludeBoletin se pasa al rpc (self-exclusion para similares, SEM-05)", async () => {
     const emb = fakeEmbedder();
     rpcMock.mockResolvedValue({ data: [], error: null });

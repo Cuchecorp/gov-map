@@ -152,12 +152,20 @@ export async function buscarProyectos(
   const [emb] = await embedder.embed([q], "RETRIEVAL_QUERY");
 
   const sb = createServerSupabase();
-  const { data } = await sb.rpc("match_proyectos", {
+  const { data, error } = await sb.rpc("match_proyectos", {
     query_embedding: emb.vector,
     match_count: opts.matchCount ?? 20,
     match_threshold: opts.matchThreshold ?? 0.0,
     exclude_boletin: opts.excludeBoletin ?? null,
   });
+
+  // Honest degradation: un fallo del RPC (grant/RLS, red, vector malformado,
+  // error de Postgres) NO es "sin resultados". Se lanza para que la UI muestre
+  // el banner de error (buscar/page.tsx try/catch) en vez de "Sin resultados".
+  // El camino [] queda SOLO para resultados genuinamente vacíos.
+  if (error) {
+    throw new Error(`match_proyectos RPC falló: ${error.message}`);
+  }
 
   return (data as MatchProyectoRow[] | null) ?? [];
 }
