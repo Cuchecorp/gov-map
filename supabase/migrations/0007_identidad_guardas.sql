@@ -142,3 +142,16 @@ $$;
 
 -- force RLS en audit tambien (defensa en profundidad de lecturas, espeja vinculo).
 alter table identidad_audit force row level security;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- (C) WR-04: vocabulario CERRADO de identidad_audit.decision. En 0006 la columna era
+--     free-text y el comentario enumeraba 'match|no_match|uncertain|confirmado|...',
+--     pero el pipeline escribe 'no_confirmado'|'probable'|'revision' (+ el revisor
+--     'confirmado'|'rechazado'|'corregido'). Un consumidor filtrando por `decision`
+--     perdia filas. Este CHECK fija el vocabulario real (espejo de DECISIONES_AUDIT
+--     en writer-revision.ts) y rechaza valores fuera de el.
+alter table identidad_audit
+  add constraint identidad_audit_decision_check
+  check (decision in (
+    'confirmado', 'no_confirmado', 'probable', 'revision', 'rechazado', 'corregido'
+  ));

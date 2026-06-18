@@ -70,7 +70,7 @@ create table identidad_audit (
   vinculo_id          bigint references vinculo_identidad(id),
   metodo              text not null
                         check (metodo in ('determinista', 'llm', 'humano')),
-  decision            text not null,                       -- match|no_match|uncertain|confirmado|rechazado|corregido
+  decision            text not null,                       -- vocabulario CERRADO por CHECK en 0007 (WR-04): confirmado|no_confirmado|probable|revision|rechazado|corregido
   confidence          numeric,                             -- NULL para determinista/humano
   modelo_version      text,                                -- NULL si no-LLM
   revisor_id          text,                                -- NULL salvo metodo='humano'

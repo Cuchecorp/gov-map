@@ -28,6 +28,7 @@ import {
   RevisionWriter,
   type CasoRevisionRow,
   type FilaVinculo,
+  type DecisionAudit,
 } from "./writer-revision";
 
 const ID_REGEX = /^P\d{5}$/;
@@ -187,7 +188,7 @@ interface ResolverOpts {
   estado: "confirmado" | "rechazado" | "corregido";
   revisor: string;
   motivo?: string;
-  decisionAudit: string;
+  decisionAudit: DecisionAudit;
   parlamentarioId: string | null;
   promoverVinculo: boolean;
 }

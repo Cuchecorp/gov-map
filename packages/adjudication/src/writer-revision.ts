@@ -77,11 +77,34 @@ export interface FilaVinculo {
   enlace: string;
 }
 
+/**
+ * Vocabulario CERRADO de `identidad_audit.decision` (WR-04). Antes la columna era
+ * free-text y la migración documentaba un vocabulario distinto del que el pipeline
+ * escribía (`no_confirmado`/`probable`/`revision` vs `match|no_match|...`), de modo que
+ * un consumidor filtrando por `decision` perdía filas. Esta lista es la única fuente de
+ * verdad, espejada por un CHECK en la migración 0007.
+ *
+ *  - determinista:        'confirmado'
+ *  - blocking sin cands:  'no_confirmado'
+ *  - auto-aceptar (LLM):  'probable'
+ *  - compuerta → cola:    'revision'
+ *  - humano (revisor-cli):'confirmado' | 'rechazado' | 'corregido'
+ */
+export const DECISIONES_AUDIT = [
+  "confirmado",
+  "no_confirmado",
+  "probable",
+  "revision",
+  "rechazado",
+  "corregido",
+] as const;
+export type DecisionAudit = (typeof DECISIONES_AUDIT)[number];
+
 /** Fila a insertar en `identidad_audit` (append-only, ID-08). */
 export interface FilaAudit {
   vinculo_id: number | null;
   metodo: "determinista" | "llm" | "humano";
-  decision: string;
+  decision: DecisionAudit;
   confidence: number | null;
   modelo_version: string | null;
   revisor_id: string | null;

@@ -62,9 +62,10 @@ select throws_ok(
 );
 
 -- == Append es legal: un INSERT valido en identidad_audit vive ==
+-- decision='probable' (vocabulario cerrado de WR-04, espejo de DECISIONES_AUDIT).
 select lives_ok(
   $$ insert into identidad_audit (metodo, decision, confidence, modelo_version)
-     values ('llm', 'match', 0.95, 'MiniMax-M3') $$,
+     values ('llm', 'probable', 0.95, 'MiniMax-M3') $$,
   'INSERT valido en identidad_audit (append es legal)'
 );
 

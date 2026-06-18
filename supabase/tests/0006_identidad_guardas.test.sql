@@ -9,7 +9,7 @@
 -- service role que BYPASSA RLS. El trigger (no el REVOKE/RLS) es el control vinculante.
 
 begin;
-select plan(13);
+select plan(15);
 
 -- Necesitamos un parlamentario real para las FKs de vinculo_identidad.
 insert into parlamentario (id, nombre_normalizado, nombres, apellido_paterno, apellido_materno,
@@ -113,6 +113,18 @@ select is(
   (select relforcerowsecurity from pg_class where relname = 'vinculo_identidad'),
   true,
   'vinculo_identidad tiene force row level security'
+);
+
+-- ── (d) WR-04: vocabulario cerrado de identidad_audit.decision ──
+-- Un valor del vocabulario real VIVE; uno fuera de el (p.ej. 'match', el viejo doc) LANZA.
+select lives_ok(
+  $$ insert into identidad_audit (metodo, decision) values ('llm', 'revision') $$,
+  'decision dentro del vocabulario (revision) VIVE'
+);
+select throws_ok(
+  $$ insert into identidad_audit (metodo, decision) values ('llm', 'match') $$,
+  '23514', null,
+  'decision fuera del vocabulario (match) viola el CHECK de WR-04'
 );
 
 select * from finish();
