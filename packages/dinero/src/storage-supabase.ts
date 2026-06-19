@@ -38,6 +38,28 @@ export function sha256Hex(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+/**
+ * Decide si un error de upload es la IDEMPOTENCIA esperada (el objeto ya existe, mismo hash en la
+ * clave) y NO un fallo real. Precision sobre el regex laxo: Supabase Storage expone el conflicto de
+ * forma ESTRUCTURADA (statusCode/status 409 o el `error: "Duplicate"` canonico). Un "Bucket not
+ * found"/"does not exist" NO debe tragarse como exito -> seria reportar el crudo como capturado sin
+ * estarlo (brecha de recuperabilidad del archivo crudo que este helper existe para garantizar). SOLO
+ * el caso 409/Duplicate canonico se traga; cualquier otro -> THROW aguas arriba.
+ */
+function esConflictoYaExiste(error: { message?: string } & Record<string, unknown>): boolean {
+  // 1. Codigo de estado estructurado (Supabase lo expone como statusCode string u status number).
+  const code = error.statusCode ?? error.status;
+  if (code === 409 || code === "409") return true;
+  // 2. El `error` canonico de Supabase Storage para un duplicado es exactamente "Duplicate".
+  const errName = typeof error.error === "string" ? error.error.trim().toLowerCase() : "";
+  if (errName === "duplicate") return true;
+  // 3. Fallback ANCLADO al mensaje canonico de duplicado ("The resource already exists"), NO un
+  //    substring laxo de "exist" (que tambien aparece en "Bucket not found"/"does not exist").
+  const msg = (error.message ?? "").toLowerCase();
+  if (/the resource already exists/.test(msg)) return true;
+  return false;
+}
+
 /** Slug seguro para la clave de Storage (no inventa datos; solo normaliza separadores). */
 function slug(s: string): string {
   return s
@@ -84,8 +106,10 @@ export class SupabaseStorageServel {
       upsert: false, // no sobreescribir: el hash en la clave hace que el mismo contenido sea la misma clave.
     });
     if (error) {
-      // Idempotencia esperada: el objeto ya existe (mismo hash) -> no es un error real.
-      if (/exists|duplicate|409/i.test(error.message)) {
+      // Idempotencia esperada: el objeto ya existe (mismo hash, 409/Duplicate canonico) -> no es un
+      // error real. Precision estructurada (WR-03): un "Bucket not found"/"does not exist" NO se
+      // traga (seria reportar el crudo como capturado sin estarlo). Cualquier otro error -> THROW.
+      if (esConflictoYaExiste(error as { message?: string } & Record<string, unknown>)) {
         return key;
       }
       throw new Error(`storage SERVEL: ${error.message}`);

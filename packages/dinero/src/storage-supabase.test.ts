@@ -8,8 +8,8 @@ import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SupabaseStorageServel, claveCrudo, sha256Hex } from "./storage-supabase";
 
-/** Cliente fake: captura las subidas y permite simular un error de upload. */
-function fakeClient(uploadError: { message: string } | null = null) {
+/** Cliente fake: captura las subidas y permite simular un error de upload (mensaje + campos estructurados). */
+function fakeClient(uploadError: Record<string, unknown> | null = null) {
   const uploads: { bucket: string; key: string; bytes: Uint8Array }[] = [];
   const client = {
     storage: {
@@ -44,19 +44,46 @@ describe("SupabaseStorageServel — subida idempotente con clave versionada", ()
     expect(key).toContain("servel/senador-circ-5-2025/2026-06-19/");
   });
 
-  it("idempotente: un error 'already exists' se traga (no error), devuelve la clave", async () => {
+  it("idempotente: el mensaje canonico 'The resource already exists' se traga (no error)", async () => {
     const { client } = fakeClient({ message: "The resource already exists" });
     const storage = new SupabaseStorageServel({ url: "x", serviceKey: "k", client });
     const key = await storage.subirCrudo("crudo-servel", "Eleccion 2025", "2026-06-19", BYTES);
     expect(key).toContain("servel/eleccion-2025/2026-06-19/");
   });
 
-  it("idempotente: un 409 (Duplicate) se traga", async () => {
-    const { client } = fakeClient({ message: "Duplicate (409)" });
+  it("idempotente: statusCode 409 estructurado se traga", async () => {
+    const { client } = fakeClient({ statusCode: "409", message: "Duplicate", error: "Duplicate" });
     const storage = new SupabaseStorageServel({ url: "x", serviceKey: "k", client });
     await expect(
       storage.subirCrudo("crudo-servel", "Eleccion 2025", "2026-06-19", BYTES),
     ).resolves.toContain("servel/");
+  });
+
+  it("idempotente: error canonico 'Duplicate' (sin statusCode) se traga", async () => {
+    const { client } = fakeClient({ error: "Duplicate", message: "..." });
+    const storage = new SupabaseStorageServel({ url: "x", serviceKey: "k", client });
+    await expect(
+      storage.subirCrudo("crudo-servel", "Eleccion 2025", "2026-06-19", BYTES),
+    ).resolves.toContain("servel/");
+  });
+
+  it("WR-03: 'Bucket not found' (statusCode 404) NO se traga -> THROW (no es idempotencia)", async () => {
+    // Antes el regex laxo /exists|.../ no lo tocaba, pero un mensaje "does not exist" SI lo habria
+    // tragado como exito falso. La logica estructurada lo trata como fallo real -> THROW.
+    const { client } = fakeClient({ statusCode: "404", error: "Bucket not found", message: "Bucket not found" });
+    const storage = new SupabaseStorageServel({ url: "x", serviceKey: "k", client });
+    await expect(
+      storage.subirCrudo("crudo-servel", "Eleccion 2025", "2026-06-19", BYTES),
+    ).rejects.toThrow(/storage SERVEL: Bucket not found/);
+  });
+
+  it("WR-03: un mensaje con substring 'exist' pero no-duplicado NO se traga -> THROW", async () => {
+    // "The bucket does not exist" contiene "exist" -> el regex viejo lo habria tragado como exito.
+    const { client } = fakeClient({ statusCode: "404", message: "The bucket does not exist" });
+    const storage = new SupabaseStorageServel({ url: "x", serviceKey: "k", client });
+    await expect(
+      storage.subirCrudo("crudo-servel", "Eleccion 2025", "2026-06-19", BYTES),
+    ).rejects.toThrow(/storage SERVEL: The bucket does not exist/);
   });
 
   it("un error distinto THROW (sin interpolar la service key)", async () => {
