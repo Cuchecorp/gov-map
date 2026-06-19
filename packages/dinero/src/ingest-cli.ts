@@ -19,7 +19,7 @@ import { ChileCompraConnector } from "./connector-chilecompra";
 import { SupabaseDineroWriter } from "./writer-supabase";
 import { InMemoryDineroWriter } from "./writer";
 import type { DineroWriter } from "./writer";
-import { ddmmaaaaDe } from "./query";
+import { ddmmaaaaDe, redactarTicket } from "./query";
 import { runIngestDinero, type RunIngestDineroResult, type TareaRut } from "./ingest-run";
 import type { ReconciliarContratoOpts } from "./reconciliar-contrato";
 
@@ -155,8 +155,9 @@ export async function main(opts: DineroCliOptions = {}): Promise<DineroCliResult
       `${res.parlamentariosMarcados} parlamentarios marcados (cuarentena: ${res.cuarentenados.length}, ` +
       `errores: ${res.errores.length}, degradaciones: ${res.degradaciones.length})`,
   );
-  for (const e of res.errores) log(`ingest-dinero: ERROR [${e.fuente}/${e.clave}]: ${e.mensaje}`);
-  for (const d of res.degradaciones) log(`ingest-dinero: DEGRADA [${d.fuente}]: ${d.motivo}`);
+  // CR-01 defensa-en-profundidad en el sitio de impresion: el ticket NUNCA debe llegar a consola.
+  for (const e of res.errores) log(redactarTicket(`ingest-dinero: ERROR [${e.fuente}/${e.clave}]: ${e.mensaje}`));
+  for (const d of res.degradaciones) log(redactarTicket(`ingest-dinero: DEGRADA [${d.fuente}]: ${d.motivo}`));
 
   return {
     ...res,

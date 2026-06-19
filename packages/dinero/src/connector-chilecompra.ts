@@ -21,9 +21,10 @@ import {
   assertAllowedUrl,
   FetchError,
   RetryableError,
+  HostNotAllowedError,
   type AllowlistOptions,
 } from "@obs/ingest";
-import { urlBuscarProveedor, urlOrdenesDeCompra } from "./query";
+import { urlBuscarProveedor, urlOrdenesDeCompra, redactarTicket } from "./query";
 
 /** Error de robots.txt que prohibe el fetch (el caller decide; no se reintenta aca). */
 export class RobotsDisallowError extends Error {
@@ -89,7 +90,18 @@ export class ChileCompraConnector {
    * 403/503/429 se relanza como `ChileCompraBloqueadaError` (degradacion honesta), sin el ticket.
    */
   private async fetchJson(url: string): Promise<unknown> {
-    const parsed = assertAllowedUrl(url, this.deps.allowlist); // SSRF + allowlist (mercadopublico.cl)
+    // SSRF + allowlist. OJO (CR-01): `assertAllowedUrl` lanza `HostNotAllowedError` con la URL
+    // CRUDA (incluye `&ticket=<SECRET>`) -> va dentro del try para sanear ANTES de propagar.
+    let parsed: URL;
+    try {
+      parsed = assertAllowedUrl(url, this.deps.allowlist); // SSRF + allowlist (mercadopublico.cl)
+    } catch (err) {
+      if (err instanceof HostNotAllowedError) {
+        // Saneo: nunca propagar la URL cruda con el ticket; solo el host/scheme sin querystring.
+        throw new Error(`ChileCompra host no permitido: ${urlSinQuery(url)}`);
+      }
+      throw err; // URL malformada u otro error sin la URL en el mensaje.
+    }
     if (!(await this.deps.robots.isAllowed(url))) throw new RobotsDisallowError(urlSinQuery(url));
     await this.deps.rateLimiter.wait(parsed.host); // 2-3s serial por host (LOCKED)
     try {
@@ -98,12 +110,20 @@ export class ChileCompraConnector {
       // `JSON.parse` nativo; un JSON invalido propaga como SyntaxError (no fabrica).
       return JSON.parse(txt);
     } catch (err) {
+      // CR-01: TODO error HTTP (no solo 403/429/503) lleva la URL con el ticket en `.message`
+      // (FetchError/RetryableError interpolan la URL cruda). Se saneA SIEMPRE antes de propagar.
       // 403 llega como FetchError; 429/503 como RetryableError (rate-limit / ticket agotado).
-      if (err instanceof FetchError && err.status === 403) {
+      if (err instanceof FetchError) {
         throw new ChileCompraBloqueadaError(urlSinQuery(url), err.status);
       }
-      if (err instanceof RetryableError && (err.status === 429 || err.status === 503)) {
+      // Cualquier otro retryable (5xx, etc.): degradacion honesta sin ticket.
+      if (err instanceof RetryableError) {
         throw new ChileCompraBloqueadaError(urlSinQuery(url), err.status);
+      }
+      // Errores sin URL (p.ej. SyntaxError de JSON.parse) ya son ticket-free, pero saneamos el
+      // mensaje de forma defensiva por si alguna capa intermedia hubiese interpolado la URL.
+      if (err instanceof Error) {
+        err.message = redactarTicket(err.message);
       }
       throw err;
     }

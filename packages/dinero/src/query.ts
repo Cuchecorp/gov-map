@@ -9,6 +9,18 @@
 const BASE = "https://api.mercadopublico.cl/servicios/v1";
 
 /**
+ * Enmascara el `ticket` (secreto de operador) en CUALQUIER string que pueda surfacear (mensaje de
+ * error, log, console). Reemplaza el valor del query param `ticket=<SECRET>` por `ticket=***` sin
+ * tocar el resto de la URL/mensaje. Es la red de seguridad central de CR-01: el ticket NUNCA debe
+ * aparecer en un mensaje lanzado, salida de consola o error persistido. Idempotente y null-safe.
+ */
+export function redactarTicket(s: string): string {
+  // `ticket=` seguido de cualquier secuencia de caracteres no separadores de URL/log
+  // (hasta `&`, `#`, espacio, comilla o fin de string). Insensible a mayúsculas en la clave.
+  return s.replace(/(ticket=)[^&#\s"'`]*/gi, "$1***");
+}
+
+/**
  * URL del paso 1: resolver un RUT de empresa a su `CodigoEmpresa`. El RUT viaja tal cual lo da el
  * caller (con puntos+guion+DV); el ticket se encodea. NUNCA interpolar el ticket en logs.
  */

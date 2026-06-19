@@ -29,6 +29,7 @@ export {
   urlOrdenesDeCompra,
   ddmmaaaaDe,
   fechasEntre,
+  redactarTicket,
 } from "./query";
 
 // Parser zod del JSON de ChileCompra -> Contrato[] VERBATIM (LITERAL, sin LLM).

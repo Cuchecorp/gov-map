@@ -18,6 +18,7 @@ import type { DineroWriter } from "./writer";
 import { parseContratos, tipoPersona } from "./parse-chilecompra";
 import { BuscarProveedorResponseSchema, ORIGEN_DINERO, LICENCIA_DINERO, type Contratista } from "./model";
 import { reconciliarContrato, type ReconciliarContratoOpts } from "./reconciliar-contrato";
+import { redactarTicket } from "./query";
 import { isRutValido, normRut } from "@obs/identity";
 import type { Parlamentario } from "@obs/core";
 
@@ -133,7 +134,8 @@ export async function runIngestDinero(opts: RunIngestDineroOpts): Promise<RunIng
           motivo: `ChileCompra bloqueo el fetch (HTTP ${err.status}); sin filas para este RUT`,
         });
       } else {
-        errores.push({ fuente: ORIGEN_DRIFT, clave, mensaje: err instanceof Error ? err.message : String(err) });
+        // CR-01 defensa-en-profundidad: el mensaje capturado NUNCA debe llevar el ticket.
+        errores.push({ fuente: ORIGEN_DRIFT, clave, mensaje: redactarTicket(err instanceof Error ? err.message : String(err)) });
       }
       continue;
     }
@@ -155,7 +157,7 @@ export async function runIngestDinero(opts: RunIngestDineroOpts): Promise<RunIng
           });
           break;
         }
-        errores.push({ fuente: ORIGEN_DRIFT, clave: `${clave}#${dia}`, mensaje: err instanceof Error ? err.message : String(err) });
+        errores.push({ fuente: ORIGEN_DRIFT, clave: `${clave}#${dia}`, mensaje: redactarTicket(err instanceof Error ? err.message : String(err)) });
         continue;
       }
       try {
@@ -208,7 +210,7 @@ export async function runIngestDinero(opts: RunIngestDineroOpts): Promise<RunIng
       marcarSinContratos(marcados, tarea, opts.maestra, opts.reconciliar);
       log(`ingest-dinero: ${clave} -> ${filas.length} contratos`);
     } catch (err) {
-      errores.push({ fuente: ORIGEN_DRIFT, clave, mensaje: err instanceof Error ? err.message : String(err) });
+      errores.push({ fuente: ORIGEN_DRIFT, clave, mensaje: redactarTicket(err instanceof Error ? err.message : String(err)) });
     }
   }
 

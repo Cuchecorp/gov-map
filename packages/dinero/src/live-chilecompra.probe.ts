@@ -12,7 +12,7 @@
 
 import { Fetcher, HostRateLimiter, RobotsGuard } from "@obs/ingest";
 import { ChileCompraConnector, ChileCompraBloqueadaError } from "./connector-chilecompra";
-import { ddmmaaaaDe } from "./query";
+import { ddmmaaaaDe, redactarTicket } from "./query";
 import { BuscarProveedorResponseSchema, OrdenesResponseSchema } from "./model";
 
 async function main() {
@@ -64,7 +64,10 @@ async function main() {
       console.error(`[probe] BLOQUEADA: ChileCompra ${err.status} — ${err.message}`);
       process.exitCode = 3;
     } else {
-      console.error(`[probe] error:`, err);
+      // CR-01: NUNCA volcar el objeto de error crudo (su `.message` puede llevar el ticket).
+      // Se imprime SOLO el mensaje saneado (ticket=***).
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[probe] error: ${redactarTicket(msg)}`);
       process.exitCode = 1;
     }
   }
