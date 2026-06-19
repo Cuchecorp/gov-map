@@ -11,7 +11,8 @@
   "references": [
     { "path": "../core" },
     { "path": "../ingest" },
-    { "path": "../identity" }
+    { "path": "../identity" },
+    { "path": "../adjudication" }
   ],
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts", "test", "dist"]

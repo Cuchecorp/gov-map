@@ -14,10 +14,12 @@
     "ingest": "tsx src/ingest-cli.ts"
   },
   "dependencies": {
+    "@obs/adjudication": "workspace:*",
     "@obs/core": "workspace:*",
     "@obs/identity": "workspace:*",
     "@obs/ingest": "workspace:*",
     "@supabase/supabase-js": "^2.108.2",
+    "exceljs": "4.4.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
