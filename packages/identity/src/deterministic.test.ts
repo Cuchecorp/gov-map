@@ -197,4 +197,25 @@ describe("isRutValido (IN-04, utilidad para Fase 4)", () => {
     expect(isRutValido("10.000.013-K")).toBe(true);
     expect(isRutValido("10000013-k")).toBe(true);
   });
+
+  // ── IDENT-11: cobertura de persona JURÍDICA (RUT de empresa) y DV inválido ──
+  // El validador módulo-11 NO distingue persona natural de jurídica (es solo estructura):
+  // un RUT de empresa (cuerpo en rango 70-99 millones) DV-valida igual. La distinción
+  // natural/jurídica es semántica del CRUCE (no colapsar un RUT de empresa en una atribución
+  // personal) y se cubre en el golden set; aquí se fija que el DV de un RUT de empresa válido
+  // se acepta y uno con DV alterado se rechaza (los RUTs son ESTRUCTURALES, no de nadie real).
+  it("acepta el DV de un RUT de PERSONA JURÍDICA estructuralmente válido (empresa)", () => {
+    expect(isRutValido("76.012.345-5")).toBe(true); // cuerpo 76M → típico empresa, DV válido
+    expect(isRutValido("99.500.000-8")).toBe(true);
+  });
+
+  it("rechaza un RUT de persona jurídica con DV alterado (nunca se trataría como válido)", () => {
+    expect(isRutValido("76.012.345-0")).toBe(false); // DV real es 5
+    expect(isRutValido("99.500.000-1")).toBe(false); // DV real es 8
+  });
+
+  it("rechaza DV alterado de persona natural (IDENT-11: nunca aceptar un DV inválido)", () => {
+    expect(isRutValido("15.784.213-0")).toBe(false); // DV real es 7
+    expect(isRutValido("15.784.213-7")).toBe(true);
+  });
 });

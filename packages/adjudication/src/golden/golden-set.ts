@@ -406,6 +406,71 @@ export const GOLDEN_SET: CasoGolden[] = [
     expected: { tipo: "match", chosenId: "P00261" },
   },
 
+  // ───── IDENT-11: casos de RUT (SERVEL/ChileCompra) — DV/homónimo/jurídica/colisión ─────
+  // NOTA (T-04-02): la MencionForanea NO transporta `rut` (el RUT nunca cruza al LLM). Estos
+  // casos modelan el ESCENARIO de RUT como un homónimo de NOMBRE cuyo trasfondo es una colisión
+  // de RUT (un RUT que DV-valida pero pertenece a otra persona/empresa). El gate exige el outcome
+  // correcto: un homónimo NUNCA se auto-acepta (→ revisión); un RUT de EMPRESA no debe colapsar en
+  // una atribución personal (→ no_match). Así la métrica sigue VIVA sin meter el RUT al prompt.
+  {
+    id: "g25-rut-colision-homonimo",
+    categoria: "homonimo",
+    // Dos personas comparten nombre normalizado; en SERVEL una trae un RUT que DV-valida pero es
+    // de la OTRA persona. Sin desempate real → revisión (auto-aceptar sería atribución falsa).
+    mencion: men({
+      nombreOriginal: "Muñoz Tapia, Carlos (colisión RUT SERVEL)",
+      nombreNormalizado: "munoz carlos",
+      tokens: ["munoz", "carlos"],
+      camara: "diputados",
+      periodo: PERIODO_DIPUTADOS,
+    }),
+    maestraRelevante: [
+      p({ id: "P00301", nombre_normalizado: "munoz tapia carlos", nombres: "Carlos", apellido_paterno: "Muñoz", apellido_materno: "Tapia", camara: "diputados", periodo: PERIODO_DIPUTADOS, region: "Biobío" }),
+      p({ id: "P00302", nombre_normalizado: "munoz tapia carlos", nombres: "Carlos", apellido_paterno: "Muñoz", apellido_materno: "Tapia", camara: "diputados", periodo: PERIODO_DIPUTADOS, region: "Maule" }),
+    ],
+    llmEsperado: uncertain(["dos Muñoz Tapia Carlos; el RUT SERVEL no desempata (colisión)"]),
+    expected: { tipo: "revision" },
+  },
+  {
+    id: "g26-rut-persona-juridica-no-colapsa",
+    categoria: "no-match",
+    // Una mención cuyo nombre es el de una EMPRESA (razón social) con RUT de persona jurídica
+    // (76.012.345-5). NO existe como parlamentario → NUNCA debe colapsar en una atribución
+    // personal: el blocking por apellido no encuentra candidato → no_match.
+    mencion: men({
+      nombreOriginal: "Constructora Andes Limitada (RUT empresa)",
+      nombreNormalizado: "constructora andes limitada",
+      tokens: ["constructora", "andes", "limitada"],
+      camara: "diputados",
+      periodo: PERIODO_DIPUTADOS,
+    }),
+    maestraRelevante: [
+      p({ id: "P00311", nombre_normalizado: "andrade lara jorge", nombres: "Jorge", apellido_paterno: "Andrade", apellido_materno: "Lara", camara: "diputados", periodo: PERIODO_DIPUTADOS }),
+    ],
+    llmEsperado: noMatch(),
+    expected: { tipo: "no_match" },
+  },
+  {
+    id: "g27-rut-colision-dura",
+    categoria: "homonimo",
+    // Colisión DURA (Pitfall 5: el umbral sigue significativo): tres homónimos, uno con RUT que
+    // DV-valida pero es de un tercero. Sin clave estricta ni RUT propio en la maestra que lo
+    // confirme → revisión. Un auto-aceptar aquí sería un falso positivo creíble.
+    mencion: men({
+      nombreOriginal: "Rojas Vera, Patricia (RUT de un tercero)",
+      nombreNormalizado: "rojas patricia",
+      tokens: ["rojas", "patricia"],
+      camara: "senado",
+    }),
+    maestraRelevante: [
+      p({ id: "P00321", nombre_normalizado: "rojas vera patricia", nombres: "Patricia", apellido_paterno: "Rojas", apellido_materno: "Vera", camara: "senado", region: "Valparaíso" }),
+      p({ id: "P00322", nombre_normalizado: "rojas vera patricia", nombres: "Patricia", apellido_paterno: "Rojas", apellido_materno: "Vera", camara: "senado", region: "Coquimbo" }),
+      p({ id: "P00323", nombre_normalizado: "rojas vera patricia", nombres: "Patricia", apellido_paterno: "Rojas", apellido_materno: "Vera", camara: "senado", region: "Maule" }),
+    ],
+    llmEsperado: uncertain(["tres Rojas Vera Patricia; un RUT candidato es de un tercero (colisión dura)"]),
+    expected: { tipo: "revision" },
+  },
+
   // ───── ADVERSARIO (CR-02): el modelo elige el id EQUIVOCADO con alta confianza ─────
   // Dos candidatos plausibles (mismo apellido/nombre, distinta región). El "modelo"
   // (mock) afirma P00998 con 0.99 cuando el correcto es P00999. La compuerta NO tiene

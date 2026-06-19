@@ -68,6 +68,23 @@ describe("golden set — gate de deploy (mock, sin red)", () => {
     expect(GOLDEN_SET_GATE.length).toBeGreaterThanOrEqual(20);
   });
 
+  it("IDENT-11: incluye casos de RUT (colisión/homónimo/persona-jurídica) en el set del gate", () => {
+    const ids = new Set(GOLDEN_SET_GATE.map((c) => c.id));
+    // Colisión de RUT por homónimo → revisión (NUNCA auto-aceptar).
+    expect(ids.has("g25-rut-colision-homonimo")).toBe(true);
+    expect(GOLDEN_SET_GATE.find((c) => c.id === "g25-rut-colision-homonimo")!.expected.tipo).toBe("revision");
+    // Persona jurídica (RUT empresa) → no colapsa en atribución personal → no_match.
+    expect(ids.has("g26-rut-persona-juridica-no-colapsa")).toBe(true);
+    expect(GOLDEN_SET_GATE.find((c) => c.id === "g26-rut-persona-juridica-no-colapsa")!.expected.tipo).toBe("no_match");
+    // Colisión DURA (Pitfall 5: umbral significativo) → revisión.
+    expect(ids.has("g27-rut-colision-dura")).toBe(true);
+    expect(GOLDEN_SET_GATE.find((c) => c.id === "g27-rut-colision-dura")!.expected.tipo).toBe("revision");
+    // Los casos de RUT NO se metieron al set adversario (siguen midiendo el umbral honesto).
+    for (const id of ["g25-rut-colision-homonimo", "g26-rut-persona-juridica-no-colapsa", "g27-rut-colision-dura"]) {
+      expect(GOLDEN_SET.some((c) => c.id === id)).toBe(true);
+    }
+  });
+
   it("precisión ≥ 0.95 sobre GOLDEN_SET_GATE (un fallo BLOQUEA el deploy)", async () => {
     const provider = mockDelGolden(GOLDEN_SET_GATE);
     const m = await evaluarGolden(GOLDEN_SET_GATE, provider);
