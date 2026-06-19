@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: "15-03 entregado — FinanciamientoView/FinanciamientoSection (SERVEL) + sourceLabel SERVEL + AporteRpcRow + mount #financiamiento gated (SIBLING de #dinero); 20 tests RTL verdes, tsc limpio en archivos del plan. Pendientes de OPERADOR: 15-01 apply remoto + pgTAP 0025; 15-02 LIVE probe SERVEL."
-stopped_at: 15-03 COMPLETO — sección de ficha Financiamiento (SERVEL) gated tras moneyPublicEnabled(); 20 tests RTL verdes; tsc limpio en archivos del plan; enlace por NOMBRE confirmado (A1), RUT donante nunca renderizado.
-last_updated: "2026-06-19T21:42:19.377Z"
+status: "16-02 entregado — ruta gateada /contraparte/[id] (gate a NIVEL DE PAGINA: notFound() con OFF antes de heading/RPC) + carriles ContratosPorContraparte/AportesPorContraparte (dispatch por facet del RPC agregado_por_contraparte) + CONTRAPARTE_ID_RE + AgregadoContraparteRpcRow; 174 tests RTL verdes (22 nuevos), tsc limpio en archivos de Phase 16. Carril confirmado-parlamentario y /contraparte listado DIFERIDOS. Pendiente de OPERADOR: 16-01 apply remoto + pgTAP 0026; encender MONEY_PUBLIC_ENABLED tras sign-off legal F13."
+stopped_at: 16-02 COMPLETO — /contraparte/[id] gated (whole-page notFound con OFF), dos carriles mt-12 hermanos (contratos/aportes), cero voto/causal, conteo neutral, montos verbatim, atribución por dataset; 174 tests RTL verdes.
+last_updated: "2026-06-19T22:41:26.140Z"
 last_activity: 2026-06-19
 progress:
   total_phases: 11
-  completed_phases: 8
-  total_plans: 22
-  completed_plans: 23
-  percent: 73
+  completed_phases: 9
+  total_plans: 24
+  completed_plans: 25
+  percent: 82
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 ## Current Position
 
-Phase: 15 (MONEY Financiamiento — SERVEL verbatim + sub-maestra de donantes) — EXECUTING
-Plan: 15-03 COMPLETO (sección de ficha gated)
-Status: 15-03 entregado — FinanciamientoView/FinanciamientoSection (SERVEL) + sourceLabel SERVEL + AporteRpcRow + mount #financiamiento gated (SIBLING de #dinero); 20 tests RTL verdes, tsc limpio en archivos del plan. Pendientes de OPERADOR: 15-01 apply remoto + pgTAP 0025; 15-02 LIVE probe SERVEL.
-Next plan: cerrar checkpoints de operador de 15-01/15-02; luego encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
+Phase: 16 (MONEY Agregación — contratos/aportes por contraparte) — EXECUTING
+Plan: 16-02 COMPLETO (ruta gateada /contraparte/[id] + carriles por contraparte)
+Status: 16-02 entregado — /contraparte/[id] con gate a NIVEL DE PAGINA (notFound() con OFF antes de heading/RPC); carriles ContratosPorContraparte/AportesPorContraparte (dispatch por facet del RPC agregado_por_contraparte); CONTRAPARTE_ID_RE + AgregadoContraparteRpcRow; 174 tests RTL verdes (22 nuevos), tsc limpio en archivos de Phase 16. Carril confirmado-parlamentario y /contraparte listado DIFERIDOS.
+Next plan: cerrar checkpoints de operador de 16-01 (apply remoto + pgTAP 0026) y 15-01/15-02; luego encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
 Last activity: 2026-06-19
 
 ## Performance Metrics
@@ -90,6 +90,7 @@ Last activity: 2026-06-19
 | Phase 12 P02 | 38min | 3 tasks | 19 files |
 | Phase 12 P03 | 9min | 3 tasks | 5 files |
 | Phase 14 P03 | 25min | 2 tasks | 4 files |
+| Phase 16 P02 | 13min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 13]: [13-01]: candado B = flag server-only moneyPublicEnabled(env) fail-closed (solo 'true' literal enciende; ausencia/''/'false'/'1'/'TRUE' => false), import 'server-only' linea 1, sin NEXT_PUBLIC_; ubicado en app/lib/ (consumidor = ficha Next.js), sin canal Postgres (diferido a 14-16). pgTAP 0023 re-afirma el piso deny-by-default sobre pii_contraparte_declaracion (RLS + cero policies + anon sin grant SELECT) = contrato que toda money_* de 14-16 hereda; Phase 13 NO introduce DDL MONEY.
 - [Phase ?]: 15-02: enlace del candidato SERVEL por NOMBRE via correrPipeline (no RUT); SOLO determinista puebla parlamentario_id; donante PII jamas al LLM (data-routing gate test-enforced)
 - [Phase 15]: 15-03: sección de ficha 'Aportes de campaña registrados en SERVEL' (carril propio mt-12, SIBLING de #dinero); gate moneyPublicEnabled() envuelve la <section> ENTERA en page.tsx (heading incluido) — OFF (default) => nodo ausente del HTML; FinanciamientoSection re-chequea antes de Supabase (doble candado). Tres estados honestos distintos (no_ingestado/verificado_sin_aportes/enlazado); agrupación por elección + caveat amber de candidatura anterior + Elección: por fila (defense in depth). Donante = sujeto propio (Aporta:); RUT donante NUNCA renderizado (Ley 21.719). A1 (RE-RESUELTO): la asociación al candidato es 'Asociado por nombre confirmado al candidato.' (SERVEL no trae RUT) — NUNCA 'por RUT' (test lo asierta). Atribución SERVEL 'términos de uso por verificar' (NO CC BY 4.0); throw en rpcError (#34). sourceLabel gana rama servel->'SERVEL'; AporteRpcRow sin RUT donante. 20 tests RTL verdes.
+- [Phase 16]: 16-02: ruta ciudadana /contraparte/[id] (empresa = persona jurídica) con DOS carriles mt-12 HERMANOS — contratos (ChileCompra) + aportes (SERVEL) — cada fila trazada (ProvenanceBadge). NUEVO patrón: gate a NIVEL DE PAGINA — `moneyPublicEnabled(process.env) -> notFound()` es la PRIMERA sentencia (antes de await params/RPC/heading); con OFF (default) la ruta entera 404 (sirve not-found.tsx), sin filtración de DOM MONEY (distinto de la ficha, donde el gate envuelve una <section>). CONTRAPARTE_ID_RE=/^[cd]:[A-Za-z0-9 .\-_]+$/ valida 'c:<rut_proveedor>'/'d:<donante_nombre>' ANTES de tocar la DB; HeaderSection: sin fila->notFound, tipo_persona!='jur'->notFound (defensa en profundidad T-16-07), error real->throw (#34). El Section despacha el RPC agregado_por_contraparte por `facet`. ANTI-INSINUACIÓN dura: cero dato de voto, cero lenguaje causal (sweep+RTL), conteo neutral (cero SUM/ranking), montos verbatim, RUT donante nunca renderizado. Atribución por dataset (ChileCompra 'mención de la fuente' / SERVEL 'términos de uso por verificar', NUNCA CC BY 4.0). vitest.config gana app/**/*.test (primer test de ruta). Carril confirmado-parlamentario y /contraparte listado DIFERIDOS. 174 tests RTL verdes (22 nuevos); pendiente de OPERADOR: 16-01 apply remoto + pgTAP 0026.
 
 ### Pending Todos
 
@@ -183,8 +185,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T21:42:19.366Z
-Stopped at: 15-03 COMPLETO — sección de ficha Financiamiento (SERVEL) gated tras moneyPublicEnabled(); 20 tests RTL verdes; tsc limpio en archivos del plan; enlace por NOMBRE confirmado (A1), RUT donante nunca renderizado.
+Last session: 2026-06-19T22:39:21Z
+Stopped at: 16-02 COMPLETO — /contraparte/[id] gated (whole-page notFound con OFF), dos carriles mt-12 hermanos (contratos/aportes), cero voto/causal, conteo neutral, montos verbatim, atribución por dataset; 174 tests RTL verdes.
 Resume file: None
 
 ## Operator Next Steps

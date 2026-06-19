@@ -38,7 +38,7 @@
 - [ ] **MONEY-02**: El ciudadano ve los contratos del Estado asociados al RUT de un parlamentario, redactados estrictamente como "contratos asociados al RUT" (nunca "del parlamentario"), con provenance y fecha de corte por fila.
 - [ ] **MONEY-03**: El conector SERVEL de `@obs/dinero` ingiere los aportes de campaña verbatim, con drift bloqueante y reconciliación de completitud (una corrida parcial se pone en cuarentena, no emite filas silenciosamente), y crea una sub-maestra de donantes.
 - [x] **MONEY-04**: El ciudadano ve el financiamiento de campaña de un parlamentario verbatim, con fuente/fecha/enlace.
-- [ ] **MONEY-05**: El ciudadano puede ver contratos/aportes agregados por contraparte (donante o empresa), usando las sub-maestras de donantes/contratistas.
+- [x] **MONEY-05**: El ciudadano puede ver contratos/aportes agregados por contraparte (donante o empresa), usando las sub-maestras de donantes/contratistas.
 
 ### NET — Grafo de influencia
 
@@ -91,7 +91,7 @@
 | MONEY-02 | Phase 14 | Pending |
 | MONEY-03 | Phase 15 | Pending |
 | MONEY-04 | Phase 15 | Done (15-03) |
-| MONEY-05 | Phase 16 | Pending |
+| MONEY-05 | Phase 16 | Complete |
 | NET-01 | Phase 18 | Pending |
 | NET-02 | Phase 18 | Pending |
 | LEGAL-01 | Phase 13 | Pending |
