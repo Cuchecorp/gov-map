@@ -187,7 +187,7 @@ export async function runIngestDinero(opts: RunIngestDineroOpts): Promise<RunIng
 
     // 4. Reconcilia RUT-exacto + escribe (sub-maestra + contratos) + acumula marcados.
     try {
-      const { contratos: filas, parlamentariosConfirmados } = reconciliarContrato(
+      const { contratos: filas, parlamentariosConfirmados } = await reconciliarContrato(
         contratosTarea,
         opts.maestra,
         opts.reconciliar ?? {},

@@ -36,14 +36,19 @@ export {
 export { parseContratos, tipoPersona } from "./parse-chilecompra";
 export type { ParseContratosOpts } from "./parse-chilecompra";
 
-// Reconciliacion RUT-EXACTO del proveedor (sin correrPipeline; enlace solo por rama RUT).
+// Reconciliacion del proveedor: persona natural = RUT-exacto O nombre via correrPipeline (finalidad
+// del dato) + cosecha de RUT en match confirmado; persona juridica = RUT-exacto-only (nunca name-link).
 export { reconciliarContrato } from "./reconciliar-contrato";
 export type {
   ReconciliarContratoOpts,
   ContratoParaEscribir,
   ResultadoReconciliacionDinero,
   EstadoVinculoContrato,
+  CandidatoCosechaRut,
 } from "./reconciliar-contrato";
+
+// Cosecha de RUT (IDENT-10): writer path que reusa runBackfillRut (escritura remota = checkpoint operador).
+export { construirFilasCosecha, runHarvestRut } from "./harvest-rut";
 
 // Writer idempotente (interfaz + in-memory + Supabase).
 export { InMemoryDineroWriter, versionKey } from "./writer";
