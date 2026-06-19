@@ -20,6 +20,12 @@ import "server-only";
  * ENCENDER ESTE FLAG requiere `signoff: approved` en el dossier legal
  * (`docs/legal/13-LEGAL-DOSSIER.md`, D-32) — es la deuda de operador F13. Hasta el
  * sign-off legal humano, toda ruta pública MONEY de Phases 14-16 permanece oculta.
+ *
+ * CHOKEPOINT (WR-02): en Phase 13 esta función aún no tiene consumidor — se construye
+ * por delante de sus llamadores (sección ficha MONEY + RPC de Phases 14-16). El
+ * chokepoint único queda EFECTIVAMENTE enforzado cuando Phase 14 enrute toda ruta
+ * pública MONEY a través de `moneyPublicEnabled(process.env)` (NUNCA leyendo
+ * `MONEY_PUBLIC_ENABLED` crudo); el test del consumidor se agrega entonces.
  */
 export function moneyPublicEnabled(
   env: Record<string, string | undefined> = process.env,
