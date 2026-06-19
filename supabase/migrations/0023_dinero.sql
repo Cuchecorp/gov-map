@@ -63,7 +63,12 @@ create table contrato (
   -- (EnlaceConfirmado, Phase 9). NUNCA por nombre (Pitfall 4). Nullable.
   parlamentario_id   text references parlamentario(id) on delete set null,
   mencion_proveedor  text not null,            -- nombre crudo del proveedor como lo da la fuente
-  estado_vinculo     text,                     -- 'confirmado' | 'no_confirmado' | null
+  -- WR-02: dominio CANONICO del estado del vinculo, alineado con `EstadoVinculoContrato`
+  -- (reconciliar-contrato.ts): 'confirmado' (RUT-exacto unico) | 'no_confirmado' (sin match) |
+  -- 'cuarentena' (RUT proveedor con DV invalido) | null. El CHECK lo enforce — un valor fuera
+  -- del dominio es un error, no un dato silencioso.
+  estado_vinculo     text
+    check (estado_vinculo in ('confirmado', 'no_confirmado', 'cuarentena')),
   -- Columnas LITERALES de la fuente (sin computo; el monto es VERBATIM como string).
   codigo_orden       text,                     -- codigo de la orden de compra (raw, publicado)
   proveedor_nombre   text,                     -- nombre del proveedor (raw, publicado)
