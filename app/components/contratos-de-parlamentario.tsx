@@ -51,11 +51,16 @@ export type ContratosEstado =
 /** Una fila de contrato lista para mostrar (sujeto = entidad proveedora). */
 export interface ContratoRow {
   codigo_orden: string;
-  proveedor_nombre: string;
-  tipo_persona: string;
-  organismo: string;
-  monto: string;
-  fecha_oc: string;
+  // WR-01: el RPC puede devolver null en estas columnas (son nullable en la DB). El tipo lo
+  // refleja y el render usa fallbacks "no publicado" en vez de crashear / mostrar celdas vacías.
+  proveedor_nombre: string | null;
+  tipo_persona: string | null;
+  organismo: string | null;
+  // CR-02: nombre/descripción de la orden (texto libre). NO es un monto.
+  nombre_orden: string | null;
+  // CR-02: hoy SIEMPRE null (la fuente no trae un monto fijo); nunca se etiqueta un no-monto.
+  monto: string | null;
+  fecha_oc: string | null;
   origen: string;
   fecha_captura: string;
   fecha_corte: string;
@@ -107,7 +112,12 @@ function Intro() {
 // ── Una fila de contrato: SUJETO = entidad proveedora, enlace en línea SEPARADA ─
 function ContratoFila({ c }: { c: ContratoRow }) {
   const captured = c.fecha_captura ? new Date(c.fecha_captura) : null;
-  const esJuridica = c.tipo_persona.toLowerCase().includes("jur");
+  // WR-01: `tipo_persona` puede ser null → guardar antes de `.toLowerCase()` (no crashear la fila).
+  const tipoPersona = (c.tipo_persona ?? "").toLowerCase();
+  const esJuridica = tipoPersona.includes("jur");
+  const proveedorTexto = c.proveedor_nombre ?? "Proveedor no publicado";
+  const organismoTexto = c.organismo ?? "No publicado";
+  const nombreOrdenTexto = c.nombre_orden ?? "No publicado";
   const fechaOcTexto = c.fecha_oc
     ? fechaCorta(new Date(c.fecha_oc))
     : "Fecha no publicada";
@@ -120,7 +130,7 @@ function ContratoFila({ c }: { c: ContratoRow }) {
       <div className="flex flex-col gap-1 min-w-0 flex-1">
         {/* SUJETO = la entidad proveedora (text-base, el elemento prominente). */}
         <span className="inline-flex flex-wrap items-baseline gap-x-1.5">
-          <span className="text-base">Proveedor: {c.proveedor_nombre}</span>
+          <span className="text-base">Proveedor: {proveedorTexto}</span>
           <span className="text-sm text-muted-foreground">
             ({esJuridica ? "persona jurídica" : "persona natural"})
           </span>
@@ -134,12 +144,21 @@ function ContratoFila({ c }: { c: ContratoRow }) {
           Enlazado por RUT al parlamentario.
         </span>
 
-        {/* Campos LITERALES del contrato como NOUN-label + valor verbatim (<dl>). */}
+        {/*
+          Campos LITERALES del contrato como NOUN-label + valor verbatim (<dl>).
+          CR-02: `nombre_orden` es el NOMBRE/DESCRIPCIÓN de la orden (texto libre), rotulado
+          honestamente — NUNCA bajo "Monto". El "Monto" SOLO se muestra cuando existe un monto
+          real (`c.monto != null`); hoy la fuente no lo trae → "No publicado", nunca un no-monto.
+        */}
         <dl className="grid grid-cols-1 gap-1 sm:grid-cols-[max-content_1fr] sm:gap-x-4 mt-1">
           <dt className="text-sm text-muted-foreground">Organismo comprador:</dt>
-          <dd className="text-base">{c.organismo}</dd>
+          <dd className="text-base">{organismoTexto}</dd>
+          <dt className="text-sm text-muted-foreground">Nombre de la orden:</dt>
+          <dd className="text-base">{nombreOrdenTexto}</dd>
           <dt className="text-sm text-muted-foreground">Monto:</dt>
-          <dd className="text-base font-mono">{c.monto}</dd>
+          <dd className="text-base font-mono">
+            {c.monto ?? "No publicado"}
+          </dd>
           <dt className="text-sm text-muted-foreground">Fecha de la orden:</dt>
           <dd className="text-base font-mono">{fechaOcTexto}</dd>
           <dt className="text-sm text-muted-foreground">Código de la orden:</dt>
@@ -303,6 +322,7 @@ export async function ContratosSection({
     proveedor_nombre: f.proveedor_nombre,
     tipo_persona: f.tipo_persona,
     organismo: f.organismo,
+    nombre_orden: f.nombre_orden,
     monto: f.monto,
     fecha_oc: f.fecha_oc,
     origen: f.origen,

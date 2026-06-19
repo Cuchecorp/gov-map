@@ -120,7 +120,13 @@ export interface Contrato {
   tipoPersona: TipoPersona;
   /** Organismo comprador crudo, o null. */
   organismo: string | null;
-  /** Monto VERBATIM como string crudo (sin convertir a numero), o null. */
+  /** Nombre/descripcion crudo de la orden de compra (texto libre de la fuente), o null. */
+  nombreOrden: string | null;
+  /**
+   * Monto VERBATIM como string crudo, o null. CR-02: el listado `ordenesdecompra.json` NO
+   * trae un campo monetario fijo garantizado -> hoy SIEMPRE null (nunca se etiqueta un
+   * no-monto como "Monto"). Si una fuente futura expone un total numerico real, se mapea aqui.
+   */
   monto: string | null;
   /** Fecha de la orden de compra cruda (date string de la fuente), o null. */
   fechaOc: string | null;
@@ -138,6 +144,7 @@ export const ContratoSchema = z.object({
   proveedorNombre: z.string().nullable(),
   tipoPersona: z.enum(["natural", "juridica"]),
   organismo: z.string().nullable(),
+  nombreOrden: z.string().nullable(),
   monto: z.string().nullable(),
   fechaOc: z.string().nullable(),
   ...ProvenanceInline,

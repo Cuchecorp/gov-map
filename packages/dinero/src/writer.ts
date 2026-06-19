@@ -50,6 +50,7 @@ export class InMemoryDineroWriter implements DineroWriter {
       tipo_persona: string;
       estado_vinculo: string;
       organismo: string | null;
+      nombre_orden: string | null;
       monto: string | null;
       fecha_oc: string | null;
       origen: string;
@@ -80,6 +81,7 @@ export class InMemoryDineroWriter implements DineroWriter {
         tipo_persona: f.tipoPersona,
         estado_vinculo: f.estadoVinculo,
         organismo: f.organismo,
+        nombre_orden: f.nombreOrden,
         monto: f.monto,
         fecha_oc: f.fechaOc,
         origen: f.origen,

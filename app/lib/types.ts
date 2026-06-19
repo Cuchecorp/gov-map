@@ -274,11 +274,15 @@ export interface DeclaracionRpcRow {
  */
 export interface ContratoRpcRow {
   codigo_orden: string;
-  proveedor_nombre: string;
-  tipo_persona: string; // "natural" | "jurídica" (label literal de la fuente)
-  organismo: string;
-  monto: string; // literal verbatim de la fuente; el UI no computa sumas
-  fecha_oc: string; // ISO; fecha de la orden de compra
+  // WR-01: estas columnas son NULLABLE en `contrato` (0023_dinero.sql) y el RPC las proyecta
+  // verbatim → el tipo DEBE reflejar `string | null` o el UI crashea al hacer `.toLowerCase()`.
+  proveedor_nombre: string | null;
+  tipo_persona: string | null; // "natural" | "jurídica" (label literal de la fuente)
+  organismo: string | null;
+  // CR-02: nombre/descripción de la orden (texto libre de la fuente). NO es un monto.
+  nombre_orden: string | null;
+  monto: string | null; // CR-02: hoy SIEMPRE null (la fuente no trae monto fijo); nunca un no-monto
+  fecha_oc: string | null; // ISO; fecha de la orden de compra
   origen: string;
   fecha_captura: string;
   fecha_corte: string; // ISO; fecha de corte de la consulta por RUT

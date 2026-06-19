@@ -57,6 +57,7 @@ function contratoRoot(f: ContratoParaEscribir): Record<string, unknown> {
     tipo_persona: f.tipoPersona,
     estado_vinculo: f.estadoVinculo,
     organismo: f.organismo,
+    nombre_orden: f.nombreOrden,
     monto: f.monto,
     fecha_oc: f.fechaOc,
     origen: f.origen,

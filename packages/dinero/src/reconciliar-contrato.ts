@@ -57,6 +57,8 @@ export interface ContratoParaEscribir {
   estadoVinculo: EstadoVinculoContrato;
   tipoPersona: Contrato["tipoPersona"];
   organismo: string | null;
+  /** Nombre/descripcion crudo de la orden (texto libre), o null. NUNCA un monto (CR-02). */
+  nombreOrden: string | null;
   monto: string | null;
   fechaOc: string | null;
   origen: string;
@@ -145,6 +147,7 @@ function filaParaEscribir(
     estadoVinculo,
     tipoPersona: c.tipoPersona,
     organismo: c.organismo,
+    nombreOrden: c.nombreOrden,
     monto: c.monto,
     fechaOc: c.fechaOc,
     origen: c.origen,

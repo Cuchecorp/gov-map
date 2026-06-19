@@ -80,9 +80,13 @@ export function parseContratos(json: unknown, opts: ParseContratosOpts): Contrat
       proveedorNombre: orNull(opts.proveedorNombre) ?? orNull(orden.Nombre),
       tipoPersona: tp,
       organismo,
-      // El "monto" del listado de ChileCompra no es un campo numerico fijo aqui; se preserva el
-      // estado/nombre crudo de la orden como contenido VERBATIM. No se computa ningun total.
-      monto: orNull(orden.Nombre),
+      // CR-02: `orden.Nombre` es el NOMBRE/DESCRIPCION de la orden (texto libre), NO un monto.
+      // Se preserva VERBATIM en `nombreOrden`. NUNCA se etiqueta como "Monto".
+      nombreOrden: orNull(orden.Nombre),
+      // CR-02: el listado `ordenesdecompra.json` NO trae un campo monetario fijo garantizado
+      // (RESEARCH A2/OQ1). Honestidad: `monto` queda null en vez de presentar un no-monto como
+      // dinero. Si una fuente futura expone un total numerico real, se mapea aqui.
+      monto: null,
       fechaOc: orNull(orden.FechaEnvio),
       origen: ORIGEN_DINERO,
       fecha_captura: fechaCaptura,

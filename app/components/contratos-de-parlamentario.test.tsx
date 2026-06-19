@@ -15,13 +15,17 @@ afterEach(cleanup);
 const HEADING = "Contratos del Estado asociados al RUT";
 
 // ── Fixtures ───────────────────────────────────────────────────────────────────
+// Fixture FIEL al output real del parser (CR-02 / IN-02): `nombre_orden` lleva la descripción de
+// la orden (texto libre); `monto` es null (la fuente NO trae un monto fijo) — antes el fixture
+// inventaba `monto: "$ 124.500.000"` que el pipeline NUNCA produce, enmascarando el defecto.
 function makeContrato(overrides: Partial<ContratoRow> = {}): ContratoRow {
   return {
     codigo_orden: "1509-512-SE26",
     proveedor_nombre: "Constructora Andes SpA",
     tipo_persona: "jurídica",
     organismo: "Ministerio de Obras Públicas",
-    monto: "$ 124.500.000",
+    nombre_orden: "Construcción de obras viales",
+    monto: null,
     fecha_oc: "2026-03-12T00:00:00Z",
     origen: "chilecompra",
     fecha_captura: "2026-06-18T00:00:00Z",
@@ -214,7 +218,7 @@ describe("ContratosView — provenance por fila + cero cómputo", () => {
     expect(screen.getAllByText(/ChileCompra/i).length).toBeGreaterThanOrEqual(2);
   });
 
-  it("el monto se muestra literal verbatim; el UI no suma ni rankea", () => {
+  it("cuando existe un monto real se muestra literal verbatim; el UI no suma ni rankea", () => {
     const { container } = render(
       <ContratosView
         data={makeViewData({
@@ -231,5 +235,57 @@ describe("ContratosView — provenance por fila + cero cómputo", () => {
     expect(texto).toContain("$ 200");
     // Sin lenguaje de suma/total/ranking/veredicto.
     expect(texto).not.toMatch(/total|suma|monto total|mayor contrato|ranking|%/i);
+  });
+
+  // CR-02: honestidad del campo "Monto" — un no-monto NUNCA se presenta como dinero.
+  it("muestra el nombre de la orden bajo un rótulo honesto, NO bajo 'Monto'", () => {
+    render(
+      <ContratosView
+        data={makeViewData({
+          contratos: [
+            makeContrato({
+              codigo_orden: "C1",
+              nombre_orden: "Compra de insumos de oficina",
+              monto: null,
+            }),
+          ],
+        })}
+      />,
+    );
+    // El nombre/descripción de la orden aparece bajo su rótulo honesto.
+    expect(screen.getByText("Nombre de la orden:")).toBeInTheDocument();
+    expect(
+      screen.getByText("Compra de insumos de oficina"),
+    ).toBeInTheDocument();
+    // Con `monto` null, "Monto:" muestra "No publicado" — nunca la descripción como si fuera dinero.
+    const montoDt = screen.getByText("Monto:");
+    const montoDd = montoDt.nextElementSibling;
+    expect(montoDd?.textContent).toBe("No publicado");
+    expect(montoDd?.textContent).not.toContain("Compra de insumos");
+  });
+
+  it("WR-01: tolera columnas null del RPC sin crashear la fila (tipo_persona/organismo/monto)", () => {
+    const { container } = render(
+      <ContratosView
+        data={makeViewData({
+          contratos: [
+            makeContrato({
+              codigo_orden: "C1",
+              proveedor_nombre: null,
+              tipo_persona: null,
+              organismo: null,
+              nombre_orden: null,
+              monto: null,
+            }),
+          ],
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    // No crashea y rinde fallbacks honestos en vez de celdas vacías.
+    expect(texto).toContain("Proveedor no publicado");
+    expect(texto).toContain("No publicado");
+    // tipo_persona null → encuadre neutro por defecto (persona natural), sin throw.
+    expect(screen.getByText(/\(persona natural\)/)).toBeInTheDocument();
   });
 });

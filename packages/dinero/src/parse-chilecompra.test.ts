@@ -32,7 +32,10 @@ describe("parseContratos — JSON valido -> Contrato[] VERBATIM", () => {
     expect(a.codigoOrden).toBe("1509-58-SE24");
     expect(a.fuenteId).toBe("1509-58-SE24");
     expect(a.organismo).toBe("MUNICIPALIDAD X");
-    expect(a.monto).toBe("Compra de insumos"); // VERBATIM (string crudo, sin computo)
+    // CR-02: `orden.Nombre` es el NOMBRE/DESCRIPCION de la orden -> `nombreOrden`, NUNCA `monto`.
+    expect(a.nombreOrden).toBe("Compra de insumos"); // VERBATIM (texto libre de la orden)
+    // CR-02: la fuente no trae un monto fijo -> `monto` es null (nunca un no-monto bajo "Monto").
+    expect(a.monto).toBeNull();
     expect(a.fechaOc).toBe("2024-02-02");
     expect(a.rutProveedor).toBe("76.123.456-0");
     expect(a.proveedorNombre).toBe("Proveedora Ejemplo SpA");

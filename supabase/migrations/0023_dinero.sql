@@ -69,7 +69,8 @@ create table contrato (
   proveedor_nombre   text,                     -- nombre del proveedor (raw, publicado)
   tipo_persona       text,                     -- 'natural' | 'juridica' (etiqueta por tipo/umbral RUT)
   organismo          text,                     -- organismo comprador (raw, publicado)
-  monto              text,                     -- monto VERBATIM como string (NO numeric — sin computar)
+  nombre_orden       text,                     -- CR-02: nombre/descripcion de la orden (texto libre, NO un monto)
+  monto              text,                     -- monto VERBATIM como string (NO numeric — sin computar); HOY null (la fuente no trae monto fijo, CR-02)
   fecha_oc           date,                     -- fecha de la orden de compra (raw, publicada)
   -- provenance inline NOT NULL (FND-08): cada dato lleva fuente, fecha y enlace original.
   origen             text not null,            -- "chilecompra"
@@ -143,15 +144,17 @@ grant select on contratos_ingesta_estado to anon;
 create function public.contratos_de_parlamentario(p_id text)
 returns table (
   codigo_orden text, proveedor_nombre text, tipo_persona text, organismo text,
-  monto text, fecha_oc date, origen text, fecha_captura timestamptz,
+  nombre_orden text, monto text, fecha_oc date, origen text, fecha_captura timestamptz,
   fecha_corte date, enlace text, licencia text
 )
 language sql stable security definer set search_path = '' as $$
   select c.codigo_orden, c.proveedor_nombre, c.tipo_persona, c.organismo,
-         c.monto, c.fecha_oc, c.origen, c.fecha_captura, c.fecha_corte, c.enlace, c.licencia
+         c.nombre_orden, c.monto, c.fecha_oc, c.origen, c.fecha_captura, c.fecha_corte, c.enlace, c.licencia
   from public.contrato c
   where c.parlamentario_id = p_id
-  order by c.fecha_oc desc;
+  -- WR-03: fecha_oc es nullable; el default NULLS FIRST en DESC subiria las no-fechadas al tope
+  -- (invirtiendo "mas reciente primero"). `nulls last` + desempate estable por codigo_orden.
+  order by c.fecha_oc desc nulls last, c.codigo_orden desc;
 $$;
 
 -- revoke from public + grant execute a anon sobre la firma EXACTA (espejo de 0021/0022).
