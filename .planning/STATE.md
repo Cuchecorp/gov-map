@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: executing
-stopped_at: Completed 10-02-PLAN.md (@obs/votos producción; LIVE bounded 10 votaciones/1389 votos/0 errores; A1/A2 confirmados; DB write = operador Task 3)
-last_updated: "2026-06-19T13:06:31.823Z"
+status: verifying
+stopped_at: "Completed 10-03-PLAN.md (ficha /parlamentario/[id]: shell apilable + VOTE section; 82/82 tests; gate §9.1 verde; build verde; 0020 aplicación=operador)"
+last_updated: "2026-06-19T13:23:40.432Z"
 last_activity: 2026-06-19
 progress:
   total_phases: 11
-  completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
-  percent: 18
+  completed_phases: 3
+  total_plans: 8
+  completed_plans: 8
+  percent: 27
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 ## Current Position
 
-Phase: 10 (VOTE — Voto individual en la ficha) — EXECUTING
+Phase: 10 (VOTE — Voto individual en la ficha) — COMPLETE (3/3) — ready for verification
 Plan: 3 of 3
-Status: Ready to execute
-Next phase: Phase 09 — Completitud de Identidad (puede correr en paralelo); Phase 10 (@obs/votos) desbloqueada
+Status: Phase complete — ready for verification
+Next phase: Phase 11 — INT Lobby (@obs/lobby + sección de lobby apilada en la ficha; re-validar endpoint bulk de leylobby.gob.cl, dio 503 en research)
 Last activity: 2026-06-19
 
 ## Performance Metrics
@@ -82,6 +82,7 @@ Last activity: 2026-06-19
 | Phase 09 P03 | 14 | 2 tasks | 4 files |
 | Phase 10 P01 | 25min | 3 tasks | 8 files |
 | Phase 10 P02 | 20min | 3 tasks | 10 files |
+| Phase 10 P03 | 9min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 10]: [10-01]: 0019 — rebeldias_de_parlamentario security definer (lee partido interno, emite solo derivado publico); votos_de_parlamentario invoker; CERO policy/grant sobre partido (LEGAL-03); aplicada al remoto + pgTAP 13/13
 - [Phase ?]: [Phase 10]: [10-02]: @obs/votos producción = runner DELGADO runCamaraVotos que reusa runIngest/reconciliarVotosCamara/SupabaseTramitacionWriter verbatim; corrida acotada obligatoria (boletines o limite); spike eliminado
 - [Phase ?]: [Phase 10]: [10-02]: LIVE bounded Leg-58 (14309/18296): 10 votaciones/1389 votos/0 errores/idempotente; A1/A2 CONFIRMADOS — abstencion y ausente traen DIPID por diputado y cruzan determinístico; ratio cruce 83% (fail-closed honesto); escritura a Supabase = paso de operador
+- [Phase ?]: [Phase 10]: [10-03]: ficha /parlamentario/[id] = shell de secciones APILABLES (cada sección su <h2>+Suspense+empty honesto) — seam para INT/MONEY; el chip de partido se OMITE (deny-by-default, LEGAL-03)
+- [Phase ?]: [Phase 10]: [10-03]: RPC parlamentario_publico (0020, security definer) = único canal público a la maestra deny-by-default; emite solo cabecera, NUNCA partido/rut/email (espejo de rebeldias_de_parlamentario)
 
 ### Pending Todos
 
@@ -154,8 +157,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T13:06:31.815Z
-Stopped at: Completed 10-02-PLAN.md (@obs/votos producción; LIVE bounded 10 votaciones/1389 votos/0 errores; A1/A2 confirmados; DB write = operador Task 3)
+Last session: 2026-06-19T13:23:34.045Z
+Stopped at: Completed 10-03-PLAN.md (ficha /parlamentario/[id]: shell apilable + VOTE section; 82/82 tests; gate §9.1 verde; build verde; 0020 aplicación=operador)
 Resume file: None
 
 ## Operator Next Steps
