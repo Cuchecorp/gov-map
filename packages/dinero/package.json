@@ -11,7 +11,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -b",
-    "ingest": "tsx src/ingest-cli.ts"
+    "ingest": "tsx src/ingest-cli.ts",
+    "ingest:servel": "tsx src/ingest-cli-servel.ts"
   },
   "dependencies": {
     "@obs/adjudication": "workspace:*",

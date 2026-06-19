@@ -140,3 +140,21 @@ export { InMemoryServelWriter, versionKeyServel } from "./writer-servel";
 export type { ServelWriter } from "./writer-servel";
 export { SupabaseServelWriter } from "./writer-supabase-servel";
 export type { SupabaseServelWriterOptions } from "./writer-supabase-servel";
+
+// Orquestacion SERVEL (drift BLOQUEANTE run-level: cualquier mismatch -> cuarentena, 0 filas).
+export { runIngestServel } from "./ingest-run-servel";
+export type {
+  RunIngestServelOpts,
+  RunIngestServelResult,
+  TareaEleccion,
+  DegradacionDinero as DegradacionServel,
+  SubirCrudoFn,
+} from "./ingest-run-servel";
+
+// CLI de ingesta SERVEL (corrida LIVE acotada / degrada a dry-run sin key).
+export {
+  parseArgs as parseServelArgs,
+  main as ingestServelMain,
+  ServelCliArgsError,
+} from "./ingest-cli-servel";
+export type { ServelCliOptions, ServelCliResult } from "./ingest-cli-servel";
