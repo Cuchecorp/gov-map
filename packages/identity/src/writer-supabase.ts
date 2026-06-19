@@ -23,6 +23,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Parlamentario } from "@obs/core";
 import type { MaestraWriter } from "./seeder";
+import type { FilaRutEscribir, RutBackfillWriter } from "./backfill-rut";
 
 export interface SupabaseMaestraWriterOptions {
   /** URL del Supabase LOCAL (p.ej. http://127.0.0.1:54421). */
@@ -48,7 +49,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
  * Writer real contra Supabase local. Upsert idempotente por clave natural, partido por cámara
  * (cada índice único parcial necesita su propio `onConflict`).
  */
-export class SupabaseMaestraWriter implements MaestraWriter {
+export class SupabaseMaestraWriter implements MaestraWriter, RutBackfillWriter {
   private readonly client: SupabaseClient;
   private readonly table: string;
 
@@ -102,5 +103,42 @@ export class SupabaseMaestraWriter implements MaestraWriter {
       promovidos += data?.length ?? 0;
     }
     return { promovidos };
+  }
+
+  /**
+   * Backfill del `rut` interno (IDENT-10): actualiza SOLO `rut`+provenance de las filas cuyos
+   * `id` se pasan. Espeja `promoteToConfirmado` (update por PK estable `id`, sin tocar nada
+   * fuera del lote), pero cada fila lleva SU PROPIO `rut`/provenance, así que el update es
+   * POR FILA (`.update({...}).eq("id", ...)`) — un `.in("id", lote)` fijaría el mismo valor a
+   * todo el lote, lo que sería incorrecto. El lote acota la concurrencia/IO.
+   *
+   * El caller (`runBackfillRut`) ya DV-validó cada RUT (`isRutValido`) y exigió provenance: este
+   * método NO fabrica ni valida RUT, solo persiste lo que el gate ya aprobó. Idempotente:
+   * re-escribir el mismo `rut`+provenance por `id` es un no-op semántico.
+   *
+   * `rows` vacío es un no-op (0 actualizadas).
+   */
+  async updateRut(rows: FilaRutEscribir[]): Promise<{ actualizadas: number }> {
+    const validas = rows.filter((r) => r != null && r.id !== "");
+    if (validas.length === 0) return { actualizadas: 0 };
+
+    let actualizadas = 0;
+    for (const lote of chunk(validas, PROMOTE_CHUNK)) {
+      for (const fila of lote) {
+        const { data, error } = await this.client
+          .from(this.table)
+          .update({
+            rut: fila.rut,
+            origen: fila.origen,
+            fecha_captura: fila.fecha_captura,
+            enlace: fila.enlace,
+          })
+          .eq("id", fila.id)
+          .select("id");
+        if (error) throw new Error(`updateRut falló (id=${fila.id}): ${error.message}`);
+        actualizadas += data?.length ?? 0;
+      }
+    }
+    return { actualizadas };
   }
 }

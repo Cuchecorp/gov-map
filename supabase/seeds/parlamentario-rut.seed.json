@@ -1,0 +1,11 @@
+{
+  "_documentacion": [
+    "Track B (IDENT-10): lista CURADA server-side de RUTs de parlamentarios por id, con provenance por fila.",
+    "Es el fallback GARANTIZADO del backfill: ningún catálogo oficial del Congreso expone el RUT (verificado en vivo 2026-06-18 — Senado senadores_vigentes.php no lo trae; Camara WSDiputado lo trae VACIO).",
+    "REGLA LOCKED — NUNCA fabricar un RUT: cada fila se DV-valida con isRutValido (modulo-11) ANTES de escribir (runBackfillRut). Un RUT que falla el DV o sin provenance se rechaza a un log de revision, NUNCA se escribe.",
+    "Forma de cada fila de 'filas': { id, rut, origen, fecha_captura, enlace } — id matchea la PK de la maestra (supabase/seeds/parlamentario.seed.json); rut con DV valido; provenance OBLIGATORIA (0005 NOT NULL).",
+    "Estado actual: 'filas' VACIO. En este entorno no se dispone de RUTs reales curados ni de un dataset SERVEL bulk cruzable deterministicamente (un RUT matcheado por nombre es un CANDIDATO, no un hecho). El OPERADOR puebla 'filas' con RUTs DV-validos + provenance (p.ej. declaraciones de InfoProbidad / diario oficial) y corre el backfill. NUNCA poner placeholders fabricados.",
+    "Ejemplo de fila (NO usar este RUT real): { \"id\": \"D1009\", \"rut\": \"12.345.678-5\", \"origen\": \"infoprobidad-declaracion\", \"fecha_captura\": \"2026-06-19T00:00:00Z\", \"enlace\": \"https://www.infoprobidad.cl/...\" }"
+  ],
+  "filas": []
+}

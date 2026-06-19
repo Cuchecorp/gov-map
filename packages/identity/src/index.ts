@@ -8,6 +8,19 @@ export type { Mention, Resolution, MaestraRow } from "./deterministic";
 export { confirmar } from "./enlace-confirmado";
 export type { EnlaceConfirmado } from "./enlace-confirmado";
 
+// Backfill del RUT interno (IDENT-10): DV-gate (isRutValido) + provenance + updateRut.
+// NUNCA fabrica un RUT — un DV inválido o sin provenance se rechaza a revisión.
+export { aceptarRutBackfill, runBackfillRut } from "./backfill-rut";
+export type {
+  FilaRutCruda,
+  FilaRutEscribir,
+  FilaRechazada,
+  RazonRechazo,
+  ResultadoAceptacion,
+  ResultadoBackfill,
+  RutBackfillWriter,
+} from "./backfill-rut";
+
 // Parsers de catálogo (XML real → modelo Parlamentario).
 export { parseSenado, SENADO_URL, SENADO_PERIODO } from "./parse-senado";
 export {
