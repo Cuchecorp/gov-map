@@ -15,6 +15,7 @@ interface Capturas {
   inserts: { table: string; rows: unknown }[];
   upserts: { table: string; rows: unknown }[];
   updates: { table: string; patch: Record<string, unknown>; eqs: [string, unknown][] }[];
+  rpcs: { name: string; params: Record<string, unknown> }[];
 }
 
 /**
@@ -25,11 +26,31 @@ function fakeClient(pendientes: CasoRevisionRow[]): {
   client: SupabaseClient;
   caps: Capturas;
 } {
-  const caps: Capturas = { inserts: [], upserts: [], updates: [] };
+  const caps: Capturas = { inserts: [], upserts: [], updates: [], rpcs: [] };
   const casos = new Map<number, CasoRevisionRow>();
   for (const c of pendientes) casos.set(c.id, { ...c });
 
   const client = {
+    // #3: la resolución pasa por el RPC transaccional `resolver_identidad`. El fake
+    // simula su contrato atómico: resuelve SOLO si el caso sigue 'pendiente'; si no,
+    // devuelve error (rollback total, ningún colateral). Devuelve el id del vínculo.
+    rpc(name: string, params: Record<string, unknown>) {
+      caps.rpcs.push({ name, params });
+      if (name === "resolver_identidad") {
+        const id = params.p_caso_id as number;
+        const caso = casos.get(id);
+        if (!caso || caso.estado !== "pendiente") {
+          return Promise.resolve({
+            data: null,
+            error: { message: `caso ${id} ya no estaba pendiente` },
+          });
+        }
+        caso.estado = params.p_estado as CasoRevisionRow["estado"];
+        caso.revisor_id = params.p_revisor as string;
+        return Promise.resolve({ data: 1, error: null });
+      }
+      return Promise.resolve({ data: null, error: null });
+    },
     from(table: string) {
       return {
         select(_cols?: string) {
@@ -139,31 +160,29 @@ describe("revisor-cli confirm (promueve a confirmado + audit humano)", () => {
     const w = new RevisionWriter({ url: "x", serviceKey: "x", client });
     await confirmar(w, 1, "ana");
 
-    // revision_identidad resuelto a confirmado con revisor_id.
-    const upd = caps.updates.find((u) => u.table === "revision_identidad")!;
-    expect(upd.patch.estado).toBe("confirmado");
-    expect(upd.patch.revisor_id).toBe("ana");
-    expect(upd.patch.resolved_at).toBeTruthy();
+    // #3: una sola llamada atómica al RPC resolver_identidad con el contrato completo.
+    const rpc = caps.rpcs.find((r) => r.name === "resolver_identidad")!;
+    expect(rpc.params.p_caso_id).toBe(1);
+    expect(rpc.params.p_estado).toBe("confirmado");
+    expect(rpc.params.p_revisor).toBe("ana");
+    expect(rpc.params.p_resolved_at).toBeTruthy();
+    expect(rpc.params.p_promover).toBe(true);
+    expect(rpc.params.p_decision).toBe("confirmado");
 
-    // vínculo promovido a confirmado, metodo='humano'.
-    const vinc = caps.upserts.find((u) => u.table === "vinculo_identidad")!;
-    const filaV = (vinc.rows as { estado: string; metodo: string }[])[0]!;
+    // vínculo promovido a confirmado, metodo='humano', apuntando al chosen_id (persona real).
+    const filaV = rpc.params.p_vinculo as {
+      estado: string;
+      metodo: string;
+      parlamentario_id: string | null;
+    };
     expect(filaV.estado).toBe("confirmado");
     expect(filaV.metodo).toBe("humano");
+    expect(filaV.parlamentario_id).toBe("P00042");
 
-    // vínculo apunta al chosen_id del modelo (persona real, no null).
-    const filaVid = (vinc.rows as { parlamentario_id: string | null }[])[0]!;
-    expect(filaVid.parlamentario_id).toBe("P00042");
-
-    // audit metodo='humano', decision='confirmado', revisor_id='ana'.
-    const aud = caps.inserts.find((i) => i.table === "identidad_audit")!;
-    const filaA = (aud.rows as { metodo: string; decision: string; revisor_id: string; vinculo_id: number | null }[])[0]!;
-    expect(filaA.metodo).toBe("humano");
-    expect(filaA.decision).toBe("confirmado");
-    expect(filaA.revisor_id).toBe("ana");
-    // WR-06/WR-01: el audit se enlaza al id del vínculo recién upserteado (no null),
-    // aunque el caso entró a la cola SIN vinculo_id (enqueueRevision no lo puebla).
-    expect(filaA.vinculo_id).toBe(1);
+    // El audit y el enlace audit→vínculo (WR-01/WR-06) viven DENTRO de la transacción
+    // del RPC (verificado por pgTAP en 0015); aquí no hay inserts/upserts directos.
+    expect(caps.upserts).toHaveLength(0);
+    expect(caps.inserts).toHaveLength(0);
   });
 
   it("WR-03: confirm de un caso SIN chosen_id del modelo lanza y NO escribe (no confirma a nadie)", async () => {
@@ -176,7 +195,8 @@ describe("revisor-cli confirm (promueve a confirmado + audit humano)", () => {
     ]);
     const w = new RevisionWriter({ url: "x", serviceKey: "x", client });
     await expect(confirmar(w, 1, "ana")).rejects.toThrow(/chosen_id|correct/i);
-    // Nada se resolvió ni se promovió: el caso sigue intacto.
+    // Nada se resolvió ni se promovió: el caso sigue intacto (ni siquiera se llamó al RPC).
+    expect(caps.rpcs).toHaveLength(0);
     expect(caps.updates).toHaveLength(0);
     expect(caps.upserts).toHaveLength(0);
     expect(caps.inserts).toHaveLength(0);
@@ -189,19 +209,14 @@ describe("revisor-cli reject", () => {
     const w = new RevisionWriter({ url: "x", serviceKey: "x", client });
     await rechazar(w, 1, "ana", "homónimo");
 
-    const upd = caps.updates.find((u) => u.table === "revision_identidad")!;
-    expect(upd.patch.estado).toBe("rechazado");
-    expect(upd.patch.revisor_id).toBe("ana");
-    expect(upd.patch.motivo).toBe("homónimo");
-
-    const aud = caps.inserts.find((i) => i.table === "identidad_audit")!;
-    const filaA = (aud.rows as { metodo: string; decision: string }[])[0]!;
-    expect(filaA.metodo).toBe("humano");
-    expect(filaA.decision).toBe("rechazado");
-
+    const rpc = caps.rpcs.find((r) => r.name === "resolver_identidad")!;
+    expect(rpc.params.p_estado).toBe("rechazado");
+    expect(rpc.params.p_revisor).toBe("ana");
+    expect(rpc.params.p_motivo).toBe("homónimo");
+    expect(rpc.params.p_decision).toBe("rechazado");
     // reject NO promueve un vínculo confirmado.
-    const vinc = caps.upserts.find((u) => u.table === "vinculo_identidad");
-    expect(vinc).toBeUndefined();
+    expect(rpc.params.p_promover).toBe(false);
+    expect(rpc.params.p_vinculo).toBeNull();
   });
 });
 
@@ -211,19 +226,19 @@ describe("revisor-cli correct", () => {
     const w = new RevisionWriter({ url: "x", serviceKey: "x", client });
     await corregir(w, 1, "ana", "P00077");
 
-    const upd = caps.updates.find((u) => u.table === "revision_identidad")!;
-    expect(upd.patch.estado).toBe("corregido");
-
-    const vinc = caps.upserts.find((u) => u.table === "vinculo_identidad")!;
-    const filaV = (vinc.rows as { estado: string; metodo: string; parlamentario_id: string }[])[0]!;
+    const rpc = caps.rpcs.find((r) => r.name === "resolver_identidad")!;
+    expect(rpc.params.p_estado).toBe("corregido");
+    expect(rpc.params.p_decision).toBe("corregido");
+    expect(rpc.params.p_revisor).toBe("ana");
+    expect(rpc.params.p_promover).toBe(true);
+    const filaV = rpc.params.p_vinculo as {
+      estado: string;
+      metodo: string;
+      parlamentario_id: string;
+    };
     expect(filaV.parlamentario_id).toBe("P00077");
     expect(filaV.estado).toBe("confirmado");
     expect(filaV.metodo).toBe("humano");
-
-    const aud = caps.inserts.find((i) => i.table === "identidad_audit")!;
-    const filaA = (aud.rows as { decision: string; revisor_id: string }[])[0]!;
-    expect(filaA.decision).toBe("corregido");
-    expect(filaA.revisor_id).toBe("ana");
   });
 
   it("correct con chosen-id mal formado → error claro, sin escritura", async () => {
