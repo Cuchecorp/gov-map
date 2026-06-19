@@ -33,6 +33,16 @@ export const BOLETIN_RE = /^\d{3,6}(-\d{1,2})?$/;
 // guard temprano evita gastar una consulta en basura del path. Sin flag `g`.
 export const PARLAMENTARIO_ID_RE = /^P\d{5}$/;
 
+// Id de contraparte (Phase 16) consumido por /contraparte/[id]: el RPC
+// `agregado_por_contraparte` (Plan 16-01) emite ids PREFIJADOS — 'c:<rut_proveedor>'
+// (faceta contratos) / 'd:<donante_nombre>' (faceta aportes). El path se valida con
+// este regex ANTES de tocar la DB (V5 / T-16-08): se rechaza cualquier id sin el
+// prefijo 'c:'/'d:' o con caracteres de control / path-traversal. El charset es
+// ancho lo justo para un `donante_nombre` (letras, dígitos, espacio, punto, guion,
+// guion bajo) pero NO admite '/', '\\', saltos de línea ni otros control chars. Sin
+// flag `g` → `.test()` es stateless.
+export const CONTRAPARTE_ID_RE = /^[cd]:[A-Za-z0-9 .\-_]+$/;
+
 /** Cap defensivo de la consulta (V5 input validation). #36: fuente única. */
 export const MAX_QUERY_CHARS = 300;
 

@@ -322,6 +322,31 @@ export interface AporteRpcRow {
 }
 
 /**
+ * Fila CRUDA del RPC `agregado_por_contraparte` (Plan 16-01, security definer,
+ * jurídica-only). El RPC es prefix-dispatched por el id ('c:<rut_proveedor>' →
+ * faceta contratos; 'd:<donante_nombre>' → faceta aportes) y devuelve UNA fila por
+ * contraparte jurídica matcheada. `facet` discrimina la faceta; `contraparte_nombre`
+ * es el nombre PÚBLICO de la jurídica (NUNCA el de una persona natural, NUNCA un
+ * RUT/llave de donante); `conteo` es el agregado NEUTRAL (count, jamás una suma de
+ * montos); `filas` son las filas de hecho verbatim, cada una con su provenance —
+ * `ContratoRpcRow[]` cuando `facet === 'contrato'`, `AporteRpcRow[]` cuando
+ * `facet === 'aporte'`. El UI despacha por `facet` y NUNCA compone una contraparte
+ * de dinero junto a un voto (regla rectora dura anti-insinuación, 16-CONTEXT.md).
+ */
+export interface AgregadoContraparteRpcRow {
+  facet: "contrato" | "aporte";
+  // Nombre público de la jurídica; null-safe (el UI cae a un fallback honesto).
+  contraparte_nombre: string | null;
+  // Siempre 'juridica' (el RPC filtra); el UI lo re-verifica como defensa en profundidad.
+  tipo_persona: string | null;
+  // Agregado NEUTRAL: cantidad de filas. NUNCA una suma de montos.
+  conteo: number;
+  // Filas de hecho verbatim de la faceta, con provenance por fila. La unión refleja
+  // el discriminante `facet`; el consumidor estrecha por faceta antes de renderizar.
+  filas: ContratoRpcRow[] | AporteRpcRow[];
+}
+
+/**
  * Fila CRUDA del RPC `comparar_declaraciones` (migración 0022, security definer).
  * El RPC devuelve los campos declarados LITERALES en FILAS (etiqueta/valor), una
  * por (versión × campo). CERO columna de delta/variación/enriquecimiento/veredicto
