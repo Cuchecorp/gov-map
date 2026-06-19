@@ -8,6 +8,18 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato mostrado lleva fuente, fecha y enlace original, sin afirmar nunca intención ni causalidad.
 
+## Current Milestone: v2.0 Parlamentarios 360
+
+**Goal:** Construir el frente "análisis de parlamentarios 360" — cómo vota, con quién se reúne (lobby), qué declara (patrimonio e intereses) y qué dinero lo rodea (financiamiento y contratos del Estado) cada parlamentario — sobre la maestra de identidad sembrada en v1.0, manteniendo la regla rectora (trazabilidad sobre interpretación, nunca causalidad).
+
+**Target features:**
+- **Voto individual (VOTE)** — Cómo vota cada parlamentario y cruce voto × tema. Arranca con un spike de validación de `opendata.camara.cl` (fuente del voto por diputado, nunca validada en vivo); si no entrega el voto individual, se replanifica el bloque.
+- **Lobby + Patrimonio (INT)** — Reuniones de lobby + declaraciones de patrimonio e intereses (InfoProbidad, CC BY 4.0).
+- **Dinero (MONEY)** — Financiamiento SERVEL + contratos ChileCompra por RUT (conector SERVEL artesanal/frágil, no API REST).
+- **Grafo de influencia (NET)** — Red de relaciones cruzadas; se habilita al final, cuando el modelo parlamentario ya esté poblado.
+
+**Postura con datos sensibles:** minimización + trazabilidad estricta. Solo se muestra lo que la fuente pública ya publica (con fuente/fecha/enlace); RUT y datos de familiares quedan en uso interno para reconciliar identidad. Ley 21.719 (plena vigencia 2026-12-01) → pasada de asesoría legal antes de cualquier exposición pública amplia.
+
 ## Requirements
 
 ### Validated
@@ -36,9 +48,9 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 ### Active
 
-<!-- Próximo milestone = v2.0 "parlamentarios 360". Definir con /gsd:new-milestone. -->
+<!-- Milestone activo = v2.0 "parlamentarios 360". Requisitos detallados en .planning/REQUIREMENTS.md, fases en .planning/ROADMAP.md. -->
 
-- [ ] **v2.0 — frente "parlamentarios 360"**: voto individual por parlamentario (validar `opendata.camara.cl`), lobby + patrimonio (InfoProbidad), dimensión dinero (SERVEL/ChileCompra), grafo de influencia.
+- [ ] **v2.0 — frente "parlamentarios 360"** (en curso): voto individual por parlamentario (spike de validación `opendata.camara.cl` como Fase 1), lobby + patrimonio (InfoProbidad), dimensión dinero (SERVEL/ChileCompra), grafo de influencia.
 
 ### Out of Scope
 
@@ -105,4 +117,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-18 after v1.0 milestone (MVP — Proyectos de Ley + Fundaciones de Identidad)*
+*Last updated: 2026-06-18 — started milestone v2.0 (Parlamentarios 360)*

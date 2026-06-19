@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: Awaiting next milestone
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-06-18T22:42:59.168Z"
-last_activity: 2026-06-18 — Milestone v1.0 completed and archived
+milestone: v2.0
+milestone_name: Parlamentarios 360
+status: planning
+last_updated: "2026-06-19T01:33:40.699Z"
+last_activity: 2026-06-19
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 25
-  completed_plans: 25
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-17)
 
 ## Current Position
 
-Phase: Milestone v1.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-18 — Milestone v1.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-06-19 — Milestone v2.0 started
 
 ## Performance Metrics
 
