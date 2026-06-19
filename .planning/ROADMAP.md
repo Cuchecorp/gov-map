@@ -214,7 +214,7 @@ Plans:
 
 - [ ] 14-01-PLAN.md — Migración 0023_dinero.sql (contrato public-read versionado por (fuente_id, fecha_corte) + contratista deny-by-default + revoke + contratos_ingesta_estado + RPC contratos_de_parlamentario security-definer) + pgTAP 0024_dinero.test.sql; apply remoto + pgTAP verde = checkpoint operador
 - [ ] 14-02-PLAN.md — Conector @obs/dinero (espeja @obs/probidad): flujo ChileCompra 2 pasos (BuscarProveedor→ordenesdecompra) + DV módulo-11 + natural/jurídica + sub-maestra contratista + enlace SOLO RUT-exacto (sin correrPipeline) + writer idempotente + MERCADOPUBLICO_TICKET; corrida LIVE acotada (operador)
-- [ ] 14-03-PLAN.md — Sección /parlamentario/[id] "Contratos del Estado asociados al RUT": carril propio (mt-12) gateado por moneyPublicEnabled() (default OFF), 3 estados honestos, persona jurídica nunca posesivo, ProvenanceBadge + fecha de corte por fila, rama ChileCompra en sourceLabel
+- [x] 14-03-PLAN.md — Sección /parlamentario/[id] "Contratos del Estado asociados al RUT": carril propio (mt-12) gateado por moneyPublicEnabled() (default OFF), 3 estados honestos, persona jurídica nunca posesivo, ProvenanceBadge + fecha de corte por fila, rama ChileCompra en sourceLabel ✅ (ContratosView/ContratosSection + 12 tests RTL verdes; tsc limpio en archivos del plan)
 
 ### Phase 15: MONEY Financiamiento — SERVEL verbatim + sub-maestra de donantes
 

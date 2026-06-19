@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: "14-01 tareas autónomas completas (0023_dinero.sql + 0024_dinero.test.sql); Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE — apply remoto + pgTAP 0024 (acción de operador)"
-stopped_at: "13-01: tareas autonomas completas (money-gate.ts + Vitest 5/5, .env.example, pgTAP 0023). Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE: pgTAP 0023 contra el remoto."
-last_updated: "2026-06-19T18:20:17.976Z"
+status: "14-03 COMPLETO — sección de ficha 'Contratos del Estado asociados al RUT' gated tras moneyPublicEnabled() (default OFF); 12 tests RTL verdes; tsc limpio en archivos del plan. 14-01/14-02 tienen checkpoints de operador pendientes (apply remoto + LIVE probe)."
+stopped_at: "14-03: tareas autónomas completas (ContratosView + ContratosSection gated, sourceLabel ChileCompra, mount #dinero en page.tsx, 12 tests RTL). pnpm test 127/127 verde."
+last_updated: "2026-06-19T18:30:00.000Z"
 last_activity: 2026-06-19
 progress:
   total_phases: 11
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 18
-  completed_plans: 18
-  percent: 55
+  completed_plans: 19
+  percent: 64
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 14 (MONEY Contratos — ChileCompra por RUT + sub-maestra de contratistas) — EXECUTING
-Plan: 1 of N
-Status: 14-01 tareas autónomas completas (0023_dinero.sql + 0024_dinero.test.sql); Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE — apply remoto + pgTAP 0024 (acción de operador)
-Next plan: 14-02 (conector @obs/dinero — ingesta ChileCompra) tras resolver el checkpoint de 14-01
+Plan: 14-03 COMPLETO (sección de ficha gated)
+Status: 14-03 entregado — ContratosView/ContratosSection + sourceLabel ChileCompra + mount #dinero gated; 12 tests RTL verdes, tsc limpio en archivos del plan. Pendientes de OPERADOR: 14-01 apply remoto + pgTAP 0024; 14-02 LIVE probe ChileCompra.
+Next plan: cerrar checkpoints de operador de 14-01/14-02; luego Phase 15 (MONEY SERVEL) o encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
 Last activity: 2026-06-19
 
 ## Performance Metrics
@@ -89,6 +89,7 @@ Last activity: 2026-06-19
 | Phase 12 P01 | 18min | 3 tasks | 2 files |
 | Phase 12 P02 | 38min | 3 tasks | 19 files |
 | Phase 12 P03 | 9min | 3 tasks | 5 files |
+| Phase 14 P03 | 25min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -148,6 +149,7 @@ Recent decisions affecting current work:
 - [Phase ?]: 12-02: @obs/probidad parsea SPARQL-JSON LITERAL sin LLM keyed por (fuenteId, fechaPresentacion); writer onConflict incluye fecha_presentacion (versiones acumulan, nunca sobreescribe); declarante name-only solo-determinista (EnlaceConfirmado+identidad_audit); familiares deny-by-default
 - [Phase ?]: [Phase 12]: [12-03]: sección patrimonio en carril propio (mt-12, sibling de #lobby); comparación SOLO-datos vía shadcn Table con CERO veredicto/delta (campo ausente = 'No declarado en esta versión'); CC BY 4.0 visible en intro Y caption; fecha de presentación PROMINENTE (mono, 'Presentada el') + ámbar + caveat histórico
 - [Phase ?]: [Phase 12]: [12-03]: content-gate test ejerce LISTA Y COMPARACIÓN (cierra la brecha representado de Phase 11); el UI NO computa nada (modelado RPC en el Server Component); comparación SSR ?comparar=A,B sin motor de diff cliente
+- [Phase 14]: [14-03]: sección de ficha 'Contratos del Estado asociados al RUT' (carril propio mt-12, sibling de #patrimonio); el gate moneyPublicEnabled() envuelve la <section> ENTERA en page.tsx (heading incluido) — OFF (default) => nodo ausente del HTML, no oculto-con-CSS; ContratosSection igual retorna null antes de tocar Supabase (doble candado). Tres estados honestos distintos (no_consultado/consultado_sin_contratos/enlazado); persona jurídica = sujeto proveedor + 'Enlazado por RUT al parlamentario.' en línea separada (sin posesivo); atribución 'mención de la fuente' (NO CC BY 4.0); throw en rpcError (#34). sourceLabel gana rama chilecompra/mercado->'ChileCompra'. 12 tests RTL verdes.
 - [Phase ?]: [Phase 13]: [13-01]: candado B = flag server-only moneyPublicEnabled(env) fail-closed (solo 'true' literal enciende; ausencia/''/'false'/'1'/'TRUE' => false), import 'server-only' linea 1, sin NEXT_PUBLIC_; ubicado en app/lib/ (consumidor = ficha Next.js), sin canal Postgres (diferido a 14-16). pgTAP 0023 re-afirma el piso deny-by-default sobre pii_contraparte_declaracion (RLS + cero policies + anon sin grant SELECT) = contrato que toda money_* de 14-16 hereda; Phase 13 NO introduce DDL MONEY.
 
 ### Pending Todos
@@ -177,8 +179,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T18:20:12.219Z
-Stopped at: 13-01: tareas autonomas completas (money-gate.ts + Vitest 5/5, .env.example, pgTAP 0023). Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE: pgTAP 0023 contra el remoto.
+Last session: 2026-06-19T18:30:00.000Z
+Stopped at: 14-03 COMPLETO — sección de ficha Contratos gated tras moneyPublicEnabled(); 12 tests RTL + pnpm test 127/127 verde; tsc limpio en archivos del plan.
 Resume file: None
 
 ## Operator Next Steps
