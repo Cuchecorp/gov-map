@@ -15,5 +15,5 @@
     { "path": "../tramitacion" }
   ],
   "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.test.ts", "spike", "dist"]
+  "exclude": ["src/**/*.test.ts", "dist"]
 }
