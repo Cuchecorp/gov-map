@@ -97,6 +97,83 @@ export interface MatchProyectoRow {
   similarity: number;
 }
 
+/**
+ * Cabecera pública del parlamentario (RPC `parlamentario_publico`, migración 0020).
+ *
+ * `parlamentario` es deny-by-default (RLS on, cero policies, 0005/0018): anon NO
+ * lee NINGUNA columna directamente. Este RPC `security definer` emite SOLO los
+ * campos públicos-seguros de la cabecera — NUNCA `partido` (afiliación política,
+ * dato sensible Ley 21.719), `rut` ni `email` (LEGAL-03). El chip de bancada/
+ * partido de UI-SPEC §3.1 queda OMITIDO en consecuencia (no anon-readable).
+ */
+export interface ParlamentarioPublicoRow {
+  id: string;
+  nombre: string;
+  camara: "diputados" | "senado";
+  region: string | null;
+  distrito: string | null;
+  circunscripcion: string | null;
+  periodo: string | null;
+  origen: string;
+  fecha_captura: string;
+  enlace: string | null;
+}
+
+/**
+ * Fila del RPC `votos_de_parlamentario` (migración 0019). El RPC devuelve SOLO
+ * filas confirmadas (`estado_vinculo='confirmado'`), por eso no trae
+ * `mencion_nombre`/`parlamentario_id`/`estado_vinculo`: la identidad ya está
+ * confirmada y la subjetividad de la ficha es el propio parlamentario. El
+ * `boletin` es el COMPLETO con sufijo → enlaza a `/proyecto/[boletin]`.
+ */
+export interface VotoFichaRow {
+  votacion_id: string;
+  boletin: string;
+  fecha: string;
+  seleccion: Seleccion;
+  etapa: string | null;
+  camara: "diputados" | "senado";
+  origen: string;
+  fecha_captura: string;
+  enlace: string | null;
+}
+
+/**
+ * Fila CRUDA orientada a la guarda de identidad de la ficha (estado (b),
+ * UI-SPEC §3.6). El RPC confirmado no la emite (no hay menciones no verificadas
+ * confirmadas), pero el componente `VotoFichaRow` la soporta para que una
+ * mención `probable`/`no_confirmado` se renderice con `IdentityMarker` y NUNCA
+ * como enlace al parlamentario. La usan los fixtures de test de los 3 estados.
+ */
+export interface VotoFichaMencion {
+  votacion_id: string;
+  boletin: string;
+  fecha: string;
+  seleccion: Seleccion;
+  camara: "diputados" | "senado";
+  origen: string;
+  fecha_captura: string;
+  enlace: string | null;
+  /** Nombre crudo de la fuente (estado (b)). */
+  mencion_nombre: string;
+  parlamentario_id: string | null;
+  estado_vinculo: EstadoVinculo | null;
+}
+
+/**
+ * Fila del RPC `rebeldias_de_parlamentario` (migración 0019, security definer).
+ * Derivado público: votación + boletín + selección propia + opción mayoritaria
+ * de la bancada en ESA misma votación. CERO score, CERO etiqueta de juicio; la
+ * bancada cruda nunca se expone.
+ */
+export interface RebeldiaRow {
+  votacion_id: string;
+  boletin: string;
+  fecha: string;
+  seleccion_propia: Seleccion;
+  mayoria_bancada: Seleccion;
+}
+
 /** Etiqueta legible de la fuente para el ProvenanceBadge. */
 export function sourceLabel(origen: string | null): string {
   const o = (origen ?? "").toLowerCase();

@@ -27,6 +27,12 @@ import type { MatchProyectoRow } from "@/lib/types";
 // en vez de redefinirlo (antes triplicado). Sin flag `g` → `.test()` es stateless.
 export const BOLETIN_RE = /^\d{3,6}(-\d{1,2})?$/;
 
+// Id interno de la maestra (0005): "P" + 5 dígitos (p.ej. "P00001"). Validador
+// ÚNICO del path `[id]` de /parlamentario/[id] (V5 input validation): se rechaza
+// cualquier formato no-id ANTES de tocar la DB. `.rpc()` ya parametriza, pero el
+// guard temprano evita gastar una consulta en basura del path. Sin flag `g`.
+export const PARLAMENTARIO_ID_RE = /^P\d{5}$/;
+
 /** Cap defensivo de la consulta (V5 input validation). #36: fuente única. */
 export const MAX_QUERY_CHARS = 300;
 

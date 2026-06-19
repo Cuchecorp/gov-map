@@ -15,7 +15,10 @@ import type { VotoRow as VotoRowData, Seleccion } from "@/lib/types";
  * NUNCA se afirma una identidad no confirmada como enlace.
  */
 
-const SELECCION_STYLE: Record<Seleccion, { label: string; className: string }> = {
+export const SELECCION_STYLE: Record<
+  Seleccion,
+  { label: string; className: string }
+> = {
   si: { label: "Sí", className: "bg-green-100 text-green-800" },
   no: { label: "No", className: "bg-red-100 text-red-800" },
   abstencion: { label: "Abstención", className: "bg-amber-100 text-amber-800" },
