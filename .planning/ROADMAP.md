@@ -56,7 +56,7 @@ Sub-maestras se construyen en su bloque, NO se difieren a NET: lobista/gestor (P
 
 ### Phases
 
-- [ ] **Phase 8: VOTE Spike — Validación en vivo de `opendata.camara.cl`** - Gate confirm-or-replan: ¿llega el voto por diputado con `Diputado/Id` + `Opcion` no nulos?
+- [x] **Phase 8: VOTE Spike — Validación en vivo de `opendata.camara.cl`** - Gate confirm-or-replan: ✅ CONFIRMADO (2026-06-19) — voto por diputado con `Diputado/DIPID` + `Opcion` no nulos, mapeo determinista 100%.
 - [ ] **Phase 9: Completitud de Identidad — Backfill RUT + Invariante de Writer + Piso PII** - Prerrequisito de toda atribución por RUT; el writer-guard tipado y la RLS/data-routing PII aterrizan antes del primer dataset nuevo
 - [ ] **Phase 10: VOTE — Voto individual por parlamentario en la ficha** - Conector `@obs/votos` enriquece el voto existente por DIPID; lista de votos, asistencia, voto×tema y rebeldías en `/parlamentario/[id]`
 - [ ] **Phase 11: INT Lobby — Reuniones de lobby + sub-maestra de contrapartes** - `@obs/lobby` ingiere audiencias; primera sección multi-dataset de la ficha del parlamentario
@@ -252,7 +252,7 @@ Sub-maestras se construyen en su bloque, NO se difieren a NET: lobista/gestor (P
 | 5. Tramitación Core — Ficha + Timeline + Votaciones | v1.0 | 5/5 | Complete | 2026-06-18 |
 | 6. Citaciones + Tabla Semanal de Sala | v1.0 | 4/4 | Complete | 2026-06-18 |
 | 7. Búsqueda Semántica + Fichas Estructuradas | v1.0 | 3/3 | Complete | 2026-06-18 |
-| 8. VOTE Spike — Validación `opendata.camara.cl` | v2.0 | 0/? | Not started | - |
+| 8. VOTE Spike — Validación `opendata.camara.cl` | v2.0 | 1/1 | ✅ Complete (CONFIRMAR) | 08-01 |
 | 9. Completitud de Identidad — RUT + Writer-invariant + Piso PII | v2.0 | 0/? | Not started | - |
 | 10. VOTE — Voto individual en la ficha | v2.0 | 0/? | Not started | - |
 | 11. INT Lobby — Reuniones + sub-maestra contrapartes | v2.0 | 0/? | Not started | - |

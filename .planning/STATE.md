@@ -1,16 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: Parlamentarios 360
-status: planned
-last_updated: "2026-06-19T01:33:40.699Z"
-last_activity: 2026-06-19
+milestone_name: — Parlamentarios 360
+status: executing
+stopped_at: Phase 8 VOTE spike COMPLETADO — decisión CONFIRMAR registrada
+last_updated: "2026-06-19T03:25:00.000Z"
+last_activity: 2026-06-19 -- Phase 8 VOTE spike CONFIRMÓ (corrida LIVE OK)
 progress:
   total_phases: 11
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
+  percent: 9
 ---
 
 # Project State
@@ -20,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 08 — VOTE Spike: validación en vivo de `opendata.camara.cl` (gate confirm-or-replan)
+**Current focus:** Phase 8 — VOTE Spike — Validación en vivo de opendata.camara.cl
 
 ## Current Position
 
-Phase: 08 — VOTE Spike — Validación en vivo de `opendata.camara.cl` (roadmapped, not started)
-Plan: —
-Status: Roadmap v2.0 creado (Phases 8-18). Próximo: planificar Phase 8 (`/gsd:plan-phase 8`).
-Next phase after 8: Phase 09 — Completitud de Identidad (puede correr en paralelo con 8; VOTE Cámara usa DIPID, no RUT)
-Last activity: 2026-06-19 — Roadmap de milestone v2.0 creado (24/24 requisitos mapeados, 11 fases)
+Phase: 8 (VOTE Spike — Validación en vivo de opendata.camara.cl) — COMPLETADO ✅
+Plan: 1 of 1 (completado)
+Status: Phase 8 cerrado — decisión binaria CONFIRMAR (construir Phase 10 tal cual)
+Next phase: Phase 09 — Completitud de Identidad (puede correr en paralelo); Phase 10 (@obs/votos) desbloqueada
+Last activity: 2026-06-19 -- Phase 8 VOTE spike CONFIRMÓ (corrida LIVE OK, mapeo 100%)
 
 ## Performance Metrics
 
@@ -110,6 +111,7 @@ Recent decisions affecting current work:
 - [Phase 06]: runIngest degrada honestamente: tabla de Cámara→PDF sin fabricar filas; 403 persistente degrada esa fuente sin abortar el Senado
 - [Phase 07]: [07-01]: gate de extracción literal golden (precision>=0.95 BLOQUEA CI); 0011 — RPC match_proyectos ordena por distancia CRUDA `<=>` ASC (HNSW), grant execute a anon
 - [Phase 07]: [07-02]: texto-fuente reusa @obs/ingest en orden LOCKED; degradacion encadenada texto null→idea_matriz null→embed titulo+materia (nunca fabrica)
+- [Phase 08]: [08-01]: VOTE spike CONFIRMÓ EN VIVO — `getVotacion_Detalle` entrega DIPID+Opcion no-null, totales reconcilian (count(si)===total_si, count(no)===total_no), y DIPID mapea a `id_diputado_camara` determinísticamente al 100% sobre 6 votaciones Leg-58 (boletines 14309/18296). Decisión binaria: **CONFIRMAR** → construir Phase 10 (@obs/votos) tal cual. Corrida LIVE 2026-06-19: 8 requests, 0 errores, delay 2-3s LOCKED reflejado. El allowlist NO requiere edición (camara.cl ya es sufijo)
 
 ### Pending Todos
 
@@ -117,7 +119,7 @@ None yet for v2.0.
 
 ### Blockers/Concerns
 
-- [v2.0 Phase 8 — GATE]: `opendata.camara.cl` (voto individual por diputado) sin validar EN VIVO. Spike confirm-or-replan: si `Diputado/Id`+`Opcion` no vienen poblados o no mapean a `id_diputado_camara`, se replanifica SOLO el bloque VOTE (no bloquea INT/MONEY). Doc dice que el shape existe (MEDIUM-HIGH) → spike esperado a confirmar, no a descubrir bloqueo.
+- [v2.0 Phase 8 — GATE] ✅ RESUELTO 2026-06-19: spike CONFIRMÓ EN VIVO que `opendata.camara.cl/getVotacion_Detalle` entrega `Diputado/DIPID`+`Opcion` poblados (no null), totales reconcilian y DIPID mapea a `id_diputado_camara` al 100% en la muestra Leg-58. Decisión: **CONFIRMAR** — Phase 10 (@obs/votos) desbloqueada, construir tal cual. (No se replanifica el bloque VOTE.)
 - [v2.0 Phase 11 re-validar]: endpoint bulk de `leylobby.gob.cl` devolvió 503 en research — re-validar antes de construir `@obs/lobby`.
 - [v2.0 Phase 15 — riesgo conocido]: conector SERVEL artesanal/frágil (no API REST). Drift BLOQUEANTE + reconciliación de completitud obligatorios; una corrida parcial se pone en cuarentena, nunca emite filas silenciosamente. Agregar `servel.cl`/`aportes.servel.cl` al allowlist.
 - [v2.0 Phase 14 — quota]: ChileCompra rate/quota (10k req/día) con fan-out por ~186 RUTs → barrido serial vía pgmq + GH Actions; "consultado-cero" ≠ "no-consultado".
@@ -136,11 +138,12 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19 — Roadmap v2.0 creado
-Stopped at: ROADMAP.md (Phases 8-18) + REQUIREMENTS.md traceability + STATE.md actualizados
+Last session: 2026-06-19 — Phase 8 VOTE spike ejecutado y CONFIRMADO
+Stopped at: Phase 8 cerrado — FINDINGS + decisión CONFIRMAR en 08-SUMMARY.md y STATE.md
 Resume file: None
 
 ## Operator Next Steps
 
-- Planificar la primera fase de v2.0 con `/gsd:plan-phase 8` (VOTE Spike — gate confirm-or-replan).
-- Phase 9 (Identidad) puede planificarse/correr en paralelo con Phase 8 (VOTE Cámara usa DIPID, no RUT).
+- Phase 8 CONFIRMÓ: planificar Phase 10 (`@obs/votos` producción) con `/gsd:plan-phase 10` — conector + modelo de voto + reconciliación + ficha, reusando los símbolos v1.0 validados.
+- Phase 9 (Identidad) puede planificarse/correr en paralelo (VOTE Cámara usa DIPID, no RUT).
+- El paquete `packages/votos` es throwaway (spike); Phase 10 lo reemplaza con `src/` de producción.
