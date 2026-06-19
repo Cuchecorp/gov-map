@@ -264,6 +264,29 @@ export interface DeclaracionRpcRow {
 }
 
 /**
+ * Fila CRUDA del RPC `contratos_de_parlamentario` (Plan 14-01, security definer).
+ * El RPC proyecta SOLO los campos publicados por ChileCompra (Mercado Público) del
+ * contrato — el SUJETO es la entidad proveedora (`proveedor_nombre`), distinta de
+ * cualquier enlace al parlamentario. El enlace contrato→parlamentario se fija ÚNICA-
+ * mente por RUT-exacto (Plan 14-02). Campos de dinero LITERALES (string verbatim);
+ * el UI NO computa nada. `licencia` = "mención de la fuente" (NO CC BY 4.0).
+ * `fecha_corte` (fecha de la consulta por RUT) es distinta de `fecha_captura`.
+ */
+export interface ContratoRpcRow {
+  codigo_orden: string;
+  proveedor_nombre: string;
+  tipo_persona: string; // "natural" | "jurídica" (label literal de la fuente)
+  organismo: string;
+  monto: string; // literal verbatim de la fuente; el UI no computa sumas
+  fecha_oc: string; // ISO; fecha de la orden de compra
+  origen: string;
+  fecha_captura: string;
+  fecha_corte: string; // ISO; fecha de corte de la consulta por RUT
+  enlace: string;
+  licencia: string; // "mención de la fuente" (NO CC BY 4.0)
+}
+
+/**
  * Fila CRUDA del RPC `comparar_declaraciones` (migración 0022, security definer).
  * El RPC devuelve los campos declarados LITERALES en FILAS (etiqueta/valor), una
  * por (versión × campo). CERO columna de delta/variación/enriquecimiento/veredicto
@@ -348,5 +371,6 @@ export function sourceLabel(origen: string | null): string {
   if (o.includes("senado")) return "Senado";
   if (o.includes("camara") || o.includes("cámara")) return "Cámara";
   if (o.includes("bcn")) return "BCN";
+  if (o.includes("chilecompra") || o.includes("mercado")) return "ChileCompra";
   return "fuente desconocida";
 }
