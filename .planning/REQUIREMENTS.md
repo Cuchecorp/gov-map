@@ -37,7 +37,7 @@
 - [ ] **MONEY-01**: El conector `@obs/dinero` ingiere contratos del Estado por RUT desde ChileCompra (`api.mercadopublico.cl`), valida el DV del RUT (módulo-11), etiqueta persona natural vs jurídica, y crea una sub-maestra de contratistas.
 - [ ] **MONEY-02**: El ciudadano ve los contratos del Estado asociados al RUT de un parlamentario, redactados estrictamente como "contratos asociados al RUT" (nunca "del parlamentario"), con provenance y fecha de corte por fila.
 - [ ] **MONEY-03**: El conector SERVEL de `@obs/dinero` ingiere los aportes de campaña verbatim, con drift bloqueante y reconciliación de completitud (una corrida parcial se pone en cuarentena, no emite filas silenciosamente), y crea una sub-maestra de donantes.
-- [ ] **MONEY-04**: El ciudadano ve el financiamiento de campaña de un parlamentario verbatim, con fuente/fecha/enlace.
+- [x] **MONEY-04**: El ciudadano ve el financiamiento de campaña de un parlamentario verbatim, con fuente/fecha/enlace.
 - [ ] **MONEY-05**: El ciudadano puede ver contratos/aportes agregados por contraparte (donante o empresa), usando las sub-maestras de donantes/contratistas.
 
 ### NET — Grafo de influencia
@@ -90,7 +90,7 @@
 | MONEY-01 | Phase 14 | Pending |
 | MONEY-02 | Phase 14 | Pending |
 | MONEY-03 | Phase 15 | Pending |
-| MONEY-04 | Phase 15 | Pending |
+| MONEY-04 | Phase 15 | Done (15-03) |
 | MONEY-05 | Phase 16 | Pending |
 | NET-01 | Phase 18 | Pending |
 | NET-02 | Phase 18 | Pending |

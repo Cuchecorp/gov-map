@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: "14-03 entregado — ContratosView/ContratosSection + sourceLabel ChileCompra + mount #dinero gated; 12 tests RTL verdes, tsc limpio en archivos del plan. Pendientes de OPERADOR: 14-01 apply remoto + pgTAP 0024; 14-02 LIVE probe ChileCompra."
-stopped_at: 14-03 COMPLETO — sección de ficha Contratos gated tras moneyPublicEnabled(); 12 tests RTL + pnpm test 127/127 verde; tsc limpio en archivos del plan.
-last_updated: "2026-06-19T20:43:59.972Z"
+status: "15-03 entregado — FinanciamientoView/FinanciamientoSection (SERVEL) + sourceLabel SERVEL + AporteRpcRow + mount #financiamiento gated; 20 tests RTL verdes, tsc limpio en archivos del plan. Pendientes de OPERADOR: 15-01 apply remoto + pgTAP 0025; 15-02 LIVE probe SERVEL."
+stopped_at: 15-03 COMPLETO — sección de ficha Financiamiento (SERVEL) gated tras moneyPublicEnabled(); 20 tests RTL verdes; tsc limpio en archivos del plan; enlace por NOMBRE confirmado (A1), RUT donante nunca renderizado.
+last_updated: "2026-06-19T16:55:00.000Z"
 last_activity: 2026-06-19
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 21
-  completed_plans: 21
-  percent: 88
+  completed_plans: 22
+  percent: 100
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 ## Current Position
 
-Phase: 14 (MONEY Contratos — ChileCompra por RUT + sub-maestra de contratistas) — EXECUTING
-Plan: 14-03 COMPLETO (sección de ficha gated)
-Status: 14-03 entregado — ContratosView/ContratosSection + sourceLabel ChileCompra + mount #dinero gated; 12 tests RTL verdes, tsc limpio en archivos del plan. Pendientes de OPERADOR: 14-01 apply remoto + pgTAP 0024; 14-02 LIVE probe ChileCompra.
-Next plan: cerrar checkpoints de operador de 14-01/14-02; luego Phase 15 (MONEY SERVEL) o encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
+Phase: 15 (MONEY Financiamiento — SERVEL verbatim + sub-maestra de donantes) — EXECUTING
+Plan: 15-03 COMPLETO (sección de ficha gated)
+Status: 15-03 entregado — FinanciamientoView/FinanciamientoSection (SERVEL) + sourceLabel SERVEL + AporteRpcRow + mount #financiamiento gated (SIBLING de #dinero); 20 tests RTL verdes, tsc limpio en archivos del plan. Pendientes de OPERADOR: 15-01 apply remoto + pgTAP 0025; 15-02 LIVE probe SERVEL.
+Next plan: cerrar checkpoints de operador de 15-01/15-02; luego encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
 Last activity: 2026-06-19
 
 ## Performance Metrics
@@ -152,6 +152,7 @@ Recent decisions affecting current work:
 - [Phase 14]: [14-03]: sección de ficha 'Contratos del Estado asociados al RUT' (carril propio mt-12, sibling de #patrimonio); el gate moneyPublicEnabled() envuelve la <section> ENTERA en page.tsx (heading incluido) — OFF (default) => nodo ausente del HTML, no oculto-con-CSS; ContratosSection igual retorna null antes de tocar Supabase (doble candado). Tres estados honestos distintos (no_consultado/consultado_sin_contratos/enlazado); persona jurídica = sujeto proveedor + 'Enlazado por RUT al parlamentario.' en línea separada (sin posesivo); atribución 'mención de la fuente' (NO CC BY 4.0); throw en rpcError (#34). sourceLabel gana rama chilecompra/mercado->'ChileCompra'. 12 tests RTL verdes.
 - [Phase ?]: [Phase 13]: [13-01]: candado B = flag server-only moneyPublicEnabled(env) fail-closed (solo 'true' literal enciende; ausencia/''/'false'/'1'/'TRUE' => false), import 'server-only' linea 1, sin NEXT_PUBLIC_; ubicado en app/lib/ (consumidor = ficha Next.js), sin canal Postgres (diferido a 14-16). pgTAP 0023 re-afirma el piso deny-by-default sobre pii_contraparte_declaracion (RLS + cero policies + anon sin grant SELECT) = contrato que toda money_* de 14-16 hereda; Phase 13 NO introduce DDL MONEY.
 - [Phase ?]: 15-02: enlace del candidato SERVEL por NOMBRE via correrPipeline (no RUT); SOLO determinista puebla parlamentario_id; donante PII jamas al LLM (data-routing gate test-enforced)
+- [Phase 15]: 15-03: sección de ficha 'Aportes de campaña registrados en SERVEL' (carril propio mt-12, SIBLING de #dinero); gate moneyPublicEnabled() envuelve la <section> ENTERA en page.tsx (heading incluido) — OFF (default) => nodo ausente del HTML; FinanciamientoSection re-chequea antes de Supabase (doble candado). Tres estados honestos distintos (no_ingestado/verificado_sin_aportes/enlazado); agrupación por elección + caveat amber de candidatura anterior + Elección: por fila (defense in depth). Donante = sujeto propio (Aporta:); RUT donante NUNCA renderizado (Ley 21.719). A1 (RE-RESUELTO): la asociación al candidato es 'Asociado por nombre confirmado al candidato.' (SERVEL no trae RUT) — NUNCA 'por RUT' (test lo asierta). Atribución SERVEL 'términos de uso por verificar' (NO CC BY 4.0); throw en rpcError (#34). sourceLabel gana rama servel->'SERVEL'; AporteRpcRow sin RUT donante. 20 tests RTL verdes.
 
 ### Pending Todos
 
@@ -182,8 +183,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T20:43:21.004Z
-Stopped at: 14-03 COMPLETO — sección de ficha Contratos gated tras moneyPublicEnabled(); 12 tests RTL + pnpm test 127/127 verde; tsc limpio en archivos del plan.
+Last session: 2026-06-19T16:55:00.000Z
+Stopped at: 15-03 COMPLETO — sección de ficha Financiamiento (SERVEL) gated tras moneyPublicEnabled(); 20 tests RTL verdes; tsc limpio en archivos del plan; enlace por NOMBRE confirmado (A1), RUT donante nunca renderizado.
 Resume file: None
 
 ## Operator Next Steps
