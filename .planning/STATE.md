@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
 status: executing
-stopped_at: "Completed 12-01-PLAN.md (migración 0022 declaracion VERSIONADA public-read + 6 sub-tablas de bienes + declaracion_familiar deny-by-default+revoke + RPCs declaraciones_de_parlamentario/comparar_declaraciones SIN delta + probidad_ingesta_estado; OQ1/2/3 resueltas en vivo SPARQL; aplicada al remoto + pgTAP 34/34 verde; anon-deny familiar confirmado)"
-last_updated: "2026-06-19T16:30:00.000Z"
-last_activity: 2026-06-19 -- Completed 12-01 (migración 0022)
+stopped_at: Completed 12-01-PLAN.md (migración 0022 aplicada al remoto + pgTAP 34/34 verde; declaracion versionada, familiar deny-by-default+revoke, RPCs sin delta, OQ1/2/3 resueltas en vivo)
+last_updated: "2026-06-19T16:13:00.470Z"
+last_activity: 2026-06-19
 progress:
   total_phases: 11
   completed_phases: 4
   total_plans: 13
-  completed_plans: 12
-  percent: 39
+  completed_plans: 13
+  percent: 36
 ---
 
 # Project State
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 12 (INT Patrimonio/Intereses) — EXECUTING
-Plan: 2 of 3
-Status: Executing Phase 12 (12-01 completo: migración 0022 aplicada + pgTAP verde)
+Plan: 3 of 3
+Status: Ready to execute
 Next plan: 12-02 (@obs/probidad conector — SPARQL por nombre, parse literal zod sin LLM, writer versionado onConflict fuente_id,fecha_presentacion)
-Last activity: 2026-06-19 -- Completed 12-01 (migración 0022)
+Last activity: 2026-06-19
 
 ## Performance Metrics
 
@@ -87,6 +87,7 @@ Last activity: 2026-06-19 -- Completed 12-01 (migración 0022)
 | Phase 11 P02 | 20min | 3 tasks | 19 files |
 | Phase 11 P03 | 10min | 2 tasks | 4 files |
 | Phase 12 P01 | 18min | 3 tasks | 2 files |
+| Phase 12 P02 | 38min | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,7 @@ Recent decisions affecting current work:
 - [Phase 12]: [12-01]: 0022 probidad — declaracion VERSIONADA por (fuente_id=URI nodo Declaracion, fecha_presentacion); OQ1 en vivo: identificadorFuente COLISIONA (170562 decl/118624 ids) → la URI del nodo es la clave única. Sub-tablas de bienes public-read con columnas literales pineadas a predicados SPARQL reales (OQ2). tipoDeclaracion SÍ tiene rdfs:label (OQ3)
 - [Phase 12]: [12-01]: declaracion_familiar deny-by-default + revoke all from anon,authenticated (lección Phase 11 confirmada operacionalmente: anon→permission denied); sin RUT persona natural; sin FK a parlamentario. comparar_declaraciones devuelve etiqueta/valor literal en filas, CERO delta/veredicto. Aplicada al remoto sa-east-1 + pgTAP 34/34 verde
 - [Phase 12]: [12-01]: AccionDerecho.rutJuridica = RUT de EMPRESA declarada (contenido del bien), no de persona natural → vive solo en declaracion_accion_derecho; la assertion pgTAP "sin RUT" se acota a declaracion + declaracion_familiar
+- [Phase ?]: 12-02: @obs/probidad parsea SPARQL-JSON LITERAL sin LLM keyed por (fuenteId, fechaPresentacion); writer onConflict incluye fecha_presentacion (versiones acumulan, nunca sobreescribe); declarante name-only solo-determinista (EnlaceConfirmado+identidad_audit); familiares deny-by-default
 
 ### Pending Todos
 
@@ -169,7 +171,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T16:30:00.000Z
+Last session: 2026-06-19T16:10:32.688Z
 Stopped at: Completed 12-01-PLAN.md (migración 0022 aplicada al remoto + pgTAP 34/34 verde; declaracion versionada, familiar deny-by-default+revoke, RPCs sin delta, OQ1/2/3 resueltas en vivo)
 Resume file: None
 

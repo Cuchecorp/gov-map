@@ -166,13 +166,14 @@ Plans:
   3. El ciudadano puede comparar las declaraciones de patrimonio de un parlamentario lado a lado en el tiempo, mostrando solo los datos — sin ningún campo de veredicto de "enriquecimiento" ni de "conflicto de interés"
   4. La extracción LLM de estos documentos PII pasa obligatoriamente por la compuerta `data-routing` (tier sin entrenamiento, ningún RUT al LLM); el drift de esta fuente PII es bloqueante (cuarentena, no degradación silenciosa)
 
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 
 Plans:
 
 - [x] 12-01-PLAN.md — Migración 0022 (declaracion public-read VERSIONADA por (fuente_id, fecha_presentacion) + sub-tablas de bienes + declaracion_familiar deny-by-default + revoke + RPCs declaraciones_de_parlamentario/comparar_declaraciones + marcador probidad_ingesta_estado) + pgTAP; APLICADA al remoto + pgTAP 34/34 verde; OQ1/2/3 resueltas en vivo SPARQL
-- [ ] 12-02-PLAN.md — Conector @obs/probidad (espeja @obs/lobby): query builders SPARQL + parser zod LITERAL sin LLM keyed por (fuente_id, fecha_presentacion) + reconciliación name-only del declarante (EnlaceConfirmado solo-determinista) + familiares deny-by-default + writer VERSIONADO (acumula, nunca sobreescribe) + drift bloqueante; corrida LIVE acotada (operador)
+- [x] 12-02-PLAN.md — Conector @obs/probidad (espeja @obs/lobby): query builders SPARQL + parser zod LITERAL sin LLM keyed por (fuente_id, fecha_presentacion) + reconciliación name-only del declarante (EnlaceConfirmado solo-determinista) + familiares deny-by-default + writer VERSIONADO (acumula, nunca sobreescribe) + drift bloqueante; corrida LIVE acotada (operador)
 - [ ] 12-03-PLAN.md — Sección de patrimonio en /parlamentario/[id]: carril propio (mt-12), historial fechado (fecha prominente + frescura ámbar, vieja nunca actual) + comparación lado-a-lado (shadcn Table, CERO veredicto/delta) + CC BY 4.0 visible en intro y caption; content-gate sobre lista Y comparación
+
 **UI hint**: yes
 
 ### Phase 13: Compuerta Legal — Bloque MONEY (Ley 21.719)
@@ -207,8 +208,9 @@ Plans:
 Plans:
 
 - [x] 12-01-PLAN.md — Migración 0022 (declaracion public-read VERSIONADA por (fuente_id, fecha_presentacion) + sub-tablas de bienes + declaracion_familiar deny-by-default + revoke + RPCs declaraciones_de_parlamentario/comparar_declaraciones + marcador probidad_ingesta_estado) + pgTAP; APLICADA al remoto + pgTAP 34/34 verde; OQ1/2/3 resueltas en vivo SPARQL
-- [ ] 12-02-PLAN.md — Conector @obs/probidad (espeja @obs/lobby): query builders SPARQL + parser zod LITERAL sin LLM keyed por (fuente_id, fecha_presentacion) + reconciliación name-only del declarante (EnlaceConfirmado solo-determinista) + familiares deny-by-default + writer VERSIONADO (acumula, nunca sobreescribe) + drift bloqueante; corrida LIVE acotada (operador)
+- [x] 12-02-PLAN.md — Conector @obs/probidad (espeja @obs/lobby): query builders SPARQL + parser zod LITERAL sin LLM keyed por (fuente_id, fecha_presentacion) + reconciliación name-only del declarante (EnlaceConfirmado solo-determinista) + familiares deny-by-default + writer VERSIONADO (acumula, nunca sobreescribe) + drift bloqueante; corrida LIVE acotada (operador)
 - [ ] 12-03-PLAN.md — Sección de patrimonio en /parlamentario/[id]: carril propio (mt-12), historial fechado (fecha prominente + frescura ámbar, vieja nunca actual) + comparación lado-a-lado (shadcn Table, CERO veredicto/delta) + CC BY 4.0 visible en intro y caption; content-gate sobre lista Y comparación
+
 **UI hint**: yes
 
 ### Phase 15: MONEY Financiamiento — SERVEL verbatim + sub-maestra de donantes
@@ -231,6 +233,7 @@ Plans:
 - [x] 12-01-PLAN.md — Migración 0022 (declaracion public-read VERSIONADA por (fuente_id, fecha_presentacion) + sub-tablas de bienes + declaracion_familiar deny-by-default + revoke + RPCs declaraciones_de_parlamentario/comparar_declaraciones + marcador probidad_ingesta_estado) + pgTAP; APLICADA al remoto + pgTAP 34/34 verde; OQ1/2/3 resueltas en vivo SPARQL
 - [ ] 12-02-PLAN.md — Conector @obs/probidad (espeja @obs/lobby): query builders SPARQL + parser zod LITERAL sin LLM keyed por (fuente_id, fecha_presentacion) + reconciliación name-only del declarante (EnlaceConfirmado solo-determinista) + familiares deny-by-default + writer VERSIONADO (acumula, nunca sobreescribe) + drift bloqueante; corrida LIVE acotada (operador)
 - [ ] 12-03-PLAN.md — Sección de patrimonio en /parlamentario/[id]: carril propio (mt-12), historial fechado (fecha prominente + frescura ámbar, vieja nunca actual) + comparación lado-a-lado (shadcn Table, CERO veredicto/delta) + CC BY 4.0 visible en intro y caption; content-gate sobre lista Y comparación
+
 **UI hint**: yes
 
 ### Phase 16: MONEY Agregación — Contratos/aportes por contraparte
@@ -252,6 +255,7 @@ Plans:
 - [x] 12-01-PLAN.md — Migración 0022 (declaracion public-read VERSIONADA por (fuente_id, fecha_presentacion) + sub-tablas de bienes + declaracion_familiar deny-by-default + revoke + RPCs declaraciones_de_parlamentario/comparar_declaraciones + marcador probidad_ingesta_estado) + pgTAP; APLICADA al remoto + pgTAP 34/34 verde; OQ1/2/3 resueltas en vivo SPARQL
 - [ ] 12-02-PLAN.md — Conector @obs/probidad (espeja @obs/lobby): query builders SPARQL + parser zod LITERAL sin LLM keyed por (fuente_id, fecha_presentacion) + reconciliación name-only del declarante (EnlaceConfirmado solo-determinista) + familiares deny-by-default + writer VERSIONADO (acumula, nunca sobreescribe) + drift bloqueante; corrida LIVE acotada (operador)
 - [ ] 12-03-PLAN.md — Sección de patrimonio en /parlamentario/[id]: carril propio (mt-12), historial fechado (fecha prominente + frescura ámbar, vieja nunca actual) + comparación lado-a-lado (shadcn Table, CERO veredicto/delta) + CC BY 4.0 visible en intro y caption; content-gate sobre lista Y comparación
+
 **UI hint**: yes
 
 ### Phase 17: Compuerta Legal — Bloque NET (framing del grafo)
@@ -288,6 +292,7 @@ Plans:
 - [x] 12-01-PLAN.md — Migración 0022 (declaracion public-read VERSIONADA por (fuente_id, fecha_presentacion) + sub-tablas de bienes + declaracion_familiar deny-by-default + revoke + RPCs declaraciones_de_parlamentario/comparar_declaraciones + marcador probidad_ingesta_estado) + pgTAP; APLICADA al remoto + pgTAP 34/34 verde; OQ1/2/3 resueltas en vivo SPARQL
 - [ ] 12-02-PLAN.md — Conector @obs/probidad (espeja @obs/lobby): query builders SPARQL + parser zod LITERAL sin LLM keyed por (fuente_id, fecha_presentacion) + reconciliación name-only del declarante (EnlaceConfirmado solo-determinista) + familiares deny-by-default + writer VERSIONADO (acumula, nunca sobreescribe) + drift bloqueante; corrida LIVE acotada (operador)
 - [ ] 12-03-PLAN.md — Sección de patrimonio en /parlamentario/[id]: carril propio (mt-12), historial fechado (fecha prominente + frescura ámbar, vieja nunca actual) + comparación lado-a-lado (shadcn Table, CERO veredicto/delta) + CC BY 4.0 visible en intro y caption; content-gate sobre lista Y comparación
+
 **UI hint**: yes
 
 ## Progress
@@ -305,7 +310,7 @@ Plans:
 | 9. Completitud de Identidad — RUT + Writer-invariant + Piso PII | v2.0 | 3/3 | Complete   | 2026-06-19 |
 | 10. VOTE — Voto individual en la ficha | v2.0 | 3/3 | Complete   | 2026-06-19 |
 | 11. INT Lobby — Reuniones + sub-maestra contrapartes | v2.0 | 3/3 | Complete   | 2026-06-19 |
-| 12. INT Patrimonio/Intereses — Declaraciones + comparación | v2.0 | 1/3 | In progress | 12-01 (migración 0022 aplicada + pgTAP 34/34) |
+| 12. INT Patrimonio/Intereses — Declaraciones + comparación | v2.0 | 2/3 | In Progress|  |
 | 13. Compuerta Legal — Bloque MONEY | v2.0 | 0/? | Not started | - |
 | 14. MONEY Contratos — ChileCompra + sub-maestra contratistas | v2.0 | 0/? | Not started | - |
 | 15. MONEY Financiamiento — SERVEL + sub-maestra donantes | v2.0 | 0/? | Not started | - |
