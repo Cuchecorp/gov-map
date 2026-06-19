@@ -16,7 +16,7 @@ vi.mock("@/lib/supabase", () => ({
   createServerSupabase: () => ({ rpc: rpcMock }),
 }));
 
-import { buscarProyectos } from "./buscar";
+import { buscarProyectos, CONTRAPARTE_ID_RE } from "./buscar";
 
 beforeEach(() => {
   redirectMock.mockClear();
@@ -155,5 +155,33 @@ describe("buscarProyectos — input validation (V5: trim + cap ≤300)", () => {
     await buscarProyectos(largo, { embedder: emb });
     const arg = emb.embed.mock.calls[0][0][0] as string;
     expect(arg.length).toBe(300);
+  });
+});
+
+describe("CONTRAPARTE_ID_RE — acepta ortografía española, rechaza control/traversal (WR-02)", () => {
+  it("acepta ids 'c:' / 'd:' ASCII (RUT proveedor / nombre simple)", () => {
+    expect(CONTRAPARTE_ID_RE.test("c:76.123.456-0")).toBe(true);
+    expect(CONTRAPARTE_ID_RE.test("d:Constructora Andes Ltda")).toBe(true);
+  });
+
+  it("WR-02: acepta nombres con acentos / ñ / ampersand (antes 404eaban)", () => {
+    expect(CONTRAPARTE_ID_RE.test("d:Constructora Peñalolén")).toBe(true);
+    expect(CONTRAPARTE_ID_RE.test("d:Compañía Logística del Maule S.A.")).toBe(true);
+    expect(CONTRAPARTE_ID_RE.test("d:Constructora Ñandú Ltda")).toBe(true);
+    expect(CONTRAPARTE_ID_RE.test("d:García & Muñoz SpA")).toBe(true);
+  });
+
+  it("rechaza ids sin prefijo 'c:'/'d:'", () => {
+    expect(CONTRAPARTE_ID_RE.test("x:Empresa")).toBe(false);
+    expect(CONTRAPARTE_ID_RE.test("Empresa")).toBe(false);
+    expect(CONTRAPARTE_ID_RE.test("c:")).toBe(false);
+  });
+
+  it("rechaza path-traversal y control chars (V5)", () => {
+    expect(CONTRAPARTE_ID_RE.test("d:../../etc/passwd")).toBe(false);
+    expect(CONTRAPARTE_ID_RE.test("d:Empresa/sub")).toBe(false);
+    expect(CONTRAPARTE_ID_RE.test("d:Empresa\\sub")).toBe(false);
+    expect(CONTRAPARTE_ID_RE.test("d:linea1\nlinea2")).toBe(false);
+    expect(CONTRAPARTE_ID_RE.test("d:tab\there")).toBe(false);
   });
 });

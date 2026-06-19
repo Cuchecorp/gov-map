@@ -37,11 +37,16 @@ export const PARLAMENTARIO_ID_RE = /^P\d{5}$/;
 // `agregado_por_contraparte` (Plan 16-01) emite ids PREFIJADOS — 'c:<rut_proveedor>'
 // (faceta contratos) / 'd:<donante_nombre>' (faceta aportes). El path se valida con
 // este regex ANTES de tocar la DB (V5 / T-16-08): se rechaza cualquier id sin el
-// prefijo 'c:'/'d:' o con caracteres de control / path-traversal. El charset es
-// ancho lo justo para un `donante_nombre` (letras, dígitos, espacio, punto, guion,
-// guion bajo) pero NO admite '/', '\\', saltos de línea ni otros control chars. Sin
-// flag `g` → `.test()` es stateless.
-export const CONTRAPARTE_ID_RE = /^[cd]:[A-Za-z0-9 .\-_]+$/;
+// prefijo 'c:'/'d:' o con caracteres de control / path-traversal.
+//
+// WR-02 (Phase 16): el charset usa `\p{L}` (cualquier letra Unicode) con el flag `u`,
+// de modo que una razón-social chilena con acentos o ñ ("Constructora Peñalolén",
+// "Compañía…", "Logística…") VALIDA en vez de 404ear antes de tocar la DB. Se admiten
+// además dígitos (`\p{N}`), espacio, punto, guion, guion bajo y ampersand (`&`, común en
+// nombres de empresa). NO admite '/', '\\', saltos de línea ni otros control chars (la
+// clase es explícita, no un `.`), y es lineal (un solo `+`, sin backtracking anidado →
+// sin ReDoS). Anclado `^…$`. Sin flag `g` → `.test()` es stateless.
+export const CONTRAPARTE_ID_RE = /^[cd]:[\p{L}\p{N} .\-_&]+$/u;
 
 /** Cap defensivo de la consulta (V5 input validation). #36: fuente única. */
 export const MAX_QUERY_CHARS = 300;
