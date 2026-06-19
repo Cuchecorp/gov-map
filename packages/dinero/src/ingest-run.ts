@@ -19,8 +19,12 @@ import { parseContratos, tipoPersona } from "./parse-chilecompra";
 import { BuscarProveedorResponseSchema, ORIGEN_DINERO, LICENCIA_DINERO, type Contratista } from "./model";
 import { reconciliarContrato, type ReconciliarContratoOpts } from "./reconciliar-contrato";
 import { redactarTicket } from "./query";
-import { isRutValido, normRut } from "@obs/identity";
+import { isRutValido, normRut, matchDeterminista } from "@obs/identity";
 import type { Parlamentario } from "@obs/core";
+
+/** Defaults del blocking determinista — DEBEN coincidir con los de reconciliar-contrato.ts. */
+const PERIODO_DINERO_DEFAULT = "senado-vigente-2026";
+const CAMARA_DINERO_DEFAULT: Parlamentario["camara"] = "senado";
 
 const ORIGEN_DRIFT = ORIGEN_DINERO;
 
@@ -233,15 +237,28 @@ export async function runIngestDinero(opts: RunIngestDineroOpts): Promise<RunIng
  * Marca a los parlamentarios cuyo RUT interno coincide con el RUT consultado como "consultados"
  * (estado honesto: "consultado sin contratos" si no hubo filas). Solo agrega si hay match RUT-exacto
  * unico — sin RUT interno (IDENT-10) no marca a nadie (el parlamentario queda "no consultado").
+ *
+ * WR-04: REUSA el primitivo canonico `matchDeterminista` (rama RUT) en vez de re-implementar la
+ * comparacion de RUT inline. Asi la guarda de match es SINGLE-SOURCED con `reconciliarContrato`:
+ * si la regla de match se endurece (p.ej. gating extra por camara/periodo), este sitio NO drifta.
+ * `nombreNormalizado: ""` impide cualquier rama por nombre; solo `confirmado+rut` cuenta. Honra
+ * `opts` (camara/periodo del blocking) para alinearse EXACTAMENTE con el reconciliador.
  */
 function marcarSinContratos(
   marcados: Set<string>,
   tarea: TareaRut,
   maestra: Parlamentario[],
-  _opts: ReconciliarContratoOpts | undefined,
+  opts: ReconciliarContratoOpts | undefined,
 ): void {
   if (!isRutValido(tarea.rut)) return;
-  const objetivo = normRut(tarea.rut);
-  const porRut = maestra.filter((p) => p.rut != null && normRut(p.rut) === objetivo);
-  if (porRut.length === 1) marcados.add(porRut[0]!.id);
+  const res = matchDeterminista(
+    {
+      rut: normRut(tarea.rut),
+      nombreNormalizado: "", // NUNCA por nombre: solo la rama RUT puede confirmar (Pitfall 4).
+      camara: opts?.camara ?? CAMARA_DINERO_DEFAULT,
+      periodo: opts?.periodo ?? PERIODO_DINERO_DEFAULT,
+    },
+    maestra,
+  );
+  if (res.estado === "confirmado" && res.metodo === "rut") marcados.add(res.id);
 }
