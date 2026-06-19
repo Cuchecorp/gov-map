@@ -112,7 +112,7 @@ describe("SupabaseAgendaWriter — upsert idempotente por onConflict (clave natu
 
     const porTabla = Object.fromEntries(upserts.map((u) => [u.tabla, u]));
     expect(porTabla["citacion"]?.onConflict).toBe("id");
-    expect(porTabla["citacion_invitado"]?.onConflict).toBe("citacion_id,nombre");
+    expect(porTabla["citacion_invitado"]?.onConflict).toBe("citacion_id,nombre,calidad");
     expect(porTabla["citacion_punto"]?.onConflict).toBe("citacion_id,posicion");
     // La raíz NO lleva los arrays anidados (van a tablas hijas).
     const raiz = porTabla["citacion"]!.rows[0] as Record<string, unknown>;
