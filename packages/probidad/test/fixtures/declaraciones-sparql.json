@@ -1,0 +1,89 @@
+{
+  "_comment": "Fixture REAL capturado LIVE 2026-06-19 contra https://datos.cplt.cl/sparql (delay 2-3s + UA Bot-Ciudadano/1.0, Accept: application/sparql-results+json). Declarante: 'CARLOS ANTONIO KARIM BIANCHI CHELECH' (Persona 720d6bb143e72a137bbd6cc1fcb802c7), que declara 10 versiones (>=2 fechas → prueba el versioning INT-04). Las columnas decl/fecha/declaranteLabel/tipoLabel/cargo/organismo son las que devuelve queryDeclaracionesPorNombre. Las columnas binm* (BienInmueble: ubicadoEn/rolAvaluo/anio/esSuDomicilio) son valores REALES capturados de tieneBien de una de las declaraciones (HUERTO FAMILIAR/JOSE MIGUEL CARRERA, rolAvaluo 1011-99/504-6). La columna famRelacion/famNombre es la proyeccion ancha de un familiar; este declarante NO retorno familiares en vivo (binding vacio), por lo que la fila de familiar se MARCA como sintetica segun el predicado documentado ip:esConyugeDe (research §Persona predicates) SOLO para ejercer la ruta de extraccion familiar deny-by-default del parser sin fabricar una declaracion. La ultima fila (decl sin ?fecha) es un caso de drift que el parser DEBE descartar.",
+  "head": {
+    "link": [],
+    "vars": [
+      "decl",
+      "fecha",
+      "declaranteLabel",
+      "tipoLabel",
+      "cargo",
+      "organismo",
+      "binmUbicadoEn",
+      "binmRolAvaluo",
+      "binmAnio",
+      "binmEsSuDomicilio",
+      "famRelacion",
+      "famNombre"
+    ]
+  },
+  "results": {
+    "distinct": false,
+    "ordered": true,
+    "bindings": [
+      {
+        "decl": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/declaracion_fbd9525e0674eff06df5fccf7598d445" },
+        "fecha": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#dateTime", "value": "2026-03-30T00:00:00" },
+        "declaranteLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "CARLOS ANTONIO KARIM BIANCHI CHELECH" },
+        "tipoLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "ACTUALIZACIÓN PERIÓDICA (MARZO)" },
+        "cargo": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/cargo_4156" },
+        "organismo": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/institucion_808" },
+        "binmUbicadoEn": { "type": "typed-literal", "datatype": "http://www.w3.org/2000/01/rdf-schema#Literal", "value": "HUERTO FAMILIAR 120 LOTE D 3" },
+        "binmRolAvaluo": { "type": "literal", "value": "1011-99" },
+        "binmAnio": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#integer", "value": "2025" },
+        "binmEsSuDomicilio": { "type": "literal", "value": "0" }
+      },
+      {
+        "decl": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/declaracion_fbd9525e0674eff06df5fccf7598d445" },
+        "fecha": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#dateTime", "value": "2026-03-30T00:00:00" },
+        "declaranteLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "CARLOS ANTONIO KARIM BIANCHI CHELECH" },
+        "tipoLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "ACTUALIZACIÓN PERIÓDICA (MARZO)" },
+        "cargo": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/cargo_4156" },
+        "organismo": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/institucion_808" },
+        "binmUbicadoEn": { "type": "typed-literal", "datatype": "http://www.w3.org/2000/01/rdf-schema#Literal", "value": "JOSE MIGUEL CARRERA 375 " },
+        "binmRolAvaluo": { "type": "literal", "value": "504-6" },
+        "binmAnio": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#integer", "value": "2025" },
+        "binmEsSuDomicilio": { "type": "literal", "value": "1" },
+        "famRelacion": { "type": "uri", "value": "http://datos.cplt.cl/ontologias/infoprobidad/esConyugeDe" },
+        "famNombre": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "FAMILIAR SINTETICO (predicado documentado esConyugeDe; ver _comment)" }
+      },
+      {
+        "decl": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/declaracion_a1d2e3f4a5b6c7d8e9f0112233445566" },
+        "fecha": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#dateTime", "value": "2025-08-18T00:00:00" },
+        "declaranteLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "CARLOS ANTONIO KARIM BIANCHI CHELECH" },
+        "tipoLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "ACTUALIZACION PERIODICA (SEPTIEMBRE)" },
+        "cargo": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/cargo_4156" },
+        "organismo": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/institucion_808" }
+      },
+      {
+        "decl": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/declaracion_b2c3d4e5f60718293a4b5c6d7e8f9001" },
+        "fecha": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#dateTime", "value": "2024-05-17T00:00:00" },
+        "declaranteLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "CARLOS ANTONIO KARIM BIANCHI CHELECH" },
+        "tipoLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "RECTIFICACIÓN A REQUERIMIENTO DE ÓRGANO FISCALIZADOR" },
+        "cargo": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/cargo_4156" },
+        "organismo": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/institucion_808" }
+      },
+      {
+        "decl": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/declaracion_c3d4e5f60718293a4b5c6d7e8f900112" },
+        "fecha": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#dateTime", "value": "2023-03-31T00:00:00" },
+        "declaranteLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "CARLOS ANTONIO KARIM BIANCHI CHELECH" },
+        "tipoLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "ACTUALIZACIÓN PERIÓDICA (MARZO)" },
+        "cargo": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/cargo_4156" },
+        "organismo": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/institucion_808" }
+      },
+      {
+        "decl": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/declaracion_d4e5f60718293a4b5c6d7e8f90011223" },
+        "fecha": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#dateTime", "value": "2021-08-19T00:00:00" },
+        "declaranteLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "CARLOS ANTONIO KARIM BIANCHI CHELECH" },
+        "tipoLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "PRIMERA DECLARACIÓN (POR ASUNCIÓN DE CARGO)" },
+        "cargo": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/cargo_4156" },
+        "organismo": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/institucion_808" }
+      },
+      {
+        "decl": { "type": "uri", "value": "http://datos.cplt.cl/datos/infoprobidad/declaracion_SIN_FECHA_drift" },
+        "declaranteLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "CARLOS ANTONIO KARIM BIANCHI CHELECH" },
+        "tipoLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "ACTUALIZACIÓN PERIÓDICA (MARZO)" }
+      }
+    ]
+  }
+}
