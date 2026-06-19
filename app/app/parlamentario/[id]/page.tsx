@@ -7,6 +7,8 @@ import { ParlamentarioHeader } from "@/components/parlamentario-header";
 import { VotosSection } from "@/components/votos-por-parlamentario";
 import { LobbySection } from "@/components/lobby-de-parlamentario";
 import { PatrimonioSection } from "@/components/patrimonio-de-parlamentario";
+import { ContratosSection } from "@/components/contratos-de-parlamentario";
+import { moneyPublicEnabled } from "@/lib/money-gate";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ParlamentarioPublicoRow } from "@/lib/types";
 
@@ -83,11 +85,24 @@ export default async function ParlamentarioPage({
       </section>
 
       {/*
-        Phase 14–16 (MONEY) APILAN aquí sus secciones, cada una su propio bloque:
-          <section id="dinero" className="mt-12"> <h2>Contratos y financiamiento</h2> …
-        Cada una: su <h2>, su <Suspense>, su empty honesto. NO anidar en otra sección
-        y NUNCA componer un dato de otro bloque dentro de la misma unidad de UI.
+        Phase 14 — MONEY Contratos (UI-SPEC §Exposure Gate). SIBLING de #patrimonio,
+        NUNCA anidada: el mt-12 es la frontera de carril (anti-insinuación §9.1).
+        GATE LOCKED: TODA la <section id="dinero"> — incluido su <h2> — se envuelve en
+        moneyPublicEnabled(process.env). Con OFF (default) el nodo entero, heading
+        incluido, está AUSENTE del HTML; NO se depende de que ContratosSection retorne
+        null para ocultar el heading. moneyPublicEnabled es server-only (chokepoint
+        WR-02): NUNCA leer MONEY_PUBLIC_ENABLED crudo. Heading EXACTO, sin posesivo.
       */}
+      {moneyPublicEnabled(process.env) && (
+        <section id="dinero" className="mt-12">
+          <h2 className="text-xl font-semibold mb-4">
+            Contratos del Estado asociados al RUT
+          </h2>
+          <Suspense fallback={<ContratosSkeleton />}>
+            <ContratosSection id={id} searchParams={sp} />
+          </Suspense>
+        </section>
+      )}
     </main>
   );
 }
@@ -164,6 +179,20 @@ function PatrimonioSkeleton() {
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-8 w-40 rounded-md" />
         </div>
+      ))}
+    </div>
+  );
+}
+
+// Shape-matched a ContratosView: línea de intro + línea de atribución + 3 filas de
+// contrato (sujeto proveedor + campos + provenance) (UI-SPEC §Loading state).
+function ContratosSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden="true">
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-3 w-1/2" />
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Skeleton key={i} className="h-12 w-full rounded-lg" />
       ))}
     </div>
   );
