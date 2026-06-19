@@ -20,9 +20,9 @@
 
 - [x] **VOTE-01**: Un spike valida en vivo `opendata.camara.cl` (`getVotaciones_Boletin`/`getVotacion_Detalle`): alcanzabilidad tras el WAF, que `Diputado/Id` y `Opcion` vengan poblados (no null), cobertura histórica y comportamiento de rate. Resultado: confirmar y construir, o replanificar el bloque VOTE. — ✅ CONFIRMAR (2026-06-19, corrida LIVE, mapeo 100%).
 - [ ] **VOTE-02**: El conector `@obs/votos` ingiere el voto individual por diputado y lo cruza determinísticamente por `DIPID` → `id_diputado_camara`, enriqueciendo el modelo de voto existente con provenance por fila (sin LLM).
-- [ ] **VOTE-03**: El ciudadano ve, en la ficha del parlamentario, la lista de sus votos (A favor / En contra / Abstención / Pareo / Ausente) y su asistencia, con la guarda de identidad aplicada.
-- [ ] **VOTE-04**: El ciudadano puede ver cómo vota un parlamentario por tema/materia del proyecto (reusa los embeddings de v1.0).
-- [ ] **VOTE-05**: El ciudadano ve una métrica observable de "rebeldías" (cuántas veces votó distinto a su bancada), presentada como dato, sin juicio ni etiqueta.
+- [x] **VOTE-03**: El ciudadano ve, en la ficha del parlamentario, la lista de sus votos (A favor / En contra / Abstención / Pareo / Ausente) y su asistencia, con la guarda de identidad aplicada.
+- [x] **VOTE-04**: El ciudadano puede ver cómo vota un parlamentario por tema/materia del proyecto (reusa los embeddings de v1.0).
+- [x] **VOTE-05**: El ciudadano ve una métrica observable de "rebeldías" (cuántas veces votó distinto a su bancada), presentada como dato, sin juicio ni etiqueta.
 
 ### INT — Lobby + Patrimonio/Intereses
 
@@ -79,9 +79,9 @@
 | IDENT-12 | Phase 9 | Complete |
 | VOTE-01 | Phase 8 | ✅ Complete (CONFIRMAR) |
 | VOTE-02 | Phase 10 | Pending |
-| VOTE-03 | Phase 10 | Pending |
-| VOTE-04 | Phase 10 | Pending |
-| VOTE-05 | Phase 10 | Pending |
+| VOTE-03 | Phase 10 | Complete |
+| VOTE-04 | Phase 10 | Complete |
+| VOTE-05 | Phase 10 | Complete |
 | INT-01 | Phase 11 | Pending |
 | INT-02 | Phase 11 | Pending |
 | INT-03 | Phase 12 | Pending |

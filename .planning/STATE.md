@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: verifying
+status: executing
 stopped_at: "Completed 09-03-PLAN.md (LEGAL-03: piso RLS/PII + pgTAP 11/11 remoto)"
-last_updated: "2026-06-19T04:36:29.390Z"
+last_updated: "2026-06-19T12:52:41.226Z"
 last_activity: 2026-06-19
 progress:
   total_phases: 11
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 5
+  total_plans: 7
+  completed_plans: 6
   percent: 18
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 9 — Completitud de Identidad
+**Current focus:** Phase 10 — VOTE — Voto individual en la ficha
 
 ## Current Position
 
-Phase: 9 (Completitud de Identidad) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 10 (VOTE — Voto individual en la ficha) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Next phase: Phase 09 — Completitud de Identidad (puede correr en paralelo); Phase 10 (@obs/votos) desbloqueada
 Last activity: 2026-06-19
 
@@ -80,6 +80,7 @@ Last activity: 2026-06-19
 | Phase 09 P01 | 12min | 2 tasks | 10 files |
 | Phase 09 P02 | 7min | 2 tasks | 8 files |
 | Phase 09 P03 | 14 | 2 tasks | 4 files |
+| Phase 10 P01 | 25min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 09]: [09-03]: PII nueva nace en tabla deny-by-default (RLS on + cero policies + sin GRANT a anon, espejo de 0005); filas publicas llevan solo el FK, nunca el RUT (LEGAL-03)
 - [Phase ?]: [Phase 09]: [09-03]: assertPiiDocumentSafeForLlm COMPONE assertNoRutInLlmInput + assertSensitivityAllowed (RUT primero); cero duplicacion del regex/gate
 - [Phase ?]: [Phase 09]: [09-03]: 0018 APLICADA al remoto sa-east-1 (pooler) + pgTAP 11/11 PASS contra schema aplicado; DB password no roto
+- [Phase ?]: [Phase 10]: [10-01]: parser emite las 5 opciones del roll-call; ausente deriva del roster (codigo de no-asistencia), NUNCA de la ausencia de fila; abstencion/pareo por texto #text (codigos A1 no confirmados LIVE)
+- [Phase ?]: [Phase 10]: [10-01]: 0019 — rebeldias_de_parlamentario security definer (lee partido interno, emite solo derivado publico); votos_de_parlamentario invoker; CERO policy/grant sobre partido (LEGAL-03); aplicada al remoto + pgTAP 13/13
 
 ### Pending Todos
 
@@ -148,7 +151,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T04:36:29.376Z
+Last session: 2026-06-19T12:52:21.256Z
 Stopped at: Completed 09-03-PLAN.md (LEGAL-03: piso RLS/PII + pgTAP 11/11 remoto)
 Resume file: None
 

@@ -120,10 +120,11 @@ Sub-maestras se construyen en su bloque, NO se difieren a NET: lobista/gestor (P
   4. La ficha muestra una métrica de rebeldías (cuántas veces votó distinto a su bancada) presentada como dato bruto, sin juicio ni etiqueta
   5. Cada fila distingue tres estados honestos (enlazado-confirmado / presente-no-verificado / no-ingestado) — un vacío nunca se lee como "limpio"
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 10-01-PLAN.md — Base de datos/parser (VOTE-03/04/05): parser a 5 opciones (ausente) + migración 0019 (CHECK ausente, índice voto(parlamentario_id), RPCs votos/rebeldías security-definer) + pgTAP
+
+- [x] 10-01-PLAN.md — Base de datos/parser (VOTE-03/04/05): parser a 5 opciones (ausente) + migración 0019 (CHECK ausente, índice voto(parlamentario_id), RPCs votos/rebeldías security-definer) + pgTAP
 - [ ] 10-02-PLAN.md — Conector @obs/votos producción (VOTE-02): promueve el spike a src/, cruce DIPID determinista, idempotente, provenance por fila; corrida LIVE acotada (operador)
 - [ ] 10-03-PLAN.md — Ficha /parlamentario/[id] (VOTE-03/04/05): shell apilable + asistencia + lista paginada + voto×tema + rebeldías + 3 estados honestos + gate anti-afinidad/causal
 
@@ -265,7 +266,7 @@ Plans:
 | 7. Búsqueda Semántica + Fichas Estructuradas | v1.0 | 3/3 | Complete | 2026-06-18 |
 | 8. VOTE Spike — Validación `opendata.camara.cl` | v2.0 | 1/1 | ✅ Complete (CONFIRMAR) | 08-01 |
 | 9. Completitud de Identidad — RUT + Writer-invariant + Piso PII | v2.0 | 3/3 | Complete   | 2026-06-19 |
-| 10. VOTE — Voto individual en la ficha | v2.0 | 0/? | Not started | - |
+| 10. VOTE — Voto individual en la ficha | v2.0 | 1/3 | In Progress|  |
 | 11. INT Lobby — Reuniones + sub-maestra contrapartes | v2.0 | 0/? | Not started | - |
 | 12. INT Patrimonio/Intereses — Declaraciones + comparación | v2.0 | 0/? | Not started | - |
 | 13. Compuerta Legal — Bloque MONEY | v2.0 | 0/? | Not started | - |
