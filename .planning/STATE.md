@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: executing
-stopped_at: Phase 8 cerrado — FINDINGS + decisión CONFIRMAR en 08-SUMMARY.md y STATE.md
-last_updated: "2026-06-19T04:28:38.107Z"
+status: verifying
+stopped_at: "Completed 09-03-PLAN.md (LEGAL-03: piso RLS/PII + pgTAP 11/11 remoto)"
+last_updated: "2026-06-19T04:36:29.390Z"
 last_activity: 2026-06-19
 progress:
   total_phases: 11
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 4
-  percent: 9
+  completed_plans: 5
+  percent: 18
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 Phase: 9 (Completitud de Identidad) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Next phase: Phase 09 — Completitud de Identidad (puede correr en paralelo); Phase 10 (@obs/votos) desbloqueada
 Last activity: 2026-06-19
 
@@ -79,6 +79,7 @@ Last activity: 2026-06-19
 | Phase 07 P02 | 11min | 3 tasks | 14 files |
 | Phase 09 P01 | 12min | 2 tasks | 10 files |
 | Phase 09 P02 | 7min | 2 tasks | 8 files |
+| Phase 09 P03 | 14 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 09]: [09-01]: reconciliar-senado + reconciliar-camara (DIPID) son los unicos mint sites de confirmar(); Voto persistido sigue plano string|null (Anti-Pattern A4: input branded, storage plano)
 - [Phase ?]: [Phase 09]: [09-02]: backfill-rut DV-gate (isRutValido modulo-11) + provenance + updateRut por id; NUNCA fabrica un RUT (invalido/sin-provenance -> revision). Track B curado entregado; Track A SERVEL NO perseguido (RUT por nombre = candidato, no hecho)
 - [Phase ?]: [Phase 09]: [09-02]: golden +3 casos RUT (colision/persona-juridica/colision dura) -> revision/no_match, gate >=0.95 intacto; parlamentario-rut.seed.json filas vacio (operador puebla con DV-validos + provenance)
+- [Phase ?]: [Phase 09]: [09-03]: PII nueva nace en tabla deny-by-default (RLS on + cero policies + sin GRANT a anon, espejo de 0005); filas publicas llevan solo el FK, nunca el RUT (LEGAL-03)
+- [Phase ?]: [Phase 09]: [09-03]: assertPiiDocumentSafeForLlm COMPONE assertNoRutInLlmInput + assertSensitivityAllowed (RUT primero); cero duplicacion del regex/gate
+- [Phase ?]: [Phase 09]: [09-03]: 0018 APLICADA al remoto sa-east-1 (pooler) + pgTAP 11/11 PASS contra schema aplicado; DB password no roto
 
 ### Pending Todos
 
@@ -144,8 +148,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T04:28:10.212Z
-Stopped at: Phase 8 cerrado — FINDINGS + decisión CONFIRMAR en 08-SUMMARY.md y STATE.md
+Last session: 2026-06-19T04:36:29.376Z
+Stopped at: Completed 09-03-PLAN.md (LEGAL-03: piso RLS/PII + pgTAP 11/11 remoto)
 Resume file: None
 
 ## Operator Next Steps
