@@ -134,6 +134,9 @@ describe("correrPipeline — Etapa 1 (blocking)", () => {
     expect(provider.callCount).toBe(0);
     expect(writer.vinculos).toHaveLength(1);
     expect(writer.vinculos[0]!.estado).toBe("no_confirmado");
+    // #12/#18: la decisión es DETERMINISTA (no se invocó al LLM) → metodo='determinista'.
+    expect(writer.vinculos[0]!.metodo).toBe("determinista");
+    expect(writer.audits[0]!.metodo).toBe("determinista");
     expect(writer.audits).toHaveLength(1);
     expect(writer.colas).toHaveLength(0);
   });
