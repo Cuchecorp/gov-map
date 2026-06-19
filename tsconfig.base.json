@@ -22,6 +22,8 @@
       "@obs/identity/*": ["./packages/identity/src/*"],
       "@obs/adjudication": ["./packages/adjudication/src/index.ts"],
       "@obs/adjudication/*": ["./packages/adjudication/src/*"],
+      "@obs/dinero": ["./packages/dinero/src/index.ts"],
+      "@obs/dinero/*": ["./packages/dinero/src/*"],
       "@obs/tramitacion": ["./packages/tramitacion/src/index.ts"],
       "@obs/tramitacion/*": ["./packages/tramitacion/src/*"],
       "@obs/agenda": ["./packages/agenda/src/index.ts"],
