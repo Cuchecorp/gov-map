@@ -9,9 +9,9 @@
 //   --hasta YYYY-Www   semana ISO final (default: = --desde → una sola semana)
 //   --solo-senado      NO ingesta Cámara (solo la ventana forward-only del Senado)
 //   --dry-run          NO escribe en la DB (corre fetch/parse, descarta el upsert)
-//   --service-key K    SERVICE key local (o SUPABASE_LOCAL_SERVICE_KEY del entorno)
 //
-// Sin service key (y sin --dry-run) → la corrida degrada a dry-run con aviso (no carga DB).
+// La SERVICE key se toma SOLO de SUPABASE_LOCAL_SERVICE_KEY (#25): pasarla por argv la
+// dejaba visible en `ps`/`/proc`/history. Sin key (y sin --dry-run) → degrada a dry-run.
 
 import {
   Fetcher,
@@ -25,7 +25,12 @@ import { SupabaseAgendaWriter } from "./writer-supabase";
 import { InMemoryAgendaWriter } from "./writer";
 import type { AgendaWriter } from "./writer";
 import { runIngest, type RunIngestResult } from "./ingest-run";
-import { isoWeekOf, enumerarSemanas, type SemanaIso } from "./semana-iso";
+import {
+  isoWeekOf,
+  enumerarSemanas,
+  semanasEnAnioIso,
+  type SemanaIso,
+} from "./semana-iso";
 
 const DEFAULT_LOCAL_URL = "http://127.0.0.1:54421";
 /** Backoff base entre reintentos ante 403 de Cámara en la corrida LIVE. */
@@ -78,6 +83,14 @@ export function parseSemanaIso(raw: string | undefined, flag: string): SemanaIso
   if (week < 1 || week > 53) {
     throw new IngestCliArgsError(`${flag} semana fuera de rango: ${week} (esperado 1-53)`);
   }
+  // #26: rechaza la semana 53 en años que solo tienen 52 (antes `enumerarSemanas` la
+  // normalizaba en silencio a la adyacente, desviando el input sin avisar).
+  const maxWeek = semanasEnAnioIso(year);
+  if (week > maxWeek) {
+    throw new IngestCliArgsError(
+      `${flag} semana ${week} no existe en ${year} (el año ISO tiene ${maxWeek} semanas)`,
+    );
+  }
   return { year, week };
 }
 
@@ -98,9 +111,6 @@ export function parseArgs(argv: string[]): IngestCliOptions {
         break;
       case "--hasta":
         opts.hasta = parseSemanaIso(argv[++i], "--hasta");
-        break;
-      case "--service-key":
-        opts.serviceKey = argv[++i];
         break;
       default:
         if (a != null && a.startsWith("--")) {

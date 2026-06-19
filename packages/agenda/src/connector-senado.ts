@@ -68,7 +68,15 @@ export class SenadoActividadConnector {
    * cae; documentado para no perder la ruta de respaldo del RESEARCH.
    */
   async fetchVia_NextData(buildId: string, ruta: string): Promise<string> {
+    // #27: defensa en profundidad (path traversal) — el allowlist es host-level, no
+    // path-level. Rechaza `..` y exige que la URL final caiga bajo `${PORTAL_BASE}/_next/data/`.
+    if (ruta.includes("..")) {
+      throw new Error(`fetchVia_NextData: ruta inválida (path traversal): ${ruta}`);
+    }
     const url = `${PORTAL_BASE}/_next/data/${encodeURIComponent(buildId)}/${ruta.replace(/^\//, "")}`;
+    if (!url.startsWith(`${PORTAL_BASE}/_next/data/`)) {
+      throw new Error(`fetchVia_NextData: URL fuera del prefijo permitido`);
+    }
     return this.fetch(url);
   }
 }
