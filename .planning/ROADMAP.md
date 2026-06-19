@@ -99,7 +99,10 @@ Sub-maestras se construyen en su bloque, NO se difieren a NET: lobista/gestor (P
   3. El golden set de reconciliación se extiende con casos de homónimos y colisión de RUT (persona natural vs jurídica, DV inválido) propios de SERVEL/ChileCompra; el gate CI ≥0.95 sigue bloqueando
   4. Toda columna PII nueva nace oculta a `anon` por RLS y la compuerta `data-routing` del LLM se extiende a los nuevos datos sensibles: ningún RUT/PII puede llegar al LLM (reusa `assertNoRutInLlmInput`/`assertSensitivityAllowed`)
 
-**Plans:** TBD
+**Plans:** 3 plans
+- [ ] 09-01-PLAN.md — Invariante de writer tipado (IDENT-12): branded EnlaceConfirmado + factory única; refactor del choke point + voto writer; prueba de compilación
+- [ ] 09-02-PLAN.md — Backfill RUT (IDENT-10): Track A spike SERVEL + Track B lista curada, DV-validado nunca fabricado, re-export del seed; golden set extendido (IDENT-11)
+- [ ] 09-03-PLAN.md — Piso RLS/PII (LEGAL-03): migración 0018 deny-by-default + pgTAP (apply gateado operador) + extensión data-routing del LLM
 
 ### Phase 10: VOTE — Voto individual por parlamentario en la ficha
 
@@ -253,7 +256,7 @@ Sub-maestras se construyen en su bloque, NO se difieren a NET: lobista/gestor (P
 | 6. Citaciones + Tabla Semanal de Sala | v1.0 | 4/4 | Complete | 2026-06-18 |
 | 7. Búsqueda Semántica + Fichas Estructuradas | v1.0 | 3/3 | Complete | 2026-06-18 |
 | 8. VOTE Spike — Validación `opendata.camara.cl` | v2.0 | 1/1 | ✅ Complete (CONFIRMAR) | 08-01 |
-| 9. Completitud de Identidad — RUT + Writer-invariant + Piso PII | v2.0 | 0/? | Not started | - |
+| 9. Completitud de Identidad — RUT + Writer-invariant + Piso PII | v2.0 | 0/3 | Planned | - |
 | 10. VOTE — Voto individual en la ficha | v2.0 | 0/? | Not started | - |
 | 11. INT Lobby — Reuniones + sub-maestra contrapartes | v2.0 | 0/? | Not started | - |
 | 12. INT Patrimonio/Intereses — Declaraciones + comparación | v2.0 | 0/? | Not started | - |
