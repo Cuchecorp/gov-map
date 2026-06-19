@@ -86,8 +86,16 @@ create table lobby_contraparte (
 
 -- DENY-BY-DEFAULT (Ley 21.719, LEGAL-03): enable SIN policies.
 -- (intencionalmente NINGÚN `create policy ... to anon`; intencionalmente NINGÚN
--- `grant select ... to anon`) — RLS habilitada SIN policy => Postgres niega todo a anon.
+-- `grant select ... to anon`) — RLS habilitada SIN policy => Postgres niega las filas a anon.
 alter table lobby_contraparte enable row level security;
+
+-- DEFENSA EN PROFUNDIDAD: este proyecto Supabase concede por DEFAULT PRIVILEGES todos
+-- los privilegios de tabla a `anon`/`authenticated` sobre CADA tabla nueva en `public`
+-- (verificado: anon hereda SELECT sin que esta migración lo otorgue). La RLS sin policy
+-- ya niega las FILAS, pero LEGAL-03 exige que el PRIVILEGIO tampoco exista (el pgTAP lo
+-- codifica). REVOCAR explícitamente todo de anon/authenticated cierra el hueco de los
+-- default privileges. El service_role (writer) conserva sus privilegios y bypassa RLS.
+revoke all on lobby_contraparte from anon, authenticated;
 
 -- ── lobby_de_parlamentario(p_id) (RPC público — espejo de parlamentario_publico/0020) ─
 -- security definer: corre con privilegios del owner para leer la sub-maestra deny-by-default

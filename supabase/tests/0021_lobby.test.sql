@@ -11,7 +11,7 @@
 -- (falso positivo de CI, Pitfall 5). Espeja 0018_piso_pii.test.sql + 0020_parlamentario_publico.test.sql.
 
 begin;
-select plan(18);
+select plan(19);
 
 -- ── Las tres tablas existen ────────────────────────────────────────────────────
 select has_table('public', 'lobby_audiencia',       'tabla lobby_audiencia existe');
