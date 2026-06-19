@@ -320,6 +320,50 @@ describe("FinanciamientoView — agrupación por elección + caveat de periodo a
     const texto = container.textContent ?? "";
     expect(texto).not.toMatch(/candidatura anterior/i);
   });
+
+  it("matchea por AÑO cuando el periodo y la elección tienen formato distinto", () => {
+    // Caso realista (Fix #2): el periodo del parlamentario viene como rango
+    // ("2022-2026") y la elección del aporte como "Elección 2017"/"Elección 2021".
+    // 2017 < 2026 → anterior; 2021 < 2026 → anterior; el rango actual NO se marca.
+    const { container } = render(
+      <FinanciamientoView
+        data={makeViewData({
+          aportes: [
+            makeAporte({ fila_id: "g1#a", eleccion: "Elección 2021" }),
+            makeAporte({ fila_id: "g2#a", eleccion: "Elección 2017" }),
+          ],
+          totalAportes: 2,
+          eleccionActual: "2022-2026",
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(/candidatura anterior \(Elección 2017\)/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/candidatura anterior \(Elección 2021\)/i),
+    ).toBeInTheDocument();
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(/candidatura anterior \(2022-2026\)/i);
+  });
+
+  it("una elección del MISMO año que el mandato actual NO se marca anterior", () => {
+    // periodo "2022-2026" incluye una elección de 2021→anterior, pero una de 2026
+    // (mismo año tope del rango) NO es estrictamente anterior → sin caveat.
+    const { container } = render(
+      <FinanciamientoView
+        data={makeViewData({
+          aportes: [
+            makeAporte({ fila_id: "g1#a", eleccion: "Elección 2026" }),
+          ],
+          totalAportes: 1,
+          eleccionActual: "2022-2026",
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(/candidatura anterior/i);
+  });
 });
 
 // ── ProvenanceBadge por fila + cero cómputo/severidad ───────────────────────────

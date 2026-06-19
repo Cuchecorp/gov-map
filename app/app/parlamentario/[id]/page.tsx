@@ -122,11 +122,54 @@ export default async function ParlamentarioPage({
             Aportes de campaña registrados en SERVEL
           </h2>
           <Suspense fallback={<FinanciamientoSkeleton />}>
-            <FinanciamientoSection id={id} searchParams={sp} />
+            {/*
+              `eleccionActual` se deriva del periodo PÚBLICO del parlamentario
+              (`parlamentario_publico.periodo`) para que el caveat ámbar de
+              "candidatura anterior" pueda dispararse contra datos reales. El
+              wrapper lo resuelve server-side; si el periodo no es derivable, pasa
+              null (conservador: ningún grupo se etiqueta "anterior").
+            */}
+            <FinanciamientoSectionConPeriodo id={id} searchParams={sp} />
           </Suspense>
         </section>
       )}
     </main>
+  );
+}
+
+// ── Wrapper MONEY Financiamiento: deriva `eleccionActual` del periodo público ───
+// El periodo del mandato actual NO viene del RPC de aportes ni del marcador; vive
+// en `parlamentario_publico.periodo` (campo público, no sensible). Lo leemos aquí
+// y lo pasamos EXPLÍCITO a FinanciamientoSection para que el caveat ámbar de
+// "candidatura anterior" pueda dispararse. Conservador: ante un periodo nulo o un
+// fallo, se pasa null (ningún grupo se etiqueta "anterior"); un error real de DB
+// NO se degrada a "sin aportes" — eso lo decide FinanciamientoSection con su RPC.
+async function FinanciamientoSectionConPeriodo({
+  id,
+  searchParams,
+}: {
+  id: string;
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  const sb = createServerSupabase();
+  const { data, error } = await sb
+    .rpc("parlamentario_publico", { p_id: id })
+    .maybeSingle<ParlamentarioPublicoRow>();
+  // #34: un error real de DB/red se lanza (UI de error honesta), nunca se degrada.
+  if (error) {
+    throw new Error(
+      `parlamentario_publico falló para ${id}: ${error.message}`,
+    );
+  }
+  // periodo ausente (null) → conservador: eleccionActual null, sin caveat anterior.
+  const eleccionActual = data?.periodo ?? null;
+
+  return (
+    <FinanciamientoSection
+      id={id}
+      searchParams={searchParams}
+      eleccionActual={eleccionActual}
+    />
   );
 }
 

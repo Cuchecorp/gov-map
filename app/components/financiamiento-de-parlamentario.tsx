@@ -232,12 +232,59 @@ interface GrupoEleccion {
   esAnterior: boolean;
 }
 
+/** Extrae el último año de 4 dígitos (19xx/20xx) de un string, o null. */
+function extraerAnio(s: string | null): number | null {
+  if (!s) return null;
+  const matches = s.match(/\b(19|20)\d{2}\b/g);
+  if (!matches || matches.length === 0) return null;
+  // El año MÁS RECIENTE del string (un rango "2022-2026" → 2026).
+  return Math.max(...matches.map((m) => Number.parseInt(m, 10)));
+}
+
+/**
+ * ¿El grupo `eleccion` corresponde a una candidatura ANTERIOR a `eleccionActual`?
+ *
+ * Heurística CONSERVADORA (nunca etiqueta de más): solo devuelve true cuando
+ * conocemos el mandato actual Y podemos compararlo con confianza. Dos caminos:
+ *   1. Coincidencia/diferencia textual exacta del verbatim (cuando ambos son el
+ *      mismo tipo de string, p.ej. "Elección 2021" vs "Elección 2017").
+ *   2. Comparación por AÑO: si de ambos lados se extrae un año de 4 dígitos y el
+ *      del grupo es ESTRICTAMENTE menor al del mandato actual → anterior. Esto
+ *      tolera formatos distintos ("Elección 2017" del aporte vs "2022-2026" del
+ *      periodo del parlamentario).
+ * Si `eleccionActual` es null, o no se puede extraer año de algún lado y los
+ * strings no son comparables, NO se marca anterior (defense in depth: el
+ * `Elección:` por fila ya impide atribuir un aporte previo al mandato actual).
+ */
+function esGrupoAnterior(
+  eleccion: string,
+  eleccionActual: string | null,
+): boolean {
+  if (eleccionActual === null) return false;
+  // Camino 1: verbatim idéntico → es el mandato actual, NO anterior.
+  if (eleccion === eleccionActual) return false;
+  // Camino 2: comparación por año (estrictamente menor = anterior).
+  const anioGrupo = extraerAnio(eleccion);
+  const anioActual = extraerAnio(eleccionActual);
+  if (anioGrupo !== null && anioActual !== null) {
+    return anioGrupo < anioActual;
+  }
+  // No comparable por año: solo marcar anterior si el verbatim difiere Y el
+  // actual no aporta año (preserva el comportamiento textual previo de fixtures
+  // donde ambos lados son el mismo formato "Elección YYYY").
+  if (anioGrupo === null && anioActual === null) {
+    return eleccion !== eleccionActual;
+  }
+  // Un lado tiene año y el otro no → no comparable con confianza → conservador.
+  return false;
+}
+
 /**
  * Agrupa los aportes (ya ordenados elección DESC / fecha DESC por el RPC) por
  * `eleccion`, preservando el orden. Marca como anterior todo grupo cuya elección
- * NO coincide con `eleccionActual` — SOLO cuando `eleccionActual` es derivable
- * (no-null). Heurística conservadora: si no conocemos el periodo del mandato
- * actual, NO afirmamos que un grupo sea "anterior" (nunca etiqueta de más).
+ * precede a `eleccionActual` (ver `esGrupoAnterior`) — SOLO cuando `eleccionActual`
+ * es derivable (no-null). Heurística conservadora: si no conocemos el periodo del
+ * mandato actual, NO afirmamos que un grupo sea "anterior" (nunca etiqueta de más).
  */
 function agruparPorEleccion(
   aportes: AporteRow[],
@@ -250,8 +297,7 @@ function agruparPorEleccion(
       grupo = {
         eleccion: a.eleccion,
         aportes: [],
-        esAnterior:
-          eleccionActual !== null && a.eleccion !== eleccionActual,
+        esAnterior: esGrupoAnterior(a.eleccion, eleccionActual),
       };
       grupos.push(grupo);
     }
@@ -392,9 +438,18 @@ interface AportesIngestaEstado {
 export async function FinanciamientoSection({
   id,
   searchParams,
+  /**
+   * Periodo/elección del mandato ACTUAL del parlamentario, provisto por la página
+   * (derivado de `ParlamentarioPublicoRow.periodo`, ya público). Cuando es no-null
+   * y comparable, un grupo cuya elección lo precede recibe el caveat ámbar de
+   * candidatura anterior. `undefined`/`null` (default) → conservador: ningún grupo
+   * se etiqueta "anterior" (el `Elección:` por fila sigue siendo la defensa activa).
+   */
+  eleccionActual = null,
 }: {
   id: string;
   searchParams: { [key: string]: string | string[] | undefined };
+  eleccionActual?: string | null;
 }) {
   // Candado de presentación (WR-02): SIEMPRE vía moneyPublicEnabled(), nunca el
   // env crudo. OFF (default) → sin DOM, sin lectura de Supabase. Doble candado con
@@ -465,12 +520,11 @@ export async function FinanciamientoSection({
   // Fecha de corte para el estado "verificado sin aportes".
   const fechaCorte = estadoData?.ingestado_hasta ?? null;
 
-  // Periodo del mandato actual: el RPC no lo emite; el marcador tampoco. Hasta que
-  // exista una fuente confiable del periodo vigente, la heurística es conservadora
-  // (eleccionActual = null) → ningún grupo se etiqueta "anterior" salvo que una
-  // fuente futura lo provea. Esto evita marcar de más; el `Elección:` por fila
-  // (defense in depth) ya impide atribuir un aporte previo al mandato actual.
-  const eleccionActual: string | null = null;
+  // Periodo del mandato actual: lo provee la página desde
+  // `ParlamentarioPublicoRow.periodo` (público). Si llega null/undefined, la
+  // heurística es conservadora → ningún grupo se etiqueta "anterior". El
+  // `Elección:` por fila (defense in depth) ya impide atribuir un aporte previo
+  // al mandato actual aunque el periodo no se conozca.
 
   // Paginación server-driven sobre el conjunto ya cargado.
   const totalAportes = todos.length;
