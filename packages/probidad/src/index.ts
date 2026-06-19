@@ -62,3 +62,29 @@ export { InMemoryProbidadWriter, versionKey } from "./writer";
 export type { ProbidadWriter } from "./writer";
 export { SupabaseProbidadWriter } from "./writer-supabase";
 export type { SupabaseProbidadWriterOptions } from "./writer-supabase";
+
+// Conector SPARQL (reusa @obs/ingest en el ORDEN LOCKED, NO BaseConnector.run).
+export {
+  InfoProbidadConnector,
+  RobotsDisallowError,
+  InfoProbidadBloqueadaError,
+  SPARQL_HEADERS_INFOPROBIDAD,
+} from "./connector-infoprobidad";
+export type { InfoProbidadConnectorDeps } from "./connector-infoprobidad";
+
+// Orquestación (drift BLOQUEANTE + degradación honesta + nunca fabrica + versionado).
+export { runIngestProbidad, formaDe } from "./ingest-run";
+export type {
+  RunIngestProbidadOpts,
+  RunIngestProbidadResult,
+  DegradacionProbidad,
+  TareaDeclarante,
+} from "./ingest-run";
+
+// CLI de ingesta (corrida LIVE acotada / degrada a dry-run sin key/alcance).
+export {
+  parseArgs as parseProbidadArgs,
+  main as ingestProbidadMain,
+  ProbidadCliArgsError,
+} from "./ingest-cli";
+export type { ProbidadCliOptions, ProbidadCliResult } from "./ingest-cli";
