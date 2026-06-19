@@ -76,3 +76,67 @@ export {
   DineroCliArgsError,
 } from "./ingest-cli";
 export type { DineroCliOptions, DineroCliResult } from "./ingest-cli";
+
+// ── SERVEL (conector de financiamiento de campana; enlace del candidato por NOMBRE via pipeline) ──
+
+// Modelo + zod schemas SERVEL (Aporte/Donante VERBATIM; licencia "terminos por verificar").
+export type { Aporte, Donante, AporteSheet, TipoPersonaDonante } from "./model-servel";
+export {
+  AporteSchema,
+  DonanteSchema,
+  AporteSheetSchema,
+  ORIGEN_SERVEL,
+  LICENCIA_SERVEL,
+  fuenteIdDe,
+  donanteIdDe,
+} from "./model-servel";
+
+// Parser xlsx VERBATIM (gate de header-text que THROW en drift; sin LLM).
+export { parseAportes, EXPECTED_HEADERS, HEADER_ROW } from "./parse-servel";
+export type { ParseAportesOpts } from "./parse-servel";
+
+// Reconciliacion de completitud RUN-LEVEL (Content-MD5 + byte-length + TOTAL -> cuarentena).
+export { reconciliarCompletitud } from "./reconciliar-completitud";
+export type {
+  ControlTotal,
+  BytesRecibidos,
+  ResultadoCompletitud,
+} from "./reconciliar-completitud";
+
+// Enlace del candidato por NOMBRE via correrPipeline (SOLO determinista puebla; donante jamas al LLM).
+export { reconciliarAporte } from "./reconciliar-aporte";
+export type {
+  ReconciliarAporteOpts,
+  AporteParaEscribir,
+  ResultadoReconciliacionAporte,
+} from "./reconciliar-aporte";
+
+// Conector del .xlsx de SERVEL (host EXACTO via extraHosts + https forzado).
+export {
+  ServelConnector,
+  ServelBloqueadaError,
+  RobotsDisallowError as RobotsDisallowErrorServel,
+  HEADERS_SERVEL,
+  SERVEL_HOST,
+} from "./connector-servel";
+export type {
+  ServelConnectorDeps,
+  DescargaServel,
+  AnclasDescarga,
+  HeadFn,
+} from "./connector-servel";
+
+// Helper de Supabase Storage para el crudo (clave versionada idempotente).
+export {
+  SupabaseStorageServel,
+  DEFAULT_BUCKET_SERVEL,
+  claveCrudo,
+  sha256Hex,
+} from "./storage-supabase";
+export type { SupabaseStorageOptions } from "./storage-supabase";
+
+// Writer SERVEL idempotente (interfaz + in-memory + Supabase).
+export { InMemoryServelWriter, versionKeyServel } from "./writer-servel";
+export type { ServelWriter } from "./writer-servel";
+export { SupabaseServelWriter } from "./writer-supabase-servel";
+export type { SupabaseServelWriterOptions } from "./writer-supabase-servel";
