@@ -2,12 +2,15 @@
 // persona-natural por NOMBRE via correrPipeline (finalidad del dato) + persona-juridica RUT-only.
 // SIN red, SIN DB: MockMiniMaxProvider + SpyWriter/SpyProvider.
 //
-// Invariantes (MONEY-02 retrofit "finalidad del dato"):
+// Invariantes (MONEY-02 retrofit "finalidad del dato"; CR-01: name-match != RUT-ownership):
 //  - RUT invalido (DV malo) -> cuarentena, enlace null, NUNCA fila confirmada (intacto).
 //  - sin RUT interno en la maestra (IDENT-10) -> enlace null, estadoVinculo "no_confirmado".
 //  - RUT-exacto unico -> confirmar(id,"determinista") -> EnlaceConfirmado, "confirmado" (intacto).
 //  - RUT con 2+ matches -> fail-closed, enlace null.
-//  - PERSONA NATURAL sin match RUT-exacto, nombre unico -> enlace confirmado + candidato de cosecha.
+//  - PERSONA NATURAL sin match RUT-exacto, nombre unico, MASTER YA TIENE EL MISMO RUT -> enlace
+//    confirmado + candidato de COSECHA (corroboracion del RUT ya presente).
+//  - PERSONA NATURAL sin match RUT-exacto, nombre unico, MASTER SIN/CON OTRO RUT -> enlace confirmado
+//    + candidato a REVISION HUMANA (CR-01), SIN cosecha, SIN mutar el master (cola humana).
 //  - PERSONA NATURAL ambigua (homonimo) -> null + sin cosecha (fail-closed, cola humana).
 //  - PERSONA JURIDICA -> NUNCA correrPipeline (prompts.length === 0); enlace null, sin cosecha.
 //  - DATA-ROUTING (LOAD-BEARING): el rutProveedor NUNCA aparece en vinculos/colas ni en el prompt.
@@ -181,8 +184,10 @@ describe("reconciliarContrato — persona JURIDICA NUNCA name-link", () => {
   });
 });
 
-describe("reconciliarContrato — fallback persona-natural confirmada", () => {
-  it("nombre unico en camara+periodo + RUT DV-valido sin match RUT-exacto -> enlace + cosecha", async () => {
+describe("reconciliarContrato — fallback persona-natural confirmada (CORROBORACION de RUT, CR-01)", () => {
+  it("nombre unico + master YA tiene el mismo RUT -> enlace + cosecha (no-op de confirmacion)", async () => {
+    // CR-01 canal CORROBORACION: la maestra YA tenia el RUT y coincide -> la igualdad RUT<->parlamentario
+    // esta establecida; cosechar es re-escribir el mismo valor. ES el unico camino que alimenta el writer.
     const maestra = [
       maestro({
         id: "P00500",
@@ -190,6 +195,52 @@ describe("reconciliarContrato — fallback persona-natural confirmada", () => {
         nombres: "Juan Antonio",
         apellido_paterno: "Coloma",
         apellido_materno: "Correa",
+        rut: "76.123.456-0", // master YA tiene el RUT que trae el contrato
+      }),
+    ];
+    const provider = new MockMiniMaxProvider({
+      decision: "match",
+      chosen_id: "P00500",
+      confidence: 0.99,
+      evidence: [],
+      conflicts: [],
+    });
+    const writer = new SpyWriter();
+    const contratos = [
+      contrato({
+        rutProveedor: "76.123.456-0",
+        tipoPersona: "natural",
+        proveedorNombre: "Coloma C., Juan Antonio",
+      }),
+    ];
+
+    // Con el master poblado por ESE RUT, matchDeterminista resuelve por RUT-exacto en el paso 2 (antes
+    // del pipeline) -> confirmado, SIN cosecha (no hay RUT nuevo que cosechar). Es el comportamiento
+    // seguro: la unica via que escribe el master es la corroboracion de un RUT ya presente, jamas un RUT
+    // nuevo derivado por nombre.
+    const r = await reconciliarContrato(contratos, maestra, { provider, writer });
+
+    expect(r.contratos[0]!.estadoVinculo).toBe("confirmado");
+    expect(r.contratos[0]!.enlace!.parlamentarioId).toBe("P00500");
+    expect(r.parlamentariosConfirmados).toEqual(["P00500"]);
+    // RUT-exacto del paso 2: no cosecha (el master ya estaba poblado; nada que cosechar).
+    expect(r.cosechas).toEqual([]);
+    expect(r.revisionesRut).toEqual([]);
+  });
+});
+
+describe("reconciliarContrato — fallback persona-natural confirmada (RUT name-only -> REVISION, CR-01)", () => {
+  it("nombre unico, master SIN rut -> enlace confirmado + candidato a REVISION HUMANA, SIN cosecha, SIN master write", async () => {
+    // CR-01: name-uniqueness != RUT-ownership. El enlace-por-nombre se mantiene (fiscalizacion), pero el
+    // RUT del proveedor es un CANDIDATO que se ENCOLA a revision humana, NUNCA se cosecha al master.
+    const maestra = [
+      maestro({
+        id: "P00500",
+        nombre_normalizado: "antonio coloma juan",
+        nombres: "Juan Antonio",
+        apellido_paterno: "Coloma",
+        apellido_materno: "Correa",
+        rut: null, // master SIN rut -> el RUT name-only NO se puede corroborar
       }),
     ];
     const provider = new MockMiniMaxProvider({
@@ -210,17 +261,63 @@ describe("reconciliarContrato — fallback persona-natural confirmada", () => {
 
     const r = await reconciliarContrato(contratos, maestra, { provider, writer });
 
+    // El enlace confirmado-por-nombre se mantiene (la feature de fiscalizacion).
     expect(r.contratos[0]!.estadoVinculo).toBe("confirmado");
-    expect(r.contratos[0]!.enlace).not.toBeNull();
     expect(r.contratos[0]!.enlace!.parlamentarioId).toBe("P00500");
     expect(r.parlamentariosConfirmados).toEqual(["P00500"]);
-    // Candidato de cosecha emitido: el rutProveedor DV-valido ES el RUT de P00500.
-    expect(r.cosechas.length).toBe(1);
-    expect(r.cosechas[0]!.parlamentarioId).toBe("P00500");
-    expect(r.cosechas[0]!.rutHarvested).toBe("761234560");
-    expect(r.cosechas[0]!.provenance.origen).toContain("harvest");
-    expect(r.cosechas[0]!.provenance.enlace).toBe("https://api.mercadopublico.cl");
-    expect(r.cosechas[0]!.provenance.fecha_captura).toBe("2026-06-19T00:00:00Z");
+    // NINGUNA cosecha: el RUT name-only NUNCA va al canal de escritura del master.
+    expect(r.cosechas).toEqual([]);
+    // SI un candidato a revision humana, con el trust-level en la provenance.
+    expect(r.revisionesRut.length).toBe(1);
+    expect(r.revisionesRut[0]!.parlamentarioId).toBe("P00500");
+    expect(r.revisionesRut[0]!.rutCandidato).toBe("761234560");
+    expect(r.revisionesRut[0]!.provenance.origen).toContain("name-only");
+    expect(r.revisionesRut[0]!.provenance.origen).toContain("pendiente-humano");
+    // Y se encolo a la cola humana (enqueueRevision), NO a un vinculo confirmado ni a un master write.
+    expect(writer.colas.length).toBe(1);
+    expect(writer.colas[0]!.motivo).toContain("ANTES de escribir el master");
+    // DATA-ROUTING: el RUT NO viaja a un prompt del LLM (el determinista corto antes del modelo).
+  });
+
+  it("namesake-collision: contratista privado nombre-unico cuyo RUT difiere del master -> SIN cosecha, master NO muta (IN-03)", async () => {
+    // EL caso que CR-01 existe para prevenir: un contratista privado que es homonimo (nombre unico en
+    // camara+periodo) de un senador, pero cuyo RUT NO es el del senador. El master ya trae OTRO rut.
+    const maestra = [
+      maestro({
+        id: "P00500",
+        nombre_normalizado: "antonio coloma juan",
+        nombres: "Juan Antonio",
+        apellido_paterno: "Coloma",
+        apellido_materno: "Correa",
+        rut: "9.876.543-3", // el RUT REAL del senador (DV-valido), distinto al del contratista
+      }),
+    ];
+    const provider = new MockMiniMaxProvider({
+      decision: "match",
+      chosen_id: "P00500",
+      confidence: 0.99,
+      evidence: [],
+      conflicts: [],
+    });
+    const writer = new SpyWriter();
+    const contratos = [
+      contrato({
+        rutProveedor: "76.123.456-0", // RUT del contratista privado, NO el del senador
+        tipoPersona: "natural",
+        proveedorNombre: "Coloma C., Juan Antonio",
+      }),
+    ];
+
+    const r = await reconciliarContrato(contratos, maestra, { provider, writer });
+
+    // El enlace-por-nombre se mantiene, pero el RUT del contratista NUNCA se cosecha al master.
+    expect(r.contratos[0]!.estadoVinculo).toBe("confirmado");
+    expect(r.cosechas).toEqual([]); // INVARIANTE rule-5: NINGUNA mutacion del master rut.
+    // El RUT difiere del master -> candidato a revision humana (un humano descartara la colision).
+    expect(r.revisionesRut.length).toBe(1);
+    expect(r.revisionesRut[0]!.rutCandidato).toBe("761234560");
+    // El RUT REAL del senador (9.876.543-3) NUNCA se sobreescribe por esta ruta.
+    expect(r.cosechas.find((c) => c.rutHarvested === "761234560")).toBeUndefined();
   });
 });
 
@@ -251,7 +348,7 @@ describe("reconciliarContrato — persona-natural ambigua (homonimo) -> null + s
 });
 
 describe("reconciliarContrato — sin provider: persona-natural homonima degrada, determinista resuelve", () => {
-  it("homonimo degrada a no_confirmado (fail-closed); un determinista resuelve + cosecha", async () => {
+  it("homonimo degrada a no_confirmado (fail-closed); un determinista (master sin rut) -> revision, NO cosecha", async () => {
     const maestra = [
       maestro({ id: "PD", nombre_normalizado: "bianchi carlos", nombres: "Carlos", apellido_paterno: "Bianchi" }),
       maestro({ id: "PH1", nombre_normalizado: "juan soto", nombres: "Juan", apellido_paterno: "Soto" }),
@@ -271,9 +368,11 @@ describe("reconciliarContrato — sin provider: persona-natural homonima degrada
     expect(det.estadoVinculo).toBe("confirmado");
     expect(hom.enlace).toBeNull();
     expect(hom.estadoVinculo).toBe("no_confirmado");
-    // Solo el determinista cosecha.
-    expect(r.cosechas.length).toBe(1);
-    expect(r.cosechas[0]!.parlamentarioId).toBe("PD");
+    // CR-01: el determinista-por-nombre con master SIN rut NO cosecha; produce un candidato a revision.
+    expect(r.cosechas).toEqual([]);
+    expect(r.revisionesRut.length).toBe(1);
+    expect(r.revisionesRut[0]!.parlamentarioId).toBe("PD");
+    expect(r.revisionesRut[0]!.rutCandidato).toBe("761234560");
   });
 });
 

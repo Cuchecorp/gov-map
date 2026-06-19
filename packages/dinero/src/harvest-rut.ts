@@ -1,7 +1,9 @@
-// harvest-rut — writer path de COSECHA de RUT (IDENT-10). Escribe el RUT COSECHADO al `rut` de la
-// maestra de parlamentarios SOLO para enlaces persona-natural CONFIRMADOS (ver reconciliar-contrato.ts:
-// el `rutProveedor` DV-valido de ChileCompra de un proveedor persona-natural confirmado ES el RUT del
-// parlamentario enlazado).
+// harvest-rut — writer path de COSECHA de RUT (IDENT-10). CANAL DE CORROBORACION (CR-01): este writer
+// SOLO recibe `CandidatoCosechaRut`, que reconciliar-contrato emite EXCLUSIVAMENTE cuando la maestra YA
+// tenia un `rut` que coincide con el `rutProveedor` (no-op de confirmacion del RUT ya presente). Un RUT
+// derivado por NOMBRE (name-only) NUNCA llega aqui: viaja por el canal SEPARADO de revision humana
+// (`CandidatoRevisionRut` -> `enqueueRevision`), de modo que es estructuralmente imposible que un
+// name-match escriba un RUT nuevo al master sin confirmacion humana del binding nombre<->RUT.
 //
 // REUSO, NO REIMPLEMENTACION: delega en `runBackfillRut` de @obs/identity, que re-aplica el DV-gate
 // (`isRutValido`, modulo-11) + provenance NOT NULL + fail-closed a log de revision. NUNCA se fabrica

@@ -37,7 +37,8 @@ export { parseContratos, tipoPersona } from "./parse-chilecompra";
 export type { ParseContratosOpts } from "./parse-chilecompra";
 
 // Reconciliacion del proveedor: persona natural = RUT-exacto O nombre via correrPipeline (finalidad
-// del dato) + cosecha de RUT en match confirmado; persona juridica = RUT-exacto-only (nunca name-link).
+// del dato). Cosecha de RUT SOLO como corroboracion (el master ya tenia el RUT); un RUT derivado por
+// NOMBRE va a revision humana (CR-01), nunca escribe el master. Persona juridica = RUT-exacto-only.
 export { reconciliarContrato } from "./reconciliar-contrato";
 export type {
   ReconciliarContratoOpts,
@@ -45,6 +46,7 @@ export type {
   ResultadoReconciliacionDinero,
   EstadoVinculoContrato,
   CandidatoCosechaRut,
+  CandidatoRevisionRut,
 } from "./reconciliar-contrato";
 
 // Cosecha de RUT (IDENT-10): writer path que reusa runBackfillRut (escritura remota = checkpoint operador).
