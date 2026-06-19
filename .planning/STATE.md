@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: "13-01 tareas autónomas completas; Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE — pgTAP 0023 contra el remoto (acción de operador)"
-stopped_at: "13-01: tareas autonomas completas (money-gate.ts + Vitest 5/5, .env.example, pgTAP 0023). Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE: pgTAP 0023 contra el remoto."
-last_updated: "2026-06-19T17:19:14.925Z"
+status: "14-01 tareas autónomas completas; Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE — apply 0023_dinero + pgTAP 0024 contra el remoto (acción de operador)"
+stopped_at: "14-01: tareas autonomas completas (0023_dinero.sql + 0024_dinero.test.sql, greps verdes, plan(17)=17 asserts). Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE: supabase db push --db-url + supabase test db --db-url contra el remoto."
+last_updated: "2026-06-19T18:00:00.000Z"
 last_activity: 2026-06-19
 progress:
   total_phases: 11
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 ## Current Position
 
-Phase: 13 (Compuerta Legal — Bloque MONEY, Ley 21.719) — EXECUTING
+Phase: 14 (MONEY Contratos — ChileCompra por RUT + sub-maestra de contratistas) — EXECUTING
 Plan: 1 of N
-Status: 13-01 tareas autónomas completas; Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE — pgTAP 0023 contra el remoto (acción de operador)
-Next plan: 13-02 (dossier legal 13-LEGAL-DOSSIER.md + copia docs/legal/, YAML signoff: pending)
+Status: 14-01 tareas autónomas completas (0023_dinero.sql + 0024_dinero.test.sql); Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE — apply remoto + pgTAP 0024 (acción de operador)
+Next plan: 14-02 (conector @obs/dinero — ingesta ChileCompra) tras resolver el checkpoint de 14-01
 Last activity: 2026-06-19
 
 ## Performance Metrics
