@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: — Parlamentarios 360
-status: "14-03 COMPLETO — sección de ficha 'Contratos del Estado asociados al RUT' gated tras moneyPublicEnabled() (default OFF); 12 tests RTL verdes; tsc limpio en archivos del plan. 14-01/14-02 tienen checkpoints de operador pendientes (apply remoto + LIVE probe)."
-stopped_at: "14-03: tareas autónomas completas (ContratosView + ContratosSection gated, sourceLabel ChileCompra, mount #dinero en page.tsx, 12 tests RTL). pnpm test 127/127 verde."
-last_updated: "2026-06-19T18:30:00.000Z"
+milestone_name: milestone
+status: "14-03 entregado — ContratosView/ContratosSection + sourceLabel ChileCompra + mount #dinero gated; 12 tests RTL verdes, tsc limpio en archivos del plan. Pendientes de OPERADOR: 14-01 apply remoto + pgTAP 0024; 14-02 LIVE probe ChileCompra."
+stopped_at: 14-03 COMPLETO — sección de ficha Contratos gated tras moneyPublicEnabled(); 12 tests RTL + pnpm test 127/127 verde; tsc limpio en archivos del plan.
+last_updated: "2026-06-19T20:20:56.026Z"
 last_activity: 2026-06-19
 progress:
-  total_phases: 11
+  total_phases: 8
   completed_phases: 7
-  total_plans: 18
-  completed_plans: 19
-  percent: 64
+  total_plans: 21
+  completed_plans: 20
+  percent: 88
 ---
 
 # Project State
@@ -166,6 +166,7 @@ None yet for v2.0.
 - [Deuda v1.0 acarreada]: (1) 🔴 rotar DB password de Supabase (expuesto en transcript); (2) aplicar migración 0011 al Supabase LOCAL (checkpoint humano 07-01 Task 5); (3) cargar corpus a la nube + wiring app→nube; (4) persistir link_mensaje_mocion para activar idea matriz; (5) desplegar Edge Functions + vault secrets. Ver `.planning/v1.0-MILESTONE-AUDIT.md`.
 - [Phase 13 — Task 3 OPERADOR pendiente]: correr pgTAP `0023_money_gate.test.sql` contra el remoto Supabase sa-east-1 — extraer `SUPABASE_DB_URL` esquivando BOM U+FEFF (helper Phases 9-12) y `supabase test db --db-url <url>`; confirmar `0023` 3/3 + `0018/0021/0022` verdes. NO hay migración nueva que aplicar (Phase 13 no introduce DDL). Resume-signal: "pgTAP verde". Las dos tareas autónomas (flag server-only + Vitest 5/5; `.env.example`; pgTAP) están completas y verificadas localmente.
 - 14-02: checkpoint LIVE probe ChileCompra pendiente (requiere MERCADOPUBLICO_TICKET real; operador). Tareas autonomas 1-2 completas, 24 tests verdes.
+- 15-01 Task 3 (checkpoint:human-action, gate=blocking): aplicar 0024_servel.sql al remoto via 'supabase db push --db-url' + 'supabase test db --db-url' (pgTAP 0025 debe pasar 23/23). NO ejecutado por el agente.
 
 ## Deferred Items
 
@@ -179,7 +180,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T18:30:00.000Z
+Last session: 2026-06-19T20:20:43.065Z
 Stopped at: 14-03 COMPLETO — sección de ficha Contratos gated tras moneyPublicEnabled(); 12 tests RTL + pnpm test 127/127 verde; tsc limpio en archivos del plan.
 Resume file: None
 
