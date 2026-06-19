@@ -5,6 +5,7 @@ import { createServerSupabase } from "@/lib/supabase";
 import { PARLAMENTARIO_ID_RE } from "@/lib/buscar";
 import { ParlamentarioHeader } from "@/components/parlamentario-header";
 import { VotosSection } from "@/components/votos-por-parlamentario";
+import { LobbySection } from "@/components/lobby-de-parlamentario";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ParlamentarioPublicoRow } from "@/lib/types";
 
@@ -52,11 +53,23 @@ export default async function ParlamentarioPage({
       </section>
 
       {/*
-        Phase 11+ APILA aquí sus secciones, cada una su propio bloque:
-          <section id="lobby" className="mt-12">      <h2>Reuniones de lobby</h2>      …
+        Phase 11 — INT Lobby (§3.0). SIBLING de #votos, NUNCA anidada: el mt-12 es
+        la frontera de carril (anti-insinuación §9.1). Una reunión de lobby y un
+        voto JAMÁS comparten un <article>/<Card>/<li>. Su propio <h2> + Suspense +
+        empty honesto.
+      */}
+      <section id="lobby" className="mt-12">
+        <h2 className="text-xl font-semibold mb-4">Reuniones de lobby</h2>
+        <Suspense fallback={<LobbySkeleton />}>
+          <LobbySection id={id} searchParams={sp} />
+        </Suspense>
+      </section>
+
+      {/*
+        Phase 12+ APILA aquí sus secciones, cada una su propio bloque:
           <section id="patrimonio" className="mt-12"> <h2>Patrimonio e intereses</h2> …
           <section id="dinero" className="mt-12">     <h2>Contratos y financiamiento</h2> …
-        Cada una: su <h2>, su <Suspense>, su empty honesto. NO anidar en #votos
+        Cada una: su <h2>, su <Suspense>, su empty honesto. NO anidar en otra sección
         y NUNCA componer un dato de otro bloque dentro de la misma unidad de UI.
       */}
     </main>
@@ -103,6 +116,18 @@ function VotosSkeleton() {
     <div className="space-y-4" aria-hidden="true">
       <Skeleton className="h-4 w-full" />
       <Skeleton className="h-10 w-full rounded-lg" />
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Skeleton key={i} className="h-12 w-full rounded-lg" />
+      ))}
+    </div>
+  );
+}
+
+// Shape-matched a LobbyView: línea de intro + 3 filas de audiencia (§6.2).
+function LobbySkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden="true">
+      <Skeleton className="h-4 w-3/4" />
       {Array.from({ length: 3 }).map((_, i) => (
         <Skeleton key={i} className="h-12 w-full rounded-lg" />
       ))}
