@@ -244,9 +244,106 @@ export interface LobbyAudienciaRow {
   enlace: string | null;
 }
 
+/**
+ * Fila CRUDA del RPC `declaraciones_de_parlamentario` (migración 0022, security
+ * definer). El RPC proyecta SOLO los campos escalares publicados de la versión —
+ * NUNCA `parlamentario_id` interno, NUNCA un familiar, NUNCA un RUT de persona
+ * natural (deny-by-default, LEGAL-03). `fuente_id` es la URI del nodo Declaración
+ * (clave de versión única). El Server Component la modela como `DeclaracionVersionRow`.
+ */
+export interface DeclaracionRpcRow {
+  fuente_id: string;
+  fecha_presentacion: string; // date ISO
+  tipo: string; // label literal de la fuente (rdfs:label resuelto o URI cruda)
+  cargo: string | null;
+  organismo: string | null;
+  origen: string;
+  fecha_captura: string;
+  enlace: string | null;
+  licencia: string;
+}
+
+/**
+ * Fila CRUDA del RPC `comparar_declaraciones` (migración 0022, security definer).
+ * El RPC devuelve los campos declarados LITERALES en FILAS (etiqueta/valor), una
+ * por (versión × campo). CERO columna de delta/variación/enriquecimiento/veredicto
+ * (PROJECT.md hard anti-feature, LOCKED). El UI las dispone lado-a-lado SIN computar
+ * nada; un campo ausente lo rotula el UI ("No declarado en esta versión"), no el RPC.
+ */
+export interface CompararDeclaracionRpcRow {
+  fecha_presentacion: string; // date ISO → identidad de columna
+  etiqueta: string; // NOUN label del campo declarado
+  valor: string | null; // literal verbatim de la fuente
+  origen: string;
+  fecha_captura: string;
+  enlace: string | null;
+  licencia: string;
+}
+
+/**
+ * Payload PÚBLICO de UNA versión de declaración (UI-SPEC §10). La forma que
+ * consume `PatrimonioView`. La `fecha_presentacion` es PROMINENTE (mono, labeled
+ * "Presentada el …") — una vieja NUNCA se lee como estado actual (INT-04). Cada
+ * campo declarado es un par `{ etiqueta NOUN, valor literal }` — NUNCA prosa
+ * conectiva autorada (lección `representado` de Phase 11). El UI NO computa nada.
+ *
+ * PROHIBIDO en este payload (LEGAL-03 deny-by-default; el RPC no los proyecta):
+ * el RUT del parlamentario, nombres/RUT de familiares, cualquier clave interna.
+ */
+export interface DeclaracionVersionRow {
+  /** URI del nodo Declaración (clave de versión única). */
+  declaracion_id: string;
+  /** Idéntico a `declaracion_id` (cada versión es su propio nodo). Identidad estable para el selector de comparación. */
+  version_id: string;
+  /** Categoría literal de la fuente (label, sin editorializar). */
+  tipo: string;
+  /** ISO; PROMINENTE → "Presentada el DD MMM YYYY". */
+  fecha_presentacion: string;
+  /** Identidad del declarante — guarda §3.4: set SOLO si confirmado. */
+  parlamentario_id: string | null;
+  parlamentario_estado_vinculo:
+    | "confirmado"
+    | "probable"
+    | "revision"
+    | "no_confirmado"
+    | null;
+  /** Nombre crudo del declarante (solo caso no confirmado). */
+  parlamentario_mencion: string;
+  /** Campos declarados LITERALES: etiqueta NOUN muted + valor verbatim. */
+  campos: Array<{ etiqueta: string; valor: string }>;
+  /** → `sourceLabel(origen)` → `ProvenanceBadge.sourceName` ("InfoProbidad"). */
+  origen: string;
+  /** → `ProvenanceBadge.capturedAt` (frescura ámbar vía `esStale`). */
+  fecha_captura: string;
+  /** → `ProvenanceBadge.sourceUrl` (registro de la fuente por declaración). */
+  enlace: string | null;
+  /** → atribución visible (intro + caption de comparación). */
+  licencia: "CC BY 4.0";
+  /** `true` → declaración vieja: badge ámbar + caveat §6.4; NUNCA "actual". */
+  es_historica: boolean;
+}
+
+/**
+ * Una columna de la vista de comparación (UI-SPEC §3.5): una versión fechada con
+ * sus pares etiqueta/valor literales. El UI dispone N columnas lado-a-lado; un
+ * campo ausente en una columna se rotula "No declarado en esta versión". CERO
+ * delta/veredicto — el RPC no computa nada y el UI tampoco.
+ */
+export interface DeclaracionComparacionColumna {
+  fecha_presentacion: string; // ISO → "Presentada el …" (identidad de columna, mono)
+  origen: string;
+  fecha_captura: string;
+  enlace: string | null;
+  licencia: string;
+  /** Map etiqueta → valor literal (un campo declarado por entrada). */
+  valores: Record<string, string>;
+}
+
 /** Etiqueta legible de la fuente para el ProvenanceBadge. */
 export function sourceLabel(origen: string | null): string {
   const o = (origen ?? "").toLowerCase();
+  if (o.includes("probidad") || o.includes("cplt") || o.includes("transparencia"))
+    return "InfoProbidad";
   if (o.includes("lobby")) return "Ley del Lobby";
   if (o.includes("senado")) return "Senado";
   if (o.includes("camara") || o.includes("cámara")) return "Cámara";
