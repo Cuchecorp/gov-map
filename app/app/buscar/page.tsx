@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createServerSupabase } from "@/lib/supabase";
-import { buscarProyectos } from "@/lib/buscar";
+import { buscarProyectos, BOLETIN_RE, MAX_QUERY_CHARS } from "@/lib/buscar";
 import { sourceLabel, type ProyectoRow } from "@/lib/types";
 import { SearchBox } from "@/components/search-box";
 import { SearchResultCard } from "@/components/search-result-card";
@@ -20,8 +20,6 @@ import { Skeleton } from "@/components/ui/skeleton";
  * (la Gemini key nunca llega al cliente, T-07-11). NUNCA se muestra score.
  */
 
-const BOLETIN_RE = /^\d{3,6}(-\d{1,2})?$/;
-const MAX_QUERY_CHARS = 300;
 const PAGE_SIZE = 20;
 
 interface PageProps {
@@ -102,11 +100,12 @@ async function Resultados({ q, page }: { q: string; page: number }) {
     .map((v) => porBoletin.get(v.boletin))
     .filter((p): p is ProyectoRow => p !== undefined);
 
-  const total = ordenados.length;
-  const countCopy =
-    total === 1
-      ? `1 resultado para "${q}"`
-      : `${total} resultados para "${q}"`;
+  // #32: mostrar el RANGO de la página, no `ordenados.length` como si fuera el total
+  // (antes "20 resultados" aunque hubiera más). `hayMas` indica que la cuenta no termina aquí.
+  const desde = PAGE_SIZE * (page - 1) + 1;
+  const hasta = PAGE_SIZE * (page - 1) + ordenados.length;
+  const rango = desde === hasta ? `${desde}` : `${desde}–${hasta}`;
+  const countCopy = `Resultados ${rango}${hayMas ? "+" : ""} para "${q}"`;
 
   return (
     <>

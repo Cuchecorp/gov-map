@@ -1,7 +1,8 @@
-import { Suspense } from "react";
+import { Suspense, cache } from "react";
 import { notFound } from "next/navigation";
 
 import { createServerSupabase } from "@/lib/supabase";
+import { BOLETIN_RE } from "@/lib/buscar";
 import { FichaHeader } from "@/components/ficha-header";
 import { TimelineView } from "@/components/timeline-view";
 import { VotacionCard } from "@/components/votacion-card";
@@ -17,8 +18,7 @@ import type {
   VotacionRow,
 } from "@/lib/types";
 
-// Boletín válido: 3-6 dígitos + sufijo opcional "-NN" (T-05-09, path injection).
-const BOLETIN_RE = /^\d{3,6}(-\d{1,2})?$/;
+// Boletín válido (T-05-09, path injection): validador ÚNICO importado de lib/buscar (#36).
 
 interface PageProps {
   params: Promise<{ boletin: string }>;
@@ -78,15 +78,19 @@ export default async function ProyectoPage({ params }: PageProps) {
 }
 
 // ── Ficha estructurada: idea matriz + cuerpos legales (proyecto_ficha 0011) ──
-async function leerFicha(boletin: string): Promise<ProyectoFichaRow | null> {
-  const sb = createServerSupabase();
-  const { data } = await sb
-    .from("proyecto_ficha")
-    .select("*")
-    .eq("boletin", boletin)
-    .maybeSingle<ProyectoFichaRow>();
-  return data ?? null;
-}
+// #33: envuelto en React.cache → una sola consulta por render aunque IdeaMatrizSection y
+// CuerposLegalesSection la pidan por separado (supabase-js no se deduplica como fetch).
+const leerFicha = cache(
+  async (boletin: string): Promise<ProyectoFichaRow | null> => {
+    const sb = createServerSupabase();
+    const { data } = await sb
+      .from("proyecto_ficha")
+      .select("*")
+      .eq("boletin", boletin)
+      .maybeSingle<ProyectoFichaRow>();
+    return data ?? null;
+  },
+);
 
 async function IdeaMatrizSection({ boletin }: { boletin: string }) {
   const ficha = await leerFicha(boletin);
@@ -115,13 +119,19 @@ async function CuerposLegalesSection({ boletin }: { boletin: string }) {
 // ── Ficha header (proyecto) ──────────────────────────────────────────────────
 async function FichaSection({ boletin }: { boletin: string }) {
   const sb = createServerSupabase();
-  const { data } = await sb
+  const { data, error } = await sb
     .from("proyecto")
     .select("*")
     .eq("boletin", boletin)
-    .single<ProyectoRow>();
+    .maybeSingle<ProyectoRow>();
 
-  // Si el proyecto no existe → 404 (UI-SPEC §6.1 / §6.3).
+  // #34: distinguir "no existe" de un fallo de DB/red. `.single()` devolvía data=null en
+  // AMBOS casos y el código lo trataba como 404, enmascarando errores transitorios como
+  // "proyecto no encontrado". `.maybeSingle()` no lanza por 0 filas; un `error` real se
+  // propaga (página de error honesta), y solo data ausente → 404.
+  if (error) {
+    throw new Error(`No se pudo leer el proyecto ${boletin}: ${error.message}`);
+  }
   if (!data) {
     notFound();
   }
