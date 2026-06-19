@@ -49,7 +49,6 @@ function makeViewData(
     totalContratos: 1,
     page: 1,
     totalPages: 1,
-    fechaCorte: "2026-06-15T00:00:00Z",
     ...overrides,
   };
 }
@@ -109,24 +108,23 @@ describe("ContratosPorContraparteView — provenance por fila", () => {
   });
 });
 
-// ── (c) Tres estados honestos textualmente distintos ────────────────────────────
+// ── (c) Estados honestos (WR-01: DOS estados, no tres) ───────────────────────────
 describe("ContratosPorContraparteView — estados honestos distintos", () => {
-  it("no_consultado → copy propio; NUNCA 'limpio'/'✓'", () => {
+  it("no_consultado → copy propio débil; NUNCA 'limpio'/'✓'", () => {
     const { container } = render(
       <ContratosPorContraparteView
         data={makeViewData({
           estado: "no_consultado",
           contratos: [],
           totalContratos: 0,
-          fechaCorte: null,
         })}
       />,
     );
     expect(
       screen.getByText(/Aún no hemos consolidado los contratos de ChileCompra/i),
     ).toBeInTheDocument();
-    // Los otros dos estados NO se muestran.
-    expect(screen.queryByText(/no se registran contratos a esa fecha/i)).toBeNull();
+    // El "esto no significa que no existan" es load-bearing: NUNCA afirma un cero.
+    expect(screen.getByText(/Esto no significa que no existan/i)).toBeInTheDocument();
     // La línea de conteo neutral ("{N} contrato(s) registrado(s).") NO se muestra.
     expect(
       screen.queryByText(/\d+ contratos? registrados?\./i),
@@ -136,23 +134,21 @@ describe("ContratosPorContraparteView — estados honestos distintos", () => {
     expect(texto).not.toMatch(/limpio|impecable|sin contratos ✓|✓/i);
   });
 
-  it("consultado_sin_contratos → copy con fecha de corte, distinto de no_consultado", () => {
-    render(
+  it("WR-01: NO existe un estado que afirme 'no se registran contratos a esa fecha'", () => {
+    // El tercer estado (consultado_sin_contratos) era código muerto: el RPC agrupa con
+    // GROUP BY y nunca emite una faceta vacía, y no hay marcador de "verificado en cero"
+    // por contraparte. El vacío honesto SIEMPRE es el débil "aún no consolidado".
+    const { container } = render(
       <ContratosPorContraparteView
         data={makeViewData({
-          estado: "consultado_sin_contratos",
+          estado: "no_consultado",
           contratos: [],
           totalContratos: 0,
-          fechaCorte: "2026-06-15T00:00:00Z",
         })}
       />,
     );
-    expect(
-      screen.getByText(/no se registran contratos a esa fecha/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/Aún no hemos consolidado los contratos de ChileCompra/i),
-    ).toBeNull();
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(/no se registran contratos a esa fecha/i);
   });
 });
 

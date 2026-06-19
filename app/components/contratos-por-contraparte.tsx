@@ -25,9 +25,10 @@ import {
  * │ 1. SUJETO = la empresa (jurídica) = sujeto de página; la fila foregrounda el │
  * │    hecho del lado contraparte (organismo comprador), nunca un posesivo que   │
  * │    ate el contrato a una persona.                                           │
- * │ 2. TRES ESTADOS HONESTOS textualmente distintos: "no consultado" /           │
- * │    "consultado sin contratos" / "con contratos". Un vacío NUNCA se lee como  │
- * │    "limpio"/"sin contratos ✓". Ausencia de consulta != ausencia de hechos.  │
+ * │ 2. ESTADOS HONESTOS (WR-01: DOS, no tres): "no consultado" / "con contratos". │
+ * │    Un vacío NUNCA se lee como "limpio"/"sin contratos ✓"; cae al estado débil  │
+ * │    "aún no consolidado". Ausencia de consulta != ausencia de hechos, y el RPC  │
+ * │    no puede probar un "verificado en cero" por contraparte (sin marcador).    │
  * │ 3. ATRIBUCIÓN ChileCompra = "mención de la fuente" (NO una licencia CC-BY).  │
  * │    ProvenanceBadge por fila + fecha de corte por fila.                      │
  * │ 4. CERO cómputo: el UI no suma montos, no rankea, no calcula %. El único     │
@@ -45,11 +46,22 @@ import {
 
 const PAGE_SIZE = 20;
 
-/** Los tres estados honestos derivados server-side (16-UI-SPEC §Honest States). */
-export type ContratosContraparteEstado =
-  | "no_consultado"
-  | "consultado_sin_contratos"
-  | "con_contratos";
+/**
+ * Estados honestos derivados server-side (16-UI-SPEC §Honest States).
+ *
+ * WR-01 (Phase 16): este carril tiene DOS estados, no tres. El RPC
+ * `agregado_por_contraparte` agrupa con `GROUP BY` sobre la fila de hecho, de modo que
+ * una contraparte sin contratos NO produce una fila de faceta vacia: produce CERO filas.
+ * Ademas el id esta prefijado ('c:' despacha SOLO la faceta contratos), asi que en una
+ * pagina con id 'd:' (aportes) este carril nunca se consulta. En ningun caso el RPC
+ * distingue "consultado, cero contratos" de "nunca consultado" para una contraparte: NO
+ * hay marcador de ingesta por contraparte (los `*_ingesta_estado` se keyean por
+ * parlamentario, no por contraparte). Antes existia un tercer estado
+ * `consultado_sin_contratos` que era CODIGO MUERTO y, peor, habria afirmado un
+ * "verificado en cero" que la data NO prueba. Se retira: el estado vacio honesto es
+ * SIEMPRE el debil "aun no consolidado / esto no significa que no existan".
+ */
+export type ContratosContraparteEstado = "no_consultado" | "con_contratos";
 
 /** Una fila de contrato lista para mostrar (sujeto de página = la empresa). */
 export interface ContratoContraparteRow {
@@ -80,11 +92,6 @@ export interface ContratosPorContraparteViewData {
   totalContratos: number;
   page: number;
   totalPages: number;
-  /**
-   * Fecha de corte de la consulta (para "consultado sin contratos"). `null` si no
-   * hay marcador (estado "no consultado").
-   */
-  fechaCorte: string | null;
 }
 
 /** Construye un href de paginación del carril contratos preservando el ancla. */
@@ -169,10 +176,12 @@ export function ContratosPorContraparteView({
 }: {
   data: ContratosPorContraparteViewData;
 }) {
-  const { id, estado, contratos, totalContratos, page, totalPages, fechaCorte } =
-    data;
+  const { id, estado, contratos, totalContratos, page, totalPages } = data;
 
-  // Estado — No consultado: NUNCA se lee como "limpio"/"sin contratos".
+  // Estado — No consultado / vacío honesto (WR-01): un vacío NUNCA se lee como
+  // "limpio"/"sin contratos ✓". El RPC no distingue "consultado en cero" de "nunca
+  // consultado" para una contraparte (sin marcador de ingesta por contraparte), así que
+  // el único estado vacío honesto es el débil: "aún no consolidado".
   if (estado === "no_consultado") {
     return (
       <>
@@ -180,23 +189,6 @@ export function ContratosPorContraparteView({
         <p className="text-sm text-muted-foreground">
           Aún no hemos consolidado los contratos de ChileCompra para esta empresa.
           Esto no significa que no existan.
-        </p>
-      </>
-    );
-  }
-
-  // Estado — Consultado sin contratos: con fecha de corte, distinto del anterior.
-  if (estado === "consultado_sin_contratos") {
-    const fechaTexto = fechaCorte
-      ? fechaCorta(new Date(fechaCorte))
-      : "la fecha de corte";
-    return (
-      <>
-        <Intro />
-        <p className="text-sm text-muted-foreground">
-          Revisamos ChileCompra para esta empresa (corte al{" "}
-          <span className="font-mono">{fechaTexto}</span>) y no se registran
-          contratos a esa fecha.
         </p>
       </>
     );
@@ -291,8 +283,9 @@ export async function ContratosPorContraparteSection({
   }
 
   // El RPC devuelve 0 o 1 fila por contraparte (dispatch por id exacto). Tomamos la
-  // faceta 'contrato'. Ausencia de fila → "no consultado"; presencia con 0 filas →
-  // "consultado sin contratos"; con filas → "con contratos".
+  // faceta 'contrato'. WR-01: el RPC agrupa con GROUP BY, así que una contraparte sin
+  // contratos produce CERO filas de faceta (nunca una faceta con `filas` vacío) → solo
+  // hay DOS estados: con filas → "con contratos"; sin filas → vacío honesto débil.
   const agregados = (rpcData as AgregadoContraparteRpcRow[] | null) ?? [];
   const facetaContratos = agregados.find((a) => a.facet === "contrato") ?? null;
 
@@ -311,19 +304,11 @@ export async function ContratosPorContraparteSection({
     enlace: f.enlace,
   }));
 
-  // Derivación de los tres estados honestos (server-side).
-  let estado: ContratosContraparteEstado;
-  if (todos.length > 0) {
-    estado = "con_contratos";
-  } else if (facetaContratos === null) {
-    estado = "no_consultado";
-  } else {
-    estado = "consultado_sin_contratos";
-  }
-
-  // Fecha de corte para "consultado sin contratos": la de la primera fila si la
-  // hubiera; en su ausencia, null (el copy cae a "la fecha de corte").
-  const fechaCorte = todos[0]?.fecha_corte ?? null;
+  // Derivación de los DOS estados honestos (server-side, WR-01). `facetaContratos` solo
+  // existe cuando hay ≥1 fila (el GROUP BY no emite grupos vacíos), de modo que
+  // `todos.length > 0` ⟺ `facetaContratos !== null`. Sin filas → vacío honesto débil.
+  const estado: ContratosContraparteEstado =
+    todos.length > 0 ? "con_contratos" : "no_consultado";
 
   // Paginación server-driven sobre el conjunto ya cargado.
   const totalContratos = todos.length;
@@ -341,7 +326,6 @@ export async function ContratosPorContraparteSection({
         totalContratos,
         page: pageClamped,
         totalPages,
-        fechaCorte,
       }}
     />
   );

@@ -50,7 +50,6 @@ function makeViewData(
     totalAportes: 1,
     page: 1,
     totalPages: 1,
-    fechaCorte: "2026-06-15T00:00:00Z",
     ...overrides,
   };
 }
@@ -123,23 +122,23 @@ describe("AportesPorContraparteView — el RUT del donante NUNCA aparece", () =>
   });
 });
 
-// ── (d) Tres estados honestos textualmente distintos ────────────────────────────
+// ── (d) Estados honestos (WR-01: DOS estados, no tres) ───────────────────────────
 describe("AportesPorContraparteView — estados honestos distintos", () => {
-  it("no_consultado → copy propio; NUNCA 'limpio'/'✓'", () => {
+  it("no_consultado → copy propio débil; NUNCA 'limpio'/'✓'", () => {
     const { container } = render(
       <AportesPorContraparteView
         data={makeViewData({
           estado: "no_consultado",
           aportes: [],
           totalAportes: 0,
-          fechaCorte: null,
         })}
       />,
     );
     expect(
       screen.getByText(/Aún no hemos consolidado los aportes de SERVEL/i),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/no se registran aportes a esa fecha/i)).toBeNull();
+    // El "esto no significa que no existan" es load-bearing: NUNCA afirma un cero.
+    expect(screen.getByText(/Esto no significa que no existan/i)).toBeInTheDocument();
     // La línea de conteo neutral ("{N} aporte(s) registrado(s).") NO se muestra.
     expect(
       screen.queryByText(/\d+ aportes? registrados?\./i),
@@ -148,23 +147,21 @@ describe("AportesPorContraparteView — estados honestos distintos", () => {
     expect(texto).not.toMatch(/limpio|impecable|sin aportes ✓|✓/i);
   });
 
-  it("consultado_sin_aportes → copy con fecha de corte, distinto de no_consultado", () => {
-    render(
+  it("WR-01: NO existe un estado que afirme 'no se registran aportes a esa fecha'", () => {
+    // El tercer estado (consultado_sin_aportes) era código muerto: el RPC agrupa con
+    // GROUP BY y nunca emite una faceta vacía, y no hay marcador de "verificado en cero"
+    // por contraparte. El vacío honesto SIEMPRE es el débil "aún no consolidado".
+    const { container } = render(
       <AportesPorContraparteView
         data={makeViewData({
-          estado: "consultado_sin_aportes",
+          estado: "no_consultado",
           aportes: [],
           totalAportes: 0,
-          fechaCorte: "2026-06-15T00:00:00Z",
         })}
       />,
     );
-    expect(
-      screen.getByText(/no se registran aportes a esa fecha/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/Aún no hemos consolidado los aportes de SERVEL/i),
-    ).toBeNull();
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(/no se registran aportes a esa fecha/i);
   });
 });
 

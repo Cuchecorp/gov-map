@@ -25,8 +25,9 @@ import {
  * │ 1. SUJETO = la empresa donante = sujeto de página; su llave/identificador    │
  * │    tributario NUNCA se renderiza (Ley 21.719; el RPC no lo proyecta). El      │
  * │    candidato receptor se muestra como hecho muted SEPARADO, jamás fusionado.  │
- * │ 2. TRES ESTADOS HONESTOS textualmente distintos: "no consultado" /           │
- * │    "consultado sin aportes" / "con aportes". Un vacío NUNCA se lee "limpio".  │
+ * │ 2. ESTADOS HONESTOS (WR-01: DOS, no tres): "no consultado" / "con aportes".   │
+ * │    Un vacío NUNCA se lee "limpio"; cae al estado débil "aún no consolidado".   │
+ * │    El RPC no puede probar un "verificado en cero" por contraparte.            │
  * │ 3. PERIODO: los aportes se AGRUPAN por elección (DESC) y cada fila lleva su   │
  * │    propio `Elección:` (defensa en profundidad).                             │
  * │ 4. ATRIBUCIÓN SERVEL = "términos de uso por verificar" (NO una licencia CC-BY).│
@@ -45,11 +46,22 @@ import {
 
 const PAGE_SIZE = 20;
 
-/** Los tres estados honestos derivados server-side (16-UI-SPEC §Honest States). */
-export type AportesContraparteEstado =
-  | "no_consultado"
-  | "consultado_sin_aportes"
-  | "con_aportes";
+/**
+ * Estados honestos derivados server-side (16-UI-SPEC §Honest States).
+ *
+ * WR-01 (Phase 16): este carril tiene DOS estados, no tres. El RPC
+ * `agregado_por_contraparte` agrupa con `GROUP BY` sobre la fila de hecho, de modo que
+ * una contraparte sin aportes NO produce una fila de faceta vacia: produce CERO filas.
+ * Ademas el id esta prefijado ('d:' despacha SOLO la faceta aportes), asi que en una
+ * pagina con id 'c:' (contratos) este carril nunca se consulta. En ningun caso el RPC
+ * distingue "consultado, cero aportes" de "nunca consultado" para una contraparte: NO
+ * hay marcador de ingesta por contraparte (los `*_ingesta_estado` se keyean por
+ * parlamentario, no por contraparte). Antes existia un tercer estado
+ * `consultado_sin_aportes` que era CODIGO MUERTO y, peor, habria afirmado un
+ * "verificado en cero" que la data NO prueba. Se retira: el estado vacio honesto es
+ * SIEMPRE el debil "aun no consolidado / esto no significa que no existan".
+ */
+export type AportesContraparteEstado = "no_consultado" | "con_aportes";
 
 /** Una fila de aporte lista para mostrar (sujeto de página = la empresa donante). */
 export interface AporteContraparteRow {
@@ -82,11 +94,6 @@ export interface AportesPorContraparteViewData {
   totalAportes: number;
   page: number;
   totalPages: number;
-  /**
-   * Fecha de corte de la consulta (para "consultado sin aportes"). `null` si no hay
-   * marcador (estado "no consultado").
-   */
-  fechaCorte: string | null;
 }
 
 // Empieza (ignorando espacios) con "elección"/"eleccion" en cualquier caja, con o
@@ -213,9 +220,12 @@ export function AportesPorContraparteView({
 }: {
   data: AportesPorContraparteViewData;
 }) {
-  const { id, estado, aportes, totalAportes, page, totalPages, fechaCorte } = data;
+  const { id, estado, aportes, totalAportes, page, totalPages } = data;
 
-  // Estado — No consultado: NUNCA se lee como "limpio"/"sin aportes".
+  // Estado — No consultado / vacío honesto (WR-01): un vacío NUNCA se lee como
+  // "limpio"/"sin aportes ✓". El RPC no distingue "consultado en cero" de "nunca
+  // consultado" para una contraparte (sin marcador de ingesta por contraparte), así que
+  // el único estado vacío honesto es el débil: "aún no consolidado".
   if (estado === "no_consultado") {
     return (
       <>
@@ -223,23 +233,6 @@ export function AportesPorContraparteView({
         <p className="text-sm text-muted-foreground">
           Aún no hemos consolidado los aportes de SERVEL para esta empresa. Esto no
           significa que no existan.
-        </p>
-      </>
-    );
-  }
-
-  // Estado — Consultado sin aportes: con fecha de corte, distinto del anterior.
-  if (estado === "consultado_sin_aportes") {
-    const fechaTexto = fechaCorte
-      ? fechaCorta(new Date(fechaCorte))
-      : "la fecha de corte";
-    return (
-      <>
-        <Intro />
-        <p className="text-sm text-muted-foreground">
-          Revisamos SERVEL para esta empresa (corte al{" "}
-          <span className="font-mono">{fechaTexto}</span>) y no se registran aportes
-          a esa fecha.
         </p>
       </>
     );
@@ -358,17 +351,11 @@ export async function AportesPorContraparteSection({
     enlace: f.enlace,
   }));
 
-  // Derivación de los tres estados honestos (server-side).
-  let estado: AportesContraparteEstado;
-  if (todos.length > 0) {
-    estado = "con_aportes";
-  } else if (facetaAportes === null) {
-    estado = "no_consultado";
-  } else {
-    estado = "consultado_sin_aportes";
-  }
-
-  const fechaCorte = todos[0]?.fecha_corte ?? null;
+  // Derivación de los DOS estados honestos (server-side, WR-01). `facetaAportes` solo
+  // existe cuando hay ≥1 fila (el GROUP BY no emite grupos vacíos), de modo que
+  // `todos.length > 0` ⟺ `facetaAportes !== null`. Sin filas → vacío honesto débil.
+  const estado: AportesContraparteEstado =
+    todos.length > 0 ? "con_aportes" : "no_consultado";
 
   // Paginación server-driven sobre el conjunto ya cargado.
   const totalAportes = todos.length;
@@ -386,7 +373,6 @@ export async function AportesPorContraparteSection({
         totalAportes,
         page: pageClamped,
         totalPages,
-        fechaCorte,
       }}
     />
   );
