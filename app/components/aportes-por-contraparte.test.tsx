@@ -60,7 +60,11 @@ describe("AportesPorContraparteView — conteo neutral + agrupación", () => {
   it("rinde la línea de conteo neutral '{N} aporte(s) registrado(s).' para ≥1 fila", () => {
     render(<AportesPorContraparteView data={makeViewData()} />);
     expect(screen.getByText(/1 aporte registrado/i)).toBeInTheDocument();
-    expect(screen.getByText(/Inmobiliaria del Sur SpA/)).toBeInTheDocument();
+    // La fila muestra el candidato receptor como hecho muted SEPARADO; la empresa
+    // donante es el sujeto de página (h1), NO se repite por fila.
+    expect(
+      screen.getByText(/Registrado a la campaña de Juana Candidata/),
+    ).toBeInTheDocument();
   });
 
   it("agrupa por elección y NUNCA suma/rankea montos (verbatim por fila)", () => {
@@ -76,9 +80,13 @@ describe("AportesPorContraparteView — conteo neutral + agrupación", () => {
       />,
     );
     expect(screen.getByText(/2 aportes registrados/i)).toBeInTheDocument();
-    // Encabezados de grupo por elección.
-    expect(screen.getByText(/Elección 2021/)).toBeInTheDocument();
-    expect(screen.getByText(/Elección 2017/)).toBeInTheDocument();
+    // Encabezados de grupo por elección (h3 de grupo).
+    expect(
+      screen.getByRole("heading", { level: 3, name: /Elección 2021/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 3, name: /Elección 2017/ }),
+    ).toBeInTheDocument();
     const texto = container.textContent ?? "";
     expect(texto).toContain("$ 100");
     expect(texto).toContain("$ 200");
@@ -132,8 +140,9 @@ describe("AportesPorContraparteView — estados honestos distintos", () => {
       screen.getByText(/Aún no hemos consolidado los aportes de SERVEL/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/no se registran aportes a esa fecha/i)).toBeNull();
+    // La línea de conteo neutral ("{N} aporte(s) registrado(s).") NO se muestra.
     expect(
-      screen.queryByText(/aporte registrado|aportes registrados/i),
+      screen.queryByText(/\d+ aportes? registrados?\./i),
     ).toBeNull();
     const texto = container.textContent ?? "";
     expect(texto).not.toMatch(/limpio|impecable|sin aportes ✓|✓/i);

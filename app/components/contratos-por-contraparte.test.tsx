@@ -59,8 +59,13 @@ describe("ContratosPorContraparteView — conteo neutral + filas", () => {
   it("rinde la línea de conteo neutral '{N} contrato(s) registrado(s).' para ≥1 fila", () => {
     render(<ContratosPorContraparteView data={makeViewData()} />);
     expect(screen.getByText(/1 contrato registrado/i)).toBeInTheDocument();
+    // La fila foregrounda el lado contraparte (organismo comprador); la empresa es
+    // el sujeto de página (h1), NO se repite por fila.
     expect(
-      screen.getByText(/Constructora Andes SpA/),
+      screen.getByText("Ministerio de Obras Públicas"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Construcción de obras viales"),
     ).toBeInTheDocument();
   });
 
@@ -122,8 +127,9 @@ describe("ContratosPorContraparteView — estados honestos distintos", () => {
     ).toBeInTheDocument();
     // Los otros dos estados NO se muestran.
     expect(screen.queryByText(/no se registran contratos a esa fecha/i)).toBeNull();
+    // La línea de conteo neutral ("{N} contrato(s) registrado(s).") NO se muestra.
     expect(
-      screen.queryByText(/contrato registrado|contratos registrados/i),
+      screen.queryByText(/\d+ contratos? registrados?\./i),
     ).toBeNull();
     // Un vacío NUNCA se lee como virtud/limpieza.
     const texto = container.textContent ?? "";
