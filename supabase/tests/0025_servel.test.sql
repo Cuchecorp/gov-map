@@ -20,7 +20,7 @@
 -- (El numero 0025 evita colision con `0023_money_gate.test.sql` y `0024_dinero.test.sql`.)
 
 begin;
-select plan(23);
+select plan(24);
 
 -- == Las tablas existen ==========================================================
 select has_table('public', 'aporte',                  'tabla aporte existe');
@@ -63,6 +63,13 @@ select col_is_fk('aporte', 'parlamentario_id',
   'aporte.parlamentario_id es FK (al maestro parlamentario)');
 select col_is_null('aporte', 'parlamentario_id',
   'aporte.parlamentario_id es NULLABLE (un no_confirmado no cuelga de un parlamentario)');
+
+-- == DEFENSA EN PROFUNDIDAD: CHECK que acopla parlamentario_id <-> estado_vinculo confirmado =
+-- IDENT-12 a nivel de DATOS: solo un vinculo 'confirmado' puede tener parlamentario_id (el
+-- writer bypassa RLS con la service key; el CHECK hace la regla verdadera aunque el writer
+-- regrese -> un no_confirmado/null JAMAS cuelga de un parlamentario en la ficha publica).
+select col_has_check('aporte', 'parlamentario_id',
+  'aporte tiene un CHECK que acopla parlamentario_id a estado_vinculo confirmado (defensa en profundidad IDENT-12)');
 
 -- == aporte PUBLIC-READ: policy SELECT para anon + grant SELECT a anon ==============
 select isnt(

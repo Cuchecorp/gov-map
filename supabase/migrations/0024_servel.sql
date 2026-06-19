@@ -101,6 +101,16 @@ create table aporte (
   enlace                    text not null,            -- la URL / enlace del reporte SERVEL
   -- Atribucion SERVEL = "terminos por verificar" (NO la licencia CCBY, NO de-mencion-de-fuente).
   licencia                  text not null default 'terminos por verificar',
+  -- DEFENSA EN PROFUNDIDAD (IDENT-12, fail-closed a nivel de DATOS): "un no_confirmado JAMAS
+  -- cuelga de un parlamentario". La regla la enforce el writer (reconciliar-aporte.ts), pero
+  -- `aporte` se escribe con la service key que BYPASSA RLS -> una regresion del writer (o un
+  -- insert manual/batch) podria poblar parlamentario_id con estado_vinculo no_confirmado/null
+  -- y el RPC publico (filtra solo por parlamentario_id = p_id) lo mostraria como confirmado en
+  -- la ficha (la superficie de honestidad de mas alto impacto: un aporte mal atribuido). El
+  -- CHECK hace la regla VERDADERA en el esquema aunque el writer regrese: solo un vinculo
+  -- 'confirmado' puede tener parlamentario_id; cualquier otro estado lo exige NULL.
+  constraint aporte_parlamentario_solo_confirmado
+    check (parlamentario_id is null or estado_vinculo = 'confirmado'),
   primary key (fuente_id, fecha_corte)                -- la CLAVE DE VERSION (incluye la fecha de corte)
 );
 
