@@ -23,6 +23,7 @@ export {
 // Parser cheerio del HTML de audiencias.
 export {
   parseLobbyAudiencias,
+  parseListadoRowIds,
   parseFechaLeylobby,
   institucionDeIdentificador,
 } from "./parse-leylobby";
@@ -41,3 +42,29 @@ export { InMemoryLobbyWriter, contraparteKey } from "./writer";
 export type { LobbyWriter } from "./writer";
 export { SupabaseLobbyWriter } from "./writer-supabase";
 export type { SupabaseLobbyWriterOptions } from "./writer-supabase";
+
+// Conector (reusa @obs/ingest en el ORDEN LOCKED, NO BaseConnector.run).
+export {
+  LeylobbyConnector,
+  RobotsDisallowError,
+  LeylobbyBloqueadaError,
+  BROWSER_HEADERS_LEYLOBBY,
+} from "./connector-leylobby";
+export type { LeylobbyConnectorDeps } from "./connector-leylobby";
+
+// Orquestación (drift BLOQUEANTE + degradación honesta + nunca fabrica).
+export { runIngestLobby, formaDe } from "./ingest-run";
+export type {
+  RunIngestLobbyOpts,
+  RunIngestLobbyResult,
+  DegradacionLobby,
+  TareaInstitucion,
+} from "./ingest-run";
+
+// CLI de ingesta (corrida LIVE acotada / degrada a fixture sin key/alcance).
+export {
+  parseArgs as parseLobbyArgs,
+  main as ingestLobbyMain,
+  LobbyCliArgsError,
+} from "./ingest-cli";
+export type { LobbyCliOptions, LobbyCliResult } from "./ingest-cli";

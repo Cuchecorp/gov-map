@@ -60,6 +60,29 @@ export function institucionDeIdentificador(identificador: string): string {
   return m ? m[1]! : "";
 }
 
+/**
+ * Extrae los rowIds de las páginas de DETALLE desde el HTML del LISTADO de audiencias
+ * (`/instituciones/{CODE}/audiencias/{year}`). El listado lista sujetos pasivos, cada uno con un
+ * link a `/instituciones/{CODE}/audiencias/{year}/{rowId}` (la página con la tabla keyed por
+ * `Identificador`). Es el primer paso del crawl LOCKED de dos pasos (listado → detalle). NUNCA
+ * fabrica: si no hay links, devuelve []. Dedup + orden de aparición.
+ */
+export function parseListadoRowIds(html: string, year: number): string[] {
+  const $ = cheerio.load(html);
+  const re = new RegExp(`/audiencias/${year}/(\\d+)(?:[/?#]|$)`);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  $("a[href]").each((_i, a) => {
+    const href = $(a).attr("href") ?? "";
+    const m = href.match(re);
+    if (m && !seen.has(m[1]!)) {
+      seen.add(m[1]!);
+      out.push(m[1]!);
+    }
+  });
+  return out;
+}
+
 /** Acumulador mutable de una audiencia en construcción (un grupo de `<tr>`). */
 interface AudienciaEnConstruccion {
   identificador: string;
