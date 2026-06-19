@@ -74,4 +74,28 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| *(filled by roadmap)* | | |
+| IDENT-10 | Phase 9 | Pending |
+| IDENT-11 | Phase 9 | Pending |
+| IDENT-12 | Phase 9 | Pending |
+| VOTE-01 | Phase 8 | Pending |
+| VOTE-02 | Phase 10 | Pending |
+| VOTE-03 | Phase 10 | Pending |
+| VOTE-04 | Phase 10 | Pending |
+| VOTE-05 | Phase 10 | Pending |
+| INT-01 | Phase 11 | Pending |
+| INT-02 | Phase 11 | Pending |
+| INT-03 | Phase 12 | Pending |
+| INT-04 | Phase 12 | Pending |
+| INT-05 | Phase 12 | Pending |
+| MONEY-01 | Phase 14 | Pending |
+| MONEY-02 | Phase 14 | Pending |
+| MONEY-03 | Phase 15 | Pending |
+| MONEY-04 | Phase 15 | Pending |
+| MONEY-05 | Phase 16 | Pending |
+| NET-01 | Phase 18 | Pending |
+| NET-02 | Phase 18 | Pending |
+| LEGAL-01 | Phase 13 | Pending |
+| LEGAL-02 | Phase 17 | Pending |
+| LEGAL-03 | Phase 9 | Pending |
+
+**Coverage:** 24/24 v2.0 requirements mapped ✓ · No orphans · No duplicates

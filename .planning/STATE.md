@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Parlamentarios 360
-status: planning
+status: planned
 last_updated: "2026-06-19T01:33:40.699Z"
 last_activity: 2026-06-19
 progress:
-  total_phases: 0
+  total_phases: 11
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,27 +17,28 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-17)
+See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 07 — Búsqueda Semántica + Fichas Estructuradas
+**Current focus:** Phase 08 — VOTE Spike: validación en vivo de `opendata.camara.cl` (gate confirm-or-replan)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 08 — VOTE Spike — Validación en vivo de `opendata.camara.cl` (roadmapped, not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-19 — Milestone v2.0 started
+Status: Roadmap v2.0 creado (Phases 8-18). Próximo: planificar Phase 8 (`/gsd:plan-phase 8`).
+Next phase after 8: Phase 09 — Completitud de Identidad (puede correr en paralelo con 8; VOTE Cámara usa DIPID, no RUT)
+Last activity: 2026-06-19 — Roadmap de milestone v2.0 creado (24/24 requisitos mapeados, 11 fases)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed (v2.0): 0
 - Average duration: -
 - Total execution time: 0 hours
 
-**By Phase:**
+**By Phase (v2.0):**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
@@ -49,6 +50,9 @@ Last activity: 2026-06-19 — Milestone v2.0 started
 - Trend: -
 
 *Updated after each plan completion*
+
+**v1.0 plan history (shipped):**
+
 | Phase 01 P01 | 11min | 3 tasks | 16 files |
 | Phase 01 P02 | 9min | 3 tasks | 25 files |
 | Phase 01 P03 | 18min | 2 tasks | 9 files |
@@ -80,85 +84,45 @@ Last activity: 2026-06-19 — Milestone v2.0 started
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- [Roadmap v2.0]: Numeración continúa desde v1.0 — Phase 7 fue la última de v1.0; v2.0 arranca en Phase 8 (no reset)
+- [Roadmap v2.0]: Build order forzado por dependencias duras — VOTE spike (8, gate) + Identidad (9, paralelo) → VOTE (10) → INT Lobby (11) → INT Probidad (12) → Legal MONEY (13) → MONEY ChileCompra (14) → MONEY SERVEL (15) → MONEY agregación (16) → Legal NET (17) → NET (18)
+- [Roadmap v2.0]: VOTE-01 es su propia fase temprana (Phase 8) framed confirm-or-replan; no se dimensiona el bloque VOTE hasta que el spike vuelva
+- [Roadmap v2.0]: IDENT-12 (writer-invariant tipado) + LEGAL-03 (RLS/data-routing PII) aterrizan en Phase 9, ANTES de que escriba el primer dataset de atribución nuevo
+- [Roadmap v2.0]: Sub-maestras se construyen en su bloque, NO en NET — lobista (11), contratista (14), donante (15); NET (18) es consumidor puro
+- [Roadmap v2.0]: LEGAL-01 gate ANTES de exponer MONEY (Phase 13); LEGAL-02 gate ANTES de exponer NET (Phase 17)
+- [Roadmap v2.0]: Cada fase de dataset entrega rebanada vertical conector → reconciliación → sección de ficha; "ninguna unidad de UI compone dinero/lobby con un voto" es criterio de éxito desde la primera sección multi-dataset (Phase 11)
 - [Roadmap]: M1 = Fundaciones + Identidad + P2 Tramitación + P1 Búsqueda semántica; 7 fases en orden de dependencia dura
 - [Roadmap]: Identidad dividida en determinista (P3, desbloquea Tramitación) y adjudicación LLM + gate (P4, sella riesgo existencial #1)
 - [Roadmap]: Conectores ordenados por fragilidad ascendente — JSON/XML (P5) antes que WebForms/Next.js (P6)
-- [Phase ?]: [01-01]: verifyDepsBeforeRun:false en pnpm-workspace.yaml para que el gate de build-scripts no aborte typecheck/test
-- [Phase ?]: [01-01]: puertos locales de Supabase remapeados a 544xx para evitar colision con otro proyecto activo
-- [Phase ?]: [01-01]: raw-immutable/normalized-derived — source_snapshot guarda solo r2_path/content_hash, crudo nunca en Postgres (FND-02)
-- [Phase 01]: [01-02]: rate-limiter serial por host (Map host->cola encadenada); primer request sin espera, subsiguientes 2-3s+jitter (FND-01)
-- [Phase 01]: [01-02]: BaseConnector Template Method fija el flujo invariante; ningun conector puede saltarse rateLimiter.wait
+- [Phase 01]: [01-02]: rate-limiter serial por host (Map host->cola encadenada); BaseConnector Template Method fija el flujo invariante (FND-01)
 - [Phase 01]: [01-02]: R2 inmutable via aws4fetch + If-None-Match:* (412=idempotente); drift no-bloqueante (FND-02/FND-04)
-- [Phase ?]: [01-03]: orquestacion clon de automatic embeddings — pg_cron -> dispatcher SQL -> pgmq.read(vt) -> pg_net -> Edge Function; vt=backoff, read_ct>5 -> ingest_dlq (FND-05)
-- [Phase ?]: [01-03]: service_key/project_url via helpers util.* (vault/GUC), nunca literal en la migracion (T-01-09/T-01-10)
-- [Phase ?]: [01-03]: worker.ts comparte buildConnector entre Edge Function y GitHub Actions (mismo conector); index.ts solo bootstrap Deno.serve
-- [Phase ?]: [02-01]: compuerta zod UNICA y externa al adapter (parseAndValidate); ningun provider hace su propio safeParse
-- [Phase ?]: [02-01]: router fail-closed sin fallback (personal+trainsOnInputs -> SensitiveRoutingError); barrel index.ts propiedad de 02-01
-- [Phase 02]: [02-02]: MiniMax structured output = tool-calling forzado (tool_choice fija emit_result), NO response_format; lee tool_calls[0].function.arguments y valida por la misma compuerta externa
-- [Phase 02]: [02-02]: data-routing en codigo — assertNoRutInLlmInput (RUT nunca al LLM, error sin el RUT) + assertSensitivityAllowed reusa SensitiveRoutingError; smoke test live gated por LLM_SMOKE (skip default)
-- [Phase ?]: [02-03]: REST directo (batchEmbedContents) con fetchFn inyectable; @google/genai 2.8.0 no expone inyeccion de fetch publica (Assumption A4)
-- [Phase ?]: [02-03]: GeminiEmbeddingProvider L2-normaliza manual a 768 (Gemini no normaliza a dims!=3072); todo vector versionado, ninguno anonimo (FND-07)
-- [Phase ?]: [03-01]: ñ→n folding solo para la clave de comparación; display usa campos originales (A1)
-- [Phase ?]: [03-01]: matchDeterminista fail-closed, único escritor de estado; confirma solo con length===1 (RUT exacto o nombre único en cámara+periodo)
-- [Phase ?]: [03-01]: apellido materno fuera del blocking key → catálogo y formato-votación convergen; materno va a alias_capturados
-- [Phase ?]: [03-02]: estado default no_confirmado por DDL — promocion a confirmado es revision humana (ID-01)
-- [Phase ?]: [03-02]: claves naturales via indices unicos PARCIALES → upsert idempotente sin obligar NOT NULL
-- [Phase ?]: [03-03]: seeder reusa @obs/ingest (assertAllowedUrl->robots->rateLimiter.wait->fetcher.get), NO BaseConnector; idempotencia en clave natural del upsert
-- [Phase ?]: [03-03]: periodo senadores='senado-vigente-2026', diputados='2026-2030'; partidoVigente filtra la Militancia que cubre el corte 2026-03-11 (Pitfall 5)
-- [Phase ?]: [03-03]: exportMaestra determinista -> snapshot git autoritativo (ID-09 HOY); R2 gateado por r2Enabled=false (401 diferido)
-- [Phase 03]: [03-04]: upsert por PK `id` (derivada de la clave natural), NO por la clave natural directa — ON CONFLICT no puede targetear los indices unicos PARCIALES de 0005
-- [Phase 03]: [03-04]: corrida LIVE real -> maestra de 186 filas (31 senadores + 155 diputados, 0 errores 403/429) cargada en Supabase local + snapshot git autoritativo (ID-09)
-- [Phase 03]: [03-04]: lote promovido a confirmado por operador-accept de la orquestacion (conteos = catalogos oficiales autoritativos); el seeder nunca auto-confirma (ID-01)
-- [Phase 03]: [03-04]: backup-parlamentario.yml (cron semanal) usa --preserve-estado sin --promote -> nunca revierte la compuerta humana; R2 gateado por presencia de credencial (401 hoy)
-- [Phase 04]: [04-01]: UMBRAL=0.90 con < ESTRICTO — confidence===0.90 auto-acepta, 0.8999 revision (bug existencial #1 sellado con test de borde mandatorio)
-- [Phase 04]: [04-01]: auto-aceptar mapea SOLO a 'probable', NUNCA 'confirmado' (A4); la compuerta es pura, el orquestador mapea el estado
-- [Phase 04]: [04-01]: mencion foranea SIN rut por diseno; assertNoRutInLlmInput sobre el prompt final ensamblado; region fail-open en el blocking
-- [Phase 04]: [04-01]: CompletionRequest.temperature? opcional via spread condicional en MiniMax (A1) — 68 tests @obs/llm verdes sin cambios
-- [Phase 04]: [04-02]: identidad_audit inmutable por trigger BEFORE UPDATE OR DELETE (RAISE EXCEPTION, errcode restrict_violation=23001) — unica defensa que aplica al service role que bypassa RLS — MAS REVOKE update/delete/truncate (defensa en profundidad, ID-08/Pitfall 4)
-- [Phase 04]: [04-02]: vinculo_identidad.estado default no_confirmado + parlamentario_id nullable; indice unico PARCIAL (camara,periodo,mencion_normalizada) where id is not null para idempotencia del vinculo resuelto (ID-06)
-- [Phase 04]: [04-02]: candidatos jsonb SIN rut (minimizacion); pgTAP prueba inmutabilidad con throws_ok 23001 sobre UPDATE y DELETE como superuser (peor caso = service role)
-- [Phase 04]: [04-03]: correrPipeline orquesta etapas 0-3 (determinista reuse corta antes del LLM; RUT aborta antes de complete con 0 llamadas) y devuelve resultado discriminado; escribe una fila de identidad_audit por decision
-- [Phase 04]: [04-03]: auto-aceptar del LLM mapea SOLO a 'probable'; promocion a 'confirmado' es EXCLUSIVA de humano (revisor-cli confirm/correct) o determinista (A4/ID-06)
-- [Phase 04]: [04-03]: revisor-cli valida id numerico + revisor no vacio + chosen-id /^P\\d{5}$/ ANTES de tocar la DB; resolverRevision atomico contra estado='pendiente' (afectadas===0 -> error sin colaterales); cada resolucion escribe audit metodo='humano' con revisor_id+timestamp
-- [Phase 04]: [04-03]: golden set 22 casos = gate de deploy mockeado (precision>=0.95 toBeGreaterThanOrEqual -> falla bloquea CI; auto-aceptar id equivocado = fp); LIVE gated por IDENTITY_GOLDEN_LIVE no quema cuota; region fail-open SOLO ante ausencia de region (no entre dos regiones distintas)
-- [Phase ?]: [Phase 05]: [05-01]: RLS public-read EXPLICITO (policy for select to anon using(true)) + GRANT SELECT en las 4 tablas de tramitacion — el deny-by-default heredado dejaria la ficha en blanco (Pitfall 5/T-05-01); parlamentario intacta
-- [Phase ?]: [Phase 05]: [05-01]: voto.parlamentario_id nullable+FK a la maestra — NULL salvo vinculo determinista/confirmado; mencion_nombre crudo se conserva para display (T-05-02, guarda LOCKED)
-- [Phase ?]: [Phase 05]: [05-01]: slice.e2e.test.ts en RED por imports ausentes — diana walking-skeleton que olas 2-4 vuelven verde; fixtures reales cross-camara 14309/18296 capturados live
-- [Phase ?]: 05-02: parsers leen ambos juegos de nombres de totales (TotalAfirmativos/TotalSi) — fixture = ground truth
-- [Phase ?]: 05-02: fusionarTimeline empate estable Cámara-antes-Senado; fechas null al final
-- [Phase 05]: 05-03: voto Cámara cruza determinísticamente por Diputado/Id (sin LLM); Senado por nombre vía correrPipeline con guarda LOCKED — solo determinista/confirmado puebla parlamentario_id
-- [Phase ?]: Frontend ficha: Server Components leen Supabase con anon key server-only (sin NEXT_PUBLIC_); Tailwind v4 + shadcn oficial; barra y timeline en CSS puro
-- [Phase ?]: Guarda de identidad en UI (TRAM-06): VotoRow enlaza al parlamentario SOLO si estado_vinculo=confirmado; si no, nombre crudo + IdentityMarker, nunca link
-- [Phase ?]: 05-05: conectores reusan @obs/ingest (NO BaseConnector); writer idempotente por clave natural; corrida LIVE Leg 58 → 1213 votos reales en Supabase local con provenance, 0 errores de fetch, idempotente
-- [Phase ?]: [Phase 06]: [06-01]: RLS public-read EXPLICITO (policy for select to anon using(true)) + GRANT SELECT en las 5 tablas de agenda — deny-by-default dejaria la /agenda en blanco (Pitfall 5/T-06-01); parlamentario intacta
-- [Phase ?]: [Phase 06]: [06-01]: citacion_invitado SIN parlamentario_id ni reconciliacion — invitados son gestores de interes/terceros, texto crudo (T-06-02); @obs/agenda NO depende de @obs/adjudication/@obs/identity
-- [Phase ?]: [Phase 06]: [06-01]: cheerio@1.2.0 instalado del registro (LOCKED en STACK.md) — el plan asumia que ya estaba en el lockfile pero tramitacion usa fast-xml-parser, no cheerio
-- [Phase ?]: [Phase 06]: [06-01]: slice.e2e.test.ts RED por imports ausentes (parseCamaraCitaciones/parseSenadoCitaciones/parseSenadoTabla) — diana ciudadana; 3 fixtures reales LIVE (Camara 235KB anti-CF + 2 JSON Senado)
-- [Phase ?]: 06-02: helper ISO anclado al jueves; enumerarSemanas cruza bordes de año y respeta 53-week years (2020/2026/2032) sin huecos
-- [Phase ?]: 06-02: 3 parsers contra fixtures reales con zod por fila (drift se descarta, no fabrica); boletin = llave de cruce con Fase 5; slice E2E verde
-- [Phase ?]: Conectores de agenda reusan @obs/ingest en orden LOCKED; Cámara con header-set anti-Cloudflare, Senado vía web-back.senado.cl/api
-- [Phase ?]: runIngest degrada honestamente: tabla de Cámara→PDF sin fabricar filas; 403 persistente de Cámara degrada esa fuente sin abortar el Senado
-- [Phase 07]: [07-01]: gate de extracción literal (flag P7 sellado) — golden 17+2 casos; idea_matriz por SUBSTRING literal normalizado (NFD+strip diacríticos+whitespace), cuerpos por F1 norma+artículos; `precision>=0.95` BLOQUEA CI; meta-test prueba fp alcanzable; LIVE gated por FICHAS_GOLDEN_LIVE (no quema cuota)
-- [Phase 07]: [07-01]: extraer usa criticality:'bulk' + sensitivity:'public' (contrato real CompletionRequest, no 'publico'); sin safeParse propio — la compuerta zod + repair viven en DeepSeekProvider (SEM-02)
-- [Phase 07]: [07-01]: link_mensaje_mocion devuelto como SIDECAR en parseSenadoTramitacion (no en ProyectoSchema) → mínimo blast-radius, writer/reconciliación de Fase 5 intactos (SEM-01)
-- [Phase 07]: [07-01]: Gemini embed(texts, taskType?) aditivo (RETRIEVAL_DOCUMENT/QUERY) — callers sin taskType producen body idéntico; guard de dims + l2normalize sin cambios (SEM-03)
-- [Phase 07]: [07-01]: 0011 — RPC match_proyectos ordena por distancia CRUDA `<=>` ASC (usa HNSW, Pitfall 3); grant execute a anon sobre la firma exacta (Pitfall 2/T-07-04); RLS public-read en ambas tablas; sin datos personales (parlamentario intacta)
-- [Phase 07]: [07-01]: slice.e2e.test.ts en RED por imports ausentes (correrPipeline/buscarProyectos) — diana walking-skeleton que olas 2-3 vuelven verde
-- [Phase ?]: [Phase 07]: [07-02]: correrPipeline con sobrecarga TS (batch {counts,errores} + conveniencia {boletin,titulo,textoFuente,provider}→Ficha) → slice E2E write-half verde offline con MockDeepSeekProvider
-- [Phase ?]: [Phase 07]: [07-02]: texto-fuente reusa @obs/ingest en orden LOCKED con SSRF guard antes de red; R2 gateado best-effort (401→texto en memoria, no aborta); degradacion encadenada texto null→idea_matriz null→embed titulo+materia (nunca fabrica)
-- [Phase ?]: [Phase 07]: [07-02]: writer idempotente onConflict 'boletin' (1:1); link_mensaje_mocion sidecar no persistido → leerPendientes da null, wiring del link = follow-up; backfill LIVE gated por env (no ejecutado)
+- [Phase 02]: [02-02]: MiniMax structured output = tool-calling forzado (tool_choice fija emit_result), NO response_format; valida por compuerta zod externa
+- [Phase 02]: [02-02]: data-routing en codigo — assertNoRutInLlmInput (RUT nunca al LLM) + assertSensitivityAllowed reusa SensitiveRoutingError
+- [Phase 02]: [02-03]: GeminiEmbeddingProvider L2-normaliza manual a 768 (Gemini no normaliza a dims!=3072); todo vector versionado (FND-07)
+- [Phase 03]: [03-01]: matchDeterminista fail-closed, único escritor de estado; confirma solo con length===1 (RUT exacto o nombre único en cámara+periodo)
+- [Phase 03]: [03-04]: corrida LIVE → maestra 186 filas (31 senadores + 155 diputados) en Supabase local + snapshot git autoritativo (ID-09); seeder nunca auto-confirma
+- [Phase 04]: [04-01]: UMBRAL=0.90 con < ESTRICTO; auto-aceptar mapea SOLO a 'probable', NUNCA 'confirmado'; promocion a confirmado es exclusiva de humano/determinista
+- [Phase 04]: [04-02]: identidad_audit inmutable por trigger BEFORE UPDATE OR DELETE + REVOKE (defensa en profundidad, aplica al service role)
+- [Phase 05]: [05-01]: RLS public-read EXPLICITO + GRANT SELECT en tablas de tramitacion; parlamentario.rut intacta (deny-by-default)
+- [Phase 05]: [05-03]: voto Cámara cruza determinísticamente por Diputado/Id (sin LLM); Senado por nombre vía correrPipeline; solo determinista/confirmado puebla parlamentario_id
+- [Phase 05]: Guarda de identidad en UI (TRAM-06): VotoRow enlaza al parlamentario SOLO si estado_vinculo=confirmado; si no, nombre crudo + IdentityMarker
+- [Phase 06]: [06-01]: citacion_invitado SIN parlamentario_id ni reconciliacion — invitados son terceros, texto crudo
+- [Phase 06]: runIngest degrada honestamente: tabla de Cámara→PDF sin fabricar filas; 403 persistente degrada esa fuente sin abortar el Senado
+- [Phase 07]: [07-01]: gate de extracción literal golden (precision>=0.95 BLOQUEA CI); 0011 — RPC match_proyectos ordena por distancia CRUDA `<=>` ASC (HNSW), grant execute a anon
+- [Phase 07]: [07-02]: texto-fuente reusa @obs/ingest en orden LOCKED; degradacion encadenada texto null→idea_matriz null→embed titulo+materia (nunca fabrica)
 
 ### Pending Todos
 
-None yet.
+None yet for v2.0.
 
 ### Blockers/Concerns
 
-- [07-01 Task 5 — BLOQUEANTE PENDIENTE]: aplicar migración 0011 al Supabase LOCAL (Docker). El build/typecheck pasan SIN aplicarla (falso-positivo de verificación) → obligatorio aplicar al LOCAL antes de la ola 2 (escritura de fichas/embeddings) y la ola 3 (RPC). Push REMOTO de DDL bloqueado (service key, no PAT de management — probado 2026-06-18); es paso de operador separado. Señal de resume: "aplicada".
-- [Research flag P5/P6]: conectores WebForms y portal Next.js del Senado son frágiles — spike de validación end-to-end antes de planificar
-- [Research flag P7]: RESUELTO en 07-01 — golden set de extracción + gate CI bloqueante (precision>=0.95) sellado; benchmark LIVE de DeepSeek gated por FICHAS_GOLDEN_LIVE
-- [v2/anotado]: `opendata.camara.cl` (voto individual) sin validar — bloquea P3/M2, no M1
-- [Pre-release bloqueante]: pasada de asesoría legal (framing UI + manejo de datos, Ley 21.719) antes del lanzamiento público
+- [v2.0 Phase 8 — GATE]: `opendata.camara.cl` (voto individual por diputado) sin validar EN VIVO. Spike confirm-or-replan: si `Diputado/Id`+`Opcion` no vienen poblados o no mapean a `id_diputado_camara`, se replanifica SOLO el bloque VOTE (no bloquea INT/MONEY). Doc dice que el shape existe (MEDIUM-HIGH) → spike esperado a confirmar, no a descubrir bloqueo.
+- [v2.0 Phase 11 re-validar]: endpoint bulk de `leylobby.gob.cl` devolvió 503 en research — re-validar antes de construir `@obs/lobby`.
+- [v2.0 Phase 15 — riesgo conocido]: conector SERVEL artesanal/frágil (no API REST). Drift BLOQUEANTE + reconciliación de completitud obligatorios; una corrida parcial se pone en cuarentena, nunca emite filas silenciosamente. Agregar `servel.cl`/`aportes.servel.cl` al allowlist.
+- [v2.0 Phase 14 — quota]: ChileCompra rate/quota (10k req/día) con fan-out por ~186 RUTs → barrido serial vía pgmq + GH Actions; "consultado-cero" ≠ "no-consultado".
+- [v2.0 Phases 13/17 — gates legales DUROS]: LEGAL-01 ANTES de exponer MONEY públicamente; LEGAL-02 ANTES de exponer NET. Ley 21.719 plena vigencia 2026-12-01.
+- [Deuda v1.0 acarreada]: (1) 🔴 rotar DB password de Supabase (expuesto en transcript); (2) aplicar migración 0011 al Supabase LOCAL (checkpoint humano 07-01 Task 5); (3) cargar corpus a la nube + wiring app→nube; (4) persistir link_mensaje_mocion para activar idea matriz; (5) desplegar Edge Functions + vault secrets. Ver `.planning/v1.0-MILESTONE-AUDIT.md`.
 
 ## Deferred Items
 
@@ -166,14 +130,17 @@ Items acknowledged and carried forward from previous milestone close:
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none)* | | | |
+| Búsqueda semántica | Persistir `link_mensaje_mocion` end-to-end (idea matriz dormida hasta cablearlo) | Pending | v1.0 close |
+| Infra | Cargar corpus a la nube + wiring app→nube + aplicar 0011 LOCAL + rotar DB password | Pending | v1.0 close |
+| v2.1+ | NET-D (contraparte compartida) + cruces inter-bloque — diferidos por riesgo "máquina de sospechas" | Deferred | v2.0 roadmap |
 
 ## Session Continuity
 
-Last session: 2026-06-18T22:06:19.221Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-06-19 — Roadmap v2.0 creado
+Stopped at: ROADMAP.md (Phases 8-18) + REQUIREMENTS.md traceability + STATE.md actualizados
 Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd:new-milestone
+- Planificar la primera fase de v2.0 con `/gsd:plan-phase 8` (VOTE Spike — gate confirm-or-replan).
+- Phase 9 (Identidad) puede planificarse/correr en paralelo con Phase 8 (VOTE Cámara usa DIPID, no RUT).
