@@ -3,6 +3,11 @@
 export { matchDeterminista, normRut, isRutValido } from "./deterministic";
 export type { Mention, Resolution, MaestraRow } from "./deterministic";
 
+// Invariante tipado del enlace confirmado (IDENT-12): factory única `confirmar` +
+// tipo branded `EnlaceConfirmado`. El `unique symbol` NO se exporta (Pitfall 2).
+export { confirmar } from "./enlace-confirmado";
+export type { EnlaceConfirmado } from "./enlace-confirmado";
+
 // Parsers de catálogo (XML real → modelo Parlamentario).
 export { parseSenado, SENADO_URL, SENADO_PERIODO } from "./parse-senado";
 export {
