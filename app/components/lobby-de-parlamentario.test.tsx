@@ -42,7 +42,7 @@ function makeViewData(overrides: Partial<LobbyViewData> = {}): LobbyViewData {
 }
 
 // ── Carril propio / estructura (§3.0, §9.1 regla 1) ─────────────────────────────
-describe("LobbyView — carril aislado (anti-insinuación §9.1 regla 1)", () => {
+describe("LobbyView (sección lobby) — carril aislado (anti-insinuación §9.1 regla 1)", () => {
   it("renderiza su propia lista de audiencias; NINGÚN voto/boletín/proyecto compuesto", () => {
     const { container } = render(<LobbyView data={makeViewData()} />);
     // La sección es su propia <ul> de audiencias.
@@ -68,7 +68,7 @@ describe("LobbyView — carril aislado (anti-insinuación §9.1 regla 1)", () =>
 });
 
 // ── Contraparte cruda + IdentityMarker, sin enlace, sin RUT (§3.2) ──────────────
-describe("LobbyView — contraparte como TEXTO CRUDO (§3.2)", () => {
+describe("LobbyView (sección lobby) — contraparte como TEXTO CRUDO (§3.2)", () => {
   it("muestra el nombre de la contraparte verbatim + IdentityMarker, NUNCA un enlace", () => {
     render(<LobbyView data={makeViewData()} />);
     expect(screen.getByText("Inmobiliaria Andes SpA")).toBeInTheDocument();
@@ -101,7 +101,7 @@ describe("LobbyView — contraparte como TEXTO CRUDO (§3.2)", () => {
 });
 
 // ── Tres estados honestos distintos (§6.1) ──────────────────────────────────────
-describe("LobbyView — tres estados honestos (§6.1)", () => {
+describe("LobbyView (sección lobby) — tres estados honestos (§6.1)", () => {
   it("(a) NO ingestado → copy 'no ingerido', distinto de los demás", () => {
     render(
       <LobbyView data={makeViewData({ noIngestado: true, audiencias: [], totalAudiencias: 0 })} />,
@@ -134,7 +134,7 @@ describe("LobbyView — tres estados honestos (§6.1)", () => {
 });
 
 // ── ProvenanceBadge por fila (obligatorio, §3.2) ────────────────────────────────
-describe("LobbyView — ProvenanceBadge por fila (obligatorio)", () => {
+describe("LobbyView (sección lobby) — ProvenanceBadge por fila (obligatorio)", () => {
   it("cada audiencia trae un ProvenanceBadge con enlace a la fuente oficial", () => {
     render(
       <LobbyView
@@ -152,7 +152,7 @@ describe("LobbyView — ProvenanceBadge por fila (obligatorio)", () => {
 });
 
 // ── GATE DE CONTENIDO anti-insinuación (§9.1, release gate de la fase) ──────────
-describe("LobbyView — GATE §9.1 (release gate: sin causal/afinidad/score/flag)", () => {
+describe("LobbyView (sección lobby) — GATE §9.1 (release gate: sin causal/afinidad/score/flag)", () => {
   it("el render NO contiene ningún término prohibido de §9.1", () => {
     const { container } = render(
       <LobbyView
