@@ -26,3 +26,18 @@ export {
   parseFechaLeylobby,
   institucionDeIdentificador,
 } from "./parse-leylobby";
+
+// Reconciliación del sujeto pasivo (correrPipeline → EnlaceConfirmado solo-determinista).
+export { reconciliarSujeto } from "./reconciliar-sujeto";
+export type {
+  ReconciliarSujetoOpts,
+  AudienciaParaEscribir,
+  ContraparteParaEscribir,
+  ResultadoReconciliacion,
+} from "./reconciliar-sujeto";
+
+// Writer idempotente (interfaz + in-memory + Supabase).
+export { InMemoryLobbyWriter, contraparteKey } from "./writer";
+export type { LobbyWriter } from "./writer";
+export { SupabaseLobbyWriter } from "./writer-supabase";
+export type { SupabaseLobbyWriterOptions } from "./writer-supabase";
