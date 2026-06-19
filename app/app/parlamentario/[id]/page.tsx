@@ -6,6 +6,7 @@ import { PARLAMENTARIO_ID_RE } from "@/lib/buscar";
 import { ParlamentarioHeader } from "@/components/parlamentario-header";
 import { VotosSection } from "@/components/votos-por-parlamentario";
 import { LobbySection } from "@/components/lobby-de-parlamentario";
+import { PatrimonioSection } from "@/components/patrimonio-de-parlamentario";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ParlamentarioPublicoRow } from "@/lib/types";
 
@@ -66,9 +67,24 @@ export default async function ParlamentarioPage({
       </section>
 
       {/*
-        Phase 12+ APILA aquí sus secciones, cada una su propio bloque:
-          <section id="patrimonio" className="mt-12"> <h2>Patrimonio e intereses</h2> …
-          <section id="dinero" className="mt-12">     <h2>Contratos y financiamiento</h2> …
+        Phase 12 — INT Patrimonio/Intereses (§3.0). SIBLING de #lobby, NUNCA
+        anidada: el mt-12 es la frontera de carril (anti-insinuación §9.1). Una
+        declaración y un voto/reunión JAMÁS comparten un <article>/<Card>/<li>/<tr>.
+        Su propio <h2> + Suspense + empty honesto + comparación SOLO-datos sin
+        veredicto (INT-04/05). CC BY 4.0 visible en el intro Y en el caption.
+      */}
+      <section id="patrimonio" className="mt-12">
+        <h2 className="text-xl font-semibold mb-4">
+          Declaraciones de patrimonio e intereses
+        </h2>
+        <Suspense fallback={<PatrimonioSkeleton />}>
+          <PatrimonioSection id={id} searchParams={sp} />
+        </Suspense>
+      </section>
+
+      {/*
+        Phase 14–16 (MONEY) APILAN aquí sus secciones, cada una su propio bloque:
+          <section id="dinero" className="mt-12"> <h2>Contratos y financiamiento</h2> …
         Cada una: su <h2>, su <Suspense>, su empty honesto. NO anidar en otra sección
         y NUNCA componer un dato de otro bloque dentro de la misma unidad de UI.
       */}
@@ -130,6 +146,24 @@ function LobbySkeleton() {
       <Skeleton className="h-4 w-3/4" />
       {Array.from({ length: 3 }).map((_, i) => (
         <Skeleton key={i} className="h-12 w-full rounded-lg" />
+      ))}
+    </div>
+  );
+}
+
+// Shape-matched a PatrimonioView: línea de intro + atribución + 3 filas de
+// versión (barra de fecha prominente + tipo + bloque de campos + provenance) (§6.2).
+function PatrimonioSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden="true">
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-3 w-1/2" />
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="space-y-2 border-t pt-4 first:border-t-0">
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-8 w-40 rounded-md" />
+        </div>
       ))}
     </div>
   );
