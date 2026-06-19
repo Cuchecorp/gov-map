@@ -104,8 +104,14 @@ export class CamaraConnector {
           `${BASE}/getSesionDetalle?prmSesionId=${encodeURIComponent(sid)}`,
         );
         recolectar(det);
-      } catch {
+      } catch (e) {
         // sesión sin detalle accesible → se omite (best-effort, no aborta el descubrimiento).
+        // #20: se loguea — antes el catch vacío tragaba también RobotsDisallow/SSRF/red sin
+        // rastro; los fatales ya abortan el fetch, pero el evento debe ser observable.
+        console.warn(
+          `[connector-camara] getSesionDetalle ${sid} omitido:`,
+          e instanceof Error ? e.message : e,
+        );
       }
     }
     return out;

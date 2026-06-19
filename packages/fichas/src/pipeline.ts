@@ -21,7 +21,7 @@ import type { LLMProvider, EmbeddingResult } from "@obs/llm";
 import type { Ficha } from "./model";
 import { extraer } from "./extraer";
 import { embedFicha, type FichaEmbedder } from "./embed-ficha";
-import type { FichasWriter, FichaRow, EmbeddingRow } from "./writer-supabase";
+import type { FichasWriter, FichaRow, EmbeddingRow, FichaEstado } from "./writer-supabase";
 
 /** Versión base del embedding (bump con --reembed para re-embeddizar sin mezclar). */
 export const EMBED_VERSION_BASE = "v1";
@@ -34,7 +34,7 @@ export interface PipelinePendiente {
   /** Link al texto íntegro (sidecar SEM-01). null/ausente → degradación honesta. */
   link_mensaje_mocion: string | null;
   /** Estado actual en DB; el pipeline solo procesa 'pendiente' (salvo reembed). */
-  estado: "pendiente" | "embebido";
+  estado: FichaEstado;
   /** Procedencia inline (provenance) para la fila proyecto_ficha. */
   origen?: string;
   fecha_captura?: string;
@@ -143,16 +143,22 @@ export async function correrPipeline(
       // 3. Embedding asimétrico (sobre idea_matriz si hay; si no, título+materia — nunca fabrica).
       const emb: EmbeddingResult = await embedFicha(proyecto, ficha, opts.gemini);
 
-      // 4. Upsert idempotente por boletín (ficha → embedding).
-      const fichaRow: FichaRow = {
+      // 4. Upsert idempotente por boletín, ordenado para ser a prueba de crash (#7).
+      //    Sin transacción cross-tabla en PostgREST, el ORDEN garantiza el invariante
+      //    "estado='embebido' ⟹ embedding existe":
+      //      (a) ficha 'pendiente' (asegura la fila + datos extraídos, reanudable),
+      //      (b) embedding,
+      //      (c) marcar 'embebido' SOLO tras el embedding.
+      //    Un crash entre (a)/(b)/(c) deja la ficha en 'pendiente' (se reintenta sola);
+      //    nunca un boletín 'embebido' huérfano invisible a la búsqueda semántica.
+      const fichaBase = {
         boletin: p.boletin,
         idea_matriz: ficha.idea_matriz,
         cuerpos_legales: ficha.cuerpos_legales,
         texto_r2_path: r2Path,
-        estado: "embebido",
         origen: p.origen ?? "fichas-pipeline",
         fecha_captura: p.fecha_captura ?? new Date().toISOString(),
-      };
+      } satisfies Omit<FichaRow, "estado">;
       const embRow: EmbeddingRow = {
         boletin: p.boletin,
         embedding: emb.vector,
@@ -161,17 +167,25 @@ export async function correrPipeline(
         embedding_version: version,
       };
 
-      await opts.writer.upsertFicha([fichaRow]);
+      await opts.writer.upsertFicha([{ ...fichaBase, estado: "pendiente" }]);
       await opts.writer.upsertEmbedding([embRow]);
+      await opts.writer.upsertFicha([{ ...fichaBase, estado: "embebido" }]);
       embebidos += 1;
       log(`fichas: ${p.boletin} → embebido (${texto == null ? "degradado/título+materia" : "literal"})`);
     } catch (err) {
-      errores.push({
-        boletin: p.boletin,
-        etapa: "pipeline",
-        mensaje: err instanceof Error ? err.message : String(err),
-      });
-      log(`fichas: ERROR ${p.boletin}: ${err instanceof Error ? err.message : String(err)}`);
+      const mensaje = err instanceof Error ? err.message : String(err);
+      errores.push({ boletin: p.boletin, etapa: "pipeline", mensaje });
+      // #42: marca el boletín 'error' para que el resume normal no lo reintente a
+      // ciegas (evita el loop infinito gastando LLM). Best-effort: si el writer no
+      // soporta marcarError o la marca falla, se sigue (el error ya quedó colectado).
+      try {
+        await opts.writer.marcarError?.(p.boletin, mensaje);
+      } catch (markErr) {
+        log(
+          `fichas: no se pudo marcar 'error' ${p.boletin}: ${markErr instanceof Error ? markErr.message : String(markErr)}`,
+        );
+      }
+      log(`fichas: ERROR ${p.boletin}: ${mensaje}`);
     }
   }
 

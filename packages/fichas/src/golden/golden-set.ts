@@ -62,7 +62,9 @@ export interface CasoGolden {
 export function normalizarLiteral(s: string): string {
   return s
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    // #29: rango de marcas diacríticas combinantes por escape \u (antes literales crudos,
+    // frágiles ante re-encoding del archivo).
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();

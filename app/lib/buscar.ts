@@ -23,10 +23,12 @@ import type { MatchProyectoRow } from "@/lib/types";
 
 // Mismo validador que /proyecto/[boletin] (T-07-10 / T-05-09): 3-6 dígitos +
 // sufijo opcional "-NN". El atajo redirige a la ficha ANTES de embeber.
-const BOLETIN_RE = /^\d{3,6}(-\d{1,2})?$/;
+// #36: fuente ÚNICA — las páginas /buscar y /proyecto/[boletin] lo importan de aquí
+// en vez de redefinirlo (antes triplicado). Sin flag `g` → `.test()` es stateless.
+export const BOLETIN_RE = /^\d{3,6}(-\d{1,2})?$/;
 
-/** Cap defensivo de la consulta (V5 input validation). */
-const MAX_QUERY_CHARS = 300;
+/** Cap defensivo de la consulta (V5 input validation). #36: fuente única. */
+export const MAX_QUERY_CHARS = 300;
 
 // Contrato del provider de embeddings (gemini-embedding-001, 768, L2, FND-07).
 const EMBEDDING_MODEL = "gemini-embedding-001";

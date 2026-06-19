@@ -204,27 +204,12 @@ async function resolverYAuditar(
   opts: ResolverOpts,
 ): Promise<void> {
   const resolved_at = new Date().toISOString();
-  const { afectadas } = await w.resolverRevision(caso.id, {
-    estado: opts.estado,
-    revisor_id: opts.revisor,
-    motivo: opts.motivo ?? null,
-    resolved_at,
-  });
-  if (afectadas === 0) {
-    throw new Error(
-      `revisor: el caso ${caso.id} ya no estaba pendiente al resolver (no se escribió nada)`,
-    );
-  }
 
-  // WR-06: el enlace audit→vínculo NO depende de `caso.vinculo_id` (que la ruta de
-  // `enqueueRevision` nunca puebla). Se deriva del UPSERT en sí: `upsertVinculo`
-  // resuelve el conflicto sobre la clave natural (camara, periodo, mencion_normalizada;
-  // WR-02) — sobreescribe en su sitio cualquier `probable` previo de la misma mención —
-  // y devuelve el `id` de la fila escrita, que es lo que enlazamos en el audit (WR-01).
-  let vinculoId: number | null = caso.vinculo_id ?? null;
+  // A4: la promoción a 'confirmado' es EXCLUSIVA del humano. metodo='humano'. El vínculo
+  // se promueve solo en confirm/correct (opts.promoverVinculo).
+  let vinculo: FilaVinculo | null = null;
   if (opts.promoverVinculo) {
-    // A4: la promoción a 'confirmado' es EXCLUSIVA del humano. metodo='humano'.
-    const vinculo: FilaVinculo = {
+    vinculo = {
       mencion_nombre: caso.mencion_nombre,
       mencion_normalizada: caso.mencion_normalizada,
       camara: caso.camara,
@@ -234,19 +219,21 @@ async function resolverYAuditar(
       metodo: "humano",
       ...provenanceDesde(caso),
     };
-    if (caso.vinculo_id != null) vinculo.id = caso.vinculo_id;
-    vinculoId = (await w.upsertVinculo(vinculo)) ?? vinculoId;
   }
 
-  await w.appendAudit({
-    vinculo_id: vinculoId,
-    metodo: "humano",
+  // #3: UPDATE + UPSERT + INSERT en UNA transacción (RPC resolver_identidad). Si el caso
+  // ya no está pendiente, el RPC lanza y revierte todo: nunca un caso resuelto sin
+  // audit/vínculo. WR-06/WR-01: el enlace audit→vínculo lo deriva el RPC del UPSERT en sí.
+  await w.resolverIdentidad({
+    casoId: caso.id,
+    estado: opts.estado,
+    revisor: opts.revisor,
+    motivo: opts.motivo ?? null,
+    resolvedAt: resolved_at,
+    promover: opts.promoverVinculo,
+    vinculo,
     decision: opts.decisionAudit,
-    confidence: null,
-    modelo_version: caso.modelo_version ?? null,
-    revisor_id: opts.revisor,
-    evidence: [],
-    conflicts: opts.motivo ? [opts.motivo] : [],
+    modeloVersion: caso.modelo_version ?? null,
   });
 }
 

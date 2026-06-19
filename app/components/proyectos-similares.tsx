@@ -36,13 +36,24 @@ export async function ProyectosSimilares({ boletin }: { boletin: string }) {
     .join(". ");
 
   // Sin texto base no podemos embeber: estado vacío honesto.
-  const vecinos =
-    consulta.length > 0
-      ? await buscarProyectos(consulta, {
-          excludeBoletin: boletin,
-          matchCount: TOP_SIMILARES,
-        })
-      : [];
+  // #8: el embedding/RPC puede lanzar (GEMINI_API_KEY ausente, rate-limit, red, fallo del
+  // RPC). NO hay error.tsx ni Suspense que lo atrape, así que un throw aquí reemplazaría la
+  // ficha ENTERA por la página de error. Se captura y degrada al estado vacío honesto
+  // (espeja buscar/page.tsx, que ya captura la misma llamada).
+  let vecinos: Awaited<ReturnType<typeof buscarProyectos>> = [];
+  if (consulta.length > 0) {
+    try {
+      vecinos = await buscarProyectos(consulta, {
+        excludeBoletin: boletin,
+        matchCount: TOP_SIMILARES,
+      });
+    } catch (err) {
+      console.warn(
+        `[ProyectosSimilares] búsqueda de similares falló para ${boletin}:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
 
   if (vecinos.length === 0) {
     return (

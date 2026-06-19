@@ -254,11 +254,26 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
     }));
 
     // 6. Upsert idempotente (orden: proyecto antes que votacion/evento por la FK; votacion
-    //    antes que voto por la FK voto.votacion_id).
-    await opts.writer.upsertProyecto(proyecto);
-    await opts.writer.upsertVotacion(votacionesBoletin);
-    await opts.writer.upsertVotos(votosBoletin);
-    await opts.writer.upsertEventos(eventos);
+    //    antes que voto por la FK voto.votacion_id). Aislado por boletín (#23): un fallo de
+    //    upsert (red/DB) se colecta en `errores` y NO aborta la corrida — los boletines
+    //    restantes siguen y los conteos no se pierden. Los upserts son idempotentes, así que
+    //    re-correr recupera el boletín fallido.
+    try {
+      await opts.writer.upsertProyecto(proyecto);
+      await opts.writer.upsertVotacion(votacionesBoletin);
+      await opts.writer.upsertVotos(votosBoletin);
+      await opts.writer.upsertEventos(eventos);
+    } catch (err) {
+      errores.push({
+        boletin: boletinFull,
+        etapa: "upsert",
+        mensaje: err instanceof Error ? err.message : String(err),
+      });
+      log(
+        `ingest: ERROR upsert ${boletinKey}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      continue;
+    }
 
     nProyectos += 1;
     nVotaciones += votacionesBoletin.length;

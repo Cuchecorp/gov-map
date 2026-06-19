@@ -81,19 +81,27 @@ export class SupabaseAgendaWriter implements AgendaWriter {
       if (error) throw new Error(`upsert citacion falló: ${error.message}`);
     }
 
-    // 2. Invitados (unique citacion_id,nombre) aplanados.
+    // 2. Invitados (unique citacion_id,nombre,calidad — #43) aplanados. `calidad` es el
+    //    discriminador entre homónimos de distinta organización; se normaliza null→'' para
+    //    entrar en la clave (la columna es NOT NULL DEFAULT '' desde 0016).
     const invitados = raices.flatMap((c) =>
       c.invitados.map((inv) => ({
         citacion_id: c.id,
         nombre: inv.nombre,
-        calidad: inv.calidad,
+        calidad: inv.calidad ?? "",
       })),
     );
-    const invitadosDedup = dedupePorClave(invitados, (r) => `${r.citacion_id} ${r.nombre}`);
+    const invitadosDedup = dedupePorClave(
+      invitados,
+      (r) => `${r.citacion_id} ${r.nombre} ${r.calidad}`,
+    );
     for (const lote of chunk(invitadosDedup, CHUNK)) {
       const { error } = await this.client
         .from("citacion_invitado")
-        .upsert(lote, { onConflict: "citacion_id,nombre", ignoreDuplicates: false });
+        .upsert(lote, {
+          onConflict: "citacion_id,nombre,calidad",
+          ignoreDuplicates: false,
+        });
       if (error) throw new Error(`upsert citacion_invitado falló: ${error.message}`);
     }
 

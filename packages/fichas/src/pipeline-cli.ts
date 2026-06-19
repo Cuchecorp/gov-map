@@ -158,7 +158,7 @@ export async function main(opts: FichasCliOptions = {}): Promise<FichasCliResult
   // Colaboradores REALES de @obs/ingest (política: rate-limit 2-3s + robots + UA + SSRF).
   const fetcher = new Fetcher();
   const rateLimiter = new HostRateLimiter();
-  const robots = new RobotsGuard();
+  const robots = new RobotsGuard({ allowlist: {} });
 
   // R2 GATEADO por presencia de credencial (degrada honesto si ausente — CONTEXT 401).
   const r2Creds =

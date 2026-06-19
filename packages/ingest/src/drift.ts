@@ -79,9 +79,14 @@ export class DriftDetector {
         prevFingerprint: result.prevFingerprint,
         newFingerprint: result.newFingerprint,
       });
-    } catch {
-      // El drift no bloquea la ingesta; el fallo al registrar la alerta no
-      // debe propagarse (el crudo ya se capturo).
+    } catch (e) {
+      // El drift no bloquea la ingesta; el fallo al registrar la alerta no debe
+      // propagarse (el crudo ya se capturó). #13: pero SÍ se loguea — antes el catch
+      // vacío perdía el evento de drift sin rastro si Supabase estaba degradado (FND-04).
+      console.warn(
+        `[drift] no se pudo registrar drift_alert (${source}/${resource}):`,
+        e instanceof Error ? e.message : e,
+      );
     }
   }
 }

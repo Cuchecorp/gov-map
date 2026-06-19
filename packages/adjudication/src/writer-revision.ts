@@ -150,26 +150,63 @@ export class RevisionWriter {
    * UPSERT del vínculo final mención→id (estado + metodo). Devuelve el `id` de la fila
    * escrita para enlazarlo en el audit (WR-01).
    *
-   * Idempotencia (WR-02): el conflicto se resuelve sobre la CLAVE NATURAL
-   * `(camara, periodo, mencion_normalizada)` — el índice único parcial de 0006
-   * (`where parlamentario_id is not null`). Re-procesar la misma mención con id
-   * asignado ACTUALIZA la fila en vez de duplicarla. Las filas `no_confirmado` (sin
-   * `parlamentario_id`) quedan fuera del índice parcial: no compiten por la unicidad,
-   * así que se insertan como filas nuevas (no hay clave de conflicto que las una, lo
-   * cual es correcto: una mención sin id no es un hecho idempotente).
+   * Idempotencia (WR-02 + #19): el conflicto se resuelve sobre la CLAVE NATURAL
+   * `(camara, periodo, mencion_normalizada)`, ahora con un índice único TOTAL (0014).
+   * Hay UN vínculo por mención y su estado evoluciona en la misma fila. Re-procesar la
+   * misma mención (con o SIN id) ACTUALIZA en vez de duplicar; antes las filas
+   * `no_confirmado` se insertaban sin tope (el índice parcial de 0006 las dejaba fuera y,
+   * por ser parcial, PostgREST ni siquiera podía targetearlo).
    */
   async upsertVinculo(v: FilaVinculo): Promise<number | null> {
-    const onConflict =
-      v.parlamentario_id != null ? "camara,periodo,mencion_normalizada" : undefined;
     const { data, error } = await this.client
       .from(TABLA_VINCULO)
-      .upsert([v], onConflict ? { onConflict } : undefined)
+      .upsert([v], { onConflict: "camara,periodo,mencion_normalizada" })
       .select("id");
     if (error) {
       throw new Error(`upsertVinculo falló: ${error.message}`);
     }
     const filas = (data ?? []) as { id: number }[];
     return filas[0]?.id ?? null;
+  }
+
+  /**
+   * Resolución ATÓMICA del caso (#3): UPDATE del caso (guardado contra 'pendiente') +
+   * UPSERT del vínculo (si promueve) + INSERT del audit, TODO en una transacción vía el
+   * RPC `resolver_identidad` (migración 0015). Si el caso ya no está pendiente, el RPC
+   * lanza y revierte TODO (nada se escribe). Devuelve el `id` del vínculo escrito (o null).
+   *
+   * Reemplaza la secuencia previa de tres llamadas no atómicas (resolverRevision +
+   * upsertVinculo + appendAudit), que ante un fallo parcial dejaba el caso resuelto sin
+   * vínculo ni audit.
+   */
+  async resolverIdentidad(params: {
+    casoId: number;
+    estado: "confirmado" | "rechazado" | "corregido";
+    revisor: string;
+    motivo: string | null;
+    resolvedAt: string;
+    promover: boolean;
+    vinculo: FilaVinculo | null;
+    decision: DecisionAudit;
+    modeloVersion: string | null;
+  }): Promise<number | null> {
+    const { data, error } = await this.client.rpc("resolver_identidad", {
+      p_caso_id: params.casoId,
+      p_estado: params.estado,
+      p_revisor: params.revisor,
+      p_motivo: params.motivo,
+      p_resolved_at: params.resolvedAt,
+      p_promover: params.promover,
+      p_vinculo: params.vinculo ?? null,
+      p_decision: params.decision,
+      p_modelo_version: params.modeloVersion,
+    });
+    if (error) {
+      // El RPC lanza 'no_data_found' si el caso ya no estaba pendiente (carrera/ya
+      // resuelto): mismo contrato de error que la guarda previa, sin colaterales.
+      throw new Error(`resolverIdentidad falló: ${error.message}`);
+    }
+    return (data as number | null) ?? null;
   }
 
   /**

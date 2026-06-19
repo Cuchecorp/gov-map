@@ -121,15 +121,17 @@ export async function correrPipeline(
   // ── Etapa 1: blocking. Sin candidatos → no_confirmado. NO toca el LLM. ──
   const candidatos = generarCandidatos(mencion, maestra);
   if (candidatos.length === 0) {
+    // #12/#18: decisión 100% DETERMINISTA (no se invocó al LLM) → metodo='determinista',
+    // no 'llm'. Etiquetarla 'llm' contaminaba el audit trail con una atribución falsa.
     const vinculoId = await writer.upsertVinculo({
       ...baseVinculo(mencion),
       parlamentario_id: null,
       estado: "no_confirmado",
-      metodo: "llm",
+      metodo: "determinista",
     });
     await writer.appendAudit({
       vinculo_id: vinculoId,
-      metodo: "llm",
+      metodo: "determinista",
       decision: "no_confirmado",
       confidence: null,
       modelo_version: null,

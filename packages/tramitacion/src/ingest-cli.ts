@@ -168,7 +168,7 @@ export async function main(opts: IngestCliOptions = {}): Promise<IngestCliResult
   const deps = {
     fetcher: new Fetcher(),
     rateLimiter: new HostRateLimiter(),
-    robots: new RobotsGuard(),
+    robots: new RobotsGuard({ allowlist: {} }),
   };
   const camara = new CamaraConnector(deps);
   const senado = new SenadoConnector(deps);

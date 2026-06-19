@@ -21,10 +21,32 @@
  * La API key viaja por header `x-goog-api-key` — NUNCA en la URL, el body ni los logs.
  */
 import type { EmbeddingProvider, EmbeddingResult } from "./../types";
+import { assertNoRutInLlmInput } from "../data-routing";
 
 export const EMBEDDING_MODEL = "gemini-embedding-001";
 export const EMBEDDING_DIMS = 768;
 export const EMBEDDING_VERSION = "v1";
+
+/**
+ * #15: errores con `name` alineado al patrón de @obs/ingest fetcher.ts, para que el
+ * worker (isPermanent) distinga 429/5xx (reintentar) de 4xx (permanente). La key NUNCA
+ * va en el mensaje (T-01-06).
+ */
+export class EmbeddingRetryableError extends Error {
+  constructor(readonly status: number) {
+    super(`Gemini embeddings request failed: ${status} (retryable)`);
+    this.name = "RetryableError";
+  }
+}
+export class EmbeddingFetchError extends Error {
+  constructor(
+    readonly status: number,
+    statusText: string,
+  ) {
+    super(`Gemini embeddings request failed: ${status} ${statusText}`);
+    this.name = "FetchError";
+  }
+}
 
 /**
  * Tipo de tarea para embedding ASIMÉTRICO (SEM-03): las fichas se embeben como
@@ -80,6 +102,11 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
     // `requests: []`, y un caller no distingue "nada que embeber" de un bug).
     if (texts.length === 0) return [];
 
+    // #14: defensa en profundidad — el free tier de Gemini ENTRENA con inputs. La política
+    // data-routing mantiene aquí solo texto público, pero se RE-VERIFICA que ningún RUT se
+    // cuele al embedder (espeja el gate de DeepSeek/MiniMax). Aborta sin tocar la red.
+    for (const text of texts) assertNoRutInLlmInput(text);
+
     const url =
       `${API_BASE}/${API_VERSION}/models/${EMBEDDING_MODEL}:batchEmbedContents`;
     const body = {
@@ -104,10 +131,12 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
     });
 
     if (!res.ok) {
-      // NUNCA incluir la key en el mensaje (patron fetcher.ts).
-      throw new Error(
-        `Gemini embeddings request failed: ${res.status} ${res.statusText}`,
-      );
+      // #15: 429/5xx => RetryableError; 4xx => FetchError (permanente). El worker los
+      // distingue por `name`. NUNCA incluir la key en el mensaje (patron fetcher.ts).
+      if (res.status === 429 || (res.status >= 500 && res.status <= 599)) {
+        throw new EmbeddingRetryableError(res.status);
+      }
+      throw new EmbeddingFetchError(res.status, res.statusText);
     }
 
     const json = (await res.json()) as BatchEmbedResponse;

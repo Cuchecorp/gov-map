@@ -21,7 +21,7 @@ async function main() {
   const connector = new CitacionesCamaraConnector({
     fetcher,
     rateLimiter: new HostRateLimiter(),
-    robots: new RobotsGuard(),
+    robots: new RobotsGuard({ allowlist: {} }),
   });
 
   console.log(`[probe] fetch LIVE Cámara ${clave} vía transporte curl…`);

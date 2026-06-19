@@ -10,14 +10,16 @@
 begin;
 select plan(6);
 
-select has_table('public', 'util_host_throttle', 'tabla util_host_throttle existe (CR-02)');
+-- #37: la tabla vive en el schema `util` (movida de `public` en 0017).
+select has_table('util', 'host_throttle', 'tabla util.host_throttle existe (CR-02)');
 select has_function('util', 'reserve_host_slot', 'util.reserve_host_slot existe (CR-02)');
 
 -- RLS habilitado (deny-by-default; solo service role).
 select is(
-  (select relrowsecurity from pg_class where relname = 'util_host_throttle'),
+  (select relrowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace
+     where c.relname = 'host_throttle' and n.nspname = 'util'),
   true,
-  'util_host_throttle tiene RLS habilitado'
+  'util.host_throttle tiene RLS habilitado'
 );
 
 -- Primer request al host: reserva inmediata (wait = 0).
@@ -34,7 +36,7 @@ select ok(
 );
 
 -- Envejecer el reloj del host mas alla del intervalo => slot disponible (wait 0).
-update public.util_host_throttle
+update util.host_throttle
    set last_request_at = now() - interval '10 seconds'
  where host = 'test.camara.cl';
 
