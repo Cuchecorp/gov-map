@@ -188,7 +188,12 @@ Plans:
   2. La revisión confirma que la postura de minimización se sostiene (solo se muestra lo que la fuente ya publica; RUT y datos de familiares quedan internos) y que el propósito (transparencia legislativa / control ciudadano) está fijado y visible
   3. El sign-off es un prerrequisito duro y verificable: ninguna ruta pública de MONEY (Phases 14–16) se expone hasta que esta compuerta esté aprobada
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+
+- [ ] 13-01-PLAN.md — Gate de exposición MONEY: flag server-only fail-closed (app/lib/money-gate.ts) + Vitest + .env.example + pgTAP de re-afirmación del piso PII deny-by-default (apply remoto gateado operador)
+- [ ] 13-02-PLAN.md — Dossier legal de preparación (Ley 21.719) con YAML signoff:pending, 3 superficies + minimización + propósito + base de licitud + licencia por dataset (ChileCompra=mención de fuente, NO CC BY) + copia en docs/legal/
 
 ### Phase 14: MONEY Contratos — ChileCompra por RUT + sub-maestra de contratistas
 
@@ -279,7 +284,7 @@ Plans:
 | 10. VOTE — Voto individual en la ficha | v2.0 | 3/3 | Complete   | 2026-06-19 |
 | 11. INT Lobby — Reuniones + sub-maestra contrapartes | v2.0 | 3/3 | Complete   | 2026-06-19 |
 | 12. INT Patrimonio/Intereses — Declaraciones + comparación | v2.0 | 3/3 | Complete   | 2026-06-19 |
-| 13. Compuerta Legal — Bloque MONEY | v2.0 | 0/? | Not started | - |
+| 13. Compuerta Legal — Bloque MONEY | v2.0 | 0/2 | Not started | - |
 | 14. MONEY Contratos — ChileCompra + sub-maestra contratistas | v2.0 | 0/? | Not started | - |
 | 15. MONEY Financiamiento — SERVEL + sub-maestra donantes | v2.0 | 0/? | Not started | - |
 | 16. MONEY Agregación — por contraparte | v2.0 | 0/? | Not started | - |
