@@ -107,6 +107,19 @@ export async function runIngestServel(opts: RunIngestServelOpts): Promise<RunIng
   for (const tarea of opts.tareas) {
     const clave = `eleccion:${tarea.eleccion}`;
 
+    // 0. GUARDA DE FRONTERA (rule #4, WR-05): `eleccion`/`url` vacios JAMAS deben fluir a
+    // storage/marcador (un slug vacio -> clave "servel/sin-eleccion/..." es un mislabel silencioso).
+    // El CLI solo validaba cuando NO se inyecta conector; aqui el run boundary lo enforce SIEMPRE
+    // (incluido el camino de conector inyectado / llamada directa). 0 filas para esta tarea, sin
+    // tocar storage ni marcador.
+    if (!tarea.eleccion?.trim() || !tarea.url?.trim()) {
+      const motivo = `tarea invalida: eleccion/url vacios (eleccion='${tarea.eleccion ?? ""}', url='${tarea.url ?? ""}'); 0 filas`;
+      log(`ingest-servel: ${clave} TAREA INVALIDA -> ${motivo}`);
+      errores.push({ fuente: ORIGEN_DRIFT, clave, mensaje: motivo });
+      degradaciones.push({ fuente: clave, motivo });
+      continue;
+    }
+
     // 1. Descarga (orden LOCKED dentro del conector). Bloqueada -> degradacion honesta, continue.
     let bytes: Uint8Array;
     let anclas;

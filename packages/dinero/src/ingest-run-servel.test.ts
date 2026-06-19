@@ -198,6 +198,42 @@ describe("runIngestServel — drift BLOQUEANTE run-level", () => {
     expect(res.degradaciones.some((d) => /HTTP 503/.test(d.motivo))).toBe(true);
   });
 
+  it("WR-05: tarea con eleccion vacia (conector inyectado) -> 0 filas, NO toca storage ni marcador", async () => {
+    const bytes = await xlsx([...EXPECTED_HEADERS], [FILA_DET]);
+    const writer = new SpyServelWriter();
+    let subirLlamado = false;
+    const res = await runIngestServel({
+      conector: fakeConnector(bytes),
+      writer,
+      maestra: maestraDet(),
+      // eleccion VACIA pero url presente: rule #4 exige NO dejar fluir un slug vacio a storage/marcador.
+      tareas: [{ eleccion: "  ", url: "https://repodocgastoelectoral.blob.core.windows.net/x.xlsx", anio: "2025" }],
+      subirCrudo: async () => {
+        subirLlamado = true;
+        return "k";
+      },
+    });
+
+    expect(res.aportes).toBe(0);
+    expect(subirLlamado).toBe(false); // NUNCA sube el crudo con un slug vacio.
+    expect(writer.upsertAportesCalls).toBe(0);
+    expect(writer.marcados).toEqual([]); // NUNCA marca con eleccion vacia.
+    expect(res.errores.some((e) => /eleccion\/url vacios/.test(e.mensaje))).toBe(true);
+  });
+
+  it("WR-05: tarea con url vacia (conector inyectado) -> 0 filas, sin tocar storage/marcador", async () => {
+    const writer = new SpyServelWriter();
+    const res = await runIngestServel({
+      conector: fakeConnector(new Uint8Array([1])),
+      writer,
+      maestra: maestraDet(),
+      tareas: [{ eleccion: "diputado-2025", url: "", anio: "2025" }],
+    });
+    expect(res.aportes).toBe(0);
+    expect(writer.upsertAportesCalls).toBe(0);
+    expect(res.degradaciones.some((d) => /eleccion\/url vacios/.test(d.motivo))).toBe(true);
+  });
+
   it("enlace honesto: un candidato homonimo queda null (no_confirmado), nunca fabrica", async () => {
     const bytes = await xlsx([...EXPECTED_HEADERS], [
       ["Aporte", "Donante", "Natural", "Soto P., Juan", "Candidato", "DIPUTADO", "DISTRITO 1", "P", "Q", "2025-01-01", "100"],
