@@ -48,3 +48,17 @@ export type { FilaSparql, SparqlJson } from "./sparql";
 // Parser zod del SPARQL-JSON → Declaracion[] versionadas (LITERAL, sin LLM).
 export { parseDeclaraciones } from "./parse-infoprobidad";
 export type { ParseDeclaracionesOpts } from "./parse-infoprobidad";
+
+// Reconciliación NAME-ONLY del declarante (correrPipeline → EnlaceConfirmado solo-determinista).
+export { reconciliarDeclarante } from "./reconciliar-declarante";
+export type {
+  ReconciliarDeclaranteOpts,
+  DeclaracionParaEscribir,
+  ResultadoReconciliacionProbidad,
+} from "./reconciliar-declarante";
+
+// Writer VERSIONADO (interfaz + in-memory + Supabase).
+export { InMemoryProbidadWriter, versionKey } from "./writer";
+export type { ProbidadWriter } from "./writer";
+export { SupabaseProbidadWriter } from "./writer-supabase";
+export type { SupabaseProbidadWriterOptions } from "./writer-supabase";
