@@ -18,16 +18,18 @@ insert into proyecto (boletin, boletin_num, titulo, origen, enlace)
 insert into votacion (id, boletin, camara, origen, enlace)
   values ('camara:tap19', '70001-01', 'diputados', 'test', 'http://x');
 
+-- `fuente_voter_id` es NOT NULL (clave natural de 0009): se incluye para aislar el CHECK
+-- de seleccion (un NOT NULL faltante enmascararía el assert del dominio que se prueba).
 select lives_ok(
-  $$ insert into voto (votacion_id, mencion_nombre, seleccion)
-     values ('camara:tap19', 'Diputado Ausente', 'ausente') $$,
+  $$ insert into voto (votacion_id, fuente_voter_id, mencion_nombre, seleccion)
+     values ('camara:tap19', 'tap-ausente', 'Diputado Ausente', 'ausente') $$,
   'voto.seleccion admite ''ausente'' (CHECK extendido por 0019)'
 );
 
 -- ── El CHECK rechaza un valor inválido (no admite categorías libres) ──────────
 select throws_ok(
-  $$ insert into voto (votacion_id, mencion_nombre, seleccion)
-     values ('camara:tap19', 'Diputado Inválido', 'no_voto') $$,
+  $$ insert into voto (votacion_id, fuente_voter_id, mencion_nombre, seleccion)
+     values ('camara:tap19', 'tap-invalido', 'Diputado Inválido', 'no_voto') $$,
   '23514',
   null,
   'voto.seleccion rechaza un valor fuera del dominio (CHECK 23514)'
