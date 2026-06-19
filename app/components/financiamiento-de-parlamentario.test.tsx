@@ -226,8 +226,8 @@ describe("FinanciamientoView — donante como sujeto (sin posesivo, sin RUT dona
 
 // ── Tratamiento de periodo (LOCKED): agrupación por elección + caveat anterior ───
 describe("FinanciamientoView — agrupación por elección + caveat de periodo anterior", () => {
-  it("agrupa los aportes por elección con header de grupo mono", () => {
-    render(
+  it("el header de grupo muestra el verbatim SIN duplicar la palabra 'Elección'", () => {
+    const { container } = render(
       <FinanciamientoView
         data={makeViewData({
           aportes: [
@@ -238,8 +238,38 @@ describe("FinanciamientoView — agrupación por elección + caveat de periodo a
         })}
       />,
     );
-    expect(screen.getByText("Elección Elección 2021")).toBeInTheDocument();
-    expect(screen.getByText("Elección Elección 2017")).toBeInTheDocument();
+    // Los <h3> de grupo renderizan el verbatim TAL CUAL ("Elección 2021"), no
+    // "Elección Elección 2021" (el defecto histórico). Se inspeccionan los <h3>
+    // directamente porque el <dd> de la fila también contiene "Elección 2021".
+    const headers = Array.from(container.querySelectorAll("h3")).map(
+      (h) => h.textContent,
+    );
+    expect(headers).toContain("Elección 2021");
+    expect(headers).toContain("Elección 2017");
+    // La palabra NUNCA se duplica.
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(/Elección Elección/);
+  });
+
+  it("si el verbatim NO empieza con 'Elección', el header sí lo prefija (sin mutar el valor)", () => {
+    const { container } = render(
+      <FinanciamientoView
+        data={makeViewData({
+          aportes: [
+            makeAporte({ fila_id: "d1#a", eleccion: "DIPUTADO - DISTRITO 23 - 2021" }),
+          ],
+          totalAportes: 1,
+        })}
+      />,
+    );
+    const headers = Array.from(container.querySelectorAll("h3")).map(
+      (h) => h.textContent,
+    );
+    // El verbatim se conserva ÍNTEGRO; solo se antepone la palabra que faltaba.
+    expect(headers).toContain("Elección DIPUTADO - DISTRITO 23 - 2021");
+    // No se duplica ni se mutila el valor verbatim.
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(/Elección Elección/);
   });
 
   it("cada fila lleva su propio 'Elección:' (defense in depth)", () => {

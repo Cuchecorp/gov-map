@@ -98,6 +98,32 @@ export interface FinanciamientoViewData {
   eleccionActual: string | null;
 }
 
+/**
+ * Encabezado de grupo de elección, SIN duplicar la palabra "Elección".
+ *
+ * El valor verbatim del RPC (`g.eleccion`) a veces YA empieza con "Elección"
+ * ("Elección 2021") y a veces NO ("DIPUTADO - DISTRITO 23 - 2021"). Antes el UI
+ * prefijaba "Elección " siempre → "Elección Elección 2021" (defecto visual).
+ *
+ * Regla: si el valor verbatim ya empieza con "Elección"/"ELECCIÓN" (case- y
+ * accent-tolerant), se renderiza TAL CUAL (verbatim, sin tocar). Si NO empieza
+ * así, se prefija "Elección " para que el encabezado siga leyéndose como el de
+ * una elección. En ningún caso se altera el contenido del valor verbatim.
+ */
+// Empieza (ignorando espacios iniciales) con la palabra "elección"/"eleccion"
+// en cualquier caja y con o sin tilde. Solo necesitamos los dos códepoints de la
+// "o"/"ó" (U+006F / U+00F3), evitando rangos de marcas combinantes invisibles.
+const YA_PREFIJA_ELECCION = /^\s*elecci[oó]n/i;
+
+function encabezadoEleccion(eleccion: string): string {
+  // Si el verbatim ya trae la palabra "Elección", se muestra TAL CUAL (sin
+  // duplicar). Si no, se prefija para que el encabezado lea como una elección.
+  if (YA_PREFIJA_ELECCION.test(eleccion)) {
+    return eleccion;
+  }
+  return `Elección ${eleccion}`;
+}
+
 /** Construye un href de paginación preservando el resto de la query. */
 function buildHref(id: string, page: number): string {
   const qs = new URLSearchParams({ financiamientoPage: String(page) }).toString();
@@ -294,9 +320,10 @@ export function FinanciamientoView({ data }: { data: FinanciamientoViewData }) {
       <ul>
         {grupos.map((g) => (
           <li key={g.eleccion} className="mt-6 first:mt-0">
-            {/* Header de grupo: la elección/periodo (mono). */}
+            {/* Header de grupo: la elección/periodo (mono). El verbatim ya suele
+                traer "Elección"; `encabezadoEleccion` evita duplicar la palabra. */}
             <h3 className="text-sm font-semibold font-mono mb-1">
-              Elección {g.eleccion}
+              {encabezadoEleccion(g.eleccion)}
             </h3>
 
             {/*
