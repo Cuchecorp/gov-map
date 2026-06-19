@@ -109,7 +109,7 @@ export class SupabaseStorageServel {
       // Idempotencia esperada: el objeto ya existe (mismo hash, 409/Duplicate canonico) -> no es un
       // error real. Precision estructurada (WR-03): un "Bucket not found"/"does not exist" NO se
       // traga (seria reportar el crudo como capturado sin estarlo). Cualquier otro error -> THROW.
-      if (esConflictoYaExiste(error as { message?: string } & Record<string, unknown>)) {
+      if (esConflictoYaExiste(error as unknown as { message?: string } & Record<string, unknown>)) {
         return key;
       }
       throw new Error(`storage SERVEL: ${error.message}`);
