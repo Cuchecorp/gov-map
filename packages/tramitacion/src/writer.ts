@@ -11,13 +11,57 @@
 // (SupabaseTramitacionWriter) vive en writer-supabase.ts; aquí van la interfaz y un fake
 // in-memory (Map por clave natural) para los tests sin red ni DB.
 
+import type { EnlaceConfirmado } from "@obs/identity";
 import type { Proyecto, Votacion, Voto, TramitacionEvento } from "./model";
+
+/**
+ * Entrada del writer del voto (IDENT-12). Espeja `Voto` EXCEPTO el FK: en lugar de un
+ * `parlamentario_id: string | null` crudo, lleva `enlace: EnlaceConfirmado | null`, un
+ * tipo branded que SOLO la reconciliación puede mintear (vía `confirmar()` de @obs/identity).
+ *
+ * Esto sube la guarda LOCKED de v1.0 (TRAM-06) de convención a INVARIANTE TIPADO: un writer
+ * nuevo (Phase 11+) que intente `enlace: "P00042"` (string) NO compila. El writer deriva
+ * internamente `parlamentario_id = enlace?.parlamentarioId ?? null` antes de persistir, de modo
+ * que la forma DB persistida (`Voto`) sigue plana (`string | null`) — Anti-Pattern A4 del research:
+ * input branded, storage plano.
+ */
+export interface VotoParaEscribir {
+  votacion_id: string;
+  fuente_voter_id: string;
+  mencion_nombre: string;
+  /** FK de atribución — branded. Sólo `EnlaceConfirmado` (determinista/confirmado) o null. */
+  enlace: EnlaceConfirmado | null;
+  seleccion: Voto["seleccion"];
+  metodo: Voto["metodo"];
+  estado_vinculo: Voto["estado_vinculo"];
+}
+
+/**
+ * Aplana una entrada branded a la fila `Voto` persistida: el FK se fija SOLO si hay
+ * `EnlaceConfirmado`; en otro caso `null` (guarda LOCKED). Único sitio donde el branded type
+ * se convierte en el `string | null` de la DB.
+ */
+export function aplanarVoto(row: VotoParaEscribir): Voto {
+  return {
+    votacion_id: row.votacion_id,
+    fuente_voter_id: row.fuente_voter_id,
+    mencion_nombre: row.mencion_nombre,
+    parlamentario_id: row.enlace?.parlamentarioId ?? null,
+    seleccion: row.seleccion,
+    metodo: row.metodo,
+    estado_vinculo: row.estado_vinculo,
+  };
+}
 
 /** Writer idempotente inyectable. Cada método upserta por la clave natural de su entidad. */
 export interface TramitacionWriter {
   upsertProyecto(proyecto: Proyecto): Promise<void>;
   upsertVotacion(votaciones: Votacion[]): Promise<void>;
-  upsertVotos(votos: Voto[]): Promise<void>;
+  /**
+   * Upsert idempotente de votos. El FK se tipa como `EnlaceConfirmado | null` (IDENT-12):
+   * un `parlamentario_id` string crudo en esta posición es un ERROR DE COMPILACIÓN.
+   */
+  upsertVotos(votos: VotoParaEscribir[]): Promise<void>;
   upsertEventos(eventos: TramitacionEvento[]): Promise<void>;
 }
 
@@ -49,8 +93,11 @@ export class InMemoryTramitacionWriter implements TramitacionWriter {
     for (const v of votaciones) this.votaciones.set(v.id, v);
   }
 
-  async upsertVotos(votos: Voto[]): Promise<void> {
-    for (const v of votos) this.votos.set(votoKey(v), v);
+  async upsertVotos(votos: VotoParaEscribir[]): Promise<void> {
+    for (const row of votos) {
+      const v = aplanarVoto(row);
+      this.votos.set(votoKey(v), v);
+    }
   }
 
   async upsertEventos(eventos: TramitacionEvento[]): Promise<void> {

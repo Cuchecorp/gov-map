@@ -13,8 +13,9 @@
  * DISEÑO (RESEARCH §Pattern 1, Pitfall 2):
  *  - `ENLACE_CONFIRMADO` es un `unique symbol` PRIVADO al módulo. NUNCA se exporta
  *    (ni desde aquí ni desde el barrel `index.ts`). Exportarlo —o permitir un cast
- *    `as EnlaceConfirmado` en código de conector— rompería el invariante, porque
+ *    de string al tipo branded en código de conector— rompería el invariante, porque
  *    cualquiera podría fabricar un valor del tipo sin pasar por la reconciliación.
+ *    (Por eso el grep gate de la fase rechaza ese cast fuera de tests.)
  *  - `confirmar()` es la ÚNICA factory legítima. La invocan SOLO:
  *      (1) la reconciliación, tras un resultado `determinista`/`confirmado`, y
  *      (2) `revisor-cli`, tras una promoción humana (`metodo: "humano"`,
@@ -61,10 +62,10 @@ export function confirmar(
 ): EnlaceConfirmado {
   // La marca nominal `[ENLACE_CONFIRMADO]` existe SOLO en el espacio de tipos
   // (`declare const ... : unique symbol` no produce valor en runtime). El valor real
-  // es un objeto plano `{ parlamentarioId, metodo }`; la marca se asienta vía un
-  // único `satisfies`/widening controlado AQUÍ, el único sitio de construcción.
-  // Se evita el literal `as EnlaceConfirmado` (prohibido por Pitfall 2: el grep gate
-  // rechaza cualquier `as EnlaceConfirmado` fuera de tests) usando un alias local.
+  // es un objeto plano `{ parlamentarioId, metodo }`; la marca se asienta AQUÍ, el
+  // único sitio de construcción legítimo. Se usa un alias local `Branded` para no
+  // escribir el cast prohibido por Pitfall 2 (el grep gate de la fase lo rechaza
+  // fuera de tests) — este es el ÚNICO lugar donde el branded type se construye.
   type Branded = EnlaceConfirmado;
   return { parlamentarioId, metodo } as unknown as Branded;
 }

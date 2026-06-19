@@ -18,6 +18,7 @@
 
 import type { Parlamentario } from "@obs/core";
 import { normalizarNombre } from "@obs/core";
+import { confirmar, type EnlaceConfirmado } from "@obs/identity";
 import {
   correrPipeline,
   type PipelineWriter,
@@ -28,11 +29,11 @@ import {
 // evitando un edge de dependencia directo a `@obs/llm` (`@obs/adjudication` ya lo encapsula).
 type LLMProvider = Parameters<typeof correrPipeline>[2];
 import {
-  type Voto,
   type MetodoVinculo,
   type EstadoVinculo,
   VotoSchema,
 } from "./model";
+import type { VotoParaEscribir } from "./writer";
 import type { VotoSenadoCrudo } from "./parse-senado-votacion";
 
 /**
@@ -42,9 +43,13 @@ import type { VotoSenadoCrudo } from "./parse-senado-votacion";
  */
 const PERIODO_SENADO_DEFAULT = "senado-vigente-2026";
 
-/** Mapeo del resultado del pipeline a la guarda LOCKED del voto público. */
+/**
+ * Mapeo del resultado del pipeline a la guarda LOCKED del voto público (IDENT-12).
+ * El FK ya NO es un string crudo: es un `EnlaceConfirmado | null` branded, minteado
+ * SÓLO por `confirmar()` en la rama determinista. Un string desnudo aquí no compila.
+ */
 interface Vinculo {
-  parlamentario_id: string | null;
+  enlace: EnlaceConfirmado | null;
   metodo: MetodoVinculo | null;
   estado_vinculo: EstadoVinculo | null;
 }
@@ -105,18 +110,19 @@ const PROVIDER_AUSENTE: LLMProvider = {
  * @param votosCrudos  Votos crudos `{ mencionNombre, seleccion }` (ola 2, `parseSenadoVotacion`).
  * @param maestra      Tabla maestra de parlamentarios ya cargada.
  * @param opts         `votacionId` + `provider`/`writer` inyectables (defaults seguros).
- * @returns            `Voto[]` listos para persistir; SOLO determinista lleva parlamentario_id.
+ * @returns            `VotoParaEscribir[]` listos para el writer; SOLO determinista lleva un
+ *                     `EnlaceConfirmado` minteado (IDENT-12), el resto deja `enlace: null`.
  */
 export async function reconciliarVotosSenado(
   votosCrudos: VotoSenadoCrudo[],
   maestra: Parlamentario[],
   opts: ReconciliarSenadoOpts = {},
-): Promise<Voto[]> {
+): Promise<VotoParaEscribir[]> {
   const votacionId = opts.votacionId ?? "";
   const provider = opts.provider ?? PROVIDER_AUSENTE;
   const writer = opts.writer ?? NOOP_WRITER;
   const periodo = opts.periodo ?? PERIODO_SENADO_DEFAULT;
-  const out: Voto[] = [];
+  const out: VotoParaEscribir[] = [];
 
   for (const crudo of votosCrudos) {
     // Pitfall 3: trim ANTES; el campo `libre` está diseñado para "Apellido P., Nombre".
@@ -134,39 +140,51 @@ export async function reconciliarVotosSenado(
 
     const res = await correrPipeline(mencion, maestra, provider, writer);
 
-    // GUARDA LOCKED: solo `determinista` puebla parlamentario_id en el voto público.
+    // GUARDA LOCKED (IDENT-12): SOLO `determinista` mintea un EnlaceConfirmado y puebla el FK.
     let v: Vinculo;
     switch (res.tipo) {
       case "determinista":
+        // ÚNICO mint site del voto Senado: confirmar() sólo tras un match determinista.
         v = {
-          parlamentario_id: res.parlamentarioId,
+          enlace: confirmar(res.parlamentarioId, "determinista"),
           metodo: "determinista",
           estado_vinculo: "confirmado",
         };
         break;
       case "probable":
-        // Auto-aceptar del LLM: NUNCA vincula a la ficha pública (parlamentario_id null).
-        v = { parlamentario_id: null, metodo: "llm", estado_vinculo: "probable" };
+        // Auto-aceptar del LLM: NUNCA vincula a la ficha pública (enlace null).
+        v = { enlace: null, metodo: "llm", estado_vinculo: "probable" };
         break;
       case "revision":
       case "no_confirmado":
       default:
-        v = { parlamentario_id: null, metodo: null, estado_vinculo: "no_confirmado" };
+        v = { enlace: null, metodo: null, estado_vinculo: "no_confirmado" };
         break;
     }
 
-    const voto: Voto = VotoSchema.parse({
+    const voto: VotoParaEscribir = {
       votacion_id: votacionId,
       // CR-02: el Senado solo trae nombre → el discriminador NO colisionante es el índice
       // posicional del voto en la fuente (`seq:<n>`). Dos homónimos/menciones vacías ya no
       // colapsan en la misma clave `(votacion_id, fuente_voter_id)`.
       fuente_voter_id: `seq:${crudo.votoSeq}`,
       mencion_nombre: mencionNombre,
-      parlamentario_id: v.parlamentario_id,
+      enlace: v.enlace,
       seleccion: crudo.seleccion,
       metodo: v.metodo,
       estado_vinculo: v.estado_vinculo,
-    }) as Voto;
+    };
+
+    // Defensa-en-profundidad: la forma DB persistida (plana) sigue validando con zod.
+    VotoSchema.parse({
+      votacion_id: voto.votacion_id,
+      fuente_voter_id: voto.fuente_voter_id,
+      mencion_nombre: voto.mencion_nombre,
+      parlamentario_id: voto.enlace?.parlamentarioId ?? null,
+      seleccion: voto.seleccion,
+      metodo: voto.metodo,
+      estado_vinculo: voto.estado_vinculo,
+    });
 
     out.push(voto);
   }

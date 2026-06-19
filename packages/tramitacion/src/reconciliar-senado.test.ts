@@ -19,6 +19,7 @@ import {
   type CasoRevision,
 } from "@obs/adjudication";
 import { reconciliarVotosSenado } from "./reconciliar-senado";
+import { aplanarVoto } from "./writer";
 import type { VotoSenadoCrudo } from "./parse-senado-votacion";
 
 /** Writer espía in-memory: captura escrituras sin tocar la DB (patrón 04-03). */
@@ -93,7 +94,11 @@ describe("reconciliarVotosSenado — guarda de identidad LOCKED", () => {
       writer,
     });
     expect(out).toHaveLength(1);
-    expect(out[0]!.parlamentario_id).toBe("P00500");
+    // IDENT-12: el FK ahora es un EnlaceConfirmado branded minteado por confirmar().
+    expect(out[0]!.enlace?.parlamentarioId).toBe("P00500");
+    expect(out[0]!.enlace?.metodo).toBe("determinista");
+    // La forma pública persistida (aplanada) sigue poblando parlamentario_id solo si confirmado.
+    expect(aplanarVoto(out[0]!).parlamentario_id).toBe("P00500");
     expect(out[0]!.metodo).toBe("determinista");
     expect(out[0]!.estado_vinculo).toBe("confirmado");
     expect(out[0]!.seleccion).toBe("si");
@@ -134,7 +139,9 @@ describe("reconciliarVotosSenado — guarda de identidad LOCKED", () => {
       provider,
       writer,
     });
-    expect(out[0]!.parlamentario_id).toBeNull();
+    // GUARDA LOCKED: 'probable' NUNCA mintea un enlace → FK público null.
+    expect(out[0]!.enlace).toBeNull();
+    expect(aplanarVoto(out[0]!).parlamentario_id).toBeNull();
     expect(out[0]!.estado_vinculo).toBe("probable");
     expect(out[0]!.metodo).toBe("llm");
     expect(out[0]!.mencion_nombre).toBe("Coloma C., Juan Antonio");
@@ -171,7 +178,8 @@ describe("reconciliarVotosSenado — guarda de identidad LOCKED", () => {
       provider,
       writer,
     });
-    expect(out[0]!.parlamentario_id).toBeNull();
+    expect(out[0]!.enlace).toBeNull();
+    expect(aplanarVoto(out[0]!).parlamentario_id).toBeNull();
     expect(out[0]!.estado_vinculo).toBe("no_confirmado");
     expect(out[0]!.metodo).toBeNull();
     expect(out[0]!.mencion_nombre).toBe("Coloma C., Juan Antonio");
@@ -191,7 +199,8 @@ describe("reconciliarVotosSenado — guarda de identidad LOCKED", () => {
       provider,
       writer,
     });
-    expect(out[0]!.parlamentario_id).toBeNull();
+    expect(out[0]!.enlace).toBeNull();
+    expect(aplanarVoto(out[0]!).parlamentario_id).toBeNull();
     expect(out[0]!.estado_vinculo).toBe("no_confirmado");
     expect(out[0]!.mencion_nombre).toBeTruthy();
   });
@@ -219,7 +228,8 @@ describe("reconciliarVotosSenado — guarda de identidad LOCKED", () => {
       provider,
       writer,
     });
-    expect(out[0]!.parlamentario_id).toBe("P00500");
+    expect(out[0]!.enlace?.parlamentarioId).toBe("P00500");
+    expect(aplanarVoto(out[0]!).parlamentario_id).toBe("P00500");
     expect(provider.callCount).toBe(0);
   });
 

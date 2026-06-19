@@ -1,9 +1,10 @@
 // writer.test — idempotencia por clave natural (in-memory) + onConflict correcto (Supabase fake).
 
 import { describe, it, expect } from "vitest";
-import { InMemoryTramitacionWriter } from "./writer";
+import { confirmar } from "@obs/identity";
+import { InMemoryTramitacionWriter, type VotoParaEscribir } from "./writer";
 import { SupabaseTramitacionWriter } from "./writer-supabase";
-import type { Proyecto, Votacion, Voto, TramitacionEvento } from "./model";
+import type { Proyecto, Votacion, TramitacionEvento } from "./model";
 
 const PROV = {
   origen: "test",
@@ -41,11 +42,12 @@ const votacion: Votacion = {
   ...PROV,
 };
 
-const voto: Voto = {
+// IDENT-12: el writer recibe el FK branded (`enlace: EnlaceConfirmado | null`), no un string.
+const voto: VotoParaEscribir = {
   votacion_id: "camara:89178",
   fuente_voter_id: "1234",
   mencion_nombre: "Coloma C., Juan Antonio",
-  parlamentario_id: "D123",
+  enlace: confirmar("D123", "determinista"),
   seleccion: "si",
   metodo: "determinista",
   estado_vinculo: "confirmado",

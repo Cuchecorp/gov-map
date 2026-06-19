@@ -11,6 +11,7 @@
 import { describe, it, expect } from "vitest";
 import type { Parlamentario } from "@obs/core";
 import { reconciliarVotosCamara } from "./reconciliar-camara";
+import { aplanarVoto } from "./writer";
 import type { CamaraVotoDetalle } from "./parse-camara-votacion";
 
 function maestro(p: Partial<Parlamentario> & { id: string }): Parlamentario {
@@ -68,7 +69,10 @@ describe("reconciliarVotosCamara — cruce determinista por Diputado/Id", () => 
     const out = reconciliarVotosCamara(votos, "camara:89178", maestra);
     expect(out).toHaveLength(2);
 
-    expect(out[0]!.parlamentario_id).toBe("P00010");
+    // IDENT-12: el match por DIPID oficial mintea un EnlaceConfirmado determinista.
+    expect(out[0]!.enlace?.parlamentarioId).toBe("P00010");
+    expect(out[0]!.enlace?.metodo).toBe("determinista");
+    expect(aplanarVoto(out[0]!).parlamentario_id).toBe("P00010");
     expect(out[0]!.metodo).toBe("determinista");
     expect(out[0]!.estado_vinculo).toBe("confirmado");
     expect(out[0]!.seleccion).toBe("si");
@@ -77,7 +81,8 @@ describe("reconciliarVotosCamara — cruce determinista por Diputado/Id", () => 
     // CR-02: la clave natural del votante es el DIPID oficial, NO el nombre.
     expect(out[0]!.fuente_voter_id).toBe("1234");
 
-    expect(out[1]!.parlamentario_id).toBe("P00020");
+    expect(out[1]!.enlace?.parlamentarioId).toBe("P00020");
+    expect(aplanarVoto(out[1]!).parlamentario_id).toBe("P00020");
     expect(out[1]!.seleccion).toBe("no");
     expect(out[1]!.estado_vinculo).toBe("confirmado");
     expect(out[1]!.fuente_voter_id).toBe("5678");
@@ -100,7 +105,8 @@ describe("reconciliarVotosCamara — cruce determinista por Diputado/Id", () => 
     ];
     const out = reconciliarVotosCamara(votos, "camara:89178", maestra);
     expect(out).toHaveLength(1);
-    expect(out[0]!.parlamentario_id).toBeNull();
+    expect(out[0]!.enlace).toBeNull();
+    expect(aplanarVoto(out[0]!).parlamentario_id).toBeNull();
     expect(out[0]!.metodo).toBeNull();
     expect(out[0]!.estado_vinculo).toBe("no_confirmado");
     expect(out[0]!.mencion_nombre).toBe("Ex Diputado Periodo Anterior");
@@ -113,7 +119,8 @@ describe("reconciliarVotosCamara — cruce determinista por Diputado/Id", () => 
       { diputadoId: "", opcion: "no", nombreCrudo: "Nadie" },
     ];
     const out = reconciliarVotosCamara(votos, "camara:1", maestra);
-    expect(out[0]!.parlamentario_id).toBeNull();
+    expect(out[0]!.enlace).toBeNull();
+    expect(aplanarVoto(out[0]!).parlamentario_id).toBeNull();
     expect(out[0]!.estado_vinculo).toBe("no_confirmado");
   });
 
@@ -122,7 +129,8 @@ describe("reconciliarVotosCamara — cruce determinista por Diputado/Id", () => 
       { diputadoId: "1234", opcion: "si", nombreCrudo: "Karol Cariola Oliva" },
     ];
     const out = reconciliarVotosCamara(votos, "camara:1", []);
-    expect(out[0]!.parlamentario_id).toBeNull();
+    expect(out[0]!.enlace).toBeNull();
+    expect(aplanarVoto(out[0]!).parlamentario_id).toBeNull();
     expect(out[0]!.estado_vinculo).toBe("no_confirmado");
     expect(out[0]!.mencion_nombre).toBe("Karol Cariola Oliva");
   });
@@ -144,7 +152,8 @@ describe("WR-02: scoping de periodo/cámara del cruce por DIPID (fail-closed)", 
       { diputadoId: "1234", opcion: "si", nombreCrudo: "Voto Cámara" },
     ];
     const out = reconciliarVotosCamara(votos, "camara:1", conSenador);
-    expect(out[0]!.parlamentario_id).toBeNull(); // NO se vincula al senador
+    expect(out[0]!.enlace).toBeNull(); // NO se vincula al senador
+    expect(aplanarVoto(out[0]!).parlamentario_id).toBeNull();
     expect(out[0]!.estado_vinculo).toBe("no_confirmado");
   });
 
@@ -166,7 +175,8 @@ describe("WR-02: scoping de periodo/cámara del cruce por DIPID (fail-closed)", 
     const out = reconciliarVotosCamara(votos, "camara:1", historico, {
       periodo: "diputados-vigente-2026",
     });
-    expect(out[0]!.parlamentario_id).toBeNull();
+    expect(out[0]!.enlace).toBeNull();
+    expect(aplanarVoto(out[0]!).parlamentario_id).toBeNull();
     expect(out[0]!.estado_vinculo).toBe("no_confirmado");
   });
 
@@ -177,7 +187,8 @@ describe("WR-02: scoping de periodo/cámara del cruce por DIPID (fail-closed)", 
     const out = reconciliarVotosCamara(votos, "camara:1", maestra, {
       periodo: "diputados-vigente-2026",
     });
-    expect(out[0]!.parlamentario_id).toBe("P00010");
+    expect(out[0]!.enlace?.parlamentarioId).toBe("P00010");
+    expect(aplanarVoto(out[0]!).parlamentario_id).toBe("P00010");
     expect(out[0]!.estado_vinculo).toBe("confirmado");
   });
 });

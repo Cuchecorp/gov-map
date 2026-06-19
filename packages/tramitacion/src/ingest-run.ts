@@ -20,11 +20,10 @@ import type { Parlamentario } from "@obs/core";
 import type { PipelineWriter } from "@obs/adjudication";
 import type { CamaraConnector } from "./connector-camara";
 import type { SenadoConnector } from "./connector-senado";
-import type { TramitacionWriter } from "./writer";
+import type { TramitacionWriter, VotoParaEscribir } from "./writer";
 import type {
   Proyecto,
   Votacion,
-  Voto,
   TramitacionEvento,
 } from "./model";
 import { parseCamaraVotacion, parseCamaraVotoDetalle } from "./parse-camara-votacion";
@@ -144,7 +143,7 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
   for (const boletinFull of boletines) {
     const base = baseDe(boletinFull);
     const votacionesBoletin: Votacion[] = [];
-    const votosBoletin: Voto[] = [];
+    const votosBoletin: VotoParaEscribir[] = [];
     let proyecto: Proyecto | null = null;
     let eventosSenado: TramitacionEvento[] = [];
 

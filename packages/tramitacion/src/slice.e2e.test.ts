@@ -63,8 +63,9 @@ describe("SLICE E2E — objetivo ciudadano (RED hasta ola 4)", () => {
     expect(votacion.camara).toBe("senado");
     const reconciliados = await reconciliarVotosSenado(votos, []);
     // Con maestra vacía nada resuelve determinísticamente → todos sin vínculo.
+    // IDENT-12: el FK es `enlace` (EnlaceConfirmado | null); sin match queda null.
     for (const voto of reconciliados) {
-      expect(voto.parlamentario_id).toBeNull();
+      expect(voto.enlace).toBeNull();
       expect(voto.mencion_nombre).toBeTruthy(); // se conserva el nombre crudo para display
     }
   });

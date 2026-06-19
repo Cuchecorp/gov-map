@@ -25,7 +25,10 @@
 // `VotoSchema` antes de devolver.
 
 import type { Parlamentario } from "@obs/core";
-import { type Voto, VotoSchema } from "./model";
+import { confirmar } from "@obs/identity";
+import { VotoSchema } from "./model";
+import type { VotoParaEscribir } from "./writer";
+import { aplanarVoto } from "./writer";
 import type { CamaraVotoDetalle } from "./parse-camara-votacion";
 
 /** Opciones de scoping del cruce (WR-02). */
@@ -46,14 +49,15 @@ export interface ReconciliarCamaraOpts {
  * @param votacionId   Id de la votación (FK a `votacion.id`, p.ej. "camara:89178").
  * @param maestra      Tabla maestra de parlamentarios ya cargada.
  * @param opts         Scoping de periodo (WR-02); el filtro por cámara='diputados' es implícito.
- * @returns            `Voto[]` listos para persistir (parlamentario_id solo si Id presente).
+ * @returns            `VotoParaEscribir[]` listos para el writer; el FK es un `EnlaceConfirmado`
+ *                     minteado (IDENT-12) SÓLO cuando el DIPID resuelve en la maestra vigente.
  */
 export function reconciliarVotosCamara(
   votosCrudos: CamaraVotoDetalle[],
   votacionId: string,
   maestra: Parlamentario[],
   opts: ReconciliarCamaraOpts = {},
-): Voto[] {
+): VotoParaEscribir[] {
   // WR-02: índice por id_diputado_camara acotado a cámara='diputados' (y periodo si se pasó),
   // construido UNA vez (saltando null/vacíos). Esto impide que un DIPID resuelva a una persona
   // fuera del periodo/cámara de la votación y se afirme un vínculo falso.
@@ -69,15 +73,17 @@ export function reconciliarVotosCamara(
     const key = String(v.diputadoId ?? "");
     const p = key.length > 0 ? idx.get(key) : undefined;
 
-    const voto: Voto =
+    const voto: VotoParaEscribir =
       p !== undefined
         ? {
             // Cruce por Id: el más fuerte (identificador oficial), sin LLM, sin riesgo.
+            // IDENT-12: el match por DIPID oficial ES un confirmado determinista → mintea el
+            // EnlaceConfirmado vía la ÚNICA factory (no se fija un string crudo en el FK).
             votacion_id: votacionId,
             // CR-02: la clave natural del votante es el DIPID oficial, NO el nombre.
             fuente_voter_id: key,
             mencion_nombre: v.nombreCrudo,
-            parlamentario_id: p.id,
+            enlace: confirmar(p.id, "determinista"),
             seleccion: v.opcion,
             metodo: "determinista",
             estado_vinculo: "confirmado",
@@ -89,12 +95,14 @@ export function reconciliarVotosCamara(
             // usa el índice posicional como respaldo para no colapsar dos votos sin id).
             fuente_voter_id: key.length > 0 ? key : `seq:${i}`,
             mencion_nombre: v.nombreCrudo,
-            parlamentario_id: null,
+            enlace: null,
             seleccion: v.opcion,
             metodo: null,
             estado_vinculo: "no_confirmado",
           };
 
-    return VotoSchema.parse(voto) as Voto;
+    // Defensa-en-profundidad: la forma DB persistida (plana) sigue validando con zod.
+    VotoSchema.parse(aplanarVoto(voto));
+    return voto;
   });
 }

@@ -62,8 +62,11 @@ export {
 export { SenadoConnector, type SenadoConnectorDeps } from "./connector-senado";
 
 // ── Ola 4: writer idempotente por clave natural ───────────────────────────────
+// IDENT-12: `VotoParaEscribir` tipa el FK del voto como `EnlaceConfirmado | null` (branded).
 export {
   type TramitacionWriter,
+  type VotoParaEscribir,
+  aplanarVoto,
   InMemoryTramitacionWriter,
 } from "./writer";
 export {
