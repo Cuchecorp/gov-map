@@ -114,9 +114,10 @@ export async function obtenerTextoFuente(
     const body = await opts.fetcher.get({ url: linkMensajeMocion });
     texto = new TextDecoder().decode(body);
   } catch (err) {
-    // fetch/robots fallaron (red/429/5xx): degrada sin abortar la corrida.
+    // #30: el catch cubre robots / rate-limit / fetch; el mensaje no afirma que fue el
+    // "fetch" (podía ser cualquiera de los tres) — degrada sin abortar la corrida.
     log(
-      `texto-fuente: fetch falló para ${linkMensajeMocion} → degrada: ${err instanceof Error ? err.message : String(err)}`,
+      `texto-fuente: obtención de ${linkMensajeMocion} falló (robots/rate-limit/fetch) → degrada: ${err instanceof Error ? err.message : String(err)}`,
     );
     return { texto: null, r2Path: null };
   }

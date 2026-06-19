@@ -11,6 +11,7 @@
 // (env-driven, sin puertos hardcodeados); remoto/R2 = pasos de operador diferidos por credencial.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { CuerpoLegal } from "./model";
 
 /** Estado del pipeline de extracción/embedding (migración 0011 + 0013). */
 export type FichaEstado = "pendiente" | "procesando" | "embebido" | "error";
@@ -19,7 +20,7 @@ export type FichaEstado = "pendiente" | "procesando" | "embebido" | "error";
 export interface FichaRow {
   boletin: string;
   idea_matriz: string | null;
-  cuerpos_legales: unknown;
+  cuerpos_legales: CuerpoLegal[];
   texto_r2_path: string | null;
   estado: FichaEstado;
   origen: string;
