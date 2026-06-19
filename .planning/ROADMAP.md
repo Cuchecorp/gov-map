@@ -83,7 +83,8 @@ Sub-maestras se construyen en su bloque, NO se difieren a NET: lobista/gestor (P
   3. El spike documenta cobertura histórica (qué legislaturas/años) y comportamiento de rate detrás del WAF respetando el delay 2–3s LOCKED
   4. El resultado es una decisión binaria registrada: **confirmar y construir** Phase 10 tal cual, o **replanificar solo el bloque VOTE** (sin bloquear INT/MONEY)
 
-**Plans:** TBD
+**Plans:** 1 plan
+- [ ] 08-01-PLAN.md — Spike confirm-or-replan: corrida LIVE-gated reusando @obs/ingest + parsers v1.0, reconcilia DIPID→id_diputado_camara, registra FINDINGS + decisión binaria
 
 ### Phase 9: Completitud de Identidad — Backfill RUT + Invariante de Writer + Piso PII
 
