@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
 status: executing
-stopped_at: Phase 8 VOTE spike COMPLETADO — decisión CONFIRMAR registrada
-last_updated: "2026-06-19T03:25:00.000Z"
-last_activity: 2026-06-19 -- Phase 8 VOTE spike CONFIRMÓ (corrida LIVE OK)
+stopped_at: Phase 8 cerrado — FINDINGS + decisión CONFIRMAR en 08-SUMMARY.md y STATE.md
+last_updated: "2026-06-19T04:17:14.538Z"
+last_activity: 2026-06-19
 progress:
   total_phases: 11
   completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  total_plans: 4
+  completed_plans: 3
   percent: 9
 ---
 
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 8 — VOTE Spike — Validación en vivo de opendata.camara.cl
+**Current focus:** Phase 9 — Completitud de Identidad
 
 ## Current Position
 
-Phase: 8 (VOTE Spike — Validación en vivo de opendata.camara.cl) — COMPLETADO ✅
-Plan: 1 of 1 (completado)
-Status: Phase 8 cerrado — decisión binaria CONFIRMAR (construir Phase 10 tal cual)
+Phase: 9 (Completitud de Identidad) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Next phase: Phase 09 — Completitud de Identidad (puede correr en paralelo); Phase 10 (@obs/votos) desbloqueada
-Last activity: 2026-06-19 -- Phase 8 VOTE spike CONFIRMÓ (corrida LIVE OK, mapeo 100%)
+Last activity: 2026-06-19
 
 ## Performance Metrics
 
@@ -77,6 +77,7 @@ Last activity: 2026-06-19 -- Phase 8 VOTE spike CONFIRMÓ (corrida LIVE OK, mape
 | Phase 06 P03 | 9min | 2 tasks | 14 files |
 | Phase 06 P04 | 17 | 4 tasks | 14 files |
 | Phase 07 P02 | 11min | 3 tasks | 14 files |
+| Phase 09 P01 | 12min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,8 @@ Recent decisions affecting current work:
 - [Phase 07]: [07-01]: gate de extracción literal golden (precision>=0.95 BLOQUEA CI); 0011 — RPC match_proyectos ordena por distancia CRUDA `<=>` ASC (HNSW), grant execute a anon
 - [Phase 07]: [07-02]: texto-fuente reusa @obs/ingest en orden LOCKED; degradacion encadenada texto null→idea_matriz null→embed titulo+materia (nunca fabrica)
 - [Phase 08]: [08-01]: VOTE spike CONFIRMÓ EN VIVO — `getVotacion_Detalle` entrega DIPID+Opcion no-null, totales reconcilian (count(si)===total_si, count(no)===total_no), y DIPID mapea a `id_diputado_camara` determinísticamente al 100% sobre 6 votaciones Leg-58 (boletines 14309/18296). Decisión binaria: **CONFIRMAR** → construir Phase 10 (@obs/votos) tal cual. Corrida LIVE 2026-06-19: 8 requests, 0 errores, delay 2-3s LOCKED reflejado. El allowlist NO requiere edición (camara.cl ya es sufijo)
+- [Phase ?]: [Phase 09]: [09-01]: EnlaceConfirmado branded (unique symbol privado, NO exportado) + factory unica confirmar() en @obs/identity; el FK del voto se tipa EnlaceConfirmado|null (string crudo = error de compilacion, IDENT-12)
+- [Phase ?]: [Phase 09]: [09-01]: reconciliar-senado + reconciliar-camara (DIPID) son los unicos mint sites de confirmar(); Voto persistido sigue plano string|null (Anti-Pattern A4: input branded, storage plano)
 
 ### Pending Todos
 
@@ -138,7 +141,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19 — Phase 8 VOTE spike ejecutado y CONFIRMADO
+Last session: 2026-06-19T04:17:00.863Z
 Stopped at: Phase 8 cerrado — FINDINGS + decisión CONFIRMAR en 08-SUMMARY.md y STATE.md
 Resume file: None
 
