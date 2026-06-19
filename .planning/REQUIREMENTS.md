@@ -30,7 +30,7 @@
 - [x] **INT-02**: El ciudadano ve la lista de reuniones de lobby de un parlamentario, con la contraparte como texto crudo (sin enlazar a una identidad salvo que esté confirmada) y provenance por fila.
 - [x] **INT-03**: El conector `@obs/probidad` ingiere las declaraciones de patrimonio e intereses (InfoProbidad, CSV/SPARQL) de forma literal, con fecha de presentación y atribución CC BY 4.0 visible.
 - [x] **INT-04**: El ciudadano ve las declaraciones de patrimonio e intereses de un parlamentario con su historial de versiones (qué declaró y cuándo).
-- [ ] **INT-05**: El ciudadano puede comparar las declaraciones de patrimonio de un parlamentario en el tiempo (lado a lado), sin ningún veredicto de "enriquecimiento" — solo muestra los datos.
+- [x] **INT-05**: El ciudadano puede comparar las declaraciones de patrimonio de un parlamentario en el tiempo (lado a lado), sin ningún veredicto de "enriquecimiento" — solo muestra los datos.
 
 ### MONEY — Dinero (financiamiento + contratos)
 
@@ -86,7 +86,7 @@
 | INT-02 | Phase 11 | Complete |
 | INT-03 | Phase 12 | Complete |
 | INT-04 | Phase 12 | Complete |
-| INT-05 | Phase 12 | Pending |
+| INT-05 | Phase 12 | Complete |
 | MONEY-01 | Phase 14 | Pending |
 | MONEY-02 | Phase 14 | Pending |
 | MONEY-03 | Phase 15 | Pending |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: executing
+status: verifying
 stopped_at: Completed 12-01-PLAN.md (migración 0022 aplicada al remoto + pgTAP 34/34 verde; declaracion versionada, familiar deny-by-default+revoke, RPCs sin delta, OQ1/2/3 resueltas en vivo)
-last_updated: "2026-06-19T16:13:00.470Z"
+last_updated: "2026-06-19T16:25:04.355Z"
 last_activity: 2026-06-19
 progress:
   total_phases: 11
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 13
-  completed_plans: 13
-  percent: 36
+  completed_plans: 14
+  percent: 45
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 Phase: 12 (INT Patrimonio/Intereses) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Next plan: 12-02 (@obs/probidad conector — SPARQL por nombre, parse literal zod sin LLM, writer versionado onConflict fuente_id,fecha_presentacion)
 Last activity: 2026-06-19
 
@@ -88,6 +88,7 @@ Last activity: 2026-06-19
 | Phase 11 P03 | 10min | 2 tasks | 4 files |
 | Phase 12 P01 | 18min | 3 tasks | 2 files |
 | Phase 12 P02 | 38min | 3 tasks | 19 files |
+| Phase 12 P03 | 9min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,8 @@ Recent decisions affecting current work:
 - [Phase 12]: [12-01]: declaracion_familiar deny-by-default + revoke all from anon,authenticated (lección Phase 11 confirmada operacionalmente: anon→permission denied); sin RUT persona natural; sin FK a parlamentario. comparar_declaraciones devuelve etiqueta/valor literal en filas, CERO delta/veredicto. Aplicada al remoto sa-east-1 + pgTAP 34/34 verde
 - [Phase 12]: [12-01]: AccionDerecho.rutJuridica = RUT de EMPRESA declarada (contenido del bien), no de persona natural → vive solo en declaracion_accion_derecho; la assertion pgTAP "sin RUT" se acota a declaracion + declaracion_familiar
 - [Phase ?]: 12-02: @obs/probidad parsea SPARQL-JSON LITERAL sin LLM keyed por (fuenteId, fechaPresentacion); writer onConflict incluye fecha_presentacion (versiones acumulan, nunca sobreescribe); declarante name-only solo-determinista (EnlaceConfirmado+identidad_audit); familiares deny-by-default
+- [Phase ?]: [Phase 12]: [12-03]: sección patrimonio en carril propio (mt-12, sibling de #lobby); comparación SOLO-datos vía shadcn Table con CERO veredicto/delta (campo ausente = 'No declarado en esta versión'); CC BY 4.0 visible en intro Y caption; fecha de presentación PROMINENTE (mono, 'Presentada el') + ámbar + caveat histórico
+- [Phase ?]: [Phase 12]: [12-03]: content-gate test ejerce LISTA Y COMPARACIÓN (cierra la brecha representado de Phase 11); el UI NO computa nada (modelado RPC en el Server Component); comparación SSR ?comparar=A,B sin motor de diff cliente
 
 ### Pending Todos
 
@@ -171,7 +174,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T16:10:32.688Z
+Last session: 2026-06-19T16:24:29.630Z
 Stopped at: Completed 12-01-PLAN.md (migración 0022 aplicada al remoto + pgTAP 34/34 verde; declaracion versionada, familiar deny-by-default+revoke, RPCs sin delta, OQ1/2/3 resueltas en vivo)
 Resume file: None
 
