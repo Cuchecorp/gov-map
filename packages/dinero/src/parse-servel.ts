@@ -102,17 +102,24 @@ async function leerHoja(bytes: Uint8Array): Promise<ExcelJS.Worksheet> {
 
 /**
  * Construye la `eleccion` compuesta verbatim a partir de los campos de la fila + el anio. NON-NULL:
- * si no hay nada construible (ni ELECCION ni TERRITORIO ni anio) es drift -> el caller THROW.
+ * el periodo DEBE nacer de un componente DE LA FILA (ELECCION y/o TERRITORIO). El `anio` es un
+ * constante per-run (`--anio`) y SOLO se anexa cuando ya hay un componente de fila; NUNCA sustituye
+ * un periodo de fila ausente. Si la fila no trae ni ELECCION ni TERRITORIO -> null (drift -> el
+ * caller THROW, cuarentena run-level), aunque `--anio` venga seteado: una fila con el anio como unico
+ * "periodo" mal-agruparia el aporte en la ficha (WR-01).
  */
 function componerEleccion(
   eleccionCol: string | null,
   territorio: string | null,
   anio: string | null | undefined,
 ): string | null {
-  const partes = [eleccionCol, territorio, anio ?? null].filter(
+  const partesFila = [eleccionCol, territorio].filter(
     (p): p is string => p != null && p !== "",
   );
-  if (partes.length === 0) return null;
+  // Sin NINGUN componente de fila -> no hay periodo construible (el anio NO sustituye). Drift.
+  if (partesFila.length === 0) return null;
+  const anioStr = anio != null && anio !== "" ? anio : null;
+  const partes = anioStr != null ? [...partesFila, anioStr] : partesFila;
   return partes.join(" - ");
 }
 
@@ -193,9 +200,10 @@ export async function parseAportes(bytes: Uint8Array, opts: ParseAportesOpts = {
     const eleccion = componerEleccion(cruda.eleccionCol, cruda.territorio, anio);
     if (eleccion === null) {
       // `eleccion` es NON-NULL (campo siempre-presente de la ficha). Una fila con datos pero sin
-      // eleccion construible es drift -> THROW (cuarentena de TODA la corrida aguas arriba).
+      // un componente de periodo DE LA FILA (ELECCION/TERRITORIO) es drift -> THROW (cuarentena de
+      // TODA la corrida aguas arriba). El --anio NO sustituye un periodo de fila ausente (WR-01).
       throw new Error(
-        `drift estructural SERVEL: fila ${r} sin eleccion construible (ELECCION/TERRITORIO/anio vacios)`,
+        `drift estructural SERVEL: fila ${r} sin eleccion construible (ELECCION y TERRITORIO vacios; --anio no sustituye)`,
       );
     }
 

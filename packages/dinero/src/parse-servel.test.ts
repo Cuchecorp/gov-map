@@ -93,4 +93,24 @@ describe("parseAportes — VERBATIM + gate de header-text", () => {
     ]);
     await expect(parseAportes(bytes, { anio: null })).rejects.toThrow(/sin eleccion construible/);
   });
+
+  it("WR-01: --anio seteado NO sustituye un periodo de fila ausente -> THROW (cuarentena run-level)", async () => {
+    // ELECCION y TERRITORIO vacios PERO --anio presente (el camino LIVE normal). El anio NO debe
+    // colar como periodo: una fila sin componente de periodo de fila es drift -> THROW (0 filas).
+    const bytes = await xlsxConHeaders([...EXPECTED_HEADERS], [
+      ["Aporte", "Donante", "Natural", "Cand X", "Candidato", "", "", "P", "Q", "2025-01-01", "100"],
+    ]);
+    await expect(parseAportes(bytes, { anio: "2025" })).rejects.toThrow(/sin eleccion construible/);
+  });
+
+  it("WR-01: con --anio + un componente de fila presente -> eleccion compuesta (anio se anexa)", async () => {
+    // Solo TERRITORIO presente (ELECCION vacia) + --anio: el anio se ANEXA al componente de fila.
+    const bytes = await xlsxConHeaders([...EXPECTED_HEADERS], [
+      ["Aporte", "Donante", "Natural", "Cand X", "Candidato", "", "DISTRITO 7", "P", "Q", "2025-01-01", "100"],
+    ]);
+    const aportes = await parseAportes(bytes, { anio: "2025" });
+    expect(aportes.length).toBe(1);
+    expect(aportes[0]!.eleccion).toBe("DISTRITO 7 - 2025");
+  });
+
 });
