@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: "16-02 entregado — ruta gateada /contraparte/[id] (gate a NIVEL DE PAGINA: notFound() con OFF antes de heading/RPC) + carriles ContratosPorContraparte/AportesPorContraparte (dispatch por facet del RPC agregado_por_contraparte) + CONTRAPARTE_ID_RE + AgregadoContraparteRpcRow; 174 tests RTL verdes (22 nuevos), tsc limpio en archivos de Phase 16. Carril confirmado-parlamentario y /contraparte listado DIFERIDOS. Pendiente de OPERADOR: 16-01 apply remoto + pgTAP 0026; encender MONEY_PUBLIC_ENABLED tras sign-off legal F13."
-stopped_at: 16-02 COMPLETO — /contraparte/[id] gated (whole-page notFound con OFF), dos carriles mt-12 hermanos (contratos/aportes), cero voto/causal, conteo neutral, montos verbatim, atribución por dataset; 174 tests RTL verdes.
+status: "Corrida autónoma /gsd-autonomous --from 13 --to 16 COMPLETA (2026-06-19). Bloque MONEY construido end-to-end, gated OFF: Phase 13 (compuerta legal + money-gate), 14 (ChileCompra + retrofit 14-04 finalidad del dato), 15 (SERVEL identity-pipeline link), 16 (agregación por contraparte). Decisión de principio: linking de funcionarios usa pipeline de identidad confirmado/auditado; RUT/PII duro es para terceros/familiares. Pendiente de OPERADOR (deuda F13 + LIVE): aplicar migraciones 0023/0024/0025 al remoto + pgTAP; corridas LIVE (ChileCompra ticket, SERVEL xlsx, bucket crudo-servel); escritura del master RUT (cosecha) + adjudicación humana; sign-off legal Ley 21.719 → encender MONEY_PUBLIC_ENABLED. Quedan Phases 17 (compuerta legal NET) y 18 (grafo)."
+stopped_at: "--to 16 alcanzado. Phases 13-16 completas (gated OFF, código verificado). Milestone v2.0 NO completo: faltan 17 (legal NET) y 18 (grafo @xyflow). Sin audit/complete/cleanup (corrida parcial)."
 last_updated: "2026-06-19T22:41:26.140Z"
 last_activity: 2026-06-19
 progress:
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 12 — INT Patrimonio/Intereses
+**Current focus:** Bloque MONEY (Phases 13-16) completo y gated OFF — próximo: Phase 17 (compuerta legal NET) tras cerrar deuda de operador F13
 
 ## Current Position
 
