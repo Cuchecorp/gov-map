@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: milestone
-status: "15-03 entregado — FinanciamientoView/FinanciamientoSection (SERVEL) + sourceLabel SERVEL + AporteRpcRow + mount #financiamiento gated; 20 tests RTL verdes, tsc limpio en archivos del plan. Pendientes de OPERADOR: 15-01 apply remoto + pgTAP 0025; 15-02 LIVE probe SERVEL."
+milestone_name: — Parlamentarios 360
+status: "15-03 entregado — FinanciamientoView/FinanciamientoSection (SERVEL) + sourceLabel SERVEL + AporteRpcRow + mount #financiamiento gated (SIBLING de #dinero); 20 tests RTL verdes, tsc limpio en archivos del plan. Pendientes de OPERADOR: 15-01 apply remoto + pgTAP 0025; 15-02 LIVE probe SERVEL."
 stopped_at: 15-03 COMPLETO — sección de ficha Financiamiento (SERVEL) gated tras moneyPublicEnabled(); 20 tests RTL verdes; tsc limpio en archivos del plan; enlace por NOMBRE confirmado (A1), RUT donante nunca renderizado.
-last_updated: "2026-06-19T16:55:00.000Z"
+last_updated: "2026-06-19T21:42:19.377Z"
 last_activity: 2026-06-19
 progress:
-  total_phases: 8
+  total_phases: 11
   completed_phases: 8
-  total_plans: 21
-  completed_plans: 22
-  percent: 100
+  total_plans: 22
+  completed_plans: 23
+  percent: 73
 ---
 
 # Project State
@@ -183,7 +183,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T16:55:00.000Z
+Last session: 2026-06-19T21:42:19.366Z
 Stopped at: 15-03 COMPLETO — sección de ficha Financiamiento (SERVEL) gated tras moneyPublicEnabled(); 20 tests RTL verdes; tsc limpio en archivos del plan; enlace por NOMBRE confirmado (A1), RUT donante nunca renderizado.
 Resume file: None
 
