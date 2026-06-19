@@ -10,7 +10,12 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { describe, it, expect } from "vitest";
 import ExcelJS from "exceljs";
-import { parseAportes, EXPECTED_HEADERS, HEADER_ROW } from "./parse-servel";
+import {
+  parseAportes,
+  normalizarTipoPersona,
+  EXPECTED_HEADERS,
+  HEADER_ROW,
+} from "./parse-servel";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(here, "..", "test-fixtures", "servel-sample.xlsx");
@@ -131,5 +136,54 @@ describe("parseAportes — VERBATIM + gate de header-text", () => {
     ]);
     const aportes = await parseAportes(bytes, { anio: "2025" });
     expect(aportes.length).toBe(1); // la fila vacia se omite; solo la real persiste.
+  });
+
+  // CR-01 (Phase 16): el "TIPO APORTANTE" verbatim se NORMALIZA al enum canonico
+  // 'juridica'|'natural' en el parse, de modo que el filtro PII del RPC
+  // `agregado_por_contraparte` (`tipo_persona = 'juridica'`) matchee la data almacenada.
+  it("CR-01: tipoPersona se normaliza al enum canonico en el Aporte parseado", async () => {
+    const bytes = await xlsxConHeaders([...EXPECTED_HEADERS], [
+      // tipoAportante = "Persona Jurídica" (con tilde + caja mixta, como en la fuente).
+      ["Aporte", "Empresa X", "Persona Jurídica", "Cand X", "Candidato", "DIPUTADO", "DISTRITO 1", "P", "Q", "2025-01-01", "100"],
+      // tipoAportante = "Persona Natural".
+      ["Aporte", "Perez P., Juan", "Persona Natural", "Cand Y", "Candidato", "DIPUTADO", "DISTRITO 1", "P", "Q", "2025-01-02", "200"],
+    ]);
+    const aportes = await parseAportes(bytes, { anio: "2025" });
+    expect(aportes.length).toBe(2);
+    const empresa = aportes.find((a) => a.donanteNombre === "Empresa X");
+    const persona = aportes.find((a) => a.donanteNombre === "Perez P., Juan");
+    // "Persona Jurídica" -> 'juridica' (matchea el filtro PII del RPC).
+    expect(empresa?.tipoPersona).toBe("juridica");
+    // "Persona Natural" -> 'natural' (NUNCA matchea el filtro 'juridica').
+    expect(persona?.tipoPersona).toBe("natural");
+    expect(persona?.tipoPersona).not.toBe("juridica");
+  });
+});
+
+describe("normalizarTipoPersona — enum canonico fail-closed (CR-01)", () => {
+  it("mapea labels juridica (caja/tilde/variantes) -> 'juridica'", () => {
+    for (const v of [
+      "Persona Jurídica",
+      "PERSONA JURIDICA",
+      "persona juridica",
+      "Jurídica",
+      "JURIDICA",
+      "  Persona   Jurídica  ",
+    ]) {
+      expect(normalizarTipoPersona(v)).toBe("juridica");
+    }
+  });
+
+  it("mapea labels natural -> 'natural'", () => {
+    for (const v of ["Persona Natural", "PERSONA NATURAL", "natural", "Natural"]) {
+      expect(normalizarTipoPersona(v)).toBe("natural");
+    }
+  });
+
+  it("FAIL-CLOSED: vacio/null/desconocido -> 'natural' (NUNCA 'juridica')", () => {
+    for (const v of [null, undefined, "", "   ", "PJ", "empresa", "?", "otro"]) {
+      expect(normalizarTipoPersona(v)).toBe("natural");
+      expect(normalizarTipoPersona(v)).not.toBe("juridica");
+    }
   });
 });

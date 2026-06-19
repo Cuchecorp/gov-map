@@ -99,7 +99,13 @@ export {
 } from "./model-servel";
 
 // Parser xlsx VERBATIM (gate de header-text que THROW en drift; sin LLM).
-export { parseAportes, EXPECTED_HEADERS, HEADER_ROW } from "./parse-servel";
+// `normalizarTipoPersona` (CR-01): mapea el "TIPO APORTANTE" verbatim al enum canonico.
+export {
+  parseAportes,
+  normalizarTipoPersona,
+  EXPECTED_HEADERS,
+  HEADER_ROW,
+} from "./parse-servel";
 export type { ParseAportesOpts } from "./parse-servel";
 
 // Reconciliacion de completitud RUN-LEVEL (Content-MD5 + byte-length + TOTAL -> cuarentena).

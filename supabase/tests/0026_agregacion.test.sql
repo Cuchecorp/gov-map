@@ -19,7 +19,7 @@
 -- (El numero 0026 es el siguiente libre; 0025_servel.test.sql es el test mas alto existente.)
 
 begin;
-select plan(16);
+select plan(19);
 
 -- == RPC: existe, security definer, anon tiene EXECUTE, public NO tiene EXECUTE =====
 select has_function('public', 'agregado_por_contraparte', ARRAY['text'],
@@ -94,6 +94,33 @@ select is(
   (select count(*)::int from information_schema.role_table_grants
      where table_name = 'donante' and grantee = 'anon' and privilege_type = 'SELECT'),
   0, 'anon NO tiene grant SELECT sobre donante (sigue deny-by-default tras 0025 -- PII sensible, Ley 21.719)');
+
+-- == CR-01: garantia PII a NIVEL DE DATOS (no solo del cuerpo del RPC) ===============
+-- El cuerpo filtra `tipo_persona = 'juridica'`; el writer SERVEL ahora NORMALIZA
+-- "TIPO APORTANTE" al enum canonico 'juridica'|'natural' (parse-servel, CR-01). Sin esa
+-- normalizacion el filtro NUNCA matchea labels como "Persona Juridica" y el carril muere.
+-- Estos asserts insertan filas REALES y prueban el comportamiento, no la presencia del
+-- literal en el texto SQL: una empresa juridica SE proyecta; una persona natural NO.
+insert into public.aporte (fuente_id, fecha_corte, eleccion, donante_nombre, tipo_persona, origen, enlace)
+values
+  ('cr01-jur', current_date, 'DIPUTADO - DISTRITO 1 - 2025', 'Empresa Juridica SpA', 'juridica', 'servel', 'https://x'),
+  ('cr01-nat', current_date, 'DIPUTADO - DISTRITO 1 - 2025', 'Perez P., Juan',        'natural',  'servel', 'https://x');
+
+-- La empresa JURIDICA aparece (1 fila de faceta aporte para su donante_nombre).
+select is(
+  (select count(*)::int from public.agregado_por_contraparte('d:Empresa Juridica SpA') where facet = 'aporte'),
+  1, 'CR-01: una contraparte juridica (tipo_persona = ''juridica'') SI se proyecta por el RPC');
+
+-- La persona NATURAL NUNCA aparece (0 filas) -- garantia PII Ley 21.719, fail-closed.
+select is(
+  (select count(*)::int from public.agregado_por_contraparte('d:Perez P., Juan')),
+  0, 'CR-01: una persona natural (tipo_persona = ''natural'') JAMAS se proyecta por el RPC');
+
+-- El nombre de la persona natural NUNCA aparece en ningun payload del RPC (defensa data-level).
+select ok(
+  (select coalesce(string_agg(contraparte_nombre, '|'), '') from public.agregado_por_contraparte('d:Empresa Juridica SpA'))
+    not like '%Perez P., Juan%',
+  'CR-01: el nombre de la persona natural no se filtra a ningun payload del RPC');
 
 select * from finish();
 rollback;

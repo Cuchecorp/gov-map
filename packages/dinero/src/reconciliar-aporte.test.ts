@@ -80,7 +80,7 @@ function aporte(over: Partial<Aporte> & { candidatoNombreVerbatim: string | null
     fechaCorte: over.fechaCorte ?? "2026-06-19",
     eleccion: over.eleccion ?? "DIPUTADO - DISTRITO 23 - 2025",
     donanteNombre: over.donanteNombre ?? "Donante Generico",
-    tipoPersona: over.tipoPersona ?? "Persona Natural",
+    tipoPersona: over.tipoPersona ?? "natural",
     monto: over.monto ?? "1000000",
     fechaAporte: over.fechaAporte ?? "2025-03-10",
     tipoAporte: over.tipoAporte ?? "Aporte con publicidad",
@@ -212,13 +212,13 @@ describe("reconciliarAporte — guarda de identidad LOCKED + data-routing", () =
         fuenteId: "det",
         candidatoNombreVerbatim: "Coloma C., Juan Antonio",
         donanteNombre: DONANTE,
-        tipoPersona: "Persona Juridica",
+        tipoPersona: "juridica",
       }),
       aporte({
         fuenteId: "hom",
         candidatoNombreVerbatim: "Soto P., Juan",
         donanteNombre: DONANTE,
-        tipoPersona: "Persona Juridica",
+        tipoPersona: "juridica",
       }),
     ];
 

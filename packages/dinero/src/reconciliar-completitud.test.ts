@@ -16,7 +16,7 @@ function aporte(i: number): Aporte {
     fechaCorte: "2026-06-19",
     eleccion: "DIPUTADO - DISTRITO 1 - 2025",
     donanteNombre: "X",
-    tipoPersona: "Natural",
+    tipoPersona: "natural",
     monto: "100",
     fechaAporte: "2025-01-01",
     tipoAporte: "Aporte",

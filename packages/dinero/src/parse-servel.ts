@@ -18,10 +18,46 @@ import {
   fuenteIdDe,
   type Aporte,
   type AporteSheet,
+  type TipoPersonaDonante,
 } from "./model-servel";
 
 /** Fila (1-based) de la hoja donde viven los headers VERBATIM. */
 export const HEADER_ROW = 4;
+
+/**
+ * CR-01 (Phase 16): normaliza el "TIPO APORTANTE" verbatim de SERVEL al MISMO enum
+ * canonico `'juridica' | 'natural'` que usa el lado ChileCompra (`model.ts`), de modo que
+ * el filtro PII load-bearing del RPC publico `agregado_por_contraparte`
+ * (`tipo_persona = 'juridica'`) matchee la data realmente almacenada — sin esta
+ * normalizacion el filtro NUNCA coincide con labels como "Persona Juridica" y el carril de
+ * aportes queda muerto / la garantia PII se vuelve coincidencia.
+ *
+ * FAIL-CLOSED por diseno: solo un label que mapee inequivocamente a juridica devuelve
+ * `'juridica'`; cualquier otra cosa (natural, desconocido, vacio, null) cae a `'natural'`
+ * -> NUNCA se expone por nombre una contraparte que no sea claramente persona juridica.
+ * La comparacion es case-insensitive y accent-insensitive ("Persona Juridica",
+ * "PERSONA JURÍDICA", "Jurídica" -> 'juridica').
+ */
+export function normalizarTipoPersona(
+  bruto: string | null | undefined,
+): TipoPersonaDonante {
+  if (bruto == null) return "natural";
+  // Minuscula + quitar tildes (translate manual ASCII-fold) + colapsar espacios.
+  const sinTilde = bruto
+    .toLowerCase()
+    .replace(/[áàä]/g, "a")
+    .replace(/[éèë]/g, "e")
+    .replace(/[íìï]/g, "i")
+    .replace(/[óòö]/g, "o")
+    .replace(/[úùü]/g, "u")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (sinTilde === "") return "natural";
+  // "persona juridica" / "juridica" / "p. juridica" ... cualquier mencion clara a juridica.
+  if (sinTilde.includes("juridica")) return "juridica";
+  // Todo lo demas (natural, desconocido) NO se expone: fail-closed.
+  return "natural";
+}
 
 /**
  * Los 11 headers EXACTOS (UPPERCASE), en el orden VERBATIM de la fuente. El gate compara por TEXTO,
@@ -222,7 +258,9 @@ export async function parseAportes(bytes: Uint8Array, opts: ParseAportesOpts = {
       fechaCorte,
       eleccion,
       donanteNombre: cruda.donanteNombre,
-      tipoPersona: cruda.tipoAportante,
+      // CR-01: NORMALIZADO al enum canonico 'juridica'|'natural' (fail-closed). El label
+      // verbatim "TIPO APORTANTE" NUNCA es la llave del filtro PII publico.
+      tipoPersona: normalizarTipoPersona(cruda.tipoAportante),
       monto: cruda.monto, // VERBATIM string crudo, NUNCA numeric.
       fechaAporte: cruda.fechaTransferencia,
       tipoAporte: cruda.tipoAporte,
