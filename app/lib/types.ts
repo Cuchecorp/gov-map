@@ -174,9 +174,80 @@ export interface RebeldiaRow {
   mayoria_bancada: Seleccion;
 }
 
+/**
+ * Fila del RPC `lobby_de_parlamentario` (migración 0021, security definer) — la
+ * forma del payload PÚBLICO de una reunión de lobby (UI-SPEC §10). El RPC hace
+ * left join `lobby_audiencia ← lobby_contraparte`, así que devuelve UNA fila por
+ * contraparte (una audiencia con N contrapartes ⇒ N filas con el mismo
+ * `identificador`). El Server Component las agrupa por `identificador`.
+ *
+ * El RPC SOLO proyecta campos que la fuente ya publica: NUNCA emite
+ * `contraparte_id` ni RUT de tercero (deny-by-default, LEGAL-03). En P11 la
+ * contraparte por lo tanto NUNCA se enlaza (no hay sub-maestra ni id confirmado)
+ * → siempre TEXTO CRUDO + `IdentityMarker`.
+ *
+ * NOTA de aliasing (UI-SPEC §10): el RPC nombra la columna del rol crudo de la
+ * contraparte como `contraparte_rol`; aquí se expone como `contraparte_tipo`
+ * (etiqueta literal de la fuente, sin editorializar). El alias se hace al leer
+ * el RPC en el Server Component.
+ */
+export interface LobbyAudienciaRpcRow {
+  identificador: string;
+  fecha: string | null;
+  fecha_raw: string | null;
+  materia: string | null;
+  enlace_detalle: string | null;
+  origen: string;
+  fecha_captura: string;
+  enlace: string | null;
+  /** Nombre crudo del tercero, verbatim de la fuente. `null` si la audiencia no trae contraparte. */
+  contraparte_nombre: string | null;
+  /** Rol crudo de la contraparte (lobbista/gestor/...). Alias UI: `contraparte_tipo`. */
+  contraparte_rol: string | null;
+  representado: string | null;
+}
+
+/**
+ * Una contraparte cruda de una audiencia (UI-SPEC §3.2). TEXTO CRUDO siempre;
+ * `contraparte_id` y `estado_vinculo` NO son parte del payload público (el RPC
+ * nunca los emite) → en P11 NUNCA se enlaza, siempre lleva `IdentityMarker`.
+ */
+export interface LobbyContraparteRow {
+  /** Nombre crudo del tercero, verbatim de la fuente. */
+  contraparte_nombre: string;
+  /** Rol/tipo crudo de la fuente, si existe ("gestor de intereses"…). Sin editorializar. */
+  contraparte_tipo: string | null;
+  /** Entidad representada (raw), si la fuente la publica. */
+  representado: string | null;
+}
+
+/**
+ * Una audiencia de lobby ya agrupada (1 audiencia con sus N contrapartes crudas),
+ * la forma que consume `LobbyView`. La contraparte es SIEMPRE texto crudo; el
+ * `ProvenanceBadge` por fila es obligatorio.
+ */
+export interface LobbyAudienciaRow {
+  identificador: string;
+  /** ISO; fecha de la audiencia → `DD MMM YYYY`. `null` si la fuente no la publica. */
+  fecha: string | null;
+  /** String fuente de la fecha, conservado si el parseo falló (nunca fabricado). */
+  fecha_raw: string | null;
+  /** Asunto/materia verbatim de la fuente, si existe. */
+  materia: string | null;
+  /** Contrapartes crudas de la audiencia (puede ir vacío si la fuente no lista ninguna). */
+  contrapartes: LobbyContraparteRow[];
+  /** → `sourceLabel(origen)` → `ProvenanceBadge.sourceName`. */
+  origen: string;
+  /** → `ProvenanceBadge.capturedAt`. */
+  fecha_captura: string;
+  /** → `ProvenanceBadge.sourceUrl` (enlace por-audiencia). */
+  enlace: string | null;
+}
+
 /** Etiqueta legible de la fuente para el ProvenanceBadge. */
 export function sourceLabel(origen: string | null): string {
   const o = (origen ?? "").toLowerCase();
+  if (o.includes("lobby")) return "Ley del Lobby";
   if (o.includes("senado")) return "Senado";
   if (o.includes("camara") || o.includes("cámara")) return "Cámara";
   if (o.includes("bcn")) return "BCN";
