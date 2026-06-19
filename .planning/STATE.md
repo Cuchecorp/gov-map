@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: milestone
 status: "14-03 entregado — ContratosView/ContratosSection + sourceLabel ChileCompra + mount #dinero gated; 12 tests RTL verdes, tsc limpio en archivos del plan. Pendientes de OPERADOR: 14-01 apply remoto + pgTAP 0024; 14-02 LIVE probe ChileCompra."
 stopped_at: 14-03 COMPLETO — sección de ficha Contratos gated tras moneyPublicEnabled(); 12 tests RTL + pnpm test 127/127 verde; tsc limpio en archivos del plan.
-last_updated: "2026-06-19T20:20:56.026Z"
+last_updated: "2026-06-19T20:43:59.972Z"
 last_activity: 2026-06-19
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 21
-  completed_plans: 20
+  completed_plans: 21
   percent: 88
 ---
 
@@ -151,6 +151,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 12]: [12-03]: content-gate test ejerce LISTA Y COMPARACIÓN (cierra la brecha representado de Phase 11); el UI NO computa nada (modelado RPC en el Server Component); comparación SSR ?comparar=A,B sin motor de diff cliente
 - [Phase 14]: [14-03]: sección de ficha 'Contratos del Estado asociados al RUT' (carril propio mt-12, sibling de #patrimonio); el gate moneyPublicEnabled() envuelve la <section> ENTERA en page.tsx (heading incluido) — OFF (default) => nodo ausente del HTML, no oculto-con-CSS; ContratosSection igual retorna null antes de tocar Supabase (doble candado). Tres estados honestos distintos (no_consultado/consultado_sin_contratos/enlazado); persona jurídica = sujeto proveedor + 'Enlazado por RUT al parlamentario.' en línea separada (sin posesivo); atribución 'mención de la fuente' (NO CC BY 4.0); throw en rpcError (#34). sourceLabel gana rama chilecompra/mercado->'ChileCompra'. 12 tests RTL verdes.
 - [Phase ?]: [Phase 13]: [13-01]: candado B = flag server-only moneyPublicEnabled(env) fail-closed (solo 'true' literal enciende; ausencia/''/'false'/'1'/'TRUE' => false), import 'server-only' linea 1, sin NEXT_PUBLIC_; ubicado en app/lib/ (consumidor = ficha Next.js), sin canal Postgres (diferido a 14-16). pgTAP 0023 re-afirma el piso deny-by-default sobre pii_contraparte_declaracion (RLS + cero policies + anon sin grant SELECT) = contrato que toda money_* de 14-16 hereda; Phase 13 NO introduce DDL MONEY.
+- [Phase ?]: 15-02: enlace del candidato SERVEL por NOMBRE via correrPipeline (no RUT); SOLO determinista puebla parlamentario_id; donante PII jamas al LLM (data-routing gate test-enforced)
 
 ### Pending Todos
 
@@ -167,6 +168,7 @@ None yet for v2.0.
 - [Phase 13 — Task 3 OPERADOR pendiente]: correr pgTAP `0023_money_gate.test.sql` contra el remoto Supabase sa-east-1 — extraer `SUPABASE_DB_URL` esquivando BOM U+FEFF (helper Phases 9-12) y `supabase test db --db-url <url>`; confirmar `0023` 3/3 + `0018/0021/0022` verdes. NO hay migración nueva que aplicar (Phase 13 no introduce DDL). Resume-signal: "pgTAP verde". Las dos tareas autónomas (flag server-only + Vitest 5/5; `.env.example`; pgTAP) están completas y verificadas localmente.
 - 14-02: checkpoint LIVE probe ChileCompra pendiente (requiere MERCADOPUBLICO_TICKET real; operador). Tareas autonomas 1-2 completas, 24 tests verdes.
 - 15-01 Task 3 (checkpoint:human-action, gate=blocking): aplicar 0024_servel.sql al remoto via 'supabase db push --db-url' + 'supabase test db --db-url' (pgTAP 0025 debe pasar 23/23). NO ejecutado por el agente.
+- 15-02 OPERADOR: crear bucket privado Supabase Storage crudo-servel + corrida LIVE SERVEL (URL del xlsx por eleccion la provee el operador via --url; ejercita el pipeline de identidad real)
 
 ## Deferred Items
 
@@ -180,7 +182,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T20:20:43.065Z
+Last session: 2026-06-19T20:43:21.004Z
 Stopped at: 14-03 COMPLETO — sección de ficha Contratos gated tras moneyPublicEnabled(); 12 tests RTL + pnpm test 127/127 verde; tsc limpio en archivos del plan.
 Resume file: None
 
