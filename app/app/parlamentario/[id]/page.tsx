@@ -8,6 +8,7 @@ import { VotosSection } from "@/components/votos-por-parlamentario";
 import { LobbySection } from "@/components/lobby-de-parlamentario";
 import { PatrimonioSection } from "@/components/patrimonio-de-parlamentario";
 import { ContratosSection } from "@/components/contratos-de-parlamentario";
+import { FinanciamientoSection } from "@/components/financiamiento-de-parlamentario";
 import { moneyPublicEnabled } from "@/lib/money-gate";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ParlamentarioPublicoRow } from "@/lib/types";
@@ -103,6 +104,28 @@ export default async function ParlamentarioPage({
           </Suspense>
         </section>
       )}
+
+      {/*
+        Phase 15 — MONEY Financiamiento (UI-SPEC §Exposure Gate). SIBLING de
+        #dinero (contratos), NUNCA anidada: el mt-12 es la frontera de carril
+        (anti-insinuación §9.1). GATE LOCKED: TODA la <section id="financiamiento">
+        — incluido su <h2> — se envuelve en moneyPublicEnabled(process.env). Con OFF
+        (default) el nodo entero, heading incluido, está AUSENTE del HTML; NO se
+        depende de que FinanciamientoSection retorne null para ocultar el heading.
+        moneyPublicEnabled es server-only (chokepoint WR-02): NUNCA leer
+        MONEY_PUBLIC_ENABLED crudo. Heading EXACTO, sin posesivo. A1: el enlace al
+        candidato es por NOMBRE confirmado (SERVEL no trae RUT), nunca por RUT.
+      */}
+      {moneyPublicEnabled(process.env) && (
+        <section id="financiamiento" className="mt-12">
+          <h2 className="text-xl font-semibold mb-4">
+            Aportes de campaña registrados en SERVEL
+          </h2>
+          <Suspense fallback={<FinanciamientoSkeleton />}>
+            <FinanciamientoSection id={id} searchParams={sp} />
+          </Suspense>
+        </section>
+      )}
     </main>
   );
 }
@@ -187,6 +210,20 @@ function PatrimonioSkeleton() {
 // Shape-matched a ContratosView: línea de intro + línea de atribución + 3 filas de
 // contrato (sujeto proveedor + campos + provenance) (UI-SPEC §Loading state).
 function ContratosSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden="true">
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-3 w-1/2" />
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Skeleton key={i} className="h-12 w-full rounded-lg" />
+      ))}
+    </div>
+  );
+}
+
+// Shape-matched a FinanciamientoView: línea de intro + línea de atribución + 3
+// filas de aporte (sujeto donante + campos + provenance) (UI-SPEC §Loading State).
+function FinanciamientoSkeleton() {
   return (
     <div className="space-y-4" aria-hidden="true">
       <Skeleton className="h-4 w-3/4" />
