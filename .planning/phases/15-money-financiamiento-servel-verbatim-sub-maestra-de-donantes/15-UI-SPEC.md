@@ -96,18 +96,27 @@ This section has **NO CTA, NO destructive action, NO form** (read-only ficha sec
 copywriting contract is the honesty contract: the three states + the period treatment + the
 donor framing. Heading is non-possessive (LOCKED).
 
+> **Link basis — A1 re-resolution (LOCKED).** SERVEL publishes **no RUT** for the candidate, so
+> the aporte→candidate association is **by the candidate's confirmed name** (audited against the
+> identity maestra, Plan 15-02), **never "por RUT exacto"**. All copy below was reconciled from the
+> earlier "por RUT" wording to "por nombre confirmado"; the shipped implementation
+> (`financiamiento-de-parlamentario.tsx`) already uses the corrected wording — this contract now
+> matches it. The only RUT this section ever mentions is the **donor's** RUT, which is internal,
+> deny-by-default, and **NEVER rendered** (Ley 21.719). Do not flag the implementation for using
+> "por nombre confirmado": that is the correct, agreed wording.
+
 | Element | Copy |
 |---------|------|
 | Section heading (`<h2>`) | `Aportes de campaña registrados en SERVEL` — NEVER possessive ("del parlamentario"/"de {nombre}"/"sus aportes"). Mirrors the contratos non-possessive rule. |
-| Intro line 1 | `Aportes a campañas electorales registrados por el Servicio Electoral (SERVEL), asociados por RUT exacto a este candidato. Se muestran tal como los publica la fuente; la asociación es por RUT y no implica juicio sobre el aporte ni sobre quien aporta.` |
+| Intro line 1 | `Aportes a campañas electorales registrados por el Servicio Electoral (SERVEL), asociados a este candidato por su nombre, con identidad confirmada contra la maestra. Se muestran tal como los publica la fuente; la asociación no implica juicio sobre el aporte ni sobre quien aporta.` |
 | Intro line 2 (attribution) | `Fuente: SERVEL — Aportes de campaña (términos de uso por verificar). Cada aporte se muestra con su elección/periodo, fecha y enlace.` |
 | Neutral count | `{N} aporte registrado` / `{N} aportes registrados` (singular/plural). The ONLY aggregate. NO sum of amounts, NO ranking, NO %, NO "total aportado". |
 | State — no-ingestado (empty A) | `Aún no hemos ingerido los aportes de campaña de este candidato desde SERVEL. Esto no significa que no existan aportes — los datos de SERVEL se están incorporando.` |
-| State — verificado-sin-aportes (empty B) | `Consultamos SERVEL por el RUT de este candidato (corte al {fecha}) y no se registran aportes de campaña asociados a ese RUT a esa fecha.` |
+| State — verificado-sin-aportes (empty B) | `Consultamos SERVEL por este candidato (corte al {fecha}) y no se registran aportes asociados a ese candidato a esa fecha.` (SERVEL no publica RUT; la consulta es por nombre confirmado, no por RUT) |
 | Per-row period label | `Elección: {nombre/periodo electoral verbatim}` — see Period Treatment. |
 | Period-anterior caveat (amber) | `Aporte de una candidatura anterior ({periodo}). No corresponde al mandato actual.` Rendered only when the contribution's election predates the current mandate. |
 | Donor row subject | `Aporta: {donante_nombre verbatim}` + `(persona natural)` / `(persona jurídica)` muted tag. |
-| Donor→candidate link line (separate, muted) | `Asociado por RUT al candidato.` — NEVER possessive, NEVER fused with the donor into a personal attribution. |
+| Donor→candidate link line (separate, muted) | `Asociado por nombre confirmado al candidato.` — NEVER "por RUT" (SERVEL no trae RUT; el enlace es por nombre auditado, A1 re-resolution), NEVER possessive, NEVER fused with the donor into a personal attribution. |
 | Error state | NOT a copy string — a real RPC/DB error is THROWN at the route boundary (`throw new Error(...)`), never degraded to "sin aportes". Mirrors contratos `#34`. |
 | Destructive confirmation | not applicable — no destructive actions in this section. |
 
@@ -165,8 +174,9 @@ contribution can NEVER appear attributed to the current mandate without its date
     {/* SUBJECT = the donor (verbatim), text-base prominent */}
     <span>Aporta: {donante_nombre}  <muted>(persona natural | persona jurídica)</muted></span>
 
-    {/* Link line — SEPARATE, muted, never possessive, never fused */}
-    <span muted>Asociado por RUT al candidato.</span>
+    {/* Link line — SEPARATE, muted, never possessive, never fused. Por NOMBRE
+        confirmado (SERVEL no trae RUT; enlace por nombre auditado, A1). */}
+    <span muted>Asociado por nombre confirmado al candidato.</span>
 
     {/* Verbatim literal fields as <dl> NOUN-label + value (NO computation) */}
     <dl grid sm:grid-cols-[max-content_1fr] gap-x-4>
@@ -177,7 +187,7 @@ contribution can NEVER appear attributed to the current mandate without its date
     </dl>
 
     {/* fecha de corte por fila, muted, distinct from fecha de captura */}
-    <span muted>Consultado por RUT, corte al <mono>{fecha_corte}</mono>.</span>
+    <span muted>Consultado por nombre del candidato, corte al <mono>{fecha_corte}</mono>.</span>
   </div>
 
   {/* ProvenanceBadge per row, MANDATORY (amber = frescura only) */}
@@ -207,17 +217,19 @@ type FinanciamientoEstado = "no_ingestado" | "verificado_sin_aportes" | "enlazad
 
 | State | Trigger | Render | Honesty rule |
 |-------|---------|--------|-------------|
-| `no_ingestado` | no row in `financiamiento_ingesta_estado` for this parlamentario (or internal RUT not populated — IDENT-10 debt) AND 0 aportes | Intro + empty-A copy | "no-ingestado" — absence of query ≠ absence of aportes. NEVER "sin aportes". |
+| `no_ingestado` | no row in `financiamiento_ingesta_estado` for this parlamentario (or the candidate's confirmed name not yet resolved against the maestra — IDENT-10 debt) AND 0 aportes | Intro + empty-A copy | "no-ingestado" — absence of query ≠ absence of aportes. NEVER "sin aportes". |
 | `verificado_sin_aportes` | marcador present, 0 aportes | Intro + empty-B copy WITH `fecha de corte` | "verificado" — we asked, dated, none found. Distinct from no_ingestado by the presence of a fecha de corte. NEVER green/✓. |
-| `enlazado` | ≥1 aporte enlazado por RUT-exacto | Intro + neutral count + grouped list | "verificado" + has data. Each row dated + period-labeled. |
+| `enlazado` | ≥1 aporte enlazado por nombre confirmado del candidato (A1: SERVEL no trae RUT) | Intro + neutral count + grouped list | "verificado" + has data. Each row dated + period-labeled. |
 
 **Mapping to CONTEXT's three labels:** CONTEXT names the states `verificado` / `no-verificado` /
 `no-ingestado`. Here `no_ingestado` = CONTEXT "no-ingestado"; `verificado_sin_aportes` + `enlazado`
 are both the CONTEXT "verificado" surface (we consulted SERVEL, with fecha de corte). A row whose
-RUT match is NOT exact-confirmed is **never emitted** (sin match → sin atribución, per CONTEXT and
-the Phase 9 `EnlaceConfirmado` RUT-only invariant), so a "no-verificado" *attributed* row never
-reaches the UI — that is the contract that prevents a misattributed aporte. If a donor's identity is
-unconfirmed, the DONOR (not the link) carries `IdentityMarker`; the candidate link stays RUT-exact.
+candidate-name match is NOT confirmed against the maestra is **never emitted** (sin match → sin
+atribución, per CONTEXT and the audited confirmed-identity invariant), so a "no-verificado"
+*attributed* row never reaches the UI — that is the contract that prevents a misattributed aporte.
+The link basis is the candidate's CONFIRMED NAME (A1 re-resolution: SERVEL publishes no RUT), not a
+RUT match. If a donor's identity is unconfirmed, the DONOR (not the link) carries `IdentityMarker`;
+the candidate link stays by confirmed name.
 
 **Empty NEVER reads as "clean":** both empty states use muted explanatory prose, no checkmark, no
 green, no "0 ✓". The word "verificado" is never paired with a reassuring visual.
@@ -276,7 +288,7 @@ like the Phase 14 contratos section. Follow the contratos gate pattern precisely
 Mirrors the contratos data flow. Exact table/column/RPC/migration names are Claude's discretion
 (CONTEXT §Claude's Discretion); the SHAPE the View consumes is fixed here:
 
-- **RPC** (security-definer, RUT-exact filter, order period DESC then fecha DESC), e.g.
+- **RPC** (security-definer, confirmed-name filter — A1: SERVEL has no RUT, order period DESC then fecha DESC), e.g.
   `financiamiento_de_parlamentario(p_id)` returning rows with at least:
   `eleccion` (verbatim period, **non-null** — the load-bearing field), `donante_nombre` (nullable →
   "Donante no publicado"), `tipo_persona` (nullable), `monto` (nullable verbatim string, never a
