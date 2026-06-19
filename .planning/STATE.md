@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: executing
-stopped_at: "Completed 10-03-PLAN.md (ficha /parlamentario/[id]: shell apilable + VOTE section; 82/82 tests; gate §9.1 verde; build verde; 0020 aplicación=operador)"
-last_updated: "2026-06-19T14:24:56.023Z"
+status: verifying
+stopped_at: "Completed 11-03-PLAN.md (sección de lobby en /parlamentario/[id]: carril propio mt-12; contraparte cruda + IdentityMarker; 3 estados honestos; 11/11 tests incl. content-gate §9.1; build verde)"
+last_updated: "2026-06-19T14:37:03.135Z"
 last_activity: 2026-06-19
 progress:
   total_phases: 11
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 10
-  completed_plans: 10
-  percent: 27
+  completed_plans: 11
+  percent: 36
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 Phase: 11 (INT Lobby) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Next phase: Phase 11 — INT Lobby (@obs/lobby + sección de lobby apilada en la ficha; re-validar endpoint bulk de leylobby.gob.cl, dio 503 en research)
 Last activity: 2026-06-19
 
@@ -85,6 +85,7 @@ Last activity: 2026-06-19
 | Phase 10 P03 | 9min | 2 tasks | 11 files |
 | Phase 11 P01 | 6min | 3 tasks | 2 files |
 | Phase 11 P02 | 20min | 3 tasks | 19 files |
+| Phase 11 P03 | 10min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 11]: [11-01]: 0021 lobby — audiencia public-read (PK Identificador estable, FK sujeto-pasivo nullable solo-confirmado) + contraparte deny-by-default + RPC lobby_de_parlamentario security-definer + lobby_ingesta_estado; aplicada al remoto + pgTAP 19/19
 - [Phase ?]: [Phase 11]: [11-01]: deny-by-default REAL = RLS-on + cero policies + revoke all from anon,authenticated; el proyecto concede por DEFAULT PRIVILEGES a anon en tablas nuevas de public — patrón a copiar en 12/14/15; threat_flag: tablas PII previas (0018) no revocadas, descansan solo en RLS
 - [Phase ?]: [Phase 11]: [11-02]: @obs/lobby crawl LOCKED 2 pasos (listado->detalle, Identificador vive en el detalle); drift BLOQUEANTE (cuarentena); FK sujeto pasivo solo-determinista via EnlaceConfirmado; contrapartes crudas contraparteId null; Camara/Senado NO en leylobby (Open Q2 LIVE), fuente congreso=camara.cl; corrida LIVE acotada AA001/2024 OK, DB write=operador
+- [Phase 11]: [11-03]: sección de lobby = primera sección multi-dataset; fija el patrón anti-insinuación de carril propio (section id=lobby sibling a mt-12, nunca compone reunión+voto) para Phases 12/14-16
+- [Phase 11]: [11-03]: contraparte SIEMPRE texto crudo + IdentityMarker, NUNCA enlazada (el RPC lobby_de_parlamentario no emite contraparte_id ni RUT — deny-by-default); noIngestado REAL desde ausencia de fila en lobby_ingesta_estado; alias contraparte_rol->contraparte_tipo en el Server Component
 
 ### Pending Todos
 
@@ -162,8 +165,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T14:24:25.551Z
-Stopped at: Completed 10-03-PLAN.md (ficha /parlamentario/[id]: shell apilable + VOTE section; 82/82 tests; gate §9.1 verde; build verde; 0020 aplicación=operador)
+Last session: 2026-06-19T14:36:43.815Z
+Stopped at: Completed 11-03-PLAN.md (sección de lobby en /parlamentario/[id]: carril propio mt-12; contraparte cruda + IdentityMarker; 3 estados honestos; 11/11 tests incl. content-gate §9.1; build verde)
 Resume file: None
 
 ## Operator Next Steps
