@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: verifying
-stopped_at: Completed 12-01-PLAN.md (migración 0022 aplicada al remoto + pgTAP 34/34 verde; declaracion versionada, familiar deny-by-default+revoke, RPCs sin delta, OQ1/2/3 resueltas en vivo)
-last_updated: "2026-06-19T16:25:04.355Z"
+status: "13-01 tareas autónomas completas; Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE — pgTAP 0023 contra el remoto (acción de operador)"
+stopped_at: "13-01: tareas autonomas completas (money-gate.ts + Vitest 5/5, .env.example, pgTAP 0023). Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE: pgTAP 0023 contra el remoto."
+last_updated: "2026-06-19T17:19:14.925Z"
 last_activity: 2026-06-19
 progress:
   total_phases: 11
-  completed_phases: 5
-  total_plans: 13
-  completed_plans: 14
-  percent: 45
+  completed_phases: 6
+  total_plans: 15
+  completed_plans: 16
+  percent: 55
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 ## Current Position
 
-Phase: 12 (INT Patrimonio/Intereses) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Next plan: 12-02 (@obs/probidad conector — SPARQL por nombre, parse literal zod sin LLM, writer versionado onConflict fuente_id,fecha_presentacion)
+Phase: 13 (Compuerta Legal — Bloque MONEY, Ley 21.719) — EXECUTING
+Plan: 1 of N
+Status: 13-01 tareas autónomas completas; Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE — pgTAP 0023 contra el remoto (acción de operador)
+Next plan: 13-02 (dossier legal 13-LEGAL-DOSSIER.md + copia docs/legal/, YAML signoff: pending)
 Last activity: 2026-06-19
 
 ## Performance Metrics
@@ -148,6 +148,7 @@ Recent decisions affecting current work:
 - [Phase ?]: 12-02: @obs/probidad parsea SPARQL-JSON LITERAL sin LLM keyed por (fuenteId, fechaPresentacion); writer onConflict incluye fecha_presentacion (versiones acumulan, nunca sobreescribe); declarante name-only solo-determinista (EnlaceConfirmado+identidad_audit); familiares deny-by-default
 - [Phase ?]: [Phase 12]: [12-03]: sección patrimonio en carril propio (mt-12, sibling de #lobby); comparación SOLO-datos vía shadcn Table con CERO veredicto/delta (campo ausente = 'No declarado en esta versión'); CC BY 4.0 visible en intro Y caption; fecha de presentación PROMINENTE (mono, 'Presentada el') + ámbar + caveat histórico
 - [Phase ?]: [Phase 12]: [12-03]: content-gate test ejerce LISTA Y COMPARACIÓN (cierra la brecha representado de Phase 11); el UI NO computa nada (modelado RPC en el Server Component); comparación SSR ?comparar=A,B sin motor de diff cliente
+- [Phase ?]: [Phase 13]: [13-01]: candado B = flag server-only moneyPublicEnabled(env) fail-closed (solo 'true' literal enciende; ausencia/''/'false'/'1'/'TRUE' => false), import 'server-only' linea 1, sin NEXT_PUBLIC_; ubicado en app/lib/ (consumidor = ficha Next.js), sin canal Postgres (diferido a 14-16). pgTAP 0023 re-afirma el piso deny-by-default sobre pii_contraparte_declaracion (RLS + cero policies + anon sin grant SELECT) = contrato que toda money_* de 14-16 hereda; Phase 13 NO introduce DDL MONEY.
 
 ### Pending Todos
 
@@ -161,6 +162,7 @@ None yet for v2.0.
 - [v2.0 Phase 14 — quota]: ChileCompra rate/quota (10k req/día) con fan-out por ~186 RUTs → barrido serial vía pgmq + GH Actions; "consultado-cero" ≠ "no-consultado".
 - [v2.0 Phases 13/17 — gates legales DUROS]: LEGAL-01 ANTES de exponer MONEY públicamente; LEGAL-02 ANTES de exponer NET. Ley 21.719 plena vigencia 2026-12-01.
 - [Deuda v1.0 acarreada]: (1) 🔴 rotar DB password de Supabase (expuesto en transcript); (2) aplicar migración 0011 al Supabase LOCAL (checkpoint humano 07-01 Task 5); (3) cargar corpus a la nube + wiring app→nube; (4) persistir link_mensaje_mocion para activar idea matriz; (5) desplegar Edge Functions + vault secrets. Ver `.planning/v1.0-MILESTONE-AUDIT.md`.
+- [Phase 13 — Task 3 OPERADOR pendiente]: correr pgTAP `0023_money_gate.test.sql` contra el remoto Supabase sa-east-1 — extraer `SUPABASE_DB_URL` esquivando BOM U+FEFF (helper Phases 9-12) y `supabase test db --db-url <url>`; confirmar `0023` 3/3 + `0018/0021/0022` verdes. NO hay migración nueva que aplicar (Phase 13 no introduce DDL). Resume-signal: "pgTAP verde". Las dos tareas autónomas (flag server-only + Vitest 5/5; `.env.example`; pgTAP) están completas y verificadas localmente.
 
 ## Deferred Items
 
@@ -174,8 +176,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T16:24:29.630Z
-Stopped at: Completed 12-01-PLAN.md (migración 0022 aplicada al remoto + pgTAP 34/34 verde; declaracion versionada, familiar deny-by-default+revoke, RPCs sin delta, OQ1/2/3 resueltas en vivo)
+Last session: 2026-06-19T17:18:44.501Z
+Stopped at: 13-01: tareas autonomas completas (money-gate.ts + Vitest 5/5, .env.example, pgTAP 0023). Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE: pgTAP 0023 contra el remoto.
 Resume file: None
 
 ## Operator Next Steps
