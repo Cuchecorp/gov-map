@@ -291,6 +291,37 @@ export interface ContratoRpcRow {
 }
 
 /**
+ * Fila CRUDA del RPC `aportes_de_parlamentario` (Plan 15-01, security definer).
+ * El RPC proyecta SOLO los campos publicados por SERVEL del aporte de campaña — el
+ * SUJETO es el donante (`donante_nombre`), distinto del candidato/parlamentario. El
+ * enlace aporte→parlamentario se fija por NOMBRE CONFIRMADO del candidato (auditado
+ * por el pipeline de identidad, Plan 15-02) — la fuente SERVEL NO trae RUT, así que
+ * la asociación NUNCA es "por RUT". El RUT del donante NUNCA se proyecta (Ley 21.719,
+ * un aporte puede revelar afiliación política). `eleccion` es NON-NULL (load-bearing:
+ * la ficha agrupa por periodo). Campos de dinero LITERALES (string verbatim); el UI NO
+ * computa nada. `licencia` = "términos por verificar" (NO CC BY 4.0). `fecha_corte`
+ * (fecha de la consulta) es distinta de `fecha_captura`.
+ */
+export interface AporteRpcRow {
+  // load-bearing: la ficha agrupa por elección/periodo; NON-NULL en la DB (0024).
+  eleccion: string;
+  // El RPC puede devolver null en estas columnas (nullable en la DB) → el UI usa
+  // fallbacks honestos ("Donante no publicado"/"No publicado") en vez de crashear.
+  donante_nombre: string | null;
+  tipo_persona: string | null; // "natural" | "jurídica" (label literal de la fuente)
+  monto: string | null; // string verbatim, NUNCA numérico → "No publicado" si null
+  fecha_aporte: string | null; // ISO; "Fecha no publicada" si null
+  tipo_aporte: string | null;
+  // Nombre del candidato verbatim (la llave del enlace por NOMBRE, Plan 15-02).
+  candidato_nombre_verbatim: string | null;
+  origen: string;
+  fecha_captura: string;
+  fecha_corte: string; // ISO; fecha de corte de la consulta
+  enlace: string;
+  licencia: string; // "términos por verificar" (NO CC BY 4.0)
+}
+
+/**
  * Fila CRUDA del RPC `comparar_declaraciones` (migración 0022, security definer).
  * El RPC devuelve los campos declarados LITERALES en FILAS (etiqueta/valor), una
  * por (versión × campo). CERO columna de delta/variación/enriquecimiento/veredicto
@@ -376,5 +407,6 @@ export function sourceLabel(origen: string | null): string {
   if (o.includes("camara") || o.includes("cámara")) return "Cámara";
   if (o.includes("bcn")) return "BCN";
   if (o.includes("chilecompra") || o.includes("mercado")) return "ChileCompra";
+  if (o.includes("servel")) return "SERVEL";
   return "fuente desconocida";
 }
