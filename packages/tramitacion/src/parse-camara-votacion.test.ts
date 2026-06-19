@@ -70,25 +70,55 @@ describe("parseCamaraVotoDetalle (ns tempuri REAL: getVotacion_Detalle, DIPID + 
 
   it("lee DIPID + <Opcion Codigo> de la forma REAL del WS (LIVE 2026-06-18)", () => {
     const votos = parseCamaraVotoDetalle(detalleReal);
-    expect(votos.length).toBeGreaterThan(50); // ~139 con sí/no nominal (No Vota se omite)
+    // Ahora emite el roster COMPLETO (5 opciones), no solo sí/no nominal: ~160 filas.
+    expect(votos.length).toBeGreaterThan(100);
     // DIPID 815 = "En Contra" (Codigo=0) → no; presente.
     const bobadilla = votos.find((v) => v.diputadoId === "815");
     expect(bobadilla?.opcion).toBe("no");
     expect(bobadilla?.nombreCrudo).toContain("Bobadilla");
   });
 
-  it("omite las opciones NO nominales (No Vota / Abstención / dispensado)", () => {
+  it("emite 'ausente' para No Vota (Codigo=4) — NUNCA lo descarta ni lo colapsa a sí/no", () => {
     const votos = parseCamaraVotoDetalle(detalleReal);
-    // DIPID 803 = "No Vota" (Codigo=4) → se omite (no fabrica sí/no).
-    expect(votos.find((v) => v.diputadoId === "803")).toBeUndefined();
-    // Todos los devueltos son si|no.
-    for (const v of votos) expect(["si", "no"]).toContain(v.opcion);
+    // DIPID 803 = "No Vota" (Codigo=4) → ausente (asistencia honesta, no fabricada).
+    const alinco = votos.find((v) => v.diputadoId === "803");
+    expect(alinco?.opcion).toBe("ausente");
+    expect(alinco?.nombreCrudo).toContain("Alinco");
+    // Solo aparecen las opciones del catálogo (5 valores), nunca null/descartado.
+    for (const v of votos)
+      expect(["si", "no", "abstencion", "pareo", "ausente"]).toContain(v.opcion);
   });
 
   it("los DIPID cruzan determinísticamente contra id_diputado_camara de la maestra", () => {
     const votos = parseCamaraVotoDetalle(detalleReal);
     // Los DIPID son numéricos oficiales (803/815/843…) — el cruce lo hace reconciliarVotosCamara.
     for (const v of votos) expect(v.diputadoId).toMatch(/^\d+$/);
+  });
+});
+
+describe("parseCamaraVotoDetalle (roster completo: las 5 opciones por diputado, VOTE-03)", () => {
+  const roster = leer("camara-votacion-detalle-roster.xml");
+
+  it("emite una fila por diputado con su opción real (si/no/abstencion/pareo/ausente)", () => {
+    const votos = parseCamaraVotoDetalle(roster);
+    expect(votos.length).toBe(5); // ningún diputado se descarta
+    const op = (id: string) => votos.find((v) => v.diputadoId === id)?.opcion;
+    expect(op("815")).toBe("si"); // Afirmativo (Codigo=1)
+    expect(op("843")).toBe("no"); // En Contra (Codigo=0)
+    expect(op("872")).toBe("abstencion"); // texto "Abstención" (código no confirmado LIVE — A1)
+    expect(op("915")).toBe("pareo"); // texto "Pareo" (código no confirmado LIVE — A1)
+    expect(op("803")).toBe("ausente"); // No Vota (Codigo=4)
+  });
+
+  it("NUNCA colapsa una opción no-nominal a sí/no (fidelidad del roll-call)", () => {
+    const votos = parseCamaraVotoDetalle(roster);
+    // 1 sí, 1 no, 1 abstención, 1 pareo, 1 ausente — la suma cuadra con el roster.
+    const cuenta = (op: string) => votos.filter((v) => v.opcion === op).length;
+    expect(cuenta("si")).toBe(1);
+    expect(cuenta("no")).toBe(1);
+    expect(cuenta("abstencion")).toBe(1);
+    expect(cuenta("pareo")).toBe(1);
+    expect(cuenta("ausente")).toBe(1);
   });
 });
 

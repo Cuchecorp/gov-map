@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Fixture SINTÉTICO del shape REAL `getVotacion_Detalle` (ns tempuri.org), construido para
+  cubrir las 5 opciones del roster por diputado (VOTE-03). Los códigos 0 (En Contra), 1
+  (Afirmativo) y 4 (No Vota) están CONFIRMADOS LIVE (Phase 8, 2026-06-18). Los nodos de
+  Abstención y Pareo son SINTÉTICOS: sus códigos exactos del WS NO fueron confirmados LIVE
+  (Assumption A1) — aquí el mapeo se resuelve por el texto `#text` ("Abstención"/"Pareo"),
+  que es la vía robusta hasta verificar los códigos en la corrida LIVE de Plan 02.
+  NUNCA se fabrica un sí/no: cada opción no-nominal produce su propia fila honesta.
+-->
+<Votacion xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://tempuri.org/">
+  <ID>99001</ID>
+  <Fecha>2026-05-12T10:00:00</Fecha>
+  <Tipo Codigo="6">Única</Tipo>
+  <Resultado Codigo="1">Aprobado</Resultado>
+  <Quorum Codigo="1">Quorum Simple</Quorum>
+  <Boletin>14309-04</Boletin>
+  <Tramite Codigo="3">TERCER TRÁMITE</Tramite>
+  <TotalAfirmativos>1</TotalAfirmativos>
+  <TotalNegativos>1</TotalNegativos>
+  <TotalAbstenciones>1</TotalAbstenciones>
+  <TotalDispensados>2</TotalDispensados>
+  <Votos>
+    <Voto>
+      <Diputado>
+        <DIPID>815</DIPID>
+        <Nombre>Sergio</Nombre>
+        <Apellido_Paterno>Bobadilla</Apellido_Paterno>
+        <Apellido_Materno>Muñoz</Apellido_Materno>
+      </Diputado>
+      <Opcion Codigo="1">Afirmativo</Opcion>
+    </Voto>
+    <Voto>
+      <Diputado>
+        <DIPID>843</DIPID>
+        <Nombre>René Manuel</Nombre>
+        <Apellido_Paterno>García</Apellido_Paterno>
+        <Apellido_Materno>García</Apellido_Materno>
+      </Diputado>
+      <Opcion Codigo="0">En Contra</Opcion>
+    </Voto>
+    <Voto>
+      <Diputado>
+        <DIPID>872</DIPID>
+        <Nombre>Jaime</Nombre>
+        <Apellido_Paterno>Mulet</Apellido_Paterno>
+        <Apellido_Materno>Martínez</Apellido_Materno>
+      </Diputado>
+      <Opcion Codigo="2">Abstención</Opcion>
+    </Voto>
+    <Voto>
+      <Diputado>
+        <DIPID>915</DIPID>
+        <Nombre>Germán</Nombre>
+        <Apellido_Paterno>Verdugo</Apellido_Paterno>
+        <Apellido_Materno>Soto</Apellido_Materno>
+      </Diputado>
+      <Opcion Codigo="3">Pareo</Opcion>
+    </Voto>
+    <Voto>
+      <Diputado>
+        <DIPID>803</DIPID>
+        <Nombre>René</Nombre>
+        <Apellido_Paterno>Alinco</Apellido_Paterno>
+        <Apellido_Materno>Bustos</Apellido_Materno>
+      </Diputado>
+      <Opcion Codigo="4">No Vota</Opcion>
+    </Voto>
+  </Votos>
+</Votacion>
