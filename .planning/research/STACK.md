@@ -1,235 +1,229 @@
-# Stack Research
+# Stack Research — v2.0 Parlamentarios 360 (additions only)
 
-**Domain:** Civic-tech de transparencia legislativa (scraping fuentes gubernamentales ASP.NET/Next.js + búsqueda semántica + LLM pipeline)
-**Researched:** 2026-06-17
-**Confidence:** HIGH (stack core verificado contra docs oficiales); MEDIUM en detalles de endpoints LLM emergentes (MiniMax/DeepSeek V4)
-
-> El stack base ya fue decidido por el usuario (TS/Deno + Supabase + Next.js + R2 + capa LLM enchufable). Este documento **no re-litiga** esas decisiones: las profundiza con versiones concretas, librerías específicas y patrones de implementación verificados a junio 2026. La sección más crítica es el scraping ASP.NET WebForms (`__VIEWSTATE`) y la advertencia sobre MiniMax y `response_format`.
+**Domain:** Civic-tech ingestion + analysis of Chilean parliamentary data (votes, lobby, assets, money, influence graph)
+**Researched:** 2026-06-18
+**Confidence:** HIGH on access methods (votes, lobby, assets, contracts), MEDIUM-HIGH on graph library, HIGH on Postgres-graph decision
+**Scope note:** The v1.0 core stack is LOCKED (see STACK.md). Nothing here replaces it. Everything below either reuses an existing `@obs/*` package or is a small, justified addition.
 
 ---
 
-## Recommended Stack
+## TL;DR
 
-### Core Technologies
+- **Zero new ingestion libraries needed.** Every government source is reachable with the tools already locked: `fetch` + `fast-xml-parser` (votes), `fetch` + JSON (ChileCompra), `cheerio`/CSV (lobby, assets, SERVEL). The work is new **connectors inside `@obs/ingest`**, not new dependencies.
+- **The individual deputy vote IS reachable** via a documented HTTP-GET XML endpoint on opendata.camara.cl (`getVotacion_Detalle?prmVotacionID=`). It returns each `Diputado` with `DIPID` + `Opcion`. The live spike is still warranted (never validated live), but the source is documented, not hypothetical. Confidence on existence: HIGH; on live behavior: UNCONFIRMED until the spike runs.
+- **SERVEL is the only genuinely fragile source** — no API, no bulk download, authenticated XHTML/JSF web app; must be a scraper (cheerio + WebForms/JSF 2-step, headless only as last resort in CI). Treat as artisanal exactly as PROJECT.md says.
+- **Graph library: `@xyflow/react` (React Flow 12).** Best Next.js 16 / RC / SSR story of the three; the influence graph is small (hundreds of curated nodes, not a 100k-node hairball); v1.0 already uses visx/Recharts/React. Sigma.js is the right answer ONLY if the graph grows past ~5–10k visible nodes.
+- **Graph queries: stay relational + recursive CTEs.** Apache AGE is NOT available on managed Supabase (AGE caps at PG13, Supabase is PG15). No `ltree`/AGE needed. Add a normalized `entidad`/`arista` edge table + recursive-CTE RPCs.
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| **Deno** | 2.x (runtime de Supabase Edge Functions) | Runtime de conectores e ingesta | Un solo lenguaje, soporte nativo `npm:` y `jsr:`, fetch/Web APIs estándar, sandbox por permisos. Es el runtime sobre el que corren las Edge Functions. |
-| **Supabase Postgres** | Postgres 15+ con `pgvector` 0.8.x | Modelo normalizado + vectores + auth/RLS | Postgres gestionado con pgvector, pg_cron, pgmq y pg_net integrados — todo el backend de datos+jobs en un solo plano. Plan Pro como línea base. |
-| **Next.js** | 16.x (App Router) | Frontend SSR, fichas, timelines | App Router estable, Server Components por defecto (las llamadas a fuentes externas viven server-only → evita CORS del WAF gubernamental). React 19.2, React Compiler 1.0 estable, Turbopack default. |
-| **React** | 19.2 | UI | Viene con Next.js 16. |
-| **TypeScript** | 5.x | Lenguaje único | Tipado de esquemas de fuentes (validación de contrato) y de los providers LLM/Embedding. |
-| **pgvector** | 0.8.x | Índice y tipo vectorial | Soporta `halfvec` (half-precision) e índices HNSW; 0.8 mejoró performance de HNSW notablemente. |
+---
 
-### Supporting Libraries
+## Recommended Stack Additions
 
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| **cheerio** | 1.2.0 | Parsing de HTML ASP.NET WebForms (citaciones Cámara, búsqueda de proyectos) | Extraer `__VIEWSTATE`/`__EVENTVALIDATION` y leer tablas/`GridView`. API tipo jQuery, server-side, sin DOM completo. Funciona en Deno vía `npm:cheerio@1.2.0`. |
-| **fast-xml-parser** | 5.9.x (línea 5.x estable) | Parsing del XML del Senado (`wspublico/tramitacion.php`, `votaciones.php`) y del XML de BCN/LeyChile (`obtxml`) | Parser XML puro JS, rápido, sin dependencias C/C++, maneja archivos grandes. `npm:fast-xml-parser@5`. Preferir sobre DOM parsers para XML estructurado. |
-| **openai** (SDK oficial JS/TS) | 5.x | Cliente OpenAI-compatible para DeepSeek V4 y MiniMax M-series | Un solo SDK para todos los endpoints OpenAI-compatibles vía `baseURL`. Import `npm:openai` en Deno. Base de la capa enchufable `LLMProvider`. |
-| **@google/genai** | SDK GA actual de Gemini | `EmbeddingProvider` (Gemini `gemini-embedding-001`) | SDK oficial Gemini para embeddings. Soporta `outputDimensionality` (truncado MRL). Free tier para embeddings. |
-| **zod** | 3.x / 4.x | Validación de esquema de respuestas de fuentes + validación de salida JSON de LLMs | Compuerta de validación de contrato (PROJECT.md: "validación de esquema"). También valida JSON de LLM cuando el modelo no soporta `json_schema` nativo. |
-| **deno_dom** | `jsr:@b-fuze/deno-dom` (última) | Fallback de parsing HTML cuando se requiere DOM real | Solo si cheerio falla en algún HTML mal formado; cheerio es preferente por ergonomía. |
-| **Supabase JS** | `@supabase/supabase-js` v2 | Cliente DB/Storage/Auth desde Edge Functions y Next.js | Acceso a Postgres, Storage, RPC y RLS. |
-| **AWS SDK S3 client** | `@aws-sdk/client-s3` v3 | Escritura del crudo a Cloudflare R2 (API S3-compatible) | R2 expone API S3; el cliente S3 v3 apunta al endpoint R2. Guardar XML/JSON/HTML crudo versionado. |
+### Ingestion connectors (NEW connectors, NO new libraries)
 
-### Visualization (frontend)
+| Capability | Library used | Status | Why |
+|------------|--------------|--------|-----|
+| **VOTE** — individual roll-call (`getVotacion_Detalle`) | `fetch` + `fast-xml-parser@5` (locked) | reuse | Endpoint returns XML; same parser as Senado `wspublico`. New `@obs/votaciones` (or extend `@obs/tramitacion`). |
+| **INT-lobby** — leylobby.gob.cl audiencias | `fetch` + CSV + `cheerio` (locked) | reuse | Per-institution bulk CSV/Excel + InfoLobby; HTML listing fallback via `cheerio`. |
+| **INT-assets** — InfoProbidad declaraciones | `fetch` + CSV catalogs + optional SPARQL over `fetch` | reuse | CSV catalogs + RDF/SPARQL at `datos.cplt.cl/sparql`; both plain HTTP. CC BY 4.0. |
+| **MONEY-contracts** — ChileCompra / mercadopublico.cl | `fetch` + JSON (locked) | reuse | Documented REST API, JSON by default, queryable by proveedor RUT. |
+| **MONEY-finance** — SERVEL aportes | `cheerio` (locked) + WebForms/JSF 2-step; headless only if forced | reuse / escalate | No API, no bulk dump. Authenticated JSF (`aportes.servel.cl`, `.xhtml`). Fragile by nature. |
 
-| Library | Version | Purpose | Notes |
-|---------|---------|---------|-------|
-| **visx** (`@visx/*`) | última | Timeline de tramitación por boletín (custom) | Primitivas D3-sobre-React. Control total sobre el timeline cruzando ambas cámaras; SVG, SSR-friendly. Recomendado para el timeline a medida. |
-| **Recharts** | última | Gráficos estándar (barras de votaciones, frescura por fuente) | React-first, rápido de implementar para gráficos comunes; no para el timeline a medida. |
-| **D3** (módulos sueltos) | 7.x | Base de visx; futuro grafo de influencia (P6) | Para el grafo de redes a futuro evaluar `react-flow`/`sigma.js`; fuera de Milestone 1. |
+### Frontend — influence graph (NET) — ONE new dependency
 
-### Background jobs / orquestación
+| Library | Version (2026-06) | Purpose | Why |
+|---------|-------------------|---------|-----|
+| **`@xyflow/react`** (React Flow 12) | **12.11.0** | Influence graph rendering in Next.js 16 frontend | First-class Next.js App Router + Server Components + SSR support (documented `<ReactFlowProvider initialNodes/initialEdges>` + `initialWidth/Height` + `fitView` for first render). React-native API matches v1.0's React/visx/Recharts patterns. Curated, small graph (hundreds of nodes) — DOM/SVG rendering is fine and gives full styling control + accessibility + per-node/edge provenance badges. |
 
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| **pg_cron** | Scheduler de ingesta | Programa la invocación de Edge Functions (vía pg_net) o ejecuta SQL. Recomendado: ≤8 jobs concurrentes, ≤10 min por job. |
-| **pgmq** (Supabase Queues) | Cola durable de tareas de scraping | Entrega garantizada exactly-once con visibility window. Patrón: cron encola boletines → worker Edge Function los procesa con rate-limit. Reemplaza BullMQ/Redis sin infra extra. |
-| **pg_net** | HTTP async desde Postgres | Necesario para que pg_cron invoque Edge Functions. |
-| **GitHub Actions** | Scheduler de respaldo para jobs largos | Para crawls grandes que excedan los límites de Edge Functions (CPU/tiempo) o el snapshot completo inicial; corre Deno en CI con rate-limit. |
+> Note: the old `reactflow` npm package (latest 11.11.4) is **deprecated in favor of the scoped `@xyflow/react`** as of v12. Install `@xyflow/react`, not `reactflow`.
 
-## Installation
+### Postgres — graph queries (NO new extension)
+
+| Mechanism | Status | Purpose |
+|-----------|--------|---------|
+| **Recursive CTEs** (`WITH RECURSIVE`) | built-in PG15 | Multi-hop traversal (parlamentario → lobby → empresa → contrato/aporte). |
+| **Normalized edge table** (`entidad` + `arista` with `tipo`, `provenance`, `fecha`, source link) | new migration, no dependency | Materializes cross-source relationships; queried by recursive-CTE RPCs, fed to React Flow. |
+| **pgvector 0.8 (HNSW)** | already locked | Reused for "parlamentarios similares" if added — no change. |
+
+---
+
+## Per-Source Access Methods (concrete)
+
+### VOTE — opendata.camara.cl individual roll-call — Confidence: HIGH (documented) / UNCONFIRMED (live)
+
+The individual deputy vote that is `null` in `doGet.asmx` lives in the **opendata.camara.cl SOAP service `wscamaradiputados.asmx`**, which also exposes plain **HTTP GET**:
+
+- Discover vote IDs for a bill:
+  `GET https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin?prmBoletin={NNNNN-NN}` → XML list of `Votacion` with their `ID`.
+- Fetch per-deputy detail:
+  `GET https://opendata.camara.cl/wscamaradiputados.asmx/getVotacion_Detalle?prmVotacionID={ID}` → XML.
+
+Response (`getVotacion_Detalle`) per the WSDL/op page includes:
+- Vote metadata: `ID`, `Fecha`, `Tipo`, `Resultado`, `Quorum`, `Boletin`, `Articulo`, totals (`TotalAfirmativos`/`TotalNegativos`/`TotalAbstenciones`/`TotalDispensados`).
+- **`Voto[]`**, each with a **`Diputado` object (`DIPID`, `Nombre`, `Apellido_Paterno`, `Apellido_Materno`, …) and `Opcion`** (the actual vote), plus `Pareos`.
+
+**Integration:** parse with `fast-xml-parser@5`; map to the existing common `Votacion`/`Voto` model; cross to identity **deterministically by `DIPID` → `id_diputado_camara`** — exactly the path v1.0's Cámara reconciliation already uses (no LLM, official identifier). Clean fit with `@obs/identity`'s LOCKED guard.
+
+**FLAG:** Despite being documented, opendata.camara.cl has never been hit live by this project. Phase-1 spike must confirm: (1) host reachable behind the gov WAF with the 2–3s rate-limit + UA; (2) `getVotaciones_Boletin` returns vote IDs for current-legislature bills; (3) `getVotacion_Detalle` actually populates `Diputado/Opcion` (not null like `doGet.asmx`). If any fails, the VOTE block replans (PROJECT.md already plans for this).
+
+### MONEY-contracts — ChileCompra / mercadopublico.cl — Confidence: HIGH
+
+Documented REST API, the cleanest source in v2.0:
+
+- Base: `https://api.mercadopublico.cl/servicios/v1/publico/`
+- Endpoints: `licitaciones.json`, `ordenesdecompra.json`, `Empresas/BuscarProveedor`, `Empresas/BuscarComprador`.
+- **By RUT:** `…/Empresas/BuscarProveedor?rutempresaproveedor={RUT}&ticket={TICKET}` → provider code + name; then query OC by `CodigoProveedor`/`fecha`/`estado`.
+- Formats: **JSON** (default), JSONP, XML. Auth: a **`ticket`** requested once by email.
+- **Rate limit: 10,000 requests/day per ticket** (hard) → respect with `@obs/ingest` daily cache + serial pacing; keep the 2–3s discipline regardless.
+
+**Integration:** `fetch` + `res.json()` + zod (locked pattern, identical to Cámara `doGet.asmx`). New `@obs/dinero` connector. Cross by RUT (internal-use key per PROJECT.md). The `datos-abiertos.chilecompra.cl` portal exists as a fallback but lacks documented bulk-download mechanics — prefer the REST API.
+
+### INT-assets — InfoProbidad (declaraciones de patrimonio e intereses) — Confidence: HIGH
+
+CPLT/Contraloría portal, explicitly open data, **CC BY 4.0** (matches PROJECT.md's attribution requirement):
+
+- CSV catalogs / datasets at `infoprobidad.cl/DatosAbiertos/DatosAbiertos` (subjects, declarations, real estate, personal property, family members, etc.).
+- RDF / **SPARQL endpoint: `https://datos.cplt.cl/sparql`** for linked-data queries.
+- Per-declaration listing/UI at `infoprobidad.cl/Home/Listado`.
+
+**Integration:** primary path = download CSV catalogs (`fetch` → CSV parse). SPARQL optional for targeted per-RUT/per-name queries. Cross by **normalized name** (bridge key) and RUT internal-use. **Sensitive-data posture (PROJECT.md + Ley 21.719):** only surface what the source already publishes; keep RUT/family data internal. Route any LLM extraction through `@obs/llm`'s `assertSensitivityAllowed` / `assertNoRutInLlmInput` gates.
+
+### INT-lobby — leylobby.gob.cl / InfoLobby — Confidence: MEDIUM-HIGH
+
+- Per-institution registries: `leylobby.gob.cl/instituciones/{CODE}/audiencias` (HTML).
+- **Bulk downloads** documented at `ayuda.leylobby.gob.cl/descargas/` (returned 503 at research time — likely transient; this is the documented bulk path).
+- Aggregated view at `infolobby.cl` (audiencias, viajes, donativos).
+
+**Integration:** prefer bulk CSV/Excel downloads when reachable; fall back to `cheerio` over per-institution HTML audiencias tables. New connector under `@obs/lobby` (or fold into `@obs/intereses`). Cross by normalized name. **FLAG:** descargas endpoint must be re-validated live (503 at research time); bulk-file structure unconfirmed.
+
+### MONEY-finance — SERVEL aportes de campaña — Confidence: HIGH that it's fragile
+
+- **No public API, no documented bulk download.** Contribution data lives behind an authenticated JSF web app: `aportes.servel.cl/servel-aportes/inicio.xhtml` (ClaveÚnica login for donors), plus public consultation pages on `servel.cl`.
+- Independent projects (LupaElectoral, `bastianolea/servel_scraping_votaciones`) reach SERVEL **only via web scraping** (RSelenium-class), confirming no machine-friendly endpoint.
+
+**Integration:** treat as a **scraper**, not an API connector. First attempt `cheerio` + WebForms/JSF 2-step (re-extract JSF view-state per postback, keep session cookies) under the locked rate-limit. Only if the JSF flow is unscrapable with fetch should a headless browser be considered — and that belongs in the **GitHub Actions escape hatch**, never in Edge Functions (CPU/time limits). Expect breakage on every SERVEL redesign; isolate behind `@obs/dinero` so failure degrades honestly. Highest-risk, lowest-priority source — schedule it last.
+
+---
+
+## Graph Library Decision — React Flow vs Sigma.js vs Cytoscape
+
+**Recommendation: `@xyflow/react` (React Flow 12.11.0).**
+
+| Criterion | React Flow (`@xyflow/react` 12) | Sigma.js (`sigma` 3 + `graphology`) | Cytoscape.js (3.34) |
+|-----------|-------------------------------|-------------------------------------|---------------------|
+| Rendering | SVG/DOM | **WebGL** | Canvas/WebGL |
+| Scale ceiling | ~hundreds–low-thousands of nodes | **100k+ nodes** | tens of thousands |
+| Next.js 16 / RC / SSR | **Documented SSR/SSG config** (`ReactFlowProvider initialNodes/Edges`, `initialWidth/Height`, `fitView`) | client-only (`'use client'` + `dynamic ssr:false`); React via `@react-sigma/core` | client-only; `react-cytoscapejs` wrapper, no SSR |
+| React-idiomatic | **Native React components** | wrapper layer | wrapper layer |
+| Styling/accessibility control | **Full (DOM)** | limited (WebGL canvas) | moderate |
+| Built-in graph algorithms | none (bring your own layout) | graphology ecosystem (layouts, metrics) | **rich (centrality, layouts, traversal)** |
+| Fit with v1.0 (React/visx/Recharts) | **Best** | moderate | moderate |
+
+**Why React Flow for THIS project:**
+1. The influence graph is **curated and small** — relationships are computed server-side from the relational model (parlamentario ↔ lobby ↔ empresa ↔ contrato ↔ aporte), filtered to one parlamentario's neighborhood per view. Hundreds of nodes, not a global hairball. DOM rendering is more than adequate and buys full CSS styling (existing civic design tokens), provenance badges on nodes/edges, and accessibility — all things this project cares about (every datum shows source/date/link).
+2. **Best SSR story** for Next.js 16 App Router + Server Components (the locked frontend). The other two are client-only canvas/WebGL needing `dynamic(..., { ssr: false })`.
+3. **Lowest learning/maintenance cost** given the team already ships React + visx + Recharts.
+
+**Choose Sigma.js (`sigma@3` + `graphology@0.26` + `@react-sigma/core@5`) instead IF** the influence view evolves into an explorable global network of **>5–10k simultaneously rendered nodes**. WebGL is then mandatory and graphology's layout/metrics ecosystem becomes valuable. Reassess then — do not pre-optimize now.
+
+**Cytoscape.js** is the pick only if you need **built-in graph-theory algorithms client-side** (centrality, community detection). Here those analytics belong **server-side in Postgres/SQL** (traceable/auditable), so Cytoscape's main advantage is moot and its non-React, no-SSR nature fits worst.
+
+---
+
+## Postgres / pgvector for graph queries
+
+**Recommendation: stay relational; use `WITH RECURSIVE` CTEs over a normalized edge table. Add no graph extension.**
+
+- **Apache AGE: NOT available on managed Supabase.** AGE supports up to PG13/14-beta; Supabase stable is PG15 — not in the Supabase extension list, only via self-hosted Docker. Adopting it means leaving managed Supabase, contradicting locked infra. (Confidence: HIGH.)
+- **`ltree`: wrong tool.** Models single-parent trees/hierarchies, not the many-to-many influence graph here. Skip.
+- **Recursive CTEs are sufficient.** The graph is shallow (2–4 hops: parlamentario → audiencia/lobby → persona/empresa → contrato/aporte) and per-parlamentario scoped. PG15 recursive CTEs over an indexed edge table handle this comfortably at this data scale, keep everything auditable in SQL, and expose results via Supabase RPC (same pattern as `match_proyectos`).
+- **Modeling:** one `entidad` table (typed nodes: parlamentario/empresa/persona/contrato/aporte/audiencia) + one `arista` table (typed, directional edges with `provenance`, `fecha`, source link). Every edge carries source/date/link to honor the rector rule (no causal claims; only sourced relationships). pgvector is unchanged.
+
+---
+
+## Installation (additions only)
 
 ```bash
-# Conectores / Edge Functions (Deno — sin install, imports directos):
-#   import * as cheerio from "npm:cheerio@1.2.0";
-#   import { XMLParser } from "npm:fast-xml-parser@5";
-#   import OpenAI from "npm:openai@5";
-#   import { GoogleGenAI } from "npm:@google/genai";
-#   import { DOMParser } from "jsr:@b-fuze/deno-dom";  # fallback
-#   import { z } from "npm:zod";
-#   import { S3Client } from "npm:@aws-sdk/client-s3@3";
+# Frontend (Next.js app) — influence graph
+pnpm --filter @obs/app add @xyflow/react@12
 
-# Frontend (Next.js)
-npx create-next-app@latest          # Next.js 16, App Router
-npm install @supabase/supabase-js
-npm install @visx/scale @visx/group @visx/shape @visx/axis recharts
+# Connectors (Deno Edge Functions / GitHub Actions) — NO new deps:
+#   votes:     import { XMLParser } from "npm:fast-xml-parser@5"   (locked)
+#   contracts: fetch + res.json() + zod                            (locked)
+#   assets:    fetch CSV / SPARQL over fetch                       (locked)
+#   lobby:     fetch CSV / cheerio                                 (locked)
+#   servel:    cheerio (WebForms/JSF 2-step)                       (locked)
 
-# Postgres (SQL, una vez)
-#   create extension if not exists vector;     -- pgvector 0.8.x
-#   create extension if not exists pg_cron;
-#   create extension if not exists pg_net;
-#   create extension if not exists pgmq;
+# Postgres: new migration only — entidad/arista tables + recursive-CTE RPC.
+# No new extension (pgvector/pg_cron/pgmq/pg_net already enabled).
 ```
 
----
-
-## Profundización por área (las 6 preguntas)
-
-### 1. Scraping en TS/Deno por tipo de fuente
-
-| Fuente | Tipo | Estrategia y librería | Confianza |
-|--------|------|----------------------|-----------|
-| **(a) Cámara `doGet.asmx`** | Web Service JSON ASP.NET | `fetch` directo → `await res.json()`. Devuelve `{"result":true,"data":[...]}`. Validar con **zod**. Es el camino **preferente** (sin HTML). Cuidado: voto individual NO viene (`Votos`=null). | HIGH |
-| **(b) Cámara `citaciones_semana.aspx` / búsqueda de proyectos** | HTML ASP.NET WebForms con `__VIEWSTATE` | Patrón de **dos pasos**: (1) GET de la página, parsear con **cheerio** los hidden inputs `__VIEWSTATE`, `__VIEWSTATEGENERATOR`, `__EVENTVALIDATION`; (2) POST `application/x-www-form-urlencoded` reenviando esos tokens + `__EVENTTARGET`/`__EVENTARGUMENT` + campos del form. Mantener cookies de sesión entre GET y POST. Re-extraer los tokens en cada respuesta (cambian por postback). | HIGH |
-| **(c) Senado `wspublico/tramitacion.php` y `votaciones.php`** | XML | `fetch` → texto → **fast-xml-parser** (`XMLParser`, `ignoreAttributes:false` si hay atributos). Mapear a modelo `Proyecto`/`Votacion`. Validar con zod. | HIGH |
-| **(c') BCN/LeyChile `obtxml?opt=7&idNorma=`** | XML de la norma | Igual que (c): fast-xml-parser. Para textos íntegros → guardar crudo en R2, extraer idea matriz/cuerpos legales con LLM. | HIGH |
-| **(d) Senado citaciones (portal Next.js)** | SSR `__NEXT_DATA__` | GET de la página → cheerio para extraer `<script id="__NEXT_DATA__">` → `JSON.parse` del contenido. El **`buildId` cambia por deploy**: NO hardcodear rutas `/_next/data/<buildId>/...`; leer `__NEXT_DATA__.buildId` de la página y construir la URL de datos dinámicamente, o simplemente parsear el `__NEXT_DATA__` embebido en la página SSR. | MEDIUM (depende de estabilidad del portal) |
-
-**Patrón `__VIEWSTATE` concreto (clave para Cámara WebForms):**
-
-```ts
-// 1. GET inicial — capturar cookies y tokens
-const getRes = await fetch(url, { headers: { "User-Agent": UA } });
-const cookie = getRes.headers.get("set-cookie") ?? "";
-const $ = cheerio.load(await getRes.text());
-const form = {
-  __VIEWSTATE: $("#__VIEWSTATE").val() as string,
-  __VIEWSTATEGENERATOR: $("#__VIEWSTATEGENERATOR").val() as string,
-  __EVENTVALIDATION: $("#__EVENTVALIDATION").val() as string,
-  __EVENTTARGET: "<control_id>",
-  __EVENTARGUMENT: "",
-  // ...campos del formulario (fechas, filtros)
-};
-// 2. POST reenviando estado + cookie
-const postRes = await fetch(url, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/x-www-form-urlencoded",
-    "Cookie": cookie,
-    "User-Agent": UA,
-  },
-  body: new URLSearchParams(form).toString(),
-});
-```
-
-> **Por qué cheerio y no deno_dom aquí:** cheerio tiene API jQuery ergonómica para extraer hidden inputs y recorrer `GridView`/tablas; es el estándar de la industria para WebForms scraping. deno_dom queda como fallback si el HTML está tan mal formado que cheerio (parse5/htmlparser2) tropieza.
-
-### 2. Rate-limiting, cola, backoff y caché
-
-- **Rate-limit 2–3s obligatorio** (PROJECT.md: el WAF gubernamental bloquea ráfagas). Implementar como delay entre requests dentro del worker, no como concurrencia paralela contra una misma fuente.
-- **Cola: pgmq (Supabase Queues)**, NO BullMQ. BullMQ requiere Redis + un proceso Node persistente (Railway/VM) — infra extra que contradice "todo en Supabase". pgmq da entrega garantizada exactly-once con visibility window dentro de Postgres.
-- **Patrón:** `pg_cron` encola boletines/tareas en pgmq → Edge Function "worker" desencola en lotes pequeños, respeta el delay 2–3s, y devuelve mensajes con backoff (visibility timeout) ante fallos.
-- **Backoff:** exponencial con jitter sobre 429/5xx; aprovechar el visibility timeout de pgmq para reintentos diferidos.
-- **Caché diaria:** snapshot crudo en R2 con clave versionada (`fuente/fecha/hash`) → si ya existe el snapshot del día, no re-scrapear (PROJECT.md: "caché diaria", "snapshots versionados"). R2 es la caché de respuestas además del archivo histórico.
-
-### 3. pgvector en Supabase
-
-| Decisión | Recomendación | Por qué | Confianza |
-|----------|---------------|---------|-----------|
-| **Índice** | **HNSW** | Default 2026 de Supabase: más rápido en lecturas, robusto ante datos cambiantes, sin fase de entrenamiento, sin requerir datos previos. IVFFlat solo tendría sentido en cargas insert-heavy (>100K writes/hora), que no es el caso. | HIGH |
-| **Dimensiones del embedding** | **768** (truncado MRL de `gemini-embedding-001`) | Gemini emite 3072 por defecto pero soporta Matryoshka: 768 da ~25% del almacenamiento con solo ~0.26% de pérdida de calidad. 768 mantiene el índice barato en el plan Pro. Configurar `outputDimensionality: 768` en el SDK. | HIGH |
-| **Tipo de columna** | `vector(768)` (halfvec opcional) | A 768 dims, `vector` (float32) basta. `halfvec` reduce a la mitad el almacenamiento y es obligatorio para indexar >2000 dims — no necesario a 768, pero disponible si se sube a 1536/3072. | HIGH |
-| **Versionado del modelo** | Guardar `embedding_model` + `embedding_dims` + `embedding_version` por fila | Permite re-embeddizar incrementalmente cuando cambie el modelo (p.ej. Gemini Embedding 2) sin perder trazabilidad. Crítico para un proyecto que vive años. | HIGH |
-| **Distancia** | Cosine (`vector_cosine_ops`) | Estándar para embeddings de texto normalizados; coincide con cómo Gemini produce los vectores. | HIGH |
-
-### 4. Integración LLM por SDK (capa enchufable)
-
-- **Un solo SDK: `openai` (npm:openai@5)** apuntado por `baseURL` a cada proveedor OpenAI-compatible. Esto materializa la interfaz `LLMProvider` enchufable con código mínimo.
-  - **DeepSeek V4 Flash:** `baseURL: "https://api.deepseek.com"`, modelo `deepseek-v4-flash`. Para volumen (extracción de fichas).
-  - **MiniMax M-series:** `baseURL` del endpoint OpenAI-compatible de MiniMax. Para lo crítico/sensible (adjudicación de identidad).
-- **Salida estructurada — ADVERTENCIA CRÍTICA:**
-  - **DeepSeek** soporta `response_format: { type: "json_object" }` (JSON mode). NO es `json_schema` estricto: hay que incluir la palabra "json" y un ejemplo del formato en el prompt, y **validar la salida con zod** post-hoc.
-  - **MiniMax (M2/M2.5)** **NO soporta `response_format`** (ni `json_object` ni `json_schema`) vía el endpoint OpenAI-compatible — confirmado en su repo. Para estructura en MiniMax usar **tool calling** (function calling) o forzar JSON por prompt + validación zod. **Diseñar la interfaz `LLMProvider` para que el modo de salida estructurada sea por-proveedor**, no asumir `response_format` universal.
-- **Prompt caching:**
-  - **DeepSeek:** caching automático por prefijo (cache-hit ~98% más barato tras la baja de tarifas de 2026). Estrategia: poner el contexto estable (instrucciones, esquema, ejemplos) **al inicio** del prompt y la parte variable al final → maximiza cache hits en extracción masiva de fichas.
-  - Diseñar prompts con prefijo común estable es la palanca de costo principal del frente P1.
-- **Gemini embeddings** van por su SDK propio (`@google/genai`), no por el SDK OpenAI → la interfaz `EmbeddingProvider` es separada de `LLMProvider` (ya contemplado en PROJECT.md).
-
-### 5. Next.js — versión, dónde corren las llamadas, visualización
-
-- **Next.js 16, App Router.** Server Components por defecto.
-- **Todas las llamadas a fuentes externas server-only** (Server Components, Route Handlers o Server Actions) — nunca desde el navegador. Esto resuelve el CORS del WAF gubernamental (PROJECT.md) y mantiene las API keys fuera del cliente. En la práctica, el frontend lee de Supabase (datos ya ingeridos), y la ingesta vive en Edge Functions/jobs; el frontend casi no toca las fuentes directamente.
-- **Timeline de tramitación:** **visx** (primitivas D3+React, SSR-friendly) para el timeline a medida cruzando ambas cámaras. **Recharts** para gráficos estándar (votaciones, frescura).
-- **Grafo de influencia (P6, fuera de Milestone 1):** evaluar `react-flow` o `sigma.js` cuando llegue; no decidir aún.
-
-### 6. Orquestación de ingesta — Edge Functions vs jobs externos
-
-- **Por defecto: Edge Functions + pg_cron + pgmq** (todo en Supabase). Para ingesta incremental diaria (la mayoría del trabajo): cron dispara, worker desencola y scrapea con rate-limit.
-- **Límites de Edge Functions:** tiempo/CPU acotados (jobs ≤10 min recomendado, ≤8 concurrentes). Para crawls grandes (snapshot inicial completo, re-embeddizado masivo) usar **GitHub Actions** corriendo Deno con el mismo código de conectores y el mismo rate-limit. Es el "escape hatch" para trabajos largos.
-- **Regla:** lo recurrente y acotado → Edge Functions; lo masivo/largo → GitHub Actions. Mismo código de conector en ambos (TS/Deno).
+If a dedicated CSV parser is wanted for the InfoProbidad/lobby catalogs, prefer a tiny zero-dep one usable in Deno (`jsr:@std/csv`) over a Node-heavy package — but first check whether catalogs are small/simple enough to split manually. Do NOT pull a large CSV framework.
 
 ---
 
 ## Alternatives Considered
 
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|-------------------------|
-| pgmq (Supabase Queues) | BullMQ + Redis | Solo si se externaliza el cómputo a un servicio Node persistente; añade Redis e infra — evitar mientras todo viva en Supabase. |
-| cheerio | deno_dom (`@b-fuze/deno-dom`) | HTML tan mal formado que cheerio tropieza, o cuando se necesita un DOM W3C real. |
-| fast-xml-parser | deno_dom / DOMParser para XML | XML con namespaces complejos o necesidad de XPath; el XML del Senado/BCN es estructurado y plano → fast-xml-parser basta y es más rápido. |
-| visx | D3 puro / Highcharts Gantt / react-calendar-timeline | react-calendar-timeline si se quiere timeline de recursos llave-en-mano; Highcharts (licencia) si se necesita Gantt premium. visx da control total sin licencia. |
-| HNSW | IVFFlat | Cargas insert-heavy >100K writes/hora con presupuesto de memoria ajustado — no es el caso. |
-| 768 dims (MRL) | 1536 / 3072 dims | Si benchmarks sobre el golden set muestran pérdida de recall relevante en "proyectos similares"; subir a 1536 (+halfvec) antes que a 3072. |
-| openai SDK (multi-provider por baseURL) | SDK propio de cada proveedor | Solo si un proveedor expone features que su endpoint OpenAI-compat no cubre (p.ej. tool calling con quirks). |
+| Recommended | Alternative | When to use the alternative |
+|-------------|-------------|------------------------------|
+| `@xyflow/react` 12 (SVG/DOM) | Sigma.js 3 + graphology + `@react-sigma/core` 5 (WebGL) | Influence view becomes a global explorable network >5–10k simultaneous nodes. |
+| `@xyflow/react` 12 | Cytoscape.js 3 + `react-cytoscapejs` | You need rich client-side graph algorithms instead of computing them server-side. |
+| Recursive CTEs + edge table (managed Supabase) | Apache AGE (openCypher) | Only on self-hosted Postgres ≤13/14 — incompatible with managed Supabase PG15; do not adopt. |
+| ChileCompra REST API (per-RUT) | `datos-abiertos.chilecompra.cl` bulk | If the per-ticket 10k/day limit bottlenecks large backfills and a documented bulk export is found. |
+| InfoProbidad CSV catalogs | InfoProbidad SPARQL (`datos.cplt.cl/sparql`) | Targeted per-name/per-RUT lookups where downloading full catalogs is wasteful. |
+| `getVotacion_Detalle` HTTP GET (XML) | SOAP 1.1/1.2 envelope to same `.asmx` | Only if plain GET is disabled/firewalled; GET is simpler and avoids SOAP envelopes. |
 
-## What NOT to Use
+---
 
-| Avoid | Why | Use Instead |
+## What NOT to Add
+
+| Avoid | Why | Use instead |
 |-------|-----|-------------|
-| **`response_format: json_schema` asumido universal** | MiniMax M2/M2.5 NO lo soporta vía OpenAI-compat; DeepSeek solo da `json_object` (no schema estricto). Romperá la adjudicación de identidad si se asume. | Tool calling o prompt-forzado + **validación zod** por proveedor. |
-| **Puppeteer / navegador headless para WebForms** | Pesado, frágil, caro en Edge Functions; el flujo `__VIEWSTATE` GET→POST con fetch+cheerio es suficiente y mucho más liviano. | fetch + cheerio (patrón de 2 pasos). |
-| **BullMQ + Redis en Milestone 1** | Infra adicional (Redis + proceso Node persistente) que contradice "todo en Supabase". | pgmq + pg_cron + Edge Functions. |
-| **Hardcodear el `buildId` del portal Next.js del Senado** | Cambia en cada deploy → rutas `/_next/data/<buildId>` rompen silenciosamente. | Leer `__NEXT_DATA__.buildId` de la página SSR en cada corrida. |
-| **Llamar fuentes gubernamentales desde el navegador (Client Components)** | CORS del WAF + expone API keys + ráfagas bloqueadas. | Server-only: Edge Functions/Route Handlers/jobs. |
-| **Pages Router de Next.js** | En modo mantenimiento; App Router es el camino soportado. | App Router (Next.js 16). |
-| **IVFFlat por defecto** | Requiere entrenamiento sobre datos previos y degrada con datos cambiantes. | HNSW. |
-| **`obtenerinfoley` de BCN** | Obsoleto (404, ver PROJECT.md). | `obtxml?opt=7&idNorma=`. |
+| **`reactflow` (old npm pkg, v11.x)** | Deprecated; v12 moved to scoped `@xyflow/react`. | `@xyflow/react@12`. |
+| **Apache AGE / openCypher** | Not available on managed Supabase (PG15); needs self-host. Contradicts locked infra. | Recursive CTEs over an edge table. |
+| **`ltree`** | Models single-parent trees, not a many-to-many influence graph. | Edge table + recursive CTEs. |
+| **Neo4j / dedicated graph DB** | New infra, new query language, splits the data plane; graph is small and read-mostly. | Postgres recursive CTEs. |
+| **Headless browser (Puppeteer/Playwright) in Edge Functions** | CPU/time limits; fragile and heavy — same warning as v1.0 WebForms. | `cheerio` + WebForms/JSF 2-step; headless only in GitHub Actions if SERVEL truly forces it. |
+| **A new HTTP/scraping framework per source** | Every source is plain `fetch`; `@obs/ingest` already centralizes rate-limit/UA/robots/cache/provenance. | Add connectors inside `@obs/ingest`, not new libs. |
+| **A new XML/JSON parser** | `fast-xml-parser@5` (votes, BCN) + native JSON (ChileCompra) cover all v2.0 sources. | Reuse locked parsers + zod. |
+| **Treating SERVEL as an API** | No API and no bulk dump; assuming one breaks the MONEY block. | Plan SERVEL as an explicitly fragile scraper, scheduled last, isolated behind `@obs/dinero`. |
+| **Assuming opendata.camara.cl works without a spike** | Documented but never validated live behind the gov WAF. | Phase-1 validation spike (reachability + non-null `Opcion`) before building VOTE. |
+| **Sending RUT/family data to LLMs or the client** | Ley 21.719 + rector rule; identity data is internal-use. | `@obs/llm` data-routing gates; surface only source-published fields with provenance. |
 
-## Stack Patterns by Variant
-
-**Si el frente "proyectos similares" exige más recall:**
-- Subir embeddings de 768 → 1536 dims con tipo `halfvec(1536)` + índice HNSW.
-- Porque MRL permite subir sin re-arquitectura; halfvec contiene el costo de almacenamiento.
-
-**Si MiniMax demuestra mejor calidad en adjudicación de identidad pero su salida JSON es inestable:**
-- Usar tool calling (function calling) de MiniMax para forzar estructura, con zod como compuerta de validación y reintento.
-- Porque `response_format` no está disponible; el tool calling sí impone forma.
-
-**Si la ingesta inicial (snapshot histórico completo) excede límites de Edge Functions:**
-- Correr el mismo conector TS en GitHub Actions (cron) con rate-limit 2–3s.
-- Porque CI no tiene el límite de 10 min/job y permite checkpoints.
+---
 
 ## Version Compatibility
 
-| Package A | Compatible With | Notes |
-|-----------|-----------------|-------|
-| Next.js 16 | React 19.2 | React Compiler 1.0 estable, Turbopack default. |
-| pgvector 0.8.x | Postgres 15+ (Supabase) | HNSW + halfvec disponibles. |
-| openai@5 (SDK) | Deno 2.x | `import OpenAI from "npm:openai@5"`; `baseURL` para DeepSeek/MiniMax. |
-| cheerio 1.2.0 | Deno 2.x | `npm:cheerio@1.2.0`; usa parse5/htmlparser2 10.x internamente. |
-| fast-xml-parser 5.x | Deno 2.x | `npm:fast-xml-parser@5`; v6 aún experimental — quedarse en 5.x. |
-| @aws-sdk/client-s3 v3 | Cloudflare R2 | R2 = API S3-compatible; configurar endpoint R2 + credenciales. |
+| Package | Version (2026-06-18) | Compatible with | Notes |
+|---------|----------------------|-----------------|-------|
+| `@xyflow/react` | 12.11.0 | React 19.2 / Next.js 16 App Router | Documented SSR/SSG config; use as a Client Component island (`'use client'`) inside Server-Component pages. |
+| `sigma` (alt) | 3.0.3 | + `graphology` 0.26.0, `@react-sigma/core` 5.0.6 | WebGL; client-only (`dynamic ssr:false`). Only if scale demands. |
+| `cytoscape` (alt) | 3.34.0 | + `react-cytoscapejs` | Client-only; not recommended here. |
+| `fast-xml-parser` | 5.x (locked) | Deno 2.x | Parses `getVotacion_Detalle` XML — same as Senado `wspublico`. |
+| Postgres recursive CTE | PG15 (Supabase) | pgvector 0.8 unchanged | No extension needed; expose via Supabase RPC like `match_proyectos`. |
+
+---
 
 ## Sources
 
-- `/websites/jsr_io_b-fuze_deno-dom` (Context7) — deno_dom como parser HTML DOM en Deno — HIGH
-- [cheerio — npm](https://www.npmjs.com/package/cheerio) / [cheerio.js.org](https://cheerio.js.org/) — v1.2.0, Deno via `npm:`, htmlparser2 10.x — HIGH
-- [fast-xml-parser — npm](https://www.npmjs.com/package/fast-xml-parser) / [GitHub releases](https://github.com/NaturalIntelligence/fast-xml-parser/releases) — v5.9.x, soporte Deno, v6 experimental — HIGH
-- [Vector indexes — Supabase Docs](https://supabase.com/docs/guides/ai/vector-indexes) / [HNSW](https://supabase.com/docs/guides/ai/vector-indexes/hnsw-indexes) — HNSW default 2026, halfvec — HIGH
-- [Embeddings — Gemini API](https://ai.google.dev/gemini-api/docs/embeddings) / [Gemini Embedding GA — Google Developers Blog](https://developers.googleblog.com/gemini-embedding-available-gemini-api/) — `gemini-embedding-001`, 3072 default, MRL 768/1536/3072 — HIGH
-- [JSON Output — DeepSeek API Docs](https://api-docs.deepseek.com/guides/json_mode) — `json_object` mode (no schema estricto), prompt caching automático, modelos V4 — MEDIUM/HIGH
-- [MiniMax-M2.5 issue #4: response_format support](https://github.com/MiniMax-AI/MiniMax-M2.5/issues/4) / [OpenAI SDK — MiniMax API Docs](https://platform.minimax.io/docs/api-reference/text-openai-api) — MiniMax NO soporta `response_format` vía OpenAI-compat; usar tool calling — MEDIUM
-- [openai — npm](https://www.npmjs.com/package/openai) / [openai-node GitHub](https://github.com/openai/openai-node) — SDK v5, `baseURL`, import `npm:openai` en Deno — HIGH
-- [Next.js 16 — nextjs.org/blog](https://nextjs.org/blog/next-16) / [Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components) — App Router estable, React 19.2, Server Components default — HIGH
-- [Supabase Queues — Docs](https://supabase.com/docs/guides/queues) / [PGMQ](https://supabase.com/docs/guides/queues/pgmq) / [Supabase Cron](https://supabase.com/docs/guides/cron) — pgmq + pg_cron + Edge Functions worker pattern — HIGH
-- [Scheduling Edge Functions — Supabase Docs](https://supabase.com/docs/guides/functions/schedule-functions) — pg_cron + pg_net invoca Edge Functions; ≤8 jobs, ≤10 min — HIGH
-- [Top timeline components 2026 — DEV](https://dev.to/lenormor/top-7-timeline-visualization-components-for-modern-web-apps-in-2026-420l) / [LogRocket React chart libraries 2026](https://blog.logrocket.com/best-react-chart-libraries-2026/) — visx/Recharts/react-calendar-timeline — MEDIUM
-- [How to scrape ViewState — HackerNoon/Zyte](https://medium.com/hackernoon/how-to-scrape-websites-based-on-viewstates-using-scrapy-39feb9445755) / [odetocode ViewState scraping](https://odetocode.com/articles/162.aspx) — patrón GET→parse `__VIEWSTATE`→POST — HIGH (patrón), aplicado a TS/cheerio
+- [opendata.camara.cl — Votaciones por Proyecto de Ley](https://opendata.camara.cl/pages/votacion_boletin.aspx) — `getVotaciones_Boletin`, param boletín — HIGH
+- [opendata.camara.cl — Detalle de Votación](https://opendata.camara.cl/pages/votacion_detalle.aspx) — `getVotacion_Detalle`, param vote ID — HIGH
+- [opendata.camara.cl — wscamaradiputados.asmx?op=getVotacion_Detalle](https://opendata.camara.cl/wscamaradiputados.asmx?op=getVotacion_Detalle) — WSDL/op: `prmVotacionID`, `Voto[]`→`Diputado{DIPID,Nombre,...}`+`Opcion`, HTTP GET equivalent — HIGH (documented), live behavior UNCONFIRMED
+- [opendata.congreso.cl](https://opendata.congreso.cl/) — index of Congreso open-data endpoints (XML); confirms `votacion_detalle` provides per-deputy detail — HIGH
+- [ChileCompra — API de Mercado Público](https://www.chilecompra.cl/api/) — endpoints `licitaciones.json`/`ordenesdecompra.json`/`Empresas/BuscarProveedor`, `rutempresaproveedor`, ticket, 10k/day, JSON/XML — HIGH
+- [api.mercadopublico.cl — Utilización](https://api.mercadopublico.cl/modules/api.aspx) — request/format details — MEDIUM-HIGH
+- [InfoProbidad — Datos Abiertos Enlazados](https://www.infoprobidad.cl/DatosAbiertos/DatosAbiertos) — CSV catalogs + SPARQL `datos.cplt.cl/sparql`, CC BY 4.0 — HIGH
+- [InfoProbidad — Declaraciones (Listado)](https://www.infoprobidad.cl/Home/Listado) — per-declaration access — HIGH
+- [Ley del Lobby — Instituciones / audiencias](https://www.leylobby.gob.cl/instituciones) — per-institution HTML audiencias — MEDIUM-HIGH
+- [Ayuda Ley del Lobby — Descargas](https://ayuda.leylobby.gob.cl/descargas/) — documented bulk-download path (503 at research time; re-validate) — MEDIUM, UNCONFIRMED live
+- [SERVEL — Aportes](https://aportes.servel.cl/servel-aportes/inicio.xhtml) + [servel.cl/aportes](https://www.servel.cl/aportes/) — authenticated JSF web app, no API — HIGH (that it's fragile)
+- [bastianolea/servel_scraping_votaciones (GitHub)](https://github.com/bastianolea/servel_scraping_votaciones) + [LupaElectoral](https://lupaelectoral.cl/datos/) — confirm SERVEL reachable only via scraping — MEDIUM-HIGH
+- Context7 `/websites/reactflow_dev` — SSR/SSG configuration (`ReactFlowProvider initialNodes/initialEdges`, `initialWidth/Height`, `fitView`) — HIGH
+- Context7 `/jacomyal/sigma.js`, `/websites/sigmajs`, `/dunnock/react-sigma` — WebGL large-graph rendering, graphology, React wrapper — HIGH
+- Context7 `/cytoscape/cytoscape.js`, `/plotly/react-cytoscapejs` — graph-theory algorithms, React wrapper — HIGH
+- npm registry (2026-06-18): `@xyflow/react`@12.11.0, `reactflow`@11.11.4 (deprecated→scoped), `sigma`@3.0.3, `graphology`@0.26.0, `@react-sigma/core`@5.0.6, `cytoscape`@3.34.0 — HIGH
+- [Supabase Discussion #13263 — add Apache AGE](https://github.com/orgs/supabase/discussions/13263) — AGE not available on managed Supabase (PG15 vs AGE≤PG13) — HIGH
 
 ---
-*Stack research for: civic-tech transparencia legislativa (TS/Deno + Supabase + Next.js)*
-*Researched: 2026-06-17*
+*Stack research for: v2.0 Parlamentarios 360 (additions to a locked v1.0 stack)*
+*Researched: 2026-06-18*

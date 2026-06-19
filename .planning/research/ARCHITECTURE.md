@@ -1,521 +1,315 @@
-# Architecture Research
+# Architecture Research — Parlamentarios 360 (v2.0)
 
-**Domain:** Observatorio ciudadano de datos públicos (ingesta multi-fuente → procesamiento con LLM/embeddings → servicio API + búsqueda semántica + frontend)
-**Researched:** 2026-06-17
-**Confidence:** HIGH (stack ya validado en PROJECT.md + Documento Maestro v2.0; decisiones de plataforma verificadas contra docs oficiales de Supabase/pgvector/AGE)
+**Domain:** Civic data platform — adding the "parlamentarios 360" analysis front to a shipped app
+**Researched:** 2026-06-18
+**Confidence:** HIGH (integration with existing v1.0 code, verified against migrations + packages) / MEDIUM (VOTE source shape — opendata.camara.cl unvalidated live; SERVEL connector shape)
+
+> Supersedes the v1.0 ecosystem ARCHITECTURE.md (2026-06-17). The general platform architecture now lives in CLAUDE.md + MILESTONES.md; this file is the v2.0 milestone integration design.
 
 ---
 
-## Standard Architecture
+## TL;DR for the roadmapper
 
-### Principio rector arquitectónico
+- **Reuse, don't rebuild.** Every new connector subclasses `BaseConnector` from `@obs/ingest` and rides the existing `pg_cron → SQL dispatcher → pgmq → pg_net → Edge Function worker` orchestration. The SSRF allowlist already whitelists `leylobby.gob.cl`, `cplt.cl`, `infoprobidad.cl`, `mercadopublico.cl` — the v1.0 team pre-provisioned the v2.0 hosts. SERVEL is the one host NOT in the allowlist and must be added.
+- **The identity guard is the spine.** Every per-legislator attribution (vote, meeting, declaration, contribution, contract) keys to the `parlamentario` master through the SAME `vinculo_identidad` / `correrPipeline` machinery used by votes in v1.0. The LOCKED rule holds verbatim: **only a `determinista` (RUT or unique-name-in-chamber+period) link populates a public `parlamentario_id`; everything else stays NULL + raw mention + IdentityMarker.**
+- **RUT is the strongest cross key but is INTERNAL-ONLY.** It already lives in `parlamentario.rut` (nullable, RLS deny-by-default, never exposed to anon). New datasets that arrive keyed by RUT (SERVEL, ChileCompra) reconcile against `parlamentario.rut` **server-side in the writer**, then store ONLY the internal `parlamentario_id` on the public row. RUT never lands on a public table and never crosses to an LLM.
+- **Graph = relational + compute-at-query, materialized into a cache table by a scheduled job.** Do NOT introduce a graph DB. Edges are derived rows; the graph view is a Postgres-built artifact refreshed on the same cron lane as ingest.
+- **Build order is forced: VOTE spike (gates its own block) + identity-completeness → INT → MONEY → NET.** NET depends on all four being populated.
 
-Una sola regla domina todo el diseño: **trazabilidad sobre interpretación**. Cada dato servido debe poder rastrearse a (fuente, fecha, enlace original, snapshot crudo). Esto fuerza un flujo de datos *append-only en el crudo* y *reconstruible* en el normalizado. La arquitectura no es "scraper → DB → web"; es una **tubería con procedencia** donde el crudo en R2 es la fuente de verdad inmutable y Postgres es una proyección derivada y re-construible.
+---
 
-Segundo principio: la **identidad es un subsistema crítico aislado**, no una columna. Un match equivocado produce una afirmación falsa y creíble (riesgo existencial #1). Por eso vive en su propio dominio con compuertas, golden set y auditoría.
-
-### System Overview
+## Existing Architecture (v1.0, LOCKED — the substrate)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│                       CAPA 1 — INGESTA (Deno)                          │
-│   "trae crudo respetuosamente, versiona, detecta drift"                │
-├──────────────────────────────────────────────────────────────────────┤
-│   ┌───────────────── Connector Framework (núcleo común) ──────────┐    │
-│   │  rate-limit 2-3s · UA identificado · robots · caché diaria    │    │
-│   │  validación de esquema · snapshot versionado · drift detect   │    │
-│   └───────┬──────────────┬──────────────┬──────────────┬──────────┘    │
-│     ┌─────┴────┐   ┌──────┴─────┐  ┌─────┴──────┐ ┌─────┴──────┐        │
-│     │ Cámara   │   │ Senado     │  │ BCN/       │ │ (futuro:   │        │
-│     │ doGet    │   │ wspublico  │  │ LeyChile   │ │ SERVEL,    │        │
-│     │ .asmx    │   │ XML        │  │ obtxml     │ │ ChileCompra)│       │
-│     └─────┬────┘   └──────┬─────┘  └─────┬──────┘ └────────────┘        │
-│           └───────────────┴──────────────┘                             │
-│                           │ escribe crudo + metadata                   │
-├───────────────────────────┼────────────────────────────────────────────┤
-│                           ▼                                            │
-│   ┌──────────────────────────────────────┐   ┌──────────────────┐     │
-│   │   R2 (crudo inmutable, append-only)  │   │ Postgres:        │     │
-│   │   {fuente}/{recurso}/{fecha}/raw     │   │ ingest_run,      │     │
-│   │   + hash + manifest                  │   │ source_snapshot  │     │
-│   └──────────────────────────────────────┘   └──────────────────┘     │
-├──────────────────────────────────────────────────────────────────────┤
-│                  CAPA 2 — PROCESAMIENTO (Deno / Edge)                   │
-│   "normaliza, reconcilia identidad, extrae con LLM, embeddea"          │
-├──────────────────────────────────────────────────────────────────────┤
-│   ┌───────────┐   ┌──────────────────┐   ┌───────────┐ ┌───────────┐  │
-│   │ Parsers/  │──▶│ SUBSISTEMA       │   │ Extracción│ │ Embeddings│  │
-│   │ Normaliz. │   │ IDENTIDAD        │   │ LLM (idea │ │ (Gemini)  │  │
-│   │ (XML/JSON │   │ (adjudicación)   │   │ matriz,   │ │           │  │
-│   │ →modelo)  │   │ determ→LLM→gate  │   │ cuerpos)  │ │           │  │
-│   └─────┬─────┘   └────────┬─────────┘   └─────┬─────┘ └─────┬─────┘  │
-│         │                  │  ┌──────────────────────────────┐ │       │
-│         │                  │  │  Capa LLM/Embedding Provider │ │       │
-│         │                  └──│  (routing por criticidad)    │─┘       │
-│         │                     └──────────────────────────────┘         │
-│         ▼ upsert normalizado          ▼ vectores                       │
-├──────────────────────────────────────────────────────────────────────┤
-│         CAPA DATOS — Supabase Postgres + pgvector (+ R2 crudo)         │
-│   Parlamentario · Proyecto · Votacion · Voto · Tramitacion · Texto    │
-│   identity_candidate · golden_set · audit_log · embeddings (HNSW)     │
-├──────────────────────────────────────────────────────────────────────┤
-│                   CAPA 3 — SERVICIO                                     │
-│   ┌──────────────────────┐         ┌────────────────────────────┐     │
-│   │ API (Edge Functions /│         │ Frontend Next.js (SSR)     │     │
-│   │ PostgREST + RPC)     │◀────────│ fichas, timeline, buscador │     │
-│   │ búsqueda semántica   │         │ indicador de frescura      │     │
-│   └──────────────────────┘         └────────────────────────────┘     │
-└──────────────────────────────────────────────────────────────────────┘
-        ▲ Orquestación: pg_cron + pg_net + pgmq (cola)  ────────────────┘
+│  FRONTEND  Next.js 16 App Router · Server Components · anon key SO     │
+│  /proyecto/[boletin]   /buscar   /agenda      (read Supabase, RLS)     │
+└───────────────┬──────────────────────────────────────────────────────┘
+                │ reads public tables (RLS public-read); rut NEVER exposed
+┌───────────────▼──────────────────────────────────────────────────────┐
+│  DATA  Supabase Postgres 15 (cloud bctyygbmqcvizyplktuw, sa-east-1)    │
+│   parlamentario(+alias, rut internal)  vinculo_identidad  *_audit      │
+│   proyecto · votacion · voto · tramitacion_evento · citacion* · ficha  │
+│   pgvector HNSW (768-dim) · pg_cron · pg_net · pgmq                    │
+└───────────────▲───────────────────────────▲──────────────────────────┘
+                │ writer (service role)      │ orchestration (SQL)
+┌───────────────┴───────────┐   ┌───────────┴──────────────────────────┐
+│ INGEST  @obs/ingest        │   │ pg_cron → util.process_ingest_jobs() │
+│ BaseConnector (Template)   │   │  → pgmq.read(vis=backoff) → pg_net    │
+│ policy ONCE: rate-limit    │   │  → Edge Fn `ingest-worker` (Deno)     │
+│ 2-3s serial/host · robots  │   │  → ack pgmq.delete / read_ct>5 → DLQ  │
+│ UA · daily cache · R2      │   │  GitHub Actions = same connector,     │
+│ immutable (aws4fetch+INM)  │   │   escape hatch for long backfills     │
+│ drift fingerprint · prov.  │   └──────────────────────────────────────┘
+└────────────────────────────┘
+          │ raw → Cloudflare R2 (content-addressed, immutable)
+          │ normalized/derived → Postgres   (raw NEVER in Postgres)
+┌─────────┴──────────────────────────────────────────────────────────────┐
+│ IDENTITY (critical)  determinista (RUT/unique name) → blocking →         │
+│   MiniMax adjudication (≥0.90) → revisor-cli (human gate) → golden ≥0.95 │
+│   → immutable audit.  correrPipeline() is the single reconciliation entry│
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Component Responsibilities
-
-| Componente | Responsabilidad (qué posee) | Habla con | Implementación |
-|------------|------------------------------|-----------|----------------|
-| **Connector Framework** | Política de fetch respetuoso, snapshot, drift, validación de esquema. NO conoce el modelo de dominio. | Fuentes externas (lectura), R2 (escritura crudo), Postgres `ingest_run`/`source_snapshot` | Módulo Deno común + clase base por conector |
-| **Conector por fuente** | Conoce *un* endpoint: su URL, su forma cruda, su parser de "qué cambió". | Solo a través del framework | Subclase/implementación por fuente |
-| **R2 (crudo)** | Fuente de verdad inmutable. Todo crudo, versionado por fecha + hash. | Escrito por ingesta, leído por procesamiento | Cloudflare R2 (S3 API) |
-| **Parsers/Normalización** | Crudo R2 → entidades de dominio (idempotente, re-ejecutable). | Lee R2, escribe Postgres normalizado | Deno, invocado por cola |
-| **Subsistema Identidad** | Resolver "este nombre/RUT/PARLID = qué Parlamentario". Único que escribe `parlamentario_id` reconciliado. | Lee candidatos, llama LLM Provider, escribe golden set + audit | Pipeline aislado (ver más abajo) |
-| **LLM/Embedding Provider** | Abstracción enchufable; routing por criticidad/sensibilidad. | Llamado por Identidad y Extracción | Interfaz TS + adaptadores |
-| **Extracción LLM** | Idea matriz, cuerpos legales desde textos íntegros. | Lee textos R2, llama LLM Provider, escribe campos estructurados | Deno + prompt-cache |
-| **Embeddings** | Generar y mantener vectores en pgvector. | Lee texto normalizado, llama Embedding Provider, escribe pgvector | Deno + cola pgmq |
-| **API / Servicio** | Exponer fichas, timelines, búsqueda semántica con trazabilidad. NO escribe datos de dominio. | Lee Postgres (RPC/PostgREST), llama Embedding Provider para query-time | Edge Functions + PostgREST |
-| **Frontend Next.js** | Render SSR de fichas, buscador, indicador de frescura. | Solo a la API (nunca a fuentes externas — CORS/WAF) | Next.js React |
-| **Orquestador** | Disparar ingesta/procesamiento en schedule, manejar reintentos. | pg_cron → pg_net → Edge Function; cola pgmq | Nativo Supabase |
-
-**Límite duro a respetar:** el navegador (Next.js cliente) NUNCA llama fuentes gubernamentales. Todas las llamadas externas salen del backend (WAF gubernamental + CORS). Confirmado en PROJECT.md como regla, no preferencia.
+Facts that constrain v2.0 (verified in code):
+- `voto.parlamentario_id` is a **nullable FK to `parlamentario(id)`**, populated only on `metodo='determinista'` / `estado_vinculo='confirmado'`; otherwise NULL + raw `mencion_nombre` (migration `0008`, `reconciliar-senado.ts`). **This is the template for every new attribution table.**
+- `reconciliarVotosSenado(...)` → `correrPipeline(mencion, maestra, provider, writer)` is the reusable reconciliation call. New datasets that key by NAME reuse it as-is; deterministic resolution short-circuits before the LLM (0 calls).
+- RLS is **public-read EXPLICIT** on public tables (`for select to anon using(true)` + `grant select`), **deny-by-default** on `parlamentario`, `vinculo_identidad`, `revision_identidad`, `identidad_audit`. New public tables follow the former; anything carrying RUT or family data follows the latter.
+- The SSRF allowlist (`@obs/ingest/allowlist.ts`) already contains `leylobby.gob.cl`, `cplt.cl`, `infoprobidad.cl`, `mercadopublico.cl`. **SERVEL (`servel.cl` / `aportes.servel.cl` / `repodocgastoelectoral.blob.core.windows.net`) is NOT — add it.**
+- `resolver_identidad` is a transactional RPC (`SECURITY INVOKER`, service-role only) — the established pattern for any new identity write.
 
 ---
 
-## Recommended Project Structure
+## (a) Integration Points — New Connectors reuse `@obs/ingest` + orchestration
 
-```
-/
-├── connectors/                    # CAPA 1
-│   ├── framework/                 # núcleo común reutilizable
-│   │   ├── base-connector.ts      # clase base: orquesta fetch→snapshot→validate→drift
-│   │   ├── rate-limiter.ts        # delay 2-3s, jitter, por-host
-│   │   ├── fetcher.ts             # UA identificado, robots, retry/backoff
-│   │   ├── cache.ts               # caché diaria (clave: fuente+recurso+día)
-│   │   ├── snapshot.ts            # escribe crudo a R2 + manifest + hash
-│   │   ├── schema-validator.ts    # valida forma cruda esperada
-│   │   └── drift-detector.ts      # compara forma/hash vs snapshot previo → alerta
-│   ├── camara/                    # implementa base-connector
-│   │   ├── camara.connector.ts    # doGet.asmx (JSON), citaciones (HTML)
-│   │   └── camara.schema.ts       # forma esperada del crudo
-│   ├── senado/                    # wspublico XML + portal Next.js __NEXT_DATA__
-│   ├── bcn/                       # LeyChile obtxml
-│   └── _shared/                   # tipos crudos comunes
-│
-├── processing/                    # CAPA 2
-│   ├── normalize/                 # R2 crudo → entidades dominio (idempotente)
-│   │   ├── proyecto.normalizer.ts
-│   │   ├── votacion.normalizer.ts
-│   │   └── tramitacion.normalizer.ts
-│   ├── identity/                  # SUBSISTEMA AISLADO (límite propio)
-│   │   ├── pipeline.ts            # orquesta las etapas de adjudicación
-│   │   ├── deterministic.ts       # atajo: RUT / PARLID / match exacto
-│   │   ├── blocking.ts            # genera candidatos (bloqueo por apellido/normalizado)
-│   │   ├── adjudicator.ts         # LLM crítico (MiniMax) sobre candidatos
-│   │   ├── validation-gate.ts     # compuerta: confianza mínima / abstención
-│   │   ├── human-review.ts        # cola de revisión humana
-│   │   ├── golden-set.ts          # pares confirmados (verdad de referencia)
-│   │   └── audit.ts               # log inmutable de cada decisión
-│   ├── extraction/                # idea matriz + cuerpos legales (LLM volumen)
-│   └── embeddings/                # genera vectores → pgvector
-│
-├── providers/                     # CAPA TRANSVERSAL enchufable
-│   ├── llm/
-│   │   ├── llm-provider.interface.ts
-│   │   ├── router.ts              # criticidad/sensibilidad → modelo
-│   │   ├── minimax.adapter.ts     # crítico/sensible (identidad)
-│   │   └── deepseek.adapter.ts    # volumen (extracción), prompt-cache
-│   └── embedding/
-│       ├── embedding-provider.interface.ts
-│       └── gemini.adapter.ts
-│
-├── api/                           # CAPA 3 — servicio
-│   ├── search/                    # búsqueda semántica (embed query → pgvector)
-│   ├── proyecto/                  # ficha + timeline
-│   └── _shared/                   # serializadores con trazabilidad (fuente+fecha+link)
-│
-├── db/
-│   ├── migrations/                # esquema relacional + pgvector + RLS
-│   ├── rpc/                       # funciones Postgres (search, timeline cross-cámara)
-│   └── cron/                      # pg_cron jobs + colas pgmq
-│
-├── frontend/                      # Next.js (proyecto separado, consume API)
-│
-└── shared/
-    ├── domain/                    # tipos de entidades (Parlamentario, Proyecto...)
-    └── provenance/                # tipo Provenance {fuente, fecha, url, snapshotRef}
-```
+**Pattern (unchanged from v1.0): one package per feature, mirroring `@obs/tramitacion` / `@obs/agenda`.**
 
-### Structure Rationale
+| New package | Source(s) | Connector type & parse | Reuses | Confidence |
+|-------------|-----------|------------------------|--------|------------|
+| `@obs/votos` (or module in `@obs/tramitacion`) | `opendata.camara.cl/wscamaradiputados.asmx` (`getVotaciones_Boletin` → vote detail with `Diputado`/`Opcion`) | XML → `fast-xml-parser` | `BaseConnector`, existing `Voto`/`votacion` model, Cámara deterministic cross by `Diputado/Id` | MEDIUM (shape per WS docs; **not validated live → Phase-1 spike**) |
+| `@obs/lobby` | `leylobby.gob.cl` (audiencias/reuniones); CPLT `cplt.cl` if bulk dump exists | JSON/CSV → `fetch`+zod; cheerio fallback | `BaseConnector`, `correrPipeline` (name cross), R2 raw | MEDIUM |
+| `@obs/probidad` | `infoprobidad.cl` (patrimonio + intereses, CC BY 4.0) | HTML/JSON → cheerio/zod | `BaseConnector`, RUT or name cross | MEDIUM |
+| `@obs/dinero` | SERVEL aportes (`aportes.servel.cl`, `repodocgastoelectoral.blob...`) + ChileCompra `api.mercadopublico.cl` | SERVEL: **artisanal** (portal/blob, no clean REST → cheerio + careful pagination, expect fragility); ChileCompra: JSON REST by ticket | `BaseConnector`, RUT cross (server-side), R2 raw | LOW (SERVEL) / MEDIUM (ChileCompra) |
 
-- **`connectors/framework/` separado de cada conector:** el patrón de conector aislado exige que la *política* (rate-limit, caché, snapshot, drift) viva una sola vez. Añadir SERVEL/ChileCompra en M2+ debe ser implementar una subclase, no re-escribir política. El framework no conoce el dominio; los conectores no conocen rate-limiting.
-- **`processing/identity/` como carpeta-subsistema:** físicamente aislado porque es el riesgo existencial #1. Es el único módulo autorizado a escribir `parlamentario_id` reconciliado. Cualquier otro código que necesite resolver identidad llama a su API, no replica lógica.
-- **`providers/` transversal:** ni Identidad ni Extracción conocen *qué* modelo corre. Solo la interfaz + el router. Cambiar de DeepSeek a otro = un adaptador, cero cambios aguas arriba.
-- **`shared/provenance/`:** la trazabilidad es un tipo de primera clase que acompaña cada entidad servida, no un afterthought.
-- **`frontend/` separado:** Next.js SSR consume la API; no comparte runtime con Deno backend.
+**How each rides the existing machinery (no new infra):**
+
+1. **Connector** subclasses `BaseConnector` (Template Method) → policy (rate-limit 2–3s serial-per-host, robots, UA, daily cache, R2 immutable via `aws4fetch` + `If-None-Match`, drift fingerprint, provenance) is applied ONCE by the base. New code only implements source-specific request specs + parse.
+2. **Allowlist:** confirm host suffix in `DEFAULT_ALLOWED_SUFFIXES`. **Action: add `servel.cl` (and the Azure blob host via a dedicated suffix or `extraHosts`) — it is the only missing one.** Defense-in-depth SSRF stays intact.
+3. **Orchestration:** add the new job kind to `util.process_ingest_jobs()` dispatch (versioned SQL migration); `pg_cron` schedules it; `pgmq` carries tasks (one boletín / one legislator / one declaration per message); the `ingest-worker` Edge Function assembles the connector with real collaborators (R2, snapshot/drift via supabase-js). `read_ct > 5 → DLQ` unchanged.
+4. **Long backfills** (full SERVEL history, full ChileCompra by-RUT sweep, vote backfill across all boletines) run the SAME connector under **GitHub Actions** — Edge Function ~400s/CPU limits make these unsuitable for the Edge lane. Established escape hatch.
+5. **Writer:** each package ships an idempotent `*Writer` (in-memory for tests + `Supabase*Writer` with `upsert onConflict` on the natural key), mirroring `SupabaseTramitacionWriter` / `SupabaseAgendaWriter`. **The writer is also where RUT→`parlamentario_id` reconciliation happens server-side (see §e).**
+
+**New vs modified — explicit:**
+
+| Component | New / Modified |
+|-----------|----------------|
+| `@obs/votos`, `@obs/lobby`, `@obs/probidad`, `@obs/dinero` packages | **New** |
+| `@obs/ingest` allowlist (add SERVEL host) | **Modified** (one-line suffix add + test) |
+| `@obs/ingest` BaseConnector / policy / R2 / drift / fetcher | **Unchanged** (reused) |
+| `util.process_ingest_jobs()` dispatcher | **Modified** (new job kinds; new pgmq queues optional or shared) |
+| `@obs/adjudication` `correrPipeline` + `@obs/identity` | **Unchanged** (reused for every name cross) |
+| `@obs/tramitacion` `Voto`/`votacion` model | **Reused** by VOTE (votes are the same shape; do NOT fork the model) |
+| Migrations `0018+` (new data tables, graph cache, RPC) | **New** |
+| Frontend `/parlamentario/[id]` + sections | **New** routes; reuse design system (`ProvenanceBadge`, `IdentityMarker`) verbatim |
+
+> **Decision — VOTE is enrichment, not a new model.** The public vote tables already exist (`0008`). opendata.camara.cl supplies the per-diputado detail that `doGet.asmx` returned as `Votos=null`. Today only 996 Cámara votes are linked via DIPID; opendata extends that coverage. Recommend a **thin `@obs/votos` package OR a module inside `@obs/tramitacion`** writing into the SAME `voto` table — never a duplicate `voto` model.
 
 ---
 
-## Architectural Patterns
+## (b) New Data Model — keys to identity master + boletín
 
-### Pattern 1: Conector aislado sobre framework común (Template Method)
+**Three cross keys (PROJECT.md):** **boletín** (projects/votes), **normalized name** (the most-used bridge), **RUT** (strongest, INTERNAL-ONLY). Every new table keys to `parlamentario(id)` via a **nullable FK populated only on a confirmed/deterministic link**, and (where applicable) to `proyecto(boletin)`. Every row carries provenance inline (`origen`, `fecha_captura`, `enlace`).
 
-**What:** Una clase base define el flujo invariante (fetch respetuoso → snapshot → validar → detectar drift → emitir crudo); cada conector implementa solo los *hooks* específicos de su fuente.
-**When to use:** Toda fuente externa. Es el patrón medular de la Capa 1.
-**Trade-offs:** (+) política única, fuentes nuevas baratas, drift uniforme. (−) requiere disciplina para no filtrar conocimiento de dominio al framework.
+### VOTE — enriches existing `voto`/`votacion` (extends `0008`, no new attribution table)
+- opendata vote detail maps onto existing `votacion` (by id/boletín) and `voto` (by `(votacion_id, fuente_voter_id)`). Cámara crosses **deterministically by `Diputado/Id` → `parlamentario.id_diputado_camara`** (no LLM, official id) — exactly the v1.0 path.
+- Optional `voto_tema` (vote × topic): topic from `proyecto.materia` only; **inferred topic tagging deferred / correlational-only** (anti-causality).
 
-```typescript
-abstract class BaseConnector<Raw> {
-  // Hooks que cada fuente implementa:
-  protected abstract sourceId: string;
-  protected abstract endpoints(): RequestSpec[];
-  protected abstract validateShape(body: unknown): Raw;     // schema guard
-  protected abstract fingerprint(raw: Raw): string;          // para drift
-
-  // Flujo invariante (no se sobreescribe):
-  async run(ctx: IngestRun): Promise<SnapshotRef[]> {
-    const refs: SnapshotRef[] = [];
-    for (const spec of this.endpoints()) {
-      if (await this.cache.hasToday(this.sourceId, spec.key)) continue; // caché diaria
-      await this.rateLimiter.wait(spec.host);                 // 2-3s + jitter
-      const body = await this.fetcher.get(spec, { ua: IDENTIFIED_UA });
-      const raw = this.validateShape(body);                   // falla ruidosa si cambió
-      const drift = await this.drift.check(this.sourceId, spec.key, this.fingerprint(raw));
-      if (drift.changed) await this.drift.alert(drift);       // no detiene, avisa
-      refs.push(await this.snapshot.write(this.sourceId, spec.key, body)); // R2 + hash
-    }
-    return refs; // procesamiento consume estos refs, no la red
-  }
-}
+### INT — lobby + asset/interest declarations
 ```
+reunion_lobby
+  id pk · parlamentario_id (FK parlamentario, NULLABLE) · mencion_nombre (raw) · estado_vinculo
+  fecha · materia · asistentes_text (raw) · institucion · cargo_solicitante
+  boletin (FK proyecto, NULLABLE — only if the meeting explicitly cites one)
+  origen · fecha_captura · enlace
 
-### Pattern 2: Raw-immutable / normalized-derived (procedencia reconstruible)
-
-**What:** R2 guarda el crudo append-only e inmutable. Postgres es una *proyección* derivada, siempre reconstruible re-ejecutando la normalización sobre el crudo. Normalizadores idempotentes (upsert por clave natural).
-**When to use:** Siempre. Es lo que hace defendible la trazabilidad y permite re-procesar sin re-scrapear (cuando mejora el parser/prompt).
-**Trade-offs:** (+) re-proceso barato y sin tocar fuentes (respeta WAF), auditoría perfecta, parsers evolucionan sin pérdida. (−) duplicación de almacenamiento (mitigada: R2 barato, Postgres solo normalizado por límite de 8 GB).
-
+declaracion_patrimonio / declaracion_interes   (CC BY 4.0 — attribution visible)
+  id pk · parlamentario_id (FK, NULLABLE) · estado_vinculo
+  periodo · tipo · descripcion_text (as published) · monto? · entidad?
+  origen · fecha_captura · enlace
 ```
-Ingesta:    fuente → R2://camara/votaciones/2026-06-17/{boletin}.json (+ hash)
-                   → Postgres source_snapshot(id, source, key, r2_path, hash, fetched_at)
-Procesar:   pgmq.dequeue(snapshot_id) → leer R2 → normalizar → upsert Proyecto/Votacion
-Re-proceso: re-encolar snapshot_ids → mismo flujo, parser nuevo, cero red externa
+- Lobby & declarations are published by legislator name (declarations often by RUT). Reconcile by RUT server-side if present, else `correrPipeline` by name. Public row stores only `parlamentario_id`.
+- `reunion_lobby.boletin` is nullable, set only when the source explicitly cites a boletín — never inferred.
+
+### MONEY — campaign finance + state contracts
 ```
+aporte_campania            -- SERVEL, keyed by candidate (RUT internal)
+  id pk · parlamentario_id (FK, NULLABLE) · estado_vinculo
+  eleccion · periodo · tipo_aporte (publico/sin_publicidad/personal)
+  aportante_text? (only if SERVEL publishes it) · monto · fecha
+  origen · fecha_captura · enlace
 
-### Pattern 3: Pipeline de adjudicación con compuerta (Identidad)
-
-**What:** Cascada de etapas donde cada una resuelve lo que puede y *escala* lo dudoso. El orden barato→caro→humano minimiza costo y maximiza seguridad. La compuerta de validación puede **abstenerse** (no adivinar).
-**When to use:** Reconciliación de identidad. Aislado tras una API interna.
-**Trade-offs:** (+) seguro por diseño (abstención > falso positivo), costo controlado, auditable. (−) más componentes; requiere golden set y cola humana desde el día uno.
-
-```typescript
-// Aislado: nadie fuera de identity/ replica esta lógica.
-async function reconcile(mention: Mention): Promise<Resolution> {
-  // 1. Determinista (gratis, alta confianza): RUT exacto / PARLID / nombre canónico
-  const exact = await deterministic.match(mention);
-  if (exact) return confirmed(exact, "deterministic");
-
-  // 2. Blocking → candidatos (reduce espacio de búsqueda)
-  const candidates = await blocking.candidates(mention);     // p.ej. mismo apellido
-  if (candidates.length === 0) return human.enqueue(mention, "no-candidate");
-
-  // 3. Adjudicación LLM (modelo CRÍTICO/sensible vía router → MiniMax)
-  const verdict = await adjudicator.decide(mention, candidates); // {id, confidence, why}
-
-  // 4. Compuerta de validación: umbral + abstención
-  if (verdict.confidence >= GATE_HIGH) {
-    await goldenSet.add(mention, verdict);                     // alimenta verdad
-    await audit.log(mention, verdict, "auto-confirmed");
-    return confirmed(verdict.id, "llm");
-  }
-  // 5. Zona gris → revisión humana (nunca adivina)
-  await audit.log(mention, verdict, "escalated");
-  return human.enqueue(mention, "low-confidence");
-  // 6. Confirmación humana → golden_set → re-alimenta deterministic/blocking
-}
+contrato_estado            -- ChileCompra, keyed by RUT of supplier/related entity
+  id pk · parlamentario_id (FK, NULLABLE) · estado_vinculo
+  proveedor_text           -- entity name AS PUBLISHED (no raw third-party RUT on public row)
+  organismo · monto · fecha · objeto_text · id_licitacion
+  origen · fecha_captura · enlace
 ```
+- **Highest-risk "máquina de sospechas" surface.** A money↔person link is a *derived cross* (Ley 21.719: derived data is protected). Show as fact-with-source, never as implication. Legislator FK must be `confirmado` via RUT-exact — no probabilistic linking of money to a person.
 
-### Pattern 4: Provider enchufable con routing por criticidad
+### Keying summary
 
-**What:** Interfaz estable (`complete`, `embed`); un router elige el modelo concreto según *criticidad* (¿una afirmación falsa hace daño?) y *sensibilidad* (¿el dato es personal/protegido por Ley 21.719?).
-**When to use:** Todo cómputo LLM/embedding.
-**Trade-offs:** (+) swappable por config, modelo final elegido por benchmark sobre golden set, cumplimiento legal centralizado (tier sin-entrenamiento/DPA). (−) abstracción que debe no filtrar features específicas de un modelo.
-
-```typescript
-interface LLMProvider {
-  complete(req: LLMRequest): Promise<LLMResponse>;
-  readonly traits: { tier: "no-train" | "standard"; promptCache: boolean };
-}
-
-function routeLLM(task: { critical: boolean; sensitive: boolean }): LLMProvider {
-  if (task.critical || task.sensitive) return minimax;   // identidad, datos personales
-  return deepseek;                                         // volumen, prompt-cache
-}
-// Embeddings: provider único hoy (Gemini), misma interfaz para futuro swap.
-```
-
-### Pattern 5: Cross-cámara timeline por clave boletín (en la capa de servicio)
-
-**What:** El boletín es la clave que une Cámara y Senado. El timeline de un proyecto se construye con un RPC Postgres que mezcla tramitación de ambas cámaras ordenada por fecha, cada evento con su `Provenance`.
-**When to use:** Ficha de proyecto. La unión vive en SQL/RPC, no en el frontend.
-**Trade-offs:** (+) una sola fuente de verdad para el timeline, frescura por fuente calculable. (−) requiere normalizar fechas/etapas heterogéneas de dos sistemas distintos.
+| Dataset | Primary cross key | Secondary | `parlamentario_id` populated when | `boletin` FK |
+|---------|-------------------|-----------|-----------------------------------|--------------|
+| VOTE (Cámara) | `Diputado/Id` (deterministic) | — | always (official id) | via `votacion` |
+| VOTE (Senado) | normalized name → `correrPipeline` | — | only `determinista` | via `votacion` |
+| Lobby | RUT (if present) else name | name | RUT-exact OR `determinista` name | nullable, only if cited |
+| Patrimonio/Intereses | RUT (declarations carry it) | name | RUT-exact OR `determinista` | n/a |
+| Finance (SERVEL) | RUT (candidate) | name | RUT-exact | n/a |
+| Contracts (ChileCompra) | RUT (supplier/entity) | name | RUT-exact ONLY (no name guess) | n/a |
 
 ---
 
-## Modelo de datos relacional (M1) y camino al grafo
+## (c) Identity Guard per Dataset
 
-### Núcleo relacional
+The guard is **one rule, applied at the writer + enforced by the schema**: *a public attribution row links to a legislator ONLY when the link is deterministic/confirmed; otherwise `parlamentario_id` is NULL and the raw mention is shown with an `IdentityMarker`.*
 
-```
-Parlamentario (TABLA MAESTRA — respaldada FUERA de Supabase, sí o sí)
-  id (PK interna estable) · rut (interno, no expuesto) · parlid_camara · parlid_senado
-  nombre_canonico · nombres_variantes[] · camara_origen · vigente · provenance
-        ▲                    ▲                         ▲
-        │ RUT (más fuerte)   │ nombre normalizado      │ boletín NO aplica aquí
-        │ (interno)          │ (puente más usado)      │
-        │                    │                         │
-Voto (PUENTE) ──────────────┘                          │
-  votacion_id (FK) · parlamentario_id (FK, RECONCILIADO) · valor · provenance
-        │
-        ▼
-Votacion                              Proyecto (CLAVE: boletin)
-  id · boletin (FK) · fecha           boletin (PK natural) · titulo
-  camara · resultado · provenance     idea_matriz · cuerpos_legales[]
-        │                             estado · camara_origen · provenance
-        └──────── boletin ────────────────────┘
-                                              │
-                              Tramitacion (eventos por boletin, ambas cámaras)
-                              TextoIntegro (link/contenido, ref R2) → Embedding (pgvector)
-```
+| Dataset | How it crosses | Guard application |
+|---------|----------------|-------------------|
+| **VOTE — Cámara** | `Diputado/Id` → `id_diputado_camara` | Deterministic by official id → always linkable. **No LLM.** (verified: v1.0 does this) |
+| **VOTE — Senado** | name → `correrPipeline` | Only `determinista` populates id; `probable`/`revision`/`no_confirmado` → NULL + raw mention. (verified: `reconciliar-senado.ts`) |
+| **Lobby** | RUT if published, else name | RUT-exact = deterministic. Name-only → `correrPipeline`; only `determinista` links. Homonym → NULL + IdentityMarker. |
+| **Patrimonio/Intereses** | declaration RUT | RUT-exact deterministic against `parlamentario.rut` (internal). Strongest case — high link rate. |
+| **Finance (SERVEL)** | candidate RUT | RUT-exact only. SERVEL candidate ≠ always current legislator → unmatched RUT stays unlinked (don't fabricate). |
+| **Contracts (ChileCompra)** | supplier/entity RUT | **RUT-exact ONLY; never name-guess.** Money↔person is the riskiest link; a wrong match here is existential risk #1 made worse. No exact RUT match → no attribution. |
 
-**Las tres llaves de cruce — dónde vive cada una:**
+**Reused machinery:** `correrPipeline` (blocking → MiniMax ≥0.90 → human revisor-cli → golden gate) and the `vinculo_identidad` / `revision_identidad` / `identidad_audit` tables are **unchanged**. New name-cross datasets enqueue into the SAME human queue and write through `resolver_identidad`. The golden set CI gate (≥0.95) **grows new cases per dataset** (a lobby homonym is a new golden case).
 
-| Llave | Fuerza | Conecta | Uso |
-|-------|--------|---------|-----|
-| **boletín** | Alta (determinista) | Proyecto ↔ Votacion ↔ Tramitacion ↔ Texto; une Cámara y Senado | Público, clave natural de proyecto |
-| **nombre normalizado** | Media (ambiguo) | Mención en fuente ↔ Parlamentario | Puente más usado; entra al pipeline de identidad |
-| **RUT** | Máxima | Parlamentario ↔ (futuro: SERVEL, ChileCompra) | **Interno, nunca expuesto** (minimización Ley 21.719) |
-
-Decisión clave: `Voto.parlamentario_id` **solo** lo escribe el subsistema de identidad. Las fuentes traen un *nombre/PARLID*, no un `parlamentario_id`. Esa frontera es lo que contiene el riesgo #1.
-
-### Camino al grafo — sin sobre-construir en M1
-
-| Etapa | Cuándo | Cómo | Por qué no antes |
-|-------|--------|------|------------------|
-| **Recursive CTEs sobre el relacional** | **M1** | `WITH RECURSIVE` en RPC Postgres para timelines y co-ocurrencias simples | Cero infra nueva; suficiente para fichas y "proyectos similares" (que de hecho es pgvector, no grafo) |
-| **Apache AGE (property graph + Cypher)** | M5/M6, *condicionado* | **VERIFICADO: AGE NO está disponible en Supabase managed.** Requiere o (a) segunda DB con `postgres_fdw`, o (b) migrar a Postgres self-hosted/EDB/Azure | No malgastar M1 en infra de grafo que el modelo aún no puede poblar; el grafo de influencia (P6) se habilita cuando hay datos |
-| **SPARQL / RDF** | Horizonte lejano | Export a triple-store si se busca interoperabilidad de datos abiertos | Especulativo; solo si aparece demanda de federación |
-
-**Implicación de orden de build:** M1 NO introduce AGE. El modelo relacional se diseña *grafo-amigable* (entidades y puentes explícitos, sin desnormalizar) para que la migración futura a AGE sea un mapeo node/edge directo, pero la decisión de plataforma de grafo se difiere. Esto es una restricción real, no preferencia: AGE en Supabase exige cambiar de plataforma o correr dos DBs.
+**UI guard:** the frontend's existing `IdentityMarker` + "link only if `estado_vinculo='confirmado'`" (TRAM-06) applies verbatim to every new section of `/parlamentario/[id]`.
 
 ---
 
-## Subsistema de Identidad — aislamiento arquitectónico
+## (d) Graph (NET) — Storage & Computation Decision
 
-El requisito explícito es "aislarlo arquitectónicamente". Concretamente:
+**Decision: relational edges + compute-at-query (recursive CTE), materialized into a refresh-on-cron cache table. NO graph database.**
 
-1. **Frontera de API interna:** el resto del sistema llama `identity.reconcile(mention)` / `identity.resolve(parlamentario_id)`. Nadie más hace JOINs por nombre ni adivina RUT.
-2. **Propiedad exclusiva de escritura:** es el único componente que escribe `parlamentario_id` reconciliado en tablas puente (`Voto`, futuras menciones de lobby/patrimonio).
-3. **Estado propio:** `identity_candidate`, `golden_set`, `audit_log`, cola de revisión humana son tablas del subsistema, no del dominio público.
-4. **Modelo propio en el router LLM:** sus llamadas se marcan `critical: true, sensitive: true` → siempre al modelo de alta calidad (MiniMax), tier sin-entrenamiento (RUT = dato personal).
-5. **Auditoría inmutable:** cada decisión (auto-confirmada, escalada, humana) queda logueada con candidatos, confianza y razón. Reconstruible.
-6. **Realimentación cerrada:** confirmaciones humanas → golden_set → mejoran etapas determinista/blocking. El sistema aprende sin perder la compuerta.
+Reasoning:
+1. **Sparse + small data.** 186 legislators; edges = co-votes, shared meetings, finance overlaps, contract proximities — thousands of edges, not millions. A graph DB (Neo4j) adds a stateful service that contradicts "todo en Supabase" — same reason BullMQ was rejected in v1.0.
+2. **Edges are DERIVED, not source facts.** A "relationship" is a cross computed from votes/meetings/money. Storing it as a first-class graph would blur the source-fact / derived-data boundary the whole product rests on. Keep raw facts in their tables; derive edges.
+3. **Postgres does this natively.** Recursive CTEs handle path/neighborhood queries; a SQL/`pl/pgsql` job materializes the edge table on a schedule.
 
-**Por qué importa para el roadmap:** el pipeline de identidad debe existir *antes* de poblar `Voto`, porque sin él los votos no se pueden atribuir con seguridad. Pero la versión M1 puede ser mínima: determinista (PARLID/RUT de `senadores_vigentes.php`) + cola humana, con LLM-adjudicación como capa que se enchufa cuando entran fuentes con nombres ambiguos.
+**Shape:**
+```
+influencia_edge   (DERIVED — refreshed by scheduled job, not ingested)
+  origen_id   text references parlamentario(id)   -- both endpoints CONFIRMED only
+  destino_id  text references parlamentario(id)
+  tipo        text  -- 'co_voto' | 'lobby_compartido' | 'aporte_comun' | 'contrato_proximo'
+  peso        numeric        -- count/strength, descriptive only
+  evidencia   jsonb          -- pointers to source rows (votacion_id, reunion_id...) WITH enlaces
+  ventana     daterange      -- temporal context (rule: correlation + time, never cause)
+  fecha_calculo timestamptz
+  primary key (origen_id, destino_id, tipo)
+```
+
+**Where computation lives:**
+- **Build/refresh:** a **scheduled SQL/`pl/pgsql` procedure via `pg_cron`** aggregating the four source tables into `influencia_edge`, AFTER nightly ingest. Expensive full recompute → **GitHub Actions escape hatch** (same as big backfills).
+- **Query:** frontend reads `influencia_edge` directly (RLS public-read); ego-network / k-hop expansion uses a **recursive-CTE RPC** (`SECURITY INVOKER`, granted to anon) — same RPC pattern as `match_proyectos` / `resolver_identidad`.
+- **Render:** client graph lib (`react-flow` or `sigma.js`) chosen at NET time, fed by the RPC. Out of scope now.
+
+**Hard constraints on NET (rule rectora):**
+- Both endpoints of any edge MUST be `confirmado` legislators — a fabricated edge between misidentified people is the worst-case "máquina de sospechas".
+- Every edge carries `evidencia` (source links) + `ventana` (time). UI shows "co-voted N times in period X, source Y", **never** "allied with / influenced by".
+- Edges are descriptive aggregates; **no causal/intent language, no person-ranking score.**
+
+**Rejected alternative — property graph (Neo4j / Apache AGE):** Neo4j = extra stateful infra, contradicts all-Supabase. **Apache AGE (Postgres graph extension) is not available on Supabase managed Postgres** → off the table. Recursive CTE covers the query needs at this scale.
 
 ---
 
-## Data Flow
+## (e) Where "minimization + traceability" and RUT-internal-only are enforced (architecturally)
 
-### Flujo de ingesta (escritura)
+Enforcement is **layered, defense-in-depth** — never a single check.
 
-```
-pg_cron (schedule diario)
-   → pg_net.http_post → Edge Function "ingest:{fuente}"
-      → Connector.run(): rate-limit → fetch (UA id) → validateShape → drift-check
-         → R2.write(crudo + hash)         [fuente de verdad inmutable]
-         → Postgres.insert(source_snapshot)
-         → pgmq.enqueue("normalize", snapshot_id)
-```
-
-### Flujo de procesamiento (derivación)
-
-```
-pg_cron → Edge Function "process" → pgmq.dequeue("normalize")
-   → R2.read(crudo) → normalizer (idempotente) → upsert Proyecto/Votacion/Tramitacion
-   → para menciones de parlamentario: identity.reconcile() → escribe Voto.parlamentario_id
-   → pgmq.enqueue("extract"|"embed", entity_id)
-"extract":  R2.read(texto) → LLM Provider (DeepSeek, prompt-cache) → idea_matriz/cuerpos
-"embed":    texto normalizado → Embedding Provider (Gemini) → pgvector (HNSW upsert)
-```
-
-> Nota de plataforma (VERIFICADO): background tasks de Edge Functions topan en ~400s (plan Pro). Los lotes pesados (embeddings masivos, extracción) **deben** ser dirigidos por cola (pgmq) y chunked — no un único run largo. El patrón pg_cron + pg_net + pgmq es exactamente el que Supabase documenta para "automatic embeddings".
-
-### Flujo de consulta (lectura, búsqueda semántica)
-
-```
-Usuario (Next.js SSR) → API /search?q="..."
-   → Embedding Provider (Gemini) embeddea la query
-   → Postgres RPC: pgvector <-> (HNSW) top-K + filtros
-   → serializa fichas con Provenance {fuente, fecha, url, snapshot}
-   → indicador de frescura por fuente (max(fetched_at) por source)
-Usuario ← ficha estructurada, cada dato con enlace a la fuente original
-```
-
-### Flujo de re-procesamiento (sin tocar la red)
-
-```
-Mejora parser o prompt → re-encolar source_snapshot_ids existentes
-   → mismo flujo de procesamiento sobre crudo R2 → re-derivación
-   → cero llamadas a fuentes gubernamentales (respeta WAF + minimiza scraping)
-```
+1. **Schema / RLS (the floor).** `parlamentario.rut` is on a **deny-by-default RLS** table (no anon policy, no `grant select`) — verified `0005`. RUT is physically unreachable by the anon/frontend role. New public tables get **public-read EXPLICIT** RLS but **never carry a legislator RUT column** — only the internal `parlamentario_id`. Third-party RUTs (contract suppliers, donors) are **not stored raw on public rows** — store the entity name as published.
+2. **Writer boundary (RUT used, then dropped).** RUT→`parlamentario_id` reconciliation happens **inside the `Supabase*Writer`, server-side, service role**: read `parlamentario.rut` (internal), match, write only `parlamentario_id` to the public row. RUT is an input to reconciliation, never an output to a public table.
+3. **LLM data-routing gate (already built — reuse).** `@obs/llm`'s `assertNoRutInLlmInput` rejects a RUT before any LLM call (verified in MILESTONES). Name-cross datasets inherit this (the mention carries no RUT by construction, T-04-02/T-05-08). RUT-keyed datasets resolve deterministically → never touch the LLM.
+4. **Identity audit (immutability).** Every link decision writes an append-only `identidad_audit` row (trigger + REVOKE — verified `0006`/`0007`). New datasets reuse it → full provenance of every attribution.
+5. **Per-row provenance (traceability).** Every public row carries `origen` + `fecha_captura` + `enlace` (FND-08); `ProvenanceBadge` renders it, never hidden (TRAM-09). This is the core-value enforcement.
+6. **Anti-causality (product rule).** No table stores "intent / alliance / influence-of". `influencia_edge.tipo` is mechanical, `evidencia` points to sources, `ventana` gives time. Sober Spanish UI copy, no causal language — carries over from v1.0.
+7. **Legal gate (process).** Ley 21.719 full force 2026-12-01 → legal review BEFORE broad public exposure of the new fronts (especially MONEY/INT). CC BY 4.0 attribution visible for InfoProbidad.
 
 ---
 
-## Scaling Considerations
-
-El "escalado" aquí no es usuarios concurrentes (público general, lectura, cacheable vía SSR/CDN) sino **volumen de datos y costo de cómputo LLM**.
-
-| Eje | Arranque (M1) | Crecimiento (M2-M4) | Maduro (M5-M6) |
-|-----|---------------|---------------------|-----------------|
-| Crudo | R2, pocos GB | R2 escala linealmente, barato | Política de retención por snapshot |
-| Postgres | Pro 8 GB, solo normalizado + vectores | Vigilar tamaño de tabla embeddings (HNSW usa memoria) | Particionar histórico; revisar plan |
-| pgvector | HNSW desde el inicio (default seguro <1M filas) | HNSW aguanta bien hasta ~1M | Considerar IVFFlat solo si dataset enorme y estático |
-| Cómputo LLM | Free tiers (MiniMax 45k/sem, DeepSeek volumen, Gemini embed) | Prompt-cache + re-proceso desde R2 evita recómputo | Modelo final por benchmark; costo por tier |
-| Lectura usuarios | SSR + CDN absorbe el grueso | Cachear fichas; búsqueda es lo caro (embed query-time) | Cache de queries frecuentes |
-
-### Scaling Priorities
-
-1. **Primer cuello: cómputo LLM, no tráfico.** Mitigación primaria = crudo inmutable en R2 permite re-procesar sin re-llamar fuentes ni (con prompt-cache) recomputar extracción. Diseñar para idempotencia desde M1.
-2. **Segundo cuello: tamaño de Postgres (8 GB).** Por eso el crudo va a R2 y Postgres solo guarda normalizado + vectores. Vigilar el índice HNSW (memoria).
-3. **Tercer cuello: ventana de 400s de Edge Functions.** Resuelto por arquitectura de cola (pgmq) desde el inicio, no como parche.
-
----
-
-## Anti-Patterns
-
-### Anti-Pattern 1: Escribir `parlamentario_id` directo desde el normalizador
-
-**What people do:** El parser de votaciones hace un match por nombre y escribe el FK al vuelo.
-**Why it's wrong:** Es exactamente el riesgo existencial #1. Un match silencioso equivocado = afirmación falsa creíble, sin auditoría.
-**Do this instead:** El normalizador escribe la *mención* (nombre/PARLID crudo); solo `identity.reconcile()` escribe el FK, con compuerta y abstención.
-
-### Anti-Pattern 2: Postgres como fuente de verdad del crudo
-
-**What people do:** Guardar el JSON/XML/HTML original en columnas de Postgres "por comodidad".
-**Why it's wrong:** Revienta el límite de 8 GB, mezcla crudo inmutable con datos derivados, y dificulta el re-proceso.
-**Do this instead:** Crudo siempre a R2 (append-only, hash). Postgres guarda solo la referencia (`r2_path`, `hash`) + lo normalizado.
-
-### Anti-Pattern 3: Llamar fuentes externas desde el navegador o sin política central
-
-**What people do:** Fetch desde el cliente Next.js, o cada conector con su propio delay copy-pasteado.
-**Why it's wrong:** El WAF gubernamental bloquea ráfagas; CORS lo impide; y el rate-limit divergente entre conectores produce baneos.
-**Do this instead:** Todo fetch externo desde backend, vía el Connector Framework con rate-limit/UA/robots únicos.
-
-### Anti-Pattern 4: Construir el grafo (AGE/SPARQL) en M1
-
-**What people do:** Montar Apache AGE "para estar listos" para el observatorio de redes.
-**Why it's wrong:** AGE no existe en Supabase managed (verificado) → forzaría cambiar de plataforma o correr dos DBs, gastando M1 en infra que el modelo aún no puede poblar.
-**Do this instead:** Recursive CTEs en M1; modelo relacional grafo-amigable; diferir la decisión de plataforma de grafo a cuando los datos existan (P6).
-
-### Anti-Pattern 5: Acoplar el código de dominio a un modelo LLM concreto
-
-**What people do:** Llamar a la SDK de DeepSeek directamente en el extractor.
-**Why it's wrong:** El modelo final se elige por benchmark sobre golden set; el cumplimiento legal (tier sin-entrenamiento/DPA) debe ser central y por-tarea.
-**Do this instead:** Interfaz `LLMProvider` + router por criticidad/sensibilidad. El extractor no sabe qué modelo corre.
-
----
-
-## Integration Points
-
-### External Services
-
-| Servicio | Patrón de integración | Gotchas (de PROJECT.md) |
-|----------|------------------------|--------------------------|
-| Cámara `doGet.asmx` | WS JSON, conector dedicado | `Votos`=null → voto individual NO está aquí (vive en `opendata.camara.cl`, sin validar, bloquea P3) |
-| Senado `wspublico` | XML, conector dedicado | `citaciones.php` da 404; citaciones vía portal Next.js `__NEXT_DATA__` |
-| Senado portal (citaciones) | Parsear `__NEXT_DATA__` | `buildId` cambia por deploy → autodetectar (caso de drift gestionado) |
-| BCN/LeyChile `obtxml` | XML de norma | `obtenerinfoley` obsoleto (404) — no usar |
-| Cloudflare R2 | S3 API desde backend | Crudo append-only; clave por fuente/recurso/fecha/hash |
-| LLM (MiniMax/DeepSeek) | Vía `LLMProvider` | Tier sin-entrenamiento / DPA — son subencargados (Ley 21.719) |
-| Gemini (embeddings) | Vía `EmbeddingProvider` | Free tier; mismo vector model en ingest y query-time |
-
-### Internal Boundaries
-
-| Frontera | Comunicación | Consideraciones |
-|----------|--------------|------------------|
-| Conector ↔ Framework | Herencia/hooks | Framework no conoce dominio; conector no conoce política |
-| Ingesta ↔ Procesamiento | R2 (crudo) + cola pgmq | Desacoplados; procesamiento nunca toca la red externa |
-| Normalización ↔ Identidad | API interna `reconcile()` | Identidad es el único escritor de `parlamentario_id` |
-| Dominio ↔ Providers | Interfaces TS + router | Sin acoplar a SDK de un modelo |
-| API ↔ Frontend | HTTP (PostgREST/RPC) | Frontend nunca llama fuentes externas |
-| Orquestación ↔ todo | pg_cron + pg_net + pgmq | Reintentos en la cola; observabilidad en `cron.job_run_details` |
-
----
-
-## Orden de build sugerido para M1 (dependencias)
-
-El orden lo dictan las dependencias duras, no la conveniencia. M1 = Fundaciones + P2 Tramitación + P1 Búsqueda semántica.
+## Suggested Build Order (respects hard dependencies)
 
 ```
-0. FUNDACIONES (bloquean todo)
-   0a. Connector Framework (rate-limit, caché, snapshot R2, schema, drift)
-   0b. Esquema de datos + R2 + tablas source_snapshot/ingest_run
-   0c. Interfaces LLMProvider/EmbeddingProvider + router (stubs OK)
-        │
-        ▼
-1. TABLA MAESTRA PARLAMENTARIO + IDENTIDAD (mínima)
-   Conector senadores_vigentes.php (+ Cámara) → siembra maestra
-   Pipeline identidad: determinista (PARLID/RUT) + cola humana
-   (LLM-adjudicación se enchufa después; no bloquea siembra)
-        │
-        ▼
-2. P2 TRAMITACIÓN  (ahora hay maestra para atribuir)
-   Conectores Cámara doGet + Senado wspublico → crudo R2
-   Normalizadores Proyecto(boletín) + Votacion + Tramitacion
-   Voto vía identity.reconcile()
-   Timeline cross-cámara (RPC, recursive CTE)
-   Frontend: ficha de proyecto + timeline + indicador de frescura
-        │
-        ▼
-3. P1 BÚSQUEDA SEMÁNTICA  (necesita proyectos ya cargados)
-   Descarga textos íntegros (Senado links + BCN obtxml) → R2
-   Extracción idea matriz/cuerpos (LLM volumen, prompt-cache)
-   Embeddings (Gemini) → pgvector HNSW
-   Buscador lenguaje natural → fichas con trazabilidad
-   "Proyectos similares" por vecindad semántica
+Phase 1  VOTE SPIKE — validate opendata.camara.cl live          [GATE]
+         ├─ Does getVotaciones_Boletin / vote detail return per-diputado
+         │  Diputado/Id + Opcion?  (EXISTS in WS docs; NOT live-tested)
+         ├─ YES → build VOTE (thin @obs/votos or @obs/tramitacion module):
+         │        enrich voto.parlamentario_id by official DIPID (deterministic, no LLM)
+         └─ NO  → REPLAN the VOTE block (PROJECT.md mandates this). Don't block INT/MONEY.
+
+Phase 2  IDENTITY COMPLETENESS (precondition for ALL attribution)
+         ├─ Backfill parlamentario.rut where missing (catalogs omit it — Pitfall 4)
+         │  from declaration/SERVEL/official sources, server-side, internal-only.
+         ├─ Grow golden set with per-dataset homonym cases.
+         └─ Without this, RUT-cross datasets (Phase 3/4) can't link.
+         (Phases 1 and 2 can run in parallel — VOTE Cámara uses DIPID, not RUT.)
+
+Phase 3  INT — lobby + patrimonio/intereses (@obs/lobby, @obs/probidad)
+         ├─ Declarations carry RUT → high deterministic link rate.
+         ├─ Lobby by name → correrPipeline (reuse).
+         └─ Frontend: first /parlamentario/[id] sections (declarations, meetings).
+
+Phase 4  MONEY — SERVEL finance + ChileCompra contracts (@obs/dinero)
+         ├─ Add servel.cl to allowlist. SERVEL = artisanal/fragile connector.
+         ├─ RUT-exact linking ONLY (no name guessing for money).
+         ├─ Highest legal/sensitivity surface → legal review gate before exposure.
+         └─ Depends on Phase 2 (RUT) being solid.
+
+Phase 5  NET — influence graph (@obs influencia)
+         ├─ DEPENDS on VOTE+INT+MONEY being populated (edges derive from them).
+         ├─ influencia_edge cache table + pg_cron refresh proc + recursive-CTE RPC.
+         ├─ Both endpoints confirmado; evidence+ventana per edge; no causal language.
+         └─ Pick react-flow/sigma.js here (deferred until now).
 ```
 
-**Razonamiento de dependencias:**
-- **0 antes que todo:** sin framework de conectores no hay ingesta respetuosa; sin esquema/R2 no hay dónde escribir; las interfaces de provider deben existir aunque los adaptadores lleguen después.
-- **Identidad (mínima) antes de P2:** `Voto` necesita `parlamentario_id` reconciliado; sin maestra sembrada no hay a qué atribuir. Pero solo la rama determinista bloquea — la LLM-adjudicación se añade cuando entran nombres ambiguos.
-- **P2 antes de P1:** la búsqueda semántica embeddea textos *de proyectos*; sin proyectos cargados no hay corpus.
-- **Embeddings al final:** dependen de textos íntegros, que dependen de identificar los proyectos (P2). HNSW se puede crear sin datos (no requiere training), así que el índice puede existir temprano y poblarse vía cola.
+**Dependency rationale:**
+- **Identity-first is non-negotiable** — risk existencial #1. No per-legislator attribution writes before the master can resolve the dataset's key (RUT backfill / golden cases). VOTE Cámara is the exception (official DIPID, no identity ambiguity), so its spike runs first/in parallel.
+- **VOTE spike gates its own block only** — INT/MONEY don't depend on votes, so a failed opendata validation replans VOTE without stalling the rest.
+- **NET is last** by construction — it computes edges over the other four datasets; nothing to graph until they exist.
+- **MONEY before NET, after identity** — money edges in NET need ChileCompra/SERVEL rows.
 
-**Research flags para fases posteriores:**
-- `opendata.camara.cl` (voto individual por diputado) **sin validar** → bloquea P3 (M2). Requiere spike de investigación antes de planificar.
-- Plataforma de grafo (AGE vs FDW vs migración) → decisión diferida a P6, requiere su propia investigación cuando el modelo esté poblado.
+---
+
+## Anti-Patterns (specific to this milestone)
+
+| Anti-pattern | Why wrong | Instead |
+|--------------|-----------|---------|
+| Forking the `voto`/`votacion` model in a new VOTE package | Two sources of truth for votes; breaks the boletín cross | Enrich the existing `0008` tables |
+| Name-matching money to a legislator | A wrong money↔person link is the worst "máquina de sospechas" + false-but-credible claim | RUT-exact deterministic ONLY for MONEY |
+| Storing legislator RUT (or supplier RUT) on a public table | Ley 21.719 violation; defeats minimization | RUT internal-only on `parlamentario`; public rows carry `parlamentario_id` |
+| Introducing Neo4j / a graph DB for NET | Extra stateful infra, contradicts all-Supabase (same as BullMQ rejection); AGE unavailable on Supabase | Relational edges + recursive CTE + materialized cache |
+| Computing the graph live on every page load | Recursive CTE over four datasets per request = slow | Materialize `influencia_edge` on cron; query the cache |
+| Sending RUT to an LLM for adjudication | Privacy + data-routing gate forbids it | `assertNoRutInLlmInput` (built); RUT crosses are deterministic anyway |
+| Hardcoding the SERVEL portal as a stable REST API | Artisanal portal/blob, no clean API → will break | Treat as fragile: cheerio + drift detection + GitHub Actions backfill, degrade honestly |
+| Inferring `boletin` linkage for lobby meetings | Implies causality the source didn't state | Set `boletin` only when the source explicitly cites it |
+
+---
+
+## Integration Points Summary (for the roadmapper)
+
+**External Services**
+
+| Service | Host | Integration | Status |
+|---------|------|-------------|--------|
+| opendata.camara.cl (votes) | `opendata.camara.cl` (under `camara.cl` ✓ allowlisted) | XML WS → fast-xml-parser; deterministic by DIPID | **SPIKE — unvalidated live** |
+| Ley Lobby | `leylobby.gob.cl` ✓ allowlisted | JSON/HTML → fetch+zod / cheerio | MEDIUM |
+| InfoProbidad | `infoprobidad.cl` ✓ allowlisted (CC BY 4.0) | HTML/JSON; RUT-cross + name-cross | MEDIUM |
+| CPLT | `cplt.cl` ✓ allowlisted | bulk dump if available | LOW |
+| SERVEL finance | `servel.cl` / `aportes.servel.cl` / Azure blob | **artisanal cheerio; ADD to allowlist** | LOW (fragile) |
+| ChileCompra | `api.mercadopublico.cl` ✓ allowlisted | JSON REST by RUT (ticket-keyed) | MEDIUM |
+
+**Internal Boundaries**
+
+| Boundary | Communication | Note |
+|----------|---------------|------|
+| new `@obs/*` connector ↔ `@obs/ingest` | subclass `BaseConnector`; reuse policy | unchanged contract |
+| new writer ↔ `parlamentario` master | service-role read of `rut` for RUT-cross; write only `parlamentario_id` | RUT never leaves server |
+| new name-cross ↔ `@obs/adjudication` | `correrPipeline(mencion, maestra, provider, writer)` | reused verbatim, same human queue |
+| orchestration ↔ new jobs | `pg_cron` → `util.process_ingest_jobs()` → pgmq → Edge Fn | extend dispatcher (SQL migration) |
+| NET ↔ source tables | scheduled SQL proc materializes `influencia_edge` | derived, not ingested |
+| frontend ↔ new public tables | Server Components, anon key, RLS public-read | reuse `ProvenanceBadge`/`IdentityMarker` |
 
 ---
 
 ## Sources
 
-- PROJECT.md + Documento Maestro de Implementación v2.0 (endpoints validados en vivo 17/06/2026) — HIGH (espec de referencia del proyecto)
-- [Supabase Edge Functions — Background Tasks](https://supabase.com/docs/guides/functions/background-tasks) — HIGH (límite ~400s plan pago confirmado)
-- [Supabase Edge Functions — Limits](https://supabase.com/docs/guides/functions/limits) — HIGH (wall clock 400s, CPU 2s)
-- [Supabase — Automatic Embeddings (pg_cron + pgmq)](https://supabase.com/docs/guides/ai/automatic-embeddings) — HIGH (patrón canónico de orquestación por cola)
-- [Supabase — Scheduling Edge Functions (pg_cron + pg_net)](https://supabase.com/docs/guides/functions/schedule-functions) — HIGH
-- [pgvector README (HNSW/IVFFlat)](https://github.com/pgvector/pgvector) — HIGH; [análisis 2025/2026 HNSW por defecto <1M filas](https://medium.com/@philmcc/pgvector-index-selection-ivfflat-vs-hnsw-for-postgresql-vector-search-6eff26aaa90c) — MEDIUM
-- [Supabase Discussion — Apache AGE no soportado en managed](https://github.com/orgs/supabase/discussions/40285) — HIGH (confirma que AGE no está en el set de extensiones de Supabase)
-- [Running Apache AGE: cloud provider landscape](https://gdotv.com/blog/running-apache-age-docker-cloud/) — MEDIUM (FDW dos-DBs / EDB / Azure como vías para AGE)
+- v1.0 codebase (HIGH): `supabase/migrations/0005_parlamentario.sql`, `0006_revision_identidad.sql`, `0008_tramitacion.sql`, `0015_resolver_identidad_rpc.sql`; `packages/ingest/src/allowlist.ts`, `index.ts`; `packages/tramitacion/src/reconciliar-senado.ts` — verified integration contracts, RLS posture, identity guard, allowlist pre-provisioning.
+- `.planning/PROJECT.md`, `.planning/MILESTONES.md`, `CLAUDE.md` — milestone goals, cross keys, sources, constraints (HIGH).
+- [Cámara open data WS](https://opendata.camara.cl/wscamaradiputados.asmx?op=getVotaciones_Boletin) / [votacion_boletin](https://opendata.camara.cl/pages/votacion_boletin.aspx) — vote detail returns `Diputado`/`Opcion`, bulletin-keyed — MEDIUM (docs confirm shape; **live validation pending = Phase-1 spike**).
+- [SERVEL aportes](https://www.servel.cl/aportes/) / [financiamiento de campaña](https://www.servel.cl/campanas-electorales/financiamiento-de-campana/) / [repodocgastoelectoral blob](https://repodocgastoelectoral.blob.core.windows.net/) — publishes contributor register via portal/blob, no clean REST → artisanal connector — LOW (fragility confirmed).
+- Postgres recursive CTE + materialized cache for sparse derived graphs; Apache AGE unavailable on Supabase managed Postgres — HIGH (established Postgres capability + Supabase extension constraint).
 
 ---
-*Architecture research for: Observatorio del Congreso 360 — capa de ingesta/procesamiento/servicio con identidad y LLM como subsistemas*
-*Researched: 2026-06-17*
+*Architecture research for: parlamentarios-360 front (v2.0) on the shipped Observatorio del Congreso 360*
+*Researched: 2026-06-18*
