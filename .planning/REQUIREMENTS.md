@@ -12,7 +12,7 @@
 
 > Toda atribución por parlamentario (voto, reunión, contrato, aporte) hereda el riesgo existencial #1. Estos requisitos generalizan la guarda de v1.0 a las nuevas fuentes.
 
-- [x] **IDENT-10**: El sistema completa (backfill) el `rut` de la maestra de parlamentarios server-side, de uso interno (nunca expuesto a `anon`), para habilitar el cruce por RUT de las fuentes de dinero/probidad.
+- [x] **IDENT-10**: El sistema completa (backfill) el `rut` de la maestra de parlamentarios server-side, de uso interno (nunca expuesto a `anon`), para habilitar el cruce por RUT de las fuentes de dinero/probidad. _(Reframe 2026-06-19, principio de finalidad del dato: la maquinaria de backfill existe; el RUT se cosecha incrementalmente de matches persona-natural CONFIRMADOS — solo CORROBORACIÓN cuando el master ya tiene el RUT, o CANDIDATO a revisión humana cuando el match es solo por nombre; un nombre único NO prueba propiedad del RUT, nunca auto-escribe el master. Población real aún requiere corrida LIVE + adjudicación humana del operador; nunca fabricar RUT.)_
 - [x] **IDENT-11**: El golden set de reconciliación se extiende con casos de homónimos y colisión de RUT (persona natural vs jurídica, DV inválido) propios de SERVEL/ChileCompra; el gate CI ≥0.95 sigue bloqueando.
 - [x] **IDENT-12**: La guarda de enlace-confirmado se generaliza a un invariante tipado a nivel de writer: ningún `*Writer` puede fijar un FK `parlamentario_id` salvo match `determinista`/`confirmado`; en caso contrario, NULL + mención cruda + marca de identidad no verificada.
 

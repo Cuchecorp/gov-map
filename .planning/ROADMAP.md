@@ -208,13 +208,14 @@ Plans:
   3. El enlace contrato→parlamentario se fija ÚNICAMENTE por RUT-exacto contra el RUT interno de la maestra (nunca por nombre); un RUT sin match exacto no produce atribución; "consultado sin contratos" se distingue de "no consultado todavía"
   4. Un contrato a una persona jurídica nunca se colapsa en una atribución personal; el sujeto del contrato es la entidad proveedora, distinta de cualquier enlace al parlamentario
 
-**Plans:** 3 plans
+**Plans:** 4 plans (14-04 = retrofit finalidad del dato)
 
 Plans:
 
 - [ ] 14-01-PLAN.md — Migración 0023_dinero.sql (contrato public-read versionado por (fuente_id, fecha_corte) + contratista deny-by-default + revoke + contratos_ingesta_estado + RPC contratos_de_parlamentario security-definer) + pgTAP 0024_dinero.test.sql; apply remoto + pgTAP verde = checkpoint operador
 - [ ] 14-02-PLAN.md — Conector @obs/dinero (espeja @obs/probidad): flujo ChileCompra 2 pasos (BuscarProveedor→ordenesdecompra) + DV módulo-11 + natural/jurídica + sub-maestra contratista + enlace SOLO RUT-exacto (sin correrPipeline) + writer idempotente + MERCADOPUBLICO_TICKET; corrida LIVE acotada (operador)
 - [x] 14-03-PLAN.md — Sección /parlamentario/[id] "Contratos del Estado asociados al RUT": carril propio (mt-12) gateado por moneyPublicEnabled() (default OFF), 3 estados honestos, persona jurídica nunca posesivo, ProvenanceBadge + fecha de corte por fila, rama ChileCompra en sourceLabel ✅ (ContratosView/ContratosSection + 12 tests RTL verdes; tsc limpio en archivos del plan)
+- [x] 14-04-PLAN.md — RETROFIT (finalidad del dato, 2026-06-19): proveedor persona NATURAL se enlaza al parlamentario vía `correrPipeline` por nombre confirmado (no solo RUT-exacto); persona jurídica sin cambios. Cosecha de RUT en DOS canales separados: CORROBORACIÓN (solo si el master ya tiene el RUT — nunca escribe RUT nuevo) vs REVISIÓN HUMANA (match solo-por-nombre → cola de adjudicación, master jamás mutado). Un nombre único NO prueba propiedad del RUT (code-review CR-01 arreglado). Data-routing: RUT nunca al LLM. 84 tests verdes; escritura remota al master + LIVE = operador
 
 ### Phase 15: MONEY Financiamiento — SERVEL verbatim + sub-maestra de donantes
 
