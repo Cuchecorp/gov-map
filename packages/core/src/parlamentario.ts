@@ -120,7 +120,16 @@ export const ParlamentarioSeedSchema = z.object({
     })
     .nullable(),
   origen: z.string().min(1).max(MAX_CAMPO),
-  fecha_captura: z.string().min(1).max(MAX_CAMPO),
+  // #10: además de no-vacía, debe ser una fecha PARSEABLE (defensa en profundidad).
+  // Acepta ISO 8601 y date-only; rechaza basura como 'mañana'. Los productores reales
+  // derivan de `new Date().toISOString()`, así que esto no los afecta.
+  fecha_captura: z
+    .string()
+    .min(1)
+    .max(MAX_CAMPO)
+    .refine((v) => !Number.isNaN(Date.parse(v)), {
+      message: "fecha_captura no es una fecha válida (ISO 8601 esperado)",
+    }),
   enlace: z.string().min(1).max(MAX_ENLACE),
 });
 

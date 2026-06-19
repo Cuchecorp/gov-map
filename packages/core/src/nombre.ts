@@ -53,6 +53,10 @@ function fold(s: string): string {
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
+    // #11: apóstrofes y guiones se ELIMINAN (no se reemplazan por espacio) para que
+    // O'Higgins / O-Higgins / Ohiggins colapsen al MISMO token de blocking. Cubre el
+    // apóstrofe recto (U+0027), los tipográficos (U+2018/U+2019) y guiones/dashes.
+    .replace(/['‘’‐‑‒–—―-]/g, "")
     .replace(/[.,]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
