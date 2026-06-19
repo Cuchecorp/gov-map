@@ -143,12 +143,12 @@ Plans:
   3. El enlace reunión→parlamentario solo se fija con match `determinista`/`confirmado` vía `correrPipeline`; cada decisión deja una fila en `identidad_audit`
   4. Ninguna unidad de UI compone una reunión de lobby junto a un voto como una sola unidad destacada (regla anti-"máquina de sospechas"); cada dataset vive en su propio carril con fuente, sin lenguaje causal/afinidad
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 
 - [x] 11-01-PLAN.md — Migración 0021 (lobby_audiencia public-read + lobby_contraparte deny-by-default + RPC lobby_de_parlamentario + marcador lobby_ingesta_estado) + pgTAP; aplicación gateada (operador)
-- [ ] 11-02-PLAN.md — Conector @obs/lobby (espeja @obs/agenda): parser cheerio keyed por Identificador + reconciliación del sujeto pasivo (EnlaceConfirmado solo-determinista) + sub-maestra de contrapartes cruda + writer idempotente + drift bloqueante; corrida LIVE acotada (operador)
+- [x] 11-02-PLAN.md — Conector @obs/lobby (espeja @obs/agenda): parser cheerio keyed por Identificador + reconciliación del sujeto pasivo (EnlaceConfirmado solo-determinista) + sub-maestra de contrapartes cruda + writer idempotente + drift bloqueante; corrida LIVE acotada (operador)
 - [ ] 11-03-PLAN.md — Sección de lobby en /parlamentario/[id]: carril propio (mt-12), contraparte cruda + ProvenanceBadge, 3 estados honestos, gate anti-insinuación
 
 **UI hint**: yes
@@ -274,7 +274,7 @@ Plans:
 | 8. VOTE Spike — Validación `opendata.camara.cl` | v2.0 | 1/1 | ✅ Complete (CONFIRMAR) | 08-01 |
 | 9. Completitud de Identidad — RUT + Writer-invariant + Piso PII | v2.0 | 3/3 | Complete   | 2026-06-19 |
 | 10. VOTE — Voto individual en la ficha | v2.0 | 3/3 | Complete   | 2026-06-19 |
-| 11. INT Lobby — Reuniones + sub-maestra contrapartes | v2.0 | 1/3 | In Progress|  |
+| 11. INT Lobby — Reuniones + sub-maestra contrapartes | v2.0 | 2/3 | In Progress|  |
 | 12. INT Patrimonio/Intereses — Declaraciones + comparación | v2.0 | 0/? | Not started | - |
 | 13. Compuerta Legal — Bloque MONEY | v2.0 | 0/? | Not started | - |
 | 14. MONEY Contratos — ChileCompra + sub-maestra contratistas | v2.0 | 0/? | Not started | - |
