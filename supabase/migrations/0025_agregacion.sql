@@ -3,8 +3,9 @@
 -- MONEY-05): el unico camino publico hacia los datos por contraparte. NO hay tablas nuevas,
 -- NI conectores, NI ingesta -- esta migracion es consumidora pura de los hechos ya desplegados
 -- en 0023 (`contrato`/`contratista`) y 0024 (`aporte`/`donante`). Define el RPC
--- `agregado_por_contraparte(p_id text)` (security definer, juridica-only) y, opcionalmente,
--- el RPC de listado `contrapartes_listado()`. Espejo archivo-por-archivo de 0024_servel.sql.
+-- `agregado_por_contraparte(p_id text)` (security definer, juridica-only). El RPC de listado
+-- `contrapartes_listado()` queda DIFERIDO (WR-03): sin consumidor gated no se publica una
+-- superficie de enumeracion a `anon`. Espejo archivo-por-archivo de 0024_servel.sql.
 --
 -- La ultima migracion APLICADA es 0024 (servel). Esta es la 0025.
 -- (Nota: el pgTAP de esta migracion usa el numero libre 0026 -- 0025_servel.test.sql es el TEST
@@ -138,45 +139,11 @@ $$;
 revoke execute on function public.agregado_por_contraparte(text) from public;
 grant execute on function public.agregado_por_contraparte(text) to anon;
 
--- == contrapartes_listado() (RPC publico -- LISTADO juridica-only) ==================
--- Listado para llegar a la ruta /contraparte/[id]: contrapartes DISTINTAS, juridica-only, con
--- su id prefijado ('c:'||rut_proveedor para contratos, 'd:'||donante_nombre para aportes), el
--- nombre de la contraparte, la faceta y un conteo NEUTRAL. NO cambia el gate (la pagina sigue
--- 404 cuando OFF). Mismo clause security-definer + revoke/grant. NUNCA referencia
--- contratista/donante; NUNCA proyecta donante_id/rut_donante.
-create function public.contrapartes_listado()
-returns table (
-  id                 text,
-  facet              text,
-  contraparte_nombre text,
-  tipo_persona       text,
-  conteo             bigint
-)
-language sql stable security definer set search_path = '' as $$
-  select
-    'c:' || c.rut_proveedor as id,
-    'contrato'::text as facet,
-    c.proveedor_nombre as contraparte_nombre,
-    'juridica'::text as tipo_persona,
-    count(*)::bigint as conteo
-  from public.contrato c
-  where c.tipo_persona = 'juridica'
-    and c.rut_proveedor is not null
-  group by c.rut_proveedor, c.proveedor_nombre
-
-  union all
-
-  select
-    'd:' || a.donante_nombre as id,
-    'aporte'::text as facet,
-    a.donante_nombre as contraparte_nombre,
-    'juridica'::text as tipo_persona,
-    count(*)::bigint as conteo
-  from public.aporte a
-  where a.tipo_persona = 'juridica'
-    and a.donante_nombre is not null
-  group by a.donante_nombre;
-$$;
-
-revoke execute on function public.contrapartes_listado() from public;
-grant execute on function public.contrapartes_listado() to anon;
+-- == contrapartes_listado() — DIFERIDO (WR-03 Phase 16) =============================
+-- El RPC de LISTADO juridica-only se RETIRA de esta migracion: la pagina de listado esta
+-- diferida (16-UI-SPEC §Reaching the route; solo /contraparte/[id] existe hoy), de modo que
+-- el RPC no tenia consumidor y, GRANTeado a `anon`, era una superficie de enumeracion publica
+-- (toda contraparte juridica + conteos) DESACOPLADA del gate `moneyPublicEnabled` y previa al
+-- sign-off legal (deuda F13) — superficie nueva sin beneficio actual. El requisito de la fase
+-- (MONEY-05) lo satisface `agregado_por_contraparte('[id]')` por si solo. Cuando aterrice la
+-- pagina de listado, se reintroduce JUNTO a su consumidor gated en una migracion posterior.
