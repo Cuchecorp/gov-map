@@ -60,6 +60,20 @@ create index if not exists contrato_rut_proveedor_idx on public.contrato (rut_pr
 -- enlace/licencia + los campos publicos verbatim de la faceta). NUNCA referencia las
 -- sub-maestras contratista/donante; NUNCA proyecta donante_id/rut_donante/RUT de donante; NUNCA
 -- suma ni castea monto (monto va verbatim por fila). El conteo es la "X aparece N veces" neutral.
+--
+-- WR-05 (Phase 16): el payload `filas` esta ACOTADO a `agregado_por_contraparte_cap()`
+-- filas (orden estable, las mas recientes primero). Antes `jsonb_agg` serializaba TODAS las
+-- ordenes de una contraparte de alto volumen (un proveedor grande del Estado puede tener
+-- miles), un payload jsonb sin cota que puede superar los limites de PostgREST/Postgres y
+-- LANZARSE como error de RPC (route boundary #34) -- convirtiendo una contraparte legitima de
+-- alta actividad en una pagina de error. El `conteo` sigue siendo el `count(*)` REAL (no
+-- acotado), de modo que la linea de conteo neutral del UI sigue siendo veraz aunque `filas`
+-- venga recortado. La paginacion en memoria del componente opera sobre este conjunto acotado.
+create function public.agregado_por_contraparte_cap()
+returns integer language sql immutable set search_path = '' as $$
+  select 500;
+$$;
+
 create function public.agregado_por_contraparte(p_id text)
 returns table (
   facet              text,
@@ -71,73 +85,96 @@ returns table (
 language sql stable security definer set search_path = '' as $$
   -- FACETA CONTRATOS: solo cuando p_id viene con prefijo 'c:'; llave = rut_proveedor.
   -- Nombre publico = contrato.proveedor_nombre (de la fila de hecho, juridica-only).
+  -- WR-05: `conteo` = count(*) REAL sobre todo el conjunto; `filas` = jsonb_agg ACOTADO a
+  -- los primeros `cap` (subquery ordenada + LIMIT), para no serializar un payload sin cota.
   select
     'contrato'::text as facet,
-    c.proveedor_nombre as contraparte_nombre,
+    sub.proveedor_nombre as contraparte_nombre,
     'juridica'::text as tipo_persona,
-    count(*)::bigint as conteo,
+    sub.conteo_total as conteo,
     jsonb_agg(
       jsonb_build_object(
-        'codigo_orden',     c.codigo_orden,
-        'proveedor_nombre', c.proveedor_nombre,
-        'organismo',        c.organismo,
-        'nombre_orden',     c.nombre_orden,
-        'monto',            c.monto,
-        'fecha_oc',         c.fecha_oc,
-        'origen',           c.origen,
-        'fecha_captura',    c.fecha_captura,
-        'fecha_corte',      c.fecha_corte,
-        'enlace',           c.enlace,
-        'licencia',         c.licencia
+        'codigo_orden',     sub.codigo_orden,
+        'proveedor_nombre', sub.proveedor_nombre,
+        'organismo',        sub.organismo,
+        'nombre_orden',     sub.nombre_orden,
+        'monto',            sub.monto,
+        'fecha_oc',         sub.fecha_oc,
+        'origen',           sub.origen,
+        'fecha_captura',    sub.fecha_captura,
+        'fecha_corte',      sub.fecha_corte,
+        'enlace',           sub.enlace,
+        'licencia',         sub.licencia
       )
-      order by c.fecha_oc desc nulls last, c.codigo_orden desc
+      order by sub.fecha_oc desc nulls last, sub.codigo_orden desc
     ) as filas
-  from public.contrato c
-  where left(p_id, 2) = 'c:'
-    and c.tipo_persona = 'juridica'
-    and c.rut_proveedor = substring(p_id from 3)
-  group by c.proveedor_nombre
+  from (
+    select
+      c.codigo_orden, c.proveedor_nombre, c.organismo, c.nombre_orden, c.monto,
+      c.fecha_oc, c.origen, c.fecha_captura, c.fecha_corte, c.enlace, c.licencia,
+      count(*) over () as conteo_total
+    from public.contrato c
+    where left(p_id, 2) = 'c:'
+      and c.tipo_persona = 'juridica'
+      and c.rut_proveedor = substring(p_id from 3)
+    order by c.fecha_oc desc nulls last, c.codigo_orden desc
+    limit public.agregado_por_contraparte_cap()
+  ) sub
+  group by sub.proveedor_nombre, sub.conteo_total
 
   union all
 
   -- FACETA APORTES: solo cuando p_id viene con prefijo 'd:'; llave = donante_nombre.
   -- Nombre publico = aporte.donante_nombre (de la fila de hecho, juridica-only). La fila de
   -- hecho NO tiene la llave sintetica del donante (vive solo en la sub-maestra deny-by-default
-  -- y jamas se proyecta).
+  -- y jamas se proyecta). WR-05: mismo patron acotado que la faceta contratos.
   select
     'aporte'::text as facet,
-    a.donante_nombre as contraparte_nombre,
+    sub.donante_nombre as contraparte_nombre,
     'juridica'::text as tipo_persona,
-    count(*)::bigint as conteo,
+    sub.conteo_total as conteo,
     jsonb_agg(
       jsonb_build_object(
-        'eleccion',                  a.eleccion,
-        'candidato_nombre_verbatim', a.candidato_nombre_verbatim,
-        'donante_nombre',            a.donante_nombre,
-        'monto',                     a.monto,
-        'fecha_aporte',              a.fecha_aporte,
-        'tipo_aporte',               a.tipo_aporte,
-        'territorio',                a.territorio,
-        'pacto',                     a.pacto,
-        'partido',                   a.partido,
-        'origen',                    a.origen,
-        'fecha_captura',             a.fecha_captura,
-        'fecha_corte',               a.fecha_corte,
-        'enlace',                    a.enlace,
-        'licencia',                  a.licencia
+        'eleccion',                  sub.eleccion,
+        'candidato_nombre_verbatim', sub.candidato_nombre_verbatim,
+        'donante_nombre',            sub.donante_nombre,
+        'monto',                     sub.monto,
+        'fecha_aporte',              sub.fecha_aporte,
+        'tipo_aporte',               sub.tipo_aporte,
+        'territorio',                sub.territorio,
+        'pacto',                     sub.pacto,
+        'partido',                   sub.partido,
+        'origen',                    sub.origen,
+        'fecha_captura',             sub.fecha_captura,
+        'fecha_corte',               sub.fecha_corte,
+        'enlace',                    sub.enlace,
+        'licencia',                  sub.licencia
       )
-      order by a.eleccion desc, a.fecha_aporte desc nulls last
+      order by sub.eleccion desc, sub.fecha_aporte desc nulls last
     ) as filas
-  from public.aporte a
-  where left(p_id, 2) = 'd:'
-    and a.tipo_persona = 'juridica'
-    and a.donante_nombre = substring(p_id from 3)
-  group by a.donante_nombre;
+  from (
+    select
+      a.eleccion, a.candidato_nombre_verbatim, a.donante_nombre, a.monto, a.fecha_aporte,
+      a.tipo_aporte, a.territorio, a.pacto, a.partido, a.origen, a.fecha_captura,
+      a.fecha_corte, a.enlace, a.licencia,
+      count(*) over () as conteo_total
+    from public.aporte a
+    where left(p_id, 2) = 'd:'
+      and a.tipo_persona = 'juridica'
+      and a.donante_nombre = substring(p_id from 3)
+    order by a.eleccion desc, a.fecha_aporte desc nulls last
+    limit public.agregado_por_contraparte_cap()
+  ) sub
+  group by sub.donante_nombre, sub.conteo_total;
 $$;
 
 -- revoke from public + grant execute a anon sobre la firma EXACTA (espejo de 0023/0024).
 revoke execute on function public.agregado_por_contraparte(text) from public;
 grant execute on function public.agregado_por_contraparte(text) to anon;
+
+-- WR-05: el helper del cap es interno -- lo invoca la funcion SECURITY DEFINER como su
+-- owner, asi que anon NO necesita (ni recibe) execute directo. Revocado de public.
+revoke execute on function public.agregado_por_contraparte_cap() from public;
 
 -- == contrapartes_listado() — DIFERIDO (WR-03 Phase 16) =============================
 -- El RPC de LISTADO juridica-only se RETIRA de esta migracion: la pagina de listado esta

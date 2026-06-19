@@ -335,6 +335,10 @@ export async function AportesPorContraparteSection({
   const agregados = (rpcData as AgregadoContraparteRpcRow[] | null) ?? [];
   const facetaAportes = agregados.find((a) => a.facet === "aporte") ?? null;
 
+  // WR-05/IN-02: el `conteo` del RPC es el count(*) REAL (no acotado); `filas` viene
+  // ACOTADO al cap del RPC. La línea de conteo neutral usa el `conteo` real (veraz aunque
+  // `filas` se haya recortado); la paginación opera sobre las `filas` efectivamente traídas.
+  const conteoReal = facetaAportes?.conteo ?? 0;
   const filasRaw = (facetaAportes?.filas as AporteRpcRow[] | undefined) ?? [];
   const todos: AporteContraparteRow[] = filasRaw.map((f, i) => ({
     fila_id: `${f.eleccion}#${f.fecha_aporte ?? ""}#${i}`,
@@ -357,9 +361,12 @@ export async function AportesPorContraparteSection({
   const estado: AportesContraparteEstado =
     todos.length > 0 ? "con_aportes" : "no_consultado";
 
-  // Paginación server-driven sobre el conjunto ya cargado.
-  const totalAportes = todos.length;
-  const totalPages = Math.max(1, Math.ceil(totalAportes / PAGE_SIZE));
+  // Paginación sobre el conjunto (acotado) efectivamente traído. El conteo neutral usa el
+  // `conteo` real del RPC (WR-05/IN-02): no se sintetiza desde `filas.length`, que puede
+  // venir recortado por el cap.
+  const totalAportes = conteoReal;
+  const filasCargadas = todos.length;
+  const totalPages = Math.max(1, Math.ceil(filasCargadas / PAGE_SIZE));
   const pageClamped = Math.min(page, totalPages);
   const start = (pageClamped - 1) * PAGE_SIZE;
   const aportes = todos.slice(start, start + PAGE_SIZE);

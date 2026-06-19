@@ -19,7 +19,7 @@
 -- (El numero 0026 es el siguiente libre; 0025_servel.test.sql es el test mas alto existente.)
 
 begin;
-select plan(19);
+select plan(22);
 
 -- == RPC: existe, security definer, anon tiene EXECUTE, public NO tiene EXECUTE =====
 select has_function('public', 'agregado_por_contraparte', ARRAY['text'],
@@ -121,6 +121,30 @@ select ok(
   (select coalesce(string_agg(contraparte_nombre, '|'), '') from public.agregado_por_contraparte('d:Empresa Juridica SpA'))
     not like '%Perez P., Juan%',
   'CR-01: el nombre de la persona natural no se filtra a ningun payload del RPC');
+
+-- == WR-05: payload `filas` ACOTADO; `conteo` sigue siendo el count(*) REAL ===========
+-- El helper del cap existe y NO esta GRANTeado a anon (lo invoca la SECURITY DEFINER como owner).
+select has_function('public', 'agregado_por_contraparte_cap', ARRAY[]::text[],
+  'helper agregado_por_contraparte_cap() existe (WR-05)');
+select ok(
+  not has_function_privilege('anon', 'public.agregado_por_contraparte_cap()', 'execute'),
+  'WR-05: anon NO tiene EXECUTE sobre el helper del cap (interno)');
+
+-- Inserta cap+5 contratos juridicos de una misma contraparte: `conteo` = cap+5 (real),
+-- pero `jsonb_array_length(filas)` queda ACOTADO al cap (payload no se desborda).
+insert into public.contrato (fuente_id, fecha_corte, mencion_proveedor, codigo_orden, rut_proveedor, proveedor_nombre, tipo_persona, origen, enlace)
+select
+  'wr05-' || g, current_date, 'Mega Proveedor SpA', 'OC-' || g, '76555444-3', 'Mega Proveedor SpA', 'juridica', 'chilecompra', 'https://x'
+from generate_series(1, (select public.agregado_por_contraparte_cap()) + 5) g;
+
+select is(
+  (select conteo::int from public.agregado_por_contraparte('c:76555444-3') where facet = 'contrato'),
+  (select public.agregado_por_contraparte_cap() + 5),
+  'WR-05: `conteo` es el count(*) REAL de la contraparte (no acotado)');
+select is(
+  (select jsonb_array_length(filas) from public.agregado_por_contraparte('c:76555444-3') where facet = 'contrato'),
+  (select public.agregado_por_contraparte_cap()),
+  'WR-05: `filas` viene ACOTADO al cap (el payload jsonb no se desborda)');
 
 select * from finish();
 rollback;

@@ -289,6 +289,10 @@ export async function ContratosPorContraparteSection({
   const agregados = (rpcData as AgregadoContraparteRpcRow[] | null) ?? [];
   const facetaContratos = agregados.find((a) => a.facet === "contrato") ?? null;
 
+  // WR-05/IN-02: el `conteo` del RPC es el count(*) REAL (no acotado); `filas` viene
+  // ACOTADO al cap del RPC. La línea de conteo neutral usa el `conteo` real (veraz aunque
+  // `filas` se haya recortado); la paginación opera sobre las `filas` efectivamente traídas.
+  const conteoReal = facetaContratos?.conteo ?? 0;
   const filasRaw = (facetaContratos?.filas as ContratoRpcRow[] | undefined) ?? [];
   const todos: ContratoContraparteRow[] = filasRaw.map((f) => ({
     codigo_orden: f.codigo_orden,
@@ -310,9 +314,12 @@ export async function ContratosPorContraparteSection({
   const estado: ContratosContraparteEstado =
     todos.length > 0 ? "con_contratos" : "no_consultado";
 
-  // Paginación server-driven sobre el conjunto ya cargado.
-  const totalContratos = todos.length;
-  const totalPages = Math.max(1, Math.ceil(totalContratos / PAGE_SIZE));
+  // Paginación sobre el conjunto (acotado) efectivamente traído. El conteo neutral usa el
+  // `conteo` real del RPC (WR-05/IN-02): no se sintetiza desde `filas.length`, que puede
+  // venir recortado por el cap.
+  const totalContratos = conteoReal;
+  const filasCargadas = todos.length;
+  const totalPages = Math.max(1, Math.ceil(filasCargadas / PAGE_SIZE));
   const pageClamped = Math.min(page, totalPages);
   const start = (pageClamped - 1) * PAGE_SIZE;
   const contratos = todos.slice(start, start + PAGE_SIZE);
