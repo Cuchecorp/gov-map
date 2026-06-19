@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: "14-01 tareas autónomas completas; Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE — apply 0023_dinero + pgTAP 0024 contra el remoto (acción de operador)"
-stopped_at: "14-01: tareas autonomas completas (0023_dinero.sql + 0024_dinero.test.sql, greps verdes, plan(17)=17 asserts). Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE: supabase db push --db-url + supabase test db --db-url contra el remoto."
-last_updated: "2026-06-19T18:00:00.000Z"
+status: "14-01 tareas autónomas completas (0023_dinero.sql + 0024_dinero.test.sql); Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE — apply remoto + pgTAP 0024 (acción de operador)"
+stopped_at: "13-01: tareas autonomas completas (money-gate.ts + Vitest 5/5, .env.example, pgTAP 0023). Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE: pgTAP 0023 contra el remoto."
+last_updated: "2026-06-19T18:20:17.976Z"
 last_activity: 2026-06-19
 progress:
   total_phases: 11
   completed_phases: 6
-  total_plans: 15
-  completed_plans: 16
+  total_plans: 18
+  completed_plans: 18
   percent: 55
 ---
 
@@ -163,6 +163,7 @@ None yet for v2.0.
 - [v2.0 Phases 13/17 — gates legales DUROS]: LEGAL-01 ANTES de exponer MONEY públicamente; LEGAL-02 ANTES de exponer NET. Ley 21.719 plena vigencia 2026-12-01.
 - [Deuda v1.0 acarreada]: (1) 🔴 rotar DB password de Supabase (expuesto en transcript); (2) aplicar migración 0011 al Supabase LOCAL (checkpoint humano 07-01 Task 5); (3) cargar corpus a la nube + wiring app→nube; (4) persistir link_mensaje_mocion para activar idea matriz; (5) desplegar Edge Functions + vault secrets. Ver `.planning/v1.0-MILESTONE-AUDIT.md`.
 - [Phase 13 — Task 3 OPERADOR pendiente]: correr pgTAP `0023_money_gate.test.sql` contra el remoto Supabase sa-east-1 — extraer `SUPABASE_DB_URL` esquivando BOM U+FEFF (helper Phases 9-12) y `supabase test db --db-url <url>`; confirmar `0023` 3/3 + `0018/0021/0022` verdes. NO hay migración nueva que aplicar (Phase 13 no introduce DDL). Resume-signal: "pgTAP verde". Las dos tareas autónomas (flag server-only + Vitest 5/5; `.env.example`; pgTAP) están completas y verificadas localmente.
+- 14-02: checkpoint LIVE probe ChileCompra pendiente (requiere MERCADOPUBLICO_TICKET real; operador). Tareas autonomas 1-2 completas, 24 tests verdes.
 
 ## Deferred Items
 
@@ -176,7 +177,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T17:18:44.501Z
+Last session: 2026-06-19T18:20:12.219Z
 Stopped at: 13-01: tareas autonomas completas (money-gate.ts + Vitest 5/5, .env.example, pgTAP 0023). Task 3 (checkpoint:human-action, gate=blocking) PENDIENTE: pgTAP 0023 contra el remoto.
 Resume file: None
 
