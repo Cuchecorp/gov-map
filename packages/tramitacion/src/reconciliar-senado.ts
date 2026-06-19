@@ -35,8 +35,12 @@ import {
 } from "./model";
 import type { VotoSenadoCrudo } from "./parse-senado-votacion";
 
-/** Periodo vigente del Senado (filtro DURO del blocking del pipeline). */
-const PERIODO_SENADO = "senado-vigente-2026";
+/**
+ * Periodo vigente del Senado (filtro DURO del blocking del pipeline). Default; el caller
+ * puede sobreescribirlo vía `ReconciliarSenadoOpts.periodo` (#22, espeja reconciliar-camara).
+ * Mantiene el mismo valor que `SENADO_PERIODO` de @obs/identity (#16, decisión A2).
+ */
+const PERIODO_SENADO_DEFAULT = "senado-vigente-2026";
 
 /** Mapeo del resultado del pipeline a la guarda LOCKED del voto público. */
 interface Vinculo {
@@ -58,6 +62,11 @@ export interface ReconciliarSenadoOpts {
   provider?: LLMProvider;
   /** Writer del pipeline (cola/vínculo/audit). */
   writer?: PipelineWriter;
+  /**
+   * Periodo del blocking del Senado (#22). Si se omite, usa `PERIODO_SENADO_DEFAULT`
+   * (`senado-vigente-2026`). Espeja `ReconciliarCamaraOpts.periodo`.
+   */
+  periodo?: string;
 }
 
 /** Writer no-op: descarta toda escritura (cuando el caller no inyecta uno). */
@@ -106,6 +115,7 @@ export async function reconciliarVotosSenado(
   const votacionId = opts.votacionId ?? "";
   const provider = opts.provider ?? PROVIDER_AUSENTE;
   const writer = opts.writer ?? NOOP_WRITER;
+  const periodo = opts.periodo ?? PERIODO_SENADO_DEFAULT;
   const out: Voto[] = [];
 
   for (const crudo of votosCrudos) {
@@ -118,7 +128,7 @@ export async function reconciliarVotosSenado(
       nombreNormalizado: nombre_normalizado,
       tokens,
       camara: "senado",
-      periodo: PERIODO_SENADO,
+      periodo,
       region: null,
     };
 

@@ -288,9 +288,21 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
     const prev = readEstadoSnapshot(resolve(root, SEED_PATH), log);
     let preservados = 0;
     for (const row of maestra) {
-      const estadoPrevio =
-        prev.porId.get(row.id) ?? prev.porFirma.get(firmaIdentidad(row));
+      const estadoPorId = prev.porId.get(row.id);
+      const estadoPrevio = estadoPorId ?? prev.porFirma.get(firmaIdentidad(row));
       if (estadoPrevio == null) continue;
+      const matchPorId = estadoPorId != null;
+      // #17: 'confirmado' SOLO se auto-preserva por el `id` ESTABLE. Si el match es por
+      // FIRMA (camara|periodo|nombre_normalizado, SIN apellido materno), una colisión de
+      // homónimo podría heredar la confirmación humana a OTRA persona. En ese caso se AVISA
+      // y NO se preserva (el operador re-promueve explícitamente si corresponde).
+      if (estadoPrevio === "confirmado" && !matchPorId) {
+        log(
+          `seed: WARN firma coincide pero id NO (id=${row.id}, ${row.nombre_normalizado}); ` +
+            `NO se auto-preserva 'confirmado' por firma (posible homónimo) — re-promover si corresponde (#17)`,
+        );
+        continue;
+      }
       if (estadoPrevio !== row.estado) {
         // WR-03: visibiliza cualquier caída de `confirmado` que el preserve está reparando.
         if (estadoPrevio === "confirmado" && row.estado !== "confirmado") {
