@@ -1,5 +1,7 @@
 # Phase 15: MONEY Financiamiento — SERVEL verbatim + sub-maestra de donantes - Pattern Map
 
+> **SUPERSEDED (2026-06-19) por `15-CONTEXT.md` A1 RE-RESUELTO:** `reconciliar-aporte.ts` espeja `packages/lobby/src/reconciliar-sujeto.ts` (enlace por NOMBRE vía `correrPipeline`, confirmado/auditado), NO `reconciliar-contrato.ts` (RUT-exacto). Ver [[finalidad-del-dato-linking-politicos]]. Los PLAN.md son la fuente correcta.
+
 **Mapped:** 2026-06-19
 **Files analyzed:** 13 new/modified artifacts
 **Analogs found:** 12 / 13 (1 greenfield: Supabase Storage helper)

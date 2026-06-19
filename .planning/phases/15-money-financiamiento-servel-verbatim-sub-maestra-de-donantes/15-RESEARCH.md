@@ -1,5 +1,7 @@
 # Phase 15: MONEY Financiamiento — SERVEL verbatim + sub-maestra de donantes - Research
 
+> **SUPERSEDED (2026-06-19) por `15-CONTEXT.md` A1 RE-RESUELTO + [[finalidad-del-dato-linking-politicos]]:** el enlace candidato→parlamentario NO es RUT-exacto. Como SERVEL no trae RUT, el enlace usa el **pipeline de identidad confirmado/auditado** (`correrPipeline` por NOMBRE del candidato), espejando `packages/lobby/src/reconciliar-sujeto.ts` (NO `reconciliar-contrato.ts`). Cualquier mención de "RUT-exacto / enlace null hoy" en este archivo quedó obsoleta; los PLAN.md son la fuente correcta.
+
 **Researched:** 2026-06-19
 **Domain:** Ingesta verbatim de un repositorio de archivos Excel per-elección (SERVEL / gasto electoral), drift bloqueante + cuarentena, sub-maestra PII deny-by-default, enlace RUT-exacto, crudo → Supabase Storage, gate de exposición OFF.
 **Confidence:** HIGH on the live source shape (probed it this session) · HIGH on the mirror pattern (read Phase 14 end to end) · MEDIUM on the xlsx-library choice (no slopcheck on Windows) · the single biggest finding is a LOCKED-decision tension (see Assumptions A1).
