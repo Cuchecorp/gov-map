@@ -1,0 +1,98 @@
+<!--
+  FIXTURE GOLDEN del parser de @obs/lobby (parse-leylobby).
+
+  PROCEDENCIA (Open Question 2 — resuelta en Plan 11-02, corrida LIVE 2026-06-19):
+    - La estructura de tabla, los nombres de columna (Fecha | Identificador | Asistentes(rol,nombre)
+      | Representados | Materia | Detalle), el patrón rowspan, el formato de Fecha
+      (`2024-06-24 12:30:00-04` con `data-toggle="moment" data-format="DD-MM-YYYY"`), la clave
+      `Identificador` (`AA001AW1639516` = `{INST}AW{N}`) y el rol `Sujeto Pasivo` están
+      CAPTURADOS VERBATIM de una página real de audiencias de leylobby.gob.cl:
+        https://www.leylobby.gob.cl/instituciones/AA001/audiencias/2024/663021  (HTTP 200, 2026-06-19)
+      con el delay 2-3s LOCKED y el UA identificatorio.
+    - El rol de contraparte `Gestor de intereses` + las columnas `Representados`/`Trabaja para`
+      están capturados del acta real de esa misma audiencia
+        https://www.leylobby.gob.cl/instituciones/AA001/audiencias/2024/663021/728817  (HTTP 200).
+
+  HALLAZGO LIVE (human_verification — Assumption A1): la Cámara de Diputados y el Senado NO
+  publican en leylobby.gob.cl (es la plataforma del Ejecutivo). La búsqueda
+  `/instituciones?search=Camara+de+Diputados` y `?search=Senado` devolvió "No se encontraron
+  resultados"; solo aparece "Biblioteca del Congreso Nacional". La fuente de lobby del congreso
+  es el portal propio de la Cámara (`camara.cl/transparencia/ley_de_lobby.aspx`, HTTP 200, ya
+  allowlisted). El parser es column-agnostic respecto al rol y a la institución (Assumption A2),
+  por lo que el golden vale para cualquier institución leylobby; la corrida LIVE contra el congreso
+  queda como verificación de operador (checkpoint Task 4).
+
+  El golden ejercita: (1) keying por Identificador (NO por el número de URL del listado);
+  (2) sujeto pasivo por `rol === "Sujeto Pasivo"`; (3) cada no-sujeto-pasivo → una contraparte cruda;
+  (4) una audiencia sin Identificador se descarta (drift, nunca se fabrica).
+-->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Audiencias - Año 2024</title></head>
+<body>
+  <main class="main container-fluid">
+    <div class="row no-gutter justify-content-center">
+      <div class="col-md-9 col-sm-12">
+        <h2 class="destacado mb-5">Audiencias - Año 2024 - Víctor Gutiérrez</h2>
+        <p>En este registro encontrará las audiencias efectuadas en conformidad con la ley N° 20.730 por los sujetos pasivos que se señalan.</p>
+        <div class="table_movil">
+          <table class="table mt-5">
+            <thead class="table-dark">
+              <tr>
+                <th scope="col">Fecha</th>
+                <th scope="col">Identificador</th>
+                <th scope="col" colspan="2">Asistentes</th>
+                <th scope="col">Representados</th>
+                <th scope="col">Materia</th>
+                <th scope="col">Detalle</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Audiencia 1: 1 sujeto pasivo + 2 contrapartes (Gestor de intereses) con representado. -->
+              <tr class="zebra-1">
+                <td class="align-top" rowspan="3" data-toggle="moment" data-format="DD-MM-YYYY">2024-06-24 12:30:00-04</td>
+                <td class="align-top" rowspan="3">AA001AW1639516</td>
+                <td class="align-top">Sujeto Pasivo</td>
+                <td class="align-top">Víctor Gutiérrez</td>
+                <td class="align-top" rowspan="3">Fundación Momart</td>
+                <td class="align-top" rowspan="3">En la reunión se abordó el avance del proyecto financiado con subvención presidencial que está desarrollando la Fundación Momart.</td>
+                <td class="align-top" rowspan="3"><a href="https://www.leylobby.gob.cl/instituciones/AA001/audiencias/2024/663021/728817">Ver Detalle</a></td>
+              </tr>
+              <tr class="zebra-1">
+                <td class="align-top">Gestor de intereses</td>
+                <td class="align-top">María José Valenzuela</td>
+              </tr>
+              <tr class="zebra-1">
+                <td class="align-top">Gestor de intereses</td>
+                <td class="align-top">CONSTANZA Baasch</td>
+              </tr>
+
+              <!-- Audiencia 2: 2 sujetos pasivos, sin contraparte (todos del lado del servicio). -->
+              <tr class="zebra-2">
+                <td class="align-top" rowspan="2" data-toggle="moment" data-format="DD-MM-YYYY">2024-09-24 10:30:00-03</td>
+                <td class="align-top" rowspan="2">AA001AW1677223</td>
+                <td class="align-top">Sujeto Pasivo</td>
+                <td class="align-top">María José Egaña Herrera</td>
+                <td class="align-top" rowspan="2"></td>
+                <td class="align-top" rowspan="2">Se solicitó reunión para pedir permiso para instalar el árbol de navidad del Banco Estado.</td>
+                <td class="align-top" rowspan="2"><a href="https://www.leylobby.gob.cl/instituciones/AA001/audiencias/2024/663051/740001">Ver Detalle</a></td>
+              </tr>
+              <tr class="zebra-2">
+                <td class="align-top">Sujeto Pasivo</td>
+                <td class="align-top">María Verónica Frei Larraechea</td>
+              </tr>
+
+              <!-- Audiencia 3 (MALFORMADA): sin celda Identificador → se descarta (drift), nunca se fabrica. -->
+              <tr class="zebra-1">
+                <td class="align-top" data-toggle="moment" data-format="DD-MM-YYYY">2024-10-01 09:00:00-03</td>
+                <td class="align-top">Sujeto Pasivo</td>
+                <td class="align-top">Fila Sin Identificador</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

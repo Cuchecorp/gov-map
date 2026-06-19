@@ -1,0 +1,6 @@
+# Capturas LIVE transitorias (HTML crudo de leylobby de una corrida acotada). NO se versionan:
+# son datos efímeros de una corrida, no artefactos del repo. El fixture golden vive en
+# test/fixtures/ y SÍ se versiona.
+.live-capture/
+dist/
+tsconfig.tsbuildinfo
