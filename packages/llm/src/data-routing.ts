@@ -70,3 +70,27 @@ export function assertSensitivityAllowed(
     );
   }
 }
+
+/**
+ * Compuerta ÚNICA para todo DOCUMENTO PII nuevo de v2.0 (LEGAL-03): texto de una
+ * declaración de patrimonio/intereses, registro de lobby, donación o contrato que
+ * por definición es dato `personal`. Aplica AMBOS asserts fail-closed antes de
+ * cualquier `complete()`:
+ *
+ *   1. `assertNoRutInLlmInput(text)` — ningún RUT puede cruzar a un prompt (más
+ *      estricto; se chequea PRIMERO para fallar por el identificador duro).
+ *   2. `assertSensitivityAllowed({ sensitivity: "personal" }, provider)` — un
+ *      documento PII es siempre `personal`: nunca a un provider que entrena con
+ *      inputs.
+ *
+ * REUSA los asserts existentes — NO reimplementa el regex de RUT ni el gate de
+ * sensibilidad (RESEARCH "Don't Hand-Roll"). Cualquier extractor de PII nueva de
+ * Phases 11/12/14/15 llama a esta sola función antes de invocar al LLM.
+ */
+export function assertPiiDocumentSafeForLlm(
+  text: string,
+  provider: { id: string; trainsOnInputs: boolean },
+): void {
+  assertNoRutInLlmInput(text);
+  assertSensitivityAllowed({ sensitivity: "personal" }, provider);
+}

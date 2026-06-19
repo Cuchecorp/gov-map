@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assertNoRutInLlmInput,
+  assertPiiDocumentSafeForLlm,
   assertSensitivityAllowed,
   RutInLlmInputError,
 } from "./data-routing";
@@ -91,5 +92,54 @@ describe("assertSensitivityAllowed", () => {
     expect(() =>
       assertSensitivityAllowed({ sensitivity: "public" }, trainingProvider),
     ).not.toThrow();
+  });
+});
+
+// LEGAL-03: la compuerta extendida a un DOCUMENTO PII nuevo (texto de declaracion
+// de patrimonio/intereses/lobby/donacion/contrato). REUSA ambos asserts existentes
+// (assertNoRutInLlmInput + assertSensitivityAllowed); NO reimplementa regex ni gate.
+describe("assertPiiDocumentSafeForLlm (LEGAL-03, PII nueva)", () => {
+  it("documento PII con un RUT (texto de declaracion) -> lanza RutInLlmInputError", () => {
+    expect(() =>
+      assertPiiDocumentSafeForLlm(
+        "Declaracion de patrimonio del titular 12.345.678-9 ante notario",
+        safeProvider,
+      ),
+    ).toThrow(RutInLlmInputError);
+  });
+
+  it("documento PII con RUT de cuerpo corto -> lanza RutInLlmInputError", () => {
+    expect(() =>
+      assertPiiDocumentSafeForLlm("interes declarado de la contraparte 123.456-7", safeProvider),
+    ).toThrow(RutInLlmInputError);
+  });
+
+  it("documento PII personal hacia un provider que entrena -> SensitiveRoutingError", () => {
+    expect(() =>
+      assertPiiDocumentSafeForLlm("declaracion de intereses sin identificadores", trainingProvider),
+    ).toThrow(SensitiveRoutingError);
+  });
+
+  it("documento PII personal (sin RUT) hacia un provider que NO entrena -> OK", () => {
+    expect(() =>
+      assertPiiDocumentSafeForLlm("declaracion de intereses sin identificadores", safeProvider),
+    ).not.toThrow();
+  });
+
+  it("el RUT se chequea ANTES del gate de provider (fail-closed mas estricto primero)", () => {
+    // RUT presente + provider que entrena: debe lanzar por el RUT (mas duro), no por sensibilidad.
+    expect(() =>
+      assertPiiDocumentSafeForLlm("titular 12.345.678-9", trainingProvider),
+    ).toThrow(RutInLlmInputError);
+  });
+
+  it("el mensaje de error NO expone el RUT del documento PII", () => {
+    try {
+      assertPiiDocumentSafeForLlm("titular 12.345.678-9 declara", safeProvider);
+      throw new Error("debio lanzar");
+    } catch (e) {
+      expect(e).toBeInstanceOf(RutInLlmInputError);
+      expect((e as Error).message).not.toContain("12.345.678-9");
+    }
   });
 });
