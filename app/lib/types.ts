@@ -4,7 +4,10 @@
  * de `@obs/tramitacion` sin acoplar el frontend al paquete del backend.
  */
 
-export type Seleccion = "si" | "no" | "abstencion" | "pareo";
+// 5 opciones del roll-call (VOTE-03): las 4 nominales + `ausente` (asistencia).
+// EXTENDIDO con "ausente" para la ficha del parlamentario (UI-SPEC §3.2/§10);
+// el chip `ausente` se añade a SELECCION_STYLE en voto-row.tsx.
+export type Seleccion = "si" | "no" | "abstencion" | "pareo" | "ausente";
 export type EstadoVinculo = "confirmado" | "probable" | "no_confirmado";
 
 export interface ProyectoRow {

@@ -20,6 +20,9 @@ const SELECCION_STYLE: Record<Seleccion, { label: string; className: string }> =
   no: { label: "No", className: "bg-red-100 text-red-800" },
   abstencion: { label: "Abstención", className: "bg-amber-100 text-amber-800" },
   pareo: { label: "Pareo", className: "bg-slate-100 text-slate-600" },
+  // VOTE-03 (UI-SPEC §3.2): asistencia rendida con fidelidad — "Ausente" NUNCA se
+  // colapsa a "no votó". Slate neutro, sin color de juicio. Siempre con label de texto.
+  ausente: { label: "Ausente", className: "bg-slate-100 text-slate-500" },
 };
 
 export function VotoRow({ voto }: { voto: VotoRowData }) {

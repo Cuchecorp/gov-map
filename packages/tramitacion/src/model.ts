@@ -11,7 +11,10 @@ import { z } from "zod";
 // ── Enums del dominio ────────────────────────────────────────────────────────
 export type Iniciativa = "Mensaje" | "Moción";
 export type Camara = "diputados" | "senado";
-export type Seleccion = "si" | "no" | "abstencion" | "pareo";
+// 5 opciones del roll-call (VOTE-03): las 4 nominales + `ausente` (asistencia).
+// `ausente` se deriva del ROSTER de la votación (el diputado aparece en <Votos> con
+// código de no-asistencia, p.ej. "No Vota"), NUNCA de la ausencia de fila en la DB.
+export type Seleccion = "si" | "no" | "abstencion" | "pareo" | "ausente";
 export type MetodoVinculo = "determinista" | "llm" | "humano";
 export type EstadoVinculo = "confirmado" | "probable" | "no_confirmado";
 export type TipoEvento = "tramite" | "urgencia" | "informe" | "oficio" | "votacion";
@@ -125,7 +128,7 @@ export const VotoSchema = z.object({
   fuente_voter_id: z.string(),
   mencion_nombre: z.string(),
   parlamentario_id: z.string().nullable(),
-  seleccion: z.enum(["si", "no", "abstencion", "pareo"]),
+  seleccion: z.enum(["si", "no", "abstencion", "pareo", "ausente"]),
   metodo: z.enum(["determinista", "llm", "humano"]).nullable(),
   estado_vinculo: z.enum(["confirmado", "probable", "no_confirmado"]).nullable(),
 });

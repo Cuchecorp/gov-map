@@ -14,7 +14,7 @@
 
 import { XMLParser } from "fast-xml-parser";
 import { makeProvenance } from "@obs/core";
-import { type Votacion, VotacionSchema } from "./model";
+import { type Seleccion, type Votacion, VotacionSchema } from "./model";
 import { parseFechaCL, toIso } from "./fecha";
 
 const ORIGEN = "camara-opendata";
@@ -66,8 +66,13 @@ function asArray<T>(v: T | T[] | undefined | null): T[] {
 export interface CamaraVotoDetalle {
   /** Id del diputado en la maestra de la Cámara (cruce determinista). */
   diputadoId: string;
-  /** 'si' (Afirmativo, Valor=1) | 'no' (En Contra, Valor=0). */
-  opcion: "si" | "no";
+  /**
+   * Opción del roll-call: las 5 (si/no/abstencion/pareo/ausente). VOTE-03.
+   * `ausente` proviene del roster (el diputado aparece en <Votos> con código de
+   * no-asistencia, p.ej. "No Vota"), NUNCA de la ausencia de fila. Una opción no-nominal
+   * JAMÁS se colapsa a sí/no: el roll-call se emite con fidelidad.
+   */
+  opcion: Seleccion;
   /** Nombre crudo armado (Nombre + apellidos) para display/debug. */
   nombreCrudo: string;
 }
@@ -188,9 +193,14 @@ function totalesDesdeDetalle(detalleXml: string): Map<string, Totales> {
  *   (a) v1 (fixture 05-02): `Diputado/Id` + `OpcionVoto Valor` (1=Afirmativo→si, 0→no),
  *       apellidos `ApellidoPaterno`/`ApellidoMaterno`.
  *   (b) REAL `getVotacion_Detalle` (ns tempuri.org, LIVE 2026-06-18): `Diputado/DIPID` +
- *       `Opcion Codigo` (0=En Contra→no, 1=A Favor→si, otros [No Vota/Abstención/dispensado]
- *       NO afirman un sí/no nominal → se omiten para no fabricar un voto), apellidos
- *       `Apellido_Paterno`/`Apellido_Materno`.
+ *       `Opcion Codigo` (0=En Contra→no, 1=A Favor→si, 4=No Vota→ausente — confirmados LIVE),
+ *       apellidos `Apellido_Paterno`/`Apellido_Materno`.
+ *
+ * VOTE-03: emite el ROSTER COMPLETO con las 5 opciones (no solo sí/no). `abstencion`/`pareo`
+ * se resuelven por el TEXTO `#text` ("Abstención"/"Pareo") porque sus códigos exactos NO
+ * fueron confirmados LIVE (Assumption A1; se re-verifican en la corrida LIVE de Plan 02).
+ * NUNCA se fabrica un sí/no: una opción no-nominal jamás se colapsa a si/no, y `ausente` se
+ * deriva del roster (código de no-asistencia), nunca de la ausencia de fila.
  *
  * El cruce es por id (DIPID/Id), no por nombre; el `nombreCrudo` es para display/fallback.
  */
@@ -216,9 +226,11 @@ export function parseCamaraVotoDetalle(detalleXml: string): CamaraVotoDetalle[] 
       const diputadoId = txt(dip.Id) ?? txt(dip.ID) ?? txt(dip.DIPID);
       if (diputadoId == null) continue;
 
-      // Opción: (a) <OpcionVoto Valor="1|0">; (b) <Opcion Codigo="1|0">texto.
+      // Opción: (a) <OpcionVoto Valor="1|0">; (b) <Opcion Codigo>texto. Las 5 opciones del
+      // roll-call (VOTE-03): ninguna se descarta. Solo un nodo de opción ILEGIBLE (sin valor
+      // ni texto reconocible) devuelve null → ahí sí se omite, para no fabricar un dato falso.
       const opcion = opcionDeVoto(voto);
-      if (opcion == null) continue; // No Vota / Abstención / dispensado → no afirma sí/no nominal
+      if (opcion == null) continue; // opción ilegible/desconocida → fail-closed, no fabrica
 
       const nombreCrudo = [
         txt(dip.Nombre),
@@ -234,30 +246,41 @@ export function parseCamaraVotoDetalle(detalleXml: string): CamaraVotoDetalle[] 
 }
 
 /**
- * Deriva 'si'|'no' del nodo de opción de voto, soportando ambos shapes. Devuelve null cuando
- * la opción NO es un sí/no nominal (No Vota/Abstención/dispensado) — el caller la omite para
- * no fabricar un voto afirmativo/negativo inexistente (T-05-06, fail-closed sobre el sentido).
+ * Deriva la `Seleccion` del roll-call (las 5 opciones) del nodo de opción, soportando ambos
+ * shapes. VOTE-03: ya NO descarta No Vota/Abstención/Pareo — los emite como `ausente`/
+ * `abstencion`/`pareo`. Devuelve `null` SOLO cuando el nodo de opción es ilegible (sin valor
+ * ni texto reconocible) → el caller lo omite, para no fabricar un dato falso (fail-closed).
+ *
+ * Mapeo por CÓDIGO cuando es conocido (confirmado LIVE Phase 8): 1→si, 0→no, 4→ausente.
+ * `abstencion`/`pareo` (y un No Vota textual) se resuelven por el TEXTO `#text` porque sus
+ * códigos exactos NO fueron confirmados LIVE (Assumption A1 — re-verificar en Plan 02).
  */
-function opcionDeVoto(voto: Record<string, unknown>): "si" | "no" | null {
-  // (a) v1: <OpcionVoto Valor="1|0">.
+function opcionDeVoto(voto: Record<string, unknown>): Seleccion | null {
+  // (a) v1: <OpcionVoto Valor="1|0"> (solo trae sí/no nominal en ese shape histórico).
   const opcionVoto = voto.OpcionVoto as Record<string, unknown> | string | undefined;
   if (opcionVoto != null) {
     const valor =
       typeof opcionVoto === "object" ? String(opcionVoto["@_Valor"] ?? "") : "";
     if (valor === "1") return "si";
     if (valor === "0") return "no";
-    return null;
+    return null; // valor desconocido en el shape v1 → ilegible
   }
-  // (b) real: <Opcion Codigo="1|0">A Favor|En Contra|No Vota|Abstención.
+  // (b) real: <Opcion Codigo>A Favor|En Contra|No Vota|Abstención|Pareo|...
   const opcion = voto.Opcion as Record<string, unknown> | string | undefined;
   if (opcion != null) {
     const codigo =
       typeof opcion === "object" ? String(opcion["@_Codigo"] ?? "") : "";
     const texto =
       typeof opcion === "object" ? String(opcion["#text"] ?? "") : String(opcion);
+    // Nominales (código confirmado LIVE o texto inequívoco).
     if (codigo === "1" || /a favor|afirmativ/i.test(texto)) return "si";
     if (codigo === "0" || /en contra|negativ/i.test(texto)) return "no";
-    return null; // No Vota (4) / Abstención / dispensado → no nominal
+    // Abstención / Pareo: por TEXTO (códigos A1 no confirmados LIVE).
+    if (/abstenci/i.test(texto)) return "abstencion";
+    if (/pareo/i.test(texto)) return "pareo";
+    // Ausente: No Vota (código 4 confirmado LIVE) o dispensado/inasistencia por texto.
+    if (codigo === "4" || /no vota|dispensad|inasist|ausen/i.test(texto)) return "ausente";
+    return null; // opción presente pero ilegible/desconocida → no fabrica un dato
   }
   return null;
 }
