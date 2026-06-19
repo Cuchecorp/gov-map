@@ -113,4 +113,23 @@ describe("parseAportes — VERBATIM + gate de header-text", () => {
     expect(aportes[0]!.eleccion).toBe("DISTRITO 7 - 2025");
   });
 
+  it("WR-02: fila con datos SOLO en columnas no-clave -> NO se descarta en silencio (THROW)", async () => {
+    // Las 6 columnas "clave" (tipoAporte/donante/candidato/eleccion/territorio/monto) vacias, pero
+    // fechaTransferencia + tipoAportante + tipoDonatario + pacto + partido con contenido real. Antes
+    // se descartaba en silencio; ahora pasa el guard y -- sin ELECCION/TERRITORIO -- THROW (cuarentena).
+    const bytes = await xlsxConHeaders([...EXPECTED_HEADERS], [
+      ["", "", "Natural", "", "Donatario", "", "", "PACTO Z", "PARTIDO Q", "2025-01-01", ""],
+    ]);
+    await expect(parseAportes(bytes, { anio: "2025" })).rejects.toThrow(/sin eleccion construible/);
+  });
+
+  it("WR-02: fila 100% vacia (todas las 11 celdas null) -> se omite (no es drift)", async () => {
+    // Una fila genuinamente vacia NO es una fila de aporte; se omite sin THROW (no es contenido real).
+    const bytes = await xlsxConHeaders([...EXPECTED_HEADERS], [
+      ["Aporte", "Donante", "Natural", "Cand X", "Candidato", "DIPUTADO", "DISTRITO 1", "P", "Q", "2025-01-01", "100"],
+      ["", "", "", "", "", "", "", "", "", "", ""],
+    ]);
+    const aportes = await parseAportes(bytes, { anio: "2025" });
+    expect(aportes.length).toBe(1); // la fila vacia se omite; solo la real persiste.
+  });
 });

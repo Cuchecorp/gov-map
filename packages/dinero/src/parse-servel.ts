@@ -187,13 +187,23 @@ export async function parseAportes(bytes: Uint8Array, opts: ParseAportesOpts = {
       monto: celdaStr(row.getCell(C.monto).value),
     });
 
-    // Fila totalmente vacia (todas las celdas null): se omite (no es una fila de aporte).
+    // Fila totalmente vacia (TODAS las 11 celdas mapeadas null): se omite (no es una fila de aporte).
+    // WR-02: el chequeo cubre las 11 columnas, NO solo las 6 "clave". Una fila con contenido SOLO en
+    // columnas no-clave (fecha, tipo aportante/donatario, pacto, partido) ya NO se descarta en silencio:
+    // pasa este guard, llega a componerEleccion y -- si no trae ELECCION/TERRITORIO -- THROW (cuarentena
+    // run-level). "Una fila silenciosa es peor que ninguna fila": nunca un descarte silencioso de
+    // contenido real.
     const algunDato =
       cruda.tipoAporte ||
       cruda.donanteNombre ||
+      cruda.tipoAportante ||
       cruda.candidatoNombre ||
+      cruda.tipoDonatario ||
       cruda.eleccionCol ||
       cruda.territorio ||
+      cruda.pacto ||
+      cruda.partido ||
+      cruda.fechaTransferencia ||
       cruda.monto;
     if (!algunDato) continue;
 
