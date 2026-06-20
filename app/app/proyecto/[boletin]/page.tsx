@@ -11,6 +11,7 @@ import { CuerposLegalesList } from "@/components/cuerpos-legales-list";
 import { ProyectosSimilares } from "@/components/proyectos-similares";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sourceLabel } from "@/lib/types";
+import { extractoIdea } from "@/lib/format";
 import type {
   ProyectoRow,
   ProyectoFichaRow,
@@ -170,8 +171,30 @@ async function VotacionesSection({ boletin }: { boletin: string }) {
     );
   }
 
+  // ESPEJO (Phase 22, SC6): conecta la votación con la idea matriz DEL PROPIO
+  // proyecto — el ciudadano entiende QUÉ se votó sin salir de la ficha. Se lee de
+  // la `leerFicha` ya cacheada (React.cache → cero query extra; la misma fila que
+  // sirve a #idea-matriz). La sección de votaciones sigue siendo carril propio
+  // (#votaciones, sibling mt-12 de #idea-matriz): esto NO anida ni compone con
+  // dinero/lobby, sólo recuerda de qué trata el proyecto + ancla a la idea completa.
+  // idea_matriz null → se omite la línea de contexto (honest-state: el bloque
+  // #idea-matriz ya muestra "no disponible aún"); NUNCA se fabrica texto.
+  const ficha = await leerFicha(boletin);
+  const ideaMatriz = ficha?.idea_matriz ?? null;
+
   return (
     <>
+      {ideaMatriz && (
+        <p className="text-sm text-muted-foreground mb-6">
+          Qué se votó: {extractoIdea(ideaMatriz)}{" "}
+          <a
+            href="#idea-matriz"
+            className="text-primary underline underline-offset-2"
+          >
+            Ver la idea matriz completa
+          </a>
+        </p>
+      )}
       {votaciones.map((v) => (
         <VotacionCard key={v.id} votacion={v} />
       ))}
