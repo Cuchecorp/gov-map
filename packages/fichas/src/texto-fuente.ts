@@ -72,6 +72,48 @@ async function sha256Hex(body: Uint8Array): Promise<string> {
     .join("");
 }
 
+/** Magic bytes de un PDF: los primeros 5 bytes son "%PDF-" (0x25 50 44 46 2D). */
+const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2d] as const;
+
+/** ¿El body empieza con la firma "%PDF-"? */
+function isPdf(body: Uint8Array): boolean {
+  if (body.length < PDF_MAGIC.length) return false;
+  for (let i = 0; i < PDF_MAGIC.length; i++) {
+    if (body[i] !== PDF_MAGIC[i]) return false;
+  }
+  return true;
+}
+
+/**
+ * Umbral de caracteres no-blancos bajo el cual un PDF se considera escaneado
+ * (sin capa de texto). pdftotext sobre un escaneo devuelve solo sellos/fechas;
+ * por debajo de esto degradamos honesto a null (OCR es un fallback DIFERIDO).
+ */
+const MIN_PDF_TEXT_CHARS = 200;
+
+/**
+ * Extrae el texto de un PDF con unpdf (pdfjs serverless, JS puro). Si el PDF es
+ * un escaneo sin capa de texto (texto extraído < MIN_PDF_TEXT_CHARS no-blancos),
+ * devuelve null — NUNCA fabrica. unpdf se importa dinámicamente (lazy) para no
+ * cargar pdfjs cuando la fuente no es PDF.
+ */
+async function extraerTextoPdf(
+  body: Uint8Array,
+  log: (msg: string) => void,
+): Promise<string | null> {
+  const { extractText, getDocumentProxy } = await import("unpdf");
+  const pdf = await getDocumentProxy(body);
+  const { text } = await extractText(pdf, { mergePages: true });
+  const texto = Array.isArray(text) ? text.join("\n") : String(text ?? "");
+
+  const noBlancos = texto.replace(/\s/g, "").length;
+  if (noBlancos < MIN_PDF_TEXT_CHARS) {
+    log("texto-fuente: PDF sin capa de texto (escaneado) → degrada (OCR diferido)");
+    return null;
+  }
+  return texto;
+}
+
 /**
  * Descarga el texto íntegro de `linkMensajeMocion` siguiendo el orden LOCKED, y lo respalda
  * a R2 si hay credencial. Degrada a `{ texto: null }` (sin lanzar) ante cualquier ausencia/fallo.
@@ -87,10 +129,19 @@ export async function obtenerTextoFuente(
     return { texto: null, r2Path: null };
   }
 
+  // 0. Upgrade http→https: los portales gubernamentales publican links http que
+  //    301 a https; el allowlist (deny-by-default) exige https. NO se reescribe el
+  //    host (allowlist por sufijo acepta www.senado.cl y el redirect a tramitacion.senado.cl).
+  let link = linkMensajeMocion.trim();
+  if (link.startsWith("http://")) {
+    link = "https://" + link.slice("http://".length);
+    log(`texto-fuente: upgrade http→https: ${link}`);
+  }
+
   // 1. SSRF guard ANTES de cualquier red (deny-by-default gobierno). Host no permitido → degrada.
   let url: URL;
   try {
-    url = assertAllowedUrl(linkMensajeMocion);
+    url = assertAllowedUrl(link);
   } catch (err) {
     if (err instanceof HostNotAllowedError) {
       log(`texto-fuente: URL rechazada por allowlist/SSRF → degrada: ${err.message}`);
@@ -100,10 +151,10 @@ export async function obtenerTextoFuente(
   }
 
   // 2. robots.txt del host. No permitido → skip controlado (degrada).
-  let texto: string;
+  let texto: string | null;
   try {
-    if (!(await opts.robots.isAllowed(linkMensajeMocion))) {
-      log(`texto-fuente: robots prohíbe ${linkMensajeMocion} → degrada`);
+    if (!(await opts.robots.isAllowed(link))) {
+      log(`texto-fuente: robots prohíbe ${link} → degrada`);
       return { texto: null, r2Path: null };
     }
 
@@ -111,18 +162,38 @@ export async function obtenerTextoFuente(
     await opts.rateLimiter.wait(url.host);
 
     // 4. fetch del crudo.
-    const body = await opts.fetcher.get({ url: linkMensajeMocion });
-    texto = new TextDecoder().decode(body);
+    const body = await opts.fetcher.get({ url: link });
+
+    // 4b. Detección de PDF por magic bytes ("%PDF-"). El link_mensaje_mocion del
+    //     Senado resuelve a un PDF, no a texto inline: decodificar a ciegas daría
+    //     basura. Si es PDF → extraer la capa de texto (unpdf); si no, decodificar UTF-8
+    //     (HTML/texto plano, comportamiento previo).
+    if (isPdf(body)) {
+      texto = await extraerTextoPdf(body, log);
+      // PDF escaneado (sin capa de texto) → null (degradación honesta, OCR diferido).
+      if (texto == null) {
+        return { texto: null, r2Path: null };
+      }
+    } else {
+      texto = new TextDecoder().decode(body);
+    }
   } catch (err) {
-    // #30: el catch cubre robots / rate-limit / fetch; el mensaje no afirma que fue el
-    // "fetch" (podía ser cualquiera de los tres) — degrada sin abortar la corrida.
+    // #30: el catch cubre robots / rate-limit / fetch / extracción PDF; el mensaje no
+    // afirma cuál de los pasos falló — degrada sin abortar la corrida.
     log(
-      `texto-fuente: obtención de ${linkMensajeMocion} falló (robots/rate-limit/fetch) → degrada: ${err instanceof Error ? err.message : String(err)}`,
+      `texto-fuente: obtención de ${link} falló (robots/rate-limit/fetch/pdf) → degrada: ${err instanceof Error ? err.message : String(err)}`,
     );
     return { texto: null, r2Path: null };
   }
 
+  // Invariante: todas las ramas de fallo/PDF-escaneado hicieron early-return arriba.
+  // Este guard lo hace explícito (y estrecha `texto` a `string` para el checker).
+  if (texto == null) {
+    return { texto: null, r2Path: null };
+  }
+
   // 5. R2 GATEADO: best-effort, no bloquea (mirror backup.ts; 401 hoy → r2Path null).
+  // El respaldo guarda el TEXTO EXTRAÍDO (utf-8, ext "txt"), no el PDF crudo.
   let r2Path: string | null = null;
   if (opts.r2Enabled && opts.r2) {
     try {
