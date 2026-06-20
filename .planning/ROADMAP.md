@@ -67,6 +67,7 @@ Sub-maestras se construyen en su bloque, NO se difieren a NET: lobista/gestor (P
 - [x] **Phase 16: MONEY Agregación — Contratos/aportes por contraparte** - Vistas agregadas por donante o empresa usando las sub-maestras (completed 2026-06-19 — gated OFF; 3/3 código; RPC `agregado_por_contraparte` solo jurídica/empresas (PII-safe, persona natural nunca expuesta), ruta `/contraparte/[id]` con notFound() gate, anti-insinuación (sin votos, count-only); operador: aplicar 0025 al remoto + pgTAP 0026)
 - [ ] **Phase 17: Compuerta Legal — Bloque NET (framing del grafo)** - Sign-off legal sobre el framing del grafo aprobado ANTES de exponer la red
 - [ ] **Phase 18: NET — Grafo de influencia (`@xyflow/react`)** - Aristas materializadas por `pg_cron` + RPC con CTE recursiva; ambos extremos confirmados, provenance y ventana por arista, sin lenguaje causal
+- [ ] **Phase 19: Producto + Diseño — Brief y cierre de diseño del frontend** - Brief de producto y sistema de diseño CERRADO (implementation-ready) que saca el máximo partido a la data ya disponible; estudio visual de referencias (legalatlas.cl, tributalab.com, ischilesafe.com) vía browseros; correr en autónomo, Opus sin economía de tokens
 
 ## Phase Details
 
@@ -283,6 +284,28 @@ Plans:
 
 **Plans:** TBD
 
+### Phase 19: Producto + Diseño — Brief y cierre de diseño del frontend
+
+**Goal:** Producir un **brief de producto** y un **sistema de diseño CERRADO** (implementation-ready) para el frontend del Observatorio, que saque el **máximo partido a la data ya disponible** (no inventa features), con calidad de producto comparable a las otras propiedades del usuario, y benchmarkeado **visualmente** contra ellas vía **browseros**. Al terminar, el diseño queda cerrado: cualquier implementación posterior sigue el brief sin re-abrir decisiones.
+**Mode:** mvp
+**Depends on:** frontend v1.0+v2.0 ya construido (rutas `/`, `/buscar`, `/proyecto/[boletin]`, `/parlamentario/[id]`, `/agenda`, `/contraparte/[id]`). Independiente de Phases 17/18.
+**Requirements:** (producto/diseño — no mapea a un REQ de datos; cierra la capa de presentación)
+**Success Criteria** (what must be TRUE):
+
+  1. Las **3 propiedades de referencia** del usuario — **legalatlas.cl**, **tributalab.com**, **ischilesafe.com** — se estudian **visualmente con browseros** (screenshots de home + 1–2 flujos clave de cada una); se extrae un análisis de marca, arquitectura de información, hero, densidad, tono y componentes, documentado con un veredicto explícito de **adoptar / adaptar / evitar** para el Observatorio
+  2. Un **brief de producto** cubre: propuesta de valor por superficie, jerarquía de IA y navegación global, landing/hero (la **búsqueda semántica de proyectos** como protagonista), onboarding/primer-uso, y cómo CADA superficie existente (buscar, proyecto, parlamentario, agenda, contraparte) saca el máximo de la data REAL — sin inventar features ni datos que no existen
+  3. Un **sistema de diseño cerrado**: tokens (color, tipografía, espaciado), voz/tono editorial en español, set de componentes, y los **estados honestos** (vacío/carga/error que nunca se leen como "limpio"), todo implementation-ready y consistente con lo ya shippeado
+  4. **Diseños de las pantallas clave** (landing, resultados de búsqueda, ficha de proyecto, ficha de parlamentario, contraparte) entregados como mockups/specs ejecutables (HTML/Tailwind throwaway o UI-SPEC detallado por pantalla) — nada queda "abierto" ni "por decidir"
+  5. **Principios rectores intactos** y visibles en el diseño: trazabilidad (fuente/fecha/enlace por dato), **anti-insinuación** (jamás componer dinero+voto como acusación; sin lenguaje causal/afinidad/score), MONEY sigue gated hasta sign-off legal; un entregable consolidado (brief + design system + pantallas) queda **revisado y cerrado**
+
+**Notas de ejecución (LOCKED para el run autónomo):**
+- **Correr en autónomo con Opus, SIN economía de tokens** — priorizar exhaustividad y calidad de diseño sobre costo (subir el perfil de modelo a todo-Opus para esta fase).
+- **browseros es OBLIGATORIO** para el estudio visual de las 3 referencias. browseros vive en el contexto ORQUESTADOR (no en los sub-agentes gsd-ui-researcher), así que el estudio visual + screenshots se hace durante el **discuss/research del orquestador** y se vuelca a CONTEXT.md, que luego alimenta el UI-SPEC. Visitar: `https://legalatlas.cl`, `https://tributalab.com`, `https://ischilesafe.com`.
+- **No inventar features ni datos.** El diseño exprime lo YA disponible (v1.0 búsqueda semántica + ficha de tramitación + timeline + votaciones; v2.0 parlamentario 360 + MONEY gated). Lo que "sería lindo" pero no tiene data → idea diferida marcada, no se diseña como real.
+- **Es una fase de DISEÑO/PRODUCTO**: el entregable son artefactos de diseño (brief, design system, mockups, UI-SPEC por pantalla), no código de producción de features nuevas. La implementación es una fase posterior que seguirá este brief.
+
+**Plans:** TBD
+
 ## Progress
 
 | Phase | Milestone | Plans | Status | Completed |
@@ -305,3 +328,4 @@ Plans:
 | 16. MONEY Agregación — por contraparte | v2.0 | 0/? | Not started | - |
 | 17. Compuerta Legal — Bloque NET | v2.0 | 0/? | Not started | - |
 | 18. NET — Grafo de influencia | v2.0 | 0/? | Not started | - |
+| 19. Producto + Diseño — Brief y cierre de diseño | v2.0 | 0/? | Not started | - |
