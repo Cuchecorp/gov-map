@@ -67,7 +67,7 @@ Sub-maestras se construyen en su bloque, NO se difieren a NET: lobista/gestor (P
 - [x] **Phase 16: MONEY Agregación — Contratos/aportes por contraparte** - Vistas agregadas por donante o empresa usando las sub-maestras (completed 2026-06-19 — gated OFF; 3/3 código; RPC `agregado_por_contraparte` solo jurídica/empresas (PII-safe, persona natural nunca expuesta), ruta `/contraparte/[id]` con notFound() gate, anti-insinuación (sin votos, count-only); operador: aplicar 0025 al remoto + pgTAP 0026)
 - [ ] **Phase 17: Compuerta Legal — Bloque NET (framing del grafo)** - Sign-off legal sobre el framing del grafo aprobado ANTES de exponer la red
 - [ ] **Phase 18: NET — Grafo de influencia (`@xyflow/react`)** - Aristas materializadas por `pg_cron` + RPC con CTE recursiva; ambos extremos confirmados, provenance y ventana por arista, sin lenguaje causal
-- [ ] **Phase 19: Producto + Diseño — Brief y cierre de diseño del frontend** - Brief de producto y sistema de diseño CERRADO (implementation-ready) que saca el máximo partido a la data ya disponible; estudio visual de referencias (legalatlas.cl, tributalab.com, ischilesafe.com) vía browseros; correr en autónomo, Opus sin economía de tokens
+- [x] **Phase 19: Producto + Diseño — Brief y cierre de diseño del frontend** - Brief de producto y sistema de diseño CERRADO (implementation-ready) que saca el máximo partido a la data ya disponible; estudio visual de referencias (legalatlas.cl, tributalab.com, ischilesafe.com) vía browseros; correr en autónomo, Opus sin economía de tokens (completed 2026-06-20)
 
 ## Phase Details
 
@@ -305,7 +305,7 @@ Plans:
 - **No inventar features ni datos.** El diseño exprime lo YA disponible (v1.0 búsqueda semántica + ficha de tramitación + timeline + votaciones; v2.0 parlamentario 360 + MONEY gated). Lo que "sería lindo" pero no tiene data → idea diferida marcada, no se diseña como real.
 - **Es una fase de DISEÑO/PRODUCTO**: el entregable son artefactos de diseño (brief, design system, mockups, UI-SPEC por pantalla), no código de producción de features nuevas. La implementación es una fase posterior que seguirá este brief.
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 
@@ -313,7 +313,7 @@ Plans:
 - [x] 19-02-PLAN.md — BRIEF.md: propuesta de valor por superficie, IA + navegación global, landing/hero (búsqueda semántica protagonista), onboarding, veredictos de referencia browseros, ideas diferidas
 - [x] 19-03-PLAN.md — SCREENS.md: specs ejecutables por pantalla (landing, resultados, ficha proyecto, ficha parlamentario, contraparte) + GlobalHeader + directorio parlamentarios + sobre/metodología
 - [x] 19-04-PLAN.md — mockup/landing.html: mockup HTML/Tailwind throwaway del landing (ancla visual: fondo crema + hero display + 1 acento itálico petróleo + búsqueda-hero + pills + línea de confianza)
-- [ ] 19-05-PLAN.md — CLOSURE.md: consolidación + cierre (cross-check de los 5 criterios de éxito, auditoría de principios rectores, sign-off CERRADO)
+- [x] 19-05-PLAN.md — CLOSURE.md: consolidación + cierre (cross-check de los 5 criterios de éxito, auditoría de principios rectores, sign-off CERRADO)
 
 ## Progress
 
@@ -337,4 +337,4 @@ Plans:
 | 16. MONEY Agregación — por contraparte | v2.0 | 0/? | Not started | - |
 | 17. Compuerta Legal — Bloque NET | v2.0 | 0/? | Not started | - |
 | 18. NET — Grafo de influencia | v2.0 | 0/? | Not started | - |
-| 19. Producto + Diseño — Brief y cierre de diseño | v2.0 | 4/5 | In Progress|  |
+| 19. Producto + Diseño — Brief y cierre de diseño | v2.0 | 5/5 | Complete   | 2026-06-20 |

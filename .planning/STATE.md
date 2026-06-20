@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: executing
+status: verifying
 stopped_at: Completed 19-03-PLAN.md — SCREENS.md CERRADO (5 pantallas clave + GlobalHeader + directorio + sobre/metodología)
-last_updated: "2026-06-20T13:01:35.174Z"
+last_updated: "2026-06-20T13:07:07.224Z"
 last_activity: 2026-06-20
 progress:
   total_phases: 12
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 29
-  completed_plans: 29
-  percent: 75
+  completed_plans: 30
+  percent: 83
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 Phase: 19 (Producto + Diseño — Brief y cierre de diseño del frontend) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Next plan: cerrar checkpoints de operador de 16-01 (apply remoto + pgTAP 0026) y 15-01/15-02; luego encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
 Last activity: 2026-06-20
 
@@ -95,6 +95,7 @@ Last activity: 2026-06-20
 | Phase 19 P02 | ~7 min | 2 tasks | 1 files |
 | Phase 19 P03 | ~5 min | 2 tasks | 1 files |
 | Phase 19 P04 | 7 min | 1 tasks | 1 files |
+| Phase 19 P05 | 15m | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 19]: 19-02: BRIEF.md CERRADO — brief de producto cierra SC2 (valor por superficie, IA+nav, landing/hero busqueda-protagonista, onboarding) y SC1 (estudio referencias con 6 capturas refs/*.jpg verificadas en disco). Cero cambios en app/.
 - [Phase 19]: 19-03: SCREENS.md CERRADO — contratos por pantalla de las 5 pantallas clave (landing, /buscar, /proyecto/[boletin], /parlamentario/[id], /contraparte/[id]) + GlobalHeader + directorio NEW /parlamentario + /sobre·/metodologia, consolidados desde UI-SPEC §11 (plantilla Route·Layout·Componentes·Estructura·Estados·Anti-insinuación+trazabilidad·Copy). MONEY gated documentado en AMBOS estados (OFF=nodo/ruta ausente; ON futuro descrito); orden de carril LOCKED #votos/#lobby/#patrimonio/#dinero/#financiamiento; NO foto/NO partido; ProvenanceBadge por dato; RUT donante nunca renderizado; vocabulario anti-feature VALLADO (negative-match verde); cero cambios en app/. Cierra SC4 de Phase 19.
 - [Phase ?]: Landing mockup (throwaway) hero uses one italic petrol clause 'Con la fuente a la vista.'; no graph motif (deferred); only literal value rendered is boletin 15234-07
+- [Phase ?]: Phase 19 design contract CERRADO (BRIEF + DESIGN-SYSTEM + SCREENS + landing mockup): la implementación posterior sigue el brief sin re-abrir decisiones
+- [Phase ?]: SC1 (estudio visual browseros) marcado MET por estado en disco: las seis capturas confirmadas presentes en refs/, no por una palabra-veredicto
 
 ### Pending Todos
 
@@ -193,7 +196,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-20T13:01:13.698Z
+Last session: 2026-06-20T13:06:49.108Z
 Stopped at: Completed 19-03-PLAN.md — SCREENS.md CERRADO (5 pantallas clave + GlobalHeader + directorio + sobre/metodología)
 Resume file: None
 
