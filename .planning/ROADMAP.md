@@ -253,7 +253,16 @@ Plans:
   2. La vista agregada por contraparte no compone una contraparte de dinero junto a un voto en una sola unidad de UI ni usa lenguaje causal/afinidad (la correlación donación→voto está prohibida por la regla rectora)
   3. La agregación describe hechos públicos independientes (X aparece como donante/contratista N veces en periodo Y) sin afirmar conexión ni intención
 
-**Plans:** TBD
+**Plans:** 6 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — Poblar la maestra de parlamentarios (~186) en la nube
+- [ ] 20-02-PLAN.md — Ingesta de tramitación (proyectos/votaciones/eventos) a la nube
+- [ ] 20-03-PLAN.md — Embeddings/fichas (Gemini 768) para la búsqueda semántica
+- [ ] 20-04-PLAN.md — Votos + lobby + patrimonio a la nube (MONEY excluido)
+- [ ] 20-05-PLAN.md — Wiring + noindex + secrets + deploy a Cloudflare Workers
+- [ ] 20-06-PLAN.md — Verificación end-to-end del sitio desplegado
+
 
 ### Phase 17: Compuerta Legal — Bloque NET (framing del grafo)
 
@@ -362,4 +371,4 @@ Plans:
 | 17. Compuerta Legal — Bloque NET | v2.0 | 0/? | Not started | - |
 | 18. NET — Grafo de influencia | v2.0 | 0/? | Not started | - |
 | 19. Producto + Diseño — Brief y cierre de diseño | v2.0 | 5/5 | Complete   | 2026-06-20 |
-| 20. Deploy + Carga de Datos — Preview gov-map.com | v2.0 | 0/? | Not started | - |
+| 20. Deploy + Carga de Datos — Preview gov-map.com | v2.0 | 0/6 | Planned | - |
