@@ -20,6 +20,7 @@ Poner el Observatorio **en vivo como preview PRIVADO** en Cloudflare Workers (do
 - Escribe a la **nube**: los conectores leen `SUPABASE_API_URL` + `SUPABASE_SECRET_KEY` del `.env`, que **ya apuntan al proyecto cloud** (`bctyygbmqcvizyplktuw.supabase.co`). No hace falta cambiar nada para que escriban a la nube.
 - **Orden obligatorio** (dependencias FK): (1) maestra parlamentarios → (2) tramitación (proyectos/votaciones/eventos) → (3) embeddings de búsqueda (fichas) → (4) votos, lobby, patrimonio. MONEY/SERVEL **se omiten** (gated).
 - **MONEY excluido**: NO correr `@obs/dinero` (`ingest`/`ingest:servel`). El frente MONEY queda sin data y gated.
+- **Regla LOCKED de dos etapas (ver `CLAUDE.md`/`CONVENTIONS.md`):** la ingesta masiva de esta fase DEBE persistir el crudo a **R2 primero** (ahora que R2 escribe), y la carga a Supabase debe poder re-ejecutarse desde R2 sin re-golpear la fuente. Hash-check primero (content-addressed sha256 + `If-None-Match`). Si los conectores actuales hacen fuente→R2→Supabase en una pasada, está OK para el backfill, pero verificar que exista (o dejar anotado) un camino "R2→Supabase only" para reingesta.
 
 ### Deploy
 - **wrangler directo** (`pnpm --filter app deploy`), usuario logueado. Sin GitHub ni Actions en el camino crítico.
@@ -111,4 +112,5 @@ El cliente MCP de Claude Code tiene la lista de tools VIEJA cacheada (server act
 - **Subir repo a GitHub privado** — opcional (backup); `gh` autenticado si se decide.
 - **Implementar el rediseño de Phase 19** (fondo crema, header global, directorio de parlamentarios) — fase posterior; el preview usa el frontend actual.
 - **Cache ISR en R2** — opcional ahora que R2 escribe.
+- **Cron de novedades (diario L–V, minutos mínimos, hash-check, dos etapas R2→Supabase)** — follow-up tras el backfill; frecuencia/hora exactas TBD (ver regla en `CONVENTIONS.md`). Posible Phase 21.
 </deferred>

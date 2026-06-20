@@ -215,7 +215,15 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 ## Conventions
 
-Conventions not yet established. Will populate as patterns emerge during development.
+### Ingesta y Cron (regla arquitectónica — LOCKED)
+
+1. **Ingesta en DOS ETAPAS, siempre separadas y re-ejecutables independientemente:**
+   - **Etapa 1 — Fuentes → R2 (crudo):** todo lo descargado de una fuente se persiste PRIMERO como crudo inmutable en R2, content-addressed (`fuente/recurso/fecha/sha256.ext`, PUT `If-None-Match: *`; 412 = ya existía = éxito idempotente).
+   - **Etapa 2 — R2 → Supabase:** la carga/parseo a Supabase lee del crudo en R2, NUNCA de la fuente. Re-ingestar a Supabase (error, cambio de schema, re-embed) se hace SIEMPRE desde R2 — no se vuelve a molestar al servidor de la fuente. R2 = verdad cruda versionada; Supabase = derivado reconstruible.
+2. **Hash-check ANTES de descargar:** comprobar si ya está en R2 (sha256) y/o `ETag`/`If-None-Match`/`If-Modified-Since`; si no cambió, NO re-descargar (salir temprano cuando no hay novedades).
+3. **Respeto al servidor:** rate-limit 2–3s/host, User-Agent identificatorio, robots.txt, caché diaria. Nunca ráfagas.
+4. **Backfill masivo = LOCAL** (operador), NO GitHub Actions (minimizar minutos). Idempotente/reanudable.
+5. **Cron de novedades = diario L–V**, minimizando minutos: lotes acotados incrementales, solo novedades, hash-check primero. Frecuencia exacta TBD. MONEY/SERVEL fuera del cron mientras gated.
 <!-- GSD:conventions-end -->
 
 <!-- GSD:architecture-start source:ARCHITECTURE.md -->
