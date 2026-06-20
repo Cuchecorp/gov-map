@@ -1,5 +1,16 @@
 {
   "model_profile": "quality",
+  "model_overrides": {
+    "gsd-plan-checker": "opus",
+    "gsd-verifier": "opus",
+    "gsd-research-synthesizer": "opus",
+    "gsd-codebase-mapper": "opus",
+    "gsd-integration-checker": "opus",
+    "gsd-nyquist-auditor": "opus",
+    "gsd-ui-researcher": "opus",
+    "gsd-ui-checker": "opus",
+    "gsd-ui-auditor": "opus"
+  },
   "commit_docs": true,
   "parallelization": true,
   "search_gitignored": false,
