@@ -62,10 +62,11 @@ reset role;
 -- la salida del RPC NO expone partido/rut/email: la lista de columnas devueltas
 -- es EXACTAMENTE las 7 públicas (sin afiliación ni PII dura, sin provenance).
 select bag_eq(
+  -- el RPC no tiene parámetros IN: todos los proargnames son columnas OUT (table),
+  -- con proargmodes = {t,...,t} (NO null — `returns table` siempre fija modos).
   $$ select unnest(proargnames)
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-      where n.nspname = 'public' and p.proname = 'parlamentarios_publico'
-        and proargmodes is null $$,  -- todos OUT (table) cuando no hay modos mixtos
+      where n.nspname = 'public' and p.proname = 'parlamentarios_publico' $$,
   $$ values ('id'),('nombre'),('camara'),('region'),('distrito'),
             ('circunscripcion'),('periodo') $$,
   'parlamentarios_publico emite EXACTAMENTE 7 columnas seguras (sin partido/rut/email)');
