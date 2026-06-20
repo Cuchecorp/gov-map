@@ -1,10 +1,12 @@
 import Link from "next/link";
 
 import { createServerSupabase } from "@/lib/supabase";
-import { VotoFichaRow } from "@/components/voto-ficha-row";
 import { Badge } from "@/components/ui/badge";
+import { ProvenanceBadge } from "@/components/provenance-badge";
+import { SELECCION_STYLE } from "@/components/voto-row";
 import { cn } from "@/lib/utils";
-import { fechaCorta } from "@/lib/format";
+import { fechaCorta, extractoIdea, conteoVotacion } from "@/lib/format";
+import { sourceLabel } from "@/lib/types";
 import type {
   Seleccion,
   VotoFichaRow as VotoFichaRowData,
@@ -86,6 +88,12 @@ export interface VotosViewData {
   page: number;
   totalPages: number;
   /**
+   * Total de PROYECTOS distintos con votaciones confirmadas (no de votaciones):
+   * alimenta la nota de cobertura honesta. Opcional: si no se provee, la vista lo
+   * deriva de los boletines distintos presentes en `votos` (cobertura conservadora).
+   */
+  totalProyectos?: number;
+  /**
    * `true` si la ingesta de este parlamentario aún NO ha corrido (estado (c)
    * "no ingestado" — distinto de "ingestado, 0 confirmados"). Se infiere de un
    * marcador honesto; por ahora `false` cuando hay datos, `null` desconocido.
@@ -106,6 +114,124 @@ function buildHref(
   return `/parlamentario/${id}${qs ? `?${qs}` : ""}`;
 }
 
+/** Bajo este nº de proyectos, la vista muestra una nota de cobertura honesta. */
+const COBERTURA_BAJA_UMBRAL = 5;
+
+/** Un proyecto agrupado: su cabecera (titulo/idea) + las etapas en que votó. */
+interface ProyectoArco {
+  boletin: string;
+  titulo: string | null;
+  idea_matriz: string | null;
+  etapas: VotoFichaConMateria[];
+}
+
+/**
+ * Agrupa las votaciones por `boletin` preservando el orden de aparición (el RPC
+ * ya las ordena por fecha). Cada grupo es el ARCO de un proyecto: una cabecera con
+ * su sustancia + las etapas votadas. CERO fabricación: titulo/idea se toman de la
+ * primera fila del grupo (LEFT JOIN → null honesto).
+ */
+function agruparPorProyecto(votos: VotoFichaConMateria[]): ProyectoArco[] {
+  const orden: string[] = [];
+  const porBoletin = new Map<string, ProyectoArco>();
+  for (const v of votos) {
+    let g = porBoletin.get(v.boletin);
+    if (!g) {
+      g = {
+        boletin: v.boletin,
+        titulo: v.titulo,
+        idea_matriz: v.idea_matriz,
+        etapas: [],
+      };
+      porBoletin.set(v.boletin, g);
+      orden.push(v.boletin);
+    }
+    g.etapas.push(v);
+  }
+  return orden.map((b) => porBoletin.get(b)!);
+}
+
+/**
+ * Cabecera de proyecto (titulo enlazado + extracto de idea o honest-state) + las
+ * etapas votadas bajo él (cada una: opción + etapa + desenlace factual). PURO.
+ * El framing del desenlace es un HECHO de la votación (DESIGN-SYSTEM §8), nunca
+ * un juicio del voto.
+ */
+function ProyectoGrupo({ grupo }: { grupo: ProyectoArco }) {
+  return (
+    <li className="border-t first:border-t-0 pt-4">
+      {/* Cabecera del proyecto — el titulo aparece UNA vez por arco. */}
+      {grupo.titulo ? (
+        <Link
+          href={`/proyecto/${grupo.boletin}`}
+          className="text-base text-primary underline underline-offset-2"
+        >
+          {grupo.titulo}
+        </Link>
+      ) : (
+        <Link
+          href={`/proyecto/${grupo.boletin}`}
+          className="font-mono text-primary underline underline-offset-2"
+        >
+          Boletín N°{grupo.boletin}
+        </Link>
+      )}
+      <p className="text-sm text-muted-foreground mt-1">
+        {grupo.idea_matriz
+          ? `De qué trata: ${extractoIdea(grupo.idea_matriz)}`
+          : "De qué trata: no disponible aún"}
+      </p>
+
+      {/* Etapas votadas — la trayectoria del proyecto en su tramitación. */}
+      <ul className="mt-2 space-y-1">
+        {grupo.etapas.map((e) => {
+          const hayConteo = e.total_si != null && e.total_no != null;
+          return (
+            <li
+              key={e.votacion_id}
+              className="flex flex-wrap items-center gap-2 py-1 text-sm"
+            >
+              <Badge
+                variant="outline"
+                className={cn(
+                  "border-transparent shrink-0",
+                  SELECCION_STYLE[e.seleccion].className,
+                )}
+              >
+                {OPCION_LABEL[e.seleccion]}
+              </Badge>
+              {e.etapa && <span className="text-muted-foreground">{e.etapa}</span>}
+              <span className="font-mono text-muted-foreground">
+                {fechaCorta(new Date(e.fecha))}
+              </span>
+              {e.resultado && (
+                <span className="text-muted-foreground">
+                  · el proyecto fue {e.resultado}
+                  {hayConteo && (
+                    <>
+                      {" "}
+                      <span className="font-mono">
+                        {conteoVotacion(e.total_si!, e.total_no!)}
+                      </span>
+                    </>
+                  )}
+                </span>
+              )}
+              <span className="ml-auto">
+                <ProvenanceBadge
+                  capturedAt={e.fecha_captura ? new Date(e.fecha_captura) : null}
+                  sourceName={sourceLabel(e.origen)}
+                  sourceUrl={e.enlace ?? null}
+                />
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </li>
+  );
+}
+
 // ── Vista pura (RTL la testea con fixtures) ────────────────────────────────────
 export function VotosView({
   id,
@@ -114,8 +240,12 @@ export function VotosView({
   id: string;
   data: VotosViewData;
 }) {
-  const { votos, totalVotos, conteos, rebeldias, materiaActiva, materias, page, totalPages, noIngestado } =
+  const { votos, totalVotos, conteos, rebeldias, materiaActiva, materias, page, totalPages, noIngestado, totalProyectos: totalProyectosProp } =
     data;
+  // Cobertura: nº de proyectos distintos. Si el server no lo pasó, se deriva de
+  // los boletines distintos en la página (conservador, nunca aparenta más).
+  const totalProyectos =
+    totalProyectosProp ?? new Set(votos.map((v) => v.boletin)).size;
 
   // Estado (c) — no ingestado: NUNCA se lee como "limpio". Distingue "no
   // consultado todavía" de "consultado, sin votos confirmados".
@@ -139,12 +269,17 @@ export function VotosView({
   }
 
   const totalConteos = SELECCION_ORDEN.reduce((s, k) => s + conteos[k], 0);
+  // Asistencia REAL (presente vs ausente) — derivada de `ausente`, NO del sentido
+  // del voto. Presente = total − ausente; sólo se afirma si hay ausentes (cero
+  // fabricación de asistencia perfecta).
+  const ausentes = conteos.ausente;
+  const presentes = totalConteos - ausentes;
 
   return (
     <div className="space-y-10">
-      {/* ── Asistencia (§3.3) ─────────────────────────────────────────────── */}
+      {/* ── Cómo votó — desglose del SENTIDO del voto (NO asistencia) ──────── */}
       <div>
-        <h3 className="text-sm font-semibold">Asistencia</h3>
+        <h3 className="text-sm font-semibold">Cómo votó</h3>
         {totalConteos > 0 ? (
           <>
             <div
@@ -171,9 +306,17 @@ export function VotosView({
                 (k) => `${OPCION_LABEL[k]} ${conteos[k]}`,
               ).join(" · ")}
             </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Emitió {totalConteos} votos registrados.
-            </p>
+            {/* Asistencia REAL como métrica propia, separada del sentido. */}
+            {ausentes > 0 ? (
+              <p className="text-sm text-muted-foreground mt-1">
+                Presente en {presentes} de {totalConteos} votaciones · Ausente en{" "}
+                {ausentes}.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground mt-1">
+                Emitió {totalConteos} votos registrados.
+              </p>
+            )}
           </>
         ) : (
           <p className="text-sm text-muted-foreground mt-2">
@@ -216,28 +359,35 @@ export function VotosView({
         </div>
       )}
 
-      {/* ── Lista de votaciones (§3.2), agrupada por votación, paginada ────── */}
+      {/* ── Votaciones agrupadas POR PROYECTO — el arco (§3.2/§4) ─────────── */}
       <div>
+        {/* Línea explicativa neutra del significado de a favor/en contra (LOCKED). */}
+        <p className="text-sm text-muted-foreground">
+          A favor / En contra se refiere a aprobar o rechazar el proyecto en esa
+          etapa de su tramitación.
+        </p>
+
         {votos.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground mt-4">
             {materiaActiva
               ? "No hay votaciones registradas en proyectos sobre este tema."
               : "No hay votaciones confirmadas para este parlamentario en la legislatura vigente."}
           </p>
         ) : (
-          <ul>
-            {votos.map((v) => (
-              <li key={v.votacion_id} className="border-t first:border-t-0">
-                <div className="flex flex-wrap items-center gap-2 pt-2 text-sm text-muted-foreground">
-                  <span className="font-mono">{fechaCorta(new Date(v.fecha))}</span>
-                  {v.etapa && <span>· {v.etapa}</span>}
-                </div>
-                <ul>
-                  <VotoFichaRow voto={v} />
-                </ul>
-              </li>
+          <ul className="mt-4 space-y-6">
+            {agruparPorProyecto(votos).map((grupo) => (
+              <ProyectoGrupo key={grupo.boletin} grupo={grupo} />
             ))}
           </ul>
+        )}
+
+        {/* Cobertura honesta: con pocos proyectos NO se aparenta exhaustividad. */}
+        {votos.length > 0 && totalProyectos <= COBERTURA_BAJA_UMBRAL && (
+          <p className="text-sm text-muted-foreground mt-4">
+            Se registran votaciones de {totalProyectos}{" "}
+            {totalProyectos === 1 ? "proyecto" : "proyectos"} en las fuentes
+            consultadas; la cobertura se está ampliando.
+          </p>
         )}
 
         {totalPages > 1 && (
@@ -423,6 +573,10 @@ export async function VotosSection({
   }
   const rebeldias = (rebData as RebeldiaRow[] | null) ?? [];
 
+  // Cobertura: nº de proyectos DISTINTOS con votaciones confirmadas (sobre TODO el
+  // conjunto, no la página) — alimenta la nota honesta. Cero exhaustividad fingida.
+  const totalProyectos = new Set(todasConMateria.map((v) => v.boletin)).size;
+
   return (
     <VotosView
       id={id}
@@ -436,6 +590,7 @@ export async function VotosSection({
         page: pageClamped,
         totalPages,
         noIngestado: false,
+        totalProyectos,
       }}
     />
   );
