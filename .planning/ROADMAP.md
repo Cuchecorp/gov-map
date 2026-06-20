@@ -315,6 +315,30 @@ Plans:
 - [x] 19-04-PLAN.md — mockup/landing.html: mockup HTML/Tailwind throwaway del landing (ancla visual: fondo crema + hero display + 1 acento itálico petróleo + búsqueda-hero + pills + línea de confianza)
 - [x] 19-05-PLAN.md — CLOSURE.md: consolidación + cierre (cross-check de los 5 criterios de éxito, auditoría de principios rectores, sign-off CERRADO)
 
+### Phase 20: Deploy + Carga de Datos — Preview privado gov-map.com
+
+**Goal:** Dejar el sitio del Observatorio **DESPLEGADO** (preview PRIVADO, `noindex`, en Cloudflare Workers vía **wrangler directo** — el usuario está logueado, sin GitHub Actions) y **ENTREGANDO INFORMACIÓN real**, con el Supabase de la nube **poblado por ingesta LIVE corrida LOCALMENTE** (para no gastar GitHub Actions). MONEY y NET quedan **apagados** (gated). Dominio objetivo: **gov-map.com**.
+**Mode:** mvp
+**Depends on:** Phase 19 (diseño cerrado, opcional para implementación), schema remoto aplicado (migraciones 0001–0025 YA en la nube al 2026-06-20), R2 con escritura OK, `.env` sin BOM. Independiente de Phases 17/18 (NET off).
+**Requirements:** (deploy/infra — no mapea a un REQ de datos; pone el producto en vivo)
+**Success Criteria** (what must be TRUE):
+
+  1. **Supabase remoto poblado** con data real vía ingesta LIVE **corrida localmente** (idempotente, rate-limit 2–3s, en lotes acotados): maestra de parlamentarios, tramitación (proyectos/votaciones/eventos), embeddings de búsqueda semántica, votos, lobby, patrimonio. Conteos > 0 verificados con psql. MONEY/SERVEL **excluidos** (gated).
+  2. **Frontend cableado a la nube**: `SUPABASE_URL` + `SUPABASE_ANON_KEY` del proyecto cloud (`bctyygbmqcvizyplktuw.supabase.co`) seteados como secrets del Worker (`wrangler secret put`), más `GEMINI_API_KEY` (embeddings de búsqueda en runtime). `MONEY_PUBLIC_ENABLED` ausente/false.
+  3. **Preview PRIVADO**: `robots noindex` (o Cloudflare Access) — NO lanzamiento público (el gate legal Ley 21.719 sigue pendiente). MONEY y NET apagados.
+  4. **Deploy a Cloudflare Workers vía wrangler** (`pnpm --filter app deploy`, worker `observatorio-congreso`): sitio accesible en `*.workers.dev`. `gov-map.com` se adjunta cuando el dominio esté en la cuenta CF (paso DNS de operador).
+  5. **Verificación end-to-end**: el sitio desplegado responde y muestra data real (la búsqueda devuelve proyectos; una ficha de parlamentario muestra votos/lobby/patrimonio). Principios rectores intactos (anti-insinuación, MONEY/NET gated, sin foto/partido, trazabilidad).
+
+**Notas de ejecución (LOCKED para el run autónomo):**
+
+- **Ingesta LIVE corre LOCAL, no en GitHub Actions** (preferencia del usuario: no gastar Actions). Idempotente/reanudable (pgmq + content-addressed R2). Respetar rate-limit 2–3s. Correr en **lotes acotados** (por boletín/periodo) para no exceder tiempos de subagente.
+- **Deploy vía wrangler directo** (usuario logueado). **⚠️ Windows EPERM:** el build de OpenNext usa symlinks que Windows bloquea sin Modo Desarrollador → **activar Modo Desarrollador de Windows** o correr el build en **WSL**. Si ambos fallan, fallback al workflow `deploy-cloudflare.yml` (única excepción a "no Actions").
+- **Preview PRIVADO**: `noindex` obligatorio; NUNCA lanzar público sin sign-off legal (CLAUDE.md). MONEY (`MONEY_PUBLIC_ENABLED`) y NET (grafo) **apagados**.
+- **El runbook operativo completo (comandos exactos, gotchas, orden) está en `20-CONTEXT.md`** — leerlo es obligatorio antes de planificar.
+- **Input de operador requerido**: `SUPABASE_ANON_KEY` (dashboard → Settings → API Keys) y, para el dominio, agregar `gov-map.com` a la cuenta Cloudflare (DNS). Sin el anon key el frontend no lee la nube.
+
+**Plans:** TBD
+
 ## Progress
 
 | Phase | Milestone | Plans | Status | Completed |
@@ -338,3 +362,4 @@ Plans:
 | 17. Compuerta Legal — Bloque NET | v2.0 | 0/? | Not started | - |
 | 18. NET — Grafo de influencia | v2.0 | 0/? | Not started | - |
 | 19. Producto + Diseño — Brief y cierre de diseño | v2.0 | 5/5 | Complete   | 2026-06-20 |
+| 20. Deploy + Carga de Datos — Preview gov-map.com | v2.0 | 0/? | Not started | - |
