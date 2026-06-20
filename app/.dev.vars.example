@@ -1,0 +1,17 @@
+# Plantilla de variables para `opennextjs-cloudflare preview` (Worker local).
+# Copiar a `.dev.vars` (gitignored) y rellenar. En PRODUCCIÓN estos NO van aquí:
+# se setean como secrets del Worker con `wrangler secret put` (ver docs/deploy-cloudflare.md).
+
+# Entorno de Next al cargar .env (development | production). Default: production.
+NEXTJS_ENV=development
+
+# --- Supabase (LECTURA pública, server-only) ---
+# URL del proyecto Supabase de PRODUCCIÓN (NO el local).
+SUPABASE_URL=
+# ANON key (NO el service/secret key). El frontend lee con RLS public-read;
+# el anon key nunca debe ser el service key (bypassearía RLS).
+SUPABASE_ANON_KEY=
+
+# --- Embeddings de búsqueda (server-only) ---
+# Gemini para embeddizar la consulta de /buscar (gemini-embedding-001, 768d).
+GEMINI_API_KEY=

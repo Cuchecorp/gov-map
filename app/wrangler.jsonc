@@ -1,0 +1,28 @@
+{
+  // Cloudflare Workers config para el frontend Next.js 16 vía @opennextjs/cloudflare.
+  // Deploy: `pnpm --filter app deploy` (corre `opennextjs-cloudflare build && ... deploy`).
+  // Los SECRETS de Supabase NO van aquí: se setean con `wrangler secret put` (ver docs/deploy-cloudflare.md).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "observatorio-congreso",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "observatorio-congreso"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+  // Cache incremental (ISR) en R2 — habilitar cuando el token R2 funcione (hoy 401).
+  // Descomentar este binding Y la línea r2IncrementalCache en open-next.config.ts:
+  // "r2_buckets": [
+  //   { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "observatorio-next-cache" }
+  // ]
+}

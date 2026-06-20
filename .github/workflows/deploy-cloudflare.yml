@@ -1,0 +1,57 @@
+name: deploy-cloudflare
+
+# Deploy del frontend Next.js 16 a Cloudflare Workers vía @opennextjs/cloudflare.
+# Corre en Linux (ubuntu) a propósito: el build de OpenNext usa symlinks que
+# Windows bloquea sin Developer Mode (EPERM) — CI evita ese problema y da deploys
+# reproducibles. Disparo MANUAL (workflow_dispatch), deliberado, igual que los
+# otros workflows del repo.
+#
+# SECRETS de repo requeridos (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   - token con permiso "Edit Cloudflare Workers"
+#   CLOUDFLARE_ACCOUNT_ID  - id de la cuenta (el del endpoint, 10fb709d...)
+#
+# Los SECRETS de RUNTIME del Worker (SUPABASE_URL, SUPABASE_ANON_KEY,
+# GEMINI_API_KEY) NO se setean aquí: van una vez con `wrangler secret put`
+# (ver docs/deploy-cloudflare.md). El build NO los necesita (rutas dinámicas).
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Etiqueta informativa del deploy (no cambia el target)"
+        required: false
+        default: "production"
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      # esbuild/workerd están en ignoredBuiltDependencies (velocidad de
+      # typecheck/test); el build de OpenNext necesita esbuild → lo reconstruimos.
+      - name: Allow native build scripts (esbuild)
+        run: pnpm rebuild esbuild || true
+
+      - name: Build + Deploy (OpenNext → Cloudflare Workers)
+        working-directory: app
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm run deploy
