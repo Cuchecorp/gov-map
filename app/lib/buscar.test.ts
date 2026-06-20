@@ -153,7 +153,7 @@ describe("buscarProyectos — input validation (V5: trim + cap ≤300)", () => {
     rpcMock.mockResolvedValue({ data: [], error: null });
     const largo = "a".repeat(500);
     await buscarProyectos(largo, { embedder: emb });
-    const arg = emb.embed.mock.calls[0][0][0] as string;
+    const arg = (emb.embed.mock.calls as unknown as string[][][])[0]![0][0];
     expect(arg.length).toBe(300);
   });
 });
