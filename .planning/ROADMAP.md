@@ -369,10 +369,11 @@ Plans:
 - **El runbook completo (diagnóstico vivo, comandos, gotchas) está en `21-CONTEXT.md`** — leerlo es obligatorio antes de planificar. El diseño autoritativo es `19-UI-SPEC.md` + `DESIGN-SYSTEM.md`.
 - Principios rectores intactos (anti-insinuación, sin foto/partido, MONEY/NET gated, trazabilidad). Sitio en vivo: `https://observatorio-congreso.thevalis.workers.dev`.
 
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
-- [ ] 21-01-PLAN.md — Diseño Phase 19: tokens crema/petróleo en globals.css + GlobalHeader montado en layout.tsx (SC1/SC4)
+
+- [x] 21-01-PLAN.md — Diseño Phase 19: tokens crema/petróleo en globals.css + GlobalHeader montado en layout.tsx (SC1/SC4)
 - [ ] 21-02-PLAN.md — Directorio de parlamentarios: RPC publico parlamentarios_publico() (0026, PII-safe) + ruta /parlamentarios con filtro (SC2/SC4)
 - [ ] 21-03-PLAN.md — Ideas matrices: cablear el link_mensaje_mocion real (re-fetch Senado) + backfill LIVE @obs/fichas, psql count(idea_matriz)>0 (SC3/SC4)
 - [ ] 21-04-PLAN.md — Redeploy Linux (Docker) + verificacion e2e browseros en produccion: diseno, directorio, idea matriz, noindex, MONEY/NET off (SC5/SC4)
@@ -401,4 +402,4 @@ Plans:
 | 18. NET — Grafo de influencia | v2.0 | 0/? | Not started | - |
 | 19. Producto + Diseño — Brief y cierre de diseño | v2.0 | 5/5 | Complete   | 2026-06-20 |
 | 20. Deploy + Carga de Datos — Preview gov-map.com | v2.0 | 6/6 | Complete   | 2026-06-20 |
-| 21. Producto en vivo — Diseño Phase 19 + directorio + ideas matrices | v2.0 | 0/4 | Planned | - |
+| 21. Producto en vivo — Diseño Phase 19 + directorio + ideas matrices | v2.0 | 1/4 | In Progress|  |

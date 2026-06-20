@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: completed
+status: executing
 stopped_at: "Phase 19 cerrada. Schema remoto 0001-0025 aplicado+reconciliado a la nube (R2 OK, .env sin BOM, password DB nueva verificada). Nube VACIA de datos. Phase 20 creada con runbook CONTEXT (deploy wrangler directo + ingesta LIVE local + preview privado gov-map.com, MONEY/NET off). Pendiente operador: SUPABASE_ANON_KEY en .env. Lanzar: /gsd-autonomous --only 20"
-last_updated: "2026-06-20T17:47:20.111Z"
-last_activity: 2026-06-20 -- Phase 20 marked complete
+last_updated: "2026-06-20T18:58:52.277Z"
+last_activity: 2026-06-20
 progress:
-  total_phases: 13
+  total_phases: 14
   completed_phases: 11
-  total_plans: 35
-  completed_plans: 36
-  percent: 85
+  total_plans: 39
+  completed_plans: 37
+  percent: 79
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 20 — Deploy + Carga de Datos — Preview privado gov-map.com
+**Current focus:** Phase 21 — producto-en-vivo-diseno-phase19-directorio-ideas-matrices
 
 ## Current Position
 
-Phase: 20 — COMPLETE
-Plan: 1 of 6
-Status: Phase 20 complete
+Phase: 21 (producto-en-vivo-diseno-phase19-directorio-ideas-matrices) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Next plan: cerrar checkpoints de operador de 16-01 (apply remoto + pgTAP 0026) y 15-01/15-02; luego encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
-Last activity: 2026-06-20 -- Phase 20 marked complete
+Last activity: 2026-06-20
 
 ## Performance Metrics
 
@@ -96,6 +96,7 @@ Last activity: 2026-06-20 -- Phase 20 marked complete
 | Phase 19 P03 | ~5 min | 2 tasks | 1 files |
 | Phase 19 P04 | 7 min | 1 tasks | 1 files |
 | Phase 19 P05 | 15m | 2 tasks | 1 files |
+| Phase 21 P01 | 8min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,7 @@ Recent decisions affecting current work:
 - [Phase ?]: Landing mockup (throwaway) hero uses one italic petrol clause 'Con la fuente a la vista.'; no graph motif (deferred); only literal value rendered is boletin 15234-07
 - [Phase ?]: Phase 19 design contract CERRADO (BRIEF + DESIGN-SYSTEM + SCREENS + landing mockup): la implementación posterior sigue el brief sin re-abrir decisiones
 - [Phase ?]: SC1 (estudio visual browseros) marcado MET por estado en disco: las seis capturas confirmadas presentes en refs/, no por una palabra-veredicto
+- [Phase ?]: [Phase 21]: 21-01: globals.css EXTENDIDO a crema/petroleo (DESIGN-SYSTEM 1.1 LOCKED) sobre baseline Slate; --accent-product nueva token + utilidad Tailwind aparte; civic-tokens.css git-diff vacio. GlobalHeader Server Component con active-underline aislado en HeaderNav island (usePathname Client-only Next 16); nav Buscar/Parlamentarios/Agenda/Sobre sin hamburguesa JS, sin foto/partido; generateMetadata noindex intacto.
 
 ### Pending Todos
 
@@ -196,9 +198,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-20T15:59:00.497Z
+Last session: 2026-06-20T18:58:37.559Z
 Stopped at: Phase 19 cerrada. Schema remoto 0001-0025 aplicado+reconciliado a la nube (R2 OK, .env sin BOM, password DB nueva verificada). Nube VACIA de datos. Phase 20 creada con runbook CONTEXT (deploy wrangler directo + ingesta LIVE local + preview privado gov-map.com, MONEY/NET off). Pendiente operador: SUPABASE_ANON_KEY en .env. Lanzar: /gsd-autonomous --only 20
-Resume file: .planning/phases/20-deploy-carga-de-datos-preview-privado-gov-map-com/20-CONTEXT.md
+Resume file: None
 
 ## Operator Next Steps
 
