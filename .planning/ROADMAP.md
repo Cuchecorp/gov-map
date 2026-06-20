@@ -348,6 +348,29 @@ Plans:
 
 **Plans:** 6/6 plans complete
 
+### Phase 21: Producto en vivo — Diseño Phase 19 + directorio de parlamentarios + ideas matrices
+
+**Goal:** Llevar el sitio EN VIVO (hoy frontend v1.0 plano) al **producto de Phase 19** (diseño CERRADO: fondo crema + acento petróleo, header global, tipografía/espaciado del DESIGN-SYSTEM) y cerrar las dos brechas de contenido que el deploy de Phase 20 expuso: (a) las **ideas matrices salen vacías** (0/74 — el texto fuente del proyecto no se ingirió, `texto_r2_path` nulo) y (b) **no se pueden descubrir parlamentarios** desde la UI (no hay directorio; solo `/parlamentario/[id]` por id directo). Calidad de producto comparable a las otras propiedades del usuario (legalatlas.cl, tributalab.com, ischilesafe.com).
+**Mode:** mvp
+**Depends on:** Phase 20 (sitio EN VIVO + data ya cargada en la nube), Phase 19 (diseño cerrado: `19-UI-SPEC.md` + `DESIGN-SYSTEM.md` + `mockup/landing.html`).
+**Requirements:** (producto/UI — no mapea a un REQ de datos nuevo; eleva el producto ya desplegado)
+**Success Criteria** (what must be TRUE):
+
+  1. **Diseño Phase 19 implementado** en todas las rutas (`/`, `/buscar`, `/proyecto/[boletin]`, `/parlamentario/[id]`, `/agenda`): fondo crema `hsl(40 33% 97%)` + acento petróleo `hsl(183 38% 26%)` (60/30/10), header global, ramp Geist y espaciado 8-pt del `DESIGN-SYSTEM.md`. Benchmark visual (browseros) vs `mockup/landing.html` y las 3 referencias del usuario. EXTIENDE `globals.css`, NO toca `civic-tokens.css`.
+  2. **Directorio de parlamentarios navegable** (nueva ruta, p.ej. `/parlamentarios`): lista los 186, con búsqueda/filtro por cámara/región/distrito, cada uno enlazando a su ficha. El ciudadano DESCUBRE parlamentarios sin conocer el id. (Ids reales son `D####`/`S####`.)
+  3. **Ideas matrices + cuerpos legales visibles** en la ficha de proyecto: ingerir el **texto fuente** del proyecto (BCN/LeyChile `obtxml?opt=7&idNorma=` o el documento del proyecto) → re-correr el pipeline de fichas (`@obs/fichas`, sin `--dry-run`, con `--reembed` si aplica) para poblar `proyecto_ficha.idea_matriz` (hoy 0/74). Verificar con psql `count(idea_matriz) > 0`.
+  4. **Honest-states correctos**: donde lobby/patrimonio no estén enlazados a un parlamentario (hoy 0/0 linkeados — fuente AA001/bianchi no es del Congreso), mostrar el estado honesto del `DESIGN-SYSTEM.md §7`, nunca vacío silencioso ni dato fabricado.
+  5. **Redeploy verificado**: rebuild del bundle **en Linux (Docker, `docker-cf-build.sh`)** + `wrangler deploy`; verificación e2e (browseros) del diseño nuevo en producción. `noindex` sigue activo; MONEY/NET off; sin foto/partido; trazabilidad por dato.
+
+**Notas de ejecución (LOCKED):**
+
+- **NO re-ingestar** maestra/tramitación/votos/lobby/patrimonio: la nube YA está poblada (Phase 20). Lo único que FALTA ingerir es el **texto fuente de proyectos** para las ideas matrices (SC3).
+- **Build/deploy SOLO en Linux:** el build de OpenNext en Windows produce un bundle que **500ea en runtime** (`dynamic require de middleware-manifest.json`). Usar `docker-cf-build.sh` (node:22) → `docker cp obsbuild:/build/app/.open-next` → `wrangler deploy` desde el host (OAuth ya autenticado). `pnpm --filter app run deploy` (NO `pnpm deploy`).
+- **El runbook completo (diagnóstico vivo, comandos, gotchas) está en `21-CONTEXT.md`** — leerlo es obligatorio antes de planificar. El diseño autoritativo es `19-UI-SPEC.md` + `DESIGN-SYSTEM.md`.
+- Principios rectores intactos (anti-insinuación, sin foto/partido, MONEY/NET gated, trazabilidad). Sitio en vivo: `https://observatorio-congreso.thevalis.workers.dev`.
+
+**Plans:** TBD
+
 ## Progress
 
 | Phase | Milestone | Plans | Status | Completed |
@@ -372,3 +395,4 @@ Plans:
 | 18. NET — Grafo de influencia | v2.0 | 0/? | Not started | - |
 | 19. Producto + Diseño — Brief y cierre de diseño | v2.0 | 5/5 | Complete   | 2026-06-20 |
 | 20. Deploy + Carga de Datos — Preview gov-map.com | v2.0 | 6/6 | Complete   | 2026-06-20 |
+| 21. Producto en vivo — Diseño Phase 19 + directorio + ideas matrices | v2.0 | 0/? | Not started | - |
