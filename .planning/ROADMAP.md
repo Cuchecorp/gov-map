@@ -378,6 +378,31 @@ Plans:
 - [x] 21-03-PLAN.md — Ideas matrices: cablear el link_mensaje_mocion real (re-fetch Senado) + backfill LIVE @obs/fichas, psql count(idea_matriz)>0 (SC3/SC4)
 - [x] 21-04-PLAN.md — Redeploy Linux (Docker) + verificacion e2e browseros en produccion: diseno, directorio, idea matriz, noindex, MONEY/NET off (SC5/SC4)
 
+### Phase 22: Votaciones instructivas — qué votó cada uno y para qué
+
+**Goal:** Hacer que la sección de votaciones de la ficha del parlamentario (y su espejo en la ficha del proyecto) sea **INSTRUCTIVA**: que el ciudadano entienda de un vistazo **QUÉ se votó** (la idea del proyecto, no solo el número de boletín), **CÓMO votó** (a favor/en contra) y **QUÉ pasó** (resultado y conteo de la votación), sin insinuar intención ni causalidad. Hoy cada voto se muestra como `En contra · Boletín N°18296-05` — opaco: no se ve de qué trataba, ni el desenlace, ni qué significó ese voto. Aprovechar las **ideas matrices ya pobladas** (Phase 21, 57/74) para dar sustancia. Calidad de producto comparable a las otras propiedades del usuario.
+**Mode:** mvp
+**Depends on:** Phase 21 (idea_matriz poblada + diseño Phase 19 en vivo), Phase 20 (data en la nube), Phase 19 (DESIGN-SYSTEM §6/§7/§8 + UI-SPEC §3/§9).
+**Requirements:** (producto/UI — no mapea a un REQ de datos nuevo; eleva la instructividad de los datos ya cargados)
+**Success Criteria** (what must be TRUE):
+
+  1. **Sustancia por voto:** cada voto muestra el **título del proyecto** + un extracto de la **idea matriz** (cuando exista) — no solo el número de boletín. El ciudadano entiende de qué trataba lo que se votó sin hacer clic. Honest-state cuando el proyecto no tiene idea matriz.
+  2. **Desenlace por votación:** cada votación muestra su **resultado y conteo** (Aprobado/Rechazado, total a favor–en contra, quórum, etapa) y enmarca el voto del parlamentario respecto a ese resultado (p.ej. "Votó En contra · el proyecto fue Rechazado 58–81"). Sin juicio.
+  3. **Corregir la etiqueta "Asistencia":** separar la **asistencia real** (presente vs ausente) del **sentido del voto** (a favor/en contra/abstención). El desglose de sentido se renombra a algo honesto ("Cómo votó" / "Sentido de sus votos"); la asistencia es su propia métrica observable.
+  4. **Agrupar por proyecto (el arco):** bajo cada proyecto (título + idea), mostrar las etapas en que votó y el desenlace del proyecto — trayectoria, no lista plana cronológica.
+  5. **Honest-states + cobertura + funds:** explicar qué significa "a favor/en contra" (de **avanzar/aprobar el proyecto en esa etapa**) sin lenguaje causal; cuando hay pocas votaciones (hoy 2 boletines/10 votaciones) decirlo honestamente; "Financiamiento y contratos del Estado" (MONEY) muestra un **honest-state explícito** ("pendiente de revisión legal — Ley 21.719") en vez de silencio.
+  6. **Espejo en la ficha del proyecto + redeploy:** la sección de votaciones del proyecto muestra resultado+conteo y conecta con la idea matriz del propio proyecto. Rebuild Linux (Docker) + `wrangler deploy` + verificación e2e (browseros) en producción; `noindex`/MONEY/NET intactos; sin foto/partido; trazabilidad por dato.
+
+**Notas de ejecución (LOCKED):**
+
+- **Anti-insinuación HARD** (UI-SPEC §9.1 / DESIGN-SYSTEM §6,§8): PROHIBIDO ranking/score/índice, juicio/adjetivo sobre un voto, relación/cercanía política, y lenguaje causal. "A favor/En contra" describe el **sentido del voto sobre el proyecto en esa etapa**, jamás una valoración. El nombre interno "rebeldías" nunca aparece en UI (heading neutro "Votó distinto a su bancada").
+- **Datos disponibles SIN nueva ingesta ni RPC obligatoria nueva:** anon YA lee `votacion` (resultado/total_si/total_no/total_abstencion/quorum/etapa), `proyecto` (titulo/materia) y `proyecto_ficha` (idea_matriz). La `VotosSection` (server component, `app/components/votos-por-parlamentario.tsx`) ya joina `proyecto.materia` por boletín → extender ese join a `titulo` + `idea_matriz` + la fila de `votacion`. Opcional (más limpio): extender el RPC `votos_de_parlamentario` para devolver resultado/totales/titulo.
+- **NO re-ingestar.** La cobertura fina de votaciones (solo 2 boletines) es una **deuda de datos separada**; esta fase es de **presentación instructiva** sobre los datos existentes, degradando honesto donde falten.
+- **El runbook completo (análisis browseros en vivo, componentes, esquema de datos, gotchas) está en `22-CONTEXT.md`** — leerlo es obligatorio antes de planificar. Diseño autoritativo: `19-UI-SPEC.md` (§3 ficha parlamentario, §9 copy de votos) + `DESIGN-SYSTEM.md`.
+- **Build/deploy SOLO Linux:** `docker start -a obsbuild` (container ya existe, reusa node_modules) → `docker cp obsbuild:/build/app/.open-next` → `cd app && npx wrangler deploy`. NO `pnpm deploy`. Sitio: `https://observatorio-congreso.thevalis.workers.dev`.
+
+**Plans:** TBD
+
 ## Progress
 
 | Phase | Milestone | Plans | Status | Completed |
@@ -403,3 +428,4 @@ Plans:
 | 19. Producto + Diseño — Brief y cierre de diseño | v2.0 | 5/5 | Complete   | 2026-06-20 |
 | 20. Deploy + Carga de Datos — Preview gov-map.com | v2.0 | 6/6 | Complete   | 2026-06-20 |
 | 21. Producto en vivo — Diseño Phase 19 + directorio + ideas matrices | v2.0 | 4/4 | Complete   | 2026-06-20 |
+| 22. Votaciones instructivas — qué votó cada uno y para qué | v2.0 | 0/? | Not started | - |
