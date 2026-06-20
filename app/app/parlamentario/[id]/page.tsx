@@ -133,6 +133,26 @@ export default async function ParlamentarioPage({
           </Suspense>
         </section>
       )}
+
+      {/*
+        Phase 22 — honest-state MONEY (DESIGN-SYSTEM §7/§8.6, CONTEXT decisión 6).
+        Cuando MONEY está OFF (default), en vez de SILENCIO el ciudadano ve que la
+        sección existe y POR QUÉ aún no se muestra. Es MUTUAMENTE EXCLUYENTE con las
+        secciones reales #dinero/#financiamiento (ON futuro). CLAVE anti-insinuación:
+        este bloque NO toca Supabase, NO compone con un voto, NO menciona monto/
+        contrato/donante — sólo el texto legal LOCKED. Carril propio mt-12 (SIBLING,
+        nunca anidado en #votos); su propia <section> con su <h2>.
+      */}
+      {!moneyPublicEnabled(process.env) && (
+        <section id="financiamiento-pendiente" className="mt-12">
+          <h2 className="text-xl font-semibold mb-4">
+            Financiamiento y contratos del Estado
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Pendiente de revisión legal (Ley 21.719) antes de publicarse.
+          </p>
+        </section>
+      )}
     </main>
   );
 }
