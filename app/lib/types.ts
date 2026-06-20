@@ -140,11 +140,18 @@ export interface ParlamentarioListadoRow {
 }
 
 /**
- * Fila del RPC `votos_de_parlamentario` (migración 0019). El RPC devuelve SOLO
- * filas confirmadas (`estado_vinculo='confirmado'`), por eso no trae
+ * Fila del RPC `votos_de_parlamentario` (migración 0019, EXTENDIDO por 0028). El RPC
+ * devuelve SOLO filas confirmadas (`estado_vinculo='confirmado'`), por eso no trae
  * `mencion_nombre`/`parlamentario_id`/`estado_vinculo`: la identidad ya está
  * confirmada y la subjetividad de la ficha es el propio parlamentario. El
  * `boletin` es el COMPLETO con sufijo → enlaza a `/proyecto/[boletin]`.
+ *
+ * Phase 22 (0028): la fila ahora trae además su SUSTANCIA (`titulo` del proyecto +
+ * `idea_matriz` extracto) y su DESENLACE (`resultado`/`total_si`/`total_no`/
+ * `total_abstencion`/`total_pareo`/`quorum` de la votación) para evitar N+1 joins en
+ * el server component. `titulo`/`idea_matriz` pueden ser `null` (LEFT JOIN: un proyecto
+ * sin idea matriz devuelve null — honest-state, NUNCA fabricado). Sigue siendo SOLO
+ * filas confirmadas.
  */
 export interface VotoFichaRow {
   votacion_id: string;
@@ -156,6 +163,16 @@ export interface VotoFichaRow {
   origen: string;
   fecha_captura: string;
   enlace: string | null;
+  // Sustancia (0028) — null honesto si el proyecto/ficha no la tiene (LEFT JOIN).
+  titulo: string | null;
+  idea_matriz: string | null;
+  // Desenlace de la votación (0028) — null si la votación no lo publica.
+  resultado: string | null;
+  total_si: number | null;
+  total_no: number | null;
+  total_abstencion: number | null;
+  total_pareo: number | null;
+  quorum: string | null;
 }
 
 /**

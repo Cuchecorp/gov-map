@@ -95,6 +95,15 @@ export function VotoFichaMencionRow({ voto }: { voto: VotoFichaMencion }) {
           origen: voto.origen,
           fecha_captura: voto.fecha_captura,
           enlace: voto.enlace,
+          // Sustancia/desenlace (0028): la mención cruda no los trae → null honesto.
+          titulo: null,
+          idea_matriz: null,
+          resultado: null,
+          total_si: null,
+          total_no: null,
+          total_abstencion: null,
+          total_pareo: null,
+          quorum: null,
         }}
       />
     );

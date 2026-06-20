@@ -25,6 +25,15 @@ function makeVoto(
     origen: "camara",
     fecha_captura: "2026-06-18T00:00:00Z",
     enlace: "https://opendata.camara.cl/votacion/1",
+    // Sustancia + desenlace (0028) — campos additivos del RPC extendido.
+    titulo: "Proyecto de prueba",
+    idea_matriz: "Idea matriz de prueba.",
+    resultado: "Aprobado",
+    total_si: 80,
+    total_no: 40,
+    total_abstencion: 0,
+    total_pareo: 0,
+    quorum: "Simple",
     materia: "Salud",
     ...overrides,
   };
