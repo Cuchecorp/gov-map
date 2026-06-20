@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: — Parlamentarios 360
 status: executing
 stopped_at: Completed 19-03-PLAN.md — SCREENS.md CERRADO (5 pantallas clave + GlobalHeader + directorio + sobre/metodología)
-last_updated: "2026-06-20T12:56:55.100Z"
+last_updated: "2026-06-20T13:01:35.174Z"
 last_activity: 2026-06-20
 progress:
   total_phases: 12
   completed_phases: 9
   total_plans: 29
-  completed_plans: 28
+  completed_plans: 29
   percent: 75
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 19 (Producto + Diseño — Brief y cierre de diseño del frontend) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Next plan: cerrar checkpoints de operador de 16-01 (apply remoto + pgTAP 0026) y 15-01/15-02; luego encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
 Last activity: 2026-06-20
@@ -94,6 +94,7 @@ Last activity: 2026-06-20
 | Phase 19 P01 | 6min | 2 tasks | 1 files |
 | Phase 19 P02 | ~7 min | 2 tasks | 1 files |
 | Phase 19 P03 | ~5 min | 2 tasks | 1 files |
+| Phase 19 P04 | 7 min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -161,6 +162,7 @@ Recent decisions affecting current work:
 - [Phase 16]: 16-02: ruta ciudadana /contraparte/[id] (empresa = persona jurídica) con DOS carriles mt-12 HERMANOS — contratos (ChileCompra) + aportes (SERVEL) — cada fila trazada (ProvenanceBadge). NUEVO patrón: gate a NIVEL DE PAGINA — `moneyPublicEnabled(process.env) -> notFound()` es la PRIMERA sentencia (antes de await params/RPC/heading); con OFF (default) la ruta entera 404 (sirve not-found.tsx), sin filtración de DOM MONEY (distinto de la ficha, donde el gate envuelve una <section>). CONTRAPARTE_ID_RE=/^[cd]:[A-Za-z0-9 .\-_]+$/ valida 'c:<rut_proveedor>'/'d:<donante_nombre>' ANTES de tocar la DB; HeaderSection: sin fila->notFound, tipo_persona!='jur'->notFound (defensa en profundidad T-16-07), error real->throw (#34). El Section despacha el RPC agregado_por_contraparte por `facet`. ANTI-INSINUACIÓN dura: cero dato de voto, cero lenguaje causal (sweep+RTL), conteo neutral (cero SUM/ranking), montos verbatim, RUT donante nunca renderizado. Atribución por dataset (ChileCompra 'mención de la fuente' / SERVEL 'términos de uso por verificar', NUNCA CC BY 4.0). vitest.config gana app/**/*.test (primer test de ruta). Carril confirmado-parlamentario y /contraparte listado DIFERIDOS. 174 tests RTL verdes (22 nuevos); pendiente de OPERADOR: 16-01 apply remoto + pgTAP 0026.
 - [Phase ?]: [Phase 19]: 19-02: BRIEF.md CERRADO — brief de producto cierra SC2 (valor por superficie, IA+nav, landing/hero busqueda-protagonista, onboarding) y SC1 (estudio referencias con 6 capturas refs/*.jpg verificadas en disco). Cero cambios en app/.
 - [Phase 19]: 19-03: SCREENS.md CERRADO — contratos por pantalla de las 5 pantallas clave (landing, /buscar, /proyecto/[boletin], /parlamentario/[id], /contraparte/[id]) + GlobalHeader + directorio NEW /parlamentario + /sobre·/metodologia, consolidados desde UI-SPEC §11 (plantilla Route·Layout·Componentes·Estructura·Estados·Anti-insinuación+trazabilidad·Copy). MONEY gated documentado en AMBOS estados (OFF=nodo/ruta ausente; ON futuro descrito); orden de carril LOCKED #votos/#lobby/#patrimonio/#dinero/#financiamiento; NO foto/NO partido; ProvenanceBadge por dato; RUT donante nunca renderizado; vocabulario anti-feature VALLADO (negative-match verde); cero cambios en app/. Cierra SC4 de Phase 19.
+- [Phase ?]: Landing mockup (throwaway) hero uses one italic petrol clause 'Con la fuente a la vista.'; no graph motif (deferred); only literal value rendered is boletin 15234-07
 
 ### Pending Todos
 
@@ -191,7 +193,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-20T12:56:55.086Z
+Last session: 2026-06-20T13:01:13.698Z
 Stopped at: Completed 19-03-PLAN.md — SCREENS.md CERRADO (5 pantallas clave + GlobalHeader + directorio + sobre/metodología)
 Resume file: None
 
