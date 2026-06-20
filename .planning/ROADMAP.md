@@ -317,7 +317,7 @@ Plans:
 
 ### Phase 20: Deploy + Carga de Datos — Preview privado gov-map.com
 
-**Goal:** Dejar el sitio del Observatorio **DESPLEGADO** (preview PRIVADO, `noindex`, en Cloudflare Workers vía **wrangler directo** — el usuario está logueado, sin GitHub Actions) y **ENTREGANDO INFORMACIÓN real**, con el Supabase de la nube **poblado por ingesta LIVE corrida LOCALMENTE** (para no gastar GitHub Actions). MONEY y NET quedan **apagados** (gated). Dominio objetivo: **gov-map.com**.
+**Goal:** Dejar el sitio del Observatorio **DESPLEGADO EN PRODUCCIÓN** (accesible por URL para mostrar a una ONG; en Cloudflare Workers vía **wrangler directo** — usuario logueado, sin GitHub Actions) y **ENTREGANDO INFORMACIÓN real**, con el Supabase de la nube **poblado por ingesta LIVE corrida LOCALMENTE**. MONEY y NET **apagados** (gated). Dominio: **gov-map.com**. Recomendado `noindex` hasta la pasada legal del lanzamiento masivo (flipeable). **Cambio 2026-06-20: preview-privado → producción** por decisión del usuario.
 **Mode:** mvp
 **Depends on:** Phase 19 (diseño cerrado, opcional para implementación), schema remoto aplicado (migraciones 0001–0025 YA en la nube al 2026-06-20), R2 con escritura OK, `.env` sin BOM. Independiente de Phases 17/18 (NET off).
 **Requirements:** (deploy/infra — no mapea a un REQ de datos; pone el producto en vivo)
@@ -325,7 +325,7 @@ Plans:
 
   1. **Supabase remoto poblado** con data real vía ingesta LIVE **corrida localmente** (idempotente, rate-limit 2–3s, en lotes acotados): maestra de parlamentarios, tramitación (proyectos/votaciones/eventos), embeddings de búsqueda semántica, votos, lobby, patrimonio. Conteos > 0 verificados con psql. MONEY/SERVEL **excluidos** (gated).
   2. **Frontend cableado a la nube**: `SUPABASE_URL` + `SUPABASE_ANON_KEY` del proyecto cloud (`bctyygbmqcvizyplktuw.supabase.co`) seteados como secrets del Worker (`wrangler secret put`), más `GEMINI_API_KEY` (embeddings de búsqueda en runtime). `MONEY_PUBLIC_ENABLED` ausente/false.
-  3. **Preview PRIVADO**: `robots noindex` (o Cloudflare Access) — NO lanzamiento público (el gate legal Ley 21.719 sigue pendiente). MONEY y NET apagados.
+  3. **Producción accesible** (URL real para la ONG), con `noindex` recomendado hasta la pasada legal del lanzamiento masivo (toggle). MONEY y NET apagados. El gate legal Ley 21.719 sigue aplicando para indexar/lanzar amplio y para encender MONEY.
   4. **Deploy a Cloudflare Workers vía wrangler** (`pnpm --filter app deploy`, worker `observatorio-congreso`): sitio accesible en `*.workers.dev`. `gov-map.com` se adjunta cuando el dominio esté en la cuenta CF (paso DNS de operador).
   5. **Verificación end-to-end**: el sitio desplegado responde y muestra data real (la búsqueda devuelve proyectos; una ficha de parlamentario muestra votos/lobby/patrimonio). Principios rectores intactos (anti-insinuación, MONEY/NET gated, sin foto/partido, trazabilidad).
 

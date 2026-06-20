@@ -7,7 +7,7 @@
 <domain>
 ## Phase Boundary
 
-Poner el Observatorio **en vivo como preview PRIVADO** en Cloudflare Workers (dominio objetivo `gov-map.com`) **entregando data real**, con el Supabase de la nube **poblado por ingesta LIVE corrida LOCALMENTE** (no GitHub Actions). MONEY y NET **apagados** (gated). NO es lanzamiento público (gate legal Ley 21.719 pendiente).
+Poner el Observatorio **en PRODUCCIÓN** en Cloudflare Workers (dominio `gov-map.com`) **entregando data real** — accesible por URL (mostrable a una ONG brasileña), con el Supabase de la nube **poblado por ingesta LIVE corrida LOCALMENTE** (no GitHub Actions). MONEY y NET **apagados** (gated). **CAMBIO 2026-06-20: de preview-privado → PRODUCCIÓN** por decisión del usuario (demo a ONG). Recomendado: mantener **`noindex` hasta la pasada legal** del lanzamiento masivo (la ONG entra por link directo); es un toggle flipeable. El gate legal Ley 21.719 sigue aplicando para el lanzamiento público amplio y para encender MONEY.
 
 **Fuera de alcance:** encender MONEY/SERVEL/NET; lanzamiento público; construir features nuevas; Phases 17/18; implementar el rediseño de Phase 19 (eso es otra fase). Esta fase usa el frontend YA construido (v1.0+v2.0) tal cual.
 </domain>
@@ -24,7 +24,7 @@ Poner el Observatorio **en vivo como preview PRIVADO** en Cloudflare Workers (do
 
 ### Deploy
 - **wrangler directo** (`pnpm --filter app deploy`), usuario logueado. Sin GitHub ni Actions en el camino crítico.
-- **Preview PRIVADO**: `noindex` (meta robots o `X-Robots-Tag`, o Cloudflare Access). `MONEY_PUBLIC_ENABLED` ausente/false. NET (grafo) no existe aún (Phases 17/18 sin construir) → naturalmente off.
+- **PRODUCCIÓN accesible** (no preview): URL pública real para mostrar a la ONG. `MONEY_PUBLIC_ENABLED` ausente/false; NET no existe aún (Phases 17/18) → off. **Recomendado `noindex`** (`X-Robots-Tag`/meta robots) hasta la pasada legal del lanzamiento masivo — flipeable a indexable con un toggle. NO encender MONEY.
 - **gov-map.com**: se adjunta como custom domain cuando el dominio esté en la cuenta Cloudflare (paso DNS de operador). Mientras tanto, preview en `observatorio-congreso.<subdominio>.workers.dev`.
 
 ### Repo / GitHub
@@ -91,7 +91,7 @@ Entrypoints CLI: `packages/<pkg>/src/*-cli.ts`. Invocación vía script pnpm del
 
 **Bloque B — Wiring + build + deploy:**
 8. `.env`: `SUPABASE_URL` + `SUPABASE_ANON_KEY` presentes.
-9. Preview privado: asegurar `noindex` (meta robots / `X-Robots-Tag`), `MONEY_PUBLIC_ENABLED` ausente.
+9. Producción: `noindex` recomendado (`X-Robots-Tag`/meta robots) hasta pasada legal — flipeable; `MONEY_PUBLIC_ENABLED` ausente.
 10. `wrangler secret put SUPABASE_URL` / `SUPABASE_ANON_KEY` / `GEMINI_API_KEY`.
 11. Build+deploy: `pnpm --filter app deploy`. Si EPERM en Windows → Modo Desarrollador o WSL.
 12. (Cuando aplique) adjuntar `gov-map.com` como custom domain del worker.
