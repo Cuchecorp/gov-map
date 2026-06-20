@@ -120,6 +120,26 @@ export interface ParlamentarioPublicoRow {
 }
 
 /**
+ * Fila del RPC `parlamentarios_publico()` (migración 0026) — el DIRECTORIO.
+ *
+ * Espejo de `ParlamentarioPublicoRow` MENOS los campos de provenance
+ * (`origen`/`fecha_captura`/`enlace`): el listado no los renderiza por fila
+ * (los muestra la ficha individual). Son EXACTAMENTE las 7 columnas seguras que
+ * el RPC `security definer` emite. NUNCA `partido`/`rut`/`email` (LEGAL-03);
+ * la fila del directorio tampoco trae foto. `camara` es NOT NULL en la maestra;
+ * `region`/`distrito`/`circunscripcion`/`periodo` son NULLABLE (0005, Pitfall 5).
+ */
+export interface ParlamentarioListadoRow {
+  id: string;
+  nombre: string;
+  camara: "diputados" | "senado";
+  region: string | null;
+  distrito: string | null;
+  circunscripcion: string | null;
+  periodo: string | null;
+}
+
+/**
  * Fila del RPC `votos_de_parlamentario` (migración 0019). El RPC devuelve SOLO
  * filas confirmadas (`estado_vinculo='confirmado'`), por eso no trae
  * `mencion_nombre`/`parlamentario_id`/`estado_vinculo`: la identidad ya está
