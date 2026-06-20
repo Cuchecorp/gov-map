@@ -12,11 +12,20 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Observatorio del Congreso 360",
-  description:
-    "Consulta y cruza datos públicos del Congreso de Chile: proyectos de ley, tramitación y votaciones, con trazabilidad a la fuente.",
-};
+// Toggle noindex (Phase 20): fail-closed hasta la pasada legal Ley 21.719.
+// Espejo del patrón de `lib/money-gate.ts`: SOLO el literal "true" indexa; ausente
+// o cualquier otro valor => noindex,nofollow. Para indexar tras el sign-off legal,
+// setear la var del Worker `PUBLIC_INDEXABLE=true` (punto de cambio único; no requiere
+// editar código). Sin prefijo NEXT_PUBLIC_: se evalúa server-side, no viaja al cliente.
+export function generateMetadata(): Metadata {
+  const indexable = process.env.PUBLIC_INDEXABLE === "true";
+  return {
+    title: "Observatorio del Congreso 360",
+    description:
+      "Consulta y cruza datos públicos del Congreso de Chile: proyectos de ley, tramitación y votaciones, con trazabilidad a la fuente.",
+    robots: indexable ? undefined : { index: false, follow: false },
+  };
+}
 
 export default function RootLayout({
   children,

@@ -27,11 +27,15 @@ import type { MatchProyectoRow } from "@/lib/types";
 // en vez de redefinirlo (antes triplicado). Sin flag `g` → `.test()` es stateless.
 export const BOLETIN_RE = /^\d{3,6}(-\d{1,2})?$/;
 
-// Id interno de la maestra (0005): "P" + 5 dígitos (p.ej. "P00001"). Validador
-// ÚNICO del path `[id]` de /parlamentario/[id] (V5 input validation): se rechaza
-// cualquier formato no-id ANTES de tocar la DB. `.rpc()` ya parametriza, pero el
-// guard temprano evita gastar una consulta en basura del path. Sin flag `g`.
-export const PARLAMENTARIO_ID_RE = /^P\d{5}$/;
+// Id interno estable de la maestra (0005). El seeder (seed-cli) lo emite con el
+// prefijo de cámara + número nativo de la fuente: "D"+dígitos para diputados
+// (id_diputado_camara, p.ej. "D1009") y "S"+dígitos para senadores (parlid_senado,
+// p.ej. "S1110"). El "P00001" del comentario de 0005 era ilustrativo; la maestra
+// real usa D/S. Se admite también "P" por compatibilidad con el esquema documentado.
+// Validador ÚNICO del path `[id]` de /parlamentario/[id] (V5 input validation): se
+// rechaza cualquier formato no-id ANTES de tocar la DB. `.rpc()` ya parametriza, pero
+// el guard temprano evita gastar una consulta en basura del path. Sin flag `g`.
+export const PARLAMENTARIO_ID_RE = /^[DSP]\d{3,5}$/;
 
 // Id de contraparte (Phase 16) consumido por /contraparte/[id]: el RPC
 // `agregado_por_contraparte` (Plan 16-01) emite ids PREFIJADOS — 'c:<rut_proveedor>'
