@@ -7,6 +7,7 @@ import {
   type VotosViewData,
   type VotoFichaConMateria,
 } from "./votos-por-parlamentario";
+import { extractoIdea, conteoVotacion } from "@/lib/format";
 import type { VotoFichaMencion, RebeldiaRow } from "@/lib/types";
 
 afterEach(cleanup);
@@ -143,6 +144,161 @@ describe("VotoFichaRow — guarda de identidad de la ficha (VOTE-03, §3.6)", ()
     for (const l of links) {
       expect(l.getAttribute("href")).not.toMatch(/^\/parlamentario\//);
     }
+    expect(
+      screen.getByLabelText("identidad no verificada"),
+    ).toBeInTheDocument();
+  });
+});
+
+// ── Task 1 (helpers puros): extractoIdea / conteoVotacion ───────────────────────
+describe("format.extractoIdea — truncado literal puro (NUNCA reescribe)", () => {
+  it("deja intacta una idea corta (≤ max)", () => {
+    expect(extractoIdea("Idea breve.", 160)).toBe("Idea breve.");
+  });
+
+  it("trunca en límite de palabra y agrega '…' sin reescribir", () => {
+    const larga =
+      "Modifica la ley para regular el etiquetado de alimentos y la publicidad dirigida a la infancia en establecimientos educacionales del país";
+    const out = extractoIdea(larga, 40);
+    // Es un PREFIJO literal de la fuente (cero reescritura) + elipsis.
+    expect(out.endsWith("…")).toBe(true);
+    const sinElipsis = out.slice(0, -1).trimEnd();
+    expect(larga.startsWith(sinElipsis)).toBe(true);
+    // No corta a media palabra: el prefijo termina justo antes de un espacio en la fuente.
+    expect(larga[sinElipsis.length]).toBe(" ");
+    expect(out.length).toBeLessThanOrEqual(41);
+  });
+
+  it("normaliza espacios internos sin inventar contenido", () => {
+    expect(extractoIdea("  hola   mundo  ", 160)).toBe("hola mundo");
+  });
+});
+
+describe("format.conteoVotacion — '58–81' con guion largo, mono-listo", () => {
+  it("compone con guion largo (en dash)", () => {
+    expect(conteoVotacion(58, 81)).toBe("58–81");
+  });
+});
+
+// ── Task 1: VotoFichaRow INSTRUCTIVA (titulo + idea + desenlace, §3.2/§9) ────────
+describe("VotoFichaRow — sustancia + desenlace (Phase 22, §9)", () => {
+  it("renderiza el titulo del proyecto y un extracto de la idea (no solo el boletín)", () => {
+    render(
+      <ul>
+        <VotoFichaRow
+          voto={makeVoto({
+            titulo: "Regula el etiquetado de alimentos",
+            idea_matriz:
+              "Establece normas sobre la composición, etiquetado y publicidad de los alimentos.",
+          })}
+        />
+      </ul>,
+    );
+    expect(
+      screen.getByText("Regula el etiquetado de alimentos"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/De qué trata:/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Establece normas sobre la composición/),
+    ).toBeInTheDocument();
+  });
+
+  it("idea_matriz null → honest-state 'no disponible aún', NUNCA fabrica", () => {
+    render(
+      <ul>
+        <VotoFichaRow voto={makeVoto({ titulo: "Proyecto X", idea_matriz: null })} />
+      </ul>,
+    );
+    expect(
+      screen.getByText(/De qué trata: no disponible aún/),
+    ).toBeInTheDocument();
+  });
+
+  it("titulo null → cae al boletín como fallback (cero fabricación)", () => {
+    render(
+      <ul>
+        <VotoFichaRow voto={makeVoto({ titulo: null, boletin: "18296-05" })} />
+      </ul>,
+    );
+    expect(
+      screen.getByRole("link", { name: /Boletín N°18296-05/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("resultado='Rechazado' total 58/81 seleccion='no' → desenlace factual con conteo mono", () => {
+    render(
+      <ul>
+        <VotoFichaRow
+          voto={makeVoto({
+            seleccion: "no",
+            resultado: "Rechazado",
+            total_si: 58,
+            total_no: 81,
+          })}
+        />
+      </ul>,
+    );
+    // Enmarca el voto contra el desenlace, como hecho (sin adjetivo de juicio).
+    expect(screen.getByText(/Votó En contra/)).toBeInTheDocument();
+    expect(screen.getByText(/el proyecto fue Rechazado/)).toBeInTheDocument();
+    expect(screen.getByText(/58–81/)).toBeInTheDocument();
+  });
+
+  it("resultado null → omite la cláusula de desenlace pero conserva titulo/idea (degrada honesto)", () => {
+    render(
+      <ul>
+        <VotoFichaRow
+          voto={makeVoto({
+            titulo: "Proyecto sin desenlace",
+            idea_matriz: "Una idea cualquiera.",
+            resultado: null,
+            total_si: null,
+            total_no: null,
+          })}
+        />
+      </ul>,
+    );
+    expect(screen.getByText("Proyecto sin desenlace")).toBeInTheDocument();
+    expect(screen.queryByText(/el proyecto fue/)).not.toBeInTheDocument();
+  });
+
+  it("GATE §6: el output no contiene términos prohibidos ni juicio sobre el voto", () => {
+    const { container } = render(
+      <ul>
+        <VotoFichaRow
+          voto={makeVoto({
+            titulo: "Proyecto Y",
+            idea_matriz: "Idea.",
+            seleccion: "no",
+            resultado: "Rechazado",
+            total_si: 58,
+            total_no: 81,
+          })}
+        />
+      </ul>,
+    );
+    const texto = container.textContent ?? "";
+    const PROHIBIDO =
+      /porque|a cambio de|afinidad|puntaje|score|conflicto de inter|enriquecimiento|sospechos|incoherent|pol[eé]mic|traici|rebeld/i;
+    expect(texto).not.toMatch(PROHIBIDO);
+  });
+
+  it("VotoFichaMencionRow (estado b) también muestra sustancia/desenlace conservando IdentityMarker", () => {
+    render(
+      <ul>
+        <VotoFichaMencionRow
+          voto={makeMencion({
+            titulo: "Proyecto mención",
+            idea_matriz: "Idea de la mención.",
+            resultado: "Aprobado",
+            total_si: 90,
+            total_no: 30,
+          })}
+        />
+      </ul>,
+    );
+    expect(screen.getByText("Proyecto mención")).toBeInTheDocument();
+    expect(screen.getByText(/De qué trata:/)).toBeInTheDocument();
     expect(
       screen.getByLabelText("identidad no verificada"),
     ).toBeInTheDocument();
