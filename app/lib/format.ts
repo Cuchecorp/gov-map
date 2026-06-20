@@ -56,3 +56,30 @@ export function relativeTimeEs(capturedAt: Date, now: Date = new Date()): string
 export function esStale(capturedAt: Date, now: Date = new Date()): boolean {
   return now.getTime() - capturedAt.getTime() > STALE_THRESHOLD_MS;
 }
+
+/**
+ * Extracto LITERAL de la idea matriz para la ficha (Phase 22, §9). NUNCA
+ * reescribe, resume ni reinterpreta — sólo normaliza espacios y TRUNCA en límite
+ * de palabra, agregando "…" cuando corta. La salida es siempre un PREFIJO de la
+ * fuente (más la elipsis), de modo que el ciudadano lee texto de la fuente, no
+ * texto fabricado. Si la idea es null/vacía, el llamador muestra el honest-state
+ * "no disponible aún" — esta función no inventa contenido.
+ */
+export function extractoIdea(idea: string, max = 160): string {
+  const limpio = idea.replace(/\s+/g, " ").trim();
+  if (limpio.length <= max) return limpio;
+  // Corta en el último espacio dentro del presupuesto → no parte una palabra.
+  const ventana = limpio.slice(0, max);
+  const corte = ventana.lastIndexOf(" ");
+  const prefijo = (corte > 0 ? ventana.slice(0, corte) : ventana).trimEnd();
+  return `${prefijo}…`;
+}
+
+/**
+ * Conteo de una votación "58–81" con guion largo (en dash U+2013), listo para
+ * render en Mono (UI-SPEC §2). Hecho factual de la votación, sin formateo que
+ * altere los valores de la fuente. No fabrica abstención/quórum si no se piden.
+ */
+export function conteoVotacion(si: number, no: number): string {
+  return `${si}–${no}`;
+}

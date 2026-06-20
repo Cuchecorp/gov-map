@@ -76,13 +76,15 @@ function makeViewData(overrides: Partial<VotosViewData> = {}): VotosViewData {
 
 // ── Task 1: VotoFichaRow — los 3 estados honestos (§3.6) ────────────────────────
 describe("VotoFichaRow — guarda de identidad de la ficha (VOTE-03, §3.6)", () => {
-  it("estado (a) confirmado → enlaza el boletín a /proyecto/[boletin]", () => {
+  it("estado (a) confirmado → el titulo enlaza a /proyecto/[boletin]", () => {
     render(
       <ul>
-        <VotoFichaRow voto={makeVoto({ boletin: "16284-07" })} />
+        <VotoFichaRow
+          voto={makeVoto({ boletin: "16284-07", titulo: "Proyecto de prueba" })}
+        />
       </ul>,
     );
-    const link = screen.getByRole("link", { name: /Boletín N°16284-07/ });
+    const link = screen.getByRole("link", { name: "Proyecto de prueba" });
     expect(link).toHaveAttribute("href", "/proyecto/16284-07");
     // Una fila confirmada NO lleva marca de identidad (la subjetividad es el parlamentario).
     expect(

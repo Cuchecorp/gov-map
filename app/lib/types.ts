@@ -195,6 +195,17 @@ export interface VotoFichaMencion {
   mencion_nombre: string;
   parlamentario_id: string | null;
   estado_vinculo: EstadoVinculo | null;
+  // Sustancia/desenlace (Phase 22) — OPCIONALES: una mención cruda los muestra
+  // igual que la fila confirmada cuando la fuente los trae, conservando su
+  // IdentityMarker. Todos `null` cuando no aplican (honest-state, NUNCA fabricado).
+  titulo?: string | null;
+  idea_matriz?: string | null;
+  resultado?: string | null;
+  total_si?: number | null;
+  total_no?: number | null;
+  total_abstencion?: number | null;
+  total_pareo?: number | null;
+  quorum?: string | null;
 }
 
 /**
