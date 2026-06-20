@@ -1,0 +1,108 @@
+import { describe, it, expect, afterEach } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
+
+import { VotacionCard } from "./votacion-card";
+import { conteoVotacion } from "@/lib/format";
+import type { VotacionRow } from "@/lib/types";
+
+afterEach(cleanup);
+
+// ── Fixture ─────────────────────────────────────────────────────────────────
+function makeVotacion(overrides: Partial<VotacionRow> = {}): VotacionRow {
+  return {
+    id: "camara:1",
+    boletin: "18296-05",
+    fecha: "2026-05-14T00:00:00Z",
+    etapa: "Tercer trámite",
+    tipo: "general",
+    quorum: "Simple",
+    resultado: "Aprobado",
+    total_si: 80,
+    total_no: 40,
+    total_abstencion: 2,
+    total_pareo: 0,
+    camara: "diputados",
+    origen: "camara",
+    fecha_captura: "2026-06-18T00:00:00Z",
+    enlace: "https://opendata.camara.cl/votacion/1",
+    ...overrides,
+  };
+}
+
+// ── Task 1: VotacionCard — desenlace factual (espejo del proyecto, SC6) ────────
+describe("VotacionCard — desenlace factual (Phase 22, §3.3/§9)", () => {
+  it("resultado='Rechazado' total 58/81 → frase de desenlace factual con conteo mono", () => {
+    render(
+      <VotacionCard
+        votacion={makeVotacion({
+          resultado: "Rechazado",
+          total_si: 58,
+          total_no: 81,
+        })}
+      />,
+    );
+    // Enmarca el desenlace como hecho de la votación (sin adjetivo de juicio).
+    expect(screen.getByText(/El proyecto fue Rechazado/)).toBeInTheDocument();
+    // El conteo usa el helper conteoVotacion (en-dash), en Mono.
+    expect(screen.getByText(conteoVotacion(58, 81))).toBeInTheDocument();
+    expect(screen.getByText("58–81")).toHaveClass("font-mono");
+  });
+
+  it("resultado null → omite la frase de desenlace pero conserva la barra y los totales", () => {
+    render(
+      <VotacionCard
+        votacion={makeVotacion({
+          resultado: null,
+          total_si: 30,
+          total_no: 12,
+        })}
+      />,
+    );
+    // La frase de desenlace desaparece (degrada honesto).
+    expect(screen.queryByText(/El proyecto fue/)).not.toBeInTheDocument();
+    // Pero los totales y la barra se conservan.
+    expect(screen.getByText(/Sí: 30 · No: 12/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Resultado de votación/i)).toBeInTheDocument();
+  });
+
+  it("abstención/quórum/etapa se muestran cuando existen", () => {
+    render(
+      <VotacionCard
+        votacion={makeVotacion({
+          quorum: "4/7",
+          etapa: "Primer trámite",
+          total_abstencion: 3,
+        })}
+      />,
+    );
+    expect(screen.getByText(/Quórum: 4\/7/)).toBeInTheDocument();
+    expect(screen.getByText(/Etapa: Primer trámite/)).toBeInTheDocument();
+    expect(screen.getByText(/Abst\.: 3/)).toBeInTheDocument();
+  });
+
+  it("quórum/etapa null → no se fabrican (cero invención)", () => {
+    render(
+      <VotacionCard
+        votacion={makeVotacion({ quorum: null, etapa: null })}
+      />,
+    );
+    expect(screen.queryByText(/Quórum:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Etapa:/)).not.toBeInTheDocument();
+  });
+
+  it("GATE §6: el render no contiene banned-vocab ni juicio sobre la votación", () => {
+    const { container } = render(
+      <VotacionCard
+        votacion={makeVotacion({
+          resultado: "Rechazado",
+          total_si: 58,
+          total_no: 81,
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    const PROHIBIDO =
+      /porque|a cambio de|afinidad|puntaje|score|conflicto de inter|enriquecimiento|sospechos|incoherent|pol[eé]mic|traici|rebeld|favoreciendo a/i;
+    expect(texto).not.toMatch(PROHIBIDO);
+  });
+});
