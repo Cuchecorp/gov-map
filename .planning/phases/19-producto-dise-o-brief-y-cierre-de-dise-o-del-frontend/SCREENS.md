@@ -197,3 +197,213 @@ dato. Intenta recargar…"). An empty section must NEVER read as "clean/complete
   - Zero results: **"Sin resultados para esta búsqueda"** · "No encontramos proyectos que
     coincidan. Prueba con otra idea o revisa el número de boletín."
   - Error: **"No pudimos completar la búsqueda…"**
+
+---
+
+## 4. Ficha de proyecto `/proyecto/[boletin]`
+
+- **Route:** `/proyecto/[boletin]` — the project ficha. Server Component; `[boletin]` is
+  validated before any DB call (404 on invalid). Carriles use `Suspense` + shape-matched
+  skeleton, mirroring the shipped stacked-carriles shell.
+- **Layout:** `max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16` single column. An **optional**
+  `MapaDeFuentes` / "proyectos relacionados" sidebar may appear on `lg` (`max-w-5xl` +
+  `lg:grid-cols-[1fr_320px]`); it is additive and never required for the column to read.
+- **Components used:** `FichaHeader`; `IdeaMatrizBlock` wrapped in `AiSummaryCallout`;
+  `CuerposLegalesList`; `TimelineView` / `TimelineEvent`; `VotacionCard` / `VotoRow`;
+  `ProyectosSimilares`; `EtapaBadge`, `CamaraChip`, `ProvenanceBadge`; `HonestEmptyState`;
+  per-section skeletons.
+- **Structure (top → bottom):**
+  1. **FichaHeader** — title, boletín in **Mono**, `EtapaBadge`, `CamaraChip`(s),
+     `ProvenanceBadge`.
+  2. **Stacked carriles**, each a `mt-12` sibling `<section>` with its own `<h2>` + `Suspense`
+     + shape-matched skeleton + honest empty:
+     - **Idea matriz** (`IdeaMatrizBlock`) — when present, AI-extracted content is wrapped in
+       **`AiSummaryCallout`** carrying `MODELO / SCOPE / FUENTES` chips, and the **source is
+       shown intact** below the synthesis. Labelled, never standing in for the source.
+     - **Cuerpos legales** (`CuerposLegalesList`).
+     - **Timeline de tramitación** (`TimelineView`) — cross-chamber, chamber colour-coded by
+       civic token (`--camara` / `--senado`); chronological facts only.
+     - **Votaciones** (`VotacionCard` / `VotoRow`) — vote-outcome literal palette
+       (A favor / En contra / Abstención / Pareo / Ausente); **identity guard** on names
+       (link only if `confirmado`, else raw name + `IdentityMarker`).
+     - **Proyectos similares** (`ProyectosSimilares`) — by embedding similarity, framed
+       **"proyectos relacionados"**, with **NO score** shown (no similarity %, no bar).
+  3. **Every datum carries `ProvenanceBadge`.**
+- **States (DS §9):** **404** if the boletín is invalid/absent. Per-section honest empty
+  (the 3 distinct states), per-section shape-matched skeleton, per-section error
+  ("No pudimos cargar este dato…") — sections never collapse into one another and an empty
+  carril never reads as "clean."
+- **Anti-insinuación + traceability:** carriles are `mt-12` siblings, never nested; votes
+  never share a `Card`/`li`/`tr` with any other domain. Proyectos similares is framed as
+  related, never as a
+  <!-- BANNED-VOCAB-START --> "% de coincidencia" or affinity score <!-- BANNED-VOCAB-END -->.
+  AI synthesis is labelled (modelo/scope/fuentes) with the source intact. Timeline colours are
+  civic data identity, never brand.
+- **Copy (exact):** carril headings literal ("Idea matriz", "Cuerpos legales",
+  "Tramitación", "Votaciones", "Proyectos relacionados"); error per section
+  **"No pudimos cargar este dato. Intenta recargar…"**; honest empties per DS §6 patterns.
+
+---
+
+## 5. Ficha de parlamentario `/parlamentario/[id]` (ficha 360)
+
+- **Route:** `/parlamentario/[id]` — the 360 ficha, built ON the shipped stacked-carriles
+  shell (`page.tsx`). `[id]` validated before DB; header via the `parlamentario_publico` RPC
+  (deny-by-default → 404 honesto on absent).
+- **Layout:** `max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16` single column (shipped shell).
+- **Components used:** `ParlamentarioHeader`; `VotosSection`; `LobbySection`;
+  `PatrimonioSection`; `ContratosSection` (gated); `FinanciamientoSection` (gated);
+  `IdentityMarker`, `CamaraChip`, `ProvenanceBadge`, `StaleNote` / `HistoricalCaveat`;
+  per-carril skeletons (shipped).
+- **Structure (top → bottom):**
+  1. **ParlamentarioHeader** — name, chamber (`CamaraChip`), period in **Mono**.
+     **NO foto. NO partido chip.** (LEGAL-03 — the RPC never emits partido/rut/email.)
+  2. **Stacked carriles — LOCKED order**, each a `mt-12` sibling `<section>` with `<h2>` +
+     `Suspense` + skeleton + 3-state honest empty:
+     1. **`#votos`** — Votaciones (`VotosSection`): list of votes
+        (A favor / En contra / Abstención / Pareo / Ausente), asistencia, **rebeldías as
+        neutral data** (VOTE-05, no judgement), by-tema view (VOTE-04, reuses embeddings).
+        Identity guard applied to names.
+     2. **`#lobby`** — Reuniones de lobby (`LobbySection`): contraparte rendered as **raw
+        text + `IdentityMarker`**, never linked; `ProvenanceBadge` per row.
+     3. **`#patrimonio`** — Declaraciones de patrimonio e intereses (`PatrimonioSection`):
+        version history, **side-by-side comparison SOLO-datos** (no verdict, no delta),
+        **"Presentada el {fecha}"** prominent in Mono + amber **`HistoricalCaveat`**;
+        **CC BY 4.0** visible in the intro AND the caption (InfoProbidad licenses it).
+     4. **`#dinero`** — Contratos del Estado asociados al RUT (`ContratosSection`) —
+        **GATED**: `moneyPublicEnabled(process.env)` wraps the **whole section incl. its
+        `<h2>`**. **OFF (default) → the entire node is absent from the HTML** (not
+        CSS-hidden); no reliance on the section returning null to hide the heading. Heading
+        exact, no possessive. Attribution: **"mención de la fuente"** (ChileCompra) — **NOT
+        CC BY 4.0**. Future ON behaviour: the carril appears with contracts, each row traced.
+     5. **`#financiamiento`** — Aportes de campaña registrados en SERVEL
+        (`FinanciamientoSection`) — **GATED** (same wrap, OFF → absent). Grouped by election
+        with an **amber caveat for prior candidacies**; the donor is its own subject
+        (**"Aporta:"**), **donor RUT NEVER rendered**; the candidate link is **"asociado por
+        nombre confirmado al candidato"** — **never "por RUT"** (SERVEL carries no RUT).
+        Future ON behaviour: grouped aportes appear, donor as subject, source traced.
+  3. **Anti-insinuación invariant:** no carril ever composes with `#votos`; the `mt-12`
+     gap between carriles is **never collapsed**, even when a section is empty.
+- **States (DS §9):** **404** if `[id]` invalid/absent. Per-carril 3-state honest empty
+  (no consultado ≠ consultado sin resultados ≠ error), per-carril shipped skeleton,
+  per-carril error throws → honest error UI (#34, never degrades to "sin datos").
+  In the OFF state, `#dinero` and `#financiamiento` are simply **absent** — the ficha reads
+  coherently as votos / lobby / patrimonio only.
+- **Anti-insinuación + traceability:** every datum carries `ProvenanceBadge`. PII never
+  rendered (RUT/partido/email/family never reach the DOM or the LLM, LEGAL-03). Money
+  sections render the proveedor/donante as their own subject, never the parlamentario's RUT.
+  No causal/affinity language; rebeldías and asistencia are neutral observable counts.
+- **Copy (exact):** header period in Mono; carril headings exact —
+  "Votaciones", "Reuniones de lobby", "Declaraciones de patrimonio e intereses",
+  **"Contratos del Estado asociados al RUT"** (no possessive),
+  **"Aportes de campaña registrados en SERVEL"**; patrimonio "Presentada el {fecha}";
+  financiamiento "Aporta:"; honest empties per DS §6; **MONEY-OFF shows no copy** — absence
+  is the contract (never "esta sección está deshabilitada").
+
+---
+
+## 6. Contraparte `/contraparte/[id]` (gated)
+
+- **Route:** `/contraparte/[id]` — a money-side subject (empresa = persona jurídica). The
+  whole route is MONEY-gated at the page level.
+- **Page-level gate (FIRST statement):** `if (!moneyPublicEnabled(process.env)) notFound();`
+  as the **first statement** of the page. **OFF (default) → the whole route 404s**, serving
+  `not-found.tsx`; the route node does not exist for anon users. Stays OFF until LEGAL-01.
+  An invalid `[id]` while ON also `notFound()`.
+- **Layout:** `max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16` single column (consistent with
+  the ficha shell).
+- **Components used (when ON):** a header for the empresa (persona jurídica);
+  `ContratosPorContraparte`; `AportesPorContraparte`; `ProvenanceBadge`; `HonestEmptyState`;
+  per-carril skeletons.
+- **Structure (when ON, top → bottom):**
+  1. **Header** — empresa name (persona jurídica), with `ProvenanceBadge`.
+  2. **TWO sibling `mt-12` carriles**, never nested:
+     - **Contratos** (ChileCompra) — each row `ProvenanceBadge`; amounts **verbatim** in Mono.
+     - **Aportes** (SERVEL) — each row `ProvenanceBadge`; amounts verbatim in Mono.
+- **States (DS §9):** OFF or invalid id → **404** (page-level gate). When ON: per-carril
+  honest empty (3-state), per-carril skeleton, per-carril error throw (#34, never degrades).
+- **Anti-insinuación + traceability (HARD):** **zero vote data** on this route; **zero causal
+  language**; **neutral counting** —
+  <!-- BANNED-VOCAB-START --> no SUM-as-verdict, no ranking, no "el peor/mejor"
+  <!-- BANNED-VOCAB-END -->; amounts **verbatim**; **donor RUT never rendered**; contrapartes
+  are raw subjects, never reconciled to a parlamentario. The two carriles are siblings and
+  never compose with each other or with any vote.
+- **Attribution per dataset:** ChileCompra **"mención de la fuente"**; SERVEL **"términos de
+  uso por verificar"**. **Never blanket CC BY 4.0** on this route.
+- **Copy (exact):** carril headings literal ("Contratos", "Aportes"); attribution lines
+  exact as above; honest empties per DS §6; **MONEY-OFF shows no copy** — the route is simply
+  `notFound()`.
+
+---
+
+## 7. Directorio `/parlamentario` (NEW — directory / index)
+
+- **Route:** `/parlamentario` (index, NEW). Distinct from the `/parlamentario/[id]` ficha.
+- **Backed by REAL data:** the maestra **~186 rows** (31 senadores + 155 diputados) via a
+  **public-read RPC** that mirrors `parlamentario_publico` (header-only fields). No invented
+  rows.
+- **Layout:** `max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-16`; a list/grid of
+  `ParlamentarioDirectoryRow` / `ParlamentarioDirectoryCard`.
+- **Components used:** `ParlamentarioDirectoryRow` / `ParlamentarioDirectoryCard` (NEW
+  spec-only); `CamaraChip`; filter controls (chamber select + name text input);
+  `MethodologyCaveat`; `HonestEmptyState`; skeleton rows.
+- **Structure (top → bottom):**
+  1. **Filters** — by chamber (Cámara / Senado) and a name **text search** (`SearchBox`-style
+     input, petrol focus). Touch targets ≥44px.
+  2. **List/grid** — one entry per parlamentario: **name + chamber (`CamaraChip`) + period in
+     Mono**. **NO foto. NO partido.** Each entry links to `/parlamentario/[id]`.
+  3. **Ordering** — **NEUTRAL, default alphabetical**. Any metric-based ordering must be by a
+     **neutral observable fact** (e.g. an observable count like rebeldías presented as data)
+     and **always paired with a `MethodologyCaveat`**. It is **NEVER framed as a verdict
+     table** —
+     <!-- BANNED-VOCAB-START --> never a "ranking de los peores" / "ranking de los más…"
+     <!-- BANNED-VOCAB-END --> (deferred per CONTEXT; metric ranking is out of this phase).
+- **States (DS §9):** **empty (no registry)** "No hay parlamentarios en el registro."
+  (won't happen — 186 real rows); **filter → zero** "Sin parlamentarios para este filtro.";
+  **loading** skeleton rows; **error** "No pudimos cargar el directorio…".
+- **Anti-insinuación + traceability:** each entry's header fields carry traceability via the
+  ficha they link to; no foto / no partido (LEGAL-03); ordering is neutral fact +
+  `MethodologyCaveat`, never a judgement. Identity guard governs any link.
+- **Copy (exact):** entry = name · chamber chip · period (Mono); empty
+  **"Sin parlamentarios para este filtro."**; error **"No pudimos cargar el directorio…"**;
+  default ordering **alphabetical**.
+
+---
+
+## 8. Sobre / Metodología `/sobre` & `/metodologia` (light spec)
+
+- **Route:** `/sobre` (and `/metodologia`) — an informational surface referenced by the
+  header and by every `MethodologyCaveat` ("Fuente · Metodología"). Static content; not a
+  data carril.
+- **Layout:** `max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16` single reading column.
+- **Components used:** prose blocks (no data components); links out to source registries.
+- **Structure (top → bottom):**
+  1. **Data posture** — minimization + traceability; "qué pasó, cuándo y según qué fuente."
+  2. **Anti-insinuación principles** — the product never asserts intención ni causalidad;
+     no scores, no rankings-as-verdict, money never composed with votes.
+  3. **Source list + per-dataset attribution** — InfoProbidad **CC BY 4.0**; ChileCompra
+     **"mención de la fuente"**; SERVEL **"términos de uso por verificar"**.
+     **Never blanket CC BY 4.0.**
+  4. **"Beta abierta" honesty** — the product is an open beta; coverage is partial and dated;
+     "no consultado" ≠ "sin resultados" ≠ "error" is explained.
+  5. **Legal / licensing notes** — CC BY 4.0 attribution where licensed; the MONEY gate and
+     LEGAL gates noted at a high level.
+- **States:** static informational page — no empty / loading / error data states.
+- **Anti-insinuación + traceability:** this surface *explains* the invariants; it carries no
+  per-datum `ProvenanceBadge` because it renders no data, but it documents the attribution
+  rules the data surfaces obey.
+- **Copy (exact):** "Beta abierta"; per-dataset attribution lines exact as above; copy is
+  fixed in `BRIEF.md` — this surface is informational, not a data carril.
+
+---
+
+## Closure
+
+**All five key screens (landing, resultados de búsqueda, ficha de proyecto, ficha de
+parlamentario, contraparte) + the GlobalHeader + the NEW `/parlamentario` directory +
+Sobre/Metodología are CLOSED — nothing is left "abierto" ni "por decidir."** Each contract
+names its route, layout (container width + padding), components (from the DS catalogue),
+top-to-bottom structure, the honest states (empty / loading / error as applicable), the
+anti-insinuación + traceability invariants in force, MONEY gating (OFF = node/route absent;
+documented ON behaviour), and exact copy. An implementation phase can build each screen
+directly from this file + `DESIGN-SYSTEM.md` with no interpretation.
