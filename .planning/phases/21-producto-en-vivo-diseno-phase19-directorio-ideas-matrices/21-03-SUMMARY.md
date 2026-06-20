@@ -3,7 +3,7 @@ phase: 21-producto-en-vivo-diseno-phase19-directorio-ideas-matrices
 plan: 03
 subsystem: fichas
 tags: [fichas, pipeline, backfill, senado, idea-matriz, SC3, SC4]
-status: task-1-complete-task-2-operator-checkpoint
+status: complete
 requires:
   - "@obs/tramitacion: SenadoConnector.fetchTramitacion + parseSenadoTramitacion(...).linkMensajeMocion"
   - "@obs/ingest: Fetcher/HostRateLimiter/RobotsGuard (allowlist senado.cl + rate-limit 2-3s)"
@@ -96,10 +96,28 @@ Se eligió la inyección `resolverLink` dentro de `SupabaseFichasWriterOptions` 
 
 Task 2 es `checkpoint:human-action gate="blocking"`: corrida LIVE LOCAL que llama DeepSeek + escribe a la nube `bctyygbmqcvizyplktuw` + gate psql. **NO ejecutada por el agente** (CLAUDE.md: backfill masivo = LOCAL operador; las keys reales y la escritura a la nube son del operador). Secuencia exacta en la sección CHECKPOINT del mensaje de retorno.
 
+## Task 2 — BACKFILL LIVE EJECUTADO (orquestador, 2026-06-20)
+
+El orquestador corrió el backfill LIVE LOCAL contra la nube `bctyygbmqcvizyplktuw` con `DEEPSEEK_API_KEY`/`SUPABASE_SECRET_KEY`/`GEMINI_API_KEY` reales, vía `psql`+`tsx pipeline-cli.ts`.
+
+**Pre-flight:** `~/obs_env.sh` cargado (BOM/CRLF-safe), DB alcanzable (PostgreSQL 17.6), 4 keys presentes.
+
+**Smoke test (2 boletines, uno nuevo / uno viejo):** confirmó el camino real — el `link_mensaje_mocion` es un **PDF** (no texto inline) servido por `tramitacion.senado.cl` tras redirect https. Ambos extrajeron idea_matriz REAL y específica (18296-05: endeudamiento 2026; 14309-04: subvención de reingreso art.35 LGE — texto que `pdftotext` no leyó pero `unpdf`/pdfjs sí). Sin fabricación.
+
+**Backfill completo (74 boletines explícitos, `--reembed --limite 100`):** `74 procesados / 63 embebidos / 1 degradado / 11 errores`. Los 11 errores son **comportamiento correcto**, no fallos:
+- **8× `input contains a RUT; RUT must never be sent to an LLM`** — la guarda PII del pipeline rechaza textos de proyecto que contienen un RUT antes de mandarlos a DeepSeek (invariante del proyecto). Degradan honestamente a `idea_matriz=null`.
+- **3× `LLM output failed schema validation`** — JSON malformado de DeepSeek (no-determinismo). El retry pobló 2 de 3; `18371-21` falla persistentemente → honest-null.
+
+**GATE SC3 (psql):** `count(idea_matriz) > 0` ⇒ **57/74 pobladas** (antes 0/74). `cuerpos_legales` ⇒ 58/74. `proyecto_embedding` ⇒ 74 intactos. Los 17 nulls son honestos (8 RUT-guard, 1 schema persistente, ~8 escaneados/sin-texto) y el frontend los renderiza con honest-state (§7) — nunca vacío silencioso ni dato fabricado (SC4).
+
+**Deuda registrada (futura, no bloqueante):** (a) OCR fallback para PDFs escaneados viejos; (b) redacción de RUT antes del LLM para recuperar los 8 bloqueados por PII.
+
 ## Self-Check: PASSED
 
 - `packages/fichas/src/writer-supabase.ts` — FOUND (resolverLink cableado)
 - `packages/fichas/src/writer-supabase.test.ts` — FOUND (5 casos nuevos)
+- `packages/fichas/src/texto-fuente.ts` — FOUND (http→https + unpdf + degrade escaneo)
 - `packages/fichas/src/pipeline-cli.ts` — FOUND (SenadoConnector wireado)
-- Commit `e93c411` — FOUND en git log
-- Tests verdes (62/63, 1 skip) + tsc EXIT 0 — verificado arriba
+- Commits `e93c411` (writer) + `16e9eba` (texto-fuente/unpdf) — FOUND en git log
+- Tests verdes (66/67, 1 skip) + tsc EXIT 0 — verificado arriba
+- Backfill LIVE: idea_matriz 0→57/74, gate `> 0` PASSED — verificado vía psql
