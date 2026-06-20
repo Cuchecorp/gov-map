@@ -1,11 +1,15 @@
 @import "tailwindcss";
 @config "../tailwind.config.ts";
 
-/* shadcn Default / Slate preset — base design tokens */
+/* shadcn Default / Slate preset — base design tokens.
+ * Phase 21 (SC1): EXTENDED to the Phase 19 design system — crema --background +
+ * petróleo --accent-product (60/30/10, DESIGN-SYSTEM §1.1, LOCKED). Only the
+ * surface/text/border tokens are overridden; --primary/--secondary/--accent/
+ * --popover/--input/--radius stay at the Slate baseline (shadcn consumes them). */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 47.4% 11.2%;
-  --card: 0 0% 100%;
+  --background: 40 33% 97%;
+  --foreground: 222 47% 11%;
+  --card: 40 30% 99%;
   --card-foreground: 222.2 47.4% 11.2%;
   --popover: 0 0% 100%;
   --popover-foreground: 222.2 47.4% 11.2%;
@@ -13,22 +17,23 @@
   --primary-foreground: 210 40% 98%;
   --secondary: 210 40% 96.1%;
   --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
+  --muted: 40 20% 93%;
+  --muted-foreground: 222 14% 42%;
   --accent: 210 40% 96.1%;
   --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
+  --accent-product: 183 38% 26%;
+  --destructive: 0 72% 42%;
   --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
+  --border: 40 16% 86%;
   --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
+  --ring: 183 38% 26%;
   --radius: 0.5rem;
 }
 
 .dark {
-  --background: 222.2 84% 4.9%;
+  --background: 222 28% 7%;
   --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
+  --card: 222 24% 12%;
   --card-foreground: 210 40% 98%;
   --popover: 222.2 84% 4.9%;
   --popover-foreground: 210 40% 98%;
@@ -36,11 +41,12 @@
   --primary-foreground: 222.2 47.4% 11.2%;
   --secondary: 217.2 32.6% 17.5%;
   --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
+  --muted: 222 20% 16%;
   --muted-foreground: 215 20.2% 65.1%;
   --accent: 217.2 32.6% 17.5%;
   --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
+  --accent-product: 183 34% 46%;
+  --destructive: 0 62% 45%;
   --destructive-foreground: 210 40% 98%;
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;

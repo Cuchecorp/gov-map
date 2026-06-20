@@ -40,6 +40,10 @@ const config: Config = {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
+        // Phase 21 (SC1): petróleo del producto (DESIGN-SYSTEM §1.1). Addressable
+        // como text-/border-/decoration-accent-product para el subrayado activo del
+        // GlobalHeader. No reemplaza --accent (shadcn lo consume); es token aparte.
+        "accent-product": "hsl(var(--accent-product))",
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
