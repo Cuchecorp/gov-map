@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
 status: executing
-stopped_at: "Phase 19 cerrada. Schema remoto 0001-0025 aplicado+reconciliado a la nube (R2 OK, .env sin BOM, password DB nueva verificada). Nube VACIA de datos. Phase 20 creada con runbook CONTEXT (deploy wrangler directo + ingesta LIVE local + preview privado gov-map.com, MONEY/NET off). Pendiente operador: SUPABASE_ANON_KEY en .env. Lanzar: /gsd-autonomous --only 20"
-last_updated: "2026-06-20T18:58:52.277Z"
+stopped_at: 21-02 Tasks 1-2 (RPC 0026 + pgTAP 0027 + ruta /parlamentarios) commiteados (1965b72, daeb1fc); 6 tests RTL verdes. Task 3 db-push al remoto = checkpoint operador BLOCKING pendiente.
+last_updated: "2026-06-20T19:07:00.851Z"
 last_activity: 2026-06-20
 progress:
   total_phases: 14
   completed_phases: 11
   total_plans: 39
-  completed_plans: 37
+  completed_plans: 38
   percent: 79
 ---
 
@@ -168,6 +168,7 @@ Recent decisions affecting current work:
 - [Phase ?]: Phase 19 design contract CERRADO (BRIEF + DESIGN-SYSTEM + SCREENS + landing mockup): la implementación posterior sigue el brief sin re-abrir decisiones
 - [Phase ?]: SC1 (estudio visual browseros) marcado MET por estado en disco: las seis capturas confirmadas presentes en refs/, no por una palabra-veredicto
 - [Phase ?]: [Phase 21]: 21-01: globals.css EXTENDIDO a crema/petroleo (DESIGN-SYSTEM 1.1 LOCKED) sobre baseline Slate; --accent-product nueva token + utilidad Tailwind aparte; civic-tokens.css git-diff vacio. GlobalHeader Server Component con active-underline aislado en HeaderNav island (usePathname Client-only Next 16); nav Buscar/Parlamentarios/Agenda/Sobre sin hamburguesa JS, sin foto/partido; generateMetadata noindex intacto.
+- [Phase ?]: 21-02: RPC parlamentarios_publico() (0026) = directorio publico sin parametro, espejo EXACTO de 0020 menos provenance (drop p_id + order by neutral por apellido + 7 columnas id/nombre/camara/region/distrito/circunscripcion/periodo); security definer set search_path='' + grant execute a anon; CERO policy/grant select sobre parlamentario; NUNCA partido/rut/email (LEGAL-03). pgTAP 0027 (7 asserts) confirma firma exacta + anon-no-PII. Test del RSC: DirectoryList exportado y probado mockeando sb.rpc (espejo contraparte/[id]). Filtro de nombre literal case-insensitive (sin fold de acentos). DDL al remoto = checkpoint operador pendiente.
 
 ### Pending Todos
 
@@ -185,6 +186,7 @@ None yet for v2.0.
 - 14-02: checkpoint LIVE probe ChileCompra pendiente (requiere MERCADOPUBLICO_TICKET real; operador). Tareas autonomas 1-2 completas, 24 tests verdes.
 - 15-01 Task 3 (checkpoint:human-action, gate=blocking): aplicar 0024_servel.sql al remoto via 'supabase db push --db-url' + 'supabase test db --db-url' (pgTAP 0025 debe pasar 23/23). NO ejecutado por el agente.
 - 15-02 OPERADOR: crear bucket privado Supabase Storage crudo-servel + corrida LIVE SERVEL (URL del xlsx por eleccion la provee el operador via --url; ejercita el pipeline de identidad real)
+- 21-02 Task 3 checkpoint operador BLOCKING: aplicar 0026 al Supabase remoto via supabase db push --db-url + supabase test db --db-url (pgTAP 0027 = 7/7) + probe psql parlamentarios_publico() 7 columnas sin PII. Codigo Tasks 1-2 commiteado (1965b72, daeb1fc); 6 tests RTL verdes. NO ejecutado por el agente.
 
 ## Deferred Items
 
@@ -198,8 +200,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-20T18:58:37.559Z
-Stopped at: Phase 19 cerrada. Schema remoto 0001-0025 aplicado+reconciliado a la nube (R2 OK, .env sin BOM, password DB nueva verificada). Nube VACIA de datos. Phase 20 creada con runbook CONTEXT (deploy wrangler directo + ingesta LIVE local + preview privado gov-map.com, MONEY/NET off). Pendiente operador: SUPABASE_ANON_KEY en .env. Lanzar: /gsd-autonomous --only 20
+Last session: 2026-06-20T19:07:00.842Z
+Stopped at: 21-02 Tasks 1-2 (RPC 0026 + pgTAP 0027 + ruta /parlamentarios) commiteados (1965b72, daeb1fc); 6 tests RTL verdes. Task 3 db-push al remoto = checkpoint operador BLOCKING pendiente.
 Resume file: None
 
 ## Operator Next Steps
