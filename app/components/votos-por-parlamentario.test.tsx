@@ -417,7 +417,7 @@ describe("VotosView — sección VOTE (asistencia, tema, votó distinto, §3.3�
 
   it("paginación SSR: 'Página N de M' + anchors deep-linkables", () => {
     const votos = Array.from({ length: 20 }, (_, i) =>
-      makeVoto({ votacion_id: `camara:${i}` }),
+      makeVoto({ votacion_id: `camara:${i}`, boletin: `9${i}-07` }),
     );
     render(
       <VotosView
@@ -428,6 +428,144 @@ describe("VotosView — sección VOTE (asistencia, tema, votó distinto, §3.3�
     expect(screen.getByText(/Página 1 de 2/)).toBeInTheDocument();
     const sig = screen.getByRole("link", { name: /Siguientes/ });
     expect(sig.getAttribute("href")).toContain("votosPage=2");
+  });
+});
+
+// ── Task 2: VotosView INSTRUCTIVA — Asistencia corregida, agrupación, copy ──────
+describe("VotosView — instructiva (asistencia corregida, arco, cobertura, §3.3–§3.5)", () => {
+  it("el desglose de SENTIDO va bajo un heading honesto, NUNCA 'Asistencia'", () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          conteos: { si: 5, no: 4, abstencion: 0, pareo: 0, ausente: 0 },
+          votos: [makeVoto()],
+          totalVotos: 9,
+        })}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: /Cómo votó|Sentido de sus votos/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /^Asistencia$/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("asistencia REAL (presente vs ausente) es su propia métrica derivada de 'ausente'", () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: [makeVoto(), makeVoto({ votacion_id: "camara:2", seleccion: "ausente" })],
+          totalVotos: 2,
+          conteos: { si: 1, no: 0, abstencion: 0, pareo: 0, ausente: 1 },
+        })}
+      />,
+    );
+    // Presente = total − ausente; lo expresa como métrica propia.
+    expect(
+      screen.getByText(/Presente en 1 de 2 votaciones/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/[Aa]usente en 1/)).toBeInTheDocument();
+  });
+
+  it("sin ausentes → NO inventa asistencia; dice 'Emitió N votos registrados'", () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          conteos: { si: 5, no: 4, abstencion: 0, pareo: 0, ausente: 0 },
+          votos: [makeVoto()],
+          totalVotos: 9,
+        })}
+      />,
+    );
+    expect(screen.getByText(/Emitió 9 votos registrados/)).toBeInTheDocument();
+    expect(screen.queryByText(/Presente en/)).not.toBeInTheDocument();
+  });
+
+  it("AGRUPA dos votos del mismo boletín (etapas distintas) bajo una cabecera de proyecto", () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: [
+            makeVoto({
+              votacion_id: "camara:1",
+              boletin: "18296-05",
+              titulo: "Reforma previsional",
+              etapa: "Primer trámite",
+              seleccion: "no",
+            }),
+            makeVoto({
+              votacion_id: "camara:2",
+              boletin: "18296-05",
+              titulo: "Reforma previsional",
+              etapa: "Tercer trámite",
+              seleccion: "no",
+            }),
+          ],
+          totalVotos: 2,
+          conteos: { si: 0, no: 2, abstencion: 0, pareo: 0, ausente: 0 },
+        })}
+      />,
+    );
+    // Una sola cabecera de proyecto (el titulo aparece una vez como encabezado de grupo).
+    const cabeceras = screen.getAllByText("Reforma previsional");
+    expect(cabeceras.length).toBe(1);
+    // Las dos etapas votadas se listan bajo ese único proyecto.
+    expect(screen.getByText(/Primer trámite/)).toBeInTheDocument();
+    expect(screen.getByText(/Tercer trámite/)).toBeInTheDocument();
+  });
+
+  it("renderiza la línea explicativa neutra de 'a favor/en contra' (copy LOCKED, sin causalidad)", () => {
+    render(<VotosView id="P00001" data={makeViewData()} />);
+    expect(
+      screen.getByText(
+        /A favor \/ En contra se refiere a aprobar o rechazar el proyecto en esa etapa de su tramitación\./,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("con pocos proyectos → nota honesta de cobertura, sin aparentar exhaustividad", () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: [
+            makeVoto({ boletin: "18296-05", votacion_id: "camara:1" }),
+            makeVoto({ boletin: "14309-04", votacion_id: "camara:2" }),
+          ],
+          totalVotos: 2,
+          conteos: { si: 2, no: 0, abstencion: 0, pareo: 0, ausente: 0 },
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(/cobertura se está ampliando/i),
+    ).toBeInTheDocument();
+  });
+
+  it("GATE §6: el render completo no contiene banned-vocab (incluida la nueva copy)", () => {
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: [
+            makeVoto({ boletin: "18296-05", titulo: "Reforma A", seleccion: "no", resultado: "Rechazado", total_si: 58, total_no: 81 }),
+            makeVoto({ boletin: "14309-04", votacion_id: "camara:2", titulo: "Reforma B" }),
+          ],
+          totalVotos: 2,
+          conteos: { si: 1, no: 1, abstencion: 0, pareo: 0, ausente: 0 },
+          materias: [{ slug: "salud", label: "Salud" }],
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    const PROHIBIDO =
+      /afinidad|alinead|en l[ií]nea con|af[ií]n a|aliad|rival|d[ií]scolo|rebeld|leal(?!es)|disciplina|score|ranking|índice de|por presión de|a cambio de|favoreciendo a|porque|conflicto de inter|enriquecimiento|sospechos/i;
+    expect(texto).not.toMatch(PROHIBIDO);
   });
 });
 
