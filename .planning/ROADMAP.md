@@ -299,15 +299,17 @@ Plans:
   5. **Principios rectores intactos** y visibles en el diseño: trazabilidad (fuente/fecha/enlace por dato), **anti-insinuación** (jamás componer dinero+voto como acusación; sin lenguaje causal/afinidad/score), MONEY sigue gated hasta sign-off legal; un entregable consolidado (brief + design system + pantallas) queda **revisado y cerrado**
 
 **Notas de ejecución (LOCKED para el run autónomo):**
+
 - **Correr en autónomo con Opus, SIN economía de tokens** — priorizar exhaustividad y calidad de diseño sobre costo (subir el perfil de modelo a todo-Opus para esta fase).
 - **browseros es OBLIGATORIO** para el estudio visual de las 3 referencias. browseros vive en el contexto ORQUESTADOR (no en los sub-agentes gsd-ui-researcher), así que el estudio visual + screenshots se hace durante el **discuss/research del orquestador** y se vuelca a CONTEXT.md, que luego alimenta el UI-SPEC. Visitar: `https://legalatlas.cl`, `https://tributalab.com`, `https://ischilesafe.com`.
 - **No inventar features ni datos.** El diseño exprime lo YA disponible (v1.0 búsqueda semántica + ficha de tramitación + timeline + votaciones; v2.0 parlamentario 360 + MONEY gated). Lo que "sería lindo" pero no tiene data → idea diferida marcada, no se diseña como real.
 - **Es una fase de DISEÑO/PRODUCTO**: el entregable son artefactos de diseño (brief, design system, mockups, UI-SPEC por pantalla), no código de producción de features nuevas. La implementación es una fase posterior que seguirá este brief.
 
-**Plans:** 5 plans
+**Plans:** 1/5 plans executed
 
 Plans:
-- [ ] 19-01-PLAN.md — DESIGN-SYSTEM.md (CERRADO): tokens crema+petróleo, tipografía Geist, espaciado 8-pt, catálogo de componentes, voz editorial ES, estados honestos, invariantes anti-insinuación
+
+- [x] 19-01-PLAN.md — DESIGN-SYSTEM.md (CERRADO): tokens crema+petróleo, tipografía Geist, espaciado 8-pt, catálogo de componentes, voz editorial ES, estados honestos, invariantes anti-insinuación
 - [ ] 19-02-PLAN.md — BRIEF.md: propuesta de valor por superficie, IA + navegación global, landing/hero (búsqueda semántica protagonista), onboarding, veredictos de referencia browseros, ideas diferidas
 - [ ] 19-03-PLAN.md — SCREENS.md: specs ejecutables por pantalla (landing, resultados, ficha proyecto, ficha parlamentario, contraparte) + GlobalHeader + directorio parlamentarios + sobre/metodología
 - [ ] 19-04-PLAN.md — mockup/landing.html: mockup HTML/Tailwind throwaway del landing (ancla visual: fondo crema + hero display + 1 acento itálico petróleo + búsqueda-hero + pills + línea de confianza)
@@ -335,4 +337,4 @@ Plans:
 | 16. MONEY Agregación — por contraparte | v2.0 | 0/? | Not started | - |
 | 17. Compuerta Legal — Bloque NET | v2.0 | 0/? | Not started | - |
 | 18. NET — Grafo de influencia | v2.0 | 0/? | Not started | - |
-| 19. Producto + Diseño — Brief y cierre de diseño | v2.0 | 0/5 | Planned | - |
+| 19. Producto + Diseño — Brief y cierre de diseño | v2.0 | 1/5 | In Progress|  |

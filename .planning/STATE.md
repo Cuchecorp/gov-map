@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: "Corrida autónoma /gsd-autonomous --from 13 --to 16 COMPLETA (2026-06-19). Bloque MONEY construido end-to-end, gated OFF: Phase 13 (compuerta legal + money-gate), 14 (ChileCompra + retrofit 14-04 finalidad del dato), 15 (SERVEL identity-pipeline link), 16 (agregación por contraparte). Decisión de principio: linking de funcionarios usa pipeline de identidad confirmado/auditado; RUT/PII duro es para terceros/familiares. Pendiente de OPERADOR (deuda F13 + LIVE): aplicar migraciones 0023/0024/0025 al remoto + pgTAP; corridas LIVE (ChileCompra ticket, SERVEL xlsx, bucket crudo-servel); escritura del master RUT (cosecha) + adjudicación humana; sign-off legal Ley 21.719 → encender MONEY_PUBLIC_ENABLED. Quedan Phases 17 (compuerta legal NET) y 18 (grafo)."
-stopped_at: "--to 16 alcanzado. Phases 13-16 completas (gated OFF, código verificado). Milestone v2.0 NO completo: faltan 17 (legal NET) y 18 (grafo @xyflow). Sin audit/complete/cleanup (corrida parcial)."
-last_updated: "2026-06-19T22:41:26.140Z"
-last_activity: 2026-06-19
+status: executing
+stopped_at: 19-01 COMPLETO — DESIGN-SYSTEM.md (CLOSED): tokens crema hsl(40 33% 97%) + petróleo hsl(183 38% 26%), tipografía Geist, escala 8-pt con frontera mt-12, catálogo de componentes, voz editorial ES con banned-vocab vallado (negative-match verde), catálogo de estados honestos, 10 invariantes anti-insinuación. Sólo .md, cero cambios en app/.
+last_updated: "2026-06-20T12:43:59.604Z"
+last_activity: 2026-06-20
 progress:
-  total_phases: 11
+  total_phases: 12
   completed_phases: 9
-  total_plans: 24
-  completed_plans: 25
-  percent: 82
+  total_plans: 29
+  completed_plans: 26
+  percent: 75
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Bloque MONEY (Phases 13-16) completo y gated OFF — próximo: Phase 17 (compuerta legal NET) tras cerrar deuda de operador F13
+**Current focus:** Phase 19 — Producto + Diseño — Brief y cierre de diseño del frontend
 
 ## Current Position
 
-Phase: 16 (MONEY Agregación — contratos/aportes por contraparte) — EXECUTING
-Plan: 16-02 COMPLETO (ruta gateada /contraparte/[id] + carriles por contraparte)
-Status: 16-02 entregado — /contraparte/[id] con gate a NIVEL DE PAGINA (notFound() con OFF antes de heading/RPC); carriles ContratosPorContraparte/AportesPorContraparte (dispatch por facet del RPC agregado_por_contraparte); CONTRAPARTE_ID_RE + AgregadoContraparteRpcRow; 174 tests RTL verdes (22 nuevos), tsc limpio en archivos de Phase 16. Carril confirmado-parlamentario y /contraparte listado DIFERIDOS.
+Phase: 19 (Producto + Diseño — Brief y cierre de diseño del frontend) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
 Next plan: cerrar checkpoints de operador de 16-01 (apply remoto + pgTAP 0026) y 15-01/15-02; luego encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
-Last activity: 2026-06-19
+Last activity: 2026-06-20
 
 ## Performance Metrics
 
@@ -91,6 +91,7 @@ Last activity: 2026-06-19
 | Phase 12 P03 | 9min | 3 tasks | 5 files |
 | Phase 14 P03 | 25min | 2 tasks | 4 files |
 | Phase 16 P02 | 13min | 3 tasks | 11 files |
+| Phase 19 P01 | 6min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -154,6 +155,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 13]: [13-01]: candado B = flag server-only moneyPublicEnabled(env) fail-closed (solo 'true' literal enciende; ausencia/''/'false'/'1'/'TRUE' => false), import 'server-only' linea 1, sin NEXT_PUBLIC_; ubicado en app/lib/ (consumidor = ficha Next.js), sin canal Postgres (diferido a 14-16). pgTAP 0023 re-afirma el piso deny-by-default sobre pii_contraparte_declaracion (RLS + cero policies + anon sin grant SELECT) = contrato que toda money_* de 14-16 hereda; Phase 13 NO introduce DDL MONEY.
 - [Phase ?]: 15-02: enlace del candidato SERVEL por NOMBRE via correrPipeline (no RUT); SOLO determinista puebla parlamentario_id; donante PII jamas al LLM (data-routing gate test-enforced)
 - [Phase 15]: 15-03: sección de ficha 'Aportes de campaña registrados en SERVEL' (carril propio mt-12, SIBLING de #dinero); gate moneyPublicEnabled() envuelve la <section> ENTERA en page.tsx (heading incluido) — OFF (default) => nodo ausente del HTML; FinanciamientoSection re-chequea antes de Supabase (doble candado). Tres estados honestos distintos (no_ingestado/verificado_sin_aportes/enlazado); agrupación por elección + caveat amber de candidatura anterior + Elección: por fila (defense in depth). Donante = sujeto propio (Aporta:); RUT donante NUNCA renderizado (Ley 21.719). A1 (RE-RESUELTO): la asociación al candidato es 'Asociado por nombre confirmado al candidato.' (SERVEL no trae RUT) — NUNCA 'por RUT' (test lo asierta). Atribución SERVEL 'términos de uso por verificar' (NO CC BY 4.0); throw en rpcError (#34). sourceLabel gana rama servel->'SERVEL'; AporteRpcRow sin RUT donante. 20 tests RTL verdes.
+- [Phase 19]: 19-01: DESIGN-SYSTEM.md CERRADO — sistema de diseño consolidado del UI-SPEC §0–§10 en un solo artefacto (257 líneas): crema --background hsl(40 33% 97%) + petróleo --accent-product hsl(183 38% 26%) (60/30/10), Geist Sans/Mono, escala 8-pt con mt-12 como frontera anti-insinuación LOCKED, catálogo de componentes (shipped + NEW spec-only), guía de voz editorial ES con enumeración de vocabulario prohibido VALLADA entre `<!-- BANNED-VOCAB-START/END -->` (el doc pasa su propio negative-match), catálogo de 3 estados honestos + matriz por superficie, 10 invariantes anti-insinuación. EXTIENDE globals.css (nota de wiring para fase futura); civic-tokens.css intacto; cero cambios en app/.
 - [Phase 16]: 16-02: ruta ciudadana /contraparte/[id] (empresa = persona jurídica) con DOS carriles mt-12 HERMANOS — contratos (ChileCompra) + aportes (SERVEL) — cada fila trazada (ProvenanceBadge). NUEVO patrón: gate a NIVEL DE PAGINA — `moneyPublicEnabled(process.env) -> notFound()` es la PRIMERA sentencia (antes de await params/RPC/heading); con OFF (default) la ruta entera 404 (sirve not-found.tsx), sin filtración de DOM MONEY (distinto de la ficha, donde el gate envuelve una <section>). CONTRAPARTE_ID_RE=/^[cd]:[A-Za-z0-9 .\-_]+$/ valida 'c:<rut_proveedor>'/'d:<donante_nombre>' ANTES de tocar la DB; HeaderSection: sin fila->notFound, tipo_persona!='jur'->notFound (defensa en profundidad T-16-07), error real->throw (#34). El Section despacha el RPC agregado_por_contraparte por `facet`. ANTI-INSINUACIÓN dura: cero dato de voto, cero lenguaje causal (sweep+RTL), conteo neutral (cero SUM/ranking), montos verbatim, RUT donante nunca renderizado. Atribución por dataset (ChileCompra 'mención de la fuente' / SERVEL 'términos de uso por verificar', NUNCA CC BY 4.0). vitest.config gana app/**/*.test (primer test de ruta). Carril confirmado-parlamentario y /contraparte listado DIFERIDOS. 174 tests RTL verdes (22 nuevos); pendiente de OPERADOR: 16-01 apply remoto + pgTAP 0026.
 
 ### Pending Todos
@@ -185,7 +187,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-19T22:39:21Z
+Last session: 2026-06-20T12:43:59.593Z
 Stopped at: 16-02 COMPLETO — /contraparte/[id] gated (whole-page notFound con OFF), dos carriles mt-12 hermanos (contratos/aportes), cero voto/causal, conteo neutral, montos verbatim, atribución por dataset; 174 tests RTL verdes.
 Resume file: None
 
