@@ -129,3 +129,128 @@ When a later implementation phase applies this system:
 - `civic-tokens.css` and its `@import` in `globals.css` stay intact and untouched — the cream/petrol additions sit alongside the shipped civic tokens, never over them.
 
 The token names above (`--background`, `--card`, `--muted`, `--secondary`, `--accent-product`, `--ring`, `--destructive`) are the contract that a future phase wires into `globals.css`; the values are fixed in §1.
+
+---
+
+## 5. Component catalogue (closed)
+
+All components below are **already shipped** unless marked **NEW (spec-only)**. Phase 19 specifies; it does not implement. This is the closed set — implementation phases add nothing not listed here.
+
+### 5.1 Domain components (shipped — formalized as canonical)
+
+| Component | Role | Anti-insinuación / traceability contract |
+|-----------|------|------------------------------------------|
+| `ProvenanceBadge` | Canonical "Actualizado hace X · {fuente} — fuente oficial ↗" on EVERY datum, EVERY surface | Never omitted; stale >48h → amber; unsafe href degrades to no-link; null → "fuente desconocida" without link |
+| `IdentityMarker` | Inline "identidad no verificada ⚠" | Text is ALWAYS exactly "identidad no verificada"; name shown raw, never linked |
+| `EtapaBadge` | Tramitación stage of a project | Literal stage label, no judgement |
+| `CamaraChip` | Chamber identity (Cámara/Senado) using `--camara`/`--senado` | Institutional identity only, never brand/party |
+| `FichaHeader` / `ParlamentarioHeader` | Surface headers | No photo, no partido chip (LEGAL-03) |
+| `TimelineView` / `TimelineEvent` | Cross-chamber tramitación timeline (visx) | Chronological facts; chamber colour-coded by civic token |
+| `VotacionBar` / `VotacionCard` / `VotoRow` / `VotoDetalle` / `VotoFichaRow` | Vote display | Vote-outcome literal palette; identity guard (link only if `confirmado`) |
+| `SearchBox` (client island) | The hero + persistent search | Orders by implicit relevance; never shows a number per result |
+| `SearchResultCard` | One search hit | Source-type tab grouping; no relevance number |
+| `IdeaMatrizBlock` / `CuerposLegalesList` / `ProyectosSimilares` | Structured project facts | AI-extracted content labelled; source kept intact |
+| `CitacionCard` / `WeekNav` / `SalaTableSection` | Agenda | Week navigation; raw invitee text (third parties) |
+| `LobbySection` / `PatrimonioSection` / `ContratosSection` / `FinanciamientoSection` / `ContratosPorContraparte` / `AportesPorContraparte` | Carril sections | Each its own `mt-12` sibling `<section>`; a vote is never placed in the same unit (see §8) |
+
+### 5.2 NEW spec-only components (designed now, built later)
+
+| Component | Surface | Spec |
+|-----------|---------|------|
+| `GlobalHeader` | All (`layout.tsx`) | Minimal persistent header: wordmark → home, Buscar, Parlamentarios, Agenda, Sobre/Metodología |
+| `TrustLine` | Landing hero, footer | Renders the LOCKED trust line; bullet-separated, muted |
+| `ExamplePills` | Landing hero, results onboarding | The 4 LOCKED example pills; click fills the search |
+| `OnboardingHints` | Inline, results + ficha | "¿Cómo leer esto?" micro-affordance — inline, no modal, no tour |
+| `SourceTypeTabs` | `/buscar`, ficha proyecto | Tabs by source/type; maps to Observatorio source types; counts real or absent, never faked |
+| `MapaDeFuentes` (sidebar) | `/buscar` (desktop) | Mini summary of result composition by source type — count-coded, shape-coded; never a graph of people (deferred), never a number per result |
+| `AiSummaryCallout` | ficha proyecto (idea matriz / cuerpos) | "Síntesis IA · la fuente queda íntegra debajo" labelled block with `MODELO / SCOPE / FUENTES` chips; source always shown intact below |
+| `MethodologyCaveat` | parlamentarios directory, any ordered list | Explicit caveat + "Fuente · Metodología" link; used wherever any ordering exists, framed as neutral fact + anti-judgement caveat |
+| `ParlamentarioDirectoryCard` / `ParlamentarioDirectoryRow` | `/parlamentario` index (NEW route) | name + chamber + period; NO photo, NO partido; links to ficha |
+| `HonestEmptyState` | All sections | Renders the correct one of the 3 distinct empty states (§7); never reads as "clean" |
+| `StaleNote` / `HistoricalCaveat` | Patrimonio, financiamiento | Amber dated caveat (shipped pattern, formalized) |
+
+**Closure note:** this is the closed component set. An implementation phase wires these to data; it introduces no component not listed above and no new icon dependency (inline Unicode glyphs only; `lucide-react` is the only approved set if one is ever needed).
+
+---
+
+## 6. Editorial voice (Spanish, CLOSED)
+
+**Register:** neutral, factual, sober-confident. Chilean Spanish. Addresses a general/press audience.
+
+**Always:**
+
+- State facts with source, date, and link. "Según {fuente}, el {fecha}…".
+- Money amounts **verbatim**, in Mono, exactly as the source publishes them (no rounding, no totals that read as a verdict).
+- Dates literal and prominent ("Presentada el {fecha}" in Mono).
+- Use "asociado al RUT" / "registrado en {fuente}" framing for money — never a possessive ("sus contratos", "su dinero").
+- Label AI-generated synthesis explicitly (modelo/scope/fuentes) and keep the original source intact alongside.
+- Honest degradation: "no consultado" is distinct from "consultado sin resultados", which is distinct from "error". Never collapse them.
+
+**Never (banned vocabulary — checker-enforceable).** The list below enumerates the vocabulary that is forbidden in product copy and in this document's own prose. It is fenced so a machine check can strip it and confirm the rest of the doc stays clean.
+
+<!-- BANNED-VOCAB-START -->
+
+- **Causal / intention language:** "porque", "a cambio de", "para favorecer", "influyó", "respondió a".
+- **Affinity / score / ranking-as-verdict:** "afinidad", "puntaje", "score", "% de coincidencia", "el peor/mejor", "ranking de los más", "ranking de los peores".
+- **Conflict conclusions:** "conflicto de interés", "enriquecimiento", "sospechoso".
+- **Composing money/lobby with a vote** in one sentence, clause, or UI unit.
+- **Marketing claims / fabricated counts:** "la plataforma más completa", "miles de…".
+
+<!-- BANNED-VOCAB-END -->
+
+**Trust line (LOCKED, under hero):** "Fuente, fecha y enlace en cada dato · Sin afirmar intención ni causalidad."
+
+**Tone exemplars:**
+
+- Hero: a neutral display sentence with one italic petrol accent clause — confident yet sober.
+- Money section heading (when ON): "Contratos del Estado asociados al RUT" (exact, no possessive).
+- Identity guard: name raw + "identidad no verificada".
+
+The document's own prose follows this guide: outside the fenced list above, none of the forbidden vocabulary appears.
+
+---
+
+## 7. Honest states catalogue
+
+The three states MUST be visually and textually distinct on every data section. An empty section must NEVER read as "clean" or "complete".
+
+### 7.1 The three states
+
+| State | Meaning | Visual treatment | Copy pattern |
+|-------|---------|------------------|--------------|
+| **No consultado** | Source not yet ingested for this entity | Muted band, neutral icon, not empty-looking | "Esta fuente aún no ha sido consultada…" |
+| **Consultado sin resultados** | Source ingested, genuinely zero rows | Distinct from above: states the source WAS checked | "No hay {X} registradas… en las fuentes consultadas." |
+| **Error** | Real DB/network failure | Distinct, actionable; never degrades to "sin datos" | "No pudimos cargar este dato. Intenta recargar…" |
+
+### 7.2 Per-surface state matrix
+
+| Surface | Empty (no query / no entity) | Empty (zero results) | Loading | Error |
+|---------|------------------------------|----------------------|---------|-------|
+| Landing `/` | "Aún no has buscado" + pills | — | n/a (static shell) | n/a |
+| `/buscar` | redirect to landing empty | "Sin resultados para esta búsqueda" + pills | skeleton result cards (shape-matched) | "No pudimos completar la búsqueda…" |
+| `/proyecto/[boletin]` | 404 if boletín invalid | per-section honest empty | per-section skeleton (shape-matched) | per-section "No pudimos cargar…" |
+| `/parlamentario/[id]` | 404 if id invalid/absent | per-carril 3-state matrix above | per-carril skeleton (shipped) | per-carril → error UI |
+| `/parlamentario` (directory, NEW) | "No hay parlamentarios en el registro." (won't happen — 186 real) | filter → zero: "Sin parlamentarios para este filtro." | skeleton rows | "No pudimos cargar el directorio…" |
+| `/agenda` | "No hay citaciones para esta semana." | same | skeleton table | "No pudimos cargar la agenda…" |
+| `/contraparte/[id]` (gated) | 404 (page-level gate OFF or id invalid) | per-carril honest empty | per-carril skeleton | per-carril throw |
+
+**Skeleton rule:** every loading state is a shape-matched skeleton, never a spinner that hides structure.
+
+**Stale-data rule:** data older than 48h shifts the `ProvenanceBadge` to amber. The data is shown, never hidden.
+
+---
+
+## 8. Anti-insinuación invariants (HARD)
+
+These are the load-bearing rules. Any violation fails the design.
+
+1. **Carril propio:** every data domain (votos, lobby, patrimonio, dinero/contratos, financiamiento) is a sibling `<section class="mt-12">` with its own `<h2>`, `Suspense`, skeleton, and honest empty. Sections are NEVER nested.
+2. **Never composite:** a meeting / declaration / contract / contribution and a vote NEVER share an `<article>` / `<Card>` / `<li>` / `<tr>`. The `mt-12` gap is the carril frontier and is never collapsed — money and lobby are nunca composed with a vote in one unit.
+3. **No causal/affinity/score language** anywhere (see the fenced banned list in §6). All prose is written in the neutral, factual register.
+4. **No relevance number, sin score.** Search orders by implicit relevance (raw HNSW distance ASC, server-side). The "Mapa de fuentes" and source tabs show composition/counts, never a number per result.
+5. **No verdict table.** Any ordering in the parlamentarios directory or in lists is by a NEUTRAL observable fact (alphabetical, by chamber, by an observable count like rebeldías presented as data), always with a `MethodologyCaveat`. It is never framed as a verdict table (a "ranking de los peores" framing is forbidden — see the fenced list in §6).
+6. **MONEY gate:** OFF (default) → section/page node ABSENT from the HTML (not CSS-hidden). Stays OFF until LEGAL-01 sign-off.
+7. **Identity guard:** an entity is linked to a ficha ONLY if `estado_vinculo = confirmado`. Otherwise: raw name + `IdentityMarker` ("identidad no verificada"), never a link. Contrapartes are always raw text + `IdentityMarker` (the RPC never emits contraparte_id/RUT).
+8. **PII never rendered:** RUT, partido, email, and family data never reach the public DOM or the LLM (LEGAL-03). Money sections render the subject (proveedor/donante) as their own subject ("Aporta:" / proveedor), never the parlamentario's RUT.
+9. **AI labelled, source intact:** any AI synthesis carries modelo/scope/fuentes chips and the original source is shown intact below it.
+10. **Attribution per dataset:** CC BY 4.0 only where the source licenses it (InfoProbidad); ChileCompra "mención de la fuente"; SERVEL "términos de uso por verificar". Never a blanket CC BY 4.0.
