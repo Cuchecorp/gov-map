@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
 status: executing
-stopped_at: 22-01 Tasks 1-2 (RPC 0028 votos instructivos + pgTAP 0029 + VotoFichaRow extendido) commiteados (d97b845, eb1269f); tsc verde, 13 RTL pass. Task 3 db-push al remoto = checkpoint operador BLOCKING pendiente.
-last_updated: "2026-06-20T23:14:18.451Z"
-last_activity: 2026-06-20 -- Phase 22 execution started
+stopped_at: 22-02 completo (VotosView/VotoFichaRow instructivas + honest-state MONEY); RED+GREEN por tarea commiteados (70af29b/9fe99e1/100000f/c9bb307/bbfdb55); suite 209 verde, tsc limpio, cero banned-vocab. Apply remoto RPC 0028 (22-01 Task 3) sigue pendiente, NO bloquea.
+last_updated: "2026-06-20T23:27:56.143Z"
+last_activity: 2026-06-20
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 43
-  completed_plans: 41
+  completed_plans: 42
   percent: 80
 ---
 
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 22 (votaciones-instructivas-que-voto-cada-uno) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 22
+Plan: 2 of 4
+Status: Ready to execute
 Next plan: cerrar checkpoints de operador de 16-01 (apply remoto + pgTAP 0026) y 15-01/15-02; luego encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
-Last activity: 2026-06-20 -- Phase 22 execution started
+Last activity: 2026-06-20
 
 ## Performance Metrics
 
@@ -97,6 +97,7 @@ Last activity: 2026-06-20 -- Phase 22 execution started
 | Phase 19 P04 | 7 min | 1 tasks | 1 files |
 | Phase 19 P05 | 15m | 2 tasks | 1 files |
 | Phase 21 P01 | 8min | 2 tasks | 5 files |
+| Phase 22 P02 | 8min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -170,6 +171,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 21]: 21-01: globals.css EXTENDIDO a crema/petroleo (DESIGN-SYSTEM 1.1 LOCKED) sobre baseline Slate; --accent-product nueva token + utilidad Tailwind aparte; civic-tokens.css git-diff vacio. GlobalHeader Server Component con active-underline aislado en HeaderNav island (usePathname Client-only Next 16); nav Buscar/Parlamentarios/Agenda/Sobre sin hamburguesa JS, sin foto/partido; generateMetadata noindex intacto.
 - [Phase ?]: 21-02: RPC parlamentarios_publico() (0026) = directorio publico sin parametro, espejo EXACTO de 0020 menos provenance (drop p_id + order by neutral por apellido + 7 columnas id/nombre/camara/region/distrito/circunscripcion/periodo); security definer set search_path='' + grant execute a anon; CERO policy/grant select sobre parlamentario; NUNCA partido/rut/email (LEGAL-03). pgTAP 0027 (7 asserts) confirma firma exacta + anon-no-PII. Test del RSC: DirectoryList exportado y probado mockeando sb.rpc (espejo contraparte/[id]). Filtro de nombre literal case-insensitive (sin fold de acentos). DDL al remoto = checkpoint operador pendiente.
 - [Phase 22]: 22-01: RPC votos_de_parlamentario EXTENDIDO (0028, additivo, INVOKER, sin PII) — por fila confirmada devuelve titulo + idea_matriz (sustancia; LEFT JOIN proyecto/proyecto_ficha -> null honesto, NUNCA fabricado) + resultado/total_si/total_no/total_abstencion/total_pareo/quorum (desenlace de la votacion ya joinada), evitando los tres .in() N+1 del runbook en el server component. Firma de params (text,int,int) INTACTA; drop+recreate por returns table modificado; grant execute a anon re-emitido; CERO policy/grant sobre parlamentario (LEGAL-03); se queda INVOKER (solo tablas publico-read). pgTAP 0029 (7 asserts) afirma firma + INVOKER + columnas nuevas + anon execute + anon no-PII. VotoFichaRow +8 campos nullable; [Rule 3] dos sitios de construccion del tipo completados con null/de-prueba (voto-ficha-row.tsx + fixture). Aplicacion al remoto = checkpoint operador BLOCKING.
+- [Phase 22]: 22-02: VotosView/VotoFichaRow INSTRUCTIVAS (presentacion pura, RTL). Cada voto muestra titulo del proyecto + extracto LITERAL de idea matriz (helper extractoIdea: prefijo de la fuente + elipsis, NUNCA reescribe; honest-state 'De que trata: no disponible aun' cuando idea null, jamas fabrica) + DESENLACE factual 'Voto X · el proyecto fue {resultado} {si-no}' (conteoVotacion en-dash, Mono) solo si resultado != null — hecho de la votacion, no juicio del voto. 'Asistencia' CORREGIDO: el desglose de sentido pasa a heading 'Como voto'; asistencia REAL (presente vs ausente, derivada de conteos.ausente) es metrica propia; sin ausentes degrada a 'Emitio N votos registrados' (no finge asistencia). Votaciones AGRUPADAS POR PROYECTO (el arco: agruparPorProyecto + ProyectoGrupo, titulo+idea una vez como cabecera + etapas votadas debajo). Linea explicativa LOCKED 'A favor / En contra se refiere a aprobar o rechazar el proyecto en esa etapa de su tramitacion'. Cobertura honesta cuando totalProyectos<=5 (el server computa distintos boletines del conjunto completo). honest-state MONEY 'Financiamiento y contratos del Estado' (copy LOCKED 'Pendiente de revision legal (Ley 21.719) antes de publicarse') = carril propio mt-12 sibling, visible cuando moneyPublicEnabled false, MUTUAMENTE EXCLUYENTE con #dinero/#financiamiento reales, cero Supabase/monto/composicion-con-voto. VotoFichaMencion +campos opcionales sustancia/desenlace (mencion cruda conserva IdentityMarker). VotosSection conserva join proyecto.materia (el RPC no trae materia). Vista PURA; suite 209 verde (31 en votos); tsc limpio; cero banned-vocab en copy (negative-match GATE §6/§9.1). Aplicacion remota del RPC 0028 sigue siendo checkpoint operador pendiente, NO bloquea este plan.
 
 ### Pending Todos
 
@@ -202,8 +204,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-20T23:14:18.435Z
-Stopped at: 22-01 Tasks 1-2 (RPC 0028 votos instructivos + pgTAP 0029 + VotoFichaRow extendido) commiteados (d97b845, eb1269f); tsc verde, 13 RTL pass. Task 3 db-push al remoto = checkpoint operador BLOCKING pendiente.
+Last session: 2026-06-20T23:27:56.130Z
+Stopped at: 22-02 completo (VotosView/VotoFichaRow instructivas + honest-state MONEY); RED+GREEN por tarea commiteados (70af29b/9fe99e1/100000f/c9bb307/bbfdb55); suite 209 verde, tsc limpio, cero banned-vocab. Apply remoto RPC 0028 (22-01 Task 3) sigue pendiente, NO bloquea.
 Resume file: None
 
 ## Operator Next Steps
