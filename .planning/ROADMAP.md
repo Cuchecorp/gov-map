@@ -401,7 +401,14 @@ Plans:
 - **El runbook completo (análisis browseros en vivo, componentes, esquema de datos, gotchas) está en `22-CONTEXT.md`** — leerlo es obligatorio antes de planificar. Diseño autoritativo: `19-UI-SPEC.md` (§3 ficha parlamentario, §9 copy de votos) + `DESIGN-SYSTEM.md`.
 - **Build/deploy SOLO Linux:** `docker start -a obsbuild` (container ya existe, reusa node_modules) → `docker cp obsbuild:/build/app/.open-next` → `cd app && npx wrangler deploy`. NO `pnpm deploy`. Sitio: `https://observatorio-congreso.thevalis.workers.dev`.
 
-**Plans:** TBD
+**Plans:** 4 plans
+
+Plans:
+
+- [ ] 22-01-PLAN.md — Bloque A datos/tipos: extender el RPC votos_de_parlamentario (titulo + idea_matriz + resultado/totales/quorum), pgTAP 0029, VotoFichaRow extendido (SC1/SC2/SC4)
+- [ ] 22-02-PLAN.md — Bloque B VotosView instructiva: sustancia+desenlace por voto, corregir Asistencia, agrupar por proyecto (arco), linea explicativa, honest-state MONEY (SC1/SC2/SC3/SC4/SC5)
+- [ ] 22-03-PLAN.md — Bloque C espejo proyecto: VotacionCard con resultado+conteo enmarcado conectado a la idea matriz del proyecto (SC6)
+- [ ] 22-04-PLAN.md — Bloque D redeploy Linux (Docker obsbuild + wrangler deploy) + verificacion e2e browseros en produccion; noindex/MONEY/NET intactos (SC6)
 
 ## Progress
 
