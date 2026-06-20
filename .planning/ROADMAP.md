@@ -256,13 +256,13 @@ Plans:
 **Plans:** 6 plans
 
 Plans:
-- [ ] 20-01-PLAN.md — Poblar la maestra de parlamentarios (~186) en la nube
-- [ ] 20-02-PLAN.md — Ingesta de tramitación (proyectos/votaciones/eventos) a la nube
-- [ ] 20-03-PLAN.md — Embeddings/fichas (Gemini 768) para la búsqueda semántica
-- [ ] 20-04-PLAN.md — Votos + lobby + patrimonio a la nube (MONEY excluido)
-- [ ] 20-05-PLAN.md — Wiring + noindex + secrets + deploy a Cloudflare Workers
-- [ ] 20-06-PLAN.md — Verificación end-to-end del sitio desplegado
 
+- [x] 20-01-PLAN.md — Poblar la maestra de parlamentarios (~186) en la nube
+- [x] 20-02-PLAN.md — Ingesta de tramitación (proyectos/votaciones/eventos) a la nube
+- [x] 20-03-PLAN.md — Embeddings/fichas (Gemini 768) para la búsqueda semántica
+- [x] 20-04-PLAN.md — Votos + lobby + patrimonio a la nube (MONEY excluido)
+- [x] 20-05-PLAN.md — Wiring + noindex + secrets + deploy a Cloudflare Workers
+- [x] 20-06-PLAN.md — Verificación end-to-end del sitio desplegado
 
 ### Phase 17: Compuerta Legal — Bloque NET (framing del grafo)
 
@@ -346,7 +346,7 @@ Plans:
 - **El runbook operativo completo (comandos exactos, gotchas, orden) está en `20-CONTEXT.md`** — leerlo es obligatorio antes de planificar.
 - **Input de operador requerido**: `SUPABASE_ANON_KEY` (dashboard → Settings → API Keys) y, para el dominio, agregar `gov-map.com` a la cuenta Cloudflare (DNS). Sin el anon key el frontend no lee la nube.
 
-**Plans:** TBD
+**Plans:** 6/6 plans complete
 
 ## Progress
 
@@ -371,4 +371,4 @@ Plans:
 | 17. Compuerta Legal — Bloque NET | v2.0 | 0/? | Not started | - |
 | 18. NET — Grafo de influencia | v2.0 | 0/? | Not started | - |
 | 19. Producto + Diseño — Brief y cierre de diseño | v2.0 | 5/5 | Complete   | 2026-06-20 |
-| 20. Deploy + Carga de Datos — Preview gov-map.com | v2.0 | 0/6 | Planned | - |
+| 20. Deploy + Carga de Datos — Preview gov-map.com | v2.0 | 6/6 | Complete   | 2026-06-20 |

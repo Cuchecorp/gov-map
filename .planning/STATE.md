@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
-status: verifying
-stopped_at: Completed 19-03-PLAN.md — SCREENS.md CERRADO (5 pantallas clave + GlobalHeader + directorio + sobre/metodología)
-last_updated: "2026-06-20T13:07:07.224Z"
-last_activity: 2026-06-20
+status: completed
+stopped_at: "Phase 19 cerrada. Schema remoto 0001-0025 aplicado+reconciliado a la nube (R2 OK, .env sin BOM, password DB nueva verificada). Nube VACIA de datos. Phase 20 creada con runbook CONTEXT (deploy wrangler directo + ingesta LIVE local + preview privado gov-map.com, MONEY/NET off). Pendiente operador: SUPABASE_ANON_KEY en .env. Lanzar: /gsd-autonomous --only 20"
+last_updated: "2026-06-20T17:47:20.111Z"
+last_activity: 2026-06-20 -- Phase 20 marked complete
 progress:
-  total_phases: 12
-  completed_phases: 10
-  total_plans: 29
-  completed_plans: 30
-  percent: 83
+  total_phases: 13
+  completed_phases: 11
+  total_plans: 35
+  completed_plans: 36
+  percent: 85
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 19 — Producto + Diseño — Brief y cierre de diseño del frontend
+**Current focus:** Phase 20 — Deploy + Carga de Datos — Preview privado gov-map.com
 
 ## Current Position
 
-Phase: 19 (Producto + Diseño — Brief y cierre de diseño del frontend) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
+Phase: 20 — COMPLETE
+Plan: 1 of 6
+Status: Phase 20 complete
 Next plan: cerrar checkpoints de operador de 16-01 (apply remoto + pgTAP 0026) y 15-01/15-02; luego encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
-Last activity: 2026-06-20
+Last activity: 2026-06-20 -- Phase 20 marked complete
 
 ## Performance Metrics
 
@@ -196,9 +196,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-20T13:06:49.108Z
-Stopped at: Completed 19-03-PLAN.md — SCREENS.md CERRADO (5 pantallas clave + GlobalHeader + directorio + sobre/metodología)
-Resume file: None
+Last session: 2026-06-20T15:59:00.497Z
+Stopped at: Phase 19 cerrada. Schema remoto 0001-0025 aplicado+reconciliado a la nube (R2 OK, .env sin BOM, password DB nueva verificada). Nube VACIA de datos. Phase 20 creada con runbook CONTEXT (deploy wrangler directo + ingesta LIVE local + preview privado gov-map.com, MONEY/NET off). Pendiente operador: SUPABASE_ANON_KEY en .env. Lanzar: /gsd-autonomous --only 20
+Resume file: .planning/phases/20-deploy-carga-de-datos-preview-privado-gov-map-com/20-CONTEXT.md
 
 ## Operator Next Steps
 
