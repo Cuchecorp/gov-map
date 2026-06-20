@@ -43,6 +43,21 @@ export interface SupabaseFichasWriterOptions {
   serviceKey: string;
   /** Cliente pre-construido (tests). Si se pasa, ignora url/serviceKey. */
   client?: SupabaseClient;
+  /**
+   * Resolvedor del `link_mensaje_mocion` REAL por boletín BASE (sin sufijo de comisión).
+   * Inyectado (Opción A, sin DDL): el CLI lo ensambla con el `SenadoConnector` real
+   * (re-fetch del XML del Senado + `parseSenadoTramitacion(...).linkMensajeMocion`),
+   * reusando la política @obs/ingest (allowlist + robots + rate-limit 2-3s). El writer NO
+   * conoce @obs/tramitacion: solo ve `(boletinBase) => Promise<string|null>` (separación
+   * de capas). Ausente, fallo o link no presente → `null` (degradación honesta, NUNCA
+   * fabrica). Es la causa raíz de SC3: sin esto el pipeline degrada SIEMPRE a título+materia.
+   */
+  resolverLink?: (boletinBase: string) => Promise<string | null>;
+}
+
+/** Strip del sufijo de comisión al boletín BASE (Pitfall 1; idéntico a parse-senado:79). */
+function boletinBase(boletin: string): string {
+  return boletin.replace(/-\d+$/, "");
 }
 
 /** Lote de inserción para evitar payloads gigantes en una sola llamada. */
@@ -68,6 +83,7 @@ function dedupePorClave<T>(arr: T[], key: (v: T) => string): T[] {
 /** Writer idempotente por boletín de proyecto_ficha + proyecto_embedding. */
 export class SupabaseFichasWriter {
   private readonly client: SupabaseClient;
+  private readonly resolverLink?: (boletinBase: string) => Promise<string | null>;
 
   constructor(opts: SupabaseFichasWriterOptions) {
     this.client =
@@ -75,6 +91,7 @@ export class SupabaseFichasWriter {
       createClient(opts.url, opts.serviceKey, {
         auth: { persistSession: false, autoRefreshToken: false },
       });
+    this.resolverLink = opts.resolverLink;
   }
 
   async upsertFicha(filas: FichaRow[]): Promise<void> {
@@ -117,8 +134,13 @@ export class SupabaseFichasWriter {
    * Lee los proyecto_ficha pendientes (estado='pendiente') uniendo título/materia/procedencia
    * desde proyecto (boletín = FK 1:1). SOLO se ejerce en LIVE (gated por env); no se llama en
    * los tests offline. Si `boletines` se pasa, restringe a ese conjunto explícito (cualquier
-   * estado). `link_mensaje_mocion` es un SIDECAR no persistido (07-01); se entrega null →
-   * texto-fuente degrada honesto (ficha con idea_matriz null). Wiring del link = follow-up.
+   * estado).
+   *
+   * SC3 (causa raíz): por cada boletín pendiente resuelve el `link_mensaje_mocion` REAL vía el
+   * `resolverLink` inyectado (re-fetch del XML del Senado por boletín BASE — Opción A, sin DDL),
+   * eliminando el hardcode `link: null` que forzaba al pipeline a degradar SIEMPRE a
+   * título+materia. Degradación honesta: sin resolvedor, fallo del fetch/parse o link ausente →
+   * `null` (NUNCA fabrica). El re-fetch reusa la política @obs/ingest dentro del resolvedor.
    */
   async leerPendientes(boletines?: string[]): Promise<PipelinePendienteRow[]> {
     let query = this.client
@@ -136,15 +158,36 @@ export class SupabaseFichasWriter {
       estado: FichaEstado;
       proyecto: { titulo?: string; materia?: string | null; origen?: string; fecha_captura?: string } | null;
     };
-    return ((data ?? []) as unknown as JoinRow[]).map((r) => ({
-      boletin: r.boletin,
-      titulo: r.proyecto?.titulo ?? "",
-      materia: r.proyecto?.materia ?? null,
-      link_mensaje_mocion: null,
-      estado: r.estado,
-      ...(r.proyecto?.origen != null ? { origen: r.proyecto.origen } : {}),
-      ...(r.proyecto?.fecha_captura != null ? { fecha_captura: r.proyecto.fecha_captura } : {}),
-    }));
+    const rows = (data ?? []) as unknown as JoinRow[];
+    const out: PipelinePendienteRow[] = [];
+    for (const r of rows) {
+      out.push({
+        boletin: r.boletin,
+        titulo: r.proyecto?.titulo ?? "",
+        materia: r.proyecto?.materia ?? null,
+        link_mensaje_mocion: await this.resolverLinkSeguro(r.boletin),
+        estado: r.estado,
+        ...(r.proyecto?.origen != null ? { origen: r.proyecto.origen } : {}),
+        ...(r.proyecto?.fecha_captura != null ? { fecha_captura: r.proyecto.fecha_captura } : {}),
+      });
+    }
+    return out;
+  }
+
+  /**
+   * Resuelve el link del Senado por boletín BASE, blindando la degradación honesta: sin
+   * resolvedor inyectado o ante cualquier fallo de fetch/parse → `null` (NUNCA propaga el
+   * error ni fabrica un link). El re-fetch real reusa @obs/ingest dentro del resolvedor.
+   */
+  private async resolverLinkSeguro(boletin: string): Promise<string | null> {
+    if (!this.resolverLink) return null;
+    try {
+      const link = await this.resolverLink(boletinBase(boletin));
+      return link ?? null;
+    } catch {
+      // Degradación honesta: 503/timeout/parse roto del Senado → null, no aborta el lote.
+      return null;
+    }
   }
 }
 

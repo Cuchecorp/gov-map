@@ -23,6 +23,7 @@ import {
   R2Store,
 } from "@obs/ingest";
 import { DeepSeekProvider, GeminiEmbeddingProvider } from "@obs/llm";
+import { SenadoConnector, parseSenadoTramitacion } from "@obs/tramitacion";
 import {
   SupabaseFichasWriter,
   type FichasWriter,
@@ -160,6 +161,16 @@ export async function main(opts: FichasCliOptions = {}): Promise<FichasCliResult
   const rateLimiter = new HostRateLimiter();
   const robots = new RobotsGuard({ allowlist: {} });
 
+  // SC3 — resolvedor del link_mensaje_mocion REAL: re-fetch del XML del Senado por boletín
+  // BASE reusando @obs/ingest (allowlist + robots + rate-limit) dentro del SenadoConnector.
+  // El writer solo ve `(base) => Promise<string|null>` (separación de capas). Degradación
+  // honesta blindada en el writer (resolverLinkSeguro): cualquier fallo aquí → null.
+  const senado = new SenadoConnector({ fetcher, rateLimiter, robots });
+  const resolverLink = async (boletinBase: string): Promise<string | null> => {
+    const xml = await senado.fetchTramitacion(boletinBase);
+    return parseSenadoTramitacion(xml).linkMensajeMocion;
+  };
+
   // R2 GATEADO por presencia de credencial (degrada honesto si ausente — CONTEXT 401).
   const r2Creds =
     process.env.R2_ENDPOINT_URL &&
@@ -191,7 +202,7 @@ export async function main(opts: FichasCliOptions = {}): Promise<FichasCliResult
     };
     writer = noop;
   } else {
-    supaWriter = new SupabaseFichasWriter({ url, serviceKey });
+    supaWriter = new SupabaseFichasWriter({ url, serviceKey, resolverLink });
     writer = supaWriter;
     dbLoaded = true;
     log(`fichas: writer Supabase (${url}) — upsert idempotente`);
