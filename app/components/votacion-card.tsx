@@ -8,7 +8,7 @@ import { EtapaBadge } from "@/components/etapa-badge";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { VotacionBar } from "@/components/votacion-bar";
 import { VotoDetalle } from "@/components/voto-detalle";
-import { fechaCorta } from "@/lib/format";
+import { fechaCorta, conteoVotacion } from "@/lib/format";
 import type { VotacionRow } from "@/lib/types";
 import { sourceLabel } from "@/lib/types";
 
@@ -63,9 +63,21 @@ export function VotacionCard({ votacion }: { votacion: VotacionRow }) {
         </p>
 
         {votacion.resultado && (
-          <div className="mt-3">
-            <span className="sr-only">Resultado: </span>
-            <EtapaBadge estado={votacion.resultado} />
+          <div className="mt-3 space-y-2">
+            {/* DESENLACE factual (Phase 22, SC6): resultado + conteo como HECHO de la
+                votación — espejo de VotoFichaRow en la ficha del parlamentario. Sin
+                adjetivo de juicio ni causalidad (DESIGN-SYSTEM §6/§8). El conteo reusa
+                conteoVotacion (en-dash) de format.ts, renderizado en Mono. */}
+            <p className="text-sm text-muted-foreground">
+              El proyecto fue {votacion.resultado}{" "}
+              <span className="font-mono">
+                {conteoVotacion(votacion.total_si, votacion.total_no)}
+              </span>
+            </p>
+            <div>
+              <span className="sr-only">Resultado: </span>
+              <EtapaBadge estado={votacion.resultado} />
+            </div>
           </div>
         )}
 
