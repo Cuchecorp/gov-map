@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
 status: executing
-stopped_at: 21-02 Tasks 1-2 (RPC 0026 + pgTAP 0027 + ruta /parlamentarios) commiteados (1965b72, daeb1fc); 6 tests RTL verdes. Task 3 db-push al remoto = checkpoint operador BLOCKING pendiente.
-last_updated: "2026-06-20T19:07:00.851Z"
-last_activity: 2026-06-20
+stopped_at: 22-01 Tasks 1-2 (RPC 0028 votos instructivos + pgTAP 0029 + VotoFichaRow extendido) commiteados (d97b845, eb1269f); tsc verde, 13 RTL pass. Task 3 db-push al remoto = checkpoint operador BLOCKING pendiente.
+last_updated: "2026-06-20T23:14:18.451Z"
+last_activity: 2026-06-20 -- Phase 22 execution started
 progress:
-  total_phases: 14
-  completed_phases: 11
-  total_plans: 39
-  completed_plans: 38
-  percent: 79
+  total_phases: 15
+  completed_phases: 12
+  total_plans: 43
+  completed_plans: 41
+  percent: 80
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 21 — producto-en-vivo-diseno-phase19-directorio-ideas-matrices
+**Current focus:** Phase 22 — votaciones-instructivas-que-voto-cada-uno
 
 ## Current Position
 
-Phase: 21 (producto-en-vivo-diseno-phase19-directorio-ideas-matrices) — EXECUTING
-Plan: 2 of 4
-Status: Ready to execute
+Phase: 22 (votaciones-instructivas-que-voto-cada-uno) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 22
 Next plan: cerrar checkpoints de operador de 16-01 (apply remoto + pgTAP 0026) y 15-01/15-02; luego encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
-Last activity: 2026-06-20
+Last activity: 2026-06-20 -- Phase 22 execution started
 
 ## Performance Metrics
 
@@ -169,6 +169,7 @@ Recent decisions affecting current work:
 - [Phase ?]: SC1 (estudio visual browseros) marcado MET por estado en disco: las seis capturas confirmadas presentes en refs/, no por una palabra-veredicto
 - [Phase ?]: [Phase 21]: 21-01: globals.css EXTENDIDO a crema/petroleo (DESIGN-SYSTEM 1.1 LOCKED) sobre baseline Slate; --accent-product nueva token + utilidad Tailwind aparte; civic-tokens.css git-diff vacio. GlobalHeader Server Component con active-underline aislado en HeaderNav island (usePathname Client-only Next 16); nav Buscar/Parlamentarios/Agenda/Sobre sin hamburguesa JS, sin foto/partido; generateMetadata noindex intacto.
 - [Phase ?]: 21-02: RPC parlamentarios_publico() (0026) = directorio publico sin parametro, espejo EXACTO de 0020 menos provenance (drop p_id + order by neutral por apellido + 7 columnas id/nombre/camara/region/distrito/circunscripcion/periodo); security definer set search_path='' + grant execute a anon; CERO policy/grant select sobre parlamentario; NUNCA partido/rut/email (LEGAL-03). pgTAP 0027 (7 asserts) confirma firma exacta + anon-no-PII. Test del RSC: DirectoryList exportado y probado mockeando sb.rpc (espejo contraparte/[id]). Filtro de nombre literal case-insensitive (sin fold de acentos). DDL al remoto = checkpoint operador pendiente.
+- [Phase 22]: 22-01: RPC votos_de_parlamentario EXTENDIDO (0028, additivo, INVOKER, sin PII) — por fila confirmada devuelve titulo + idea_matriz (sustancia; LEFT JOIN proyecto/proyecto_ficha -> null honesto, NUNCA fabricado) + resultado/total_si/total_no/total_abstencion/total_pareo/quorum (desenlace de la votacion ya joinada), evitando los tres .in() N+1 del runbook en el server component. Firma de params (text,int,int) INTACTA; drop+recreate por returns table modificado; grant execute a anon re-emitido; CERO policy/grant sobre parlamentario (LEGAL-03); se queda INVOKER (solo tablas publico-read). pgTAP 0029 (7 asserts) afirma firma + INVOKER + columnas nuevas + anon execute + anon no-PII. VotoFichaRow +8 campos nullable; [Rule 3] dos sitios de construccion del tipo completados con null/de-prueba (voto-ficha-row.tsx + fixture). Aplicacion al remoto = checkpoint operador BLOCKING.
 
 ### Pending Todos
 
@@ -187,6 +188,7 @@ None yet for v2.0.
 - 15-01 Task 3 (checkpoint:human-action, gate=blocking): aplicar 0024_servel.sql al remoto via 'supabase db push --db-url' + 'supabase test db --db-url' (pgTAP 0025 debe pasar 23/23). NO ejecutado por el agente.
 - 15-02 OPERADOR: crear bucket privado Supabase Storage crudo-servel + corrida LIVE SERVEL (URL del xlsx por eleccion la provee el operador via --url; ejercita el pipeline de identidad real)
 - 21-02 Task 3 checkpoint operador BLOCKING: aplicar 0026 al Supabase remoto via supabase db push --db-url + supabase test db --db-url (pgTAP 0027 = 7/7) + probe psql parlamentarios_publico() 7 columnas sin PII. Codigo Tasks 1-2 commiteado (1965b72, daeb1fc); 6 tests RTL verdes. NO ejecutado por el agente.
+- 22-01 Task 3 checkpoint operador BLOCKING: aplicar 0028_votos_instructivos.sql al Supabase remoto via supabase db push --db-url "$SUPABASE_DB_URL" + supabase test db --db-url (pgTAP 0029 verde + 0019/0020/0026/0027 sin regresion) + probe psql votos_de_parlamentario('D1054',50,0) confirmando titulo/idea_matriz/resultado/total_si/total_no/quorum/etapa pobladas para 14309-04/18296-05. Codigo Tasks 1-2 commiteado (d97b845, eb1269f); tsc verde + 13 RTL. NO ejecutado por el agente.
 
 ## Deferred Items
 
@@ -200,8 +202,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-20T19:07:00.842Z
-Stopped at: 21-02 Tasks 1-2 (RPC 0026 + pgTAP 0027 + ruta /parlamentarios) commiteados (1965b72, daeb1fc); 6 tests RTL verdes. Task 3 db-push al remoto = checkpoint operador BLOCKING pendiente.
+Last session: 2026-06-20T23:14:18.435Z
+Stopped at: 22-01 Tasks 1-2 (RPC 0028 votos instructivos + pgTAP 0029 + VotoFichaRow extendido) commiteados (d97b845, eb1269f); tsc verde, 13 RTL pass. Task 3 db-push al remoto = checkpoint operador BLOCKING pendiente.
 Resume file: None
 
 ## Operator Next Steps
