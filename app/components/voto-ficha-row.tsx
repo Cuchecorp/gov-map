@@ -156,7 +156,11 @@ export function VotoFichaMencionRow({ voto }: { voto: VotoFichaMencion }) {
   const confirmado =
     voto.estado_vinculo === "confirmado" && voto.parlamentario_id != null;
 
-  // Si por alguna razón llega confirmada por aquí, se degrada a la fila normal.
+  // Rama test-only/defensiva: el RPC `votos_de_parlamentario` NUNCA emite filas
+  // confirmadas por la ruta de mención (solo las exercisan los fixtures RTL). Si por
+  // alguna razón llegara una confirmada, se degrada a la fila normal. El object literal
+  // de abajo refleja VotoFichaRowData campo a campo; si ese tipo gana un campo requerido,
+  // este literal fallará el type-check aquí (punto único de drift).
   if (confirmado) {
     return (
       <VotoFichaRow

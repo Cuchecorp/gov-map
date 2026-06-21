@@ -52,7 +52,8 @@ language sql stable
 as $$
   select v.votacion_id, vo.boletin, vo.fecha, v.seleccion, vo.etapa, vo.camara,
          vo.origen, vo.fecha_captura, vo.enlace,
-         -- sustancia: título del proyecto + extracto de idea matriz (LEFT → null honesto)
+         -- sustancia: título del proyecto + idea matriz COMPLETA (el UI trunca con
+         -- extractoIdea; aquí se proyecta entera). LEFT JOIN → null honesto si no existe.
          pr.titulo, pf.idea_matriz,
          -- desenlace: tomado de la votación ya joinada
          vo.resultado, vo.total_si, vo.total_no,

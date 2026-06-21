@@ -11,7 +11,7 @@
 -- Espeja el patrón de 0019/0027 (begin; plan(N); ...; finish(); rollback;).
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ── La función existe con la FIRMA DE PARÁMETROS intacta (text, int, int) ──────
 select has_function('public', 'votos_de_parlamentario',
@@ -36,6 +36,17 @@ select bag_has(
   $$ values ('titulo'),('idea_matriz'),('resultado'),
             ('total_si'),('total_no'),('quorum'),('etapa') $$,
   'votos_de_parlamentario emite las columnas nuevas (titulo/idea_matriz/desenlace) + etapa');
+
+-- ── El ORDEN posicional de columnas es exacto (el cliente mapea por posición) ───
+-- bag_has (arriba) ignora orden; el contrato de 0028 es: 9 cols existentes, LUEGO las 8
+-- nuevas en orden fijo. Un reorder del `returns table` rompería el mapeo posicional del
+-- frontend en silencio → se afirma la secuencia completa de proargnames (IN + OUT).
+select is(
+  (select array_to_string(proargnames, ',')
+     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'votos_de_parlamentario'),
+  'p_id,p_limit,p_offset,votacion_id,boletin,fecha,seleccion,etapa,camara,origen,fecha_captura,enlace,titulo,idea_matriz,resultado,total_si,total_no,total_abstencion,total_pareo,quorum',
+  'votos_de_parlamentario conserva el orden posicional exacto (9 existentes + 8 nuevas)');
 
 -- ── parlamentario sigue sin policies: partido/rut/email anon-denied (LEGAL-03) ──
 select is_empty(

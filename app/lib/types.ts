@@ -147,7 +147,8 @@ export interface ParlamentarioListadoRow {
  * `boletin` es el COMPLETO con sufijo → enlaza a `/proyecto/[boletin]`.
  *
  * Phase 22 (0028): la fila ahora trae además su SUSTANCIA (`titulo` del proyecto +
- * `idea_matriz` extracto) y su DESENLACE (`resultado`/`total_si`/`total_no`/
+ * `idea_matriz` COMPLETA — el UI la trunca con `extractoIdea`, la DB la proyecta
+ * entera) y su DESENLACE (`resultado`/`total_si`/`total_no`/
  * `total_abstencion`/`total_pareo`/`quorum` de la votación) para evitar N+1 joins en
  * el server component. `titulo`/`idea_matriz` pueden ser `null` (LEFT JOIN: un proyecto
  * sin idea matriz devuelve null — honest-state, NUNCA fabricado). Sigue siendo SOLO
