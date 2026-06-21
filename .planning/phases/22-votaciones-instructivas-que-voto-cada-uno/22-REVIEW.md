@@ -20,10 +20,13 @@ findings:
   warning: 5
   info: 4
   total: 9
-status: issues_found
+status: fixed
+resolution: "5/5 warnings fixed (WR-01..05), 4 info deferred. vitest 221 green, tsc clean. Redeploy version 2a478ce7. Commits b0a1675 (WR-05) + 98071e6 (WR-01..04)."
 ---
 
 # Phase 22: Code Review Report
+
+> **RESUELTO 2026-06-20:** Los 5 Warning se arreglaron (commits `b0a1675` WR-05 honest-state, `98071e6` WR-01..04 vía helper puro `derivarVotosViewData`/`construirMateriasMap`/`normalizarPagina`). vitest 221 verdes, tsc limpio, redeploy en producción (version `2a478ce7`), e2e re-verificado. Los 4 Info quedan diferidos (deuda menor).
 
 **Reviewed:** 2026-06-20T00:00:00Z
 **Depth:** standard
