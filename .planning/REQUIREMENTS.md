@@ -48,7 +48,7 @@
 ### LEGAL — Compuertas legales (transversal)
 
 - [ ] **LEGAL-01**: Pasada de asesoría legal (Ley 21.719) que cubra republicación, datos sensibles (afiliación política) y terceros privados (donantes/lobistas), aprobada ANTES de exponer públicamente el bloque MONEY.
-- [ ] **LEGAL-02**: Sign-off legal sobre el framing del grafo aprobado ANTES de exponer públicamente el bloque NET.
+- [ ] **LEGAL-02**: Sign-off legal sobre el framing del grafo aprobado ANTES de exponer públicamente el bloque NET. → Dossier de preparación: [`17-LEGAL-DOSSIER.md`](phases/17-compuerta-legal-bloque-net-framing-del-grafo/17-LEGAL-DOSSIER.md) (copia en `docs/legal/17-LEGAL-DOSSIER-NET.md`); `signoff: pending` — el sign-off humano es deuda de operador F17.
 - [x] **LEGAL-03**: Toda columna PII nueva queda oculta a `anon` por RLS (igual que `parlamentario.rut`) y la compuerta `data-routing` del LLM se extiende a los nuevos datos sensibles (ningún RUT/PII llega al LLM).
 
 ---
@@ -95,7 +95,7 @@
 | NET-01 | Phase 18 | Pending |
 | NET-02 | Phase 18 | Pending |
 | LEGAL-01 | Phase 13 | Pending |
-| LEGAL-02 | Phase 17 | Pending |
+| LEGAL-02 | Phase 17 | Pending (dossier entregado; sign-off humano F17) |
 | LEGAL-03 | Phase 9 | Complete |
 
 **Coverage:** 24/24 v2.0 requirements mapped ✓ · No orphans · No duplicates
