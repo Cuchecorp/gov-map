@@ -66,7 +66,7 @@ Sub-maestras se construyen en su bloque, NO se difieren a NET: lobista/gestor (P
 - [x] **Phase 15: MONEY Financiamiento — SERVEL verbatim + sub-maestra de donantes** - Conector SERVEL artesanal con drift bloqueante y reconciliación de completitud (cuarentena, nunca filas silenciosas) (completed 2026-06-19 — gated OFF; 4/4 código; enlace por NOMBRE confirmado vía pipeline de identidad (A1/finalidad del dato, no RUT); crudo→Supabase Storage (R2 401); operador: aplicar 0024 al remoto + bucket crudo-servel + corrida LIVE)
 - [x] **Phase 16: MONEY Agregación — Contratos/aportes por contraparte** - Vistas agregadas por donante o empresa usando las sub-maestras (completed 2026-06-19 — gated OFF; 3/3 código; RPC `agregado_por_contraparte` solo jurídica/empresas (PII-safe, persona natural nunca expuesta), ruta `/contraparte/[id]` con notFound() gate, anti-insinuación (sin votos, count-only); operador: aplicar 0025 al remoto + pgTAP 0026)
 - [ ] **Phase 17: Compuerta Legal — Bloque NET (framing del grafo)** - Sign-off legal sobre el framing del grafo aprobado ANTES de exponer la red
-- [ ] **Phase 18: NET — Grafo de influencia (`@xyflow/react`)** - Aristas materializadas por `pg_cron` + RPC con CTE recursiva; ambos extremos confirmados, provenance y ventana por arista, sin lenguaje causal
+- [x] **Phase 18: NET — Grafo de influencia (`@xyflow/react`)** - Aristas materializadas por `pg_cron` + RPC con CTE recursiva; ambos extremos confirmados, provenance y ventana por arista, sin lenguaje causal (completed 2026-06-21)
 - [x] **Phase 19: Producto + Diseño — Brief y cierre de diseño del frontend** - Brief de producto y sistema de diseño CERRADO (implementation-ready) que saca el máximo partido a la data ya disponible; estudio visual de referencias (legalatlas.cl, tributalab.com, ischilesafe.com) vía browseros; correr en autónomo, Opus sin economía de tokens (completed 2026-06-20)
 
 ## Phase Details
@@ -297,14 +297,14 @@ Plans:
   3. Ninguna arista es inferida por LLM (solo aristas con fuente verificable); ningún camino se presenta como acusación; el copy es sobrio en español, sin lenguaje causal ni score de persona
   4. La atribución CC BY 4.0 (InfoProbidad) se propaga dentro de nodos/tooltips derivados de esa fuente
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 
 - [x] 18-01-PLAN.md — Modelo grafo: entidad/arista deny-by-default + proc pg_cron + RPC subgrafo_red (NET-01)
 - [x] 18-02-PLAN.md — net-gate.ts (server-only fail-closed) + ruta /red gateada consumiendo subgrafo_red (NET-01/02)
 - [x] 18-03-PLAN.md — Isla @xyflow/react: nodo/arista sobrios, filtros tipo/tiempo, provenance + CC BY 4.0 (NET-02)
-- [ ] 18-04-PLAN.md — Verificación de fase + redeploy Linux gated-OFF (/red 404 en producción)
+- [x] 18-04-PLAN.md — Verificación de fase + redeploy Linux gated-OFF (/red 404 en producción)
 
 ### Phase 19: Producto + Diseño — Brief y cierre de diseño del frontend
 
@@ -443,8 +443,8 @@ Plans:
 | 14. MONEY Contratos — ChileCompra + sub-maestra contratistas | v2.0 | 0/3 | Planned | - |
 | 15. MONEY Financiamiento — SERVEL + sub-maestra donantes | v2.0 | 0/? | Not started | - |
 | 16. MONEY Agregación — por contraparte | v2.0 | 0/? | Not started | - |
-| 17. Compuerta Legal — Bloque NET | v2.0 | 0/? | Not started | - |
-| 18. NET — Grafo de influencia | v2.0 | 3/4 | In Progress|  |
+| 17. Compuerta Legal — Bloque NET | v2.0 | 1/1 | Dossier listo · sign-off F17 pendiente | 2026-06-21 |
+| 18. NET — Grafo de influencia | v2.0 | 4/4 | Complete (gated-OFF) | 2026-06-21 |
 | 19. Producto + Diseño — Brief y cierre de diseño | v2.0 | 5/5 | Complete   | 2026-06-20 |
 | 20. Deploy + Carga de Datos — Preview gov-map.com | v2.0 | 6/6 | Complete   | 2026-06-20 |
 | 21. Producto en vivo — Diseño Phase 19 + directorio + ideas matrices | v2.0 | 4/4 | Complete   | 2026-06-20 |
