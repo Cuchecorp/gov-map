@@ -1,7 +1,7 @@
 -- 0030_net.sql
 -- NET (NET-01) — grafo de influencia COMO-Postgres. Candado A (datos) del doble candado NET.
 -- Dos tablas DENY-BY-DEFAULT (`entidad` nodos, `arista` aristas), el proc idempotente
--- `net.materializar_aristas()` invocado por `pg_cron`, y el RPC público `subgrafo_red`
+-- `grafo.materializar_aristas()` invocado por `pg_cron`, y el RPC público `subgrafo_red`
 -- con CTE recursiva PII-safe. NET es CONSUMIDOR PURO de los bloques ya poblados
 -- (VOTE/INT): no ingiere datos nuevos; deriva aristas de hechos públicos ya verificados.
 --
@@ -33,7 +33,7 @@
 -- CONVENCIONES ESPEJADAS:
 --   * `entidad`/`arista` → DENY-BY-DEFAULT VERBATIM de 0018/0021: RLS habilitada, CERO
 --     policies, `revoke all from anon, authenticated` (cierra el hueco de default privileges).
---   * `net.materializar_aristas()` → `security definer set search_path = ''` (lee tablas
+--   * `grafo.materializar_aristas()` → `security definer set search_path = ''` (lee tablas
 --     deny-by-default internamente; el cron lo invoca).
 --   * `cron.schedule` + guard de versión pg_cron + assertion post-migración (espejo 0003).
 --   * `subgrafo_red` → `security definer set search_path = ''` revocado de public + grant a
@@ -92,14 +92,17 @@ create index arista_extremo_a_idx on arista (extremo_a);
 create index arista_extremo_b_idx on arista (extremo_b);
 create index arista_tipo_idx      on arista (tipo);
 
--- ── net.materializar_aristas() (proc idempotente, invocado por pg_cron) ───────
+-- ── grafo.materializar_aristas() (proc idempotente, invocado por pg_cron) ───────
 -- security definer: corre como owner para leer `lobby_audiencia`/`lobby_contraparte`
 -- (deny-by-default) y escribir `entidad`/`arista`. set search_path = '' (V8): nombres
 -- calificados con schema. ON CONFLICT DO NOTHING → un 2× run produce conteos idénticos
 -- (los hechos de lobby son append-only; idempotencia simple).
-create schema if not exists net;
+-- Schema propio `grafo` para los internals de NET. NO usar el schema `net`: pertenece a
+-- la extensión pg_net (http_get/http_request_queue) — reusarlo colisiona y un reinstall
+-- de pg_net podría arrastrar nuestros objetos.
+create schema if not exists grafo;
 
-create or replace function net.materializar_aristas()
+create or replace function grafo.materializar_aristas()
 returns void language plpgsql security definer set search_path = '' as $$
 begin
   -- 1) refrescar el set de nodos: cada parlamentario que aparezca CONFIRMADO en un hecho fuente.
@@ -159,7 +162,7 @@ begin
   perform cron.schedule(
     'net-materializar-aristas',
     '17 3 * * *',
-    $cron$ select net.materializar_aristas(); $cron$
+    $cron$ select grafo.materializar_aristas(); $cron$
   );
 end;
 $$;

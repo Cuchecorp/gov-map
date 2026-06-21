@@ -3,7 +3,7 @@
 -- APLICADO:
 --   * `entidad`/`arista` existen con RLS habilitada y son DENY-BY-DEFAULT (cero policies),
 --   * anon NO lee `entidad`/`arista` directamente (0 filas),
---   * `net.materializar_aristas()` existe y es SECURITY DEFINER,
+--   * `grafo.materializar_aristas()` existe y es SECURITY DEFINER,
 --   * `subgrafo_red(...)` existe, es SECURITY DEFINER, anon tiene EXECUTE,
 --   * la materialización produce la arista co_lobby_contraparte (happy path: nombres
 --     normalizados idénticos → EXACTAMENTE una arista) con provenance + ventana temporal,
@@ -49,7 +49,7 @@ values
   ('AUD-NET4', 'Fundacion X A.G.',           'lobbista', 'lobby', 'http://lobby/4');
 
 -- Poblar entidad/arista desde los hechos sembrados.
-select net.materializar_aristas();
+select grafo.materializar_aristas();
 
 -- ── entidad/arista existen ────────────────────────────────────────────────────
 select has_table('public', 'entidad', 'tabla entidad existe');
@@ -71,13 +71,13 @@ select is(
   (select count(*)::int from pg_policies where tablename = 'arista'),
   0, 'arista sin policies (deny-by-default)');
 
--- ── net.materializar_aristas es SECURITY DEFINER ──────────────────────────────
+-- ── grafo.materializar_aristas es SECURITY DEFINER ──────────────────────────────
 select is(
   (select p.prosecdef from pg_proc p
      join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'net' and p.proname = 'materializar_aristas'),
+    where n.nspname = 'grafo' and p.proname = 'materializar_aristas'),
   true,
-  'net.materializar_aristas es security definer');
+  'grafo.materializar_aristas es security definer');
 
 -- ── subgrafo_red: existe, security definer, anon tiene EXECUTE ─────────────────
 select has_function('public', 'subgrafo_red',
@@ -94,12 +94,15 @@ select ok(
   'anon tiene EXECUTE sobre subgrafo_red');
 
 -- ── no-PII: el cuerpo de subgrafo_red NO referencia partido ni rut (LEGAL-03) ──
-select is(
-  (select (position('partido' in pg_get_functiondef(p.oid)) + position('rut' in pg_get_functiondef(p.oid)))::int
+-- Se STRIPEAN los comentarios `--` antes de buscar (el cuerpo documenta "NUNCA partido/rut"
+-- en un comentario PII-SAFE) y se exige límite de palabra (\y) para no matchear substrings
+-- legítimos. Lo que importa es que el CÓDIGO no proyecte esas columnas, no el comentario.
+select ok(
+  (select regexp_replace(pg_get_functiondef(p.oid), '--[^\n]*', '', 'g')
      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public' and p.proname = 'subgrafo_red'),
-  0,
-  'el cuerpo de subgrafo_red NO contiene partido ni rut (no-PII, espejo 0020)');
+    where n.nspname = 'public' and p.proname = 'subgrafo_red')
+    !~* '\y(partido|rut)\y',
+  'el cuerpo de subgrafo_red NO contiene partido ni rut (no-PII, espejo 0020; comentarios excluidos)');
 
 -- ── happy path: NET1/NET2 (mismo nombre normalizado) → EXACTAMENTE una arista ──
 -- (assert como owner: la unicidad de la arista co_lobby_contraparte entre el par ordenado).
