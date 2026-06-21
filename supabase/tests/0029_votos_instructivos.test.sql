@@ -58,7 +58,7 @@ insert into parlamentario (id, nombre_normalizado, camara, periodo, origen, enla
 insert into proyecto (boletin, boletin_num, titulo, origen, enlace)
   values ('70029-01', '70029', 'Proyecto pgTAP 0029', 'test', 'http://x');
 insert into proyecto_ficha (boletin, idea_matriz, cuerpos_legales, estado, origen, fecha_captura)
-  values ('70029-01', 'Idea matriz de prueba del proyecto 0029', '[]'::jsonb, 'ok', 'test', now());
+  values ('70029-01', 'Idea matriz de prueba del proyecto 0029', '[]'::jsonb, 'embebido', 'test', now());
 insert into votacion (id, boletin, camara, origen, enlace, resultado, total_si, total_no, etapa, quorum)
   values ('camara:tap29', '70029-01', 'diputados', 'test', 'http://x', 'Aprobado', 58, 12, 'Primer trámite', 'Simple');
 insert into voto (votacion_id, fuente_voter_id, mencion_nombre, seleccion, parlamentario_id, estado_vinculo)
