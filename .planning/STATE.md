@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
 status: executing
-stopped_at: "17-01 completo (dossier legal NET 17-LEGAL-DOSSIER.md signoff: pending + copia docs/legal/17-LEGAL-DOSSIER-NET.md + spec gate NET_PUBLIC_ENABLED). LEGAL-02 enlazado (status Pending; sign-off humano F17). Riesgo nuclear = composicion (arista/camino como acusacion). Gate NET cerrado hasta signoff: approved."
-last_updated: "2026-06-21T04:29:23.071Z"
-last_activity: 2026-06-21 -- Phase 18 execution started
+stopped_at: 18-01 Tasks 1-2 code-complete (0030_net.sql entidad/arista deny-by-default + net.materializar_aristas() proc + subgrafo_red RPC PII-safe depth-clamped; 0030_net.test.sql pgTAP 16 asserts incl. plan-checker MEDIUM-2 caso negativo de normalización). DETENIDO en Task 3 = checkpoint de operador BLOCKING (apply remoto por psql --db-url + pgTAP + log conteo de aristas). Gate NET cerrado (NET_PUBLIC_ENABLED OFF hasta signoff F17).
+last_updated: "2026-06-21T04:46:53.134Z"
+last_activity: 2026-06-21
 progress:
   total_phases: 15
   completed_phases: 13
   total_plans: 47
-  completed_plans: 45
+  completed_plans: 47
   percent: 87
 ---
 
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 18 (net-grafo-de-influencia-xyflow-react) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 18
+Plan: 2 of 4
+Status: Ready to execute
 Next plan: Phase 18 (NET grafo) se construye bajo el gate apagado; NET_PUBLIC_ENABLED NO se enciende hasta signoff: approved. Pendiente paralelo: 22-04 (Bloque D redeploy + e2e); checkpoints de operador (apply remoto RPC 0028, 16-01/15-01/15-02); encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
-Last activity: 2026-06-21 -- Phase 18 execution started
+Last activity: 2026-06-21
 
 ## Performance Metrics
 
@@ -99,6 +99,7 @@ Last activity: 2026-06-21 -- Phase 18 execution started
 | Phase 21 P01 | 8min | 2 tasks | 5 files |
 | Phase 22 P02 | 8min | 3 tasks | 6 files |
 | Phase 22 P03 | 8min | 2 tasks | 3 files |
+| Phase 18 P02 | ~5min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -174,6 +175,7 @@ Recent decisions affecting current work:
 - [Phase 22]: 22-01: RPC votos_de_parlamentario EXTENDIDO (0028, additivo, INVOKER, sin PII) — por fila confirmada devuelve titulo + idea_matriz (sustancia; LEFT JOIN proyecto/proyecto_ficha -> null honesto, NUNCA fabricado) + resultado/total_si/total_no/total_abstencion/total_pareo/quorum (desenlace de la votacion ya joinada), evitando los tres .in() N+1 del runbook en el server component. Firma de params (text,int,int) INTACTA; drop+recreate por returns table modificado; grant execute a anon re-emitido; CERO policy/grant sobre parlamentario (LEGAL-03); se queda INVOKER (solo tablas publico-read). pgTAP 0029 (7 asserts) afirma firma + INVOKER + columnas nuevas + anon execute + anon no-PII. VotoFichaRow +8 campos nullable; [Rule 3] dos sitios de construccion del tipo completados con null/de-prueba (voto-ficha-row.tsx + fixture). Aplicacion al remoto = checkpoint operador BLOCKING.
 - [Phase 22]: 22-02: VotosView/VotoFichaRow INSTRUCTIVAS (presentacion pura, RTL). Cada voto muestra titulo del proyecto + extracto LITERAL de idea matriz (helper extractoIdea: prefijo de la fuente + elipsis, NUNCA reescribe; honest-state 'De que trata: no disponible aun' cuando idea null, jamas fabrica) + DESENLACE factual 'Voto X · el proyecto fue {resultado} {si-no}' (conteoVotacion en-dash, Mono) solo si resultado != null — hecho de la votacion, no juicio del voto. 'Asistencia' CORREGIDO: el desglose de sentido pasa a heading 'Como voto'; asistencia REAL (presente vs ausente, derivada de conteos.ausente) es metrica propia; sin ausentes degrada a 'Emitio N votos registrados' (no finge asistencia). Votaciones AGRUPADAS POR PROYECTO (el arco: agruparPorProyecto + ProyectoGrupo, titulo+idea una vez como cabecera + etapas votadas debajo). Linea explicativa LOCKED 'A favor / En contra se refiere a aprobar o rechazar el proyecto en esa etapa de su tramitacion'. Cobertura honesta cuando totalProyectos<=5 (el server computa distintos boletines del conjunto completo). honest-state MONEY 'Financiamiento y contratos del Estado' (copy LOCKED 'Pendiente de revision legal (Ley 21.719) antes de publicarse') = carril propio mt-12 sibling, visible cuando moneyPublicEnabled false, MUTUAMENTE EXCLUYENTE con #dinero/#financiamiento reales, cero Supabase/monto/composicion-con-voto. VotoFichaMencion +campos opcionales sustancia/desenlace (mencion cruda conserva IdentityMarker). VotosSection conserva join proyecto.materia (el RPC no trae materia). Vista PURA; suite 209 verde (31 en votos); tsc limpio; cero banned-vocab en copy (negative-match GATE §6/§9.1). Aplicacion remota del RPC 0028 sigue siendo checkpoint operador pendiente, NO bloquea este plan.
 - [Phase ?]: [Phase 22]: 22-03: VotacionCard enmarca el desenlace 'El proyecto fue {resultado} {si}-{no}' (conteoVotacion en-dash, Mono) SOBRE el EtapaBadge existente (no lo reemplaza); resultado null omite SOLO la frase (barra/totales intactos). Espejo SC6: la seccion #votaciones del proyecto conecta con su idea matriz via leerFicha cacheada (React.cache, cero query nueva) — linea 'Que se voto: {extractoIdea}' + ancla a #idea-matriz; idea_matriz null omite la linea (honest-state), nunca fabrica. Carriles #votaciones/#idea-matriz siguen hermanos mt-12 (no anidan, no componen con dinero/lobby). Suite 214/214 verde, tsc limpio, cero banned-vocab. RPC 0028 apply remoto pendiente, NO bloquea.
+- [Phase ?]: NET Candado B: netPublicEnabled() server-only fail-closed (=== 'true'), espejo de money-gate; ruta /red gatea con notFound() OFF como primera sentencia, sin filtrar DOM; isla RedGraph placeholder real (Plan 18-03 monta xyflow); grafo vacío => estado honesto
 
 ### Pending Todos
 
@@ -207,7 +209,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-21T04:33:20.000Z
+Last session: 2026-06-21T04:46:45.517Z
 Stopped at: 18-01 Tasks 1-2 code-complete (0030_net.sql entidad/arista deny-by-default + net.materializar_aristas() proc + subgrafo_red RPC PII-safe depth-clamped; 0030_net.test.sql pgTAP 16 asserts incl. plan-checker MEDIUM-2 caso negativo de normalización). DETENIDO en Task 3 = checkpoint de operador BLOCKING (apply remoto por psql --db-url + pgTAP + log conteo de aristas). Gate NET cerrado (NET_PUBLIC_ENABLED OFF hasta signoff F17).
 Resume file: None
 
