@@ -67,6 +67,45 @@ function slugTema(materia: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Hash corto y estable de una cadena (djb2 → base36). Determinista entre renders y
+ * procesos (no usa Math.random ni nada de runtime), por lo que el slug desambiguado
+ * de una materia es el mismo en el chip que en el href que el server vuelve a resolver.
+ */
+function hashCorto(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  }
+  return h.toString(36).slice(0, 6);
+}
+
+/**
+ * Construye el mapa slug→materia desambiguando colisiones (WR-03): dos materias
+ * distintas que sólo difieren en acento/puntuación/caso producen el mismo
+ * `slugTema` y, sin esto, la última etiqueta ganaría y ambas materias se fundirían
+ * silenciosamente en un chip. Cuando un slug ya está tomado por una materia
+ * DISTINTA, se le anexa un hash corto del texto verbatim → slug único y estable.
+ * El mapa devuelto va de slug (posiblemente desambiguado) a la materia verbatim.
+ */
+function construirMateriasMap(materias: Iterable<string>): Map<string, string> {
+  const slugDeMateria = new Map<string, string>(); // materia verbatim → slug final
+  const materiaDeSlug = new Map<string, string>(); // slug final → materia verbatim
+  for (const materia of materias) {
+    if (slugDeMateria.has(materia)) continue;
+    const base = slugTema(materia);
+    let slug = base;
+    const ocupadaPor = materiaDeSlug.get(slug);
+    if (ocupadaPor !== undefined && ocupadaPor !== materia) {
+      // Colisión con una materia distinta → desambiguar con hash del verbatim.
+      slug = `${base}-${hashCorto(materia)}`;
+    }
+    slugDeMateria.set(materia, slug);
+    materiaDeSlug.set(slug, materia);
+  }
+  return materiaDeSlug;
+}
+
 /** Fila confirmada de la ficha con su materia derivada (proyecto, público-read). */
 export type VotoFichaConMateria = VotoFichaRowData & { materia: string | null };
 
@@ -74,9 +113,16 @@ export type VotoFichaConMateria = VotoFichaRowData & { materia: string | null };
 export interface VotosViewData {
   /** filas confirmadas de la página actual (ya paginadas). */
   votos: VotoFichaConMateria[];
-  /** total de votaciones confirmadas (para "Página N de M" y asistencia cruda). */
+  /**
+   * Total de votaciones del conjunto AGREGADO ("Cómo votó"/asistencia). WR-01: con un
+   * tema activo es el tamaño del subconjunto filtrado (coherente con `conteos`), no el
+   * global — el header refleja la misma cobertura que la lista. Sin tema, es el global.
+   */
   totalVotos: number;
-  /** desglose de asistencia por selección (solo confirmados). */
+  /**
+   * Desglose de asistencia por selección (solo confirmados). WR-01: computado sobre el
+   * mismo conjunto que `totalVotos` (filtrado si hay tema activo, global si no).
+   */
   conteos: Record<Seleccion, number>;
   /** votó distinto a su bancada (derivado del RPC security definer). */
   rebeldias: RebeldiaRow[];
@@ -474,6 +520,105 @@ export function VotosView({
   );
 }
 
+/**
+ * Normaliza el parámetro `votosPage` del query string. WR-04: rechaza entrada no
+ * numérica y basura final ("3abc" → 1, no 3); exige dígitos puros. El clamp por arriba
+ * (contra `totalPages`) se hace en el derivador una vez conocido el nº de páginas. PURO.
+ */
+export function normalizarPagina(rawPage: string | undefined): number {
+  const t = (rawPage ?? "").trim();
+  return /^\d+$/.test(t) ? Math.max(1, Number.parseInt(t, 10)) : 1;
+}
+
+/**
+ * Derivación PURA de `VotosViewData` a partir de las filas confirmadas (ya con materia
+ * resuelta), el tema activo y la página pedida. Concentra los invariantes WR-01..WR-04
+ * fuera del Server Component para poder pinnearlos con fixtures:
+ *  - WR-01: agregado ("Cómo votó"/asistencia) sobre el conjunto FILTRADO si hay tema.
+ *  - WR-02: agrupa por proyecto ANTES de paginar; pagina sobre arcos (cero arco partido).
+ *  - WR-03: filtra con el slug FINAL desambiguado (consistente con los chips).
+ *  - WR-04: la página ya viene normalizada; aquí sólo se clampa contra totalPages.
+ * CERO fabricación: titulo/idea/materia se toman verbatim (null honesto).
+ */
+export function derivarVotosViewData({
+  todasConMateria,
+  materiaActiva,
+  page,
+  rebeldias,
+}: {
+  todasConMateria: VotoFichaConMateria[];
+  materiaActiva: string | null;
+  page: number;
+  rebeldias: RebeldiaRow[];
+}): VotosViewData {
+  // Materias disponibles (faceta) — derivadas, deduplicadas, ordenadas. WR-03: el
+  // mapa slug→materia desambigua colisiones de slug para que dos materias distintas
+  // (p.ej. "Niñez" vs "Ninez") NO se fundan en un solo chip.
+  const materiaDeSlug = construirMateriasMap(
+    todasConMateria.flatMap((v) => (v.materia ? [v.materia] : [])),
+  );
+  // Mapa inverso (materia verbatim → slug final) para filtrar de forma consistente.
+  const slugDeMateria = new Map<string, string>();
+  for (const [slug, label] of materiaDeSlug) slugDeMateria.set(label, slug);
+
+  const materias = [...materiaDeSlug.entries()]
+    .map(([slug, label]) => ({ slug, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, "es"));
+
+  // Filtro por tema (faceta cruda, sin score). Usa el slug FINAL (desambiguado) por
+  // materia, no `slugTema` directo — así el filtro casa con el chip mostrado (WR-03).
+  const filtradas = materiaActiva
+    ? todasConMateria.filter(
+        (v) => v.materia && slugDeMateria.get(v.materia) === materiaActiva,
+      )
+    : todasConMateria;
+
+  // Conteos de asistencia. WR-01: cuando hay un tema activo, el agregado ("Cómo votó",
+  // presente/ausente) se computa sobre el MISMO conjunto filtrado que la lista muestra
+  // — de lo contrario el ciudadano vería un desglose global bajo una etiqueta de tema.
+  // Sin tema activo, `filtradas === todasConMateria` (agregado global). SOLO confirmados.
+  const conteoSet = materiaActiva ? filtradas : todasConMateria;
+  const conteos: Record<Seleccion, number> = {
+    si: 0,
+    no: 0,
+    abstencion: 0,
+    pareo: 0,
+    ausente: 0,
+  };
+  for (const v of conteoSet) conteos[v.seleccion] += 1;
+
+  // WR-02: agrupar POR PROYECTO antes de paginar, luego paginar sobre los ARCOS. Si se
+  // paginara la lista plana primero, un proyecto cuyas etapas cruzan el borde de página
+  // se partiría en dos cabeceras idénticas (una por página), rompiendo el invariante
+  // "el titulo aparece UNA vez por arco". Aquí la página agrupa proyectos completos.
+  const arcos = agruparPorProyecto(filtradas);
+  const totalPages = Math.max(1, Math.ceil(arcos.length / PAGE_SIZE));
+  const pageClamped = Math.min(Math.max(1, page), totalPages);
+  const start = (pageClamped - 1) * PAGE_SIZE;
+  // La vista re-agrupa por boletín, así que pasamos las etapas (planas) de los arcos
+  // de esta página: misma agrupación reconstruida, ningún proyecto partido.
+  const votos = arcos.slice(start, start + PAGE_SIZE).flatMap((a) => a.etapas);
+  // total para "Cómo votó"/asistencia = tamaño del conjunto agregado (WR-01 coherente).
+  const totalVotos = conteoSet.length;
+
+  // Cobertura: nº de proyectos DISTINTOS con votaciones confirmadas (sobre TODO el
+  // conjunto, no la página) — alimenta la nota honesta. Cero exhaustividad fingida.
+  const totalProyectos = new Set(todasConMateria.map((v) => v.boletin)).size;
+
+  return {
+    votos,
+    totalVotos,
+    conteos,
+    rebeldias,
+    materiaActiva,
+    materias,
+    page: pageClamped,
+    totalPages,
+    noIngestado: false,
+    totalProyectos,
+  };
+}
+
 // ── Server Component: lee los RPCs + materias y arma la VotosView ──────────────
 export async function VotosSection({
   id,
@@ -493,7 +638,7 @@ export async function VotosSection({
       : searchParams.materia
   )?.trim() || null;
 
-  const page = Math.max(1, Number.parseInt(rawPage ?? "1", 10) || 1);
+  const page = normalizarPagina(rawPage);
 
   // Conteos de asistencia + total: sobre TODAS las confirmadas (no solo la
   // página). Se piden hasta un techo alto en una sola llamada; el orden ya viene
@@ -530,37 +675,6 @@ export async function VotosSection({
     materia: materiaPorBoletin.get(v.boletin) ?? null,
   }));
 
-  // Materias disponibles (faceta) — derivadas, deduplicadas, ordenadas.
-  const materiasMap = new Map<string, string>();
-  for (const v of todasConMateria) {
-    if (v.materia) materiasMap.set(slugTema(v.materia), v.materia);
-  }
-  const materias = [...materiasMap.entries()]
-    .map(([slug, label]) => ({ slug, label }))
-    .sort((a, b) => a.label.localeCompare(b.label, "es"));
-
-  // Filtro por tema (faceta cruda, sin score).
-  const filtradas = materiaActiva
-    ? todasConMateria.filter((v) => v.materia && slugTema(v.materia) === materiaActiva)
-    : todasConMateria;
-
-  // Conteos de asistencia (SOLO confirmados; el RPC ya devuelve solo esos).
-  const conteos: Record<Seleccion, number> = {
-    si: 0,
-    no: 0,
-    abstencion: 0,
-    pareo: 0,
-    ausente: 0,
-  };
-  for (const v of todasConMateria) conteos[v.seleccion] += 1;
-
-  // Paginación server-driven sobre el conjunto (filtrado) ya cargado.
-  const totalVotos = filtradas.length;
-  const totalPages = Math.max(1, Math.ceil(totalVotos / PAGE_SIZE));
-  const pageClamped = Math.min(page, totalPages);
-  const start = (pageClamped - 1) * PAGE_SIZE;
-  const votos = filtradas.slice(start, start + PAGE_SIZE);
-
   // Votó distinto a su bancada (RPC security definer; partido nunca llega a anon).
   const { data: rebData, error: rebError } = await sb.rpc(
     "rebeldias_de_parlamentario",
@@ -573,25 +687,17 @@ export async function VotosSection({
   }
   const rebeldias = (rebData as RebeldiaRow[] | null) ?? [];
 
-  // Cobertura: nº de proyectos DISTINTOS con votaciones confirmadas (sobre TODO el
-  // conjunto, no la página) — alimenta la nota honesta. Cero exhaustividad fingida.
-  const totalProyectos = new Set(todasConMateria.map((v) => v.boletin)).size;
+  const data = derivarVotosViewData({
+    todasConMateria,
+    materiaActiva,
+    page,
+    rebeldias,
+  });
 
   return (
     <VotosView
       id={id}
-      data={{
-        votos,
-        totalVotos: todasConMateria.length,
-        conteos,
-        rebeldias,
-        materiaActiva,
-        materias,
-        page: pageClamped,
-        totalPages,
-        noIngestado: false,
-        totalProyectos,
-      }}
+      data={data}
     />
   );
 }

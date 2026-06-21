@@ -1,9 +1,11 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 
 import { VotoFichaRow, VotoFichaMencionRow } from "./voto-ficha-row";
 import {
   VotosView,
+  derivarVotosViewData,
+  normalizarPagina,
   type VotosViewData,
   type VotoFichaConMateria,
 } from "./votos-por-parlamentario";
@@ -569,5 +571,127 @@ describe("VotosView — instructiva (asistencia corregida, arco, cobertura, §3.
   });
 });
 
-// Silencia un warning de `within` no usado si el linter es estricto.
-void within;
+// ── WR-01..WR-04: derivación pura (server-side) pinneada con fixtures ───────────
+describe("derivarVotosViewData — invariantes de filtro/paginación (WR-01, WR-02, WR-03, WR-04)", () => {
+  // 5 proyectos distintos en "Salud" + 3 en "Educación", 1 etapa c/u → 8 arcos.
+  function fixtureMultiTema(): VotoFichaConMateria[] {
+    const salud = Array.from({ length: 5 }, (_, i) =>
+      makeVoto({
+        votacion_id: `s:${i}`,
+        boletin: `100${i}-07`,
+        materia: "Salud",
+        seleccion: i === 0 ? "ausente" : "si",
+      }),
+    );
+    const educacion = Array.from({ length: 3 }, (_, i) =>
+      makeVoto({
+        votacion_id: `e:${i}`,
+        boletin: `200${i}-04`,
+        materia: "Educación",
+        seleccion: "no",
+      }),
+    );
+    return [...salud, ...educacion];
+  }
+
+  it("WR-01: con tema activo, el agregado (conteos/totalVotos) refleja SOLO el subconjunto filtrado", () => {
+    const data = derivarVotosViewData({
+      todasConMateria: fixtureMultiTema(),
+      materiaActiva: "salud",
+      page: 1,
+      rebeldias: [],
+    });
+    // Salud = 5 votos (1 ausente, 4 sí); NO los 8 globales.
+    expect(data.totalVotos).toBe(5);
+    expect(data.conteos.si).toBe(4);
+    expect(data.conteos.ausente).toBe(1);
+    expect(data.conteos.no).toBe(0); // los "no" son de Educación → excluidos.
+  });
+
+  it("WR-01: sin tema activo, el agregado es global (los 8 votos)", () => {
+    const data = derivarVotosViewData({
+      todasConMateria: fixtureMultiTema(),
+      materiaActiva: null,
+      page: 1,
+      rebeldias: [],
+    });
+    expect(data.totalVotos).toBe(8);
+    expect(data.conteos.no).toBe(3);
+  });
+
+  it("WR-02: agrupa por proyecto ANTES de paginar — un proyecto que cruza el borde NO se parte", () => {
+    // 21 proyectos, 1 etapa c/u, PAGE_SIZE=20 → página 1 = 20 arcos, página 2 = 1 arco.
+    // El proyecto #20 (índice 20) cae entero en la página 2; ninguno se duplica.
+    const votos = Array.from({ length: 21 }, (_, i) =>
+      makeVoto({ votacion_id: `p:${i}`, boletin: `${300 + i}-07`, materia: null }),
+    );
+    const p1 = derivarVotosViewData({ todasConMateria: votos, materiaActiva: null, page: 1, rebeldias: [] });
+    const p2 = derivarVotosViewData({ todasConMateria: votos, materiaActiva: null, page: 2, rebeldias: [] });
+    expect(p1.totalPages).toBe(2);
+    expect(p1.votos.length).toBe(20);
+    expect(p2.votos.length).toBe(1);
+    // Sin solapamiento de boletines entre páginas → cero arco partido/duplicado.
+    const b1 = new Set(p1.votos.map((v) => v.boletin));
+    const b2 = new Set(p2.votos.map((v) => v.boletin));
+    for (const b of b2) expect(b1.has(b)).toBe(false);
+  });
+
+  it("WR-02: un proyecto con 2 etapas que rodean el borde queda ENTERO en una sola página", () => {
+    // 19 proyectos de 1 etapa + 1 proyecto de 2 etapas (que sin agrupar-antes cruzaría
+    // el borde de 20). Con agrupación-antes, el arco de 2 etapas no se divide.
+    const sueltos = Array.from({ length: 19 }, (_, i) =>
+      makeVoto({ votacion_id: `x:${i}`, boletin: `${400 + i}-07`, materia: null }),
+    );
+    const arco2 = [
+      makeVoto({ votacion_id: "y:0", boletin: "999-07", etapa: "Primer trámite", materia: null }),
+      makeVoto({ votacion_id: "y:1", boletin: "999-07", etapa: "Tercer trámite", materia: null }),
+    ];
+    const data = derivarVotosViewData({
+      todasConMateria: [...sueltos, ...arco2],
+      materiaActiva: null,
+      page: 1,
+      rebeldias: [],
+    });
+    expect(data.totalPages).toBe(1); // 20 arcos → 1 página
+    // Las 2 etapas del boletín 999-07 están juntas en la misma página.
+    const etapas999 = data.votos.filter((v) => v.boletin === "999-07");
+    expect(etapas999.length).toBe(2);
+  });
+
+  it("WR-03: dos materias que sólo difieren por acento NO se funden — slugs distintos, filtros separados", () => {
+    const votos = [
+      makeVoto({ votacion_id: "a:0", boletin: "500-07", materia: "Niñez" }),
+      makeVoto({ votacion_id: "b:0", boletin: "600-07", materia: "Ninez" }),
+    ];
+    const data = derivarVotosViewData({ todasConMateria: votos, materiaActiva: null, page: 1, rebeldias: [] });
+    // Dos chips distintos (no uno fusionado).
+    expect(data.materias.length).toBe(2);
+    const slugs = data.materias.map((m) => m.slug);
+    expect(new Set(slugs).size).toBe(2);
+    // Filtrar por el slug de "Niñez" trae sólo su boletín, no el de "Ninez".
+    const slugNinez = data.materias.find((m) => m.label === "Niñez")!.slug;
+    const filtrada = derivarVotosViewData({ todasConMateria: votos, materiaActiva: slugNinez, page: 1, rebeldias: [] });
+    expect(filtrada.votos.map((v) => v.boletin)).toEqual(["500-07"]);
+  });
+
+  it("WR-04: normalizarPagina rechaza basura final y no numérico, clampa por debajo a 1", () => {
+    expect(normalizarPagina("3abc")).toBe(1);
+    expect(normalizarPagina("abc")).toBe(1);
+    expect(normalizarPagina("")).toBe(1);
+    expect(normalizarPagina(undefined)).toBe(1);
+    expect(normalizarPagina("0")).toBe(1);
+    expect(normalizarPagina("-2")).toBe(1);
+    expect(normalizarPagina("  4  ")).toBe(4);
+    expect(normalizarPagina("99999")).toBe(99999); // el clamp por arriba lo hace el derivador.
+  });
+
+  it("WR-04: una página fuera de rango se clampa contra totalPages en el derivador", () => {
+    const votos = Array.from({ length: 5 }, (_, i) =>
+      makeVoto({ votacion_id: `z:${i}`, boletin: `${700 + i}-07`, materia: null }),
+    );
+    const data = derivarVotosViewData({ todasConMateria: votos, materiaActiva: null, page: 99999, rebeldias: [] });
+    expect(data.totalPages).toBe(1);
+    expect(data.page).toBe(1); // clamp: 99999 → 1
+    expect(data.votos.length).toBe(5);
+  });
+});
