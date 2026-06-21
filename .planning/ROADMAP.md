@@ -276,7 +276,13 @@ Plans:
   2. La revisión confirma que el framing es descriptivo (aristas tipadas y con fuente, ventana temporal, sin score de sospecha ni path-finding como feature destacada) y que la atribución CC BY 4.0 se propaga a los nodos derivados de InfoProbidad
   3. El sign-off es prerrequisito duro: Phase 18 no se expone públicamente hasta su aprobación
 
-**Plans:** TBD
+**Plans:** 1 plan
+
+Plans:
+
+- [x] 17-01 — Dossier legal NET (`17-LEGAL-DOSSIER.md`, `signoff: pending`) + copia en `docs/legal/` + especificación del gate `NET_PUBLIC_ENABLED`
+
+**Status:** Entregable construido (dossier de preparación + spec del gate). **El sign-off legal humano queda PENDIENTE — deuda de operador F17**; la compuerta permanece CERRADA: `NET_PUBLIC_ENABLED` no se enciende hasta `signoff: approved`. SC1/SC2 (revisión legal que dictamina y confirma framing descriptivo + propagación CC BY 4.0) son humanos; SC3 (prerrequisito duro para Phase 18) queda registrado y verificable por inspección del YAML.
 
 ### Phase 18: NET — Grafo de influencia (`@xyflow/react`)
 

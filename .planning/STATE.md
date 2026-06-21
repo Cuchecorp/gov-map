@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: — Parlamentarios 360
 status: executing
 stopped_at: 22-03 completo (espejo proyecto — VotacionCard enmarca desenlace + #votaciones conecta con idea matriz via leerFicha cacheada); RED+GREEN commiteados (2729e09/c3bc2c7) + feat Task 2 (f72eebf); suite 214 verde, tsc limpio, cero banned-vocab. Apply remoto RPC 0028 (22-01 Task 3) sigue pendiente, NO bloquea.
-last_updated: "2026-06-20T23:33:33.758Z"
-last_activity: 2026-06-20
+last_updated: "2026-06-21T00:00:00.000Z"
+last_activity: 2026-06-21
 progress:
   total_phases: 15
   completed_phases: 12
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 ## Current Position
 
-Phase: 22 (votaciones-instructivas-que-voto-cada-uno) — EXECUTING
-Plan: 4 of 4 (22-01/22-02/22-03 completos; 22-04 = Bloque D redeploy + e2e pendiente)
-Status: Ready to execute
-Next plan: 22-04 (Bloque D del runbook — redeploy Linux/Docker + verificacion e2e browseros); cerrar checkpoints de operador (apply remoto RPC 0028, 16-01/15-01/15-02); luego encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
-Last activity: 2026-06-20
+Phase: 17 (compuerta-legal-bloque-net-framing-del-grafo) — DOSSIER ENTREGADO
+Plan: 1 of 1 (17-01 dossier NET completo)
+Status: Entregable construido; sign-off humano PENDIENTE (deuda de operador F17) — gate NET cerrado
+Next plan: Phase 18 (NET grafo) se construye bajo el gate apagado; NET_PUBLIC_ENABLED NO se enciende hasta signoff: approved. Pendiente paralelo: 22-04 (Bloque D redeploy + e2e); checkpoints de operador (apply remoto RPC 0028, 16-01/15-01/15-02); encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
+Last activity: 2026-06-21
 
 ## Performance Metrics
 
@@ -206,8 +206,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-20T23:33:27.009Z
-Stopped at: 22-02 completo (VotosView/VotoFichaRow instructivas + honest-state MONEY); RED+GREEN por tarea commiteados (70af29b/9fe99e1/100000f/c9bb307/bbfdb55); suite 209 verde, tsc limpio, cero banned-vocab. Apply remoto RPC 0028 (22-01 Task 3) sigue pendiente, NO bloquea.
+Last session: 2026-06-21T00:00:00.000Z
+Stopped at: 17-01 completo (dossier legal NET 17-LEGAL-DOSSIER.md signoff: pending + copia docs/legal/17-LEGAL-DOSSIER-NET.md + spec gate NET_PUBLIC_ENABLED). LEGAL-02 enlazado (status Pending; sign-off humano F17). Riesgo nuclear = composicion (arista/camino como acusacion). Gate NET cerrado hasta signoff: approved.
 Resume file: None
 
 ## Operator Next Steps
