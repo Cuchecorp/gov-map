@@ -143,11 +143,20 @@ async function FichaSection({ boletin }: { boletin: string }) {
 // ── Timeline (tramitacion_evento) ────────────────────────────────────────────
 async function TimelineSection({ boletin }: { boletin: string }) {
   const sb = createServerSupabase();
-  const { data } = await sb
+  const { data, error } = await sb
     .from("tramitacion_evento")
     .select("*")
     .eq("boletin", boletin)
     .order("fecha", { ascending: true });
+
+  // #34 honest-error: un fallo real de DB/red ≠ "sin tramitación". Se lanza para la
+  // página de error honesta en vez de fabricar un timeline vacío (que se leería como
+  // "no hay eventos registrados").
+  if (error) {
+    throw new Error(
+      `No se pudo leer la tramitación de ${boletin}: ${error.message}`,
+    );
+  }
 
   return <TimelineView eventos={(data as TramitacionEventoRow[]) ?? []} />;
 }
@@ -155,11 +164,20 @@ async function TimelineSection({ boletin }: { boletin: string }) {
 // ── Votaciones (votacion + voto embed) ───────────────────────────────────────
 async function VotacionesSection({ boletin }: { boletin: string }) {
   const sb = createServerSupabase();
-  const { data } = await sb
+  const { data, error } = await sb
     .from("votacion")
     .select("*, voto(*)")
     .eq("boletin", boletin)
     .order("fecha", { ascending: true });
+
+  // #34 honest-error: un fallo real de DB/red ≠ "sin votaciones". Sin esto, un error
+  // transitorio caería a `?? []` y renderizaría "no tiene votaciones registradas" —
+  // fabricando un HECHO ("no tiene votaciones") a partir de un error. Se lanza.
+  if (error) {
+    throw new Error(
+      `No se pudieron leer las votaciones de ${boletin}: ${error.message}`,
+    );
+  }
 
   const votaciones = (data as VotacionRow[]) ?? [];
 
