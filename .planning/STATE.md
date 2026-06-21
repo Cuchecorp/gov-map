@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Parlamentarios 360
 status: executing
-stopped_at: 22-03 completo (espejo proyecto — VotacionCard enmarca desenlace + #votaciones conecta con idea matriz via leerFicha cacheada); RED+GREEN commiteados (2729e09/c3bc2c7) + feat Task 2 (f72eebf); suite 214 verde, tsc limpio, cero banned-vocab. Apply remoto RPC 0028 (22-01 Task 3) sigue pendiente, NO bloquea.
-last_updated: "2026-06-21T00:00:00.000Z"
-last_activity: 2026-06-21
+stopped_at: "17-01 completo (dossier legal NET 17-LEGAL-DOSSIER.md signoff: pending + copia docs/legal/17-LEGAL-DOSSIER-NET.md + spec gate NET_PUBLIC_ENABLED). LEGAL-02 enlazado (status Pending; sign-off humano F17). Riesgo nuclear = composicion (arista/camino como acusacion). Gate NET cerrado hasta signoff: approved."
+last_updated: "2026-06-21T04:29:23.071Z"
+last_activity: 2026-06-21 -- Phase 18 execution started
 progress:
   total_phases: 15
-  completed_phases: 12
-  total_plans: 43
-  completed_plans: 43
-  percent: 80
+  completed_phases: 13
+  total_plans: 47
+  completed_plans: 45
+  percent: 87
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 22 — votaciones-instructivas-que-voto-cada-uno
+**Current focus:** Phase 18 — net-grafo-de-influencia-xyflow-react
 
 ## Current Position
 
-Phase: 17 (compuerta-legal-bloque-net-framing-del-grafo) — DOSSIER ENTREGADO
-Plan: 1 of 1 (17-01 dossier NET completo)
-Status: Entregable construido; sign-off humano PENDIENTE (deuda de operador F17) — gate NET cerrado
+Phase: 18 (net-grafo-de-influencia-xyflow-react) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 18
 Next plan: Phase 18 (NET grafo) se construye bajo el gate apagado; NET_PUBLIC_ENABLED NO se enciende hasta signoff: approved. Pendiente paralelo: 22-04 (Bloque D redeploy + e2e); checkpoints de operador (apply remoto RPC 0028, 16-01/15-01/15-02); encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
-Last activity: 2026-06-21
+Last activity: 2026-06-21 -- Phase 18 execution started
 
 ## Performance Metrics
 
@@ -193,6 +193,7 @@ None yet for v2.0.
 - 15-02 OPERADOR: crear bucket privado Supabase Storage crudo-servel + corrida LIVE SERVEL (URL del xlsx por eleccion la provee el operador via --url; ejercita el pipeline de identidad real)
 - 21-02 Task 3 checkpoint operador BLOCKING: aplicar 0026 al Supabase remoto via supabase db push --db-url + supabase test db --db-url (pgTAP 0027 = 7/7) + probe psql parlamentarios_publico() 7 columnas sin PII. Codigo Tasks 1-2 commiteado (1965b72, daeb1fc); 6 tests RTL verdes. NO ejecutado por el agente.
 - 22-01 Task 3 checkpoint operador BLOCKING: aplicar 0028_votos_instructivos.sql al Supabase remoto via supabase db push --db-url "$SUPABASE_DB_URL" + supabase test db --db-url (pgTAP 0029 verde + 0019/0020/0026/0027 sin regresion) + probe psql votos_de_parlamentario('D1054',50,0) confirmando titulo/idea_matriz/resultado/total_si/total_no/quorum/etapa pobladas para 14309-04/18296-05. Codigo Tasks 1-2 commiteado (d97b845, eb1269f); tsc verde + 13 RTL. NO ejecutado por el agente.
+- 18-01 Task 3 checkpoint operador BLOCKING (gate=blocking-human): aplicar 0030_net.sql al Supabase remoto via `psql "$SUPABASE_DB_URL" -f supabase/migrations/0030_net.sql` (NUNCA `supabase db push` — drift schema_migrations ≤0025) + seed `psql "$SUPABASE_DB_URL" -c "select net.materializar_aristas();"` + pgTAP `psql "$SUPABASE_DB_URL" -f supabase/tests/0030_net.test.sql` (16 asserts verdes) + confirmar `select count(*) from cron.job where jobname='net-materializar-aristas'` = 1 + LOGUEAR conteo de aristas materializadas `select tipo, count(*) from arista group by 1;` (un grafo vacío/engañoso se cacha al aplicar, no en producción). Codigo Tasks 1-2 commiteado (2732c53, 60ac5ff); SUMMARY 37ae22e; greps verdes. NO ejecutado por el agente. Gate NET sigue cerrado (NET_PUBLIC_ENABLED OFF hasta signoff F17).
 
 ## Deferred Items
 
@@ -206,8 +207,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-21T00:00:00.000Z
-Stopped at: 17-01 completo (dossier legal NET 17-LEGAL-DOSSIER.md signoff: pending + copia docs/legal/17-LEGAL-DOSSIER-NET.md + spec gate NET_PUBLIC_ENABLED). LEGAL-02 enlazado (status Pending; sign-off humano F17). Riesgo nuclear = composicion (arista/camino como acusacion). Gate NET cerrado hasta signoff: approved.
+Last session: 2026-06-21T04:33:20.000Z
+Stopped at: 18-01 Tasks 1-2 code-complete (0030_net.sql entidad/arista deny-by-default + net.materializar_aristas() proc + subgrafo_red RPC PII-safe depth-clamped; 0030_net.test.sql pgTAP 16 asserts incl. plan-checker MEDIUM-2 caso negativo de normalización). DETENIDO en Task 3 = checkpoint de operador BLOCKING (apply remoto por psql --db-url + pgTAP + log conteo de aristas). Gate NET cerrado (NET_PUBLIC_ENABLED OFF hasta signoff F17).
 Resume file: None
 
 ## Operator Next Steps
