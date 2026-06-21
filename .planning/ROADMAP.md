@@ -297,13 +297,13 @@ Plans:
   3. Ninguna arista es inferida por LLM (solo aristas con fuente verificable); ningún camino se presenta como acusación; el copy es sobrio en español, sin lenguaje causal ni score de persona
   4. La atribución CC BY 4.0 (InfoProbidad) se propaga dentro de nodos/tooltips derivados de esa fuente
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 
 - [x] 18-01-PLAN.md — Modelo grafo: entidad/arista deny-by-default + proc pg_cron + RPC subgrafo_red (NET-01)
 - [x] 18-02-PLAN.md — net-gate.ts (server-only fail-closed) + ruta /red gateada consumiendo subgrafo_red (NET-01/02)
-- [ ] 18-03-PLAN.md — Isla @xyflow/react: nodo/arista sobrios, filtros tipo/tiempo, provenance + CC BY 4.0 (NET-02)
+- [x] 18-03-PLAN.md — Isla @xyflow/react: nodo/arista sobrios, filtros tipo/tiempo, provenance + CC BY 4.0 (NET-02)
 - [ ] 18-04-PLAN.md — Verificación de fase + redeploy Linux gated-OFF (/red 404 en producción)
 
 ### Phase 19: Producto + Diseño — Brief y cierre de diseño del frontend
@@ -444,7 +444,7 @@ Plans:
 | 15. MONEY Financiamiento — SERVEL + sub-maestra donantes | v2.0 | 0/? | Not started | - |
 | 16. MONEY Agregación — por contraparte | v2.0 | 0/? | Not started | - |
 | 17. Compuerta Legal — Bloque NET | v2.0 | 0/? | Not started | - |
-| 18. NET — Grafo de influencia | v2.0 | 2/4 | In Progress|  |
+| 18. NET — Grafo de influencia | v2.0 | 3/4 | In Progress|  |
 | 19. Producto + Diseño — Brief y cierre de diseño | v2.0 | 5/5 | Complete   | 2026-06-20 |
 | 20. Deploy + Carga de Datos — Preview gov-map.com | v2.0 | 6/6 | Complete   | 2026-06-20 |
 | 21. Producto en vivo — Diseño Phase 19 + directorio + ideas matrices | v2.0 | 4/4 | Complete   | 2026-06-20 |

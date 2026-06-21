@@ -43,7 +43,7 @@
 ### NET — Grafo de influencia
 
 - [ ] **NET-01**: El sistema materializa un modelo de aristas `entidad`/`arista` (vía proc `pg_cron` + RPC con CTE recursiva), donde cada arista lleva provenance y ventana temporal, y ambos extremos tienen identidad `confirmado`.
-- [ ] **NET-02**: El ciudadano explora un grafo de relaciones (UI `@xyflow/react`, client island) con filtros por tipo de arista y tiempo, sin lenguaje causal y con la fuente de cada arista trazable.
+- [x] **NET-02**: El ciudadano explora un grafo de relaciones (UI `@xyflow/react`, client island) con filtros por tipo de arista y tiempo, sin lenguaje causal y con la fuente de cada arista trazable.
 
 ### LEGAL — Compuertas legales (transversal)
 
@@ -93,7 +93,7 @@
 | MONEY-04 | Phase 15 | Done (15-03) |
 | MONEY-05 | Phase 16 | Complete |
 | NET-01 | Phase 18 | Pending |
-| NET-02 | Phase 18 | Pending |
+| NET-02 | Phase 18 | Complete |
 | LEGAL-01 | Phase 13 | Pending |
 | LEGAL-02 | Phase 17 | Pending (dossier entregado; sign-off humano F17) |
 | LEGAL-03 | Phase 9 | Complete |
