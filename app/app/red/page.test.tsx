@@ -112,8 +112,11 @@ describe("/red — gate a nivel de página (candado B, LOCKED)", () => {
     );
     expect(notFoundMock).not.toHaveBeenCalled();
     const html = renderToStaticMarkup(el);
-    // La isla recibió los datos (el placeholder muestra el nombre del nodo semilla).
-    expect(html).toContain("Ada Aguilar");
+    // La isla recibió los datos del RPC y se montó. Con un subgrafo sin aristas
+    // (semilla sin relaciones materializadas todavía) la isla muestra su estado
+    // honesto — NO inventa un nodo aislado como si fuera un grafo. Eso prueba que
+    // la isla consumió el JSON del RPC (firma de props estable) sin lanzar.
+    expect(html).toMatch(/aún no hay relaciones/i);
   });
 
   it("gate ON + semilla válida + grafo VACÍO (0 aristas) → estado honesto, NO error", async () => {

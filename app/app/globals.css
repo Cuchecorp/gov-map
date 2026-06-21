@@ -75,3 +75,166 @@
     color-scheme: dark;
   }
 }
+
+/* ── NET — isla del grafo de relaciones (Phase 18, NET-02) ────────────────────
+ * Estilos de la client island @xyflow/react bajo app/components/red/. EXTIENDE
+ * globals.css con tokens crema/petróleo de Phase 19; NO toca civic-tokens.css.
+ * Voz sobria: el nodo es identidad (nombre + cámara), la arista es un hecho con
+ * fuente y ventana — nunca color de marca ni proximidad como afinidad. */
+.net-lienzo {
+  width: 100%;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+}
+
+.net-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-end;
+  padding: 0.75rem 1rem;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+
+.net-filtros__legend,
+.net-filtros__fecha > span {
+  display: block;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 0.25rem;
+}
+
+.net-filtros__tipos {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.net-filtros__tipo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  min-height: 2.75rem; /* 44px touch target */
+  margin-right: 1rem;
+}
+
+.net-filtros__tipo input {
+  accent-color: hsl(var(--accent-product));
+}
+
+.net-filtros__ventana {
+  display: flex;
+  gap: 1rem;
+}
+
+.net-filtros__fecha input {
+  min-height: 2.75rem;
+  padding: 0 0.5rem;
+  border: 1px solid hsl(var(--input));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+
+/* ── Nodo: identidad pública (nombre + cámara). Sin foto/partido/insignia. ── */
+.net-nodo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 160px;
+  padding: 0.625rem 0.875rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px hsl(0 0% 0% / 0.06);
+}
+
+.net-nodo__nombre {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: hsl(var(--foreground));
+}
+
+.net-nodo__camara {
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.net-nodo__handle {
+  opacity: 0;
+}
+
+/* ── Arista: hecho tipado + ventana temporal + procedencia. ── */
+.net-arista__path {
+  stroke: hsl(var(--accent-product));
+  stroke-width: 1.5;
+}
+
+.net-arista__etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 18rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  color: hsl(var(--foreground));
+}
+
+.net-arista__ventana {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.net-arista__info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem;
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+  border: 0;
+  cursor: help;
+}
+
+.net-arista__info-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.net-prov {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.net-prov__row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.net-prov__row dt {
+  min-width: 4.5rem;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+}
+
+.net-prov__row dd {
+  margin: 0;
+}
+
+.net-prov__enlace {
+  display: inline-block;
+  margin-top: 0.375rem;
+  color: hsl(var(--accent-product));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

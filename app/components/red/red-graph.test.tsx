@@ -34,8 +34,8 @@ beforeAll(() => {
 
 // Doble ligero de @xyflow/react: renderiza cada nodo/arista con su componente
 // custom y sus datos, sin el lienzo SVG real (que no funciona en jsdom).
-vi.mock("@xyflow/react", () => {
-  const React = require("react");
+vi.mock("@xyflow/react", async () => {
+  const React = await import("react");
   return {
     ReactFlow: ({
       nodes,
@@ -141,9 +141,11 @@ describe("RedGraph — arista = hecho tipado (T-18-09: copy del hecho, sin afini
         }}
       />,
     );
-    // El hecho: ambos recibieron audiencia de la misma contraparte.
-    expect(screen.getByText(/audiencia/i)).toBeInTheDocument();
-    expect(screen.getByText(/Empresa Equis SpA/)).toBeInTheDocument();
+    // El hecho: ambos recibieron audiencia de la misma contraparte. El copy
+    // nombra la contraparte y describe la co-ocurrencia, sin valoración.
+    expect(
+      screen.getByText(/Ambos recibieron audiencia de Empresa Equis SpA/i),
+    ).toBeInTheDocument();
   });
 
   it("la arista expone la ventana temporal (desde/hasta)", () => {
@@ -156,8 +158,8 @@ describe("RedGraph — arista = hecho tipado (T-18-09: copy del hecho, sin afini
       />,
     );
     // Fechas literales de la ventana (formato ISO yyyy-mm-dd visible en algún lugar).
-    expect(screen.getByText(/2024-03-01/)).toBeInTheDocument();
-    expect(screen.getByText(/2024-05-01/)).toBeInTheDocument();
+    expect(screen.getAllByText(/2024-03-01/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/2024-05-01/).length).toBeGreaterThan(0);
   });
 });
 
@@ -209,7 +211,6 @@ describe("RedGraph — provenance por arista (origen + ventana + enlace + licenc
       <RedGraph
         subgrafo={{
           nodos: dos_nodos,
-          // eslint-disable-next-line no-script-url
           aristas: [arista({ enlace: "javascript:alert(1)" })],
         }}
       />,
