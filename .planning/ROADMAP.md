@@ -6,6 +6,7 @@
 
 - ✅ **v1.0 MVP — Proyectos de Ley + Fundaciones de Identidad** — Phases 1-7 (shipped 2026-06-18)
 - 📋 **v2.0 — Parlamentarios 360** — Phases 8-18 (voto individual, lobby/patrimonio, dinero, grafo de influencia) — planned
+- 📋 **v3.0 — Cobertura de datos** — Phases 23-32 (lobby con identidad adjudicada + fuente camara.cl, patrimonio LIVE, votaciones masivas, provenance, RUT operador, gates OPS/LEGAL) — planned
 
 ## Phases
 
@@ -423,6 +424,208 @@ Plans:
 - [x] 22-03-PLAN.md — Bloque C espejo proyecto: VotacionCard con resultado+conteo enmarcado conectado a la idea matriz del proyecto (SC6)
 - [x] 22-04-PLAN.md — Bloque D redeploy Linux (Docker obsbuild + wrangler deploy) + verificacion e2e browseros en produccion; noindex/MONEY/NET intactos (SC6)
 
+
+## 📋 v3.0 — Cobertura de datos
+
+**Mode:** data-coverage (milestone BROWNFIELD — el código de v2.0 ya existe y está validado; v3.0 ejerce esos conectores LIVE a escala, escribe el resultado en producción, adjudica identidad, arregla provenance y abre los gates operador/legal. NO se construye UI nueva — el shell de Phase 19 está cerrado.)
+**Granularity:** fine
+**Milestone:** v3.0 — Cobertura de datos (poblar la nube con datos REALES + adjudicación de identidad + provenance + gates)
+**Numbering:** continúa desde v2.0 — Phase 22 fue la última de v2.0; v3.0 arranca en **Phase 23** (no reset).
+
+### Coverage
+
+- v3.0 requirements: 14 (LOBBY 4, PAT 2, VOT 2, PROV 1, RUT 1, OPS 2, SIGNOFF 2)
+- Mapped to phases: 14/14 ✓
+- Orphaned: 0 · Duplicated: 0
+
+### Build order (forzado por dependencias duras del HANDOFF-2026-06-22)
+
+```
+OPS-01 apply remoto (Phase 23, PRECONDICIÓN — la data no es visible sin las migraciones 0026/0028/0030 + pgTAP verde)
+   │
+   ├──► LOBBY-01 fuente camara.cl/transparencia + spike (Phase 24)
+   │        └──► LOBBY-02/03/04 LIVE + adjudicación de identidad + ficha poblada (Phase 25)  ──┐
+   │                                                                                          │
+   ├──► PAT-01/02 patrimonio LIVE + ficha (Phase 26)        (independiente)                   │
+   ├──► VOT-01/02 votaciones masivas + ficha (Phase 27)     (independiente)                   │
+   ├──► PROV-01 provenance de la maestra (Phase 28)         (independiente, ligera)           │
+   └──► RUT-01 backfill operador del RUT interno (Phase 29) ──┐                               │
+                                                              ▼                               │
+                                          SIGNOFF-01 F13 MONEY (Phase 30, depende de RUT-01)  │
+                                                              ▼                               ▼
+                                          SIGNOFF-02 F17 NET (Phase 31, depende de LOBBY-03 confirmado)
+                                                              ▼
+                          OPS-02 redeploy + barrido de verificación en producción (Phase 32, consumidor final)
+```
+
+**Reglas LOCKED que enmarcan todas las fases de datos:** ingesta en DOS ETAPAS (fuente→R2 crudo, luego R2→Supabase, re-ejecutable independiente); rate-limit 2–3s/host; nunca fabricar un RUT; PII deny-by-default; anti-insinuación (sin lenguaje causal, jamás componer dinero/lobby con voto); migraciones aplicadas por `psql "$SUPABASE_DB_URL" --single-transaction -v ON_ERROR_STOP=1 -f`, NUNCA `supabase db push` (drift `schema_migrations` ≤0025).
+
+### Phases
+
+- [ ] **Phase 23: OPS — Aplicar migraciones remotas pendientes + pgTAP verde** - Precondición dura: aplicar 0026/0028/0030 al Supabase remoto por `psql --db-url`, pgTAP verde sin regresión, probes de RPC — sin esto ninguna data poblada es visible.
+- [ ] **Phase 24: LOBBY — Fuente camara.cl/transparencia + spike de estructura** - Ampliar `@obs/lobby` a `camara.cl/transparencia/ley_de_lobby.aspx` (la fuente real, ausente de leylobby.gob.cl), validada por un spike antes de cablear el crawl.
+- [ ] **Phase 25: LOBBY — Corrida LIVE + adjudicación de identidad + ficha poblada** - Ingesta LIVE a escala, write desde R2, adjudicación de identidad por nombre (auditada) y la sección lobby de las fichas con audiencias confirmadas deja de estar vacía.
+- [ ] **Phase 26: PAT — Patrimonio/intereses LIVE en la nube + ficha poblada** - Corrida LIVE `@obs/probidad` (InfoProbidad, CC BY 4.0) por parlamentario, versionada, y la sección patrimonio muestra declaraciones reales con historial.
+- [ ] **Phase 27: VOT — Ingesta masiva de votaciones + cobertura real en la ficha** - De 2 boletines a cobertura de legislatura desde `opendata.camara.cl` (+ Senado), cruce determinista DIPID, y la ficha refleja el conjunto ampliado.
+- [ ] **Phase 28: PROV — Provenance real de la maestra** - Poblar el `origen` de cada fila de `parlamentario` con su fuente oficial (catálogo Cámara/Senado) + fecha de snapshot; el header deja de decir "fuente desconocida".
+- [ ] **Phase 29: RUT — Backfill operador del RUT interno** - El operador puebla `parlamentario-rut.seed.json` con RUTs DV-válidos + provenance (nunca fabricados) y corre el backfill; habilita el cruce MONEY una vez firmado el gate legal.
+- [ ] **Phase 30: SIGNOFF — Gate legal F13 (MONEY, Ley 21.719)** - Acción humana: obtener y registrar el sign-off legal F13 que habilita encender `MONEY_PUBLIC_ENABLED` (depende de RUT-01 para que el cruce tenga datos).
+- [ ] **Phase 31: SIGNOFF — Gate legal F17 (NET)** - Acción humana: obtener y registrar el sign-off legal F17 que habilita encender `NET_PUBLIC_ENABLED` (depende de LOBBY-03 confirmado para que el grafo no esté vacío).
+- [ ] **Phase 32: OPS — Redeploy + barrido de verificación en producción** - Tras poblar y aplicar, redeploy + barrido browseros que confirma data real en las secciones y los invariantes (noindex, sin foto/partido, provenance por dato, MONEY/NET gated-OFF) intactos.
+
+## Phase Details (v3.0)
+
+### Phase 23: OPS — Aplicar migraciones remotas pendientes + pgTAP verde
+
+**Goal:** Hacer visible cualquier dato poblado de v3.0 aplicando al Supabase remoto las migraciones/RPC pendientes (0026 `parlamentarios_publico`, 0028 `votos_instructivos`, 0030 `net` si falta) por `psql --db-url` —NUNCA `supabase db push` (drift `schema_migrations` ≤0025)— con pgTAP verde y las RPC probadas en vivo. Es la precondición dura de todas las fases de datos: sin esto, la data poblada queda "código verde / pantalla vacía".
+**Mode:** data-coverage (operador/gate)
+**Depends on:** Phase 22 (v2.0). Primera fase de v3.0 — habilita la visibilidad de todo lo que sigue.
+**Requirements:** OPS-01
+**Success Criteria** (what must be TRUE):
+
+  1. Las migraciones/RPC pendientes (0026, 0028, 0030) quedan aplicadas al Supabase remoto sa-east-1 por `psql "$SUPABASE_DB_URL" --single-transaction -v ON_ERROR_STOP=1 -f`, sin usar `supabase db push` (el drift `schema_migrations` ≤0025 se preserva)
+  2. pgTAP corre VERDE contra el remoto para 0027/0029/0030 y SIN regresión en 0019/0020/0023/0026
+  3. Un probe en vivo de las RPC confirma que `parlamentarios_publico()`, `votos_de_parlamentario(...)` (con titulo/idea_matriz/resultado/totales) y, si aplica, el modelo `net` responden con la firma esperada y sin filtrar PII
+  4. Queda registrado que ninguna sección dependiente (lobby/patrimonio/votaciones/provenance) se considera "poblada" hasta que esta compuerta esté verde
+
+**Plans:** TBD
+
+### Phase 24: LOBBY — Fuente camara.cl/transparencia + spike de estructura
+
+**Goal:** Ampliar la fuente del conector `@obs/lobby` a `camara.cl/transparencia/ley_de_lobby.aspx` —la fuente REAL de las audiencias de parlamentarios, ausentes de `leylobby.gob.cl`— validando primero la estructura de la página con un spike antes de cablear el crawl a escala. Doble causa raíz del lobby vacío (fuente + identidad); esta fase ataca la fuente.
+**Mode:** data-coverage
+**Depends on:** Phase 23 (esquema lobby aplicado al remoto). El conector `@obs/lobby` ya existe (Phase 11).
+**Requirements:** LOBBY-01
+**Success Criteria** (what must be TRUE):
+
+  1. Un spike documenta la estructura real de `camara.cl/transparencia/ley_de_lobby.aspx` (campos de la audiencia, sujeto pasivo, contraparte, fecha, enlace) sobre páginas reales, antes de cablear el crawl
+  2. El conector `@obs/lobby` queda ampliado para descubrir y descargar las audiencias desde esa fuente (allowlisted), respetando el rate-limit 2–3s LOCKED y persistiendo el crudo inmutable en R2 PRIMERO (Etapa 1)
+  3. El drift de esta fuente es BLOQUEANTE (cuarentena, nunca filas silenciosas); una corrida acotada de prueba demuestra el camino fuente→R2 sin escribir aún a Supabase
+  4. Queda registrada la cobertura esperada (qué parlamentarios/periodos cubre la fuente) y cualquier desviación frente a `leylobby.gob.cl`
+
+**Plans:** TBD
+
+### Phase 25: LOBBY — Corrida LIVE + adjudicación de identidad + ficha poblada
+
+**Goal:** Poblar la sección lobby de TODAS las fichas elegibles: ingerir las audiencias a escala desde el crudo en R2, adjudicar la identidad del sujeto pasivo por el pipeline de confirmación por nombre (auditado), y dejar que la ficha de un parlamentario con audiencias confirmadas muestre sus reuniones reales en vez del honest-state vacío. Esta fase también desbloquea las aristas del grafo NET.
+**Mode:** data-coverage
+**Depends on:** Phase 24 (fuente camara.cl cableada + crudo en R2)
+**Requirements:** LOBBY-02, LOBBY-03, LOBBY-04
+**Success Criteria** (what must be TRUE):
+
+  1. Una corrida LIVE acotada ingiere las audiencias de lobby a escala (todos los parlamentarios elegibles) y escribe a la nube LEYENDO del crudo en R2 (Etapa 2), idempotente y reanudable
+  2. El operador adjudica la identidad de las audiencias por el pipeline de confirmación por nombre: SOLO un match `determinista`/`confirmado` puebla el FK del sujeto pasivo; el resto queda `no_confirmado` + texto crudo, y cada decisión deja fila en `identidad_audit`
+  3. El RPC `lobby_de_parlamentario` deja de devolver vacío para los parlamentarios con audiencias confirmadas
+  4. El ciudadano ve, en la ficha de un parlamentario con audiencias confirmadas, sus reuniones de lobby reales (contraparte como texto crudo + provenance por fila), nunca enlazando la contraparte salvo identidad confirmada, sin componer la reunión con un voto
+
+**Plans:** TBD
+**UI hint**: yes
+
+### Phase 26: PAT — Patrimonio/intereses LIVE en la nube + ficha poblada
+
+**Goal:** Poblar la sección patrimonio/intereses ejerciendo `@obs/probidad` (InfoProbidad) LIVE por parlamentario y escribiendo las declaraciones versionadas a la nube, de modo que el ciudadano vea declaraciones reales con su historial de versiones y fecha de presentación prominente en lugar del honest-state vacío.
+**Mode:** data-coverage
+**Depends on:** Phase 23 (esquema 0022 probidad aplicado). El conector `@obs/probidad` ya existe (Phase 12). Independiente de LOBBY/VOT.
+**Requirements:** PAT-01, PAT-02
+**Success Criteria** (what must be TRUE):
+
+  1. Una corrida LIVE `@obs/probidad` ingiere las declaraciones de patrimonio e intereses por parlamentario y las escribe a la nube versionadas por `(fuente_id, fecha_presentacion)`, idempotente, con el crudo en R2 PRIMERO y atribución CC BY 4.0 visible
+  2. La extracción de estos documentos PII pasa obligatoriamente por la compuerta `data-routing` (ningún RUT al LLM) y el drift de esta fuente PII es bloqueante (cuarentena, no degradación silenciosa)
+  3. El ciudadano ve las declaraciones reales de un parlamentario con historial de versiones y fecha de presentación prominente (frescura ámbar si vieja), sin ningún veredicto de enriquecimiento ni de conflicto
+  4. Una declaración vieja nunca se presenta como estado actual; los datos de familiares quedan deny-by-default, nunca expuestos
+
+**Plans:** TBD
+**UI hint**: yes
+
+### Phase 27: VOT — Ingesta masiva de votaciones + cobertura real en la ficha
+
+**Goal:** Llevar la cobertura de votaciones de 2 boletines / 10 votaciones a escala de legislatura ejerciendo `@obs/votos` masivamente desde `opendata.camara.cl` (+ Senado donde aplique), con cruce determinista DIPID, de modo que las fichas muestren cobertura real con la guarda de identidad aplicada y la línea de cobertura honesta refleje el conjunto ampliado.
+**Mode:** data-coverage
+**Depends on:** Phase 23 (RPC 0028 votos_instructivos aplicado). El código `@obs/votos` + RPC ya validados (Phases 8/10/22). Independiente de LOBBY/PAT.
+**Requirements:** VOT-01, VOT-02
+**Success Criteria** (what must be TRUE):
+
+  1. Una corrida masiva (escape hatch GitHub Actions o pgmq por lotes) ingiere votaciones desde `opendata.camara.cl` (`getVotaciones`/`getVotacion_Detalle`) a escala de legislatura, idempotente, rate-limit 2–3s LOCKED, con el crudo en R2 PRIMERO
+  2. El cruce voto→parlamentario es determinista DIPID→`id_diputado_camara` sin LLM (Senado por nombre vía pipeline donde aplique); solo `determinista`/`confirmado` puebla `parlamentario_id`, el resto queda mención cruda
+  3. El ciudadano ve, en las fichas, cobertura real de votaciones (muchos proyectos, no 2), con el desenlace factual de cada votación y la guarda de identidad aplicada
+  4. La línea de cobertura honesta refleja el conjunto ampliado (deja de decir "solo 2 proyectos" cuando ya hay más); un vacío nunca se lee como "limpio"
+
+**Plans:** TBD
+**UI hint**: yes
+
+### Phase 28: PROV — Provenance real de la maestra
+
+**Goal:** Reemplazar "fuente desconocida" en el header de la ficha del parlamentario por la provenance real de la maestra: poblar el campo `origen` de cada fila de `parlamentario` con su fuente oficial (catálogo Cámara/Senado) y fecha de snapshot, de modo que cada dato del header lleve fuente/fecha/enlace conforme a la regla rectora.
+**Mode:** data-coverage (ligera)
+**Depends on:** Phase 23 (esquema remoto consistente). Independiente de LOBBY/PAT/VOT.
+**Requirements:** PROV-01
+**Success Criteria** (what must be TRUE):
+
+  1. El campo `origen` de cada fila de `parlamentario` queda poblado con su fuente oficial (catálogo Cámara/Senado) y la fecha de snapshot, con provenance trazable a la fuente
+  2. El header de la ficha del parlamentario muestra la provenance real (fuente/fecha/enlace) en lugar de "fuente desconocida"
+  3. El poblamiento es idempotente y reconstruible desde el catálogo oficial; ninguna fila queda con provenance fabricada o genérica
+
+**Plans:** TBD
+
+### Phase 29: RUT — Backfill operador del RUT interno
+
+**Goal:** Dotar a la maestra del `rut` interno de los parlamentarios enlazables para habilitar el cruce de contratos ChileCompra (MONEY), mediante un backfill de OPERADOR con adjudicación humana: poblar `parlamentario-rut.seed.json` con RUTs DV-válidos (módulo-11) + provenance por fila y correr `updateRut` por id — NUNCA fabricando un RUT. Un nombre único NO prueba propiedad del RUT.
+**Mode:** data-coverage (operador / adjudicación humana)
+**Depends on:** Phase 23. La máquina de backfill (`updateRut`, DV-gate) ya existe (Phase 9). Independiente de LOBBY/PAT/VOT.
+**Requirements:** RUT-01
+**Success Criteria** (what must be TRUE):
+
+  1. El operador puebla `parlamentario-rut.seed.json` con RUTs DV-válidos (módulo-11) + provenance por fila; un RUT inválido o sin provenance va a revisión, nunca se escribe
+  2. El backfill `updateRut` por id deja la maestra con el `rut` interno de los parlamentarios enlazables, deny-by-default (nunca legible por `anon`, nunca al LLM)
+  3. La adjudicación distingue CORROBORACIÓN (solo cuando hay match confirmado) de CANDIDATO a revisión; un nombre único NO promueve un RUT; NUNCA se fabrica
+  4. Queda registrado que el cruce MONEY queda habilitado por datos pero sigue gated hasta el sign-off legal F13 (Phase 30)
+
+**Plans:** TBD
+
+### Phase 30: SIGNOFF — Gate legal F13 (MONEY, Ley 21.719)
+
+**Goal:** Obtener y registrar el sign-off legal humano F13 (`13-LEGAL-DOSSIER.md`, Ley 21.719) que es la condición para encender `MONEY_PUBLIC_ENABLED`. Acción humana, no código: el gate permanece en OFF hasta la firma. Depende de RUT-01 para que el cruce de contratos tenga datos cuando se encienda.
+**Mode:** gate (acción humana / legal)
+**Depends on:** Phase 29 (RUT-01 — el cruce MONEY necesita datos). Dossier de preparación ya existe (Phase 13).
+**Requirements:** SIGNOFF-01
+**Success Criteria** (what must be TRUE):
+
+  1. El sign-off legal F13 (Ley 21.719) queda obtenido y registrado (YAML `signoff: approved` en `13-LEGAL-DOSSIER.md`), cubriendo republicación de datos públicos, datos sensibles y terceros privados
+  2. Con la firma registrada, encender `MONEY_PUBLIC_ENABLED` queda habilitado como acción de operador; mientras no esté firmado, el gate sigue fail-closed (OFF) y ninguna ruta MONEY se expone
+  3. Queda verificable por inspección que el cruce de contratos tiene datos (RUT-01 aplicado) antes de cualquier exposición pública de MONEY
+
+**Plans:** TBD
+
+### Phase 31: SIGNOFF — Gate legal F17 (NET)
+
+**Goal:** Obtener y registrar el sign-off legal humano F17 (`17-LEGAL-DOSSIER.md`) que es la condición para encender `NET_PUBLIC_ENABLED`. Acción humana, no código: el gate permanece en OFF hasta la firma. Depende de LOBBY-03 (lobby confirmado) para que el grafo no esté vacío cuando se encienda.
+**Mode:** gate (acción humana / legal)
+**Depends on:** Phase 25 (LOBBY-03 confirmado — el grafo deriva de las aristas de lobby). Dossier de preparación ya existe (Phase 17).
+**Requirements:** SIGNOFF-02
+**Success Criteria** (what must be TRUE):
+
+  1. El sign-off legal F17 queda obtenido y registrado (YAML `signoff: approved` en `17-LEGAL-DOSSIER.md`), cubriendo el framing descriptivo del grafo (sin lectura de acusación) y la propagación CC BY 4.0 a nodos derivados de InfoProbidad
+  2. Con la firma registrada, encender `NET_PUBLIC_ENABLED` queda habilitado como acción de operador; mientras no esté firmado, el gate sigue fail-closed (OFF) y `/red` 404
+  3. Queda verificable que el grafo NO está vacío (LOBBY-03 confirmado pobló aristas) antes de cualquier exposición pública de NET
+
+**Plans:** TBD
+
+### Phase 32: OPS — Redeploy + barrido de verificación en producción
+
+**Goal:** Cerrar el milestone con un redeploy y un barrido de verificación en producción que confirme que las secciones pobladas (lobby, patrimonio, votaciones, provenance) muestran datos reales y que los invariantes rectores siguen intactos. Consumidor final de todas las fases de datos.
+**Mode:** data-coverage (operador / verificación)
+**Depends on:** Phases 25, 26, 27, 28 (data poblada) y 23 (esquema aplicado). SIGNOFF-01/02 informan el estado de los gates pero MONEY/NET pueden seguir OFF.
+**Requirements:** OPS-02
+**Success Criteria** (what must be TRUE):
+
+  1. Un rebuild (Linux/Docker) + `wrangler deploy` deja en producción la versión que lee la data poblada de la nube
+  2. Un barrido de verificación (browseros) confirma que la sección lobby de una ficha con audiencias confirmadas muestra reuniones reales, la de patrimonio muestra declaraciones reales, las votaciones muestran cobertura ampliada y el header muestra provenance real (ya no "fuente desconocida")
+  3. Los invariantes siguen intactos en vivo: `noindex` presente, sin foto, sin partido, provenance por dato, MONEY/NET gated-OFF (salvo que su sign-off se haya encendido explícitamente), anti-insinuación (sin lenguaje causal, sin componer dinero/lobby con voto)
+  4. Las brechas residuales (secciones aún honestamente vacías por cobertura de fuente) quedan documentadas como honest-state correcto, nunca como vacío silencioso
+
+**Plans:** TBD
+
+
 ## Progress
 
 | Phase | Milestone | Plans | Status | Completed |
@@ -449,3 +652,13 @@ Plans:
 | 20. Deploy + Carga de Datos — Preview gov-map.com | v2.0 | 6/6 | Complete   | 2026-06-20 |
 | 21. Producto en vivo — Diseño Phase 19 + directorio + ideas matrices | v2.0 | 4/4 | Complete   | 2026-06-20 |
 | 22. Votaciones instructivas — qué votó cada uno y para qué | v2.0 | 4/4 | Complete   | 2026-06-21 |
+| 23. OPS — Aplicar migraciones remotas + pgTAP verde | v3.0 | 0/? | Not started | - |
+| 24. LOBBY — Fuente camara.cl/transparencia + spike | v3.0 | 0/? | Not started | - |
+| 25. LOBBY — Corrida LIVE + adjudicación identidad + ficha | v3.0 | 0/? | Not started | - |
+| 26. PAT — Patrimonio/intereses LIVE + ficha | v3.0 | 0/? | Not started | - |
+| 27. VOT — Ingesta masiva de votaciones + ficha | v3.0 | 0/? | Not started | - |
+| 28. PROV — Provenance real de la maestra | v3.0 | 0/? | Not started | - |
+| 29. RUT — Backfill operador del RUT interno | v3.0 | 0/? | Not started | - |
+| 30. SIGNOFF — Gate legal F13 (MONEY) | v3.0 | 0/? | Not started | - |
+| 31. SIGNOFF — Gate legal F17 (NET) | v3.0 | 0/? | Not started | - |
+| 32. OPS — Redeploy + barrido de verificación producción | v3.0 | 0/? | Not started | - |

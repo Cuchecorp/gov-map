@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Cobertura de datos
 status: planning
-last_updated: "2026-06-22T17:45:39.226Z"
+last_updated: "2026-06-22T18:30:00.000Z"
 last_activity: 2026-06-22
 progress:
-  total_phases: 0
+  total_phases: 10
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 18 — net-grafo-de-influencia-xyflow-react
+**Current focus:** Phase 23 — OPS: aplicar migraciones remotas pendientes (0026/0028/0030) por psql --db-url + pgTAP verde (precondición de toda la data v3.0)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-06-22 — Milestone v3.0 started
+Phase: 23 — OPS: aplicar migraciones remotas pendientes + pgTAP verde
+Plan: — (roadmap creado; planificar con /gsd:plan-phase 23)
+Status: Roadmap v3.0 creado (10 fases, 23–32) — listo para planificar Phase 23
+Last activity: 2026-06-22 — Roadmap v3.0 creado (14 reqs mapeados, Phases 23–32); siguiente = planificar Phase 23
 
 ## Performance Metrics
 
@@ -107,6 +107,11 @@ Last activity: 2026-06-22 — Milestone v3.0 started
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- [Roadmap v3.0]: Numeración continúa desde v2.0 — Phase 22 fue la última; v3.0 arranca en Phase 23 (no reset). 14 reqs mapeados 1:1 a Phases 23–32, 0 huérfanos.
+- [Roadmap v3.0]: OPS-01 (apply remoto 0026/0028/0030 por psql --db-url, NUNCA db push) es PRECONDICIÓN (Phase 23) — sin migraciones la data poblada no es visible.
+- [Roadmap v3.0]: LOBBY partido en fuente+spike (Phase 24, LOBBY-01) y LIVE+adjudicación+ficha (Phase 25, LOBBY-02/03/04); LOBBY es el mayor impacto (hoy 100% vacío) y desbloquea las aristas NET.
+- [Roadmap v3.0]: PAT (Phase 26), VOT (Phase 27), PROV (Phase 28) son fases de poblamiento independientes; RUT-01 (Phase 29) es backfill de operador (nunca fabricar RUT).
+- [Roadmap v3.0]: SIGNOFF-01 F13 MONEY (Phase 30) depende de RUT-01; SIGNOFF-02 F17 NET (Phase 31) depende de LOBBY-03 confirmado; OPS-02 (Phase 32) = redeploy + barrido de verificación final.
 - [Roadmap v2.0]: Numeración continúa desde v1.0 — Phase 7 fue la última de v1.0; v2.0 arranca en Phase 8 (no reset)
 - [Roadmap v2.0]: Build order forzado por dependencias duras — VOTE spike (8, gate) + Identidad (9, paralelo) → VOTE (10) → INT Lobby (11) → INT Probidad (12) → Legal MONEY (13) → MONEY ChileCompra (14) → MONEY SERVEL (15) → MONEY agregación (16) → Legal NET (17) → NET (18)
 - [Roadmap v2.0]: VOTE-01 es su propia fase temprana (Phase 8) framed confirm-or-replan; no se dimensiona el bloque VOTE hasta que el spike vuelva
@@ -215,6 +220,7 @@ Resume file: None
 
 ## Operator Next Steps
 
+- **v3.0 listo para planificar.** Roadmap creado (Phases 23–32). Empezar por `/gsd:plan-phase 23` (OPS — aplicar 0026/0028/0030 al remoto por psql --db-url + pgTAP verde) — precondición de toda la data. Luego LOBBY (24→25), PAT (26), VOT (27), PROV (28), RUT (29), SIGNOFFs (30/31) y cierre OPS-02 (32).
 - Phase 8 CONFIRMÓ: planificar Phase 10 (`@obs/votos` producción) con `/gsd:plan-phase 10` — conector + modelo de voto + reconciliación + ficha, reusando los símbolos v1.0 validados.
 - Phase 9 (Identidad) puede planificarse/correr en paralelo (VOTE Cámara usa DIPID, no RUT).
 - El paquete `packages/votos` es throwaway (spike); Phase 10 lo reemplaza con `src/` de producción.

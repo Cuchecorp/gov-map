@@ -82,19 +82,19 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| LOBBY-01 | TBD | Pending |
-| LOBBY-02 | TBD | Pending |
-| LOBBY-03 | TBD | Pending |
-| LOBBY-04 | TBD | Pending |
-| PAT-01 | TBD | Pending |
-| PAT-02 | TBD | Pending |
-| VOT-01 | TBD | Pending |
-| VOT-02 | TBD | Pending |
-| PROV-01 | TBD | Pending |
-| RUT-01 | TBD | Pending |
-| OPS-01 | TBD | Pending |
-| OPS-02 | TBD | Pending |
-| SIGNOFF-01 | TBD | Pending |
-| SIGNOFF-02 | TBD | Pending |
+| LOBBY-01 | Phase 24 | Pending |
+| LOBBY-02 | Phase 25 | Pending |
+| LOBBY-03 | Phase 25 | Pending |
+| LOBBY-04 | Phase 25 | Pending |
+| PAT-01 | Phase 26 | Pending |
+| PAT-02 | Phase 26 | Pending |
+| VOT-01 | Phase 27 | Pending |
+| VOT-02 | Phase 27 | Pending |
+| PROV-01 | Phase 28 | Pending |
+| RUT-01 | Phase 29 | Pending |
+| OPS-01 | Phase 23 | Pending |
+| OPS-02 | Phase 32 | Pending |
+| SIGNOFF-01 | Phase 30 | Pending |
+| SIGNOFF-02 | Phase 31 | Pending |
 
 **Coverage:** 14 v3.0 requirements · phases asignadas por el roadmapper · No orphans · No duplicates
