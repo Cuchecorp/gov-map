@@ -7,10 +7,10 @@ last_updated: "2026-06-22T18:30:00.000Z"
 last_activity: 2026-06-22
 progress:
   total_phases: 10
-  completed_phases: 6
-  total_plans: 6
-  completed_plans: 6
-  percent: 60
+  completed_phases: 7
+  total_plans: 7
+  completed_plans: 7
+  percent: 70
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 27 — VOT: ingesta masiva de votaciones (Phases 23/24/25/26 completas; lobby+patrimonio poblados)
+**Current focus:** v3.0 frente AUTOMATABLE COMPLETO (23-28, 32). Restan solo 3 gates HUMANOS: 29 (RUT), 30 (F13 MONEY), 31 (F17 NET).
 
 ## Current Position
 
-Phase: 29 — RUT: backfill operador del RUT interno (gate humano — DEFERIR)
-Plan: — (gate de operador/adjudicación humana)
-Status: Phases 23/24/25/26/27/28 COMPLETAS. Lobby (5.106) + patrimonio (1.060) poblados; votos source-limited (10); provenance arreglada. Autónomo v3.0 en curso.
-Last activity: 2026-06-22 — Phase 27 completada: runner masivo de votos construido + corrido (cobertura SOURCE-LIMITED: opendata no enumera votaciones en bulk + leg 58 joven → 10 votaciones de 2/74 boletines). Restan: 29 (RUT, gate humano), 30/31 (legal F13/F17, gates humanos), 32 (redeploy+verif).
+Phase: 32 COMPLETA — frente automatable de v3.0 cerrado. Pendientes solo gates humanos (29/30/31).
+Plan: — (milestone NO archivable: 29/30/31 requieren acción humana)
+Status: Phases 23/24/25/26/27/28/32 COMPLETAS y desplegadas (version e4347898). Lobby 5.106 confirmadas/136 dip + NET 7.394 aristas; patrimonio 1.060/136; votos source-limited (10); provenance/header arreglados. Invariantes intactos (MONEY/NET gated-OFF).
+Last activity: 2026-06-22 — Phase 32: redeploy + verificación prod PASSED. v3.0 automatable terminado. Gates humanos restantes: 29 RUT (sin fuente cruzable de RUT), 30/31 sign-offs legales F13/F17 (dossiers listos, falta firma de abogado).
 
 ## Performance Metrics
 
