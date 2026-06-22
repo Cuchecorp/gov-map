@@ -66,6 +66,13 @@ export {
 } from "./connector-camara-lobby";
 export type { CamaraLobbyConnectorDeps } from "./connector-camara-lobby";
 
+// Extracción del honorable real cuando el sujeto pasivo de la Cámara es un asesor (Phase 25).
+export { extraerNombreSujetoCamara } from "./extraer-sujeto-camara";
+
+// Runner de la ingesta del lobby de la Cámara con adjudicación de identidad (Phase 25).
+export { runCamaraLobby } from "./run-camara-lobby";
+export type { RunCamaraLobbyOpts, RunCamaraLobbyResult } from "./run-camara-lobby";
+
 // Orquestación (drift BLOQUEANTE + degradación honesta + nunca fabrica).
 export { runIngestLobby, formaDe } from "./ingest-run";
 export type {

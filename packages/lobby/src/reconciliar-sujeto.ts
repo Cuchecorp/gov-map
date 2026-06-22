@@ -17,7 +17,7 @@
 // LIVE) con defaults seguros: sin provider, un homónimo del sujeto pasivo degrada a
 // `no_confirmado` (fail-closed); un determinista resuelve igual (correrPipeline corta antes del LLM).
 
-import type { Parlamentario } from "@obs/core";
+import type { Parlamentario, Camara } from "@obs/core";
 import { normalizarNombre } from "@obs/core";
 import { confirmar, type EnlaceConfirmado } from "@obs/identity";
 import {
@@ -104,6 +104,19 @@ export interface ReconciliarSujetoOpts {
   writer?: PipelineWriter;
   /** Periodo del blocking (filtro DURO). Default `PERIODO_LOBBY_DEFAULT`. */
   periodo?: string;
+  /**
+   * Cámara del blocking (filtro DURO de `MencionForanea.camara`). Default `"senado"` —
+   * preserva el comportamiento de leylobby (el cruce real es por nombre + periodo). El runner de
+   * la Cámara lo afina a `"diputados"` para cruzar contra los diputados de la maestra.
+   */
+  camara?: string;
+  /**
+   * Nombre del sujeto pasivo USADO PARA EL CRUCE (matching). Default = el nombre crudo del
+   * sujeto pasivo (`sujetoPasivoDe`). Permite, p.ej. en la Cámara, extraer el diputado real
+   * cuando el sujeto pasivo publicado es un asesor (`(... H.D. <Nombre>)`). El `mencionSujeto`
+   * ALMACENADO sigue siendo el crudo (trazabilidad); solo cambia con qué nombre se busca.
+   */
+  nombreParaCruce?: (aud: LobbyAudiencia) => string | null;
 }
 
 /** Resultado de la reconciliación: filas para-escribir + el set de FKs confirmados (marcador). */
@@ -147,6 +160,11 @@ export async function reconciliarSujeto(
   const provider = opts.provider ?? PROVIDER_AUSENTE;
   const writer = opts.writer ?? NOOP_WRITER;
   const periodo = opts.periodo ?? PERIODO_LOBBY_DEFAULT;
+  const camara = opts.camara ?? "senado";
+  // Nombre para el CRUCE: por defecto el crudo del sujeto pasivo (idéntico al almacenado → nada
+  // cambia para leylobby). El caller puede inyectar una extracción (p.ej. el diputado real de un
+  // asesor en la Cámara). El nombre ALMACENADO (`mencionTexto`) sigue siendo siempre el crudo.
+  const nombreParaCruce = opts.nombreParaCruce ?? sujetoPasivoDe;
   // ¿Se inyectó un provider real? Si NO, un homónimo del sujeto pasivo que llegue al LLM no debe
   // ABORTAR la corrida entera (a diferencia del voto, donde el provider es obligatorio): degrada
   // ese sujeto a `no_confirmado` (fail-closed, NUNCA fabrica un enlace). Los deterministas
@@ -157,22 +175,27 @@ export async function reconciliarSujeto(
   const confirmados = new Set<string>();
 
   for (const aud of audiencias) {
-    const mencionSujeto = sujetoPasivoDe(aud);
+    // ALMACENADO: el nombre crudo del sujeto pasivo (trazabilidad / honest-state — nunca cambia).
+    const mencionRaw = sujetoPasivoDe(aud);
+    // CRUCE: el nombre con el que se busca en la maestra (por defecto el crudo).
+    const mencionCruce = nombreParaCruce(aud);
 
     let enlace: EnlaceConfirmado | null = null;
     let estadoVinculo: "confirmado" | "no_confirmado" | null = null;
-    let mencionTexto = mencionSujeto ?? "";
+    // La mención almacenada es SIEMPRE el crudo del sujeto pasivo (independiente del cruce).
+    let mencionTexto = mencionRaw ?? "";
 
-    if (mencionSujeto && mencionSujeto.length > 0) {
-      const { nombre_normalizado, tokens } = normalizarNombre({ libre: mencionSujeto });
+    if (mencionCruce && mencionCruce.length > 0) {
+      const { nombre_normalizado, tokens } = normalizarNombre({ libre: mencionCruce });
       const mencion: MencionForanea = {
-        nombreOriginal: mencionSujeto,
+        nombreOriginal: mencionCruce,
         nombreNormalizado: nombre_normalizado,
         tokens,
-        // El lobby del congreso cruza contra ambas cámaras; el blocking filtra por periodo.
-        // La cámara se deja "senado" como ancla del periodo default (igual que reconciliar-senado);
-        // el caller puede afinar vía `periodo`. Column-agnostic: el cruce es por nombre.
-        camara: "senado",
+        // El lobby del congreso cruza contra ambas cámaras; el blocking filtra por cámara+periodo.
+        // Default "senado" (ancla del periodo default, igual que reconciliar-senado); el runner de
+        // la Cámara afina a "diputados". Column-agnostic: el cruce real es por nombre, pero el tipo
+        // de `MencionForanea.camara` es la unión `Camara` ("diputados" | "senado").
+        camara: camara as Camara,
         periodo,
         region: null,
       };
@@ -208,9 +231,10 @@ export async function reconciliarSujeto(
           break;
       }
     } else {
-      // Sin un sujeto pasivo nombrado, no hay a quién cruzar: FK null, sin estado.
+      // Sin un nombre de cruce, no hay a quién cruzar: FK null, sin estado. La mención ALMACENADA
+      // sigue siendo el crudo del sujeto pasivo si lo hay (trazabilidad); "" solo si tampoco hay crudo.
       estadoVinculo = null;
-      mencionTexto = "";
+      mencionTexto = mencionRaw ?? "";
     }
 
     out.push(filaParaEscribir(aud, enlace, mencionTexto, estadoVinculo));

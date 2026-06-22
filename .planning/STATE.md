@@ -7,10 +7,10 @@ last_updated: "2026-06-22T18:30:00.000Z"
 last_activity: 2026-06-22
 progress:
   total_phases: 10
-  completed_phases: 2
-  total_plans: 2
-  completed_plans: 2
-  percent: 20
+  completed_phases: 3
+  total_plans: 3
+  completed_plans: 3
+  percent: 30
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 25 — LOBBY: corrida LIVE + adjudicación de identidad + ficha poblada (Phases 23 OPS + 24 fuente camara completas)
+**Current focus:** Phase 26 — PAT: patrimonio/intereses LIVE en la nube + ficha poblada (Phases 23/24/25 completas; lobby poblado + NET materializado)
 
 ## Current Position
 
-Phase: 25 — LOBBY: corrida LIVE + adjudicación de identidad + ficha poblada
+Phase: 26 — PAT: patrimonio/intereses LIVE en la nube + ficha poblada
 Plan: — (siguiente a planificar)
-Status: Phases 23 (OPS) + 24 (fuente camara.cl) COMPLETAS. Autónomo v3.0 en curso.
-Last activity: 2026-06-22 — Phase 24 completada en autónomo: spike LIVE de camara.cl/transparencia/listadodeaudiencias.aspx (1 página ~12MB, 17.776 filas), parser+conector nuevos en @obs/lobby (clave sintetizada CAMARA-<sha256>, nombre RAW para adjudicación), validado end-to-end 17.730 audiencias 100% fecha ISO + 1.184 vía Asesor H.D., 33 tests verde. Siguiente = Phase 25 (corrida LIVE + identidad).
+Status: Phases 23 (OPS) + 24 (fuente camara) + 25 (lobby LIVE) COMPLETAS. Autónomo v3.0 en curso.
+Last activity: 2026-06-22 — Phase 25 completada en autónomo: LIVE a prod 17.730 audiencias / 5.106 confirmadas / 136 diputados (fichas lobby pobladas, eran 0); fix causa-raíz identidad (match token-set completo incl. materno; maestra era materno-less → confirmaba 0); WAF camara.cl bloquea Node fetch (curl OK) → --html-file; NET materializado 136 nodos/7.394 aristas (gated-OFF). Siguiente = Phase 26 (patrimonio LIVE).
 
 ## Performance Metrics
 
