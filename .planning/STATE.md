@@ -7,10 +7,10 @@ last_updated: "2026-06-22T18:30:00.000Z"
 last_activity: 2026-06-22
 progress:
   total_phases: 10
-  completed_phases: 4
-  total_plans: 4
-  completed_plans: 4
-  percent: 40
+  completed_phases: 5
+  total_plans: 5
+  completed_plans: 5
+  percent: 50
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 Phase: 27 — VOT: ingesta masiva de votaciones + cobertura real en la ficha
 Plan: — (siguiente a planificar)
-Status: Phases 23/24/25/26 COMPLETAS. Lobby (5.106) + patrimonio (1.060) poblados. Autónomo v3.0 en curso.
-Last activity: 2026-06-22 — Phase 26 completada en autónomo: LIVE a prod 1.060 declaraciones versionadas / 136 parlamentarios (patrimonio era 0); match TARGETED token-superset (InfoProbidad trae segundos nombres + hermanos homónimos). Siguiente = Phase 27 (votaciones masivas, cruce DIPID determinista — sin issue de nombre).
+Status: Phases 23/24/25/26/28 COMPLETAS. Phase 27 (votos masivo) corriendo LIVE. Lobby (5.106) + patrimonio (1.060) poblados; provenance del header arreglada. Autónomo v3.0 en curso.
+Last activity: 2026-06-22 — Phase 28 completada (provenance ya estaba completa en remoto; fix de renderizado sourceLabel: diputados→Cámara + lobby antes que transparencia, 6 tests). Phase 27 votos corriendo (74 boletines a prod). Restan: 27 (cierre), 29/30/31 gates humanos, 32 redeploy+verif.
 
 ## Performance Metrics
 

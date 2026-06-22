@@ -474,11 +474,17 @@ export interface DeclaracionComparacionColumna {
 /** Etiqueta legible de la fuente para el ProvenanceBadge. */
 export function sourceLabel(origen: string | null): string {
   const o = (origen ?? "").toLowerCase();
+  // `lobby` ANTES que `transparencia`: el origen de lobby de la Cámara es
+  // "camara-transparencia-lobby" (PROV-01/Phase 25) — contiene "transparencia", así que
+  // el chequeo de InfoProbidad lo capturaba por error. Lobby gana primero.
+  if (o.includes("lobby")) return "Ley del Lobby";
   if (o.includes("probidad") || o.includes("cplt") || o.includes("transparencia"))
     return "InfoProbidad";
-  if (o.includes("lobby")) return "Ley del Lobby";
   if (o.includes("senado")) return "Senado";
-  if (o.includes("camara") || o.includes("cámara")) return "Cámara";
+  // `diputados` es el `origen` CANÓNICO de la maestra de la Cámara (parse-camara/seeder),
+  // no "camara" — sin este mapeo el header de la ficha del diputado mostraba "fuente
+  // desconocida" pese a tener provenance completa (origen/fecha_captura/enlace). (PROV-01)
+  if (o.includes("camara") || o.includes("cámara") || o.includes("diputad")) return "Cámara";
   if (o.includes("bcn")) return "BCN";
   if (o.includes("chilecompra") || o.includes("mercado")) return "ChileCompra";
   if (o.includes("servel")) return "SERVEL";
