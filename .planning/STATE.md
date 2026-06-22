@@ -7,10 +7,10 @@ last_updated: "2026-06-22T18:30:00.000Z"
 last_activity: 2026-06-22
 progress:
   total_phases: 10
-  completed_phases: 5
-  total_plans: 5
-  completed_plans: 5
-  percent: 50
+  completed_phases: 6
+  total_plans: 6
+  completed_plans: 6
+  percent: 60
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 ## Current Position
 
-Phase: 27 — VOT: ingesta masiva de votaciones + cobertura real en la ficha
-Plan: — (siguiente a planificar)
-Status: Phases 23/24/25/26/28 COMPLETAS. Phase 27 (votos masivo) corriendo LIVE. Lobby (5.106) + patrimonio (1.060) poblados; provenance del header arreglada. Autónomo v3.0 en curso.
-Last activity: 2026-06-22 — Phase 28 completada (provenance ya estaba completa en remoto; fix de renderizado sourceLabel: diputados→Cámara + lobby antes que transparencia, 6 tests). Phase 27 votos corriendo (74 boletines a prod). Restan: 27 (cierre), 29/30/31 gates humanos, 32 redeploy+verif.
+Phase: 29 — RUT: backfill operador del RUT interno (gate humano — DEFERIR)
+Plan: — (gate de operador/adjudicación humana)
+Status: Phases 23/24/25/26/27/28 COMPLETAS. Lobby (5.106) + patrimonio (1.060) poblados; votos source-limited (10); provenance arreglada. Autónomo v3.0 en curso.
+Last activity: 2026-06-22 — Phase 27 completada: runner masivo de votos construido + corrido (cobertura SOURCE-LIMITED: opendata no enumera votaciones en bulk + leg 58 joven → 10 votaciones de 2/74 boletines). Restan: 29 (RUT, gate humano), 30/31 (legal F13/F17, gates humanos), 32 (redeploy+verif).
 
 ## Performance Metrics
 
