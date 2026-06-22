@@ -462,7 +462,7 @@ OPS-01 apply remoto (Phase 23, PRECONDICIÓN — la data no es visible sin las m
 
 ### Phases
 
-- [ ] **Phase 23: OPS — Aplicar migraciones remotas pendientes + pgTAP verde** - Precondición dura: aplicar 0026/0028/0030 al Supabase remoto por `psql --db-url`, pgTAP verde sin regresión, probes de RPC — sin esto ninguna data poblada es visible.
+- [x] **Phase 23: OPS — Aplicar migraciones remotas pendientes + pgTAP verde** - Precondición dura: aplicar 0026/0028/0030 al Supabase remoto por `psql --db-url`, pgTAP verde sin regresión, probes de RPC — sin esto ninguna data poblada es visible. (completed 2026-06-22 — 0026/0028/0030 ya aplicadas y verificadas por introspección; pgTAP verde 0027 7/7 + 0029 8/8 + 0030 17/17 (fix throws_ok 42501 + plan count); RPC live como anon: parlamentarios_publico()=186, votos 17 cols, subgrafo_red no-null)
 - [ ] **Phase 24: LOBBY — Fuente camara.cl/transparencia + spike de estructura** - Ampliar `@obs/lobby` a `camara.cl/transparencia/ley_de_lobby.aspx` (la fuente real, ausente de leylobby.gob.cl), validada por un spike antes de cablear el crawl.
 - [ ] **Phase 25: LOBBY — Corrida LIVE + adjudicación de identidad + ficha poblada** - Ingesta LIVE a escala, write desde R2, adjudicación de identidad por nombre (auditada) y la sección lobby de las fichas con audiencias confirmadas deja de estar vacía.
 - [ ] **Phase 26: PAT — Patrimonio/intereses LIVE en la nube + ficha poblada** - Corrida LIVE `@obs/probidad` (InfoProbidad, CC BY 4.0) por parlamentario, versionada, y la sección patrimonio muestra declaraciones reales con historial.

@@ -16,7 +16,7 @@
 -- (falso positivo de CI, Pitfall 5). Espeja 0020/0021 test style.
 
 begin;
-select plan(16);
+select plan(17);
 
 -- ── Semilla (owner, bypassa RLS) ──────────────────────────────────────────────
 -- Cuatro parlamentarios confirmados. PAR1/PAR2 comparten la MISMA contraparte (nombre
@@ -124,12 +124,20 @@ select is(
 set local role anon;
 
 -- ── anon NO lee entidad/arista directamente (deny-by-default) ─────────────────
-select is_empty(
+-- El piso es REVOKE ALL ... FROM anon (no solo RLS): un SELECT directo de anon NO
+-- devuelve 0 filas sino que LANZA insufficient_privilege (42501) — la garantía más
+-- fuerte. Aserción correcta = throws_ok(42501), no is_empty (que ejecutaría el query
+-- y abortaría la transacción con el permission-denied). Espeja el patrón 0023/0018.
+select throws_ok(
   $$ select id from entidad $$,
-  'anon NO lee entidad directamente (RLS deny-by-default, 0 filas)');
-select is_empty(
+  '42501',
+  null,
+  'anon NO lee entidad directamente (revoke all → insufficient_privilege 42501)');
+select throws_ok(
   $$ select id from arista $$,
-  'anon NO lee arista directamente (RLS deny-by-default, 0 filas)');
+  '42501',
+  null,
+  'anon NO lee arista directamente (revoke all → insufficient_privilege 42501)');
 
 -- ── anon SÍ invoca el RPC: subgrafo con provenance + ventana, sin PII en la salida ─
 -- NET1 semilla, depth 1 → debe traer la arista co_lobby_contraparte con desde/hasta/enlace/dataset,
