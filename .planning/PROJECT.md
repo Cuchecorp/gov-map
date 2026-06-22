@@ -8,15 +8,18 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato mostrado lleva fuente, fecha y enlace original, sin afirmar nunca intención ni causalidad.
 
-## Current Milestone: v2.0 Parlamentarios 360
+## Current Milestone: v3.0 Cobertura de datos
 
-**Goal:** Construir el frente "análisis de parlamentarios 360" — cómo vota, con quién se reúne (lobby), qué declara (patrimonio e intereses) y qué dinero lo rodea (financiamiento y contratos del Estado) cada parlamentario — sobre la maestra de identidad sembrada en v1.0, manteniendo la regla rectora (trazabilidad sobre interpretación, nunca causalidad).
+**Goal:** Llenar las secciones vacías de la ficha del parlamentario poblando datos REALES en la nube (lobby, patrimonio, votaciones), adjudicando identidad y arreglando provenance — sin tocar el shell ya cerrado, manteniendo la regla rectora (trazabilidad sobre interpretación, nunca causalidad). El shell de producto (frontend v1.0+v2.0) está terminado; la brecha para "ser útil" es DATOS + COBERTURA + ADJUDICACIÓN DE IDENTIDAD, no pantallas.
 
 **Target features:**
-- **Voto individual (VOTE)** — Cómo vota cada parlamentario y cruce voto × tema. Arranca con un spike de validación de `opendata.camara.cl` (fuente del voto por diputado, nunca validada en vivo); si no entrega el voto individual, se replanifica el bloque.
-- **Lobby + Patrimonio (INT)** — Reuniones de lobby + declaraciones de patrimonio e intereses (InfoProbidad, CC BY 4.0).
-- **Dinero (MONEY)** — Financiamiento SERVEL + contratos ChileCompra por RUT (conector SERVEL artesanal/frágil, no API REST).
-- **Grafo de influencia (NET)** — Red de relaciones cruzadas; se habilita al final, cuando el modelo parlamentario ya esté poblado.
+- **LOBBY** — Adjudicar identidad de las audiencias `no_confirmado` (pipeline de confirmación por nombre) + ampliar la fuente a `camara.cl/transparencia/ley_de_lobby.aspx` (Cámara/Senado NO están en leylobby.gob.cl) → puebla la sección lobby de TODAS las fichas + las aristas del grafo NET.
+- **PATRIMONIO** — Corrida LIVE `@obs/probidad` (InfoProbidad, CC BY 4.0) + write a la nube por parlamentario → puebla la sección patrimonio/intereses.
+- **VOTACIONES** — Ingesta masiva `opendata.camara.cl` getVotaciones (+ Senado) → de 2 boletines a cobertura real.
+- **PROVENANCE** — Poblar el `origen` real de la maestra ("fuente desconocida" → fuente/fecha/enlace real en el header de la ficha).
+- **RUT (IDENT-10)** — Backfill operador de `parlamentario-rut.seed.json` (DV-válido + provenance, NUNCA fabricar) → desbloquea el cruce de contratos MONEY.
+
+**Gates de operador y legales (incluidos como precondición explícita, no como deuda separada):** la data se hace visible solo tras aplicar las migraciones remotas pendientes (0026/0028/0030 por `psql --db-url`, NUNCA `supabase db push` — drift `schema_migrations` ≤0025); los sign-offs legales F13 (MONEY) / F17 (NET) son acción humana que mantiene los gates `MONEY_PUBLIC_ENABLED`/`NET_PUBLIC_ENABLED` en OFF hasta firma.
 
 **Postura con datos sensibles:** minimización + trazabilidad estricta. Solo se muestra lo que la fuente pública ya publica (con fuente/fecha/enlace); RUT y datos de familiares quedan en uso interno para reconciliar identidad. Ley 21.719 (plena vigencia 2026-12-01) → pasada de asesoría legal antes de cualquier exposición pública amplia.
 
@@ -48,9 +51,12 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 ### Active
 
-<!-- Milestone activo = v2.0 "parlamentarios 360". Requisitos detallados en .planning/REQUIREMENTS.md, fases en .planning/ROADMAP.md. -->
+<!-- Milestone activo = v3.0 "cobertura de datos". Requisitos detallados en .planning/REQUIREMENTS.md, fases en .planning/ROADMAP.md. -->
 
-- [ ] **v2.0 — frente "parlamentarios 360"** (en curso): voto individual por parlamentario (spike de validación `opendata.camara.cl` como Fase 1), lobby + patrimonio (InfoProbidad), dimensión dinero (SERVEL/ChileCompra), grafo de influencia.
+- [ ] **v3.0 — cobertura de datos** (en curso): poblar la nube con datos reales (lobby con identidad adjudicada + fuente camara.cl/transparencia, patrimonio LIVE, votaciones masivas), arreglar provenance de la maestra, backfill RUT operador; aplicar las migraciones remotas pendientes como gate.
+
+<!-- v2.0 "parlamentarios 360": CÓDIGO completo (conectores, modelos, RPCs, secciones de ficha, gates MONEY/NET). El frontend/shell quedó cerrado y en vivo. Lo que falta NO es código sino DATOS poblados en la nube + adjudicación de identidad → eso es v3.0. Detalle del shell: .planning/HANDOFF-2026-06-22.md -->
+- [x] **v2.0 — frente "parlamentarios 360"** (código completo, data pendiente → v3.0): voto individual, lobby + patrimonio (InfoProbidad), dimensión dinero (SERVEL/ChileCompra, gated-OFF), grafo de influencia (gated-OFF).
 
 ### Out of Scope
 
@@ -98,6 +104,8 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 | Supabase + R2 + capa LLM enchufable (Gemini/MiniMax/DeepSeek) | Free tiers cubren el arranque; crudo fuera de Postgres; modelo swappable por config | ✓ v1.0 (validado al shippear) |
 | Trazabilidad sobre interpretación como regla rectora | Evitar "máquina de sospechas"; defensa jurídica del producto | ✓ v1.0 (validado al shippear) |
 | Reconciliación de identidad como subsistema crítico (golden set + revisión humana) | Un match equivocado produce afirmación falsa creíble; riesgo existencial #1 | ✓ v1.0 (validado al shippear) |
+| v3.0 = milestone de DATOS, no de UI (el shell está cerrado) | Barrido de producción 2026-06-22: las fichas se ven como producto pero las secciones están vacías por falta de datos, no de pantallas | En curso (v3.0) |
+| Gates de operador (apply remoto 0026/0028/0030) y legales (F13/F17) son precondición explícita en el roadmap v3.0 | La data solo es visible tras aplicar las migraciones; tratarlos como deuda separada deja el milestone "código verde / pantalla vacía" | En curso (v3.0) |
 
 ## Evolution
 
@@ -117,4 +125,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-18 — started milestone v2.0 (Parlamentarios 360)*
+*Last updated: 2026-06-22 — started milestone v3.0 (Cobertura de datos)*

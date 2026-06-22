@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: — Parlamentarios 360
-status: executing
-stopped_at: 18-01 Tasks 1-2 code-complete (0030_net.sql entidad/arista deny-by-default + net.materializar_aristas() proc + subgrafo_red RPC PII-safe depth-clamped; 0030_net.test.sql pgTAP 16 asserts incl. plan-checker MEDIUM-2 caso negativo de normalización). DETENIDO en Task 3 = checkpoint de operador BLOCKING (apply remoto por psql --db-url + pgTAP + log conteo de aristas). Gate NET cerrado (NET_PUBLIC_ENABLED OFF hasta signoff F17).
-last_updated: "2026-06-21T05:03:31.034Z"
-last_activity: 2026-06-21
+milestone: v3.0
+milestone_name: Cobertura de datos
+status: planning
+last_updated: "2026-06-22T17:45:39.226Z"
+last_activity: 2026-06-22
 progress:
-  total_phases: 15
-  completed_phases: 13
-  total_plans: 47
-  completed_plans: 48
-  percent: 87
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,11 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 ## Current Position
 
-Phase: 18 (net-grafo-de-influencia-xyflow-react) — EXECUTING
-Plan: 3 of 4
-Status: Ready to execute
-Next plan: Phase 18 (NET grafo) se construye bajo el gate apagado; NET_PUBLIC_ENABLED NO se enciende hasta signoff: approved. Pendiente paralelo: 22-04 (Bloque D redeploy + e2e); checkpoints de operador (apply remoto RPC 0028, 16-01/15-01/15-02); encender MONEY_PUBLIC_ENABLED tras sign-off legal F13
-Last activity: 2026-06-21
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-06-22 — Milestone v3.0 started
 
 ## Performance Metrics
 
