@@ -57,6 +57,9 @@ export type {
   ResultadoReconciliacionProbidad,
 } from "./reconciliar-declarante";
 
+// Reconciliación DIRIGIDA por objetivo (test de superconjunto de tokens, determinista — Phase 26).
+export { reconciliarDeclaracionesObjetivo } from "./reconciliar-objetivo";
+
 // Writer VERSIONADO (interfaz + in-memory + Supabase).
 export { InMemoryProbidadWriter, versionKey } from "./writer";
 export type { ProbidadWriter } from "./writer";
@@ -80,6 +83,10 @@ export type {
   DegradacionProbidad,
   TareaDeclarante,
 } from "./ingest-run";
+
+// Orquestación LIVE para TODOS los parlamentarios (query dirigida por objetivo — Phase 26).
+export { runProbidadTodos } from "./run-probidad-todos";
+export type { RunProbidadTodosOpts, RunProbidadTodosResult } from "./run-probidad-todos";
 
 // CLI de ingesta (corrida LIVE acotada / degrada a dry-run sin key/alcance).
 export {

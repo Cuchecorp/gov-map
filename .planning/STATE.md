@@ -7,10 +7,10 @@ last_updated: "2026-06-22T18:30:00.000Z"
 last_activity: 2026-06-22
 progress:
   total_phases: 10
-  completed_phases: 3
-  total_plans: 3
-  completed_plans: 3
-  percent: 30
+  completed_phases: 4
+  total_plans: 4
+  completed_plans: 4
+  percent: 40
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 26 — PAT: patrimonio/intereses LIVE en la nube + ficha poblada (Phases 23/24/25 completas; lobby poblado + NET materializado)
+**Current focus:** Phase 27 — VOT: ingesta masiva de votaciones (Phases 23/24/25/26 completas; lobby+patrimonio poblados)
 
 ## Current Position
 
-Phase: 26 — PAT: patrimonio/intereses LIVE en la nube + ficha poblada
+Phase: 27 — VOT: ingesta masiva de votaciones + cobertura real en la ficha
 Plan: — (siguiente a planificar)
-Status: Phases 23 (OPS) + 24 (fuente camara) + 25 (lobby LIVE) COMPLETAS. Autónomo v3.0 en curso.
-Last activity: 2026-06-22 — Phase 25 completada en autónomo: LIVE a prod 17.730 audiencias / 5.106 confirmadas / 136 diputados (fichas lobby pobladas, eran 0); fix causa-raíz identidad (match token-set completo incl. materno; maestra era materno-less → confirmaba 0); WAF camara.cl bloquea Node fetch (curl OK) → --html-file; NET materializado 136 nodos/7.394 aristas (gated-OFF). Siguiente = Phase 26 (patrimonio LIVE).
+Status: Phases 23/24/25/26 COMPLETAS. Lobby (5.106) + patrimonio (1.060) poblados. Autónomo v3.0 en curso.
+Last activity: 2026-06-22 — Phase 26 completada en autónomo: LIVE a prod 1.060 declaraciones versionadas / 136 parlamentarios (patrimonio era 0); match TARGETED token-superset (InfoProbidad trae segundos nombres + hermanos homónimos). Siguiente = Phase 27 (votaciones masivas, cruce DIPID determinista — sin issue de nombre).
 
 ## Performance Metrics
 
