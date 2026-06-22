@@ -52,6 +52,20 @@ export {
 } from "./connector-leylobby";
 export type { LeylobbyConnectorDeps } from "./connector-leylobby";
 
+// Parser cheerio del HTML de audiencias de lobby del portal propio de la Cámara (Phase 24).
+export {
+  parseCamaraLobbyAudiencias,
+  parseFechaCamara,
+} from "./parse-camara-lobby";
+
+// Conector de la Cámara (mirror de LeylobbyConnector; reusa @obs/ingest en el ORDEN LOCKED).
+export {
+  CamaraLobbyConnector,
+  CamaraLobbyBloqueadaError,
+  BROWSER_HEADERS_CAMARA,
+} from "./connector-camara-lobby";
+export type { CamaraLobbyConnectorDeps } from "./connector-camara-lobby";
+
 // Orquestación (drift BLOQUEANTE + degradación honesta + nunca fabrica).
 export { runIngestLobby, formaDe } from "./ingest-run";
 export type {

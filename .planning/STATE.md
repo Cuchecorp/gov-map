@@ -7,10 +7,10 @@ last_updated: "2026-06-22T18:30:00.000Z"
 last_activity: 2026-06-22
 progress:
   total_phases: 10
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
-  percent: 10
+  completed_phases: 2
+  total_plans: 2
+  completed_plans: 2
+  percent: 20
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 24 — LOBBY: fuente camara.cl/transparencia + spike de estructura (Phase 23 OPS completa: remoto verificado + pgTAP verde)
+**Current focus:** Phase 25 — LOBBY: corrida LIVE + adjudicación de identidad + ficha poblada (Phases 23 OPS + 24 fuente camara completas)
 
 ## Current Position
 
-Phase: 24 — LOBBY: fuente camara.cl/transparencia + spike de estructura
+Phase: 25 — LOBBY: corrida LIVE + adjudicación de identidad + ficha poblada
 Plan: — (siguiente a planificar)
-Status: Phase 23 COMPLETA (OPS — migraciones remotas verificadas + pgTAP verde + RPC live). Autónomo v3.0 en curso.
-Last activity: 2026-06-22 — Phase 23 completada en autónomo: 0026/0028/0030 ya aplicadas al remoto (verificado por introspección), pgTAP verde (0027 7/7, 0029 8/8, 0030 17/17 tras fix throws_ok 42501 + plan count), RPC live como anon (parlamentarios_publico=186, votos 17 cols, subgrafo_red no-null). Siguiente = Phase 24.
+Status: Phases 23 (OPS) + 24 (fuente camara.cl) COMPLETAS. Autónomo v3.0 en curso.
+Last activity: 2026-06-22 — Phase 24 completada en autónomo: spike LIVE de camara.cl/transparencia/listadodeaudiencias.aspx (1 página ~12MB, 17.776 filas), parser+conector nuevos en @obs/lobby (clave sintetizada CAMARA-<sha256>, nombre RAW para adjudicación), validado end-to-end 17.730 audiencias 100% fecha ISO + 1.184 vía Asesor H.D., 33 tests verde. Siguiente = Phase 25 (corrida LIVE + identidad).
 
 ## Performance Metrics
 
