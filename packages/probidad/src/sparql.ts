@@ -33,12 +33,12 @@ export function escaparLiteralSparql(s: string): string {
 export function queryDeclaracionesPorNombre(fragmentoNormalizado: string): string {
   const frag = escaparLiteralSparql(fragmentoNormalizado);
   return `${PREFIXES}
-SELECT ?decl ?fecha ?declaranteLabel ?tipoLabel ?cargo ?organismo WHERE {
+SELECT ?decl ?fecha ?declaranteLabel ?tipoLabel ?cargo ?cargoLabel ?organismo ?organismoLabel WHERE {
   ?p a ip:Persona ; rdfs:label ?declaranteLabel ; ip:declara ?decl .
   ?decl ip:fechaDeclaracion ?fecha .
   OPTIONAL { ?decl ip:tipoDeclaracion ?tipo . ?tipo rdfs:label ?tipoLabel }
-  OPTIONAL { ?decl ip:poseeCargo ?cargo }
-  OPTIONAL { ?decl ip:organismoFuente ?organismo }
+  OPTIONAL { ?decl ip:poseeCargo ?cargo . OPTIONAL { ?cargo rdfs:label ?cargoLabel } }
+  OPTIONAL { ?decl ip:organismoFuente ?organismo . OPTIONAL { ?organismo rdfs:label ?organismoLabel } }
   FILTER( CONTAINS(LCASE(STR(?declaranteLabel)), "${frag}") )
 }
 ORDER BY DESC(?fecha)`;

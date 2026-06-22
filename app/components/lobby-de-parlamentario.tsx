@@ -102,7 +102,8 @@ export function LobbyView({ data }: { data: LobbyViewData }) {
   const intro = (
     <p className="text-sm text-muted-foreground mb-4">
       Audiencias registradas bajo la Ley del Lobby (Ley 20.730). Cada reunión se
-      muestra tal como la publica leylobby.gob.cl.
+      muestra tal como la publica el registro oficial de la Cámara
+      (camara.cl/transparencia); el enlace de cada fila apunta a la fuente.
     </p>
   );
 
@@ -127,7 +128,7 @@ export function LobbyView({ data }: { data: LobbyViewData }) {
         {intro}
         <p className="text-sm text-muted-foreground">
           No se registran reuniones de lobby confirmadas para este parlamentario en
-          el periodo consultado, según leylobby.gob.cl.
+          el periodo consultado, según el registro de la Cámara (camara.cl/transparencia).
         </p>
       </>
     );

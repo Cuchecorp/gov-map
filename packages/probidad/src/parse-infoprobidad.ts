@@ -184,8 +184,10 @@ export function parseDeclaraciones(json: unknown, opts: ParseDeclaracionesOpts =
         fuenteId,
         fechaPresentacion,
         tipo: orNull(f.tipoLabel) ?? orNull(f.tipo) ?? null,
-        cargo: orNull(f.cargo),
-        organismo: orNull(f.organismo),
+        // Prefiere el rdfs:label legible (p.ej. "DIPUTADO/DA", "CONTRALORÍA GENERAL…") sobre la URI
+        // cruda del nodo — sin esto la ficha mostraba `http://datos.cplt.cl/.../cargo_4134` al ciudadano.
+        cargo: orNull(f.cargoLabel) ?? orNull(f.cargo),
+        organismo: orNull(f.organismoLabel) ?? orNull(f.organismo),
         declaranteNombre: f.declaranteLabel ?? "",
         inmuebles: new Map(),
         muebles: new Map(),
