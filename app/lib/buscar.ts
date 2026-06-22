@@ -55,6 +55,17 @@ export const CONTRAPARTE_ID_RE = /^[cd]:[\p{L}\p{N} .\-_&]+$/u;
 /** Cap defensivo de la consulta (V5 input validation). #36: fuente única. */
 export const MAX_QUERY_CHARS = 300;
 
+/**
+ * Piso de similitud por defecto para la búsqueda semántica (cosine, gemini-embedding-001 @768).
+ * Calibrado LIVE contra el corpus: consultas FUERA de dominio ("recetas de cocina", "cómo cuidar
+ * un gato") topan en ~0.58, mientras que las consultas de dominio (pensiones, medio ambiente,
+ * protección de datos, jornada laboral) parten en ≥0.62. Un piso de 0.59 separa ambos: una
+ * consulta sin relación devuelve "sin resultados" HONESTO en vez de proyectos irrelevantes, y
+ * todos los matches genuinos se conservan. (Antes el piso era 0.0 → cualquier consulta devolvía
+ * 20 proyectos.) Sobreescribible por `opts.matchThreshold` (p.ej. "proyectos similares").
+ */
+export const DEFAULT_MATCH_THRESHOLD = 0.59;
+
 // Contrato del provider de embeddings (gemini-embedding-001, 768, L2, FND-07).
 const EMBEDDING_MODEL = "gemini-embedding-001";
 const EMBEDDING_DIMS = 768;
@@ -182,7 +193,7 @@ export async function buscarProyectos(
   const { data, error } = await sb.rpc("match_proyectos", {
     query_embedding: emb.vector,
     match_count: opts.matchCount ?? 20,
-    match_threshold: opts.matchThreshold ?? 0.0,
+    match_threshold: opts.matchThreshold ?? DEFAULT_MATCH_THRESHOLD,
     exclude_boletin: opts.excludeBoletin ?? null,
   });
 
