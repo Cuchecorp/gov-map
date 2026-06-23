@@ -42,12 +42,14 @@ jobs:
           cache: pnpm
 
       - name: Install deps
-        run: pnpm install --frozen-lockfile
+        # --ignore-scripts evita ERR_PNPM_IGNORED_BUILDS (gate pnpm 11); los binarios que el
+        # build de OpenNext sí necesita se reconstruyen on-demand en el paso siguiente.
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
-      # esbuild/workerd están en ignoredBuiltDependencies (velocidad de
-      # typecheck/test); el build de OpenNext necesita esbuild → lo reconstruimos.
-      - name: Allow native build scripts (esbuild)
-        run: pnpm rebuild esbuild || true
+      # El build de OpenNext necesita esbuild/workerd (y sharp para imágenes) → se reconstruyen
+      # explícitamente tras el install con --ignore-scripts.
+      - name: Allow native build scripts (esbuild/workerd/sharp)
+        run: pnpm rebuild esbuild workerd sharp || true
 
       - name: Build + Deploy (OpenNext → Cloudflare Workers)
         working-directory: app

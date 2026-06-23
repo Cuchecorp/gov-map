@@ -53,7 +53,8 @@ jobs:
           cache: "pnpm"
 
       - name: Install deps
-        run: pnpm install --frozen-lockfile
+        # --ignore-scripts: tsx trae su propio esbuild; evita ERR_PNPM_IGNORED_BUILDS (gate pnpm 11).
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Regenerar snapshot (seeder LIVE, preservando estado humano)
         # SIN service key local en CI → la carga a DB se omite; el snapshot git es autoritativo.

@@ -44,7 +44,10 @@ jobs:
           cache: "pnpm"
 
       - name: Install deps
-        run: pnpm install --frozen-lockfile
+        # --ignore-scripts: los scripts de ingesta usan tsx (trae su propio esbuild); ningún
+        # build-script nativo es necesario. Evita ERR_PNPM_IGNORED_BUILDS (gate de pnpm 11 que
+        # aborta el install en CI; ni ignoredBuiltDependencies ni onlyBuiltDependencies lo silencian).
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Run agenda weekly ingest (mismo código del CLI)
         env:
