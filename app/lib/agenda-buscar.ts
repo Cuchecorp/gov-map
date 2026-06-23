@@ -65,9 +65,13 @@ export async function buscarCitaciones(
   }
 
   const sb = createServerSupabase();
+  // El filtro de cámara va DENTRO del RPC (p_camara) para que el LIMIT se aplique DESPUÉS de
+  // restringir por cámara — si se filtrara en JS tras el LIMIT, una consulta sesgada a una
+  // cámara truncaría las filas de la otra (migración 0033).
   const { data, error } = await sb.rpc("buscar_citaciones", {
     q,
     limite: opts.limite ?? 50,
+    p_camara: opts.camara ?? null,
   });
 
   // Honest degradation: un fallo del RPC (grant/RLS, red, error de Postgres) NO es "sin
@@ -76,10 +80,7 @@ export async function buscarCitaciones(
     throw new Error(`buscar_citaciones RPC falló: ${error.message}`);
   }
 
-  let filas = (data as RpcRow[] | null) ?? [];
-  if (opts.camara) {
-    filas = filas.filter((f) => f.camara === opts.camara);
-  }
+  const filas = (data as RpcRow[] | null) ?? [];
   // Descarta el `rank` (server-side only); devuelve solo columnas públicas.
   return filas.map(({ rank: _rank, ...row }) => row);
 }

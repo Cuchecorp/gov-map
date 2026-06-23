@@ -84,24 +84,25 @@ async function boletinesARefrescar(
     }
   };
 
-  // 1. Agenda PRIMERO (actividad reciente: comisiones + sala de esta/próximas semanas).
-  const { data: puntos } = await sb
-    .from("citacion_punto")
-    .select("boletin")
-    .not("boletin", "is", null);
-  for (const r of (puntos as { boletin: string | null }[] | null) ?? []) push(r.boletin);
+  // Un fallo de lectura (red/RLS/transitorio) NO debe parecer "DB vacía": se LANZA para que
+  // el cron salga != 0 (visible) en vez de un no-op verde silencioso.
+  type BoletinRow = { boletin: string | null };
+  const leer = async (tabla: string, soloNoNull: boolean): Promise<BoletinRow[]> => {
+    let q = sb.from(tabla).select("boletin");
+    if (soloNoNull) q = q.not("boletin", "is", null);
+    const { data, error } = await q;
+    if (error) throw new Error(`boletinesARefrescar: ${tabla}: ${error.message}`);
+    return (data as BoletinRow[] | null) ?? [];
+  };
 
-  const { data: items } = await sb
-    .from("sesion_tabla_item")
-    .select("boletin")
-    .not("boletin", "is", null);
-  for (const r of (items as { boletin: string | null }[] | null) ?? []) push(r.boletin);
+  // 1. Agenda PRIMERO (actividad reciente: comisiones + sala de esta/próximas semanas).
+  for (const r of await leer("citacion_punto", true)) push(r.boletin);
+  for (const r of await leer("sesion_tabla_item", true)) push(r.boletin);
 
   const agendaCount = ordenados.length;
 
   // 2. Proyectos ya ingeridos (mantenerlos al día). Se piden DESPUÉS → quedan tras los de agenda.
-  const { data: proys } = await sb.from("proyecto").select("boletin");
-  for (const r of (proys as { boletin: string | null }[] | null) ?? []) push(r.boletin);
+  for (const r of await leer("proyecto", false)) push(r.boletin);
 
   log(
     `tramitacion-prod: ${ordenados.length} boletines candidatos ` +

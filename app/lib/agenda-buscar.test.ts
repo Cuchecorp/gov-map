@@ -58,12 +58,12 @@ describe("buscarCitaciones — atajo de boletín (cruce a la ficha)", () => {
 });
 
 describe("buscarCitaciones — flujo normal (rpc buscar_citaciones)", () => {
-  it("q normal → rpc parametrizado (q jamás interpolado) → filas sin rank", async () => {
+  it("q normal → rpc parametrizado (q jamás interpolado, p_camara null) → filas sin rank", async () => {
     rpcMock.mockResolvedValue({ data: [fila()], error: null });
     const res = await buscarCitaciones("medio ambiente");
     expect(rpcMock).toHaveBeenCalledWith(
       "buscar_citaciones",
-      expect.objectContaining({ q: "medio ambiente", limite: 50 }),
+      expect.objectContaining({ q: "medio ambiente", limite: 50, p_camara: null }),
     );
     // El `rank` NO se expone al cliente.
     expect(res).toHaveLength(1);
@@ -71,12 +71,14 @@ describe("buscarCitaciones — flujo normal (rpc buscar_citaciones)", () => {
     expect(res[0]!.boletin).toBe("12345-07");
   });
 
-  it("filtra por cámara tras el ranking", async () => {
-    rpcMock.mockResolvedValue({
-      data: [fila({ id: "s1", camara: "senado" }), fila({ id: "c1", camara: "camara" })],
-      error: null,
-    });
+  it("empuja el filtro de cámara al RPC (p_camara), NO filtra en JS tras el LIMIT", async () => {
+    rpcMock.mockResolvedValue({ data: [fila({ id: "c1", camara: "camara" })], error: null });
     const res = await buscarCitaciones("ley", { camara: "camara" });
+    // El filtro va como argumento del RPC (el LIMIT se aplica DESPUÉS de restringir por cámara).
+    expect(rpcMock).toHaveBeenCalledWith(
+      "buscar_citaciones",
+      expect.objectContaining({ p_camara: "camara" }),
+    );
     expect(res).toHaveLength(1);
     expect(res[0]!.camara).toBe("camara");
   });

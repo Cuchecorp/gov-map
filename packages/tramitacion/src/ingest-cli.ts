@@ -183,7 +183,9 @@ export async function main(opts: IngestCliOptions = {}): Promise<IngestCliResult
   } else {
     writer = new SupabaseTramitacionWriter({ url: localUrl, serviceKey });
     dbLoaded = true;
-    log(`ingest: writer Supabase LOCAL (${localUrl}) — upsert idempotente`);
+    // Etiqueta por URL: el runner de prod pasa el endpoint REMOTO por este mismo `localUrl`.
+    const destino = localUrl === DEFAULT_LOCAL_URL ? "LOCAL" : "REMOTO";
+    log(`ingest: writer Supabase ${destino} (${localUrl}) — upsert idempotente`);
   }
 
   const res = await runIngest({

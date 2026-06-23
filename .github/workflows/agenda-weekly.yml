@@ -57,12 +57,12 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          # Inputs por ENV (no interpolados en el shell) — evita inyección de comandos en un
+          # step que lleva secrets (SUPABASE_SECRET_KEY/DEEPSEEK/R2).
+          DESDE: ${{ github.event.inputs.desde }}
+          HASTA: ${{ github.event.inputs.hasta }}
         run: |
           ARGS=""
-          if [ -n "${{ github.event.inputs.desde }}" ]; then
-            ARGS="$ARGS --desde ${{ github.event.inputs.desde }}"
-          fi
-          if [ -n "${{ github.event.inputs.hasta }}" ]; then
-            ARGS="$ARGS --hasta ${{ github.event.inputs.hasta }}"
-          fi
+          if [ -n "$DESDE" ]; then ARGS="$ARGS --desde $DESDE"; fi
+          if [ -n "$HASTA" ]; then ARGS="$ARGS --hasta $HASTA"; fi
           pnpm --filter @obs/agenda exec tsx src/run-agenda-prod-cli.ts $ARGS

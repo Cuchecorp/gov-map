@@ -110,7 +110,10 @@ const SYSTEM_PROMPT = [
  */
 export function normalizarBoletin(raw: string | null | undefined): string | null {
   if (raw == null) return null;
-  const m = String(raw).match(/(\d{3,6})\s*-\s*(\d{1,3})/);
+  // Contrato NNNNN-NN: sufijo de EXACTAMENTE 2 dígitos (la `(?!\d)` evita comerse un 3er dígito
+  // de basura OCR como "10986-124" → null, en vez de guardar un boletín no-cruzable). Espeja la
+  // regla de sufijo del parser hermano parse-camara-citaciones.
+  const m = String(raw).match(/(\d{3,6})\s*-\s*(\d{2})(?!\d)/);
   if (!m) return null;
   return `${m[1]}-${m[2]}`;
 }

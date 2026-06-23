@@ -55,12 +55,12 @@ jobs:
         env:
           SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          # Inputs por ENV (no interpolados en el shell) — evita inyección de comandos en un
+          # step que lleva SUPABASE_SECRET_KEY.
+          LIMITE: ${{ github.event.inputs.limite }}
+          BOLETINES: ${{ github.event.inputs.boletines }}
         run: |
           ARGS=""
-          if [ -n "${{ github.event.inputs.limite }}" ]; then
-            ARGS="$ARGS --limite ${{ github.event.inputs.limite }}"
-          fi
-          if [ -n "${{ github.event.inputs.boletines }}" ]; then
-            ARGS="$ARGS --boletines ${{ github.event.inputs.boletines }}"
-          fi
+          if [ -n "$LIMITE" ]; then ARGS="$ARGS --limite $LIMITE"; fi
+          if [ -n "$BOLETINES" ]; then ARGS="$ARGS --boletines $BOLETINES"; fi
           pnpm --filter @obs/tramitacion exec tsx src/run-tramitacion-prod-cli.ts $ARGS

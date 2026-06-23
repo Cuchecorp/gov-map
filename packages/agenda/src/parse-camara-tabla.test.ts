@@ -51,6 +51,11 @@ describe("normalizarBoletin", () => {
     expect(normalizarBoletin(null)).toBeNull();
     expect(normalizarBoletin("")).toBeNull();
   });
+  it("rechaza un sufijo de 3 dígitos (basura OCR) → null, no lo guarda como no-cruzable", () => {
+    expect(normalizarBoletin("Boletín N° 10986-124")).toBeNull();
+    // pero NO debe romper un boletín válido pegado a otro texto
+    expect(normalizarBoletin("10986-24 SUMA")).toBe("10986-24");
+  });
 });
 
 describe("parseCamaraTabla — DeepSeek-desde-PDF (mock)", () => {

@@ -23,10 +23,12 @@ select isnt_empty(
       where n.nspname='public' and c.relname='citacion_busqueda_tsv_idx' and c.relkind='i' $$,
   'índice GIN citacion_busqueda_tsv_idx existe'
 );
-select has_function('public', 'buscar_citaciones', ARRAY['text', 'integer'],
-  'función buscar_citaciones(text, int) existe');
+-- NOTA: la firma final (tras 0033) es (text, int, text) — se añadió p_camara. Estos tests
+-- corren contra el esquema ya migrado, por eso se asierta la firma de 3 args.
+select has_function('public', 'buscar_citaciones', ARRAY['text', 'integer', 'text'],
+  'función buscar_citaciones(text, int, text) existe');
 select ok(
-  has_function_privilege('anon', 'public.buscar_citaciones(text, integer)', 'execute'),
+  has_function_privilege('anon', 'public.buscar_citaciones(text, integer, text)', 'execute'),
   'anon tiene EXECUTE sobre buscar_citaciones (grant crítico)'
 );
 
