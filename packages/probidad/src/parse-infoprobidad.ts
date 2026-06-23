@@ -47,7 +47,8 @@ interface VersionEnConstruccion {
   familiares: Map<string, DeclaracionFamiliar>;
 }
 
-const orNull = (v: string | undefined): string | null => (v != null && v !== "" ? v : null);
+/** `undefined`/`""` → `null`; cualquier otro string se conserva VERBATIM. Compartido por parse-bienes. */
+export const orNull = (v: string | undefined): string | null => (v != null && v !== "" ? v : null);
 
 /** ¿Alguna columna de la fila tiene un valor de bien inmueble? */
 function inmuebleDe(f: FilaSparql): BienInmueble | null {

@@ -23,7 +23,7 @@
 // (`EnlaceConfirmado | null`) y se persiste como `parlamentario_id: string | null`.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { ProbidadWriter } from "./writer";
+import type { ProbidadWriter, BienesParaEscribir } from "./writer";
 import type { DeclaracionParaEscribir } from "./reconciliar-declarante";
 
 export interface SupabaseProbidadWriterOptions {
@@ -247,6 +247,142 @@ export class SupabaseProbidadWriter implements ProbidadWriter {
         if (error) throw new Error(`insert declaracion_familiar falló: ${error.message}`);
       }
     }
+  }
+
+  /**
+   * Upserta SOLO los bienes (las 6 sub-tablas) de N versiones, idempotente por la clave UNIQUE
+   * natural de cada sub-tabla. NO toca la raíz `declaracion` ni los familiares. Mirror de las
+   * secciones 2-7 de `upsertDeclaraciones`, pero alimentado por `BienesParaEscribir` (la raíz ya
+   * existe). Los `onConflict` usan EXACTAMENTE las columnas de los UNIQUE de la migración de bienes.
+   */
+  async upsertBienes(items: BienesParaEscribir[]): Promise<void> {
+    if (items.length === 0) return;
+
+    const prov = (it: BienesParaEscribir) => ({
+      fuente_id: it.fuenteId,
+      fecha_presentacion: it.fechaPresentacion,
+      origen: it.origen,
+      fecha_captura: it.fecha_captura,
+      enlace: it.enlace,
+      licencia: it.licencia,
+    });
+
+    // 1. Bienes inmuebles. UNIQUE: fuente_id,num_inscripcion,rol_avaluo,ubicado_en,fecha_presentacion
+    const inmuebles = items.flatMap((it) =>
+      it.bienes.inmuebles.map((b) => ({
+        ...prov(it),
+        ubicado_en: b.ubicadoEn,
+        rol_avaluo: b.rolAvaluo,
+        num_inscripcion: b.numInscripcion,
+        fojas: b.fojas,
+        anio: b.anio,
+        es_su_domicilio: b.esSuDomicilio,
+      })),
+    );
+    await this.upsertHijos(
+      "declaracion_bien_inmueble",
+      "fuente_id,num_inscripcion,rol_avaluo,ubicado_en,fecha_presentacion",
+      dedupePorClave(inmuebles, (r) =>
+        [r.fuente_id, k(r.num_inscripcion), k(r.rol_avaluo), k(r.ubicado_en), r.fecha_presentacion].join("∣"),
+      ),
+    );
+
+    // 2. Bienes muebles. UNIQUE: fecha_presentacion,nombre,modelo,matricula,numero_inscripcion,fuente_id
+    const muebles = items.flatMap((it) =>
+      it.bienes.muebles.map((b) => ({
+        ...prov(it),
+        nombre: b.nombre,
+        descripcion: b.descripcion,
+        modelo: b.modelo,
+        anio_fabricacion: b.anioFabricacion,
+        matricula: b.matricula,
+        numero_inscripcion: b.numeroInscripcion,
+        anio_inscripcion: b.anioInscripcion,
+        tonelaje: b.tonelaje,
+      })),
+    );
+    await this.upsertHijos(
+      "declaracion_bien_mueble",
+      "fecha_presentacion,nombre,modelo,matricula,numero_inscripcion,fuente_id",
+      dedupePorClave(muebles, (r) =>
+        [r.fecha_presentacion, k(r.nombre), k(r.modelo), k(r.matricula), k(r.numero_inscripcion), r.fuente_id].join("∣"),
+      ),
+    );
+
+    // 3. Actividades. UNIQUE: fuente_id,vinculo,objeto,fecha_presentacion
+    const actividades = items.flatMap((it) =>
+      it.bienes.actividades.map((a) => ({
+        ...prov(it),
+        objeto: a.objeto,
+        vinculo: a.vinculo,
+        remunerado: a.remunerado,
+        hace_doce_meses: a.haceDoceMeses,
+      })),
+    );
+    await this.upsertHijos(
+      "declaracion_actividad",
+      "fuente_id,vinculo,objeto,fecha_presentacion",
+      dedupePorClave(actividades, (r) =>
+        [r.fuente_id, k(r.vinculo), k(r.objeto), r.fecha_presentacion].join("∣"),
+      ),
+    );
+
+    // 4. Pasivos. UNIQUE: monto_deuda,acreedor,tipo_obligacion,fecha_presentacion,fuente_id
+    const pasivos = items.flatMap((it) =>
+      it.bienes.pasivos.map((p) => ({
+        ...prov(it),
+        tipo_obligacion: p.tipoObligacion,
+        acreedor: p.acreedor,
+        monto_deuda: p.montoDeuda,
+      })),
+    );
+    await this.upsertHijos(
+      "declaracion_pasivo",
+      "monto_deuda,acreedor,tipo_obligacion,fecha_presentacion,fuente_id",
+      dedupePorClave(pasivos, (r) =>
+        [k(r.monto_deuda), k(r.acreedor), k(r.tipo_obligacion), r.fecha_presentacion, r.fuente_id].join("∣"),
+      ),
+    );
+
+    // 5. Acciones/derechos. UNIQUE: fuente_id,cantidad_acciones,fecha_adquisicion,rut_juridica,fecha_presentacion
+    const acciones = items.flatMap((it) =>
+      it.bienes.accionesDerechos.map((a) => ({
+        ...prov(it),
+        rut_juridica: a.rutJuridica,
+        cantidad_acciones: a.cantidadAcciones,
+        fecha_adquisicion: a.fechaAdquisicion,
+        es_controlador: a.esControlador,
+        gravamenes: a.gravamenes,
+      })),
+    );
+    await this.upsertHijos(
+      "declaracion_accion_derecho",
+      "fuente_id,cantidad_acciones,fecha_adquisicion,rut_juridica,fecha_presentacion",
+      dedupePorClave(acciones, (r) =>
+        [r.fuente_id, k(r.cantidad_acciones), k(r.fecha_adquisicion), k(r.rut_juridica), r.fecha_presentacion].join("∣"),
+      ),
+    );
+
+    // 6. Valores. UNIQUE: fecha_presentacion,entidad_emisora,tipo_accion_derecho,fecha_adquisicion,fuente_id
+    const valores = items.flatMap((it) =>
+      it.bienes.valores.map((v) => ({
+        ...prov(it),
+        entidad_emisora: v.entidadEmisora,
+        tipo_accion_derecho: v.tipoAccionDerecho,
+        cantidad_representa: v.cantidadRepresenta,
+        valor_plaza: v.valorPlaza,
+        pais_que_emite: v.paisQueEmite,
+        fecha_adquisicion: v.fechaAdquisicion,
+        tipo_gravamen: v.tipoGravamen,
+      })),
+    );
+    await this.upsertHijos(
+      "declaracion_valor",
+      "fecha_presentacion,entidad_emisora,tipo_accion_derecho,fecha_adquisicion,fuente_id",
+      dedupePorClave(valores, (r) =>
+        [r.fecha_presentacion, k(r.entidad_emisora), k(r.tipo_accion_derecho), k(r.fecha_adquisicion), r.fuente_id].join("∣"),
+      ),
+    );
   }
 
   /** Upsert genérico de una sub-tabla de bien por su clave de versión natural. */

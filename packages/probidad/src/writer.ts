@@ -14,11 +14,33 @@
 // Los bienes/familiares viven ANIDADOS en la declaración para-escribir; el writer los aplana.
 
 import type { DeclaracionParaEscribir } from "./reconciliar-declarante";
+import type { Bienes } from "./model";
+
+/**
+ * Bienes de UNA versión de declaración para-escribir (la raíz ya existe — keyada por
+ * `fuenteId`+`fechaPresentacion`). `upsertBienes` aplana las 6 listas a sus sub-tablas. La
+ * procedencia viaja inline (cada fila la lleva NOT NULL + licencia).
+ */
+export interface BienesParaEscribir {
+  fuenteId: string;
+  fechaPresentacion: string;
+  bienes: Bienes;
+  origen: string;
+  fecha_captura: string;
+  enlace: string;
+  licencia: string;
+}
 
 /** Writer idempotente+versionado inyectable. */
 export interface ProbidadWriter {
   /** Upserta declaraciones VERSIONADAS + sus bienes + familiares (cascada por clave de versión). */
   upsertDeclaraciones(filas: DeclaracionParaEscribir[]): Promise<void>;
+  /**
+   * Upserta SOLO los bienes (las 6 sub-tablas) de N versiones, idempotente por la clave única
+   * natural de cada sub-tabla. NO toca la raíz `declaracion` ni los familiares. Pensado para la
+   * ingesta batcheada de bienes (run-probidad-bienes), separada de la raíz.
+   */
+  upsertBienes(items: BienesParaEscribir[]): Promise<void>;
   /**
    * Marca a los parlamentarios tocados (un row por id en `probidad_ingesta_estado`), para
    * distinguir "no ingestado" de "ingestado, cero confirmadas" en la ficha.
@@ -140,6 +162,50 @@ export class InMemoryProbidadWriter implements ProbidadWriter {
             fecha_captura: f.fecha_captura,
             enlace: f.enlace_url,
           },
+        );
+      }
+    }
+  }
+
+  async upsertBienes(items: BienesParaEscribir[]): Promise<void> {
+    for (const it of items) {
+      const vk = versionKey(it.fuenteId, it.fechaPresentacion);
+      const prov = { origen: it.origen, fecha_captura: it.fecha_captura, enlace: it.enlace, licencia: it.licencia };
+      const base = { fuente_id: it.fuenteId, fecha_presentacion: it.fechaPresentacion };
+      for (const b of it.bienes.inmuebles) {
+        this.bienesInmuebles.set(
+          bienKey(vk, [b.numInscripcion, b.rolAvaluo, b.ubicadoEn]),
+          { ...base, ...b, ...prov },
+        );
+      }
+      for (const b of it.bienes.muebles) {
+        this.bienesMuebles.set(
+          bienKey(vk, [b.nombre, b.modelo, b.matricula, b.numeroInscripcion]),
+          { ...base, ...b, ...prov },
+        );
+      }
+      for (const a of it.bienes.actividades) {
+        this.actividades.set(
+          bienKey(vk, [a.vinculo, a.objeto]),
+          { ...base, ...a, ...prov },
+        );
+      }
+      for (const p of it.bienes.pasivos) {
+        this.pasivos.set(
+          bienKey(vk, [p.montoDeuda, p.acreedor, p.tipoObligacion]),
+          { ...base, ...p, ...prov },
+        );
+      }
+      for (const a of it.bienes.accionesDerechos) {
+        this.accionesDerechos.set(
+          bienKey(vk, [a.cantidadAcciones, a.fechaAdquisicion, a.rutJuridica]),
+          { ...base, ...a, ...prov },
+        );
+      }
+      for (const v of it.bienes.valores) {
+        this.valores.set(
+          bienKey(vk, [v.entidadEmisora, v.tipoAccionDerecho, v.fechaAdquisicion]),
+          { ...base, ...v, ...prov },
         );
       }
     }

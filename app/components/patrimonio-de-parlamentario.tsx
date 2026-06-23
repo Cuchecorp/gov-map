@@ -19,6 +19,8 @@ import {
   type CompararDeclaracionRpcRow,
   type DeclaracionVersionRow,
   type DeclaracionComparacionColumna,
+  type BienRpcRow,
+  type TipoBien,
 } from "@/lib/types";
 
 /**
@@ -110,6 +112,152 @@ function AtribucionCcBy() {
   );
 }
 
+// ── Bienes declarados por versión: orden fijo + etiquetas NOUN (§3.3) ────────────
+
+/**
+ * Orden FIJO de los grupos de bienes (UI-SPEC §3.3). Cada entrada lleva su label
+ * humano en español; el conteo se anexa al renderizar ("Bienes inmuebles (N)").
+ * Un conteo por grupo es el ÚNICO agregado permitido (factual, NEUTRO) — NUNCA
+ * una suma de montos, delta ni veredicto (PROJECT.md hard anti-feature, LOCKED).
+ */
+const ORDEN_GRUPOS_BIENES: ReadonlyArray<{ tipo: TipoBien; label: string }> = [
+  { tipo: "inmueble", label: "Bienes inmuebles" },
+  { tipo: "actividad", label: "Actividades e intereses" },
+  { tipo: "accion_derecho", label: "Acciones y derechos" },
+  { tipo: "valor", label: "Valores" },
+  { tipo: "mueble", label: "Bienes muebles" },
+  { tipo: "pasivo", label: "Pasivos" },
+];
+
+/**
+ * Mapa clave camelCase del `contenido` jsonb → etiqueta NOUN en español. Una clave
+ * desconocida cae a la clave cruda (degradación honesta, nunca se oculta el dato).
+ */
+const ETIQUETAS_CONTENIDO: Readonly<Record<string, string>> = {
+  // inmueble
+  ubicadoEn: "Ubicado en",
+  rolAvaluo: "Rol de avalúo",
+  numInscripcion: "N° inscripción",
+  fojas: "Fojas",
+  anio: "Año",
+  esSuDomicilio: "Es su domicilio",
+  // mueble
+  nombre: "Nombre",
+  descripcion: "Descripción",
+  modelo: "Modelo",
+  anioFabricacion: "Año de fabricación",
+  matricula: "Matrícula",
+  numeroInscripcion: "N° inscripción",
+  anioInscripcion: "Año de inscripción",
+  tonelaje: "Tonelaje",
+  // actividad
+  objeto: "Objeto",
+  vinculo: "Vínculo",
+  remunerado: "Remunerado",
+  haceDoceMeses: "Hace 12 meses",
+  // pasivo
+  tipoObligacion: "Tipo de obligación",
+  acreedor: "Acreedor",
+  montoDeuda: "Monto de la deuda",
+  // accion_derecho
+  rutJuridica: "RUT (persona jurídica)",
+  cantidadAcciones: "Cantidad de acciones",
+  fechaAdquisicion: "Fecha de adquisición",
+  esControlador: "Es controlador",
+  gravamenes: "Gravámenes",
+  // valor
+  entidadEmisora: "Entidad emisora",
+  tipoAccionDerecho: "Tipo",
+  cantidadRepresenta: "Cantidad",
+  valorPlaza: "Valor de plaza",
+  paisQueEmite: "País emisor",
+  tipoGravamen: "Tipo de gravamen",
+};
+
+/** Etiqueta NOUN para una clave de `contenido`; clave cruda si es desconocida. */
+export function etiquetaBien(clave: string): string {
+  return ETIQUETAS_CONTENIDO[clave] ?? clave;
+}
+
+/**
+ * Agrupa los bienes de UNA versión por `tipo_bien` en el orden fijo §3.3. Omite
+ * grupos vacíos. El UI NO computa nada salvo el conteo NEUTRO por grupo.
+ */
+export function agruparBienesPorTipo(
+  bienes: BienRpcRow[],
+): Array<{ tipo: TipoBien; label: string; bienes: BienRpcRow[] }> {
+  return ORDEN_GRUPOS_BIENES.map(({ tipo, label }) => ({
+    tipo,
+    label,
+    bienes: bienes.filter((b) => b.tipo_bien === tipo),
+  })).filter((g) => g.bienes.length > 0);
+}
+
+/** Pares clave→valor literal de un `contenido`, etiqueta NOUN + valor verbatim. */
+export function paresDeContenido(
+  contenido: Record<string, unknown>,
+): Array<{ etiqueta: string; valor: string }> {
+  return Object.entries(contenido).map(([clave, valor]) => ({
+    etiqueta: etiquetaBien(clave),
+    // Valor LITERAL verbatim (string como vino de la fuente; otros tipos → String()).
+    valor: typeof valor === "string" ? valor : String(valor),
+  }));
+}
+
+/**
+ * Bienes de UNA versión, agrupados por tipo en orden fijo. Cada bien dispone su
+ * `contenido` como un <dl> de etiqueta NOUN → valor literal. SOLO datos: CERO
+ * suma, CERO delta, CERO veredicto. Si la versión no declara bienes, muestra una
+ * línea muted honesta (vacío = HECHO, no "no tiene patrimonio").
+ */
+function BienesDeVersion({ bienes }: { bienes: BienRpcRow[] }) {
+  const grupos = agruparBienesPorTipo(bienes);
+
+  if (grupos.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Esta versión no declara bienes en las fuentes consultadas.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {grupos.map((grupo) => (
+        <section key={grupo.tipo}>
+          {/* Conteo NEUTRO por grupo — único agregado permitido (§3.6), factual. */}
+          <h4 className="text-sm font-semibold">
+            {grupo.label} ({grupo.bienes.length})
+          </h4>
+          <ul className="mt-1 flex flex-col gap-2">
+            {grupo.bienes.map((bien, bi) => {
+              const pares = paresDeContenido(bien.contenido);
+              return (
+                <li
+                  key={`${grupo.tipo}-${bi}`}
+                  className="border-l-2 border-muted pl-3"
+                >
+                  <dl className="grid grid-cols-1 gap-1 sm:grid-cols-[max-content_1fr] sm:gap-x-4">
+                    {pares.map((p, pi) => (
+                      <div key={`${grupo.tipo}-${bi}-${pi}`} className="contents">
+                        <dt className="text-sm text-muted-foreground">
+                          {p.etiqueta}:
+                        </dt>
+                        {/* Valor LITERAL verbatim de la fuente — nunca computado. */}
+                        <dd className="text-base">{p.valor}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 // ── Una versión de declaración (fila del historial) ─────────────────────────────
 function VersionRow({
   id,
@@ -189,6 +337,9 @@ function VersionRow({
           Ver detalle de la declaración
         </Link>
       )}
+
+      {/* Bienes declarados de esta versión (agrupados por tipo, solo datos). */}
+      <BienesDeVersion bienes={version.bienes} />
     </li>
   );
 }
@@ -400,6 +551,7 @@ export function DeclaracionComparacion({
 export function modelarVersiones(
   filas: DeclaracionRpcRow[],
   p_id: string,
+  bienesPorFuente: Map<string, BienRpcRow[]> = new Map(),
   now: Date = new Date(),
 ): DeclaracionVersionRow[] {
   return filas.map((f) => {
@@ -421,8 +573,23 @@ export function modelarVersiones(
       enlace: f.enlace,
       licencia: "CC BY 4.0",
       es_historica: esHistorica(f.fecha_presentacion, now),
+      // Bienes de ESTA versión (por fuente_id); default [] si no hay ninguno.
+      bienes: bienesPorFuente.get(f.fuente_id) ?? [],
     } satisfies DeclaracionVersionRow;
   });
+}
+
+/** Agrupa las filas de `bienes_de_parlamentario` por `fuente_id` (su versión). */
+export function agruparBienesPorFuente(
+  filas: BienRpcRow[],
+): Map<string, BienRpcRow[]> {
+  const porFuente = new Map<string, BienRpcRow[]>();
+  for (const b of filas) {
+    const arr = porFuente.get(b.fuente_id);
+    if (arr) arr.push(b);
+    else porFuente.set(b.fuente_id, [b]);
+  }
+  return porFuente;
 }
 
 /**
@@ -510,7 +677,23 @@ export async function PatrimonioSection({
     );
   }
   const filas = (rpcData as DeclaracionRpcRow[] | null) ?? [];
-  const todas = modelarVersiones(filas, id);
+
+  // Bienes declarados por versión (RPC aparte). #34: error real de DB/red ≠ "sin
+  // bienes" → se LANZA (degradación honesta, mismo patrón que declaraciones).
+  const { data: bienesData, error: bienesError } = await sb.rpc(
+    "bienes_de_parlamentario",
+    { p_id: id },
+  );
+  if (bienesError) {
+    throw new Error(
+      `bienes_de_parlamentario falló para ${id}: ${bienesError.message}`,
+    );
+  }
+  const bienesPorFuente = agruparBienesPorFuente(
+    (bienesData as BienRpcRow[] | null) ?? [],
+  );
+
+  const todas = modelarVersiones(filas, id, bienesPorFuente);
 
   // Estado (a) vs (b): AUSENCIA de fila en probidad_ingesta_estado = "no ingestado".
   const { data: estadoData, error: estadoError } = await sb

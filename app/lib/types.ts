@@ -453,6 +453,48 @@ export interface DeclaracionVersionRow {
   licencia: "CC BY 4.0";
   /** `true` → declaración vieja: badge ámbar + caveat §6.4; NUNCA "actual". */
   es_historica: boolean;
+  /**
+   * Bienes declarados de ESTA versión (RPC `bienes_de_parlamentario`, agrupados
+   * por `fuente_id`). Default `[]`. El UI los agrupa por `tipo_bien` y dispone
+   * cada `contenido` como pares etiqueta NOUN → valor LITERAL, sin computar nada.
+   */
+  bienes: BienRpcRow[];
+}
+
+/**
+ * Tipo de bien declarado en una versión de declaración de patrimonio/intereses.
+ * Discrimina la forma de `BienRpcRow.contenido` (jsonb con claves camelCase, solo
+ * las presentes-no-nulas). El UI lo agrupa en un orden fijo y mapea cada clave a
+ * una etiqueta NOUN en español.
+ */
+export type TipoBien =
+  | "inmueble"
+  | "mueble"
+  | "actividad"
+  | "pasivo"
+  | "accion_derecho"
+  | "valor";
+
+/**
+ * Fila CRUDA del RPC `bienes_de_parlamentario` (security definer). Una fila por
+ * bien declarado en una versión. El RPC proyecta SOLO los campos publicados del
+ * bien — NUNCA RUT del parlamentario, NUNCA un familiar, NUNCA clave interna
+ * (deny-by-default, LEGAL-03). `fuente_id` agrupa los bienes con su versión de
+ * declaración (espeja `DeclaracionRpcRow.fuente_id`). `contenido` es un jsonb
+ * cuyas claves camelCase (solo presentes-no-nulas) dependen de `tipo_bien`; el UI
+ * las dispone como pares etiqueta NOUN → valor LITERAL verbatim, sin computar nada
+ * (CERO suma de montos, CERO delta, CERO veredicto — PROJECT.md hard anti-feature).
+ */
+export interface BienRpcRow {
+  fuente_id: string;
+  fecha_presentacion: string; // date ISO
+  tipo_bien: TipoBien;
+  /** jsonb: claves camelCase presentes-no-nulas según `tipo_bien`. Valores verbatim. */
+  contenido: Record<string, unknown>;
+  origen: string;
+  fecha_captura: string;
+  enlace: string | null;
+  licencia: string;
 }
 
 /**

@@ -72,6 +72,96 @@ SELECT ?act ?objeto ?vinculo ?remunerado ?haceDoceMeses WHERE {
 }`;
 }
 
+// ── BATCH builders (Phase bienes): N declaraciones por query vía VALUES ?d {…} ──
+// Cada builder proyecta `?d` (la URI de la declaración) y `?x` (el nodo del bien) como las DOS
+// primeras vars, seguidas de los predicados literales de OQ2 del tipo. El parser agrupa por `?x`
+// (un bien) y colecciona cada bien bajo su `?d`. Las URIs se escapan (escaparLiteralSparql) y se
+// envuelven en `<>` — sin input crudo de usuario en el string (T-12-07). Los builders single-URI
+// de arriba se conservan tal cual.
+
+/** Arma el bloque `VALUES ?d { <uri1> <uri2> … }` con cada URI escapada + envuelta en `<>`. */
+function valuesDeclUris(declUris: string[]): string {
+  return declUris.map((u) => `<${escaparLiteralSparql(u)}>`).join(" ");
+}
+
+/** BATCH de los `BienInmueble` de N declaraciones. `?d` + `?x` primero. */
+export function queryBienesInmueblesBatch(declUris: string[]): string {
+  const values = valuesDeclUris(declUris);
+  return `${PREFIXES}
+SELECT ?d ?x ?ubicadoEn ?rolAvaluo ?numInscripcion ?fojasInmueble ?anioInmueble ?esSuDomicilio WHERE {
+  VALUES ?d { ${values} }
+  ?d ip:tieneBien ?x . ?x a ip:BienInmueble .
+  OPTIONAL { ?x ip:ubicadoEn ?ubicadoEn } OPTIONAL { ?x ip:rolAvaluo ?rolAvaluo }
+  OPTIONAL { ?x ip:numInscripcion ?numInscripcion } OPTIONAL { ?x ip:fojasInmueble ?fojasInmueble }
+  OPTIONAL { ?x ip:anioInmueble ?anioInmueble } OPTIONAL { ?x ip:esSuDomicilio ?esSuDomicilio }
+}`;
+}
+
+/** BATCH de los `BienMueble` de N declaraciones. `?d` + `?x` primero. */
+export function queryBienesMueblesBatch(declUris: string[]): string {
+  const values = valuesDeclUris(declUris);
+  return `${PREFIXES}
+SELECT ?d ?x ?nombreMueble ?descripcion ?modelo ?anioFabricacion ?matricula ?numeroInscripcion ?anioInscripcion ?tonelaje WHERE {
+  VALUES ?d { ${values} }
+  ?d ip:tieneBien ?x . ?x a ip:BienMueble .
+  OPTIONAL { ?x ip:nombreMueble ?nombreMueble } OPTIONAL { ?x ip:descripcion ?descripcion }
+  OPTIONAL { ?x ip:modelo ?modelo } OPTIONAL { ?x ip:anioFabricacion ?anioFabricacion }
+  OPTIONAL { ?x ip:matricula ?matricula } OPTIONAL { ?x ip:numeroInscripcion ?numeroInscripcion }
+  OPTIONAL { ?x ip:anioInscripcion ?anioInscripcion } OPTIONAL { ?x ip:tonelaje ?tonelaje }
+}`;
+}
+
+/** BATCH de las `Actividad` de N declaraciones. `?d` + `?x` primero. */
+export function queryActividadesBatch(declUris: string[]): string {
+  const values = valuesDeclUris(declUris);
+  return `${PREFIXES}
+SELECT ?d ?x ?objeto ?vinculo ?remunerado ?haceDoceMeses WHERE {
+  VALUES ?d { ${values} }
+  ?d ip:tieneActividad ?x .
+  OPTIONAL { ?x ip:objeto ?objeto } OPTIONAL { ?x ip:vinculo ?vinculo }
+  OPTIONAL { ?x ip:remunerado ?remunerado } OPTIONAL { ?x ip:haceDoceMeses ?haceDoceMeses }
+}`;
+}
+
+/** BATCH de los `Pasivo` de N declaraciones. `?d` + `?x` primero. */
+export function queryPasivosBatch(declUris: string[]): string {
+  const values = valuesDeclUris(declUris);
+  return `${PREFIXES}
+SELECT ?d ?x ?tipoObligacion ?acreedor ?montoDeuda WHERE {
+  VALUES ?d { ${values} }
+  ?d ip:tienePasivo ?x .
+  OPTIONAL { ?x ip:tipoObligacion ?tipoObligacion } OPTIONAL { ?x ip:acreedor ?acreedor }
+  OPTIONAL { ?x ip:montoDeuda ?montoDeuda }
+}`;
+}
+
+/** BATCH de las `AccionDerecho` de N declaraciones. `?d` + `?x` primero. */
+export function queryAccionesDerechosBatch(declUris: string[]): string {
+  const values = valuesDeclUris(declUris);
+  return `${PREFIXES}
+SELECT ?d ?x ?rutJuridica ?cantidadAcciones ?fechaAdquisicion ?esControlador ?gravamenes WHERE {
+  VALUES ?d { ${values} }
+  ?d ip:tieneAccionDerecho ?x .
+  OPTIONAL { ?x ip:rutJuridica ?rutJuridica } OPTIONAL { ?x ip:cantidadAcciones ?cantidadAcciones }
+  OPTIONAL { ?x ip:fechaAdquisicion ?fechaAdquisicion } OPTIONAL { ?x ip:esControlador ?esControlador }
+  OPTIONAL { ?x ip:gravamenes ?gravamenes }
+}`;
+}
+
+/** BATCH de los `Valor` de N declaraciones. `?d` + `?x` primero. */
+export function queryValoresBatch(declUris: string[]): string {
+  const values = valuesDeclUris(declUris);
+  return `${PREFIXES}
+SELECT ?d ?x ?entidadEmisora ?tipoAccionDerecho ?cantidadRepresenta ?valorPlaza ?paisQueEmite ?fechaAdquisicion ?tipoGravamen WHERE {
+  VALUES ?d { ${values} }
+  ?d ip:tieneValor ?x .
+  OPTIONAL { ?x ip:entidadEmisora ?entidadEmisora } OPTIONAL { ?x ip:tipoAccionDerecho ?tipoAccionDerecho }
+  OPTIONAL { ?x ip:cantidadRepresenta ?cantidadRepresenta } OPTIONAL { ?x ip:valorPlaza ?valorPlaza }
+  OPTIONAL { ?x ip:paisQueEmite ?paisQueEmite } OPTIONAL { ?x ip:fechaAdquisicion ?fechaAdquisicion }
+  OPTIONAL { ?x ip:tipoGravamen ?tipoGravamen }
+}`;
+}
+
 /** Una fila plana de bindings: var → valor string (o undefined si el binding no estaba). */
 export type FilaSparql = Record<string, string | undefined>;
 

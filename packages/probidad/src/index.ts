@@ -39,6 +39,12 @@ export {
   queryDeclaracionesPorNombre,
   queryBienesInmuebles,
   queryActividades,
+  queryBienesInmueblesBatch,
+  queryBienesMueblesBatch,
+  queryActividadesBatch,
+  queryPasivosBatch,
+  queryAccionesDerechosBatch,
+  queryValoresBatch,
   escaparLiteralSparql,
   bindingsToRows,
   fechaPresentacionDe,
@@ -48,6 +54,16 @@ export type { FilaSparql, SparqlJson } from "./sparql";
 // Parser zod del SPARQL-JSON → Declaracion[] versionadas (LITERAL, sin LLM).
 export { parseDeclaraciones } from "./parse-infoprobidad";
 export type { ParseDeclaracionesOpts } from "./parse-infoprobidad";
+
+// Parsers BATCH de bienes: SPARQL-JSON → Map<fuenteId, T[]> (LITERAL, sin LLM).
+export {
+  parseBienInmueble,
+  parseBienMueble,
+  parseActividad,
+  parsePasivo,
+  parseAccionDerecho,
+  parseValor,
+} from "./parse-bienes";
 
 // Reconciliación NAME-ONLY del declarante (correrPipeline → EnlaceConfirmado solo-determinista).
 export { reconciliarDeclarante } from "./reconciliar-declarante";
@@ -62,9 +78,13 @@ export { reconciliarDeclaracionesObjetivo } from "./reconciliar-objetivo";
 
 // Writer VERSIONADO (interfaz + in-memory + Supabase).
 export { InMemoryProbidadWriter, versionKey } from "./writer";
-export type { ProbidadWriter } from "./writer";
+export type { ProbidadWriter, BienesParaEscribir } from "./writer";
 export { SupabaseProbidadWriter } from "./writer-supabase";
 export type { SupabaseProbidadWriterOptions } from "./writer-supabase";
+
+// Runner BATCHEADO de la ingesta de bienes (las 6 sub-tablas de OQ2).
+export { runProbidadBienes } from "./run-probidad-bienes";
+export type { RunProbidadBienesOpts, RunProbidadBienesResult } from "./run-probidad-bienes";
 
 // Conector SPARQL (reusa @obs/ingest en el ORDEN LOCKED, NO BaseConnector.run).
 export {

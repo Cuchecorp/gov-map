@@ -4,11 +4,16 @@ import { render, screen, cleanup, within } from "@testing-library/react";
 import {
   PatrimonioView,
   DeclaracionComparacion,
+  agruparBienesPorTipo,
+  agruparBienesPorFuente,
+  paresDeContenido,
+  etiquetaBien,
   type PatrimonioViewData,
 } from "./patrimonio-de-parlamentario";
 import type {
   DeclaracionVersionRow,
   DeclaracionComparacionColumna,
+  BienRpcRow,
 } from "@/lib/types";
 
 afterEach(cleanup);
@@ -45,6 +50,21 @@ function makeVersion(
     enlace: "https://www.infoprobidad.cl/declaracion/V1",
     licencia: "CC BY 4.0",
     es_historica: false,
+    bienes: [],
+    ...overrides,
+  };
+}
+
+function makeBien(overrides: Partial<BienRpcRow> = {}): BienRpcRow {
+  return {
+    fuente_id: "http://datos.cplt.cl/recurso/declaracion/V1",
+    fecha_presentacion: "2024-05-14",
+    tipo_bien: "inmueble",
+    contenido: { ubicadoEn: "Santiago", rolAvaluo: "1234-56", anio: "2018" },
+    origen: "InfoProbidad",
+    fecha_captura: "2026-06-18T00:00:00Z",
+    enlace: "https://www.infoprobidad.cl/declaracion/V1",
+    licencia: "CC BY 4.0",
     ...overrides,
   };
 }
@@ -360,5 +380,127 @@ describe("Gate §9.1 — content gate sobre LISTA y COMPARACIÓN (release gate d
     // La atribución CC BY 4.0 vive en el caption de la vista derivada (CONTEXT LOCKED).
     const caption = container.querySelector("caption");
     expect(caption?.textContent ?? "").toMatch(/CC BY 4\.0/i);
+  });
+});
+
+// ── Helpers de bienes: agrupación por fuente, por tipo (orden fijo), etiquetas ────
+describe("bienes — helpers de agrupación y etiquetas", () => {
+  it("agruparBienesPorFuente agrupa por fuente_id", () => {
+    const filas: BienRpcRow[] = [
+      makeBien({ fuente_id: "A", tipo_bien: "inmueble" }),
+      makeBien({ fuente_id: "B", tipo_bien: "mueble" }),
+      makeBien({ fuente_id: "A", tipo_bien: "valor" }),
+    ];
+    const map = agruparBienesPorFuente(filas);
+    expect(map.get("A")?.length).toBe(2);
+    expect(map.get("B")?.length).toBe(1);
+    expect(map.has("C")).toBe(false);
+  });
+
+  it("agruparBienesPorTipo respeta el orden fijo y omite grupos vacíos", () => {
+    // Desordenados a propósito; el helper debe imponer el orden canónico.
+    const filas: BienRpcRow[] = [
+      makeBien({ tipo_bien: "pasivo" }),
+      makeBien({ tipo_bien: "valor" }),
+      makeBien({ tipo_bien: "inmueble" }),
+      makeBien({ tipo_bien: "actividad" }),
+    ];
+    const grupos = agruparBienesPorTipo(filas);
+    expect(grupos.map((g) => g.tipo)).toEqual([
+      "inmueble",
+      "actividad",
+      "valor",
+      "pasivo",
+    ]);
+    // mueble y accion_derecho están ausentes → no aparecen.
+    expect(grupos.some((g) => g.tipo === "mueble")).toBe(false);
+    expect(grupos.some((g) => g.tipo === "accion_derecho")).toBe(false);
+  });
+
+  it("agruparBienesPorTipo cuenta múltiples bienes del mismo tipo", () => {
+    const filas: BienRpcRow[] = [
+      makeBien({ tipo_bien: "inmueble" }),
+      makeBien({ tipo_bien: "inmueble" }),
+    ];
+    const grupos = agruparBienesPorTipo(filas);
+    expect(grupos).toHaveLength(1);
+    expect(grupos[0].bienes).toHaveLength(2);
+  });
+
+  it("etiquetaBien mapea claves camelCase a NOUN español; clave desconocida → cruda", () => {
+    expect(etiquetaBien("ubicadoEn")).toBe("Ubicado en");
+    expect(etiquetaBien("montoDeuda")).toBe("Monto de la deuda");
+    expect(etiquetaBien("rutJuridica")).toBe("RUT (persona jurídica)");
+    expect(etiquetaBien("claveDesconocida")).toBe("claveDesconocida");
+  });
+
+  it("paresDeContenido produce pares etiqueta NOUN → valor literal verbatim", () => {
+    const pares = paresDeContenido({
+      ubicadoEn: "Casa en Valparaíso",
+      esSuDomicilio: true,
+    });
+    expect(pares).toContainEqual({
+      etiqueta: "Ubicado en",
+      valor: "Casa en Valparaíso",
+    });
+    // Valor no-string se serializa verbatim (sin computar nada).
+    expect(pares).toContainEqual({ etiqueta: "Es su domicilio", valor: "true" });
+  });
+});
+
+// ── Render de bienes por versión (encabezados de grupo + valores literales) ──────
+describe("PatrimonioView — bienes por versión", () => {
+  it("una versión con bienes renderiza encabezados de grupo con conteo + valores literales", () => {
+    const { container } = render(
+      <PatrimonioView
+        data={makeViewData({
+          versiones: [
+            makeVersion({
+              bienes: [
+                makeBien({
+                  tipo_bien: "inmueble",
+                  contenido: { ubicadoEn: "Casa en Valparaíso" },
+                }),
+                makeBien({
+                  tipo_bien: "inmueble",
+                  contenido: { ubicadoEn: "Depto en Santiago" },
+                }),
+                makeBien({
+                  tipo_bien: "pasivo",
+                  contenido: { acreedor: "Banco X", montoDeuda: "$10.000.000" },
+                }),
+              ],
+            }),
+          ],
+        })}
+      />,
+    );
+    // Encabezados de grupo con conteo factual.
+    expect(screen.getByText("Bienes inmuebles (2)")).toBeInTheDocument();
+    expect(screen.getByText("Pasivos (1)")).toBeInTheDocument();
+    // Valores literales verbatim, incluido el monto (NUNCA sumado).
+    expect(screen.getByText("Casa en Valparaíso")).toBeInTheDocument();
+    expect(screen.getByText("Depto en Santiago")).toBeInTheDocument();
+    expect(screen.getByText("$10.000.000")).toBeInTheDocument();
+    // Etiqueta NOUN del campo.
+    expect(screen.getByText(/Monto de la deuda:/)).toBeInTheDocument();
+    // CERO veredicto/delta sobre los montos.
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(PROHIBIDO_VEREDICTO);
+    expect(texto).not.toMatch(PROHIBIDO_CONECTIVO);
+  });
+
+  it("una versión sin bienes muestra la línea honesta-vacía (no 'no tiene patrimonio')", () => {
+    render(
+      <PatrimonioView
+        data={makeViewData({ versiones: [makeVersion({ bienes: [] })] })}
+      />,
+    );
+    expect(
+      screen.getByText(/Esta versión no declara bienes en las fuentes consultadas/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/no tiene patrimonio|limpio|sin bienes que declarar/i),
+    ).not.toBeInTheDocument();
   });
 });
