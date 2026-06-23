@@ -6,17 +6,17 @@ packages:
 # el gate de build-scripts ignorados aborte `pnpm -w typecheck`/`test`.
 verifyDepsBeforeRun: false
 
-# Build scripts nativos no requeridos para typecheck/test en este monorepo.
+# Build scripts nativos: NINGUNO se ejecuta en install (ni en CI ni local). Los scripts de
+# ingesta corren con `tsx` (que trae su propio esbuild) y el build de OpenNext hace
+# `pnpm rebuild esbuild` on-demand. TODO dep con build-script va aquí para que
+# `pnpm install --frozen-lockfile` NO aborte con ERR_PNPM_IGNORED_BUILDS (gate de pnpm 11).
 ignoredBuiltDependencies:
+  - "@google/genai"
   - esbuild
+  - protobufjs
   - sharp
   - unrs-resolver
+  - workerd
 
 minimumReleaseAgeExclude:
   - openai@6.44.0
-
-allowBuilds:
-  '@google/genai': set this to true or false
-  esbuild: set this to true or false
-  protobufjs: set this to true or false
-  workerd: set this to true or false
