@@ -60,6 +60,15 @@ function lunesDeSemana(year: number, week: number): Date {
   return lunes;
 }
 
+/**
+ * Primer día (lunes, UTC) de una semana ISO en formato `"YYYY-MM-DD"`. Es el `fecha` que
+ * usa la `SesionSala` por-semana de la tabla de sala de Cámara (el PDF no asigna ítems a un
+ * día concreto sin ambigüedad → no se fabrica la asignación día↔ítem).
+ */
+export function primerDiaSemanaIso(year: number, week: number): string {
+  return lunesDeSemana(year, week).toISOString().slice(0, 10);
+}
+
 /** Formatea `YYYY-Www` con padding de 2 dígitos en la semana (`2026-W05`). */
 export function semanaIsoKey(year: number, week: number): string {
   return `${year}-W${String(week).padStart(2, "0")}`;

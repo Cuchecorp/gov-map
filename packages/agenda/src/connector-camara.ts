@@ -58,9 +58,14 @@ export interface CitacionesCamaraConnectorDeps {
 }
 
 const BASE = "https://www.camara.cl/legislacion/comisiones";
-/** URL del PDF de la tabla semanal de sala (único artefacto de Cámara — degradación honesta). */
+/** URL del PDF de la tabla semanal de sala (`prmId=0` = la semanal vigente). Es a la vez
+ *  la fuente de la ingesta DeepSeek-desde-PDF y el enlace de procedencia mostrado. */
 export const CAMARA_TABLA_PDF_URL =
   "https://www.camara.cl/verDoc.aspx?prmId=0&prmTipo=TABLASEMANAL";
+/** Referer que el WAF de Cloudflare EXIGE para `verDoc.aspx?prmTipo=TABLASEMANAL` (verificado
+ *  LIVE 2026-06-23): sin él el verDoc da 403 aunque el header-set de navegador esté completo. */
+const CAMARA_TABLA_REFERER =
+  "https://www.camara.cl/legislacion/sala_sesiones/tabla.aspx";
 
 /**
  * Conector de citaciones de la Cámara: por cada semana ISO arma la URL de
@@ -79,19 +84,22 @@ export class CitacionesCamaraConnector {
 
   /**
    * Fetch de UN recurso reusando la política de @obs/ingest en el ORDEN LOCKED, enviando el
-   * header-set de navegador anti-Cloudflare. Devuelve el body como string (HTML). Un 403 del
-   * WAF se relanza como `CamaraBloqueadaError` (lo demás propaga el error original).
+   * header-set de navegador anti-Cloudflare (+ headers extra opcionales). Devuelve los bytes
+   * crudos. Un 403 del WAF se relanza como `CamaraBloqueadaError` (lo demás propaga el error
+   * original). El caller decide si decodificar a texto (HTML) o tratarlos como binario (PDF).
    */
-  private async fetch(url: string): Promise<string> {
+  private async fetchBytes(
+    url: string,
+    extraHeaders: Record<string, string> = {},
+  ): Promise<Uint8Array> {
     const parsed = assertAllowedUrl(url, this.deps.allowlist); // SSRF + allowlist (T-06-08)
     if (!(await this.deps.robots.isAllowed(url))) throw new RobotsDisallowError(url);
     await this.deps.rateLimiter.wait(parsed.host); // 2-3s serial por host (T-06-07)
     try {
-      const body = await this.deps.fetcher.get({
+      return await this.deps.fetcher.get({
         url,
-        headers: { ...BROWSER_HEADERS_CAMARA }, // header-set anti-Cloudflare (T-06-07)
+        headers: { ...BROWSER_HEADERS_CAMARA, ...extraHeaders }, // header-set anti-Cloudflare (T-06-07)
       });
-      return new TextDecoder().decode(body);
     } catch (err) {
       if (err instanceof FetchError && err.status === 403) {
         throw new CamaraBloqueadaError(url, 403);
@@ -102,13 +110,26 @@ export class CitacionesCamaraConnector {
 
   /** Fetch del HTML de citaciones de una semana ISO. */
   async fetchSemana(year: number, week: number): Promise<string> {
-    return this.fetch(this.urlSemana(year, week));
+    const bytes = await this.fetchBytes(this.urlSemana(year, week));
+    return new TextDecoder().decode(bytes);
   }
 
   /**
-   * "Fetch" de la tabla de sala de Cámara: NO la ingesta (no hay fuente estructurada). Devuelve
-   * la URL del PDF oficial + content_type para la DEGRADACIÓN HONESTA — el caller la expone como
-   * "no disponible como dato estructurado" sin fabricar filas (T-06-09). No emite request.
+   * Fetch de la tabla semanal de sala de la Cámara como PDF crudo (`verDoc.aspx?prmTipo=
+   * TABLASEMANAL`, `prmId=0` = la vigente). Devuelve los BYTES del PDF (no string) para que el
+   * caller los persista crudos en R2 (etapa 1) y extraiga su capa de texto (unpdf) en la etapa 2.
+   *
+   * El verDoc exige el `Referer` de la página de tabla además del header-set anti-Cloudflare
+   * (verificado LIVE 2026-06-23); sin él da 403. Un 403 persistente se relanza como
+   * `CamaraBloqueadaError` para que el caller DEGRADE honesto al enlace PDF (no fabrica filas).
+   */
+  async fetchTablaSalaPdf(): Promise<Uint8Array> {
+    return this.fetchBytes(CAMARA_TABLA_PDF_URL, { Referer: CAMARA_TABLA_REFERER });
+  }
+
+  /**
+   * URL del PDF oficial de la tabla de sala + content_type, para la DEGRADACIÓN HONESTA cuando la
+   * ingesta DeepSeek-desde-PDF no produce filas (fetch 403 / PDF escaneado / RUT). No emite request.
    */
   fetchPdfTabla(): { url: string; content_type: string } {
     return { url: CAMARA_TABLA_PDF_URL, content_type: "application/pdf" };
