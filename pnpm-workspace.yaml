@@ -6,11 +6,12 @@ packages:
 # el gate de build-scripts ignorados aborte `pnpm -w typecheck`/`test`.
 verifyDepsBeforeRun: false
 
-# Build scripts nativos: NINGUNO se ejecuta en install (ni en CI ni local). Los scripts de
-# ingesta corren con `tsx` (que trae su propio esbuild) y el build de OpenNext hace
-# `pnpm rebuild esbuild` on-demand. TODO dep con build-script va aquí para que
-# `pnpm install --frozen-lockfile` NO aborte con ERR_PNPM_IGNORED_BUILDS (gate de pnpm 11).
-ignoredBuiltDependencies:
+# Build scripts: se APRUEBAN explícitamente (equivalente a `pnpm approve-builds`). En pnpm 11
+# `ignoredBuiltDependencies` NO suprime el gate ERR_PNPM_IGNORED_BUILDS (que aborta
+# `pnpm install --frozen-lockfile` en CI); hay que listar los deps con build-script en
+# `onlyBuiltDependencies` para que NINGUNO quede "ignorado" → el gate no se dispara. Todos
+# publican binarios prebuilt, así que el build en CI es trivial.
+onlyBuiltDependencies:
   - "@google/genai"
   - esbuild
   - protobufjs
