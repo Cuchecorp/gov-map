@@ -33,6 +33,7 @@ export {
   semanasEnAnioIso,
   prmSemanaParam,
   enumerarSemanas,
+  primerDiaSemanaIso,
 } from "./semana-iso";
 
 // Parser de citaciones de Cámara (cheerio sobre el HTML real).
@@ -41,6 +42,15 @@ export { parseCamaraCitaciones, parseFechaEsCl } from "./parse-camara-citaciones
 // Parsers JSON del Senado (citaciones + tabla semanal de sala).
 export { parseSenadoCitaciones, parseFechaDmy } from "./parse-senado-citaciones";
 export { parseSenadoTabla } from "./parse-senado-tabla";
+
+// Tabla de sala de Cámara (DeepSeek-desde-PDF): extracción de la capa de texto + parser LLM.
+export {
+  parseCamaraTabla,
+  extraerTextoTablaPdf,
+  normalizarBoletin,
+  ORIGEN_CAMARA_TABLA,
+} from "./parse-camara-tabla";
+export type { ParseCamaraTablaOpts } from "./parse-camara-tabla";
 
 // Header-set anti-Cloudflare de Cámara.
 export { BROWSER_HEADERS_CAMARA } from "./headers-camara";
@@ -73,7 +83,7 @@ export type { SupabaseAgendaWriterOptions } from "./writer-supabase";
 
 // Orquestación de la ingesta (tolerante a fuentes vacías + degradación honesta).
 export { runIngest } from "./ingest-run";
-export type { RunIngestOpts, RunIngestResult, Degradacion } from "./ingest-run";
+export type { RunIngestOpts, RunIngestResult, Degradacion, TablaR2Target } from "./ingest-run";
 
 // CLI de ingesta (flags validados antes de red/DB; backfill por rango de semanas).
 export {

@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { createServerSupabase } from "@/lib/supabase";
 import { WeekNav } from "@/components/week-nav";
@@ -22,6 +24,11 @@ import {
   type CitacionRow,
   type SesionSalaRow,
 } from "@/lib/agenda-types";
+import { BOLETIN_RE, MAX_QUERY_CHARS } from "@/lib/buscar";
+import {
+  buscarCitaciones,
+  type CitacionBusquedaRow,
+} from "@/lib/agenda-buscar";
 
 /**
  * /agenda — agenda legislativa semanal (Server Component, UI-SPEC §2).
@@ -41,33 +48,224 @@ interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+/** Cámara válida del filtro de búsqueda, o undefined (ambas). */
+function parseCamaraFiltro(v: unknown): "camara" | "senado" | undefined {
+  return v === "camara" || v === "senado" ? v : undefined;
+}
+
 export default async function AgendaPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const semanaParam = typeof sp.semana === "string" ? sp.semana : undefined;
   const { year, week } = parseISOWeek(semanaParam);
 
+  // Input no confiable: trim + cap ≤300 (mismo cap que /buscar).
+  const qRaw = typeof sp.q === "string" ? sp.q : "";
+  const q = qRaw.trim().slice(0, MAX_QUERY_CHARS);
+  const camaraFiltro = parseCamaraFiltro(sp.camara);
+
+  // Atajo de boletín ANTES de renderizar (cruce directo a la ficha; espeja /buscar).
+  if (q.length > 0 && BOLETIN_RE.test(q)) {
+    redirect(`/proyecto/${q}`);
+  }
+
+  const buscando = q.length > 0;
+
   return (
     <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
       <h1 className="text-3xl font-semibold leading-tight">Agenda legislativa</h1>
 
-      <div className="mt-4">
-        <WeekNav year={year} week={week} />
-      </div>
+      {/* Buscador de citaciones (SSR-first: el form GET funciona sin JS; no embebe). */}
+      <form role="search" action="/agenda" method="get" className="mt-4 flex gap-2">
+        <input
+          type="search"
+          name="q"
+          defaultValue={q}
+          placeholder="Busca por comisión, materia, invitado o boletín…"
+          aria-label="Buscar citaciones de comisiones"
+          className="h-11 flex-1 rounded-md border border-input bg-background px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        {camaraFiltro && <input type="hidden" name="camara" value={camaraFiltro} />}
+        <button
+          type="submit"
+          className="h-11 rounded-md bg-primary px-4 font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Buscar
+        </button>
+      </form>
 
-      <section id="citaciones" className="mt-8">
-        <h2 className="text-xl font-semibold">Citaciones de comisiones</h2>
-        <Suspense fallback={<CitacionesSkeleton />}>
-          <CitacionesSection year={year} week={week} />
-        </Suspense>
-      </section>
+      {buscando ? (
+        <section id="resultados" className="mt-6">
+          <CamaraFiltro q={q} camara={camaraFiltro} />
+          <Suspense key={`${q}::${camaraFiltro ?? "all"}`} fallback={<CitacionesSkeleton />}>
+            <ResultadosBusqueda q={q} camara={camaraFiltro} />
+          </Suspense>
+          <p className="mt-8 text-sm">
+            <Link
+              href="/agenda"
+              className="text-primary underline underline-offset-2"
+            >
+              ← Volver a la vista semanal
+            </Link>
+          </p>
+        </section>
+      ) : (
+        <>
+          <div className="mt-6">
+            <WeekNav year={year} week={week} />
+          </div>
 
-      <section id="tabla-sala" className="mt-12">
-        <h2 className="text-xl font-semibold">Tabla de sala</h2>
-        <Suspense fallback={<SalaTableSkeleton />}>
-          <SalaTableServer year={year} week={week} />
-        </Suspense>
-      </section>
+          <section id="citaciones" className="mt-8">
+            <h2 className="text-xl font-semibold">Citaciones de comisiones</h2>
+            <Suspense fallback={<CitacionesSkeleton />}>
+              <CitacionesSection year={year} week={week} />
+            </Suspense>
+          </section>
+
+          <section id="tabla-sala" className="mt-12">
+            <h2 className="text-xl font-semibold">Tabla de sala</h2>
+            <Suspense fallback={<SalaTableSkeleton />}>
+              <SalaTableServer year={year} week={week} />
+            </Suspense>
+          </section>
+        </>
+      )}
     </main>
+  );
+}
+
+// ── Filtro por cámara (links que preservan q) ────────────────────────────────
+function CamaraFiltro({
+  q,
+  camara,
+}: {
+  q: string;
+  camara: "camara" | "senado" | undefined;
+}) {
+  const opciones: { label: string; value: "camara" | "senado" | undefined }[] = [
+    { label: "Ambas", value: undefined },
+    { label: "Cámara", value: "camara" },
+    { label: "Senado", value: "senado" },
+  ];
+  const href = (value: "camara" | "senado" | undefined) =>
+    `/agenda?q=${encodeURIComponent(q)}${value ? `&camara=${value}` : ""}`;
+  return (
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por cámara">
+      {opciones.map((o) => {
+        const activa = o.value === camara;
+        return (
+          <Link
+            key={o.label}
+            href={href(o.value)}
+            aria-current={activa ? "true" : undefined}
+            className={[
+              "inline-flex min-h-9 items-center rounded-full border px-3 text-sm transition-colors",
+              activa
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-muted hover:border-primary/50",
+            ].join(" ")}
+          >
+            {o.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Resultados de búsqueda (agrupados por comisión) ──────────────────────────
+async function ResultadosBusqueda({
+  q,
+  camara,
+}: {
+  q: string;
+  camara: "camara" | "senado" | undefined;
+}) {
+  let filas: CitacionBusquedaRow[];
+  try {
+    filas = await buscarCitaciones(q, { camara });
+  } catch {
+    // Error = el RPC falló (grant/RLS/red/DB). Distinto de "sin resultados".
+    return (
+      <div className="mt-6 border border-destructive/20 bg-destructive/5 rounded-lg p-4 text-sm">
+        Ocurrió un error al buscar en la agenda. Vuelve a intentarlo en unos momentos.
+      </div>
+    );
+  }
+
+  if (filas.length === 0) {
+    return (
+      <div className="mt-6 rounded-lg border border-border bg-muted/40 px-6 py-8 text-center text-sm text-muted-foreground">
+        <p className="font-semibold text-foreground">Sin resultados</p>
+        <p className="mt-1">
+          No se encontraron citaciones para &ldquo;{q}&rdquo;. Prueba con otra comisión,
+          materia, nombre o número de boletín.
+        </p>
+      </div>
+    );
+  }
+
+  // Agrupar por comisión (índice además del orden por día — "todo mejor estructurado").
+  const grupos = new Map<string, CitacionBusquedaRow[]>();
+  for (const f of filas) {
+    const arr = grupos.get(f.comision) ?? [];
+    arr.push(f);
+    grupos.set(f.comision, arr);
+  }
+
+  const diaFmt = new Intl.DateTimeFormat("es-CL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
+  const camaraLabel = (c: "camara" | "senado") =>
+    c === "camara" ? "Cámara" : "Senado";
+
+  return (
+    <div className="mt-6">
+      <p className="text-sm text-muted-foreground">
+        {filas.length} resultado{filas.length === 1 ? "" : "s"} para &ldquo;{q}&rdquo;
+      </p>
+      <div className="mt-6 space-y-8">
+        {Array.from(grupos.entries()).map(([comision, items]) => (
+          <div key={comision}>
+            <h3 className="text-base font-semibold">{comision}</h3>
+            <Separator className="mt-1" />
+            <ul className="mt-3 space-y-3">
+              {items.map((c) => (
+                <li key={c.id} className="rounded-lg border bg-card p-4">
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <span className="rounded-full border border-border px-2 py-0.5 text-xs">
+                      {camaraLabel(c.camara)}
+                    </span>
+                    {c.fecha && (
+                      <span className="capitalize">
+                        {diaFmt.format(new Date(c.fecha))}
+                      </span>
+                    )}
+                    {c.estado && <span className="text-foreground">· {c.estado}</span>}
+                  </div>
+                  {c.materia && (
+                    <p className="mt-2 text-sm leading-relaxed">{c.materia}</p>
+                  )}
+                  {c.boletin && (
+                    <p className="mt-2 text-sm">
+                      <Link
+                        href={`/proyecto/${c.boletin}`}
+                        className="font-mono text-primary underline underline-offset-2"
+                        aria-label={`Ver proyecto Boletín N°${c.boletin}`}
+                      >
+                        Boletín N°{c.boletin}
+                      </Link>
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -159,53 +357,18 @@ function primerBoletin(c: CitacionRow): string | null {
   return conBoletin?.boletin ?? null;
 }
 
-// ── Tabla de sala (Senado available / Cámara siempre degradada) ──────────────
-async function SalaTableServer({ year, week }: ISOWeek) {
-  const { start, end } = getWeekBounds(year, week);
-  // WR-06: en vez de un `lte` sobre el fin del domingo (que asume `fecha` a
-  // medianoche UTC exacta), se usa un rango semi-abierto [lunes 00:00Z, lunes
-  // SIGUIENTE 00:00Z). Así cualquier `fecha` con componente horario dentro del
-  // domingo (no-medianoche / DB TZ ≠ UTC) sigue cayendo dentro de la semana.
-  const nextMonday = new Date(end);
-  nextMonday.setUTCDate(nextMonday.getUTCDate() + 1);
-  nextMonday.setUTCHours(0, 0, 0, 0);
-  const sb = createServerSupabase();
-  const { data } = await sb
-    .from("sesion_sala")
-    .select("*, sesion_tabla_item(*)")
-    .eq("camara", "senado")
-    .gte("fecha", start.toISOString())
-    .lt("fecha", nextMonday.toISOString())
-    .order("fecha", { ascending: true });
+// ── Tabla de sala (Senado + Cámara; cada cámara available o degradada) ───────
+type SalaProvenance = { capturedAt: Date | null; sourceName: string; sourceUrl: string | null };
 
-  const sesiones = (data as SesionSalaRow[]) ?? [];
-  const weekLabel = formatWeekLabel(year, week);
-
-  // WR-05: la tabla de sala del Senado es FORWARD-ONLY (sin histórico por esa
-  // fuente). Si la semana navegada no tiene filas, hay que distinguir "fuera de
-  // la ventana capturada" (la semana es anterior a la primera sesión jamás
-  // capturada) de "sin sesión" (dentro de la ventana, pero no hubo). Se consulta
-  // la fecha de la primera sesión capturada.
-  let fueraDeVentana = false;
-  if (sesiones.length === 0) {
-    const { data: primera } = await sb
-      .from("sesion_sala")
-      .select("fecha")
-      .eq("camara", "senado")
-      .order("fecha", { ascending: true })
-      .limit(1);
-    const primeraFecha = (primera as { fecha: string }[] | null)?.[0]?.fecha;
-    if (primeraFecha && nextMonday.toISOString() <= new Date(primeraFecha).toISOString()) {
-      // Toda la semana navegada termina antes de la primera captura → nunca ingestada.
-      fueraDeVentana = true;
-    }
-  }
-
-  // Aplanar los ítems de todas las sesiones del Senado de la semana.
+/** Lee las sesiones de sala de UNA cámara en la ventana semi-abierta de la semana y aplana sus
+ *  ítems (clave compuesta sesión+posición). Devuelve también la procedencia de la 1ª sesión. */
+function aplanarSesiones(rows: SesionSalaRow[]): {
+  items: SalaTablaItem[];
+  provenance: SalaProvenance | null;
+} {
   const items: SalaTablaItem[] = [];
-  let provenance: { capturedAt: Date | null; sourceName: string; sourceUrl: string | null } | null =
-    null;
-  for (const s of sesiones) {
+  let provenance: SalaProvenance | null = null;
+  for (const s of rows) {
     if (!provenance) {
       provenance = {
         capturedAt: s.fecha_captura ? new Date(s.fecha_captura) : null,
@@ -213,14 +376,10 @@ async function SalaTableServer({ year, week }: ISOWeek) {
         sourceUrl: s.enlace ?? null,
       };
     }
-    const tabla = (s.sesion_tabla_item ?? [])
-      .slice()
-      .sort((a, b) => a.posicion - b.posicion);
+    const tabla = (s.sesion_tabla_item ?? []).slice().sort((a, b) => a.posicion - b.posicion);
     for (const it of tabla) {
       items.push({
-        // IN-01: clave compuesta (sesión + posición) — única en la semana aunque
-        // dos sesiones repitan posiciones 1,2,3… La clave única DB es
-        // (sesion_id, posicion), no posicion sola.
+        // IN-01: clave compuesta (sesión + posición) — única en la semana.
         key: `${s.id}:${it.posicion}`,
         posicion: it.posicion,
         parteSesion: it.parte_sesion,
@@ -229,36 +388,103 @@ async function SalaTableServer({ year, week }: ISOWeek) {
       });
     }
   }
+  return { items, provenance };
+}
+
+async function SalaTableServer({ year, week }: ISOWeek) {
+  const { start, end } = getWeekBounds(year, week);
+  // WR-06: rango semi-abierto [lunes 00:00Z, lunes SIGUIENTE 00:00Z) para tolerar
+  // componente horario dentro del domingo (no-medianoche / DB TZ ≠ UTC).
+  const nextMonday = new Date(end);
+  nextMonday.setUTCDate(nextMonday.getUTCDate() + 1);
+  nextMonday.setUTCHours(0, 0, 0, 0);
+  const sb = createServerSupabase();
+
+  // Ambas cámaras en paralelo (lecturas anon, RLS public-read de 0010).
+  const [senadoRes, camaraRes] = await Promise.all([
+    sb
+      .from("sesion_sala")
+      .select("*, sesion_tabla_item(*)")
+      .eq("camara", "senado")
+      .gte("fecha", start.toISOString())
+      .lt("fecha", nextMonday.toISOString())
+      .order("fecha", { ascending: true }),
+    sb
+      .from("sesion_sala")
+      .select("*, sesion_tabla_item(*)")
+      .eq("camara", "camara")
+      .gte("fecha", start.toISOString())
+      .lt("fecha", nextMonday.toISOString())
+      .order("fecha", { ascending: true }),
+  ]);
+
+  const sesionesSenado = (senadoRes.data as SesionSalaRow[]) ?? [];
+  const sesionesCamara = (camaraRes.data as SesionSalaRow[]) ?? [];
+  const weekLabel = formatWeekLabel(year, week);
+
+  // WR-05: la tabla del Senado es FORWARD-ONLY. Si la semana no tiene filas,
+  // distinguir "fuera de la ventana capturada" de "sin sesión".
+  let fueraDeVentanaSenado = false;
+  if (sesionesSenado.length === 0) {
+    const { data: primera } = await sb
+      .from("sesion_sala")
+      .select("fecha")
+      .eq("camara", "senado")
+      .order("fecha", { ascending: true })
+      .limit(1);
+    const primeraFecha = (primera as { fecha: string }[] | null)?.[0]?.fecha;
+    if (primeraFecha && nextMonday.toISOString() <= new Date(primeraFecha).toISOString()) {
+      fueraDeVentanaSenado = true;
+    }
+  }
+
+  const senado = aplanarSesiones(sesionesSenado);
+  const camara = aplanarSesiones(sesionesCamara);
 
   return (
-    <div className="mt-4 space-y-8">
-      {items.length > 0 && provenance && (
-        <SalaTableSection
-          mode="available"
-          items={items}
-          provenance={provenance}
-          weekLabel={weekLabel}
-        />
-      )}
-      {/* WR-05: distingue "fuera de la ventana capturada" de "sin sesión". El
-          Senado es forward-only: una semana anterior a la primera captura nunca
-          se ingestó (no equivale a "no hubo sesión"). */}
-      {items.length === 0 && fueraDeVentana && (
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          La tabla de sala del Senado se publica con ventana hacia adelante (sin
-          histórico){weekLabel ? ` — ${weekLabel}` : ""} es anterior al inicio de
-          la captura, por lo que no se registró su orden del día.
-        </p>
-      )}
-      {/* CR-02: la degradación es ACOTADA A LA CÁMARA (no afirma que el Senado
-          falló). Si el Senado tiene filas, se muestran arriba; este bloque sólo
-          dice que la Cámara no publica la tabla como dato estructurado y enlaza
-          al PDF oficial recordado por la ingesta (CR-01). */}
-      <SalaTableSection
-        mode="degraded"
-        weekLabel={weekLabel}
-        camaraPdfUrl={CAMARA_TABLA_PDF_URL}
-      />
+    <div className="mt-4 space-y-10">
+      {/* ── Senado ───────────────────────────────────────────────────────── */}
+      <div className="space-y-4">
+        <h3 className="text-base font-semibold">Senado</h3>
+        {senado.items.length > 0 && senado.provenance ? (
+          <SalaTableSection
+            mode="available"
+            items={senado.items}
+            provenance={senado.provenance}
+            weekLabel={weekLabel}
+          />
+        ) : fueraDeVentanaSenado ? (
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            La tabla de sala del Senado se publica con ventana hacia adelante (sin
+            histórico){weekLabel ? ` — ${weekLabel}` : ""} es anterior al inicio de
+            la captura, por lo que no se registró su orden del día.
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            No hay tabla de sala del Senado registrada para esta semana.
+          </p>
+        )}
+      </div>
+
+      {/* ── Cámara de Diputados (DeepSeek-desde-PDF; degrada al PDF si la ingesta
+            no produjo filas — CR-01/CR-02, acotado a la Cámara) ────────────── */}
+      <div className="space-y-4">
+        <h3 className="text-base font-semibold">Cámara de Diputadas y Diputados</h3>
+        {camara.items.length > 0 && camara.provenance ? (
+          <SalaTableSection
+            mode="available"
+            items={camara.items}
+            provenance={camara.provenance}
+            weekLabel={weekLabel}
+          />
+        ) : (
+          <SalaTableSection
+            mode="degraded"
+            weekLabel={weekLabel}
+            camaraPdfUrl={CAMARA_TABLA_PDF_URL}
+          />
+        )}
+      </div>
     </div>
   );
 }

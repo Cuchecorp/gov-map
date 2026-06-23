@@ -18,13 +18,14 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Fetcher, HostRateLimiter, RobotsGuard } from "@obs/ingest";
+import { Fetcher, HostRateLimiter, RobotsGuard, R2Store } from "@obs/ingest";
+import { DeepSeekProvider, type LLMProvider } from "@obs/llm";
 import { CitacionesCamaraConnector } from "./connector-camara";
 import { SenadoActividadConnector } from "./connector-senado";
 import { createCurlTransport } from "./transport-curl";
 import { SupabaseAgendaWriter } from "./writer-supabase";
 import { InMemoryAgendaWriter, type AgendaWriter } from "./writer";
-import { runIngest } from "./ingest-run";
+import { runIngest, type TablaR2Target } from "./ingest-run";
 import { isoWeekOf, enumerarSemanas, semanaIsoKey, type SemanaIso } from "./semana-iso";
 import { parseSemanaIso } from "./ingest-cli";
 
@@ -55,7 +56,16 @@ function loadEnv(root: string): Record<string, string> {
   } catch {
     // Sin `.env` (CI): los secrets vienen de process.env (abajo).
   }
-  for (const k of ["SUPABASE_API_URL", "SUPABASE_SECRET_KEY", "SUPABASE_URL"]) {
+  for (const k of [
+    "SUPABASE_API_URL",
+    "SUPABASE_SECRET_KEY",
+    "SUPABASE_URL",
+    "DEEPSEEK_API_KEY",
+    "R2_ENDPOINT_URL",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_BUCKET",
+  ]) {
     if (process.env[k]) out[k] = process.env[k]!;
   }
   return out;
@@ -111,6 +121,27 @@ async function main(): Promise<void> {
     log(`agenda: writer Supabase PROD (${env.SUPABASE_API_URL}) — upsert idempotente`);
   }
 
+  // Tabla de sala de Cámara (DeepSeek-desde-PDF): provider LLM gateado por DEEPSEEK_API_KEY;
+  // R2 (etapa 1) gateado por presencia de las 4 credenciales R2. Sin key → undefined → el
+  // paso 4 mantiene la degradación honesta pura (enlace PDF). NUNCA se hardcodea ni se loguea.
+  let proveedorTablaCamara: LLMProvider | undefined;
+  if (env.DEEPSEEK_API_KEY) {
+    proveedorTablaCamara = new DeepSeekProvider({ apiKey: env.DEEPSEEK_API_KEY });
+    log("agenda: tabla de sala de Cámara → DeepSeek-desde-PDF habilitado");
+  } else {
+    log("agenda: sin DEEPSEEK_API_KEY → tabla de Cámara degrada honesto al PDF");
+  }
+  const r2Creds =
+    env.R2_ENDPOINT_URL && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY && env.R2_BUCKET;
+  const r2: TablaR2Target | undefined = r2Creds
+    ? new R2Store({
+        endpoint: env.R2_ENDPOINT_URL!,
+        accessKeyId: env.R2_ACCESS_KEY_ID!,
+        secretAccessKey: env.R2_SECRET_ACCESS_KEY!,
+        bucket: env.R2_BUCKET!,
+      })
+    : undefined;
+
   const res = await runIngest({
     conectorCamara,
     conectorSenado,
@@ -119,11 +150,17 @@ async function main(): Promise<void> {
     soloSenado,
     backoffMs: BACKOFF_MS,
     log,
+    proveedorTablaCamara,
+    r2,
+    r2Enabled: Boolean(r2Creds),
+    // `prmId=0` = la semana vigente → asociar la tabla a la semana ISO actual (la primera del rango).
+    semanaTablaCamara: desde,
   });
 
   console.log(
     `\nagenda ${dryRun ? "DRY-RUN" : "LIVE"}: camara=${res.camaraCitaciones} ` +
       `senado=${res.senadoCitaciones} sesiones=${res.senadoSesiones} ` +
+      `camaraSesiones=${res.camaraSesiones} ` +
       `errores=${res.errores.length} degradaciones=${res.degradaciones.length}`,
   );
   for (const e of res.errores) log(`agenda: ERROR [${e.fuente}/${e.clave}]: ${e.mensaje}`);

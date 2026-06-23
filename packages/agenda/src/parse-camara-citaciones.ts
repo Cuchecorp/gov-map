@@ -102,7 +102,7 @@ function extraerBoletines(materia: string): string[] {
   BOLETIN_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = BOLETIN_RE.exec(materia)) !== null) {
-    const boletin = `${m[1].replace(/\./g, "")}-${m[2]}`;
+    const boletin = `${m[1]!.replace(/\./g, "")}-${m[2]}`;
     if (!seen.has(boletin)) {
       seen.add(boletin);
       out.push(boletin);

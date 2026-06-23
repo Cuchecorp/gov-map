@@ -26,6 +26,21 @@ import { parseCamaraCitaciones } from "./parse-camara-citaciones";
 import { parseSenadoCitaciones } from "./parse-senado-citaciones";
 import { parseSenadoTabla } from "./parse-senado-tabla";
 import { CAMARA_TABLA_PDF_URL } from "./connector-camara";
+import { extraerTextoTablaPdf, parseCamaraTabla } from "./parse-camara-tabla";
+import { sha256Hex } from "@obs/ingest";
+import type { LLMProvider } from "@obs/llm";
+
+/** Target R2 mínimo (envuelve `R2Store.putImmutable`). Devuelve la key escrita. */
+export interface TablaR2Target {
+  putImmutable(
+    source: string,
+    resource: string,
+    date: string,
+    sha: string,
+    ext: string,
+    body: Uint8Array,
+  ): Promise<string>;
+}
 
 export interface RunIngestOpts {
   conectorCamara: CitacionesCamaraConnector;
@@ -42,6 +57,20 @@ export interface RunIngestOpts {
   /** Sleep inyectable (tests). Default: setTimeout. */
   sleep?: (ms: number) => Promise<void>;
   log?: (msg: string) => void;
+  /**
+   * Provider LLM (DeepSeek) para extraer la tabla de sala de la Cámara desde el PDF. Si se omite,
+   * el paso 4 mantiene la DEGRADACIÓN HONESTA pura (enlace PDF, sin filas).
+   */
+  proveedorTablaCamara?: LLMProvider;
+  /** Target R2 para persistir el PDF crudo (etapa 1). Gateado por `r2Enabled`. */
+  r2?: TablaR2Target;
+  /** Habilita la etapa 1 (R2) del PDF de la tabla. Default false (mismo gate que fichas). */
+  r2Enabled?: boolean;
+  /**
+   * Semana ISO a la que se asocia la tabla de sala de Cámara (`prmId=0` = la vigente). Default:
+   * la primera de `semanas`. La `SesionSala` se identifica `camara:sesion:<YYYY-Www>`.
+   */
+  semanaTablaCamara?: SemanaIso;
 }
 
 /** Marcador de degradación de una fuente (no es un error de datos: es honestidad). */
@@ -61,6 +90,8 @@ export interface RunIngestResult {
   senadoCitaciones: number;
   /** Sesiones de sala del Senado escritas. */
   senadoSesiones: number;
+  /** Sesiones de sala de la Cámara escritas (tabla DeepSeek-desde-PDF; 0 si se degradó). */
+  camaraSesiones: number;
   /** Errores por (fuente/semana) — tolerados, no abortan la corrida. */
   errores: { fuente: string; clave: string; mensaje: string }[];
   /** Degradaciones honestas (Cámara bloqueada y/o tabla de Cámara = PDF). */
@@ -85,6 +116,7 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
   let camaraCitaciones = 0;
   let senadoCitaciones = 0;
   let senadoSesiones = 0;
+  let camaraSesiones = 0;
 
   // ── 1. CÁMARA citaciones (enumeración de semanas ISO; 403 persistente → degrada) ────
   if (opts.soloSenado === true) {
@@ -182,21 +214,89 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
     });
   }
 
-  // ── 4. CÁMARA tabla de sala (DEGRADACIÓN HONESTA: PDF, NUNCA filas) ─────────────────
-  // No hay fuente estructurada para Cámara: se registra el PDF oficial como marcador. NO se
-  // llama a upsertSesiones para Cámara → 0 filas de tabla de Cámara en la DB (T-06-09).
-  const pdf = opts.conectorCamara.fetchPdfTabla();
-  degradaciones.push({
-    fuente: "camara-tabla-sala",
-    motivo: "Cámara no publica la tabla de sala como dato estructurado (solo PDF)",
-    enlace: pdf.url, // === CAMARA_TABLA_PDF_URL
-  });
-  log(`ingest: Cámara tabla de sala → degradación honesta (PDF: ${CAMARA_TABLA_PDF_URL})`);
+  // ── 4. CÁMARA tabla de sala (DeepSeek-desde-PDF; degradación honesta si falla) ───────
+  // Flujo LOCKED de 2 etapas: fetch PDF (con Referer anti-WAF) → R2 crudo (etapa 1, gateado)
+  //   → unpdf (capa de texto) → DeepSeek extrae los ítems (etapa 2) → upsertSesiones(camara).
+  // CUALQUIER fallo (soloSenado, sin provider, 403, PDF escaneado, RUT, 0 ítems) cae a la
+  // DEGRADACIÓN HONESTA actual (enlace PDF, sin fabricar filas — T-06-09 / CR-01).
+  let tablaCamaraEstructurada = false;
+  if (opts.soloSenado !== true && opts.proveedorTablaCamara) {
+    const semanaTabla = opts.semanaTablaCamara ?? opts.semanas[0];
+    if (!semanaTabla) {
+      log("ingest: Cámara tabla → sin semana de referencia → degrada al PDF");
+    } else {
+      try {
+        // Etapa 0: fetch del PDF crudo (bytes) con el header-set + Referer anti-Cloudflare.
+        const pdfBytes = await opts.conectorCamara.fetchTablaSalaPdf();
+
+        // Etapa 1: persistir el crudo content-addressed en R2 (gateado; best-effort).
+        if (opts.r2Enabled && opts.r2) {
+          try {
+            const sha = await sha256Hex(pdfBytes);
+            const date = new Date().toISOString().slice(0, 10);
+            const key = await opts.r2.putImmutable(
+              "camara",
+              "tabla-sala",
+              date,
+              sha,
+              "pdf",
+              pdfBytes,
+            );
+            log(`ingest: Cámara tabla → PDF crudo en R2 (${key})`);
+          } catch (err) {
+            // R2 401/red: el PDF ya está en memoria; la etapa 2 sigue (no aborta).
+            log(
+              `ingest: Cámara tabla → respaldo R2 falló (sigue extracción): ${err instanceof Error ? err.message : String(err)}`,
+            );
+          }
+        }
+
+        // Etapa 2a: capa de texto (unpdf). PDF escaneado/no-PDF → null → degrada honesto.
+        const texto = await extraerTextoTablaPdf(pdfBytes, log);
+        if (texto != null) {
+          // Etapa 2b: extracción estructurada (DeepSeek json_object + zod).
+          const sesiones = await parseCamaraTabla(texto, semanaTabla, {
+            provider: opts.proveedorTablaCamara,
+            log,
+          });
+          if (sesiones.length > 0) {
+            await opts.writer.upsertSesiones(sesiones);
+            camaraSesiones += sesiones.reduce((n, s) => n + s.items.length, 0);
+            tablaCamaraEstructurada = true;
+            log(
+              `ingest: Cámara tabla de sala → ${sesiones.length} sesión(es), ` +
+                `${camaraSesiones} ítem(s) (DeepSeek-desde-PDF)`,
+            );
+          }
+        }
+      } catch (err) {
+        // 403 del WAF / fallo de red / unpdf: degrada honesto (no aborta el Senado).
+        const motivo = err instanceof CamaraBloqueadaError ? "WAF 403" : "fallo";
+        log(
+          `ingest: Cámara tabla → ${motivo} → degrada al PDF: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+  }
+
+  // Si la extracción estructurada NO produjo filas, se mantiene la DEGRADACIÓN HONESTA: se
+  // registra el PDF oficial como marcador (el frontend cae al enlace). NUNCA filas inventadas.
+  if (!tablaCamaraEstructurada) {
+    const pdf = opts.conectorCamara.fetchPdfTabla();
+    degradaciones.push({
+      fuente: "camara-tabla-sala",
+      motivo:
+        "tabla de sala de la Cámara no disponible como dato estructurado esta corrida (solo PDF)",
+      enlace: pdf.url, // === CAMARA_TABLA_PDF_URL
+    });
+    log(`ingest: Cámara tabla de sala → degradación honesta (PDF: ${CAMARA_TABLA_PDF_URL})`);
+  }
 
   return {
     camaraCitaciones,
     senadoCitaciones,
     senadoSesiones,
+    camaraSesiones,
     errores,
     degradaciones,
   };

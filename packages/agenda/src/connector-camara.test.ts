@@ -102,4 +102,27 @@ describe("CitacionesCamaraConnector — reuso de @obs/ingest + header-set CF", (
     expect(pdf.content_type).toBe("application/pdf");
     expect(calls).not.toContain("fetch"); // NO emite request (no fabrica filas)
   });
+
+  it("fetchTablaSalaPdf GETea el verDoc con el header-set + Referer anti-WAF y devuelve bytes", async () => {
+    const { deps, urls, headersVistos } = makeDeps({ body: "%PDF-1.7 fake" });
+    const conn = new CitacionesCamaraConnector(deps);
+
+    const bytes = await conn.fetchTablaSalaPdf();
+    expect(bytes).toBeInstanceOf(Uint8Array);
+    expect(new TextDecoder().decode(bytes)).toContain("%PDF-");
+    expect(urls[0]).toBe(CAMARA_TABLA_PDF_URL);
+    const h = headersVistos[0]!;
+    // El Referer que el WAF exige para verDoc (verificado LIVE) + el header-set de navegador.
+    expect(h["Referer"]).toBe(
+      "https://www.camara.cl/legislacion/sala_sesiones/tabla.aspx",
+    );
+    expect(h["Sec-Fetch-Mode"]).toBe("navigate");
+    expect(h["User-Agent"]).toContain("Bot-Ciudadano/1.0");
+  });
+
+  it("fetchTablaSalaPdf relanza un 403 del WAF como CamaraBloqueadaError (caller degrada al PDF)", async () => {
+    const { deps } = makeDeps({ status: 403 });
+    const conn = new CitacionesCamaraConnector(deps);
+    await expect(conn.fetchTablaSalaPdf()).rejects.toBeInstanceOf(CamaraBloqueadaError);
+  });
 });
