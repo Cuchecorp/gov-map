@@ -1,0 +1,61 @@
+name: agenda-weekly
+
+# Ingesta SEMANAL de la AGENDA legislativa (citaciones de comisiones Cámara+Senado + tabla
+# de sala del Senado) contra PROD. La agenda es FORWARD-LOOKING: el WeekNav de /agenda usa la
+# semana ISO actual, así que si no se reingiere semanalmente vuelve a quedar vacía.
+#
+# Corre el MISMO código del CLI de operador (@obs/agenda run-agenda-prod-cli) — semana actual
+# + próximas 2 por defecto — con el orden LOCKED de @obs/ingest (allowlist→robots→rate-limit
+# 2-3s→fetch) y el transporte curl anti-WAF para Cámara. Secrets vía ${{ secrets.* }}.
+#
+# Schedule: lunes 11:00 UTC (~07:00 CL) — antes de la semana parlamentaria. También manual.
+
+on:
+  schedule:
+    - cron: "0 11 * * 1" # lunes 11:00 UTC
+  workflow_dispatch:
+    inputs:
+      desde:
+        description: "Semana ISO inicial YYYY-Www (opcional; default: semana actual)"
+        required: false
+        default: ""
+      hasta:
+        description: "Semana ISO final YYYY-Www (opcional; default: actual + 2)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  agenda:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Run agenda weekly ingest (mismo código del CLI)
+        env:
+          SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.desde }}" ]; then
+            ARGS="$ARGS --desde ${{ github.event.inputs.desde }}"
+          fi
+          if [ -n "${{ github.event.inputs.hasta }}" ]; then
+            ARGS="$ARGS --hasta ${{ github.event.inputs.hasta }}"
+          fi
+          pnpm --filter @obs/agenda exec tsx src/run-agenda-prod-cli.ts $ARGS
