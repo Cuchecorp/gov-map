@@ -50,6 +50,13 @@ jobs:
         env:
           SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          # Tabla de sala de la Cámara (DeepSeek-desde-PDF): sin estos, el paso 4 degrada
+          # honesto al enlace PDF. R2 = etapa 1 (PDF crudo content-addressed) gateada.
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
           ARGS=""
           if [ -n "${{ github.event.inputs.desde }}" ]; then

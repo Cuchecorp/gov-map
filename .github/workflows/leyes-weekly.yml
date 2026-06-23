@@ -1,0 +1,66 @@
+name: leyes-weekly
+
+# Ingesta SEMANAL incremental de PROYECTOS DE LEY (tramitación + votaciones + votos + timeline)
+# contra PROD. Cadencia "sweet spot": un pase los VIERNES, al cierre de la semana parlamentaria,
+# captura los votos de la semana + cambios de etapa + proyectos nuevos sin ser diario.
+#
+# Refresca el conjunto de boletines que la plataforma YA referencia (proyecto + agenda de
+# comisiones + tabla de sala) — ver run-tramitacion-prod-cli. Idempotente (upsert por clave
+# natural). Mismo orden LOCKED de @obs/ingest (allowlist→robots→rate-limit 2-3s→fetch). Fuentes:
+# opendata.camara.cl (WS abierto) + web-back/tramitacion del Senado (XML) — sin WAF, fetch nativo.
+#
+# Schedule: viernes 20:00 UTC (~16:00 CL). También manual (workflow_dispatch).
+
+on:
+  schedule:
+    - cron: "0 20 * * 5" # viernes 20:00 UTC
+  workflow_dispatch:
+    inputs:
+      limite:
+        description: "Máx. boletines a refrescar (default 80)"
+        required: false
+        default: ""
+      boletines:
+        description: "Lista explícita YYYY-NN,… (opcional; override del set de la DB)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: leyes-weekly
+  cancel-in-progress: false
+
+jobs:
+  leyes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Run leyes weekly ingest (mismo código del CLI)
+        env:
+          SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.limite }}" ]; then
+            ARGS="$ARGS --limite ${{ github.event.inputs.limite }}"
+          fi
+          if [ -n "${{ github.event.inputs.boletines }}" ]; then
+            ARGS="$ARGS --boletines ${{ github.event.inputs.boletines }}"
+          fi
+          pnpm --filter @obs/tramitacion exec tsx src/run-tramitacion-prod-cli.ts $ARGS
