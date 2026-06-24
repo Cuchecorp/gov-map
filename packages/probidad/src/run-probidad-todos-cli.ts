@@ -28,13 +28,24 @@ function flagValue(name: string): string | null {
   return i >= 0 && i + 1 < process.argv.length ? process.argv[i + 1]! : null;
 }
 
-/** Lee `.env` (BOM-safe) desde la raíz del workspace (cwd) → mapa de variables. */
+/**
+ * Carga variables BOM-safe: parte del `.env` local (operador) y deja que `process.env`
+ * tenga PRECEDENCIA (CI/GitHub Actions inyecta los secrets ahí, sin archivo `.env`). Si
+ * no hay `.env` (CI), usa solo `process.env`.
+ */
 function loadEnv(root: string): Record<string, string> {
-  const raw = readFileSync(join(root, ".env"), "utf8").replace(/^﻿/, "");
   const out: Record<string, string> = {};
-  for (const line of raw.split(/\r?\n/)) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/);
-    if (m) out[m[1]!] = m[2]!.trim().replace(/^['"]|['"]$/g, "");
+  try {
+    const raw = readFileSync(join(root, ".env"), "utf8").replace(/^﻿/, "");
+    for (const line of raw.split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/);
+      if (m) out[m[1]!] = m[2]!.trim().replace(/^['"]|['"]$/g, "");
+    }
+  } catch {
+    // Sin `.env` (CI): los secrets vienen de process.env (abajo).
+  }
+  for (const k of ["SUPABASE_API_URL", "SUPABASE_SECRET_KEY"]) {
+    if (process.env[k]) out[k] = process.env[k]!;
   }
   return out;
 }
