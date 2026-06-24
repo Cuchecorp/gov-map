@@ -1,0 +1,74 @@
+name: lobby-leylobby-weekly
+
+# Ingesta SEMANAL de AUDIENCIAS de lobby desde leylobby.gob.cl contra PROD. Alcance LOCKED: solo
+# instituciones del EJECUTIVO (la Cámara y el Senado NO publican en leylobby.gob.cl — su lobby va
+# por el portal de transparencia de cada cámara, ver lobby-camara-weekly).
+#
+# Sin WAF: leylobby.gob.cl responde al fetch nativo de Node → run directo, sin --html-file.
+# Degradación honesta: si una institución devuelve 403/503 el conector lanza LeylobbyBloqueadaError,
+# que se cuenta como degradación (NO error) → exit 0. Por eso el assert acepta audiencias>0 OR
+# degradaciones>0 (no falla por una degradación honesta).
+#
+# Schedule: miércoles 11:00 UTC (~07:00 CL) — distinto de agenda(lun)/lobby-camara(mar)/leyes(vie).
+
+on:
+  schedule:
+    - cron: "0 11 * * 3" # miércoles 11:00 UTC
+  workflow_dispatch:
+    inputs:
+      institucion:
+        description: "Código de institución del ejecutivo (opcional; default del CLI AA001)"
+        required: false
+        default: ""
+      anio:
+        description: "Año YYYY (opcional; default: año actual)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lobby-leylobby-weekly
+  cancel-in-progress: false
+
+jobs:
+  lobby-leylobby:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install deps
+        # --ignore-scripts: tsx trae su propio esbuild; evita ERR_PNPM_IGNORED_BUILDS (gate pnpm 11).
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run lobby LeyLobby
+        env:
+          # ENV NAMES DIVERGENTES: ingest-cli.ts lee SUPABASE_URL/SUPABASE_SERVICE_KEY (NO los
+          # nombres SUPABASE_API_URL/SUPABASE_SECRET_KEY de Cámara/probidad). Sin este mapeo el CLI
+          # no ve los secrets y degrada a dry-run silencioso. Mapear desde los secrets del repo:
+          SUPABASE_URL: ${{ secrets.SUPABASE_API_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          # Inputs por ENV (no interpolados en el shell) — evita inyección de comandos en un step
+          # que lleva SUPABASE_SERVICE_KEY.
+          INSTITUCION: ${{ github.event.inputs.institucion }}
+          ANIO: ${{ github.event.inputs.anio }}
+        run: |
+          ARGS=""
+          if [ -n "$INSTITUCION" ]; then ARGS="$ARGS --institucion $INSTITUCION"; fi
+          if [ -n "$ANIO" ]; then ARGS="$ARGS --anio $ANIO"; fi
+          OUT=$(pnpm --filter @obs/lobby exec tsx src/ingest-cli.ts $ARGS)
+          echo "$OUT"
+          # ACEPTA degradación honesta: audiencias>0 O degradaciones>0 (LeylobbyBloqueadaError = exit 0).
+          echo "$OUT" | grep -qE 'audiencias=[1-9][0-9]*|degradaciones=[1-9][0-9]*' \
+            || { echo "ni audiencias ni degradaciones"; exit 1; }
