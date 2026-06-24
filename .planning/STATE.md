@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — De datos a cruces verificables
 status: executing
-stopped_at: 18-01 Tasks 1-2 code-complete (0030_net.sql entidad/arista deny-by-default + net.materializar_aristas() proc + subgrafo_red RPC PII-safe depth-clamped; 0030_net.test.sql pgTAP 16 asserts incl. plan-checker MEDIUM-2 caso negativo de normalización). DETENIDO en Task 3 = checkpoint de operador BLOCKING (apply remoto por psql --db-url + pgTAP + log conteo de aristas). Gate NET cerrado (NET_PUBLIC_ENABLED OFF hasta signoff F17).
-last_updated: "2026-06-24T02:37:31.532Z"
+stopped_at: 35-01 Tasks 1-3 code-complete (3 migraciones 0034/0035/0036 + 3 pgTAP, verificadas localmente por grep + commiteadas f12691b/80ac800/80bbc9d). DETENIDO en Task 4 = checkpoint de operador BLOCKING (gate=blocking-human): aplicar 0034/0035/0036 al remoto PROD por psql --single-transaction (NUNCA db push) + registrar schema_migrations + pgTAP 0034/0035/0036 verde + probe anon permission-denied. Clave natural (tipo_entidad, mencion_normalizada) indice unico TOTAL; Δ2 defensa-en-DB juridica-solo-determinista incluida.
+last_updated: "2026-06-24T03:10:00.000Z"
 last_activity: 2026-06-24
 progress:
   total_phases: 33
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 35 (ENT — Resolución de identidades de terceros) — EXECUTING
-Plan: 2 of 4
-Status: Ready to execute
+Plan: 1 of 4 — Tasks 1-3 done, Task 4 = checkpoint operador BLOCKING (pendiente)
+Status: Checkpoint pendiente (apply remoto por operador)
 Last activity: 2026-06-24
 
 ## Performance Metrics
@@ -186,6 +186,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 22]: 22-03: VotacionCard enmarca el desenlace 'El proyecto fue {resultado} {si}-{no}' (conteoVotacion en-dash, Mono) SOBRE el EtapaBadge existente (no lo reemplaza); resultado null omite SOLO la frase (barra/totales intactos). Espejo SC6: la seccion #votaciones del proyecto conecta con su idea matriz via leerFicha cacheada (React.cache, cero query nueva) — linea 'Que se voto: {extractoIdea}' + ancla a #idea-matriz; idea_matriz null omite la linea (honest-state), nunca fabrica. Carriles #votaciones/#idea-matriz siguen hermanos mt-12 (no anidan, no componen con dinero/lobby). Suite 214/214 verde, tsc limpio, cero banned-vocab. RPC 0028 apply remoto pendiente, NO bloquea.
 - [Phase ?]: NET Candado B: netPublicEnabled() server-only fail-closed (=== 'true'), espejo de money-gate; ruta /red gatea con notFound() OFF como primera sentencia, sin filtrar DOM; isla RedGraph placeholder real (Plan 18-03 monta xyflow); grafo vacío => estado honesto
 - [Phase ?]: NET-02 UI entregada: isla 'use client' @xyflow/react@12.11.0 bajo components/red/ (nodo sobrio nombre+camara, arista=hecho tipado+ventana, provenance siempre en DOM, CC BY 4.0 solo si la fila trae licencia); xyflow contenido en la client island, no infla rutas server. NET sigue gateado-OFF hasta signoff F17
+- [Phase 35]: [35-01]: DDL del subsistema de terceros (0034/0035/0036) ESPEJA parlamentario (0005/0006/0007/0012/0015) con Δ1 tipo_entidad, Δ2 defensa-en-DB juridica-solo-determinista (RAISE en la guarda del vinculo), Δ3 FK lobby_contraparte.contraparte_id + contratista.entidad_id + identidad_audit.tipo_entidad. id estable por sequence DB (entidad_id_seq 'E00001', no logica TS). Clave natural vinculo_entidad = (tipo_entidad, mencion_normalizada) indice unico TOTAL (no parcial — PostgREST onConflict), coincidente byte-a-byte con el on conflict del RPC resolver_entidad (10 params, grants firma-exacta). identidad_audit REUSADO (A3); donante.entidad_id diferido a Phase 36 (A2). Tasks 1-3 verificadas por grep + commiteadas; Task 4 = apply remoto = checkpoint operador.
 - [Phase ?]: [Phase 35]: [35-02]: matchDeterministaEntidad fail-closed con juridica-solo-RUT (Δ2: juridica-sin-rut nunca confirma por nombre ni habilita el LLM); EnlaceEntidadConfirmado branded con unique symbol privado propio no exportado (grep-gate); seeder-entidad idempotente (2da corrida=0 nuevos, nunca auto-confirma); custodia JSON determinista byte-a-byte (entidad_tercero.seed.json); backfill-entidad-cli LOCAL. EntidadTercero* locales (0034-0036 no aplicadas aun). 110/110 verde + tsc -b limpio.
 
 ### Pending Todos
@@ -206,6 +207,7 @@ None yet for v2.0.
 - 15-02 OPERADOR: crear bucket privado Supabase Storage crudo-servel + corrida LIVE SERVEL (URL del xlsx por eleccion la provee el operador via --url; ejercita el pipeline de identidad real)
 - 21-02 Task 3 checkpoint operador BLOCKING: aplicar 0026 al Supabase remoto via supabase db push --db-url + supabase test db --db-url (pgTAP 0027 = 7/7) + probe psql parlamentarios_publico() 7 columnas sin PII. Codigo Tasks 1-2 commiteado (1965b72, daeb1fc); 6 tests RTL verdes. NO ejecutado por el agente.
 - 22-01 Task 3 checkpoint operador BLOCKING: aplicar 0028_votos_instructivos.sql al Supabase remoto via supabase db push --db-url "$SUPABASE_DB_URL" + supabase test db --db-url (pgTAP 0029 verde + 0019/0020/0026/0027 sin regresion) + probe psql votos_de_parlamentario('D1054',50,0) confirmando titulo/idea_matriz/resultado/total_si/total_no/quorum/etapa pobladas para 14309-04/18296-05. Codigo Tasks 1-2 commiteado (d97b845, eb1269f); tsc verde + 13 RTL. NO ejecutado por el agente.
+- 35-01 Task 4 checkpoint operador BLOCKING (gate=blocking-human): aplicar 0034/0035/0036 al Supabase remoto PROD por `psql "$SUPABASE_DB_URL" --single-transaction -v ON_ERROR_STOP=1 -f <mig>` (en orden 0034→0035→0036; NUNCA `supabase db push` — la ultima en PROD es 0033) + registrar las 3 filas en schema_migrations + correr pgTAP `psql "$SUPABASE_DB_URL" -f supabase/tests/003X_*.test.sql` (0034/0035/0036 sin fallos + sin regresion en 0018/0021/0022/0023/0024) + probe deny-by-default con anon key `select * from entidad_tercero limit 1` => permission denied. Esquivar BOM U+FEFF al extraer SUPABASE_DB_URL (helper Phases 9-12). Codigo Tasks 1-3 commiteado (f12691b, 80ac800, 80bbc9d); greps verdes; SUMMARY 35-01 escrito. NO ejecutado por el agente. Resume-signal: "pgTAP verde".
 - 18-01 Task 3 checkpoint operador BLOCKING (gate=blocking-human): aplicar 0030_net.sql al Supabase remoto via `psql "$SUPABASE_DB_URL" -f supabase/migrations/0030_net.sql` (NUNCA `supabase db push` — drift schema_migrations ≤0025) + seed `psql "$SUPABASE_DB_URL" -c "select net.materializar_aristas();"` + pgTAP `psql "$SUPABASE_DB_URL" -f supabase/tests/0030_net.test.sql` (16 asserts verdes) + confirmar `select count(*) from cron.job where jobname='net-materializar-aristas'` = 1 + LOGUEAR conteo de aristas materializadas `select tipo, count(*) from arista group by 1;` (un grafo vacío/engañoso se cacha al aplicar, no en producción). Codigo Tasks 1-2 commiteado (2732c53, 60ac5ff); SUMMARY 37ae22e; greps verdes. NO ejecutado por el agente. Gate NET sigue cerrado (NET_PUBLIC_ENABLED OFF hasta signoff F17).
 
 ### Quick Tasks Completed
@@ -226,8 +228,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-24T02:37:31.508Z
-Stopped at: 18-01 Tasks 1-2 code-complete (0030_net.sql entidad/arista deny-by-default + net.materializar_aristas() proc + subgrafo_red RPC PII-safe depth-clamped; 0030_net.test.sql pgTAP 16 asserts incl. plan-checker MEDIUM-2 caso negativo de normalización). DETENIDO en Task 3 = checkpoint de operador BLOCKING (apply remoto por psql --db-url + pgTAP + log conteo de aristas). Gate NET cerrado (NET_PUBLIC_ENABLED OFF hasta signoff F17).
+Last session: 2026-06-24T03:10:00.000Z
+Stopped at: 35-01 Tasks 1-3 code-complete (3 migraciones 0034/0035/0036 + 3 pgTAP, verificadas por grep + commiteadas f12691b/80ac800/80bbc9d). DETENIDO en Task 4 = checkpoint de operador BLOCKING (gate=blocking-human): apply remoto PROD por psql --single-transaction + schema_migrations + pgTAP 0034/0035/0036 verde + probe anon permission-denied.
 Resume file: None
 
 ## Operator Next Steps
