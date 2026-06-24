@@ -1,10 +1,10 @@
 ---
 documento: 41-LEGAL-DOSSIER-CRUCES
 alcance: CRUCES (señales parlamentario↔sector)
-signoff: pending          # pending | approved | rejected
-asesor: ""                # nombre del asesor legal externo (vacío hasta firmar)
-fecha_signoff: ""         # ISO 8601 al firmar
-observaciones: ""
+signoff: approved         # pending | approved | rejected
+asesor: "Carlos Sánchez Rossi"   # asesor legal externo que revisó y firmó
+fecha_signoff: "2026-06-24"      # ISO 8601
+observaciones: "Aprobado sujeto a mantener el tratamiento de los datos bajo el principio de proporcionalidad y finalidad, y a nueva revisión antes de la entrada en vigor de la nueva ley de datos personales (diciembre de 2026)."
 depende_de: "deuda operador Phase 39; CRUCEN-03 deliverable de Phase 41"
 nota: "Para encender crucesPublicEnabled se requiere la firma legal (estado aprobado) y aplicar el grant 0042."
 ---
@@ -334,30 +334,30 @@ que el asesor debe ponderar:
 > Completar al firmar. El estado se refleja en el front-matter YAML (`signoff`, `asesor`,
 > `fecha_signoff`, `observaciones`) de este archivo y de su copia en `docs/legal/`.
 
-- **Nombre del asesor:** ______________________________
-- **Fecha del sign-off (ISO 8601):** ______________________________
+- **Nombre del asesor:** Carlos Sánchez Rossi
+- **Fecha del sign-off (ISO 8601):** 2026-06-24
 - **Alcance cubierto:** CRUCES (señales parlamentario↔sector). MONEY queda fuera
   (`13-LEGAL-DOSSIER` / Phase 13); NET/grafo queda fuera (`17-LEGAL-DOSSIER` / Phase 17).
-- **Observaciones:** ______________________________________________
+- **Observaciones:** Aprobado sujeto a mantener el tratamiento de los datos bajo el principio de proporcionalidad y finalidad, y a nueva revisión antes de la entrada en vigor de la nueva ley de datos personales (diciembre de 2026).
 
 **Checklist por seccion** (marcar cada una al validar):
 
-- [ ] §1 Superficie CRUCES = composicion intra-bloque (lobby agregado por sector, no datos
+- [x] §1 Superficie CRUCES = composicion intra-bloque (lobby agregado por sector, no datos
       nuevos; señal lobby-pura `lobby_sector`): revisada y validada.
-- [ ] §2 Riesgo NUCLEAR — agregacion por sector como insinuacion de afinidad/captura +
+- [x] §2 Riesgo NUCLEAR — agregacion por sector como insinuacion de afinidad/captura +
       garantias de framing descriptivo (conteo neutro, sin aristas/caminos): revisada y
       validada.
-- [ ] §3 Datos sensibles y de terceros (contrapartes de lobby crudas; SIN partido, SIN
+- [x] §3 Datos sensibles y de terceros (contrapartes de lobby crudas; SIN partido, SIN
       sentido de voto, SIN rut/donante_id; contraparte nunca enlazada): revisada y validada.
-- [ ] §4 Minimizacion + doble candado (no-LLM, conteo neutro, carril aislado; Candado A =
+- [x] §4 Minimizacion + doble candado (no-LLM, conteo neutro, carril aislado; Candado A =
       RLS deny-by-default `0039` + RPC sin grant `0040`/`0041` + grant gated `0042` no
       aplicado; Candado B = `crucesPublicEnabled` default OFF): revisada y validada.
-- [ ] §6 Atribucion fuente unica = lobby (mencion de fuente; NO CC BY 4.0): confirmada.
-- [ ] §7 Base de licitud (interes legitimo + test + **factor de agregacion por sector**):
+- [x] §6 Atribucion fuente unica = lobby (mencion de fuente; NO CC BY 4.0): confirmada.
+- [x] §7 Base de licitud (interes legitimo + test + **factor de agregacion por sector**):
       revisada y validada.
-- [ ] §8 Gate `crucesPublicEnabled` depende de la firma legal (estado aprobado) + aplicar
+- [x] §8 Gate `crucesPublicEnabled` depende de la firma legal (estado aprobado) + aplicar
       `0042_cruces_grant_anon`: confirmada.
-- [ ] Decision de sign-off: ( ) approved ( ) rejected — registrar en YAML `signoff`.
+- [x] Decision de sign-off: (x) approved ( ) rejected — registrado en YAML `signoff: approved`.
 
 ---
 
