@@ -294,6 +294,53 @@ export interface LobbyAudienciaRow {
 }
 
 /**
+ * Fila CRUDA del RPC `cruces_de_parlamentario` (migración 0040, security definer,
+ * deny-by-default — sin grant a anon hasta firma legal Phase 39). Espejo de
+ * `LobbyAudienciaRpcRow` en disciplina PII-safe. El RPC proyecta SOLO el catálogo
+ * público de sector (`sector_id`/`sector_etiqueta`) + `tipo_senal` + `conteo` + la
+ * `evidencia` jsonb; NUNCA `rut`, `donante_id` ni `partido`. La evidencia nace
+ * PII-safe en el materializador (0039): nombre CRUDO de contraparte, sin RUT.
+ * `tipo_senal` hoy solo toma `'lobby_sector'`; el UI degrada honesto ante otros.
+ */
+export interface CruceSenalRpcRow {
+  sector_id: string;
+  sector_etiqueta: string;
+  /** Hoy SOLO `'lobby_sector'`; degradar honesto a cualquier otro valor futuro. */
+  tipo_senal: string;
+  /** Conteo NEUTRO (único agregado permitido §9.1) — sin score/ranking/afinidad. */
+  conteo: number;
+  evidencia: CruceEvidencia;
+}
+
+/**
+ * Forma del jsonb `evidencia` (0039): conteo + items[] crudos con su enlace de
+ * fuente (trazabilidad por dato, FND-08).
+ */
+export interface CruceEvidencia {
+  conteo: number;
+  items: CruceEvidenciaItem[];
+}
+
+/**
+ * Un item de evidencia de cruce (forma EXACTA del jsonb de 0039). Pitfall 1: a
+ * diferencia de `LobbyAudienciaRow`, el item NO trae `fecha_captura` ni `origen`
+ * → el `ProvenanceBadge` se alimenta con `fecha` (capturedAt) + `enlace_fuente`
+ * (sourceUrl) + `sourceLabel("lobby")` (sourceName), NUNCA `fecha_captura`/`origen`.
+ */
+export interface CruceEvidenciaItem {
+  /** `'reunion'` hoy; etiqueta cruda del tipo de hecho. */
+  tipo: string;
+  /** ISO date de la audiencia. `null` si la fuente no la publica → `ProvenanceBadge.capturedAt`. */
+  fecha: string | null;
+  /** Nombre CRUDO de la contraparte (D-10), nunca normalizado/inferido → siempre con `IdentityMarker`. */
+  contraparte_nombre_crudo: string;
+  /** Identificador crudo de la audiencia (clave de fila, nunca un RUT). */
+  audiencia_id: string;
+  /** Enlace a la fuente original → `ProvenanceBadge.sourceUrl`. `null` → sin enlace. */
+  enlace_fuente: string | null;
+}
+
+/**
  * Fila CRUDA del RPC `declaraciones_de_parlamentario` (migración 0022, security
  * definer). El RPC proyecta SOLO los campos escalares publicados de la versión —
  * NUNCA `parlamentario_id` interno, NUNCA un familiar, NUNCA un RUT de persona
