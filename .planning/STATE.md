@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — De datos a cruces verificables
-status: executing
+status: verifying
 stopped_at: Completed 36-01-PLAN.md
-last_updated: "2026-06-24T15:32:53.692Z"
+last_updated: "2026-06-24T15:50:28.822Z"
 last_activity: 2026-06-24
 progress:
   total_phases: 33
-  completed_phases: 16
+  completed_phases: 17
   total_plans: 61
-  completed_plans: 69
-  percent: 48
+  completed_plans: 70
+  percent: 52
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 Phase: 36 (cruce-capa-de-cruces-parlamentario-sector-deny-by-default) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Verificación PROD: pgTAP 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12; resolver_entidad deny-by-default (anon/auth/public=f, service_role=t); confirm-with-promote ya NO lanza 23503.
 Próximo: Phase 36 — CRUCE — Capa de cruces parlamentario↔sector (deny-by-default). Depende de Phases 34/35 (entidades resueltas).
 Last activity: 2026-06-24
@@ -108,6 +108,7 @@ Last activity: 2026-06-24
 | Phase 36 P01 | 14min | 4 tasks | 6 files |
 | Phase 36 P02 | 12min | 2 tasks | 11 files |
 | Phase 36 P03 | 8min | 3 tasks | 8 files |
+| Phase 36 P04 | 25min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -198,6 +199,7 @@ Recent decisions affecting current work:
 - [Phase 35]: [35-04]: reconciliadores cablean el FK de tercero (Δ3) — reconciliar-sujeto puebla lobby_contraparte.contraparte_id (matchDeterministaEntidad por contraparte; opts.maestraEntidad inyectable) y reconciliar-contrato puebla contratista.entidad_id (proveedor: juridica RUT-exacto Δ2 / natural RUT o nombre). SOLO un match confirmado mintea EnlaceEntidadConfirmado (branded); null en juridica-sin-RUT/homonimo (fail-closed). Storage plano aplanado por los writers (A4). DATA-ROUTING: el RUT crudo SOLO alimenta el matcher determinista en memoria, NUNCA al LLM/jsonb (test lo asierta sobre vinculos/colas/prompts). entidad_id (col de 0036) vive en `contratista` (keyed rut_proveedor), no en la fila de contrato: ingest-run la stampa desde la resolucion. Cola web /admin/revisar-entidades protegida server-side (adminRevisionEnabled fail-closed como primera sentencia + supabase-admin service-role server-only; cliente nunca se construye con gate OFF); promocion SOLO humana via RPC resolver_entidad (p_promover=true metodo='humano'); revisor vacio/chosen_id invalido no tocan la DB. 9474854/b3256d2/f9cb21d; lobby 48/48, dinero 95/95, app 276/276, tsc limpio. Gate admin env-based (repo sin auth/sesion); apply remoto 0035/0036 = checkpoint operador (35-01 Task 4).
 - [Phase ?]: [Phase 36]: [36-01]: Capa de cruces escrita (NO aplicada — apply=Plan 04 BLOCKING). OPERADOR LOCKED Task 1: (A1) 13 macro-sectores codigo=clave estable D-04 sin catch-all D-05; (B1) token tipo_senal='lobby_sector' lobby-pura, reserva 'lobby_sector_aporte' a Phase 40. 0038 sector public-read + 3 ALTER sector_id references sector(codigo) en proyecto_ficha/lobby_contraparte/donante (NULL=honest no-match). 0039 cruce_senal deny-by-default + cruces.materializar_cruces() security definer FULL REBUILD (D-11) join lobby por identificador, evidencia jsonb nombre crudo D-10 + enlace fuente, sin partido/rut + cron cruces-materializar 23 3. 0040 RPC cruces_de_parlamentario security definer named-column KEEP revoke from public + DROP grant to anon (deny hasta firma Phase 39). 6 archivos; greps verde; commits b63696c/d796944/02fbccf. Apply remoto+pgTAP=Plan 04 (psql --db-url, PROD<=0037).
 - [Phase ?]: [Phase 36]: [36-02]: @obs/cruces clasificador escrito — sector.ts (SECTOR_CODIGOS/SECTOR_CATALOGO) fuente única espejo byte-a-byte de 0038; model.ts z.enum(SECTOR_CODIGOS).nullable() (abstención first-class, cero 'otros'); clasificarFicha (public/bulk->DeepSeek) y clasificarContraparte (personal/critical->MiniMax) con assertNoRutInLlmInput PRIMERO luego assertSensitivityAllowed antes de complete() (load-bearing, espejo pipeline-entidad). Wave 0 tests verdes (7/7): RUT-gate cero-llamadas, routing/sensibilidad, abstención, taxonomía cerrada. Commits 91e8c22/cd8ce4c.
+- [Phase ?]: [Phase 36] 36-04: 0038/0039/0040 APLICADAS a PROD por psql --db-url + schema_migrations; pgTAP 0038=11/0039=10/0040=4 verdes + 6 previas sin regresion. FORWARD-FIX [Rule 2]: 0040 revoca EXECUTE de anon,authenticated (Supabase concede por DEFAULT PRIVILEGES a anon en cada funcion nueva de public; pgTAP-vs-PROD cazo la fuga). LIVE: golden gate cobertura 1.000 -> clasificar-lobby-cli --limite 60 -> materializar_cruces() -> cruce_senal 30 senales lobby-puras/24 parlamentarios/10 sectores (CRUCE-03). Deny-by-default REAL: probe anon-key tabla+RPC=42501.
 
 ### Pending Todos
 
@@ -219,7 +221,7 @@ None yet for v2.0.
 - 22-01 Task 3 checkpoint operador BLOCKING: aplicar 0028_votos_instructivos.sql al Supabase remoto via supabase db push --db-url "$SUPABASE_DB_URL" + supabase test db --db-url (pgTAP 0029 verde + 0019/0020/0026/0027 sin regresion) + probe psql votos_de_parlamentario('D1054',50,0) confirmando titulo/idea_matriz/resultado/total_si/total_no/quorum/etapa pobladas para 14309-04/18296-05. Codigo Tasks 1-2 commiteado (d97b845, eb1269f); tsc verde + 13 RTL. NO ejecutado por el agente.
 - 35-01 Task 4 checkpoint operador BLOCKING (gate=blocking-human): aplicar 0034/0035/0036 al Supabase remoto PROD por `psql "$SUPABASE_DB_URL" --single-transaction -v ON_ERROR_STOP=1 -f <mig>` (en orden 0034→0035→0036; NUNCA `supabase db push` — la ultima en PROD es 0033) + registrar las 3 filas en schema_migrations + correr pgTAP `psql "$SUPABASE_DB_URL" -f supabase/tests/003X_*.test.sql` (0034/0035/0036 sin fallos + sin regresion en 0018/0021/0022/0023/0024) + probe deny-by-default con anon key `select * from entidad_tercero limit 1` => permission denied. Esquivar BOM U+FEFF al extraer SUPABASE_DB_URL (helper Phases 9-12). Codigo Tasks 1-3 commiteado (f12691b, 80ac800, 80bbc9d); greps verdes; SUMMARY 35-01 escrito. NO ejecutado por el agente. Resume-signal: "pgTAP verde".
 - 18-01 Task 3 checkpoint operador BLOCKING (gate=blocking-human): aplicar 0030_net.sql al Supabase remoto via `psql "$SUPABASE_DB_URL" -f supabase/migrations/0030_net.sql` (NUNCA `supabase db push` — drift schema_migrations ≤0025) + seed `psql "$SUPABASE_DB_URL" -c "select net.materializar_aristas();"` + pgTAP `psql "$SUPABASE_DB_URL" -f supabase/tests/0030_net.test.sql` (16 asserts verdes) + confirmar `select count(*) from cron.job where jobname='net-materializar-aristas'` = 1 + LOGUEAR conteo de aristas materializadas `select tipo, count(*) from arista group by 1;` (un grafo vacío/engañoso se cacha al aplicar, no en producción). Codigo Tasks 1-2 commiteado (2732c53, 60ac5ff); SUMMARY 37ae22e; greps verdes. NO ejecutado por el agente. Gate NET sigue cerrado (NET_PUBLIC_ENABLED OFF hasta signoff F17).
-- 36-01 / Plan 04 (BLOCKING, gate=blocking-human): aplicar 0038_sector.sql -> 0039_cruce_senal.sql -> 0040_cruces_rpc.sql al Supabase remoto PROD por psql "$SUPABASE_DB_URL" --single-transaction -v ON_ERROR_STOP=1 -f <mig> (en orden; NUNCA supabase db push — PROD<=0037) + registrar 3 filas en schema_migrations + pgTAP psql -f supabase/tests/004X_*.test.sql (0038/0039/0040 sin fallos + sin regresion 0034-0037) + probe deny anon key select * from cruce_senal => permission denied. Esquivar BOM U+FEFF. Codigo commiteado b63696c/d796944/02fbccf; greps verdes; SUMMARY 36-01 escrito. NO ejecutado por el agente. RPC + gate presentacion deny-by-default/OFF hasta firma Phase 39. Resume-signal: pgTAP verde.
+- ✅ RESUELTO 2026-06-24 (Plan 04): 0038/0039/0040 APLICADAS a PROD por psql --db-url + 3 filas en schema_migrations; pgTAP 0038=11/0039=10/0040=4 verdes + 6 previas sin regresion (0021=19/0030=17/0034=26/0035=18/0036=15/0037=12); probe anon-key cruce_senal+RPC=42501. FORWARD-FIX [Rule 2] commit 9f3139a: 0040 debia revocar EXECUTE de anon,authenticated (Supabase concede por DEFAULT PRIVILEGES; pgTAP-vs-PROD cazo la fuga). LIVE: golden gate cobertura 1.000 -> clasificar-lobby-cli --limite 60 -> materializar_cruces() -> cruce_senal 30 senales lobby-puras/24 parlamentarios distintos/10 sectores (CRUCE-03 >=5). RPC + gate presentacion siguen deny-by-default/OFF hasta firma Phase 39.
 
 ### Quick Tasks Completed
 
@@ -239,7 +241,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-24T15:32:37.986Z
+Last session: 2026-06-24T15:49:52.895Z
 Stopped at: Completed 36-01-PLAN.md
 Resume file: None
 

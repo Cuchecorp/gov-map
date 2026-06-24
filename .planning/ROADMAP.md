@@ -664,7 +664,7 @@ OPS-01 apply remoto (Phase 23, PRECONDICIÓN — la data no es visible sin las m
 | 33. INFRA — Desbloqueo de CI (loadEnv CI-safe) | v4.0 | 1/1 | Complete (quick 260623-rtl) | 2026-06-24 |
 | 34. INGEST — Ingesta lobby + probidad programada | v4.0 | 0/? | Not started | - |
 | 35. ENT — Resolución de identidades de terceros | v4.0 | 7/7 | Complete (gaps 35-05/06/07 cerrados; pgTAP 0034/35/36/37 verdes en PROD; ENT-01..05 SATISFIED) | 2026-06-24 |
-| 36. CRUCE — Capa de cruces parlamentario↔sector (deny-by-default) | v4.0 | 3/4 | In Progress|  |
+| 36. CRUCE — Capa de cruces parlamentario↔sector (deny-by-default) | v4.0 | 4/4 | Complete   | 2026-06-24 |
 | 37. SURF — Cruces en ficha de parlamentario (gated) | v4.0 | 0/? | Not started | - |
 | 38. SURF — Cruces en ficha de proyecto (gated, diferido) | v4.0 | 0/? | Not started | - |
 | 39. LEGAL — Gate legal F13/F17/cruces (sign-off humano) | v4.0 | 0/? | Not started | - |
@@ -727,7 +727,7 @@ INFRA-01 desbloqueo CI (Phase 33, ✅ DONE) — sin esto ningún workflow progra
 - [x] **Phase 33: INFRA — Desbloqueo de CI (loadEnv CI-safe)** - Parchar los CLIs estrella de lobby/probidad para cargar credenciales con fallback a `process.env` (no solo `.env` en disco) → corren en GitHub Actions sin `.env`. ✅ COMPLETA (quick task 260623-rtl, commits 1844b2f/399e3e2)
 - [x] **Phase 34: INGEST — Ingesta lobby + probidad programada** - Wire de los conectores ETL ya completos (lobby Cámara + LeyLobby, probidad InfoProbidad) a workflows recurrentes de GitHub Actions + paso R2 crudo faltante en probidad vía `SnapshotWriter`. NO programa ChileCompra/SERVEL. NO toca `MONEY_PUBLIC_ENABLED`. ✅ build autónomo + dry-run verificados (3/3 plans, 9 commits, tests verdes); LIVE = checkpoint operador pendiente.
 - [x] **Phase 35: ENT — Resolución de identidades de terceros** - Maestra `entidad_tercero` (ID estable, alias, matcher determinista, pipeline de adjudicación con gate humano, deny-by-default) que extiende el subsistema de identidad a donantes/proveedores y gestores de lobby; conecta los reconciliadores existentes (antes dejaban `contraparte_id`/`contratista` NULL). (completed 2026-06-24)
-- [ ] **Phase 36: CRUCE — Capa de cruces parlamentario↔sector (deny-by-default)** - Modelar relaciones parlamentario↔sector cruzando lobby/aportes/votos; materializar señales factuales (conteos de evidencia, sin score); etiquetado de sector por LLM con su propio eval/golden SEPARADO. Construible deny-by-default; expuesto solo tras gate legal.
+- [x] **Phase 36: CRUCE — Capa de cruces parlamentario↔sector (deny-by-default)** - Modelar relaciones parlamentario↔sector cruzando lobby/aportes/votos; materializar señales factuales (conteos de evidencia, sin score); etiquetado de sector por LLM con su propio eval/golden SEPARADO. Construible deny-by-default; expuesto solo tras gate legal. (completed 2026-06-24)
 - [ ] **Phase 37: SURF — Superficie de cruces en ficha de parlamentario (gated)** - `CrucesSection` (Server Component) que llama al RPC y renderiza señales factuales con provenance inline, sibling de `#lobby`/`#patrimonio`, detrás de `crucesPublicEnabled()` (default OFF). Construible; visible solo tras gate.
 - [ ] **Phase 38: SURF — Superficie de cruces en ficha de proyecto (gated, diferido)** - `cruces_de_proyecto(boletin)` → parlamentarios que votaron a favor con cruces en el sector del proyecto, PII-safe, mismo gate. Hereda la advertencia anti-insinuación de las señales de voto → se DIFIERE si las señales de voto quedan OFF.
 - [ ] **Phase 39: LEGAL — Gate legal transversal F13/F17/cruces (sign-off humano)** - Revisión legal humana (Ley 21.719) que habilita `MONEY_PUBLIC_ENABLED`, `netPublicEnabled` y `crucesPublicEnabled`. Acción exclusivamente humana — un agente NUNCA flipea estos flags. Atraviesa Fases 1–3; controla toda exposición sensible.
@@ -822,12 +822,12 @@ Plans:
   2. El etiquetado de sector usa un schema/pipeline/golden SEPARADO del flujo de extracción literal (clasificar a taxonomía cerrada es imputación, no extracción literal — rompería SEM-02); la clasificación corre en un CLI batch de `@obs/cruces` (etapa derivada), NUNCA por fila dentro del writer; sensibilidad LLM correcta para contrapartes (no `sensitivity:'public'`, Ley 21.719 / FND-06). CLI `--dry-run` sobre 10 proyectos: ≥7 con `sector_id` no nulo medido contra su propio golden (CRUCE-02)
   3. Tras materializar con los datos de lobby actuales, `cruce_senal` tiene ≥1 fila `lobby_sector_aporte` para ≥5 parlamentarios; las señales derivadas de voto (`lobby_sector_voto`/`aporte_sector_voto`) arrancan OFF (chocan con 17-LEGAL-DOSSIER §2) hasta sign-off explícito; wording factual obligatorio ("N reuniones con gestores del sector X", sin verbo causal); el RPC nunca proyecta rut/partido/email/donante_id (pgTAP). Con `crucesPublicEnabled()=false` la sección no monta (CRUCE-03)
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 - [x] 36-01-PLAN.md — Migraciones 0038/0039/0040 (sector public-read + cruce_senal deny-by-default + materializar_cruces + RPC sin grant a anon) + pgTAP (CRUCE-01/03)
 - [x] 36-02-PLAN.md — @obs/cruces: sector.ts (taxonomía) + model.ts (zod cerrado/abstención) + clasificar.ts (gate RUT first, split DeepSeek/MiniMax) + RUT-gate test (CRUCE-02)
 - [x] 36-03-PLAN.md — CLIs batch (fichas DeepSeek / lobby MiniMax) + writer service-role (sin LLM) + golden top-1/abstención gate ≥7/10 (CRUCE-02)
-- [ ] 36-04-PLAN.md — [BLOCKING] aplicar migraciones psql --db-url + pgTAP verde + corrida LIVE clasificar lobby + materializar → ≥5 parlamentarios (CRUCE-01/02/03)
+- [x] 36-04-PLAN.md — [BLOCKING] aplicar migraciones psql --db-url + pgTAP verde + corrida LIVE clasificar lobby + materializar → ≥5 parlamentarios (CRUCE-01/02/03)
 
 ### Phase 37: SURF — Superficie de cruces en ficha de parlamentario (gated)
 
