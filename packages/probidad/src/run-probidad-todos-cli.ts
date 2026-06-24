@@ -15,8 +15,27 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Fetcher, HostRateLimiter, RobotsGuard } from "@obs/ingest";
+import {
+  Fetcher,
+  HostRateLimiter,
+  RobotsGuard,
+  R2Store,
+  SnapshotWriter,
+  SupabaseSnapshotStore,
+  type CreateSupabaseClient,
+} from "@obs/ingest";
 import type { Parlamentario } from "@obs/core";
+import { createClient } from "@supabase/supabase-js";
+
+/**
+ * Adapta el `createClient` de supabase-js a la factory estructural `CreateSupabaseClient` que
+ * `SupabaseSnapshotStore` espera. El cast aísla aquí el mismatch entre el tipo genérico-profundo
+ * del builder de supabase-js y el subconjunto estructural `SupabaseClientLike` de @obs/ingest
+ * (que es un supertipo estructural: solo usa `.from(...).insert/select`). Probidad ya declara la
+ * lib; @obs/ingest queda desacoplado (T-34-SC).
+ */
+const createSupabaseClient: CreateSupabaseClient = (url, serviceKey) =>
+  createClient(url, serviceKey) as unknown as ReturnType<CreateSupabaseClient>;
 import { InfoProbidadConnector } from "./connector-infoprobidad";
 import { SupabaseProbidadWriter } from "./writer-supabase";
 import { InMemoryProbidadWriter, type ProbidadWriter } from "./writer";
@@ -44,7 +63,14 @@ function loadEnv(root: string): Record<string, string> {
   } catch {
     // Sin `.env` (CI): los secrets vienen de process.env (abajo).
   }
-  for (const k of ["SUPABASE_API_URL", "SUPABASE_SECRET_KEY"]) {
+  for (const k of [
+    "SUPABASE_API_URL",
+    "SUPABASE_SECRET_KEY",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_ENDPOINT_URL",
+    "R2_BUCKET",
+  ]) {
     if (process.env[k]) out[k] = process.env[k]!;
   }
   return out;
@@ -86,18 +112,44 @@ async function main(): Promise<void> {
     log(`probidad-todos: writer Supabase (${env.SUPABASE_API_URL}) — upsert versionado`);
   }
 
+  // Etapa 1 (R2, crudo content-addressed) — solo LIVE y con creds R2 (doble candado `!dryRun`).
+  let r2Store: R2Store | undefined;
+  if (!dryRun && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY && env.R2_ENDPOINT_URL) {
+    r2Store = new R2Store({
+      accessKeyId: env.R2_ACCESS_KEY_ID,
+      secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+      endpoint: env.R2_ENDPOINT_URL,
+      bucket: env.R2_BUCKET ?? "observatorio",
+    });
+  }
+
+  // Provenance run-level (source_snapshot) — solo LIVE y con creds Supabase. El store inyecta el
+  // `createClient` de @supabase/supabase-js (probidad ya lo declara; @obs/ingest queda desacoplado).
+  const snapshotWriter =
+    !dryRun && env.SUPABASE_API_URL && env.SUPABASE_SECRET_KEY
+      ? new SnapshotWriter(
+          new SupabaseSnapshotStore({
+            url: env.SUPABASE_API_URL,
+            serviceKey: env.SUPABASE_SECRET_KEY,
+            createClient: createSupabaseClient,
+          }),
+        )
+      : undefined;
+
   const res = await runProbidadTodos({
     conector,
     writer,
     maestra,
     ...(limite != null && !Number.isNaN(limite) ? { limite } : {}),
+    ...(r2Store ? { r2Store } : {}),
+    ...(snapshotWriter ? { snapshotWriter } : {}),
     log,
   });
 
   console.log(
     `\nprobidad-todos ${dryRun ? "DRY-RUN" : "LIVE"}: consultados=${res.parlamentariosConsultados} ` +
       `declaraciones=${res.declaraciones} bienes=${res.bienes} familiares=${res.familiares} ` +
-      `confirmados=${res.confirmados} errores=${res.errores.length}`,
+      `confirmados=${res.confirmados} errores=${res.errores.length} r2Path=${res.r2Path ?? "none"}`,
   );
 }
 
