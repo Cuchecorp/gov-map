@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — De datos a cruces verificables
-status: verifying
+status: executing
 stopped_at: Phase 36 context gathered
-last_updated: "2026-06-24T13:51:16.907Z"
-last_activity: 2026-06-24 -- Phase 35 ejecutada y verificada (gaps cerrados, COMPLETE)
+last_updated: "2026-06-24T14:43:00.719Z"
+last_activity: 2026-06-24 -- Phase 36 planning complete
 progress:
   total_phases: 33
   completed_phases: 16
-  total_plans: 57
+  total_plans: 61
   completed_plans: 66
   percent: 48
 ---
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 Phase: 35 (ENT — Resolución de identidades de terceros) — COMPLETE (7/7 planes, ENT-01..05 SATISFIED)
 Plan: 7 of 7 — 35-06 (forward-fix 0037: vinculo_entidad_id FK + CHECK + CREATE OR REPLACE resolver_entidad) + 35-07 (0035 pgTAP +2 asserts) ejecutados y aplicados/verificados en PROD.
-Status: Phase verified COMPLETE — listo para Phase 36
+Status: Ready to execute
 Verificación PROD: pgTAP 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12; resolver_entidad deny-by-default (anon/auth/public=f, service_role=t); confirm-with-promote ya NO lanza 23503.
 Próximo: Phase 36 — CRUCE — Capa de cruces parlamentario↔sector (deny-by-default). Depende de Phases 34/35 (entidades resueltas).
-Last activity: 2026-06-24 -- Phase 35 ejecutada y verificada (gaps cerrados, COMPLETE)
+Last activity: 2026-06-24 -- Phase 36 planning complete
 
 ## Performance Metrics
 
