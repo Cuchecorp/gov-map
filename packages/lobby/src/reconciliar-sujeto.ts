@@ -9,9 +9,12 @@
 //   mención cruda preservada (NUNCA vincula a la ficha pública). Cada decisión deja una fila en
 //   `identidad_audit` (vía el writer del pipeline).
 //
-// CONTRAPARTES (Pitfall 4): los asistentes no-sujeto-pasivo pasan SIN reconciliación — filas
-// crudas `{nombre, rol, representadoText}`, `contraparteId` SIEMPRE null. Un tercero NUNCA se
-// enlaza a una persona.
+// CONTRAPARTES (Δ3, ENT-03): los asistentes no-sujeto-pasivo son TERCEROS y AHORA se reconcilian
+// contra la maestra de terceros (`opts.maestraEntidad`) vía `matchDeterministaEntidad`. SOLO un
+// match confirmado puebla `contraparteId` con un `EnlaceEntidadConfirmado` (branded). Cualquier otro
+// caso (jurídica-sin-RUT por Δ2, homónimo, sin candidato, o SIN maestra inyectada) deja
+// `contraparteId: null` + la fila cruda preservada (degradación honesta). Un tercero NUNCA se enlaza
+// a una PERSONA (parlamentario) — solo a su propia maestra `entidad_tercero`.
 //
 // `provider`/`writer` son inyectables (mock/espía en tests, MiniMax + RevisionWriter reales en
 // LIVE) con defaults seguros: sin provider, un homónimo del sujeto pasivo degrada a
@@ -21,6 +24,13 @@ import type { Parlamentario, Camara } from "@obs/core";
 import { normalizarNombre } from "@obs/core";
 import { confirmar, type EnlaceConfirmado } from "@obs/identity";
 import {
+  matchDeterministaEntidad,
+  confirmarEntidad,
+  type EnlaceEntidadConfirmado,
+  type EntidadTerceroRow,
+  type TipoEntidad,
+} from "@obs/identity";
+import {
   correrPipeline,
   type PipelineWriter,
   type MencionForanea,
@@ -28,6 +38,7 @@ import {
 
 import {
   ROL_SUJETO_PASIVO,
+  type LobbyAsistente,
   type LobbyAudiencia,
   type LobbyContraparte,
 } from "./model";
@@ -66,13 +77,17 @@ const PROVIDER_AUSENTE: LLMProvider = {
   },
 };
 
-/** Contraparte cruda lista para el writer (tercero, SIN enlace a identidad). */
+/** Contraparte lista para el writer (tercero, con su FK branded a la maestra de terceros). */
 export interface ContraparteParaEscribir {
   nombre: string;
   rol: string;
   representadoText: string | null;
-  /** Pitfall 4: SIEMPRE null en P11 (un tercero nunca se enlaza a una persona). */
-  contraparteId: string | null;
+  /**
+   * FK branded del tercero a `entidad_tercero` (Δ3, ENT-03): minteado SOLO en un match confirmado
+   * (`matchDeterministaEntidad` → `confirmarEntidad`). null si no confirma (jurídica-sin-RUT,
+   * homónimo, sin candidato, o sin maestra inyectada). Un string crudo NO compila aquí.
+   */
+  contraparteId: EnlaceEntidadConfirmado | null;
 }
 
 /**
@@ -117,6 +132,25 @@ export interface ReconciliarSujetoOpts {
    * ALMACENADO sigue siendo el crudo (trazabilidad); solo cambia con qué nombre se busca.
    */
   nombreParaCruce?: (aud: LobbyAudiencia) => string | null;
+  /**
+   * Maestra de TERCEROS (`entidad_tercero`) contra la que se reconcilian las contrapartes (Δ3).
+   * Si se omite, NINGUNA contraparte resuelve (`contraparteId: null`) — degradación honesta que
+   * preserva el comportamiento previo (todos los FK null) cuando el caller no tiene la maestra.
+   */
+  maestraEntidad?: EntidadTerceroRow[];
+  /**
+   * Discriminador del tipo de entidad de una contraparte. Default `"natural"` (la mayoría de las
+   * contrapartes de LeyLobby son gestores persona-natural). El runner puede inferir `"juridica"`
+   * desde el rol crudo (p.ej. "Representante de Persona Jurídica"). Δ2: una jurídica SOLO confirma
+   * por RUT exacto; sin RUT (LeyLobby no lo trae) queda `no_confirmado` → `contraparteId: null`.
+   */
+  tipoEntidadContraparte?: (cp: LobbyAsistente) => TipoEntidad;
+  /**
+   * RUT de una contraparte cuando la fuente lo trae (LeyLobby NO lo publica → default null).
+   * SOLO entra al matcher determinista (RUT exacto); NUNCA cruza a un canal LLM (las contrapartes
+   * no van al pipeline). Inyectable para fuentes que sí traen RUT de tercero.
+   */
+  rutContraparte?: (cp: LobbyAsistente) => string | null;
 }
 
 /** Resultado de la reconciliación: filas para-escribir + el set de FKs confirmados (marcador). */
@@ -126,19 +160,59 @@ export interface ResultadoReconciliacion {
   parlamentariosConfirmados: string[];
 }
 
+/** Config de resolución de terceros (maestra + discriminadores) derivada de las opts. */
+interface ResolucionContraparteCfg {
+  maestraEntidad: EntidadTerceroRow[];
+  tipoEntidadContraparte: (cp: LobbyAsistente) => TipoEntidad;
+  rutContraparte: (cp: LobbyAsistente) => string | null;
+}
+
 /**
- * Mapea la forma para-escribir de las contrapartes (asistentes no-sujeto-pasivo → crudos).
- * Exportable para el writer/tests. Pitfall 4: `contraparteId` SIEMPRE null.
+ * Mapea la forma para-escribir de las contrapartes (asistentes no-sujeto-pasivo) reconciliando cada
+ * una contra la maestra de terceros (Δ3, ENT-03). SOLO un match confirmado puebla `contraparteId`
+ * con un `EnlaceEntidadConfirmado` (branded); cualquier otro caso deja null + la fila cruda. Un
+ * tercero se enlaza SOLO a su propia maestra (`entidad_tercero`), NUNCA a un parlamentario.
  */
-function contrapartesDe(aud: LobbyAudiencia): ContraparteParaEscribir[] {
+function contrapartesDe(
+  aud: LobbyAudiencia,
+  cfg: ResolucionContraparteCfg,
+): ContraparteParaEscribir[] {
   return aud.asistentes
     .filter((a) => a.rol !== ROL_SUJETO_PASIVO)
     .map((a) => ({
       nombre: a.nombre,
       rol: a.rol ?? "",
       representadoText: a.representado ?? null,
-      contraparteId: null,
+      contraparteId: resolverContraparte(a, cfg),
     }));
+}
+
+/**
+ * Resuelve UNA contraparte contra la maestra de terceros vía `matchDeterministaEntidad`. Fail-closed:
+ * mintea el FK branded SOLO cuando el matcher confirma; en cualquier otro estado (incl. jurídica-sin-RUT
+ * por Δ2, homónimo, sin candidato, o maestra vacía) devuelve null. DATA-ROUTING: el RUT (cuando exista)
+ * SOLO alimenta el matcher determinista; NUNCA cruza a un canal LLM (las contrapartes no van al pipeline).
+ */
+function resolverContraparte(
+  cp: LobbyAsistente,
+  cfg: ResolucionContraparteCfg,
+): EnlaceEntidadConfirmado | null {
+  const nombre = cp.nombre?.trim() ?? "";
+  if (nombre.length === 0 || cfg.maestraEntidad.length === 0) {
+    return null;
+  }
+  const { nombre_normalizado } = normalizarNombre({ libre: nombre });
+  const rut = cfg.rutContraparte(cp);
+  const res = matchDeterministaEntidad(
+    {
+      nombreNormalizado: nombre_normalizado,
+      tipoEntidad: cfg.tipoEntidadContraparte(cp),
+      ...(rut != null && rut.trim() !== "" ? { rut } : {}),
+    },
+    cfg.maestraEntidad,
+  );
+  // GUARDA LOCKED (ENT-03): SOLO un match confirmado mintea el FK branded.
+  return res.estado === "confirmado" ? confirmarEntidad(res.id, "determinista") : null;
 }
 
 /** Devuelve el nombre del sujeto pasivo de la audiencia (el primer asistente `Sujeto Pasivo`). */
@@ -148,9 +222,10 @@ function sujetoPasivoDe(aud: LobbyAudiencia): string | null {
 }
 
 /**
- * Reconcilia el sujeto pasivo de cada audiencia contra la maestra vía `correrPipeline`.
- * SOLO determinista mintea un `EnlaceConfirmado` y puebla el FK; el resto deja `enlace: null` +
- * mención cruda. Las contrapartes pasan crudas (`contraparteId` null). Idempotente y puro.
+ * Reconcilia el sujeto pasivo de cada audiencia contra la maestra vía `correrPipeline` (SOLO
+ * determinista mintea un `EnlaceConfirmado` y puebla el FK del parlamentario) Y cada contraparte
+ * contra la maestra de terceros (Δ3: SOLO un match confirmado puebla `contraparteId` con un
+ * `EnlaceEntidadConfirmado`). El resto deja el FK respectivo en null + mención cruda. Idempotente y puro.
  */
 export async function reconciliarSujeto(
   audiencias: LobbyAudiencia[],
@@ -161,6 +236,13 @@ export async function reconciliarSujeto(
   const writer = opts.writer ?? NOOP_WRITER;
   const periodo = opts.periodo ?? PERIODO_LOBBY_DEFAULT;
   const camara = opts.camara ?? "senado";
+  // Config de resolución de TERCEROS (Δ3). Sin maestra inyectada → ninguna contraparte confirma
+  // (degradación honesta que preserva el comportamiento previo). Default tipo 'natural' / rut null.
+  const cfgContraparte: ResolucionContraparteCfg = {
+    maestraEntidad: opts.maestraEntidad ?? [],
+    tipoEntidadContraparte: opts.tipoEntidadContraparte ?? (() => "natural"),
+    rutContraparte: opts.rutContraparte ?? (() => null),
+  };
   // Nombre para el CRUCE: por defecto el crudo del sujeto pasivo (idéntico al almacenado → nada
   // cambia para leylobby). El caller puede inyectar una extracción (p.ej. el diputado real de un
   // asesor en la Cámara). El nombre ALMACENADO (`mencionTexto`) sigue siendo siempre el crudo.
@@ -208,7 +290,7 @@ export async function reconciliarSujeto(
         if (proveedorAusente) {
           enlace = null;
           estadoVinculo = "no_confirmado";
-          out.push(filaParaEscribir(aud, enlace, mencionTexto, estadoVinculo));
+          out.push(filaParaEscribir(aud, enlace, mencionTexto, estadoVinculo, cfgContraparte));
           continue;
         }
         // Con un provider real inyectado, un error del LLM SÍ propaga (no se enmascara).
@@ -237,18 +319,19 @@ export async function reconciliarSujeto(
       mencionTexto = mencionRaw ?? "";
     }
 
-    out.push(filaParaEscribir(aud, enlace, mencionTexto, estadoVinculo));
+    out.push(filaParaEscribir(aud, enlace, mencionTexto, estadoVinculo, cfgContraparte));
   }
 
   return { audiencias: out, parlamentariosConfirmados: [...confirmados] };
 }
 
-/** Arma la fila para-escribir de una audiencia (raíz + contrapartes crudas anidadas). */
+/** Arma la fila para-escribir de una audiencia (raíz + contrapartes anidadas, ya reconciliadas). */
 function filaParaEscribir(
   aud: LobbyAudiencia,
   enlace: EnlaceConfirmado | null,
   mencionSujeto: string,
   estadoVinculo: "confirmado" | "no_confirmado" | null,
+  cfgContraparte: ResolucionContraparteCfg,
 ): AudienciaParaEscribir {
   return {
     identificador: aud.identificador,
@@ -260,7 +343,7 @@ function filaParaEscribir(
     fechaRaw: aud.fechaRaw,
     materia: aud.materia,
     enlaceDetalle: aud.enlaceDetalle,
-    contrapartes: contrapartesDe(aud),
+    contrapartes: contrapartesDe(aud, cfgContraparte),
     origen: aud.origen,
     fecha_captura: aud.fecha_captura,
     enlace_url: aud.enlace,

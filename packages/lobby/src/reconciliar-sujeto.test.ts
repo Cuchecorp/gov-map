@@ -9,6 +9,7 @@
 
 import { describe, it, expect } from "vitest";
 import type { Parlamentario } from "@obs/core";
+import type { EntidadTerceroRow } from "@obs/identity";
 import {
   MockMiniMaxProvider,
   type PipelineWriter,
@@ -206,5 +207,156 @@ describe("reconciliarSujeto — guarda de identidad LOCKED", () => {
     expect(det.estadoVinculo).toBe("confirmado");
     expect(hom.enlace).toBeNull();
     expect(hom.estadoVinculo).toBe("no_confirmado");
+  });
+});
+
+// ── Δ3: la contraparte (tercero) ahora puebla contraparteId con un match confirmado ──────────
+//
+// ANTES: contraparteId era SIEMPRE null por diseño (Pitfall 4 original). AHORA reconciliarSujeto
+// resuelve cada contraparte contra la maestra de terceros (`opts.maestraEntidad`) con
+// `matchDeterministaEntidad` + `confirmarEntidad`: SOLO un match confirmado puebla el FK branded
+// `EnlaceEntidadConfirmado | null`; null en cualquier otro caso (jurídica-sin-RUT, homónimo,
+// sin candidato). El sujeto pasivo NO cambia.
+function entidad(p: Partial<EntidadTerceroRow> & { id: string }): EntidadTerceroRow {
+  return {
+    id: p.id,
+    nombre_normalizado: p.nombre_normalizado ?? "",
+    tipo_entidad: p.tipo_entidad ?? "natural",
+    rut: p.rut ?? null,
+  };
+}
+
+describe("reconciliarSujeto — contraparteId poblado con match confirmado (Δ3)", () => {
+  const maestra = [
+    maestro({
+      id: "P00500",
+      nombre_normalizado: "antonio coloma juan",
+      nombres: "Juan Antonio",
+      apellido_paterno: "Coloma",
+      apellido_materno: "Correa",
+    }),
+  ];
+
+  it("Test 1: contraparte natural, nombre único por tipo en la maestra de terceros → contraparteId poblado (EnlaceEntidadConfirmado)", async () => {
+    // "Lobbista Uno" → normaliza a un nombre único entre los terceros naturales.
+    const maestraEntidad = [
+      entidad({ id: "E00001", nombre_normalizado: "lobbista uno", tipo_entidad: "natural" }),
+    ];
+    const aud = [
+      audiencia({
+        identificador: "AA001AW-CP1",
+        asistentes: [
+          { rol: "Sujeto Pasivo", nombre: "Coloma C., Juan Antonio", representado: null },
+          { rol: "Gestor de intereses", nombre: "Lobbista Uno", representado: "Fundación X" },
+        ],
+      }),
+    ];
+
+    const { audiencias } = await reconciliarSujeto(aud, maestra, { maestraEntidad });
+
+    const cp = audiencias[0]!.contrapartes[0]!;
+    expect(cp.contraparteId).not.toBeNull();
+    expect(cp.contraparteId!.entidadTerceroId).toBe("E00001");
+    expect(cp.contraparteId!.metodo).toBe("determinista");
+    // La fila cruda se preserva intacta.
+    expect(cp.nombre).toBe("Lobbista Uno");
+    expect(cp.representadoText).toBe("Fundación X");
+  });
+
+  it("Test 2: contraparte jurídica SIN RUT → contraparteId null (Δ2); la fila se escribe igual con el nombre crudo", async () => {
+    // Una jurídica sin RUT NUNCA confirma (juridica-sin-rut). El rol marca jurídica vía maestra.
+    const maestraEntidad = [
+      // Aunque exista una jurídica de nombre coincidente, sin RUT en la mención no confirma.
+      entidad({ id: "E00010", nombre_normalizado: "fundacion x", tipo_entidad: "juridica" }),
+    ];
+    const aud = [
+      audiencia({
+        identificador: "AA001AW-CP2",
+        asistentes: [
+          { rol: "Sujeto Pasivo", nombre: "Coloma C., Juan Antonio", representado: null },
+          // La contraparte es la firma jurídica "Fundación X" (sin RUT en LeyLobby).
+          { rol: "Representante de Persona Jurídica", nombre: "Fundación X", representado: "Fundación X" },
+        ],
+      }),
+    ];
+
+    const { audiencias } = await reconciliarSujeto(aud, maestra, {
+      maestraEntidad,
+      tipoEntidadContraparte: () => "juridica",
+    });
+
+    const cp = audiencias[0]!.contrapartes[0]!;
+    expect(cp.contraparteId).toBeNull();
+    expect(cp.nombre).toBe("Fundación X"); // fila cruda preservada
+  });
+
+  it("Test 3: contraparte ambigua/homónima → contraparteId null (fail-closed); no inventa enlace", async () => {
+    const maestraEntidad = [
+      entidad({ id: "E00021", nombre_normalizado: "juan perez", tipo_entidad: "natural" }),
+      entidad({ id: "E00022", nombre_normalizado: "juan perez", tipo_entidad: "natural" }),
+    ];
+    const aud = [
+      audiencia({
+        identificador: "AA001AW-CP3",
+        asistentes: [
+          { rol: "Sujeto Pasivo", nombre: "Coloma C., Juan Antonio", representado: null },
+          { rol: "Gestor de intereses", nombre: "Juan Pérez", representado: null },
+        ],
+      }),
+    ];
+
+    const { audiencias } = await reconciliarSujeto(aud, maestra, { maestraEntidad });
+
+    const cp = audiencias[0]!.contrapartes[0]!;
+    expect(cp.contraparteId).toBeNull();
+    expect(cp.nombre).toBe("Juan Pérez"); // fila cruda preservada
+  });
+
+  it("Test 3b: sin maestra de terceros inyectada → contraparteId null (degradación honesta, sin cambios de comportamiento)", async () => {
+    const aud = [
+      audiencia({
+        identificador: "AA001AW-CP3B",
+        asistentes: [
+          { rol: "Sujeto Pasivo", nombre: "Coloma C., Juan Antonio", representado: null },
+          { rol: "Gestor de intereses", nombre: "Lobbista Uno", representado: null },
+        ],
+      }),
+    ];
+    const { audiencias } = await reconciliarSujeto(aud, maestra, {});
+    expect(audiencias[0]!.contrapartes[0]!.contraparteId).toBeNull();
+  });
+
+  it("Test 4 (no-regresión): el sujeto pasivo parlamentario sigue reconciliando exactamente como antes (EnlaceConfirmado intacto)", async () => {
+    const maestraEntidad = [
+      entidad({ id: "E00001", nombre_normalizado: "lobbista uno", tipo_entidad: "natural" }),
+    ];
+    const provider = new MockMiniMaxProvider({
+      decision: "match",
+      chosen_id: "P00500",
+      confidence: 0.99,
+      evidence: [],
+      conflicts: [],
+    });
+    const aud = [
+      audiencia({
+        identificador: "AA001AW-CP4",
+        asistentes: [
+          { rol: "Sujeto Pasivo", nombre: "Coloma C., Juan Antonio", representado: null },
+          { rol: "Gestor de intereses", nombre: "Lobbista Uno", representado: null },
+        ],
+      }),
+    ];
+
+    const { audiencias, parlamentariosConfirmados } = await reconciliarSujeto(aud, maestra, {
+      provider,
+      maestraEntidad,
+    });
+
+    // El sujeto pasivo (parlamentario) sigue minteando EnlaceConfirmado por determinista.
+    expect(audiencias[0]!.enlace?.parlamentarioId).toBe("P00500");
+    expect(audiencias[0]!.estadoVinculo).toBe("confirmado");
+    expect(parlamentariosConfirmados).toEqual(["P00500"]);
+    // Y la contraparte ahora SÍ puebla su propio FK de tercero (independiente del sujeto pasivo).
+    expect(audiencias[0]!.contrapartes[0]!.contraparteId!.entidadTerceroId).toBe("E00001");
   });
 });
