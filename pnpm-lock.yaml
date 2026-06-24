@@ -187,6 +187,31 @@ importers:
         specifier: ^3.0.0
         version: 3.2.6(@types/node@20.19.43)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@1.8.0))(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.22.4)(yaml@2.9.0)
 
+  packages/cruces:
+    dependencies:
+      '@obs/core':
+        specifier: workspace:*
+        version: link:../core
+      '@obs/llm':
+        specifier: workspace:*
+        version: link:../llm
+      '@supabase/supabase-js':
+        specifier: ^2.108.2
+        version: 2.108.2
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: ^20.19.43
+        version: 20.19.43
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.6(@types/node@20.19.43)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@1.8.0))(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.22.4)(yaml@2.9.0)
+
   packages/dinero:
     dependencies:
       '@obs/adjudication':
