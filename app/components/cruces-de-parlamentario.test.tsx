@@ -1,0 +1,227 @@
+import { describe, it, expect, afterEach } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
+
+import { CrucesView, type CrucesViewData } from "./cruces-de-parlamentario";
+import type { CruceSenalRpcRow, CruceEvidenciaItem } from "@/lib/types";
+
+afterEach(cleanup);
+
+// ── Vallas inline anti-insinuación (§9.1) — convención del repo: el componente
+//    no comparte un linter de vocabulario, así que la valla vive como negative-match
+//    inline (mirror verbatim de lobby-de-parlamentario.test.tsx). ─────────────────
+const PROHIBIDO =
+  /se reunió para|a cambio de|antes de votar|que resultó en|cercano a|vinculad[oa] a|aliad[oa] de|su lobista|lobista habitual|se reúne más|afinidad|conflicto de inter|posible conflicto|influencia|influyente|score|ranking|índice de|leaderboard|sospechos|polémic|controversial|oscuro/i;
+// Patrón de RUT chileno (12.345.678-9 / 12345678-9).
+const PATRON_RUT = /\b\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]\b/;
+
+// ── Fixtures ───────────────────────────────────────────────────────────────────
+function makeItem(
+  overrides: Partial<CruceEvidenciaItem> = {},
+): CruceEvidenciaItem {
+  return {
+    tipo: "reunion",
+    fecha: "2026-05-14T13:00:00Z",
+    contraparte_nombre_crudo: "Inmobiliaria Andes SpA",
+    audiencia_id: "AW1442944",
+    enlace_fuente:
+      "https://www.leylobby.gob.cl/instituciones/AQ001/audiencias/2026/AW1442944",
+    ...overrides,
+  };
+}
+
+function makeSenal(overrides: Partial<CruceSenalRpcRow> = {}): CruceSenalRpcRow {
+  const items = overrides.evidencia?.items ?? [makeItem()];
+  return {
+    sector_id: "inmobiliario",
+    sector_etiqueta: "inmobiliario y construcción",
+    tipo_senal: "lobby_sector",
+    conteo: items.length,
+    evidencia: { conteo: items.length, items },
+    ...overrides,
+  };
+}
+
+function makeViewData(overrides: Partial<CrucesViewData> = {}): CrucesViewData {
+  return {
+    id: "P00001",
+    cruces: [makeSenal()],
+    ...overrides,
+  };
+}
+
+// ── Carril aislado (§9.1 regla 1): nunca compone un voto/boletín/proyecto ────────
+describe("CrucesView — carril aislado (anti-insinuación §9.1 regla 1)", () => {
+  it("ningún enlace a /proyecto/ ni /parlamentario/; sin copy de voto/boletín", () => {
+    const { container } = render(
+      <CrucesView
+        data={makeViewData({
+          cruces: [
+            makeSenal(),
+            makeSenal({
+              sector_id: "portuario",
+              sector_etiqueta: "portuario",
+              evidencia: {
+                conteo: 1,
+                items: [makeItem({ contraparte_nombre_crudo: "Naviera Sur Ltda." })],
+              },
+              conteo: 1,
+            }),
+          ],
+        })}
+      />,
+    );
+    const links = screen.queryAllByRole("link");
+    for (const l of links) {
+      const href = l.getAttribute("href") ?? "";
+      expect(href).not.toMatch(/^\/proyecto\//);
+      expect(href).not.toMatch(/^\/parlamentario\//);
+    }
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(
+      /voto|votación|votacion|boletín|boletin|a favor|en contra/i,
+    );
+  });
+
+  it("el render NO contiene ningún término prohibido de §9.1 ni un RUT", () => {
+    const { container } = render(
+      <CrucesView
+        data={makeViewData({
+          cruces: [
+            makeSenal(),
+            makeSenal({
+              sector_id: "portuario",
+              sector_etiqueta: "portuario",
+              evidencia: {
+                conteo: 1,
+                items: [makeItem({ contraparte_nombre_crudo: "Naviera Sur Ltda." })],
+              },
+              conteo: 1,
+            }),
+          ],
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(PROHIBIDO);
+    expect(texto).not.toMatch(PATRON_RUT);
+  });
+});
+
+// ── Contraparte cruda + IdentityMarker, sin enlace, sin RUT (D-10) ──────────────
+describe("CrucesView — contraparte como TEXTO CRUDO", () => {
+  it("muestra el nombre crudo verbatim + IdentityMarker, NUNCA un enlace", () => {
+    render(<CrucesView data={makeViewData()} />);
+    expect(screen.getByText("Inmobiliaria Andes SpA")).toBeInTheDocument();
+    expect(
+      screen.getAllByLabelText("identidad no verificada").length,
+    ).toBeGreaterThan(0);
+    const links = screen.queryAllByRole("link");
+    for (const l of links) {
+      expect(l.textContent).not.toContain("Inmobiliaria Andes SpA");
+    }
+  });
+
+  it("NUNCA renderiza un RUT de la contraparte en el DOM", () => {
+    const { container } = render(<CrucesView data={makeViewData()} />);
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(PATRON_RUT);
+  });
+});
+
+// ── Empty honesto: cero cruces (§9.1 regla 9) ───────────────────────────────────
+describe("CrucesView — empty honesto", () => {
+  it("cero cruces → copy factual; NUNCA se lee como limpio/transparente", () => {
+    render(<CrucesView data={makeViewData({ cruces: [] })} />);
+    expect(
+      screen.getByText(/No se registran cruces de sector para este parlamentario/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /limpio|impecable|sin compromisos|transparente|no se reúne/i,
+      ),
+    ).not.toBeInTheDocument();
+  });
+});
+
+// ── Conteo neutro factual por señal ────────────────────────────────────────────
+describe("CrucesView — encabezado factual con conteo neutro", () => {
+  it("lobby_sector → 'N reuniones con gestores del sector {etiqueta}'", () => {
+    render(
+      <CrucesView
+        data={makeViewData({
+          cruces: [
+            makeSenal({
+              conteo: 3,
+              evidencia: {
+                conteo: 3,
+                items: [makeItem(), makeItem({ audiencia_id: "B" }), makeItem({ audiencia_id: "C" })],
+              },
+            }),
+          ],
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(/\d+ reuniones con gestores del sector/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/inmobiliario y construcción/i)).toBeInTheDocument();
+  });
+
+  it("tipo_senal desconocido → degrada honesto (conteo + etiqueta, sin lanzar)", () => {
+    const { container } = render(
+      <CrucesView
+        data={makeViewData({
+          cruces: [makeSenal({ tipo_senal: "futuro_desconocido" })],
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toMatch(/inmobiliario y construcción/i);
+    expect(texto).not.toMatch(PROHIBIDO);
+  });
+});
+
+// ── ProvenanceBadge por item (obligatorio, FND-08) ──────────────────────────────
+describe("CrucesView — ProvenanceBadge por item de evidencia", () => {
+  it("un ProvenanceBadge con enlace a la fuente oficial por cada item", () => {
+    render(
+      <CrucesView
+        data={makeViewData({
+          cruces: [
+            makeSenal({
+              conteo: 2,
+              evidencia: {
+                conteo: 2,
+                items: [
+                  makeItem({ audiencia_id: "A1" }),
+                  makeItem({ audiencia_id: "A2", contraparte_nombre_crudo: "Naviera Sur Ltda." }),
+                ],
+              },
+            }),
+          ],
+        })}
+      />,
+    );
+    const fuentes = screen.getAllByText(/fuente oficial ↗/i);
+    expect(fuentes.length).toBe(2);
+  });
+
+  it("item sin fecha ni enlace no rompe el render (Pitfall 2)", () => {
+    render(
+      <CrucesView
+        data={makeViewData({
+          cruces: [
+            makeSenal({
+              evidencia: {
+                conteo: 1,
+                items: [makeItem({ fecha: null, enlace_fuente: null })],
+              },
+              conteo: 1,
+            }),
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByText("Inmobiliaria Andes SpA")).toBeInTheDocument();
+  });
+});
