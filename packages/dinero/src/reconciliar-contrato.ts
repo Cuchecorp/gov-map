@@ -49,6 +49,13 @@ import { normalizarNombre } from "@obs/core";
 import { isRutValido, normRut, matchDeterminista } from "@obs/identity";
 import { confirmar, type EnlaceConfirmado } from "@obs/identity";
 import {
+  matchDeterministaEntidad,
+  confirmarEntidad,
+  type EnlaceEntidadConfirmado,
+  type EntidadTerceroRow,
+  type TipoEntidad,
+} from "@obs/identity";
+import {
   correrPipeline,
   type PipelineWriter,
   type MencionForanea,
@@ -159,6 +166,13 @@ export interface ContratoParaEscribir {
   codigoOrden: string;
   /** FK branded del proveedor->parlamentario: minteado SOLO en determinista (string crudo no compila). */
   enlace: EnlaceConfirmado | null;
+  /**
+   * FK branded del proveedor->entidad_tercero (Δ3, ENT-03): minteado SOLO con un match confirmado
+   * contra la maestra de TERCEROS (juridica por RUT exacto; natural por RUT o nombre). null si no
+   * confirma o sin maestra inyectada. SEPARADO del `enlace` a parlamentario (fiscalizacion). Un string
+   * crudo NO compila. Storage plano (string|null) lo aplana el writer.
+   */
+  entidadId: EnlaceEntidadConfirmado | null;
   /** RUT del proveedor consultado (keyea la sub-maestra). */
   rutProveedor: string;
   /** Mencion cruda del proveedor (nombre), preservada incluso sin enlace. */
@@ -186,6 +200,12 @@ export interface ReconciliarContratoOpts {
   periodo?: string;
   /** Camara del blocking. Default `CAMARA_DINERO_DEFAULT`. */
   camara?: Parlamentario["camara"];
+  /**
+   * Maestra de TERCEROS (`entidad_tercero`) contra la que se resuelve el proveedor para poblar
+   * `entidadId` (Δ3). Si se omite, NINGUN proveedor resuelve (`entidadId: null`) — degradacion
+   * honesta. SEPARADA de la maestra de parlamentarios (la fiscalizacion no cambia).
+   */
+  maestraEntidad?: EntidadTerceroRow[];
 }
 
 /** Resultado: filas para-escribir + el set de FKs confirmados + cosechas (corroboracion) + revisiones. */
@@ -251,15 +271,23 @@ export async function reconciliarContrato(
   const cosechas: CandidatoCosechaRut[] = [];
   const revisionesRut: CandidatoRevisionRut[] = [];
 
+  const maestraEntidad = opts.maestraEntidad ?? [];
+
   for (const c of contratos) {
     let enlace: EnlaceConfirmado | null = null;
     let estadoVinculo: EstadoVinculoContrato;
+
+    // Δ3 (ENT-03): resolver el proveedor contra la maestra de TERCEROS para poblar `entidadId`. Es
+    // INDEPENDIENTE de la reconciliacion contra parlamentario (fiscalizacion): se calcula una sola vez
+    // por contrato y viaja a la fila en CUALQUIER rama. DATA-ROUTING: el RUT crudo SOLO alimenta el
+    // matcher determinista interno (matchDeterministaEntidad); NUNCA cruza al LLM ni al jsonb de revision_*.
+    const entidadId = resolverEntidadProveedor(c, maestraEntidad);
 
     // 1. RUT invalido (DV modulo-11) -> CUARENTENA: enlace null, nunca confirmado, nunca fabrica.
     if (!isRutValido(c.rutProveedor)) {
       estadoVinculo = "cuarentena";
       cuarentenados.push(c.codigoOrden);
-      out.push(filaParaEscribir(c, enlace, estadoVinculo));
+      out.push(filaParaEscribir(c, enlace, estadoVinculo, entidadId));
       continue;
     }
 
@@ -273,7 +301,7 @@ export async function reconciliarContrato(
       enlace = confirmar(res.id, "determinista");
       estadoVinculo = "confirmado";
       confirmados.add(res.id);
-      out.push(filaParaEscribir(c, enlace, estadoVinculo));
+      out.push(filaParaEscribir(c, enlace, estadoVinculo, entidadId));
       continue;
     }
 
@@ -282,7 +310,7 @@ export async function reconciliarContrato(
     if (c.tipoPersona !== "natural" || proveedorNombre.length === 0) {
       // PERSONA JURIDICA (o nombre vacio): NUNCA name-linkea -> enlace null + mencion cruda. Sin pipeline.
       estadoVinculo = "no_confirmado";
-      out.push(filaParaEscribir(c, enlace, estadoVinculo));
+      out.push(filaParaEscribir(c, enlace, estadoVinculo, entidadId));
       continue;
     }
 
@@ -304,7 +332,7 @@ export async function reconciliarContrato(
       // Sin provider real, un homonimo llega al LLM ausente y lanza. Fail-closed honesto: se degrada
       // ESE contrato a `no_confirmado` (NUNCA se fabrica un enlace) y la corrida sigue.
       if (proveedorAusente) {
-        out.push(filaParaEscribir(c, null, "no_confirmado"));
+        out.push(filaParaEscribir(c, null, "no_confirmado", entidadId));
         continue;
       }
       // Con un provider real inyectado, un error del LLM SI propaga (no se enmascara).
@@ -390,7 +418,7 @@ export async function reconciliarContrato(
         break;
     }
 
-    out.push(filaParaEscribir(c, enlace, estadoVinculo));
+    out.push(filaParaEscribir(c, enlace, estadoVinculo, entidadId));
   }
 
   return {
@@ -450,17 +478,54 @@ async function encolarRevisionRut(
   }
 }
 
-/** Arma la fila para-escribir de un contrato (raiz + mencion cruda del proveedor). */
+/**
+ * Resuelve el proveedor contra la maestra de TERCEROS (`entidad_tercero`) para poblar `entidadId`
+ * (Δ3, ENT-03). SEPARADO de la reconciliacion contra parlamentario (fiscalizacion). Fail-closed:
+ * mintea el FK branded SOLO con un match confirmado. juridica → matchDeterministaEntidad por RUT
+ * exacto (Δ2: una empresa NUNCA por nombre); natural → RUT o nombre-unico-por-tipo. Maestra vacia o
+ * nombre vacio → null.
+ *
+ * DATA-ROUTING (LOAD-BEARING): el `rutProveedor` crudo SOLO entra al matcher determinista interno
+ * (matchDeterministaEntidad opera sobre la maestra ya en memoria, SIN red/LLM). NUNCA cruza al
+ * pipeline LLM ni al jsonb de revision_* — esos canales solo ven el nombre.
+ */
+function resolverEntidadProveedor(
+  c: Contrato,
+  maestraEntidad: EntidadTerceroRow[],
+): EnlaceEntidadConfirmado | null {
+  if (maestraEntidad.length === 0) {
+    return null;
+  }
+  const nombre = c.proveedorNombre?.trim() ?? "";
+  const tipoEntidad: TipoEntidad = c.tipoPersona === "natural" ? "natural" : "juridica";
+  // Δ2: una juridica sin nombre util igual puede confirmar por RUT exacto; una natural sin nombre y
+  // sin RUT en la maestra no resolveria. El matcher ya ramifica por tipo (juridica = solo RUT).
+  const rut = c.rutProveedor?.trim() ?? "";
+  const res = matchDeterministaEntidad(
+    {
+      nombreNormalizado: nombre.length > 0 ? normalizarNombre({ libre: nombre }).nombre_normalizado : "",
+      tipoEntidad,
+      ...(rut !== "" ? { rut } : {}),
+    },
+    maestraEntidad,
+  );
+  // GUARDA LOCKED (ENT-03): SOLO un match confirmado mintea el FK branded.
+  return res.estado === "confirmado" ? confirmarEntidad(res.id, "determinista") : null;
+}
+
+/** Arma la fila para-escribir de un contrato (raiz + mencion cruda del proveedor + FK de tercero). */
 function filaParaEscribir(
   c: Contrato,
   enlace: EnlaceConfirmado | null,
   estadoVinculo: EstadoVinculoContrato,
+  entidadId: EnlaceEntidadConfirmado | null,
 ): ContratoParaEscribir {
   return {
     fuenteId: c.fuenteId,
     fechaCorte: c.fechaCorte,
     codigoOrden: c.codigoOrden,
     enlace,
+    entidadId,
     rutProveedor: c.rutProveedor,
     mencionProveedor: c.proveedorNombre,
     estadoVinculo,

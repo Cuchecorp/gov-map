@@ -194,11 +194,15 @@ export async function runIngestDinero(opts: RunIngestDineroOpts): Promise<RunIng
       );
       // Sub-maestra: una fila de contratista por RUT consultado (el sujeto). Solo si hubo ordenes.
       if (filas.length > 0) {
+        // Δ3: el FK a entidad_tercero resuelto para ESTE proveedor (uniforme en sus ordenes — mismo
+        // RUT/nombre/tipo → misma resolucion). Se aplana el branded a string|null para el storage.
+        const entidadResuelta = filas.find((f) => f.entidadId != null)?.entidadId ?? null;
         const sub: Contratista = {
           rutProveedor: normRut(tarea.rut),
           nombre: nombreProveedor,
           codigoEmpresa,
           tipoPersona: tipoPersona(tarea.rut),
+          entidadId: entidadResuelta?.entidadTerceroId ?? null,
           origen: ORIGEN_DINERO,
           fecha_captura: new Date().toISOString(),
           enlace: "https://api.mercadopublico.cl/servicios/v1/Publico/Empresas/BuscarProveedor",

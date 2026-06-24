@@ -84,6 +84,12 @@ export interface Contratista {
   codigoEmpresa: string | null;
   /** Persona natural (cuerpo < 50M) vs juridica (>= 50M); fallback por umbral. */
   tipoPersona: TipoPersona;
+  /**
+   * FK (plano) del proveedor → entidad_tercero (Δ3, ENT-03, columna nueva de 0036). Poblado SOLO
+   * con un match confirmado contra la maestra de TERCEROS (lo resuelve `reconciliarContrato` y lo
+   * aplana el writer desde el `EnlaceEntidadConfirmado` branded). null si no confirma. Storage plano.
+   */
+  entidadId?: string | null;
   origen: string;
   fecha_captura: string;
   enlace: string;
@@ -95,6 +101,7 @@ export const ContratistaSchema = z.object({
   nombre: z.string().nullable(),
   codigoEmpresa: z.string().nullable(),
   tipoPersona: z.enum(["natural", "juridica"]),
+  entidadId: z.string().nullable().optional(),
   ...ProvenanceInline,
 });
 

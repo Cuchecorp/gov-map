@@ -17,6 +17,7 @@
 
 import { describe, it, expect } from "vitest";
 import type { Parlamentario } from "@obs/core";
+import type { EntidadTerceroRow } from "@obs/identity";
 import {
   MockMiniMaxProvider,
   type PipelineWriter,
@@ -428,5 +429,136 @@ describe("reconciliarContrato — DATA-ROUTING: el rutProveedor NUNCA al pipelin
     }
     // 4. Sanity: el nombre del proveedor SI aparece en la mencion escrita.
     expect(vinculoJson).toContain("Coloma");
+  });
+});
+
+// ── Δ3 (ENT-03): el proveedor ahora se resuelve contra entidad_tercero y puebla contratista.entidad_id ──
+//
+// SEPARADO de la reconciliacion contra parlamentario (fiscalizacion): el `enlace`/`estadoVinculo`
+// del contrato NO cambia. La columna nueva `entidadId` (FK branded a entidad_tercero) la puebla
+// `matchDeterministaEntidad`: juridica por RUT exacto; natural por RUT o nombre. El RUT crudo SOLO
+// alimenta el matcher determinista interno; NUNCA cruza al LLM ni al jsonb de revision_*.
+function entidad(p: Partial<EntidadTerceroRow> & { id: string }): EntidadTerceroRow {
+  return {
+    id: p.id,
+    nombre_normalizado: p.nombre_normalizado ?? "",
+    tipo_entidad: p.tipo_entidad ?? "natural",
+    rut: p.rut ?? null,
+  };
+}
+
+describe("reconciliarContrato — Δ3: contratista.entidad_id contra entidad_tercero", () => {
+  it("Test 1: proveedor juridico con RUT exacto en la maestra de terceros -> entidad_id poblado (RUT exacto, Δ2)", async () => {
+    const maestraEntidad = [
+      entidad({ id: "E00100", tipo_entidad: "juridica", rut: "76.123.456-0", nombre_normalizado: "constructora andes spa" }),
+    ];
+    const r = await reconciliarContrato(
+      [contrato({ rutProveedor: "76.123.456-0", tipoPersona: "juridica", proveedorNombre: "Constructora Andes SpA" })],
+      [],
+      { maestraEntidad },
+    );
+    expect(r.contratos[0]!.entidadId).not.toBeNull();
+    expect(r.contratos[0]!.entidadId!.entidadTerceroId).toBe("E00100");
+    expect(r.contratos[0]!.entidadId!.metodo).toBe("determinista");
+  });
+
+  it("Test 2: proveedor juridico SIN match RUT -> entidad_id null (nunca por nombre, Δ2)", async () => {
+    const maestraEntidad = [
+      // Mismo nombre normalizado pero RUT distinto: una juridica NUNCA confirma por nombre.
+      entidad({ id: "E00101", tipo_entidad: "juridica", rut: "99.999.999-9", nombre_normalizado: "constructora andes spa" }),
+    ];
+    const r = await reconciliarContrato(
+      [contrato({ rutProveedor: "76.123.456-0", tipoPersona: "juridica", proveedorNombre: "Constructora Andes SpA" })],
+      [],
+      { maestraEntidad },
+    );
+    expect(r.contratos[0]!.entidadId).toBeNull();
+  });
+
+  it("Test 3a: proveedor natural con RUT exacto en la maestra de terceros -> entidad_id poblado", async () => {
+    const maestraEntidad = [
+      entidad({ id: "E00200", tipo_entidad: "natural", rut: "12.345.678-5", nombre_normalizado: "juan perez" }),
+    ];
+    const r = await reconciliarContrato(
+      [contrato({ rutProveedor: "12.345.678-5", tipoPersona: "natural", proveedorNombre: "Juan Pérez" })],
+      [],
+      { maestraEntidad },
+    );
+    expect(r.contratos[0]!.entidadId!.entidadTerceroId).toBe("E00200");
+  });
+
+  it("Test 3b: proveedor natural sin RUT en la maestra, nombre unico por tipo -> entidad_id poblado por nombre", async () => {
+    const maestraEntidad = [
+      entidad({ id: "E00201", tipo_entidad: "natural", rut: null, nombre_normalizado: "juan perez" }),
+    ];
+    const r = await reconciliarContrato(
+      // RUT del proveedor valido pero no presente en la maestra de terceros -> cae a nombre.
+      [contrato({ rutProveedor: "16.852.875-1", tipoPersona: "natural", proveedorNombre: "Juan Pérez" })],
+      [],
+      { maestraEntidad },
+    );
+    expect(r.contratos[0]!.entidadId!.entidadTerceroId).toBe("E00201");
+    // El FK branded registra el origen de la CONFIRMACION (determinista por máquina), no el método
+    // del matcher (rut/nombre): un match-por-nombre confirmado es igualmente "determinista".
+    expect(r.contratos[0]!.entidadId!.metodo).toBe("determinista");
+  });
+
+  it("Test 3c: proveedor natural homonimo en la maestra de terceros -> entidad_id null (fail-closed)", async () => {
+    const maestraEntidad = [
+      entidad({ id: "E00202", tipo_entidad: "natural", rut: null, nombre_normalizado: "juan perez" }),
+      entidad({ id: "E00203", tipo_entidad: "natural", rut: null, nombre_normalizado: "juan perez" }),
+    ];
+    const r = await reconciliarContrato(
+      [contrato({ rutProveedor: "16.852.875-1", tipoPersona: "natural", proveedorNombre: "Juan Pérez" })],
+      [],
+      { maestraEntidad },
+    );
+    expect(r.contratos[0]!.entidadId).toBeNull();
+  });
+
+  it("Test 4 (data-routing): el RUT crudo del proveedor NUNCA aparece en vinculos/colas ni en ningun prompt al resolver entidad_id", async () => {
+    const RUT = "76.543.210-3";
+    // Maestra de terceros con el RUT del proveedor -> entidad_id se puebla por RUT.
+    const maestraEntidad = [
+      entidad({ id: "E00300", tipo_entidad: "juridica", rut: RUT, nombre_normalizado: "empresa x spa" }),
+    ];
+    // Maestra de parlamentarios con homonimos para forzar el prompt LLM en la rama parlamentario.
+    const maestraParl = [
+      maestro({ id: "P00701", nombre_normalizado: "juan soto", nombres: "Juan", apellido_paterno: "Soto" }),
+      maestro({ id: "P00702", nombre_normalizado: "juan soto", nombres: "Juan", apellido_paterno: "Soto" }),
+    ];
+    const spyProvider = new SpyProvider(
+      new MockMiniMaxProvider({ decision: "match", chosen_id: "P00701", confidence: 0.99, evidence: [], conflicts: [] }),
+    );
+    const writer = new SpyWriter();
+    const r = await reconciliarContrato(
+      [contrato({ rutProveedor: RUT, tipoPersona: "natural", proveedorNombre: "Soto P., Juan" })],
+      maestraParl,
+      { provider: spyProvider as never, writer, maestraEntidad },
+    );
+    // entidad_id se poblo por RUT (juridica de la maestra de terceros con ese RUT).
+    expect(r.contratos[0]!.entidadId!.entidadTerceroId).toBe("E00300");
+    // El RUT crudo NO viaja a vinculos/colas (jsonb de revision_*) ni a ningun prompt.
+    const vinculoJson = JSON.stringify(writer.vinculos);
+    const colasJson = JSON.stringify(writer.colas);
+    expect(vinculoJson).not.toContain(RUT);
+    expect(vinculoJson).not.toContain("765432");
+    expect(colasJson).not.toContain(RUT);
+    expect(colasJson).not.toContain("765432");
+    for (const p of spyProvider.prompts) {
+      expect(p).not.toContain(RUT);
+      expect(p).not.toContain("765432");
+    }
+  });
+
+  it("Test 5 (no-regresion): la reconciliacion del proveedor contra parlamentario (fiscalizacion) sigue igual", async () => {
+    // RUT-exacto contra la maestra de PARLAMENTARIOS -> enlace + confirmado intactos, sin maestra de terceros.
+    const maestraParl = [maestro({ id: "P500", rut: "76.123.456-0" })];
+    const r = await reconciliarContrato([contrato({ rutProveedor: "76.123.456-0" })], maestraParl, {});
+    expect(r.contratos[0]!.estadoVinculo).toBe("confirmado");
+    expect(r.contratos[0]!.enlace!.parlamentarioId).toBe("P500");
+    expect(r.parlamentariosConfirmados).toEqual(["P500"]);
+    // Sin maestra de terceros inyectada -> entidad_id null (degradacion honesta).
+    expect(r.contratos[0]!.entidadId).toBeNull();
   });
 });

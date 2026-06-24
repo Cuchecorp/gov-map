@@ -73,6 +73,8 @@ function contratistaRoot(c: Contratista): Record<string, unknown> {
     nombre: c.nombre,
     codigo_empresa: c.codigoEmpresa,
     tipo_persona: c.tipoPersona,
+    // Δ3 (ENT-03): FK plano a entidad_tercero (columna nueva de 0036); null si no confirma.
+    entidad_id: c.entidadId ?? null,
     origen: c.origen,
     fecha_captura: c.fecha_captura,
     enlace: c.enlace,
