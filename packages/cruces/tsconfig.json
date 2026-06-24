@@ -12,6 +12,6 @@
     { "path": "../core" },
     { "path": "../llm" }
   ],
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.json"],
   "exclude": ["src/**/*.test.ts", "test", "dist"]
 }
