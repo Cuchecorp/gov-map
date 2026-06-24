@@ -129,10 +129,10 @@ Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la 
 | LOCKDOWN-02 | Phase 42 | Write-complete (apply ÚLTIMO=operador) |
 | LOCKDOWN-03 | Phase 42 | Write-complete (deploy=operador) |
 | LOCKDOWN-04 | Phase 42 | Complete |
-| DEBT-01 | Phase 43 | Pending |
-| DEBT-02 | Phase 43 | Pending |
-| DEBT-03 | Phase 43 | Pending |
-| DEBT-04 | Phase 43 | Pending |
+| DEBT-01 | Phase 43 | Complete (inventario: ~71 hallazgos, 6 dims) |
+| DEBT-02 | Phase 43 | Complete (validación Opus 1-a-1: 23 falsos-pos/won't-fix) |
+| DEBT-03 | Phase 43 | Complete (24 FIX-NOW, 21 commits, suite 341 verde) |
+| DEBT-04 | Phase 43 | Complete (ledger + 11 checkpoints operador + memoria) |
 
 ### DEBT (Phase 43 — eliminación de deuda técnica, exhaustiva)
 

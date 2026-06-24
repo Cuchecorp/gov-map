@@ -115,4 +115,53 @@ The "nada por sentado" payoff: the two discovery *criticals* both fell to valida
 
 ---
 
-*Commits are recorded inline in section A as execution proceeds; final state in 43-SUMMARY.*
+---
+
+## E. Execution outcome (final, 2026-06-24)
+
+**Baseline → final:** app **316 → 341** green (+25 new tests); `tsc -b` clean throughout; packages all green and **dinero un-darkened (0 → 97 tests now actually run)**. Root `pnpm test` now green end-to-end (packages incl. dinero + app). Zero regression — the only red during execution (LOCKDOWN-04 guard tripped by 0045) was caught by the full-suite gate and fixed before closure.
+
+**21 atomic fix commits** (each suite-green):
+
+| Commit | Findings |
+|--------|----------|
+| `59907f6` | CFG-01 gitignore `.claude/` |
+| `1811a65` | CFG-02/03/04/05 `.env.example` |
+| `8e22ea7` | CFG-06 tsconfig refs (CFG-07 rejected — see below) |
+| `61a4e8a` | CFG-14 openai pin comment |
+| `9a779a8` | APP-01 admin key fallback union + test |
+| `5355549` | APP-02 leerFicha honest error + test |
+| `602b2eb` | APP-03a + APP-08 buscar honest error + log + test |
+| `8d5e295` | APP-03b votos materia log-and-continue |
+| `31cac2e` | APP-05 lobby filter (no `!`) |
+| `aeab365` | PKG-02 enqueue log + test **+ TEST-11 dinero un-dark** |
+| `f88a6cb` | PKG-08 agenda comment |
+| `ec6db78` | PKG-11 sector drift-guard + TEST-04 cruces writer test |
+| `16c70dc` | PKG-13 safeJsonParse log |
+| `15405da` | TEST-10 provenance timer window |
+| `7ca1a88` | TEST-01 + TEST-09 root test runs app |
+| `c737d17` | TEST-03 votos live-probe excluded |
+| `2e7ed79` | TEST-08 admin-gate + TEST-08b safeExternalHref tests |
+| `5d5c5e7` | DB-05 25 pgTAP headers |
+| `23b2df5` | PLAN-08 4 HANDOFF COMPLETED markers |
+| `60a8590` | DB-01/03/07/08 → migration 0045 (WRITTEN, not applied) + post-apply pgTAP |
+| `9a348c2` | LOCKDOWN-04 guard updated for 0045 |
+
+**Reclassifications discovered DURING execution (the value of provable-green gating):**
+- **CFG-07** (add `@obs/*` paths to tsconfig.base.json): validator graded FIX-NOW "low-impact" → **execution proved it HARMFUL**: mapping the aliases to `src/` overrides the pnpm-workspace `.d.ts` resolution and drags cross-package source into each project's `rootDir` → `tsc -b` went red. **Reclassified WON'T-FIX**; only CFG-06 (project references) shipped. Lesson: project references, not path aliases, are the typecheck mechanism here.
+- **CFG-10** (docker-cf-build.sh frozen-lockfile): needs a Linux Docker build to prove green (Windows builds 500) → **CHECKPOINT-OPERADOR** (could not verify autonomously).
+- **TEST-05** (dinero ingest-run.ts test): **DEFERRED** per the plan-checker's fragility escape-hatch — the dinero-un-dark win (TEST-11) delivered the larger coverage gain.
+- **TEST-11** (NEW, swarm missed it): `packages/dinero` had no own `vitest.config.ts` — the only package without one — so its 11 test files (95 tests) never ran. Added the config → all green. Surfaced while wiring the PKG-02 test.
+
+**Final tallies:** FIX-NOW applied **24** (incl. TEST-11; CFG-07 dropped, TEST-05 deferred) · CHECKPOINT-OPERADOR **11** (added CFG-10; the 0045 apply) · WON'T-FIX/false-positive/resolved **23** (added CFG-07) · FOLD-INTO-CLOSURE **5** (done in the closure commit).
+
+## F. Operator checkpoints (nothing applied to PROD by the agent)
+
+1. **Apply migration 0045** (DB-01/03/07/08 hardening) — order `0043 → deploy03 → 0044 → 0045`, `psql --single-transaction` + schema_migrations row, then run `supabase/tests/post-apply/0045_revoke_public_rpc_gap.test.sql`. NEVER `db push`. (Independent of the Phase 42 cutover; safe no-op on current PROD.)
+2. **CI quality gate** (TEST-02 `ci.yml` + TEST-07 pgTAP-in-CI) — operator decision on Actions minutes / branch-protection. `pnpm test` + `tsc -b` are now the ready commands.
+3. **CFG-08** app tsconfig ES2017→ES2022, **CFG-09/CFG-13** Deno zod@4 + `--no-check`, **CFG-10** docker frozen-lockfile, **CFG-11** real linter for packages/* — each needs a build/runtime verification the agent can't run.
+4. **DB-04/DB-09** coverage pgTAP (0013/0014/0017 + 0031 bienes) — write+run against PROD (agent can't execute pgTAP).
+5. **PLAN-06** reconcile the `17-LEGAL-DOSSIER-NET.md` §8 body (`pending`) vs its `approved` front-matter — never silently edit a signed dossier. **PLAN-13** MEMORY.md absolute paths — memory is outside the repo.
+6. **Pre-existing (NOT this phase):** Phase 42 cutover; flag flips; cron secrets.
+
+*Phase 43 closed 2026-06-24. The validated plan (sections A–D) + this outcome (E–F) are the authoritative ledger.*
