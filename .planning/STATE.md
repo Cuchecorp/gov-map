@@ -4,13 +4,13 @@ milestone: v4.0
 milestone_name: — De datos a cruces verificables
 status: executing
 stopped_at: Completed 36-01-PLAN.md
-last_updated: "2026-06-24T15:20:56.438Z"
+last_updated: "2026-06-24T15:32:53.692Z"
 last_activity: 2026-06-24
 progress:
   total_phases: 33
   completed_phases: 16
   total_plans: 61
-  completed_plans: 68
+  completed_plans: 69
   percent: 48
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 36 (cruce-capa-de-cruces-parlamentario-sector-deny-by-default) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Verificación PROD: pgTAP 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12; resolver_entidad deny-by-default (anon/auth/public=f, service_role=t); confirm-with-promote ya NO lanza 23503.
 Próximo: Phase 36 — CRUCE — Capa de cruces parlamentario↔sector (deny-by-default). Depende de Phases 34/35 (entidades resueltas).
@@ -107,6 +107,7 @@ Last activity: 2026-06-24
 | Phase 35 P04 | 22min | 3 tasks | 14 files |
 | Phase 36 P01 | 14min | 4 tasks | 6 files |
 | Phase 36 P02 | 12min | 2 tasks | 11 files |
+| Phase 36 P03 | 8min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -238,7 +239,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-24T15:17:53.142Z
+Last session: 2026-06-24T15:32:37.986Z
 Stopped at: Completed 36-01-PLAN.md
 Resume file: None
 
