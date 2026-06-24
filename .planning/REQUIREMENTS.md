@@ -34,7 +34,7 @@
 
 - [ ] **ENT-01**: Existe la maestra `entidad_tercero` (+ `entidad_tercero_alias`, sequence `entidad_id_seq`, trigger anti-demotion espejo de 0007/0012, RLS deny-by-default) y las tablas `vinculo_entidad` + `revision_entidad` (espejo de `revision_identidad`), aplicadas por `psql --db-url` con pgTAP verde.
 - [x] **ENT-02**: El matcher determinista `matchDeterministaEntidad` confirma por RUT-único o nombre-único-por-tipo; toda ambigüedad → `no_confirmado` (fail-closed). Personas jurídicas: SOLO por RUT exacto, nombre-sin-RUT → siempre `no_confirmado` (nunca LLM). Persona natural usa LLM solo ante homónimos, con `assertNoRutInLlmInput` sobre el prompt (≥10 tests; el test falla si un RUT se cuela al prompt).
-- [ ] **ENT-03**: Los reconciliadores existentes escriben el FK resuelto: `reconciliar-sujeto.ts` puebla `lobby_contraparte.contraparte_id` confirmado (antes siempre null); `reconciliar-contrato.ts` puebla `contratista.entidad_id`. RPC transaccional `resolver_entidad` (espejo de 0015).
+- [x] **ENT-03**: Los reconciliadores existentes escriben el FK resuelto: `reconciliar-sujeto.ts` puebla `lobby_contraparte.contraparte_id` confirmado (antes siempre null); `reconciliar-contrato.ts` puebla `contratista.entidad_id`. RPC transaccional `resolver_entidad` (espejo de 0015).
 - [x] **ENT-04**: Los matches dudosos van a la cola `revision_entidad` (estado `pendiente`); ningún match dudoso se promueve a `confirmado` sin revisor humano vía RPC `resolver_entidad`. UI admin protegida `revisar-entidades`.
 - [x] **ENT-05**: El backfill de entidades es LOCAL (operador), idempotente/reanudable: una 2ª corrida produce 0 entidades/vínculos nuevos. La maestra se exporta a JSON fuera de Supabase (custodia, espejo de `backup.ts`).
 
@@ -93,7 +93,7 @@ Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la 
 | INGEST-04 | Phase 34 | Pending |
 | ENT-01 | Phase 35 | Pending |
 | ENT-02 | Phase 35 | Complete |
-| ENT-03 | Phase 35 | Pending |
+| ENT-03 | Phase 35 | Complete |
 | ENT-04 | Phase 35 | Complete |
 | ENT-05 | Phase 35 | Complete |
 | CRUCE-01 | Phase 36 | Pending |

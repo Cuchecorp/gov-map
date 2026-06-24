@@ -4,14 +4,14 @@ milestone: v4.0
 milestone_name: — De datos a cruces verificables
 status: executing
 stopped_at: "35-01 Tasks 1-3 code-complete (3 migraciones 0034/0035/0036 + 3 pgTAP, verificadas por grep + commiteadas f12691b/80ac800/80bbc9d). DETENIDO en Task 4 = checkpoint de operador BLOCKING (gate=blocking-human): apply remoto PROD por psql --single-transaction + schema_migrations + pgTAP 0034/0035/0036 verde + probe anon permission-denied."
-last_updated: "2026-06-24T02:59:32.987Z"
+last_updated: "2026-06-24T03:18:38.624Z"
 last_activity: 2026-06-24
 progress:
   total_phases: 33
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 54
-  completed_plans: 62
-  percent: 45
+  completed_plans: 63
+  percent: 48
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 35 (ENT — Resolución de identidades de terceros) — EXECUTING
-Plan: 2 of 4 — Tasks 1-3 done, Task 4 = checkpoint operador BLOCKING (pendiente)
-Status: Ready to execute
+Plan: 4 of 4 — 35-04 DONE (reconciliadores cablean el FK de tercero Δ3 + cola admin protegida ENT-04). Pendiente solo el checkpoint de operador 35-01 Task 4 (apply remoto 0034/0035/0036).
+Status: Phase 35 code-complete (4/4 planes); bloqueado el apply remoto por operador (35-01 Task 4 BLOCKING).
 Last activity: 2026-06-24
 
 ## Performance Metrics
@@ -102,6 +102,7 @@ Last activity: 2026-06-24
 | Phase 18 P03 | 12min | 3 tasks | 7 files |
 | Phase 35 P02 | 10min | 3 tasks | 12 files |
 | Phase 35 P03 | 12min | 3 tasks | 13 files |
+| Phase 35 P04 | 22min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -189,6 +190,7 @@ Recent decisions affecting current work:
 - [Phase ?]: NET-02 UI entregada: isla 'use client' @xyflow/react@12.11.0 bajo components/red/ (nodo sobrio nombre+camara, arista=hecho tipado+ventana, provenance siempre en DOM, CC BY 4.0 solo si la fila trae licencia); xyflow contenido en la client island, no infla rutas server. NET sigue gateado-OFF hasta signoff F17
 - [Phase 35]: [35-01]: DDL del subsistema de terceros (0034/0035/0036) ESPEJA parlamentario (0005/0006/0007/0012/0015) con Δ1 tipo_entidad, Δ2 defensa-en-DB juridica-solo-determinista (RAISE en la guarda del vinculo), Δ3 FK lobby_contraparte.contraparte_id + contratista.entidad_id + identidad_audit.tipo_entidad. id estable por sequence DB (entidad_id_seq 'E00001', no logica TS). Clave natural vinculo_entidad = (tipo_entidad, mencion_normalizada) indice unico TOTAL (no parcial — PostgREST onConflict), coincidente byte-a-byte con el on conflict del RPC resolver_entidad (10 params, grants firma-exacta). identidad_audit REUSADO (A3); donante.entidad_id diferido a Phase 36 (A2). Tasks 1-3 verificadas por grep + commiteadas; Task 4 = apply remoto = checkpoint operador.
 - [Phase ?]: [Phase 35]: [35-02]: matchDeterministaEntidad fail-closed con juridica-solo-RUT (Δ2: juridica-sin-rut nunca confirma por nombre ni habilita el LLM); EnlaceEntidadConfirmado branded con unique symbol privado propio no exportado (grep-gate); seeder-entidad idempotente (2da corrida=0 nuevos, nunca auto-confirma); custodia JSON determinista byte-a-byte (entidad_tercero.seed.json); backfill-entidad-cli LOCAL. EntidadTercero* locales (0034-0036 no aplicadas aun). 110/110 verde + tsc -b limpio.
+- [Phase 35]: [35-04]: reconciliadores cablean el FK de tercero (Δ3) — reconciliar-sujeto puebla lobby_contraparte.contraparte_id (matchDeterministaEntidad por contraparte; opts.maestraEntidad inyectable) y reconciliar-contrato puebla contratista.entidad_id (proveedor: juridica RUT-exacto Δ2 / natural RUT o nombre). SOLO un match confirmado mintea EnlaceEntidadConfirmado (branded); null en juridica-sin-RUT/homonimo (fail-closed). Storage plano aplanado por los writers (A4). DATA-ROUTING: el RUT crudo SOLO alimenta el matcher determinista en memoria, NUNCA al LLM/jsonb (test lo asierta sobre vinculos/colas/prompts). entidad_id (col de 0036) vive en `contratista` (keyed rut_proveedor), no en la fila de contrato: ingest-run la stampa desde la resolucion. Cola web /admin/revisar-entidades protegida server-side (adminRevisionEnabled fail-closed como primera sentencia + supabase-admin service-role server-only; cliente nunca se construye con gate OFF); promocion SOLO humana via RPC resolver_entidad (p_promover=true metodo='humano'); revisor vacio/chosen_id invalido no tocan la DB. 9474854/b3256d2/f9cb21d; lobby 48/48, dinero 95/95, app 276/276, tsc limpio. Gate admin env-based (repo sin auth/sesion); apply remoto 0035/0036 = checkpoint operador (35-01 Task 4).
 
 ### Pending Todos
 
@@ -229,8 +231,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-24T02:59:32.975Z
-Stopped at: 35-01 Tasks 1-3 code-complete (3 migraciones 0034/0035/0036 + 3 pgTAP, verificadas por grep + commiteadas f12691b/80ac800/80bbc9d). DETENIDO en Task 4 = checkpoint de operador BLOCKING (gate=blocking-human): apply remoto PROD por psql --single-transaction + schema_migrations + pgTAP 0034/0035/0036 verde + probe anon permission-denied.
+Last session: 2026-06-24T03:18:38.611Z
+Stopped at: 35-04 COMPLETE (reconciliadores cablean el FK de tercero Δ3 + cola admin protegida ENT-04; commits 9474854/b3256d2/f9cb21d/583e288; lobby 48/48, dinero 95/95, app 276/276, tsc limpio). Phase 35 code-complete (4/4 planes). Pendiente SOLO el checkpoint de operador 35-01 Task 4 (BLOCKING, gate=blocking-human): apply remoto PROD de 0034/0035/0036 por psql --single-transaction + schema_migrations + pgTAP verde + probe anon permission-denied.
 Resume file: None
 
 ## Operator Next Steps
