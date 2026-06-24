@@ -9,7 +9,7 @@
 --   * `contratos_ingesta_estado` es PUBLIC-READ (policy SELECT para anon + grant SELECT a anon),
 --   * el RPC `contratos_de_parlamentario(text)` existe, es SECURITY DEFINER, anon tiene EXECUTE,
 --     y public NO tiene EXECUTE (revocado).
--- Corre via `supabase test db` (pgTAP). build/typecheck NO prueban que el DDL se aplico
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP). build/typecheck NO prueban que el DDL se aplico
 -- (falso positivo de CI, RESEARCH Pitfall 3). El apply remoto + esta corrida contra el schema
 -- APLICADO es el checkpoint de operador. Espeja 0022_probidad.test.sql + 0023_money_gate.test.sql.
 -- (El numero 0024 evita la colision con el `0023_money_gate.test.sql` ya existente.)

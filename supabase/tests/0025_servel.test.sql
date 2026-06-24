@@ -14,7 +14,7 @@
 --   * el RPC `aportes_de_parlamentario(text)` existe, es SECURITY DEFINER, anon tiene EXECUTE,
 --     y public NO tiene EXECUTE (revocado),
 --   * el cuerpo del RPC ordena por `eleccion` y NO proyecta el RUT del donante (Ley 21.719).
--- Corre via `supabase test db` (pgTAP). build/typecheck NO prueban que el DDL se aplico
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP). build/typecheck NO prueban que el DDL se aplico
 -- (falso positivo de CI, RESEARCH Pitfall 4). El apply remoto + esta corrida contra el schema
 -- APLICADO es el checkpoint de operador. Espeja 0024_dinero.test.sql.
 -- (El numero 0025 evita colision con `0023_money_gate.test.sql` y `0024_dinero.test.sql`.)

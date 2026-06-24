@@ -1,6 +1,6 @@
 -- 0004_parlamentario.test.sql
 -- Verifica la maestra de identidad creada por la migracion 0005.
--- Corre via `supabase test db` (pgTAP). Espeja el patron de 0001_control_plane.test.sql.
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP). Espeja el patron de 0001_control_plane.test.sql.
 
 begin;
 select plan(25);

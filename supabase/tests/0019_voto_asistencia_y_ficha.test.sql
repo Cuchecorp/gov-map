@@ -5,7 +5,7 @@
 --   * los RPCs votos_de_parlamentario y rebeldias_de_parlamentario existen,
 --   * anon NO puede leer parlamentario.partido (deny-by-default, LEGAL-03),
 --   * anon SÍ tiene EXECUTE sobre ambos RPCs y los invoca sin error.
--- Corre via `supabase test db` (pgTAP). build/typecheck NO prueban el DDL aplicado.
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP). build/typecheck NO prueban el DDL aplicado.
 -- Espeja el patrón de 0011/0018 (begin; plan(N); ...; finish(); rollback;).
 
 begin;

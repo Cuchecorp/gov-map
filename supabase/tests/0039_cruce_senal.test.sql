@@ -8,7 +8,7 @@
 --     parlamentarios distintos, con conteo + evidencia jsonb (items con enlace de fuente),
 --   * el cuerpo de `materializar_cruces` NO contiene partido ni rut (no-PII, LEGAL-03),
 --   * el cron 'cruces-materializar' quedó registrado.
--- Corre vía `supabase test db` (pgTAP). build/typecheck NO prueban que el DDL se aplicó
+-- Corre vía `psql -tA -f` (vs PROD aplicado) (pgTAP). build/typecheck NO prueban que el DDL se aplicó
 -- (falso positivo de CI, Pitfall 5). Espeja 0030_net.test.sql style. Requiere 0038 aplicada
 -- (catálogo sector + columna lobby_contraparte.sector_id).
 

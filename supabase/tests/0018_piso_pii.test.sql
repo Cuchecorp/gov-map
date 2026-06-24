@@ -1,6 +1,6 @@
 -- 0018_piso_pii.test.sql
 -- Verifica el PISO de RLS deny-by-default para PII nueva creado por 0018 (LEGAL-03).
--- Corre via `supabase test db` (pgTAP) CONTRA UNA MIGRACION APLICADA — build/typecheck
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP) CONTRA UNA MIGRACION APLICADA — build/typecheck
 -- NO prueban que el DDL se aplico (falso positivo de CI, RESEARCH Pitfall 4).
 -- Espeja el patron de 0004_parlamentario.test.sql.
 

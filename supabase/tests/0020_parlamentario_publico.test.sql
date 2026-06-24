@@ -5,7 +5,7 @@
 --   * el RPC devuelve el nombre/cámara de un parlamentario existente,
 --   * el RPC NO incluye partido/rut/email en su salida (LEGAL-03),
 --   * anon SIGUE sin poder leer partido directamente (deny-by-default intacto).
--- Corre via `supabase test db` (pgTAP). Espeja 0019_voto_asistencia_y_ficha.test.sql.
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP). Espeja 0019_voto_asistencia_y_ficha.test.sql.
 
 begin;
 select plan(7);

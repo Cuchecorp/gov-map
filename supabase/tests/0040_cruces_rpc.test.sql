@@ -5,7 +5,7 @@
 --     subgrafo_red/0030, que SÍ concede a anon),
 --   * el cuerpo NO contiene partido/rut/email/donante_id (no-PII, LEGAL-03),
 --   * la proyección lee cruce_senal y une al catálogo sector (etiqueta pública).
--- Corre vía `supabase test db` (pgTAP). build/typecheck NO prueban que el DDL se aplicó
+-- Corre vía `psql -tA -f` (vs PROD aplicado) (pgTAP). build/typecheck NO prueban que el DDL se aplicó
 -- (falso positivo de CI, Pitfall 5). Espeja 0030_net.test.sql:92-105 con la assertion de
 -- privilegio INVERTIDA. Requiere 0038/0039 aplicadas.
 

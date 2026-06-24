@@ -12,7 +12,7 @@
 --   * CASO NEGATIVO de normalización (plan-checker MEDIUM-2): dos contrapartes con nombres
 --     que son VARIANTES genuinas ("Fundación X" vs "Fundacion X A.G.") NO se funden bajo el
 --     join-key `lower(trim(nombre))` → cero arista entre ese par (limitación conocida pineada).
--- Corre vía `supabase test db` (pgTAP). build/typecheck NO prueban que el DDL se aplicó
+-- Corre vía `psql -tA -f` (vs PROD aplicado) (pgTAP). build/typecheck NO prueban que el DDL se aplicó
 -- (falso positivo de CI, Pitfall 5). Espeja 0020/0021 test style.
 
 begin;

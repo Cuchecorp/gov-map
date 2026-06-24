@@ -5,7 +5,7 @@
 --   * primer request a un host => wait 0 (reserva inmediata)
 --   * request inmediato siguiente => wait > 0 (slot ocupado, debe esperar)
 --   * tras avanzar el reloj (last_request_at viejo) => wait 0 de nuevo
--- Corre via `supabase test db` (pgTAP).
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP).
 
 begin;
 select plan(6);

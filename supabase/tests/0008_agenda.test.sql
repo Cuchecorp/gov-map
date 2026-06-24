@@ -2,7 +2,7 @@
 -- Verifica el modelo común de Agenda creado por la migración 0010:
 -- citacion / citacion_invitado / citacion_punto / sesion_sala / sesion_tabla_item
 -- + RLS PÚBLICO-READ para anon + guarda de identidad (anon NO lee parlamentario.rut).
--- Corre via `supabase test db` (pgTAP).
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP).
 
 begin;
 select plan(22);

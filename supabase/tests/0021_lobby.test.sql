@@ -7,7 +7,7 @@
 --   * la contraparte NO tiene FK a `parlamentario` (su única FK saliente es a lobby_audiencia),
 --   * el FK del sujeto pasivo es nullable,
 --   * el RPC `lobby_de_parlamentario(text)` existe, es SECURITY DEFINER y anon tiene EXECUTE.
--- Corre vía `supabase test db` (pgTAP). build/typecheck NO prueban que el DDL se aplicó
+-- Corre vía `psql -tA -f` (vs PROD aplicado) (pgTAP). build/typecheck NO prueban que el DDL se aplicó
 -- (falso positivo de CI, Pitfall 5). Espeja 0018_piso_pii.test.sql + 0020_parlamentario_publico.test.sql.
 
 begin;

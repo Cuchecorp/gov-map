@@ -5,7 +5,7 @@
 --   * el RPC lista a los parlamentarios (nombre/cámara) para anon,
 --   * el RPC NO incluye partido/rut/email en su salida (LEGAL-03),
 --   * anon SIGUE sin poder leer partido directamente (deny-by-default intacto).
--- Corre via `supabase test db` (pgTAP). Espeja 0020_parlamentario_publico.test.sql.
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP). Espeja 0020_parlamentario_publico.test.sql.
 
 begin;
 select plan(7);

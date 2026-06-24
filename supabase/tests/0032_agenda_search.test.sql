@@ -1,7 +1,7 @@
 -- 0032_agenda_search.test.sql
 -- Verifica la migración 0032: columna FTS generada `citacion.busqueda_tsv` + índice GIN +
 -- RPC buscar_citaciones(text,int) con grant execute a anon, FTS spanish efectiva, match por
--- boletín, y "sin resultados" honesto ante basura. Corre vía `supabase test db` (pgTAP).
+-- boletín, y "sin resultados" honesto ante basura. Corre vía `psql -tA -f` (vs PROD aplicado) (pgTAP).
 
 begin;
 select plan(11);

@@ -1,7 +1,7 @@
 -- 0005_revision_identidad.test.sql
 -- Verifica el estado durable de identidad creado por la migracion 0006:
 --   vinculo_identidad (ID-06) + revision_identidad (ID-05) + identidad_audit (ID-08).
--- Corre via `supabase test db` (pgTAP). Espeja el patron de 0004_parlamentario.test.sql.
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP). Espeja el patron de 0004_parlamentario.test.sql.
 -- El corazon: la INMUTABILIDAD de identidad_audit (Pitfall 4) probada con throws_ok
 -- sobre UPDATE y DELETE — pgTAP corre como superuser local (peor caso): si el trigger
 -- bloquea aqui, bloquea al service role.

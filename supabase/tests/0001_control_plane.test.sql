@@ -1,6 +1,6 @@
 -- 0001_control_plane.test.sql
 -- Verifica el plano de control creado por migraciones 0001/0002.
--- Corre via `supabase test db` (pgTAP).
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP).
 
 begin;
 select plan(12);

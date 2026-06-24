@@ -7,7 +7,7 @@
 --     total_si, total_no, quorum) además de las existentes (etapa),
 --   * anon tiene EXECUTE y lo invoca sin error (devuelve las columnas nuevas pobladas),
 --   * anon SIGUE sin poder leer parlamentario.partido directamente (deny-by-default).
--- Corre via `supabase test db` (pgTAP). build/typecheck NO prueban el DDL aplicado.
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP). build/typecheck NO prueban el DDL aplicado.
 -- Espeja el patrón de 0019/0027 (begin; plan(N); ...; finish(); rollback;).
 
 begin;

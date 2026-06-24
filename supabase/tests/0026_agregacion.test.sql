@@ -13,7 +13,7 @@
 --   * las sub-maestras `contratista` y `donante` SIGUEN deny-by-default tras 0025 (el candado de
 --     la fase, leccion Phase 11 + CR-01 Phase 13): RLS enabled + CERO policies + anon SIN grant
 --     SELECT (tres asserts por tabla).
--- Corre via `supabase test db` (pgTAP). build/typecheck NO prueban que el DDL se aplico
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP). build/typecheck NO prueban que el DDL se aplico
 -- (falso positivo de CI, RESEARCH Pitfall 2). El apply remoto + esta corrida contra el schema
 -- APLICADO es el checkpoint de operador. Espeja 0025_servel.test.sql + 0024_dinero.test.sql.
 -- (El numero 0026 es el siguiente libre; 0025_servel.test.sql es el test mas alto existente.)

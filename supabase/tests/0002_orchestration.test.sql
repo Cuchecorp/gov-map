@@ -6,7 +6,7 @@
 --   * los helpers de config (project_url/worker_secret) existen
 --   * CR-04: util.worker_secret (no service_key) es el Bearer del worker
 --   * CR-04: util.cleanup_net_http existe y el cron de cleanup esta registrado
--- Corre via `supabase test db` (pgTAP).
+-- Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP).
 
 begin;
 select plan(9);

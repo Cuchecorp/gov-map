@@ -9,7 +9,7 @@
 --   * `declaracion_familiar` NO tiene FK a parlamentario (su única FK saliente es a declaracion),
 --   * el FK del declarante es nullable,
 --   * los RPCs `declaraciones_de_parlamentario(text)` / `comparar_declaraciones(text, date[])` existen, son SECURITY DEFINER y anon tiene EXECUTE.
--- Corre vía `supabase test db` (pgTAP). build/typecheck NO prueban que el DDL se aplicó
+-- Corre vía `psql -tA -f` (vs PROD aplicado) (pgTAP). build/typecheck NO prueban que el DDL se aplicó
 -- (falso positivo de CI, Pitfall 6). Espeja 0021_lobby.test.sql + 0018_piso_pii.test.sql.
 
 begin;

@@ -1,7 +1,7 @@
 -- 0011_fichas_embeddings.test.sql
 -- Verifica la migración 0011: proyecto_ficha + proyecto_embedding(vector(768)) + índice HNSW +
 -- RPC match_proyectos (con grant execute a anon) + RLS público-read en ambas tablas, SIN exponer
--- datos personales. Corre via `supabase test db` (pgTAP).
+-- datos personales. Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP).
 
 begin;
 select plan(20);

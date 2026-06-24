@@ -11,7 +11,7 @@
 -- (lección Phase 11: este proyecto Supabase concede SELECT a `anon` por default
 -- privileges en cada tabla nueva de public; la RLS sin policy niega las FILAS, pero el
 -- PRIVILEGIO sigue existiendo hasta que un `revoke` explícito lo quita).
--- Corre vía `supabase test db` (pgTAP) CONTRA UNA MIGRACION APLICADA — build/typecheck
+-- Corre vía `psql -tA -f` (vs PROD aplicado) (pgTAP) CONTRA UNA MIGRACION APLICADA — build/typecheck
 -- NO prueban que el DDL se aplicó (falso positivo de CI, RESEARCH Pitfall 4).
 -- Espeja el patrón de 0018_piso_pii.test.sql + el refuerzo de revoke de 0022_probidad.test.sql.
 

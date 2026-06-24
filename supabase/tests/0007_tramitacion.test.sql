@@ -1,7 +1,7 @@
 -- 0007_tramitacion.test.sql
 -- Verifica el modelo común de Tramitación creado por la migración 0008:
 -- proyecto/votacion/voto/tramitacion_evento + RLS PÚBLICO-READ para anon + guarda de
--- identidad (anon NO lee parlamentario.rut). Corre via `supabase test db` (pgTAP).
+-- identidad (anon NO lee parlamentario.rut). Corre via `psql -tA -f` (vs PROD aplicado) (pgTAP).
 
 begin;
 select plan(26);

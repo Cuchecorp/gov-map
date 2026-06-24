@@ -5,7 +5,7 @@
 --   * el seed contiene los 13 códigos confirmados (Task 1, A1) y CERO catch-all 'otros',
 --   * `proyecto_ficha`, `lobby_contraparte` y `donante` tienen columna `sector_id`,
 --   * el FK de cada `sector_id` apunta a `sector(codigo)`.
--- Corre vía `supabase test db` (pgTAP). build/typecheck NO prueban que el DDL se aplicó
+-- Corre vía `psql -tA -f` (vs PROD aplicado) (pgTAP). build/typecheck NO prueban que el DDL se aplicó
 -- (falso positivo de CI, Pitfall 5). Espeja 0021/0030 test style.
 
 begin;

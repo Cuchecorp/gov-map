@@ -1,6 +1,6 @@
 -- 0033_agenda_search_camara.test.sql
 -- Verifica que el filtro por cámara vive DENTRO del RPC (p_camara) y que la firma de 2 args de
--- 0032 ya no existe (fue reemplazada por la de 3). Corre vía `supabase test db` (pgTAP).
+-- 0032 ya no existe (fue reemplazada por la de 3). Corre vía `psql -tA -f` (vs PROD aplicado) (pgTAP).
 
 begin;
 select plan(4);
