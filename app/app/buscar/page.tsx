@@ -57,12 +57,15 @@ export default async function BuscarPage({ searchParams }: PageProps) {
   );
 }
 
-async function Resultados({ q, page }: { q: string; page: number }) {
+export async function Resultados({ q, page }: { q: string; page: number }) {
   let vecinos: { boletin: string }[];
   try {
     vecinos = await buscarProyectos(q, { matchCount: PAGE_SIZE * page + 1 });
-  } catch {
+  } catch (err) {
     // Error = una llamada falló (embed / rpc / DB). Distinto de vacío/degradado.
+    // Log para observabilidad (Cloudflare logs): un "search error" permanente por
+    // GEMINI_API_KEY ausente o 429 era invisible sin esto.
+    console.error(`buscarProyectos("${q}") falló:`, err);
     return (
       <div className="mt-6 border border-destructive/20 bg-destructive/5 rounded-lg p-4 text-sm">
         Ocurrió un error al realizar la búsqueda. Vuelve a intentarlo en unos
@@ -89,10 +92,22 @@ async function Resultados({ q, page }: { q: string; page: number }) {
   // Hidratar las filas del proyecto (público) preservando el orden del kNN.
   const sb = createServerSupabase();
   const boletines = pageSlice.map((v) => v.boletin);
-  const { data: proyectos } = await sb
+  const { data: proyectos, error: proyectosError } = await sb
     .from("proyecto")
     .select("*")
     .in("boletin", boletines);
+  // #34: un fallo de hidratación NO es "sin resultados". Antes el error se tragaba y
+  // se renderizaba el header de conteo con CERO tarjetas (degradación silenciosa).
+  // Mostrar el mismo error honesto que usa la rama de búsqueda.
+  if (proyectosError) {
+    console.error(`hidratación de proyectos falló ("${q}"):`, proyectosError);
+    return (
+      <div className="mt-6 border border-destructive/20 bg-destructive/5 rounded-lg p-4 text-sm">
+        Ocurrió un error al realizar la búsqueda. Vuelve a intentarlo en unos
+        momentos.
+      </div>
+    );
+  }
   const porBoletin = new Map<string, ProyectoRow>(
     ((proyectos as ProyectoRow[]) ?? []).map((p) => [p.boletin, p]),
   );
