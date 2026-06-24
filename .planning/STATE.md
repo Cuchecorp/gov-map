@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — De datos a cruces verificables
-status: executing
-stopped_at: Completed 41-02-PLAN.md
-last_updated: "2026-06-24T19:20:00.000Z"
-last_activity: 2026-06-24 -- Phase 41 Plan 02 (CRUCEN-02) completado; 0042 grant gated ESCRITA NO aplicada (gate 2)
+status: verifying
+stopped_at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
+last_updated: "2026-06-24T19:30:56.747Z"
+last_activity: 2026-06-24 -- Phase 41 Plan 03 (CRUCEN-03) completado
 progress:
   total_phases: 34
-  completed_phases: 18
+  completed_phases: 19
   total_plans: 67
-  completed_plans: 75
-  percent: 55
+  completed_plans: 76
+  percent: 56
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 ## Current Position
 
-Phase: 41 (crucen-habilitaci-n-de-cruces-grant-gated-dossier-fecha-capt) — EXECUTING
-Plan: 3 of 3
-Status: Executing Phase 41 (Plans 01 CRUCEN-01 + 02 CRUCEN-02 completados)
-Verificación PROD: pgTAP 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12; resolver_entidad deny-by-default (anon/auth/public=f, service_role=t); confirm-with-promote ya NO lanza 23503. 0041 ESCRITA (no aplicada — apply=operador). 0042 ESCRITA (grant gated, INERTE — NO aplicada, NO en schema_migrations; apply=checkpoint humano post-sign-off).
-Próximo: Phase 41 Plan 03 (CRUCEN-03: dossier legal de cruces, signoff: pending).
-Last activity: 2026-06-24 -- Phase 41 Plan 02 (CRUCEN-02) completado; 0042 grant gated ESCRITA NO aplicada (gate 2)
+Phase: 41 (crucen-habilitaci-n-de-cruces-grant-gated-dossier-fecha-capt) — COMPLETE (3/3 plans)
+Plan: 3 of 3 (todos completados)
+Status: Phase complete — ready for verification
+Verificación PROD: pgTAP 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12; resolver_entidad deny-by-default (anon/auth/public=f, service_role=t); confirm-with-promote ya NO lanza 23503. 0041 ESCRITA (no aplicada — apply=operador). 0042 ESCRITA (grant gated, INERTE — NO aplicada, NO en schema_migrations; apply=checkpoint humano post-sign-off). 41-LEGAL-DOSSIER-CRUCES.md ×2 escrito signoff: pending (gate 3 — firma humana Phase 39).
+Próximo: verificar Phase 41; firma humana del dossier (Phase 39) + apply 0042 + flip crucesPublicEnabled (operador, post-firma) son deuda fuera de la corrida autónoma.
+Last activity: 2026-06-24 -- Phase 41 Plan 03 (CRUCEN-03) completado
 
 ## Performance Metrics
 
@@ -114,6 +114,7 @@ Last activity: 2026-06-24 -- Phase 41 Plan 02 (CRUCEN-02) completado; 0042 grant
 | Phase 37 P03 | 11min | 2 tasks | 2 files |
 | Phase 41 P01 | ~9min | 2 tasks | 6 files |
 | Phase 41 P02 | ~2min | 2 tasks | 2 files |
+| Phase 41 P03 | 12min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -211,6 +212,7 @@ Recent decisions affecting current work:
 - [Phase 41]: 41-01 (CRUCEN-01, fix WR-02): 0041 ESCRITA (ff2dd63) — drop+recreate de cruces_de_parlamentario con fecha_captura timestamptz AL FINAL del returns table (42P13 -> drop obligatorio) + doble revoke re-emitido (from public; from anon,authenticated; DEFAULT PRIVILEGES re-concede a anon en cada funcion nueva -> gate 5) + CERO grant a anon (deny-by-default intacto). pgTAP 0041 plan(4) idiom proargnames bag_has + array_to_string ordenado (NO pg_get_function_result) + anon-deny + no-PII. Componente (807f08b): ProvenanceBadge capturedAt={new Date(s.fecha_captura)} (nivel SEÑAL) mata el stale-amber falso del WR-02; fecha de reunion = texto factual plano 'Reunion registrada el {fechaCorta}' §9.1-safe; comentario LIMITACION CONOCIDA borrado; nota honestidad R6 (badge = frescura del rebuild diario cron '23 3 * * *', no de la fuente). CruceSenalRpcRow.fecha_captura: string. Suite 298/298 verde, tsc limpio. [Rule 3] fixture page-test #cruces ON-path +fecha_captura (sin el -> new Date(undefined) Invalid time value). APPLY de 0041 a PROD DIFERIDO (gate 4, checkpoint operador) — agente NO ejecuto psql ni toco schema_migrations.
 - [Phase 41]: 41-02 (CRUCEN-02, grant gated): 0042_cruces_grant_anon.sql ESCRITA (a5e410a) — válvula del Candado A: el único `grant execute on function public.cruces_de_parlamentario(text) to anon` que 0040 omite intencionalmente + cabecera LOUD "NO APLICAR EN CORRIDAS AUTÓNOMAS" + precondición fail-loud `do$$ raise exception` si 0041 no aplicada (fecha_captura ausente de proargnames → el grant caería sobre una función que 0041 luego dropea). **0042 INERTE: NO aplicada a PROD, NO en schema_migrations (gate 2 LOCKED); apply = checkpoint humano post-sign-off CRUCEN-03 (espejo F17/NET).** pgTAP de encendido (0ad6f1c) en supabase/tests/post-apply/ (NUEVO subdir, FUERA del glob de la suite: vitest globea solo .test.{ts,tsx} bajo lib/components/app; sin runner pgTAP automático sobre supabase/tests) → plan(2): anon TIENE execute (espejo INVERTIDO del 0040 assert #3) + sigue security definer; lo corre el operador a mano el día del encendido. Guard de no-apply-prematuro = assert #3 EXISTENTE de 0040_cruces_rpc.test.sql (anon NO execute), dejado SIN cambios (la variante condicional fue RECHAZADA por el validador: moot + security regression). Suite 298/298 verde (0042 no toca frontend). CERO DDL aplicado, CERO grant ejecutado, CERO flip.
 - [Phase ?]: [Phase 37]: 37-03: <section id=cruces> cableada como carril hermano gated en page.tsx — gate crucesPublicEnabled(process.env) envuelve la <section> ENTERA (heading incl., espejo MONEY); OFF (default) => nodo AUSENTE del HTML + RPC cruces_de_parlamentario NUNCA invocado (Candado B load-bearing). Posicion: despues de #patrimonio, antes de MONEY gated. Test del path ON renderiza CrucesSection directamente (renderToStaticMarkup no resuelve hijos async de Suspense). CERO DDL/grant/flip; flag ships OFF (encender = Phase 39). 294 tests verdes.
+- [Phase ?]: [Phase 41]: 41-03 (CRUCEN-03): dossier legal de cruces escrito x2 byte-identicos (docs/legal/41-LEGAL-DOSSIER-CRUCES.md + twin phase-dir), signoff: pending JAMAS firmado (gate 3). CRUCES-especifico (agregacion intra-bloque lobby->sector, NO NET): 1 lobby_sector; 2 agregacion por sector se lee como afinidad/captura sin aristas/caminos; 3 sin partido/sentido-de-voto; 6 fuente unica lobby NO CC BY 4.0; 8 ref 0042_cruces_grant_anon. nota sin la subcadena signoff:approved (grep-hygiene). 9 checklist sin marcar. Firma = humana Phase 39; encender = firmar->aplicar 0042->flip flag. Commits d6ac182 + 7b01957.
 
 ### Pending Todos
 
@@ -237,6 +239,7 @@ None yet for v2.0.
 - 41-01 Task 3 checkpoint operador BLOCKING (gate=blocking-human): aplicar 0041_cruces_rpc_fecha_captura.sql al Supabase remoto PROD por `psql "$SUPABASE_DB_URL" --single-transaction -v ON_ERROR_STOP=1 -f supabase/migrations/0041_cruces_rpc_fecha_captura.sql` (NUNCA `supabase db push` — la ultima en PROD es 0040) + registrar fila 0041 en schema_migrations + correr pgTAP `psql "$SUPABASE_DB_URL" -tA -f supabase/tests/0041_cruces_rpc_fecha_captura.test.sql` (4/4) + regresion `psql … -f supabase/tests/0040_cruces_rpc.test.sql` (anon NO execute sigue verde). Esquivar BOM U+FEFF; Windows PGCLIENTENCODING=UTF8. Codigo Tasks 1-2 commiteado (ff2dd63, 807f08b); suite 298/298 verde + tsc limpio. NO ejecutado por el agente (sin autorizacion en la corrida). Resume-signal: "pgTAP verde" o "diferido". 0041 NO concede nada (deny-by-default intacto) — apply seguro post-verificacion.
 
 - 41-02 (CRUCEN-02) checkpoint HUMANO post-sign-off (gate 2 LOCKED — NO un agente): aplicar 0042_cruces_grant_anon.sql es la VÁLVULA DE RELEASE del Candado A — abre el RPC cruces_de_parlamentario a anon. Se aplica SOLO el día del encendido, DESPUÉS de: (1) firmar el dossier CRUCEN-03 (humano → signoff: approved) y (2) aplicar 0041 (la precondición fail-loud de 0042 aborta si fecha_captura no está en el retorno). Orden de encendido (los 4 juntos): firmar dossier → `psql "$SUPABASE_DB_URL" --single-transaction -f supabase/migrations/0042_cruces_grant_anon.sql` + fila 0042 en schema_migrations → pgTAP de encendido `psql "$SUPABASE_DB_URL" -tA -f supabase/tests/post-apply/0042_cruces_grant_anon.test.sql` (2/2: anon TIENE execute + security definer) → flip CRUCES_PUBLIC_ENABLED=true en Cloudflare. Codigo commiteado (a5e410a migración, 0ad6f1c post-apply pgTAP). **0042 ESCRITA pero NO aplicada / NO en schema_migrations — inerte en el repo.** El agente NUNCA la aplica (espejo F17/NET).
+- 41-03 (CRUCEN-03) checkpoint HUMANO (gate 3 LOCKED — NO un agente): el dossier docs/legal/41-LEGAL-DOSSIER-CRUCES.md (+ twin phase-dir 41-LEGAL-DOSSIER.md, byte-identico) NACE signoff: pending y JAMAS lo firma un agente. La firma legal humana (asesor revisa/completa/firma; registrar asesor + fecha_signoff ISO + observaciones en el YAML de AMBOS archivos + marcar las 8 casillas 9) es deuda de operador Phase 39, espejo F13/F17. Encender crucesPublicEnabled = los 3 pasos JUNTOS post-firma: (1) firmar el dossier (humano), (2) aplicar 0042_cruces_grant_anon.sql (operador, psql --db-url --single-transaction; precondicion fail-loud aborta si 0041 no aplicada) + fila en schema_migrations + pgTAP post-apply 2/2, (3) flip CRUCES_PUBLIC_ENABLED=true en Cloudflare. Commits d6ac182 + 7b01957. CERO firma/DDL/grant/flip ejecutado por el agente.
 
 ### Quick Tasks Completed
 
@@ -256,8 +259,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-24T19:20:00.000Z
-Stopped at: Completed 41-02-PLAN.md
+Last session: 2026-06-24T19:37:00.000Z
+Stopped at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
 Resume file: None
 
 ## Operator Next Steps

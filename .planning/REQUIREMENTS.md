@@ -59,7 +59,7 @@
 
 - [ ] **CRUCEN-01**: Fix WR-02 (frescura honesta). Nueva migración `create or replace public.cruces_de_parlamentario` que PROYECTA `cruce_senal.fecha_captura` en la fila de retorno (sin tocar el grant — el RPC sigue deny-by-default), y `CrucesSection`/`CrucesView` la usan como `capturedAt` del `ProvenanceBadge` (frescura REAL del materializado, no la fecha de la reunión) → elimina el stale-amber falso y el "Actualizado hace …" sobre una fecha de evento. Tipos + tests actualizados. La migración es APLICABLE a PROD ya (checkpoint operador) porque NO concede nada.
 - [x] **CRUCEN-02**: Grant gated del RPC. Nueva migración que concede `execute on function public.cruces_de_parlamentario(text) to anon` (espejo de `subgrafo_red`/`lobby_de_parlamentario`), **ESCRITA pero NO aplicada** — su aplicación es checkpoint humano que ocurre SOLO DESPUÉS del sign-off legal de cruces (deny-by-default hasta la firma, espejo del patrón F17/NET). pgTAP que verifica el grant para cuando se aplique. Un agente NUNCA la aplica ni enciende el flag. ✅ 41-02: 0042_cruces_grant_anon.sql ESCRITA+commiteada (a5e410a) con precondición fail-loud do$$ + cabecera LOUD NO-APLICAR; pgTAP de encendido en supabase/tests/post-apply/ (0ad6f1c) fuera del glob; 0042 INERTE (NO aplicada / NO en schema_migrations).
-- [ ] **CRUCEN-03**: Dossier legal de cruces. `docs/legal/XX-LEGAL-DOSSIER-CRUCES.md` (espejo de `17-LEGAL-DOSSIER-NET.md`), material de PREPARACIÓN para asesoría legal (`signoff: pending`), que estructura la superficie de riesgo de las señales de cruce parlamentario↔sector (composición de hechos públicos lobby↔sector, riesgo de insinuación, minimización Ley 21.719, atribución por dataset) con checklist de sign-off §9. La firma es **acción humana** (como F17). Encender cruces = firmar dossier (humano) → aplicar grant CRUCEN-02 (operador) → flip `crucesPublicEnabled` (operador).
+- [x] **CRUCEN-03**: Dossier legal de cruces. `docs/legal/XX-LEGAL-DOSSIER-CRUCES.md` (espejo de `17-LEGAL-DOSSIER-NET.md`), material de PREPARACIÓN para asesoría legal (`signoff: pending`), que estructura la superficie de riesgo de las señales de cruce parlamentario↔sector (composición de hechos públicos lobby↔sector, riesgo de insinuación, minimización Ley 21.719, atribución por dataset) con checklist de sign-off §9. La firma es **acción humana** (como F17). Encender cruces = firmar dossier (humano) → aplicar grant CRUCEN-02 (operador) → flip `crucesPublicEnabled` (operador).
 
 ### LEGAL — Gate legal transversal (Fase 4, #10)
 
@@ -111,7 +111,7 @@ Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la 
 | SURF-02 | Phase 38 | Pending |
 | CRUCEN-01 | Phase 41 | Pending |
 | CRUCEN-02 | Phase 41 | Done (0042 escrita NO aplicada; apply=human post-sign-off) |
-| CRUCEN-03 | Phase 41 | Pending |
+| CRUCEN-03 | Phase 41 | Complete |
 | LEGAL-01 | Phase 39 | Pending |
 | RUTM-01 | Phase 40 | Pending |
 | RUTM-02 | Phase 40 | Pending |

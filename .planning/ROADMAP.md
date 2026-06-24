@@ -734,7 +734,7 @@ Plans:
 | 38 | Fase 3.2 — Superficie de cruces en ficha de proyecto | SURF-02 | needs-legal-signoff (diferido si señales de voto OFF) |
 | 39 | Fase 4.1 — Gate legal F13/F17/cruces | LEGAL-01 | needs-legal-signoff (exclusivamente humano) |
 | 40 | Fase 5.1 — RUT-01 + ChileCompra/SERVEL | RUTM-01..03 | needs-human-checkpoint (RUT/ticket/URL) · exposición needs-legal-signoff |
-| 41 | Fase 3.5 — Habilitación de cruces (grant gated + dossier + fecha_captura) | CRUCEN-01..03 | autónomo (build: WR-02 fix, grant escrito, dossier) · needs-human-checkpoint (aplicar 0041 a PROD) · needs-legal-signoff (firmar dossier + aplicar grant + flip) |
+| 41 | 3/3 | Complete   | 2026-06-24 |
 
 ### Insight de ruta crítica (LOCKED)
 
@@ -770,7 +770,7 @@ INFRA-01 desbloqueo CI (Phase 33, ✅ DONE) — sin esto ningún workflow progra
 - [ ] **Phase 38: SURF — Superficie de cruces en ficha de proyecto (gated, diferido)** - `cruces_de_proyecto(boletin)` → parlamentarios que votaron a favor con cruces en el sector del proyecto, PII-safe, mismo gate. Hereda la advertencia anti-insinuación de las señales de voto → se DIFIERE si las señales de voto quedan OFF.
 - [ ] **Phase 39: LEGAL — Gate legal transversal F13/F17/cruces (sign-off humano)** - Revisión legal humana (Ley 21.719) que habilita `MONEY_PUBLIC_ENABLED`, `netPublicEnabled` y `crucesPublicEnabled`. Acción exclusivamente humana — un agente NUNCA flipea estos flags. Atraviesa Fases 1–3; controla toda exposición sensible.
 - [ ] **Phase 40: RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human)** - Cosecha de RUT a la maestra; wire real de ChileCompra (hoy CLI demo) + workflow; workflow manual SERVEL por elección. Bloqueado por RUT-01 (prerrequisito duro) + ticket/URL de operador; exposición pública requiere LEGAL-01.
-- [ ] **Phase 41: CRUCEN — Habilitación de cruces (grant gated + dossier + fecha_captura)** - Cierra las 3 deudas del code-review de Phase 37 para dejar la superficie de cruces LISTA para firmar/encender (sin encenderla): fix WR-02 (proyectar `cruce_senal.fecha_captura` en el RPC → frescura honesta, migración aplicable ya), migración de grant del RPC a anon ESCRITA pero NO aplicada (deny-by-default hasta sign-off), y dossier legal de cruces (prep para firma humana, espejo F17). CERO flip de flag.
+- [x] **Phase 41: CRUCEN — Habilitación de cruces (grant gated + dossier + fecha_captura)** - Cierra las 3 deudas del code-review de Phase 37 para dejar la superficie de cruces LISTA para firmar/encender (sin encenderla): fix WR-02 (proyectar `cruce_senal.fecha_captura` en el RPC → frescura honesta, migración aplicable ya), migración de grant del RPC a anon ESCRITA pero NO aplicada (deny-by-default hasta sign-off), y dossier legal de cruces (prep para firma humana, espejo F17). CERO flip de flag. (completed 2026-06-24)
 
 ## Phase Details (v4.0)
 
@@ -967,8 +967,10 @@ Plans:
   2. **CRUCEN-02:** nueva migración con `grant execute on function public.cruces_de_parlamentario(text) to anon` (espejo de `subgrafo_red`/0030 y `lobby_de_parlamentario`/0021), **escrita y commiteada pero NO aplicada** (su aplicación es checkpoint humano post-sign-off); pgTAP que afirma el grant para cuando se aplique; un grep/test garantiza que ninguna corrida autónoma la aplica. CERO flip de `crucesPublicEnabled`.
   3. **CRUCEN-03:** `docs/legal/XX-LEGAL-DOSSIER-CRUCES.md` (espejo estructural de `17-LEGAL-DOSSIER-NET.md`): `signoff: pending`, propósito = preparación para asesoría legal, secciones de superficie de riesgo (composición lobby↔sector como posible insinuación, minimización Ley 21.719, atribución por dataset, doble candado RPC-grant + flag), checklist de sign-off §9. La firma es acción humana (como F17). Documenta la secuencia de encendido: firmar dossier → aplicar grant CRUCEN-02 → flip `crucesPublicEnabled`.
 
-**Plans:** 3 plans (Wave 1, sin cross-deps — 3 deliverables independientes)
+**Plans:** 3/3 plans complete
+
 - [x] 41-01-PLAN.md — CRUCEN-01: fix WR-02 (frescura honesta) — migración 0041 (drop+recreate proyecta fecha_captura) + pgTAP + tipo + componente + RTL; apply 0041 = checkpoint operador DIFERIDO (gate 4); suite 298/298 verde, tsc limpio [ff2dd63, 807f08b]
 - [x] 41-02-PLAN.md — CRUCEN-02: grant gated — migración 0042 (grant a anon, ESCRITA NO aplicada / NO en schema_migrations, gate 2) + precondición fail-loud do$$ + pgTAP post-apply en supabase/tests/post-apply/ fuera del glob; guard = 0040 assert #3 intacto; suite 298/298 verde [a5e410a, 0ad6f1c]
-- [ ] 41-03-PLAN.md — CRUCEN-03: dossier legal de cruces — 41-LEGAL-DOSSIER-CRUCES.md ×2 idénticos, signoff: pending, CRUCES-específico, jamás firmado
+- [x] 41-03-PLAN.md — CRUCEN-03: dossier legal de cruces — 41-LEGAL-DOSSIER-CRUCES.md ×2 idénticos, signoff: pending, CRUCES-específico, jamás firmado
+
 **UI hint**: yes (CRUCEN-01 toca `cruces-de-parlamentario.tsx`)
