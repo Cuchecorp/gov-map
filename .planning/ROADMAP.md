@@ -518,7 +518,19 @@ OPS-01 apply remoto (Phase 23, PRECONDICIÓN — la data no es visible sin las m
   3. El RPC `lobby_de_parlamentario` deja de devolver vacío para los parlamentarios con audiencias confirmadas
   4. El ciudadano ve, en la ficha de un parlamentario con audiencias confirmadas, sus reuniones de lobby reales (contraparte como texto crudo + provenance por fila), nunca enlazando la contraparte salvo identidad confirmada, sin componer la reunión con un voto
 
-**Plans:** TBD
+**Plans:** 3 plans (2 waves)
+
+Plans:
+
+**Wave 1**
+
+- [ ] 37-01-PLAN.md — Gate de presentacion crucesPublicEnabled (Candado B, server-only, fail-closed, espejo de money-gate) + tabla de verdad (SURF-01)
+- [ ] 37-02-PLAN.md — CrucesView (puro) + CrucesSection (Server Component, RPC cruces_de_parlamentario) + tipos del RPC + test RTL (empty-honesto/provenance/identidad/anti-insinuacion negative-match/conteo neutro) (SURF-01)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 37-03-PLAN.md — Cablear <section id=cruces> gated (sibling mt-12, envuelta entera por el gate) + CrucesSkeleton en page.tsx + test de seccion-ausente (gate OFF) / presente (gate ON) (SURF-01)
+
 **UI hint**: yes
 
 ### Phase 26: PAT — Patrimonio/intereses LIVE en la nube + ficha poblada
@@ -534,7 +546,19 @@ OPS-01 apply remoto (Phase 23, PRECONDICIÓN — la data no es visible sin las m
   3. El ciudadano ve las declaraciones reales de un parlamentario con historial de versiones y fecha de presentación prominente (frescura ámbar si vieja), sin ningún veredicto de enriquecimiento ni de conflicto
   4. Una declaración vieja nunca se presenta como estado actual; los datos de familiares quedan deny-by-default, nunca expuestos
 
-**Plans:** TBD
+**Plans:** 3 plans (2 waves)
+
+Plans:
+
+**Wave 1**
+
+- [ ] 37-01-PLAN.md — Gate de presentacion crucesPublicEnabled (Candado B, server-only, fail-closed, espejo de money-gate) + tabla de verdad (SURF-01)
+- [ ] 37-02-PLAN.md — CrucesView (puro) + CrucesSection (Server Component, RPC cruces_de_parlamentario) + tipos del RPC + test RTL (empty-honesto/provenance/identidad/anti-insinuacion negative-match/conteo neutro) (SURF-01)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 37-03-PLAN.md — Cablear <section id=cruces> gated (sibling mt-12, envuelta entera por el gate) + CrucesSkeleton en page.tsx + test de seccion-ausente (gate OFF) / presente (gate ON) (SURF-01)
+
 **UI hint**: yes
 
 ### Phase 27: VOT — Ingesta masiva de votaciones + cobertura real en la ficha
@@ -550,7 +574,19 @@ OPS-01 apply remoto (Phase 23, PRECONDICIÓN — la data no es visible sin las m
   3. El ciudadano ve, en las fichas, cobertura real de votaciones (muchos proyectos, no 2), con el desenlace factual de cada votación y la guarda de identidad aplicada
   4. La línea de cobertura honesta refleja el conjunto ampliado (deja de decir "solo 2 proyectos" cuando ya hay más); un vacío nunca se lee como "limpio"
 
-**Plans:** TBD
+**Plans:** 3 plans (2 waves)
+
+Plans:
+
+**Wave 1**
+
+- [ ] 37-01-PLAN.md — Gate de presentacion crucesPublicEnabled (Candado B, server-only, fail-closed, espejo de money-gate) + tabla de verdad (SURF-01)
+- [ ] 37-02-PLAN.md — CrucesView (puro) + CrucesSection (Server Component, RPC cruces_de_parlamentario) + tipos del RPC + test RTL (empty-honesto/provenance/identidad/anti-insinuacion negative-match/conteo neutro) (SURF-01)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 37-03-PLAN.md — Cablear <section id=cruces> gated (sibling mt-12, envuelta entera por el gate) + CrucesSkeleton en page.tsx + test de seccion-ausente (gate OFF) / presente (gate ON) (SURF-01)
+
 **UI hint**: yes
 
 ### Phase 28: PROV — Provenance real de la maestra
@@ -842,7 +878,19 @@ Plans:
   2. Con gate ON renderiza sin error de hidratación; con gate OFF la sección no monta (nodo ausente del HTML, no oculto-con-CSS)
   3. Empty honesto si cero cruces; sin verbo causal (linter); cada evidencia trazable al enlace original (FND-08)
 
-**Plans:** TBD
+**Plans:** 3 plans (2 waves)
+
+Plans:
+
+**Wave 1**
+
+- [ ] 37-01-PLAN.md — Gate de presentacion crucesPublicEnabled (Candado B, server-only, fail-closed, espejo de money-gate) + tabla de verdad (SURF-01)
+- [ ] 37-02-PLAN.md — CrucesView (puro) + CrucesSection (Server Component, RPC cruces_de_parlamentario) + tipos del RPC + test RTL (empty-honesto/provenance/identidad/anti-insinuacion negative-match/conteo neutro) (SURF-01)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 37-03-PLAN.md — Cablear <section id=cruces> gated (sibling mt-12, envuelta entera por el gate) + CrucesSkeleton en page.tsx + test de seccion-ausente (gate OFF) / presente (gate ON) (SURF-01)
+
 **UI hint**: yes
 
 ### Phase 38: SURF — Superficie de cruces en ficha de proyecto (gated, diferido)
@@ -858,7 +906,19 @@ Plans:
   2. La sección está gated por `crucesPublicEnabled()` (mismo gate que Phase 37); con gate OFF no monta
   3. Cada evidencia es trazable; el copy es factual sin verbo causal (linter). La fase se DIFIERE mientras las señales de voto queden OFF (hereda la advertencia anti-insinuación)
 
-**Plans:** TBD
+**Plans:** 3 plans (2 waves)
+
+Plans:
+
+**Wave 1**
+
+- [ ] 37-01-PLAN.md — Gate de presentacion crucesPublicEnabled (Candado B, server-only, fail-closed, espejo de money-gate) + tabla de verdad (SURF-01)
+- [ ] 37-02-PLAN.md — CrucesView (puro) + CrucesSection (Server Component, RPC cruces_de_parlamentario) + tipos del RPC + test RTL (empty-honesto/provenance/identidad/anti-insinuacion negative-match/conteo neutro) (SURF-01)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 37-03-PLAN.md — Cablear <section id=cruces> gated (sibling mt-12, envuelta entera por el gate) + CrucesSkeleton en page.tsx + test de seccion-ausente (gate OFF) / presente (gate ON) (SURF-01)
+
 **UI hint**: yes
 
 ### Phase 39: LEGAL — Gate legal transversal F13/F17/cruces (sign-off humano)
