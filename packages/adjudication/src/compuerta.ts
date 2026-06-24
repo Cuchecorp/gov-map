@@ -20,8 +20,12 @@ import type { Adjudicacion } from "./prompt";
 /**
  * Umbral de confianza asimétrico (preferir falso negativo). Comparación ESTRICTA
  * `<`: confidence===UMBRAL PASA la regla. NO cambiar a `<=` ni invertir a `>`.
+ *
+ * Exportado para que la compuerta de TERCEROS (pipeline-entidad) REUSE el MISMO umbral y
+ * el MISMO operador estricto — un único punto de verdad del umbral 0.90 (sin duplicarlo ni
+ * arriesgar drift entre parlamentario y entidad).
  */
-const UMBRAL = 0.9;
+export const UMBRAL = 0.9;
 
 /**
  * Aplica las reglas duras de la compuerta sobre la salida (ya validada por zod) del
