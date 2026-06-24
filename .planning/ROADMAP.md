@@ -726,7 +726,7 @@ INFRA-01 desbloqueo CI (Phase 33, ✅ DONE) — sin esto ningún workflow progra
 ### Phases (v4.0)
 
 - [x] **Phase 33: INFRA — Desbloqueo de CI (loadEnv CI-safe)** - Parchar los CLIs estrella de lobby/probidad para cargar credenciales con fallback a `process.env` (no solo `.env` en disco) → corren en GitHub Actions sin `.env`. ✅ COMPLETA (quick task 260623-rtl, commits 1844b2f/399e3e2)
-- [ ] **Phase 34: INGEST — Ingesta lobby + probidad programada** - Wire de los conectores ETL ya completos (lobby Cámara + LeyLobby, probidad InfoProbidad) a workflows recurrentes de GitHub Actions + paso R2 crudo faltante en probidad vía `SnapshotWriter`. NO programa ChileCompra/SERVEL. NO toca `MONEY_PUBLIC_ENABLED`.
+- [x] **Phase 34: INGEST — Ingesta lobby + probidad programada** - Wire de los conectores ETL ya completos (lobby Cámara + LeyLobby, probidad InfoProbidad) a workflows recurrentes de GitHub Actions + paso R2 crudo faltante en probidad vía `SnapshotWriter`. NO programa ChileCompra/SERVEL. NO toca `MONEY_PUBLIC_ENABLED`. ✅ build autónomo + dry-run verificados (3/3 plans, 9 commits, tests verdes); LIVE = checkpoint operador pendiente.
 - [ ] **Phase 35: ENT — Resolución de identidades de terceros** - Maestra `entidad_tercero` (ID estable, alias, matcher determinista, pipeline de adjudicación con gate humano, deny-by-default) que extiende el subsistema de identidad a donantes/proveedores y gestores de lobby; conecta los reconciliadores existentes (antes dejaban `contraparte_id`/`contratista` NULL).
 - [ ] **Phase 36: CRUCE — Capa de cruces parlamentario↔sector (deny-by-default)** - Modelar relaciones parlamentario↔sector cruzando lobby/aportes/votos; materializar señales factuales (conteos de evidencia, sin score); etiquetado de sector por LLM con su propio eval/golden SEPARADO. Construible deny-by-default; expuesto solo tras gate legal.
 - [ ] **Phase 37: SURF — Superficie de cruces en ficha de parlamentario (gated)** - `CrucesSection` (Server Component) que llama al RPC y renderiza señales factuales con provenance inline, sibling de `#lobby`/`#patrimonio`, detrás de `crucesPublicEnabled()` (default OFF). Construible; visible solo tras gate.
@@ -768,7 +768,14 @@ INFRA-01 desbloqueo CI (Phase 33, ✅ DONE) — sin esto ningún workflow progra
   4. Tras un run LIVE, `source_snapshot` (tabla existente, migración 0002) tiene una fila por run con `r2_path` poblado vía `SnapshotWriter` — NO un `crudo_r2_key` paralelo sobre tablas per-parlamentario; incluye el bloque R2 crudo faltante en `run-probidad-todos.ts` (espejo de `run-camara-lobby.ts` L88–105, best-effort try/catch) (INGEST-04)
   5. `pnpm test` queda verde
 
-**Plans:** TBD
+**Plans:** 3 plans (2 waves) — ✅ EJECUTADAS (build autónomo + dry-run verificados; LIVE = checkpoint operador pendiente)
+
+Plans:
+- [x] 34-01-PLAN.md — SupabaseSnapshotStore Node-side (gap de API; SnapshotStore reusable, 23505 idempotente) exportado desde @obs/ingest (INGEST-04) — commits b51038a/b0c8693/de39d67
+- [x] 34-02-PLAN.md — Bloque R2 Etapa-1 + SnapshotWriter en run-probidad-todos (crudo agregado por run + fila source_snapshot) + wire R2Store/SnapshotWriter en el CLI (INGEST-04) — commits 149ef8c/7b8d9d4/8b7920b
+- [x] 34-03-PLAN.md — 3 workflows GitHub Actions: lobby-camara-weekly (curl anti-WAF + --html-file), lobby-leylobby-weekly (env names divergentes + assert acepta degradacion), probidad-weekly (SPARQL + R2_*) (INGEST-01/02/03) — commits d369f7d/5518f3b/6cdd7ce
+
+**Status:** ✅ build autónomo COMPLETO y verificado (34-VERIFICATION.md: 5/5 in-scope; ingest 63/63, probidad 46/46, root `pnpm test` verde; cero DDL; cero `${{}}` en `run:`). **Checkpoint operador (needs-human):** encender los 3 workflows LIVE = cargar/confirmar secrets `SUPABASE_*`+`R2_*` en Cuchecorp/gov-map (no se transfieren entre repos) y correr `workflow_dispatch`. Tras run LIVE: SC1 `audiencias>0`, SC3 `declaraciones>0`, SC4 fila `source_snapshot` con `r2_path`.
 
 ### Phase 35: ENT — Resolución de identidades de terceros
 

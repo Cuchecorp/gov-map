@@ -7,10 +7,10 @@ last_updated: "2026-06-24T01:00:00.000Z"
 last_activity: 2026-06-24
 progress:
   total_phases: 8
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
-  percent: 13
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
+  percent: 25
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** v4.0 "De datos a cruces verificables" (Phases 33–40). Fase 0 (Phase 33, loadEnv CI) ✅ done. Próximo: Fase 1 — ingesta lobby+probidad programada (Phase 34) + entity-resolution de terceros (Phase 35). Diseño locked en .planning/MILESTONE-v4-cruces.md.
+**Current focus:** v4.0 "De datos a cruces verificables" (Phases 33–40). Fase 0 (Phase 33) ✅ + Fase 1.1 (Phase 34, ingesta lobby+probidad) ✅ build autónomo verificado (LIVE = checkpoint operador). Próximo: Fase 1.2 — entity-resolution de terceros (Phase 35, `entidad_tercero`). Diseño locked en .planning/MILESTONE-v4-cruces.md.
 
 ## Current Position
 
-Phase: Phase 34 — INGEST: Ingesta lobby + probidad programada (next; not started)
+Phase: Phase 35 — ENT: Resolución de identidades de terceros (next; not started)
 Plan: —
-Status: Roadmap created (Phases 33–40). Phase 33 (INFRA — loadEnv CI-safe) ✅ COMPLETE via quick task 260623-rtl. Ready to plan Phase 34.
-Last activity: 2026-06-24 — Roadmap v4.0 transcrito desde .planning/MILESTONE-v4-cruces.md (8 fases, 19 reqs mapeados 1:1, 0 huérfanos)
+Status: Phase 34 (INGEST) ✅ build autónomo COMPLETO y verificado (34-VERIFICATION.md: 5/5 in-scope; ingest 63/63, probidad 46/46, root pnpm test verde; cero DDL; cero ${{}} en run:). 3/3 plans ejecutadas (9 commits). CHECKPOINT OPERADOR pendiente (needs-human): encender los 3 workflows LIVE (cargar secrets SUPABASE_*+R2_* en Cuchecorp/gov-map, workflow_dispatch). Phase 33 ✅ done. Ready to plan Phase 35.
+Last activity: 2026-06-24 — Phase 34 ejecutada: SupabaseSnapshotStore Node-side + bloque R2 probidad + 3 workflows GH Actions (lobby-camara/leylobby/probidad weekly). Verificado, sin DDL, LIVE gated a operador.
 
 ## Performance Metrics
 
