@@ -125,16 +125,28 @@ Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la 
 | RUTM-01 | Phase 40 | Pending |
 | RUTM-02 | Phase 40 | Pending |
 | RUTM-03 | Phase 40 | Pending |
-| LOCKDOWN-01 | Phase 42 | Pending |
-| LOCKDOWN-02 | Phase 42 | Pending |
-| LOCKDOWN-03 | Phase 42 | Pending |
-| LOCKDOWN-04 | Phase 42 | Pending |
+| LOCKDOWN-01 | Phase 42 | Write-complete (apply=operador) |
+| LOCKDOWN-02 | Phase 42 | Write-complete (apply ÚLTIMO=operador) |
+| LOCKDOWN-03 | Phase 42 | Write-complete (deploy=operador) |
+| LOCKDOWN-04 | Phase 42 | Complete |
+| DEBT-01 | Phase 43 | Pending |
+| DEBT-02 | Phase 43 | Pending |
+| DEBT-03 | Phase 43 | Pending |
+| DEBT-04 | Phase 43 | Pending |
+
+### DEBT (Phase 43 — eliminación de deuda técnica, exhaustiva)
+
+- **DEBT-01 — Inventario exhaustivo con evidencia.** Swarm premortem Sonnet (≥6 dimensiones: código app/, código packages/, DB+migraciones+pgTAP, tests+cobertura+CI, deps+config+build, planning+docs+scratch) produce `43-DEBT-LEDGER.md` con cada hallazgo (archivo:línea, repro, severidad, blast radius). Nada por sentado: sin evidencia verificable no entra.
+- **DEBT-02 — Validación adversarial Opus 1-a-1.** Cada hallazgo recibe su propio veredicto Opus: ¿deuda real o falso positivo? causa raíz, qué rompe, test que lo protege → FIX-NOW / CHECKPOINT-OPERADOR / WON'T-FIX. Prohibido el fix masivo sin validación individual.
+- **DEBT-03 — Fixes seguros.** Solo los FIX-NOW: aplicados con test + commit atómico por fix; suite app ≥316 verde + tsc -b limpio + packages/* verdes entre cada fix; cero regresión/cambio de comportamiento sin prueba; migraciones nuevas (si las hay) ESCRITAS no aplicadas (apply=operador).
+- **DEBT-04 — Cierre.** DEBT-LEDGER final (fixed/deferred-con-razón-y-dueño/won't-fix-con-razón) + guards anti-regresión (CI app/ tests, linter si se decide) + reporte de checkpoints de operador + memoria/STATE actualizadas.
 
 **Coverage:**
 
 - v4.0 requirements: 22 total (19 base + 3 CRUCEN, deuda de Phase 37 → Phase 41)
 - Phase 42 (LOCKDOWN, post-encendido cruces): 4 (LOCKDOWN-01..04)
-- Mapped to phases: 26
+- Phase 43 (DEBT, eliminación de deuda técnica): 4 (DEBT-01..04)
+- Mapped to phases: 30
 - Unmapped: 0 ✓
 
 ---

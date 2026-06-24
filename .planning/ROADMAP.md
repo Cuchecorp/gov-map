@@ -771,7 +771,8 @@ INFRA-01 desbloqueo CI (Phase 33, ✅ DONE) — sin esto ningún workflow progra
 - [ ] **Phase 39: LEGAL — Gate legal transversal F13/F17/cruces (sign-off humano)** - Revisión legal humana (Ley 21.719) que habilita `MONEY_PUBLIC_ENABLED`, `netPublicEnabled` y `crucesPublicEnabled`. Acción exclusivamente humana — un agente NUNCA flipea estos flags. Atraviesa Fases 1–3; controla toda exposición sensible.
 - [ ] **Phase 40: RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human)** - Cosecha de RUT a la maestra; wire real de ChileCompra (hoy CLI demo) + workflow; workflow manual SERVEL por elección. Bloqueado por RUT-01 (prerrequisito duro) + ticket/URL de operador; exposición pública requiere LEGAL-01.
 - [x] **Phase 41: CRUCEN — Habilitación de cruces (grant gated + dossier + fecha_captura)** - Cierra las 3 deudas del code-review de Phase 37 para dejar la superficie de cruces LISTA para firmar/encender (sin encenderla): fix WR-02 (proyectar `cruce_senal.fecha_captura` en el RPC → frescura honesta, migración aplicable ya), migración de grant del RPC a anon ESCRITA pero NO aplicada (deny-by-default hasta sign-off), y dossier legal de cruces (prep para firma humana, espejo F17). CERO flip de flag. (completed 2026-06-24) — ENCENDIDO 2026-06-24: dossier firmado + 0041/0042 aplicadas a PROD.
-- [ ] **Phase 42: LOCKDOWN — Cierre de la API pública de Supabase (rol `web_reader`)** - Eliminar la superficie de API pública (rol `anon`): el servidor de la página lee como un rol dedicado de mínimo privilegio `web_reader` (NO service_role — preserva RLS/PII), y se revocan TODOS los grants de `anon`/`authenticated`. Tras el cambio la anon key es inútil para extraer datos; todo se sirve solo a través de la página. Motivada por el temor a uso indiscriminado de la API tras el encendido de cruces. (added 2026-06-24)
+- [ ] **Phase 42: LOCKDOWN — Cierre de la API pública de Supabase (rol `web_reader`)** - Eliminar la superficie de API pública (rol `anon`): el servidor de la página lee como un rol dedicado de mínimo privilegio `web_reader` (NO service_role — preserva RLS/PII), y se revocan TODOS los grants de `anon`/`authenticated`. Tras el cambio la anon key es inútil para extraer datos; todo se sirve solo a través de la página. Motivada por el temor a uso indiscriminado de la API tras el encendido de cruces. (added 2026-06-24) — **WRITE-COMPLETE 2026-06-24 (verifier PASS 4/4, suite 316); cutover a PROD = checkpoint operador pendiente.**
+- [ ] **Phase 43: DEBT — Eliminación de deuda técnica (exhaustiva, premortem swarm + Opus 1-a-1)** - Pasada dedicada de higiene: descubrir TODA la deuda técnica con evidencia (swarm premortem Sonnet, ~6 dimensiones), validar cada hallazgo uno por uno (Opus adversarial), arreglar SOLO lo seguro (test + commit atómico, cero regresión) y documentar el resto en un DEBT-LEDGER (fixed/deferred/won't-fix). Mandato: "nada por sentado". NO ejecuta el cutover de Phase 42 ni acciones de operador. (added 2026-06-24)
 
 ## Phase Details (v4.0)
 
@@ -999,3 +1000,21 @@ Plans:
 - [x] 42-04-PLAN.md — LOCKDOWN-04: guard CI anti-regresión + runbook de cutover ordenado — HECHO
 
 **UI hint**: no (cambio de credencial/permisos; sin cambios visuales)
+
+### Phase 43: DEBT — Eliminación de deuda técnica (exhaustiva)
+
+**Goal:** Hacer UNA pasada exhaustiva de deuda técnica del repo completo (app/ Next.js + 13 packages + supabase/ + .planning/ + config/build): descubrir TODA la deuda con evidencia (swarm premortem Sonnet, 1 agente por dimensión), validar cada hallazgo UNO POR UNO (Opus adversarial: ¿real? causa raíz, qué rompe, test que lo protege), arreglar SOLO lo seguro y autónomo (test + commit atómico, suite verde entre fixes) y documentar el resto en un DEBT-LEDGER (fixed / deferred-con-razón / won't-fix). Mandato del operador: "nada por sentado" — nada sin evidencia entra; nada se arregla sin su veredicto Opus individual. Higiene, NO rediseño.
+**Mode:** mantenimiento / calidad (cero cambio de comportamiento sin prueba)
+**Depends on:** ninguna funcional; audita todo lo construido (v2–v4). NO ejecuta el cutover de Phase 42 (acción operador).
+**Requirements:** DEBT-01, DEBT-02, DEBT-03, DEBT-04
+**Autonomy:** autónomo para DESCUBRIR, VALIDAR, ARREGLAR-lo-seguro y DOCUMENTAR; **needs-human-checkpoint** para cualquier fix que toque PROD (DDL → migración escrita, apply=operador), deploy, secret, flag o firma. El agente NUNCA aplica a PROD ni ejecuta el cutover de Phase 42.
+**Success Criteria** (what must be TRUE):
+
+  1. **DEBT-01:** inventario EXHAUSTIVO con evidencia (`43-DEBT-LEDGER.md`): swarm premortem Sonnet (≥6 dimensiones) → cada hallazgo con archivo:línea, repro, severidad, blast radius. Nada por sentado (sin evidencia verificable no entra).
+  2. **DEBT-02:** validación adversarial Opus UNO POR UNO de cada hallazgo → veredicto FIX-NOW / CHECKPOINT-OPERADOR / WON'T-FIX + causa raíz + qué rompe + test que lo protege. Ledger clasificado.
+  3. **DEBT-03:** fixes FIX-NOW aplicados con test + commit atómico por fix; suite app ≥316 verde + `tsc -b` limpio + `packages/*` test verdes mantenidos entre cada fix; migraciones nuevas (si las hay) ESCRITAS no aplicadas (apply=operador).
+  4. **DEBT-04:** DEBT-LEDGER final (fixed / deferred-con-razón-y-dueño / won't-fix-con-razón) + guards anti-regresión donde apliquen (p.ej. CI que corra app/ tests; linter si se decide) + reporte de checkpoints de operador + memoria/STATE actualizadas.
+
+**Plans:** TBD (research/descubrimiento → plan-phase)
+
+**UI hint**: no (higiene de código/config/docs; sin cambios visuales)
