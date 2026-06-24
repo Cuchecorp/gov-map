@@ -8,6 +8,20 @@ export type { Mention, Resolution, MaestraRow } from "./deterministic";
 export { confirmar } from "./enlace-confirmado";
 export type { EnlaceConfirmado } from "./enlace-confirmado";
 
+// Matcher determinista de TERCEROS (ENT-02): fail-closed + Δ1 tipo_entidad + Δ2 jurídica-solo-RUT.
+export { matchDeterministaEntidad } from "./deterministic-entidad";
+export type {
+  MentionEntidad,
+  ResolutionEntidad,
+  EntidadTerceroRow,
+  TipoEntidad,
+} from "./deterministic-entidad";
+
+// Invariante tipado del enlace confirmado de TERCEROS (ENT-03): factory única `confirmarEntidad`
+// + tipo branded `EnlaceEntidadConfirmado`. El `unique symbol` propio NO se exporta (grep-gate).
+export { confirmarEntidad } from "./enlace-entidad-confirmado";
+export type { EnlaceEntidadConfirmado } from "./enlace-entidad-confirmado";
+
 // Backfill del RUT interno (IDENT-10): DV-gate (isRutValido) + provenance + updateRut.
 // NUNCA fabrica un RUT — un DV inválido o sin provenance se rechaza a revisión.
 export { aceptarRutBackfill, runBackfillRut } from "./backfill-rut";
