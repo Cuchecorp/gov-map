@@ -50,7 +50,7 @@
 
 > Consumen `cruce_senal`. Construibles tras la capa de cruces; visibles solo tras gate.
 
-- [ ] **SURF-01**: `CrucesSection` (Server Component) en la ficha de parlamentario renderiza las señales factuales con provenance inline, sibling de `#lobby`/`#patrimonio` (nunca anidado — anti-insinuación §9.1), detrás de `crucesPublicEnabled()` (default OFF, espejo de `money-gate.ts`/`net-gate.ts`). Con gate ON renderiza sin error de hidratación; con gate OFF la sección no monta; empty honesto si cero cruces; sin verbo causal (linter); cada evidencia trazable al enlace original (FND-08).
+- [x] **SURF-01**: `CrucesSection` (Server Component) en la ficha de parlamentario renderiza las señales factuales con provenance inline, sibling de `#lobby`/`#patrimonio` (nunca anidado — anti-insinuación §9.1), detrás de `crucesPublicEnabled()` (default OFF, espejo de `money-gate.ts`/`net-gate.ts`). Con gate ON renderiza sin error de hidratación; con gate OFF la sección no monta; empty honesto si cero cruces; sin verbo causal (linter); cada evidencia trazable al enlace original (FND-08).
 - [ ] **SURF-02**: `cruces_de_proyecto(boletin)` + `CrucesSection` en la ficha de proyecto (parlamentarios que votaron a favor con cruces en el sector del proyecto), PII-safe (proyección vía `parlamentario_publico`, nunca rut/partido), mismo gate. Hereda la advertencia anti-insinuación de las señales de voto → **se difiere si las señales de voto quedan OFF**.
 
 ### LEGAL — Gate legal transversal (Fase 4, #10)
@@ -99,7 +99,7 @@ Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la 
 | CRUCE-01 | Phase 36 | Complete |
 | CRUCE-02 | Phase 36 | Complete |
 | CRUCE-03 | Phase 36 | Complete |
-| SURF-01 | Phase 37 | Pending |
+| SURF-01 | Phase 37 | Complete |
 | SURF-02 | Phase 38 | Pending |
 | LEGAL-01 | Phase 39 | Pending |
 | RUTM-01 | Phase 40 | Pending |
