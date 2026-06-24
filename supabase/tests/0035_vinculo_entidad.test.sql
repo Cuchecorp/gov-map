@@ -36,8 +36,15 @@ select is(
      where table_name = 'revision_entidad' and grantee = 'anon' and privilege_type = 'SELECT'),
   0, 'anon NO tiene grant SELECT sobre revision_entidad');
 select is(
+  (select count(*)::int from information_schema.role_table_grants
+     where table_name = 'vinculo_entidad' and grantee = 'anon' and privilege_type = 'INSERT'),
+  0, 'anon NO tiene grant INSERT sobre vinculo_entidad');
+select is(
   (select relforcerowsecurity from pg_class where relname = 'vinculo_entidad'),
   true, 'vinculo_entidad tiene force row level security');
+select is(
+  (select relforcerowsecurity from pg_class where relname = 'revision_entidad'),
+  false, 'revision_entidad NAO tiene force row level security (asimetria intencional con vinculo_entidad)');
 
 -- ── (b) indice unico TOTAL (no parcial) sobre la clave natural ──
 select has_index('public', 'vinculo_entidad', 'vinculo_entidad_clave_natural',
