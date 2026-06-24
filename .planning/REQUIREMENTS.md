@@ -33,10 +33,10 @@
 > Hoy `lobby_contraparte.contraparte_id` y `contratista` quedan NULL por diseño (no hay maestra de terceros). Prerrequisito de la corrección de los cruces.
 
 - [ ] **ENT-01**: Existe la maestra `entidad_tercero` (+ `entidad_tercero_alias`, sequence `entidad_id_seq`, trigger anti-demotion espejo de 0007/0012, RLS deny-by-default) y las tablas `vinculo_entidad` + `revision_entidad` (espejo de `revision_identidad`), aplicadas por `psql --db-url` con pgTAP verde.
-- [ ] **ENT-02**: El matcher determinista `matchDeterministaEntidad` confirma por RUT-único o nombre-único-por-tipo; toda ambigüedad → `no_confirmado` (fail-closed). Personas jurídicas: SOLO por RUT exacto, nombre-sin-RUT → siempre `no_confirmado` (nunca LLM). Persona natural usa LLM solo ante homónimos, con `assertNoRutInLlmInput` sobre el prompt (≥10 tests; el test falla si un RUT se cuela al prompt).
+- [x] **ENT-02**: El matcher determinista `matchDeterministaEntidad` confirma por RUT-único o nombre-único-por-tipo; toda ambigüedad → `no_confirmado` (fail-closed). Personas jurídicas: SOLO por RUT exacto, nombre-sin-RUT → siempre `no_confirmado` (nunca LLM). Persona natural usa LLM solo ante homónimos, con `assertNoRutInLlmInput` sobre el prompt (≥10 tests; el test falla si un RUT se cuela al prompt).
 - [ ] **ENT-03**: Los reconciliadores existentes escriben el FK resuelto: `reconciliar-sujeto.ts` puebla `lobby_contraparte.contraparte_id` confirmado (antes siempre null); `reconciliar-contrato.ts` puebla `contratista.entidad_id`. RPC transaccional `resolver_entidad` (espejo de 0015).
 - [ ] **ENT-04**: Los matches dudosos van a la cola `revision_entidad` (estado `pendiente`); ningún match dudoso se promueve a `confirmado` sin revisor humano vía RPC `resolver_entidad`. UI admin protegida `revisar-entidades`.
-- [ ] **ENT-05**: El backfill de entidades es LOCAL (operador), idempotente/reanudable: una 2ª corrida produce 0 entidades/vínculos nuevos. La maestra se exporta a JSON fuera de Supabase (custodia, espejo de `backup.ts`).
+- [x] **ENT-05**: El backfill de entidades es LOCAL (operador), idempotente/reanudable: una 2ª corrida produce 0 entidades/vínculos nuevos. La maestra se exporta a JSON fuera de Supabase (custodia, espejo de `backup.ts`).
 
 ### CRUCE — Capa de cruces parlamentario↔sector (Fase 2.1)
 
@@ -92,10 +92,10 @@ Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la 
 | INGEST-03 | Phase 34 | Pending |
 | INGEST-04 | Phase 34 | Pending |
 | ENT-01 | Phase 35 | Pending |
-| ENT-02 | Phase 35 | Pending |
+| ENT-02 | Phase 35 | Complete |
 | ENT-03 | Phase 35 | Pending |
 | ENT-04 | Phase 35 | Pending |
-| ENT-05 | Phase 35 | Pending |
+| ENT-05 | Phase 35 | Complete |
 | CRUCE-01 | Phase 36 | Pending |
 | CRUCE-02 | Phase 36 | Pending |
 | CRUCE-03 | Phase 36 | Pending |
@@ -107,6 +107,7 @@ Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la 
 | RUTM-03 | Phase 40 | Pending |
 
 **Coverage:**
+
 - v4.0 requirements: 19 total
 - Mapped to phases: 19
 - Unmapped: 0 ✓

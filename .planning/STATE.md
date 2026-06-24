@@ -1,16 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v4.0
-milestone_name: De datos a cruces verificables
-status: planning
-last_updated: "2026-06-24T01:00:00.000Z"
+milestone_name: — De datos a cruces verificables
+status: executing
+stopped_at: 18-01 Tasks 1-2 code-complete (0030_net.sql entidad/arista deny-by-default + net.materializar_aristas() proc + subgrafo_red RPC PII-safe depth-clamped; 0030_net.test.sql pgTAP 16 asserts incl. plan-checker MEDIUM-2 caso negativo de normalización). DETENIDO en Task 3 = checkpoint de operador BLOCKING (apply remoto por psql --db-url + pgTAP + log conteo de aristas). Gate NET cerrado (NET_PUBLIC_ENABLED OFF hasta signoff F17).
+last_updated: "2026-06-24T02:37:31.532Z"
 last_activity: 2026-06-24
 progress:
-  total_phases: 8
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
-  percent: 25
+  total_phases: 33
+  completed_phases: 15
+  total_plans: 54
+  completed_plans: 60
+  percent: 45
 ---
 
 # Project State
@@ -20,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** v4.0 "De datos a cruces verificables" (Phases 33–40). Fase 0 (Phase 33) ✅ + Fase 1.1 (Phase 34, ingesta lobby+probidad) ✅ build autónomo verificado (LIVE = checkpoint operador). Próximo: Fase 1.2 — entity-resolution de terceros (Phase 35, `entidad_tercero`). Diseño locked en .planning/MILESTONE-v4-cruces.md.
+**Current focus:** Phase 35 — ENT — Resolución de identidades de terceros
 
 ## Current Position
 
-Phase: Phase 35 — ENT: Resolución de identidades de terceros (next; not started)
-Plan: —
-Status: Phase 34 (INGEST) ✅ build autónomo COMPLETO y verificado (34-VERIFICATION.md: 5/5 in-scope; ingest 63/63, probidad 46/46, root pnpm test verde; cero DDL; cero ${{}} en run:). 3/3 plans ejecutadas (9 commits). CHECKPOINT OPERADOR pendiente (needs-human): encender los 3 workflows LIVE (cargar secrets SUPABASE_*+R2_* en Cuchecorp/gov-map, workflow_dispatch). Phase 33 ✅ done. Ready to plan Phase 35.
-Last activity: 2026-06-24 — Phase 34 ejecutada: SupabaseSnapshotStore Node-side + bloque R2 probidad + 3 workflows GH Actions (lobby-camara/leylobby/probidad weekly). Verificado, sin DDL, LIVE gated a operador.
+Phase: 35 (ENT — Resolución de identidades de terceros) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-06-24
 
 ## Performance Metrics
 
@@ -99,6 +100,7 @@ Last activity: 2026-06-24 — Phase 34 ejecutada: SupabaseSnapshotStore Node-sid
 | Phase 22 P03 | 8min | 2 tasks | 3 files |
 | Phase 18 P02 | ~5min | 2 tasks | 6 files |
 | Phase 18 P03 | 12min | 3 tasks | 7 files |
+| Phase 35 P02 | 10min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -184,6 +186,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 22]: 22-03: VotacionCard enmarca el desenlace 'El proyecto fue {resultado} {si}-{no}' (conteoVotacion en-dash, Mono) SOBRE el EtapaBadge existente (no lo reemplaza); resultado null omite SOLO la frase (barra/totales intactos). Espejo SC6: la seccion #votaciones del proyecto conecta con su idea matriz via leerFicha cacheada (React.cache, cero query nueva) — linea 'Que se voto: {extractoIdea}' + ancla a #idea-matriz; idea_matriz null omite la linea (honest-state), nunca fabrica. Carriles #votaciones/#idea-matriz siguen hermanos mt-12 (no anidan, no componen con dinero/lobby). Suite 214/214 verde, tsc limpio, cero banned-vocab. RPC 0028 apply remoto pendiente, NO bloquea.
 - [Phase ?]: NET Candado B: netPublicEnabled() server-only fail-closed (=== 'true'), espejo de money-gate; ruta /red gatea con notFound() OFF como primera sentencia, sin filtrar DOM; isla RedGraph placeholder real (Plan 18-03 monta xyflow); grafo vacío => estado honesto
 - [Phase ?]: NET-02 UI entregada: isla 'use client' @xyflow/react@12.11.0 bajo components/red/ (nodo sobrio nombre+camara, arista=hecho tipado+ventana, provenance siempre en DOM, CC BY 4.0 solo si la fila trae licencia); xyflow contenido en la client island, no infla rutas server. NET sigue gateado-OFF hasta signoff F17
+- [Phase ?]: [Phase 35]: [35-02]: matchDeterministaEntidad fail-closed con juridica-solo-RUT (Δ2: juridica-sin-rut nunca confirma por nombre ni habilita el LLM); EnlaceEntidadConfirmado branded con unique symbol privado propio no exportado (grep-gate); seeder-entidad idempotente (2da corrida=0 nuevos, nunca auto-confirma); custodia JSON determinista byte-a-byte (entidad_tercero.seed.json); backfill-entidad-cli LOCAL. EntidadTercero* locales (0034-0036 no aplicadas aun). 110/110 verde + tsc -b limpio.
 
 ### Pending Todos
 
@@ -223,7 +226,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-21T05:03:15.732Z
+Last session: 2026-06-24T02:37:31.508Z
 Stopped at: 18-01 Tasks 1-2 code-complete (0030_net.sql entidad/arista deny-by-default + net.materializar_aristas() proc + subgrafo_red RPC PII-safe depth-clamped; 0030_net.test.sql pgTAP 16 asserts incl. plan-checker MEDIUM-2 caso negativo de normalización). DETENIDO en Task 3 = checkpoint de operador BLOCKING (apply remoto por psql --db-url + pgTAP + log conteo de aristas). Gate NET cerrado (NET_PUBLIC_ENABLED OFF hasta signoff F17).
 Resume file: None
 

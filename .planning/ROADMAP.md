@@ -425,7 +425,6 @@ Plans:
 - [x] 22-03-PLAN.md — Bloque C espejo proyecto: VotacionCard con resultado+conteo enmarcado conectado a la idea matriz del proyecto (SC6)
 - [x] 22-04-PLAN.md — Bloque D redeploy Linux (Docker obsbuild + wrangler deploy) + verificacion e2e browseros en produccion; noindex/MONEY/NET intactos (SC6)
 
-
 ## 📋 v3.0 — Cobertura de datos
 
 **Mode:** data-coverage (milestone BROWNFIELD — el código de v2.0 ya existe y está validado; v3.0 ejerce esos conectores LIVE a escala, escribe el resultado en producción, adjudica identidad, arregla provenance y abre los gates operador/legal. NO se construye UI nueva — el shell de Phase 19 está cerrado.)
@@ -626,7 +625,6 @@ OPS-01 apply remoto (Phase 23, PRECONDICIÓN — la data no es visible sin las m
 
 **Plans:** TBD
 
-
 ## Progress
 
 | Phase | Milestone | Plans | Status | Completed |
@@ -665,12 +663,13 @@ OPS-01 apply remoto (Phase 23, PRECONDICIÓN — la data no es visible sin las m
 | 32. OPS — Redeploy + barrido de verificación producción | v3.0 | 0/? | Not started | - |
 | 33. INFRA — Desbloqueo de CI (loadEnv CI-safe) | v4.0 | 1/1 | Complete (quick 260623-rtl) | 2026-06-24 |
 | 34. INGEST — Ingesta lobby + probidad programada | v4.0 | 0/? | Not started | - |
-| 35. ENT — Resolución de identidades de terceros | v4.0 | 0/? | Not started | - |
+| 35. ENT — Resolución de identidades de terceros | v4.0 | 1/4 | In Progress|  |
 | 36. CRUCE — Capa de cruces parlamentario↔sector (deny-by-default) | v4.0 | 0/? | Not started | - |
 | 37. SURF — Cruces en ficha de parlamentario (gated) | v4.0 | 0/? | Not started | - |
 | 38. SURF — Cruces en ficha de proyecto (gated, diferido) | v4.0 | 0/? | Not started | - |
 | 39. LEGAL — Gate legal F13/F17/cruces (sign-off humano) | v4.0 | 0/? | Not started | - |
 | 40. RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human) | v4.0 | 0/? | Not started | - |
+
 ## 📋 v4.0 — De datos a cruces verificables
 
 **Mode:** data-coverage + capability (milestone BROWNFIELD/cruces — transcripción del diseño LOCKED `.planning/MILESTONE-v4-cruces.md`, validado por Opus. v4 construye los cimientos de datos e identidad de terceros, luego la capa derivada de cruces parlamentario↔sector, luego las superficies de ficha — todo deny-by-default. Nada sensible se enciende sin firma humana.)
@@ -771,6 +770,7 @@ INFRA-01 desbloqueo CI (Phase 33, ✅ DONE) — sin esto ningún workflow progra
 **Plans:** 3 plans (2 waves) — ✅ EJECUTADAS (build autónomo + dry-run verificados; LIVE = checkpoint operador pendiente)
 
 Plans:
+
 - [x] 34-01-PLAN.md — SupabaseSnapshotStore Node-side (gap de API; SnapshotStore reusable, 23505 idempotente) exportado desde @obs/ingest (INGEST-04) — commits b51038a/b0c8693/de39d67
 - [x] 34-02-PLAN.md — Bloque R2 Etapa-1 + SnapshotWriter en run-probidad-todos (crudo agregado por run + fila source_snapshot) + wire R2Store/SnapshotWriter en el CLI (INGEST-04) — commits 149ef8c/7b8d9d4/8b7920b
 - [x] 34-03-PLAN.md — 3 workflows GitHub Actions: lobby-camara-weekly (curl anti-WAF + --html-file), lobby-leylobby-weekly (env names divergentes + assert acepta degradacion), probidad-weekly (SPARQL + R2_*) (INGEST-01/02/03) — commits d369f7d/5518f3b/6cdd7ce
@@ -792,12 +792,12 @@ Plans:
   4. Los matches dudosos van a la cola `revision_entidad` (estado `pendiente`); ningún match dudoso se promueve a `confirmado` sin revisor humano vía RPC `resolver_entidad`; UI admin protegida `revisar-entidades` (ENT-04)
   5. El backfill de entidades es LOCAL (operador), idempotente/reanudable: una 2ª corrida produce 0 entidades/vínculos nuevos; la maestra se exporta a JSON fuera de Supabase (custodia, espejo de `backup.ts`) (ENT-05)
 
-**Plans:** 4 plans (2 waves)
+**Plans:** 1/4 plans executed
 
 Plans:
 
 - [ ] 35-01-PLAN.md — Migraciones 0034/0035/0036 + 3 pgTAP (maestra entidad_tercero + vinculo/revision + FK/RPC resolver_entidad, deny-by-default); apply a PROD = checkpoint operador (ENT-01/03/04)
-- [ ] 35-02-PLAN.md — @obs/identity: matchDeterministaEntidad (juridica-solo-RUT) + EnlaceEntidadConfirmado + writer/seeder idempotente + backup JSON + backfill-cli LOCAL (ENT-02/05)
+- [x] 35-02-PLAN.md — @obs/identity: matchDeterministaEntidad (juridica-solo-RUT) + EnlaceEntidadConfirmado + writer/seeder idempotente + backup JSON + backfill-cli LOCAL (ENT-02/05)
 - [ ] 35-03-PLAN.md — @obs/adjudication: pipeline-entidad (juridica salta LLM) + prompt-entidad + writer-revision-entidad + revisor-cli; gate RUT + UMBRAL 0.9 (ENT-02/04)
 - [ ] 35-04-PLAN.md — Reconciliadores (reconciliar-sujeto -> contraparte_id; reconciliar-contrato -> contratista.entidad_id) + UI admin revisar-entidades protegida (ENT-03/04)
 
