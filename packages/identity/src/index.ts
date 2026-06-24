@@ -22,6 +22,14 @@ export type {
 export { confirmarEntidad } from "./enlace-entidad-confirmado";
 export type { EnlaceEntidadConfirmado } from "./enlace-entidad-confirmado";
 
+// Seeder idempotente de TERCEROS (ENT-05): upsert por clave natural; NUNCA auto-confirma.
+export { upsertEntidades, prepararSeed } from "./seeder-entidad";
+export type { EntidadTerceroWriter, EntidadTerceroSeed } from "./seeder-entidad";
+
+// Writer REAL de terceros contra Supabase (impl del EntidadTerceroWriter inyectable).
+export { SupabaseEntidadWriter } from "./writer-entidad-supabase";
+export type { SupabaseEntidadWriterOptions } from "./writer-entidad-supabase";
+
 // Backfill del RUT interno (IDENT-10): DV-gate (isRutValido) + provenance + updateRut.
 // NUNCA fabrica un RUT — un DV inválido o sin provenance se rechaza a revisión.
 export { aceptarRutBackfill, runBackfillRut } from "./backfill-rut";
