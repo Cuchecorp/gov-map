@@ -13,3 +13,27 @@ export {
   ClasificacionSectorSchema,
   type ClasificacionSector,
 } from "./model";
+
+// ── Prompts split: proyecto público (ficha) / contraparte sensible (lobby) ──
+export {
+  SYSTEM_CLASIFICACION_FICHA,
+  construirPromptFicha,
+} from "./prompt";
+export {
+  SYSTEM_CLASIFICACION_CONTRAPARTE,
+  construirPromptContraparte,
+} from "./prompt-lobby";
+
+// ── Servicio clasificador (gate de PII first en la ruta de contraparte) ──
+export {
+  clasificarFicha,
+  clasificarContraparte,
+  type ClasificarFichaInput,
+  type ClasificarContraparteInput,
+} from "./clasificar";
+
+// ── Mock de provider para tests/golden (sin red) ──
+export {
+  MockClasificadorProvider,
+  type RespuestaMockSector,
+} from "./mock-provider";
