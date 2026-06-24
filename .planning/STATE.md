@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — De datos a cruces verificables
 status: executing
-stopped_at: 35-01 Tasks 1-3 code-complete (3 migraciones 0034/0035/0036 + 3 pgTAP, verificadas localmente por grep + commiteadas f12691b/80ac800/80bbc9d). DETENIDO en Task 4 = checkpoint de operador BLOCKING (gate=blocking-human): aplicar 0034/0035/0036 al remoto PROD por psql --single-transaction (NUNCA db push) + registrar schema_migrations + pgTAP 0034/0035/0036 verde + probe anon permission-denied. Clave natural (tipo_entidad, mencion_normalizada) indice unico TOTAL; Δ2 defensa-en-DB juridica-solo-determinista incluida.
-last_updated: "2026-06-24T03:10:00.000Z"
+stopped_at: "35-01 Tasks 1-3 code-complete (3 migraciones 0034/0035/0036 + 3 pgTAP, verificadas por grep + commiteadas f12691b/80ac800/80bbc9d). DETENIDO en Task 4 = checkpoint de operador BLOCKING (gate=blocking-human): apply remoto PROD por psql --single-transaction + schema_migrations + pgTAP 0034/0035/0036 verde + probe anon permission-denied."
+last_updated: "2026-06-24T02:59:32.987Z"
 last_activity: 2026-06-24
 progress:
   total_phases: 33
   completed_phases: 15
   total_plans: 54
-  completed_plans: 60
+  completed_plans: 62
   percent: 45
 ---
 
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 35 (ENT — Resolución de identidades de terceros) — EXECUTING
-Plan: 1 of 4 — Tasks 1-3 done, Task 4 = checkpoint operador BLOCKING (pendiente)
-Status: Checkpoint pendiente (apply remoto por operador)
+Plan: 2 of 4 — Tasks 1-3 done, Task 4 = checkpoint operador BLOCKING (pendiente)
+Status: Ready to execute
 Last activity: 2026-06-24
 
 ## Performance Metrics
@@ -101,6 +101,7 @@ Last activity: 2026-06-24
 | Phase 18 P02 | ~5min | 2 tasks | 6 files |
 | Phase 18 P03 | 12min | 3 tasks | 7 files |
 | Phase 35 P02 | 10min | 3 tasks | 12 files |
+| Phase 35 P03 | 12min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -228,7 +229,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-24T03:10:00.000Z
+Last session: 2026-06-24T02:59:32.975Z
 Stopped at: 35-01 Tasks 1-3 code-complete (3 migraciones 0034/0035/0036 + 3 pgTAP, verificadas por grep + commiteadas f12691b/80ac800/80bbc9d). DETENIDO en Task 4 = checkpoint de operador BLOCKING (gate=blocking-human): apply remoto PROD por psql --single-transaction + schema_migrations + pgTAP 0034/0035/0036 verde + probe anon permission-denied.
 Resume file: None
 

@@ -663,7 +663,7 @@ OPS-01 apply remoto (Phase 23, PRECONDICIÓN — la data no es visible sin las m
 | 32. OPS — Redeploy + barrido de verificación producción | v3.0 | 0/? | Not started | - |
 | 33. INFRA — Desbloqueo de CI (loadEnv CI-safe) | v4.0 | 1/1 | Complete (quick 260623-rtl) | 2026-06-24 |
 | 34. INGEST — Ingesta lobby + probidad programada | v4.0 | 0/? | Not started | - |
-| 35. ENT — Resolución de identidades de terceros | v4.0 | 2/4 | In Progress|  |
+| 35. ENT — Resolución de identidades de terceros | v4.0 | 3/4 | In Progress|  |
 | 36. CRUCE — Capa de cruces parlamentario↔sector (deny-by-default) | v4.0 | 0/? | Not started | - |
 | 37. SURF — Cruces en ficha de parlamentario (gated) | v4.0 | 0/? | Not started | - |
 | 38. SURF — Cruces en ficha de proyecto (gated, diferido) | v4.0 | 0/? | Not started | - |
@@ -792,13 +792,13 @@ Plans:
   4. Los matches dudosos van a la cola `revision_entidad` (estado `pendiente`); ningún match dudoso se promueve a `confirmado` sin revisor humano vía RPC `resolver_entidad`; UI admin protegida `revisar-entidades` (ENT-04)
   5. El backfill de entidades es LOCAL (operador), idempotente/reanudable: una 2ª corrida produce 0 entidades/vínculos nuevos; la maestra se exporta a JSON fuera de Supabase (custodia, espejo de `backup.ts`) (ENT-05)
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 
 - [x] 35-01-PLAN.md — Migraciones 0034/0035/0036 + 3 pgTAP (maestra entidad_tercero + vinculo/revision + FK/RPC resolver_entidad, deny-by-default); apply a PROD = checkpoint operador (ENT-01/03/04)
 - [x] 35-02-PLAN.md — @obs/identity: matchDeterministaEntidad (juridica-solo-RUT) + EnlaceEntidadConfirmado + writer/seeder idempotente + backup JSON + backfill-cli LOCAL (ENT-02/05)
-- [ ] 35-03-PLAN.md — @obs/adjudication: pipeline-entidad (juridica salta LLM) + prompt-entidad + writer-revision-entidad + revisor-cli; gate RUT + UMBRAL 0.9 (ENT-02/04)
+- [x] 35-03-PLAN.md — @obs/adjudication: pipeline-entidad (juridica salta LLM) + prompt-entidad + writer-revision-entidad + revisor-cli; gate RUT + UMBRAL 0.9 (ENT-02/04)
 - [ ] 35-04-PLAN.md — Reconciliadores (reconciliar-sujeto -> contraparte_id; reconciliar-contrato -> contratista.entidad_id) + UI admin revisar-entidades protegida (ENT-03/04)
 
 ### Phase 36: CRUCE — Capa de cruces parlamentario↔sector (deny-by-default)
