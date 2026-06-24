@@ -770,7 +770,8 @@ INFRA-01 desbloqueo CI (Phase 33, ✅ DONE) — sin esto ningún workflow progra
 - [ ] **Phase 38: SURF — Superficie de cruces en ficha de proyecto (gated, diferido)** - `cruces_de_proyecto(boletin)` → parlamentarios que votaron a favor con cruces en el sector del proyecto, PII-safe, mismo gate. Hereda la advertencia anti-insinuación de las señales de voto → se DIFIERE si las señales de voto quedan OFF.
 - [ ] **Phase 39: LEGAL — Gate legal transversal F13/F17/cruces (sign-off humano)** - Revisión legal humana (Ley 21.719) que habilita `MONEY_PUBLIC_ENABLED`, `netPublicEnabled` y `crucesPublicEnabled`. Acción exclusivamente humana — un agente NUNCA flipea estos flags. Atraviesa Fases 1–3; controla toda exposición sensible.
 - [ ] **Phase 40: RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human)** - Cosecha de RUT a la maestra; wire real de ChileCompra (hoy CLI demo) + workflow; workflow manual SERVEL por elección. Bloqueado por RUT-01 (prerrequisito duro) + ticket/URL de operador; exposición pública requiere LEGAL-01.
-- [x] **Phase 41: CRUCEN — Habilitación de cruces (grant gated + dossier + fecha_captura)** - Cierra las 3 deudas del code-review de Phase 37 para dejar la superficie de cruces LISTA para firmar/encender (sin encenderla): fix WR-02 (proyectar `cruce_senal.fecha_captura` en el RPC → frescura honesta, migración aplicable ya), migración de grant del RPC a anon ESCRITA pero NO aplicada (deny-by-default hasta sign-off), y dossier legal de cruces (prep para firma humana, espejo F17). CERO flip de flag. (completed 2026-06-24)
+- [x] **Phase 41: CRUCEN — Habilitación de cruces (grant gated + dossier + fecha_captura)** - Cierra las 3 deudas del code-review de Phase 37 para dejar la superficie de cruces LISTA para firmar/encender (sin encenderla): fix WR-02 (proyectar `cruce_senal.fecha_captura` en el RPC → frescura honesta, migración aplicable ya), migración de grant del RPC a anon ESCRITA pero NO aplicada (deny-by-default hasta sign-off), y dossier legal de cruces (prep para firma humana, espejo F17). CERO flip de flag. (completed 2026-06-24) — ENCENDIDO 2026-06-24: dossier firmado + 0041/0042 aplicadas a PROD.
+- [ ] **Phase 42: LOCKDOWN — Cierre de la API pública de Supabase (rol `web_reader`)** - Eliminar la superficie de API pública (rol `anon`): el servidor de la página lee como un rol dedicado de mínimo privilegio `web_reader` (NO service_role — preserva RLS/PII), y se revocan TODOS los grants de `anon`/`authenticated`. Tras el cambio la anon key es inútil para extraer datos; todo se sirve solo a través de la página. Motivada por el temor a uso indiscriminado de la API tras el encendido de cruces. (added 2026-06-24)
 
 ## Phase Details (v4.0)
 
@@ -974,3 +975,21 @@ Plans:
 - [x] 41-03-PLAN.md — CRUCEN-03: dossier legal de cruces — 41-LEGAL-DOSSIER-CRUCES.md ×2 idénticos, signoff: pending, CRUCES-específico, jamás firmado
 
 **UI hint**: yes (CRUCEN-01 toca `cruces-de-parlamentario.tsx`)
+
+### Phase 42: LOCKDOWN — Cierre de la API pública de Supabase (rol `web_reader`)
+
+**Goal:** Eliminar la superficie de API pública de Supabase (rol `anon`). Hoy el servidor de Next.js y el público usan el MISMO rol `anon`; cualquiera con la anon key puede llamar a PostgREST directamente y extraer datos sin pasar por la página. Crear un rol Postgres dedicado de mínimo privilegio `web_reader` con EXACTAMENTE los permisos curados que hoy tiene `anon`; hacer que `createServerSupabase` lea como `web_reader` (JWT firmado con `role: web_reader`, NO la service key — eso bypassearía RLS); y revocar TODO de `anon`/`authenticated`. Tras el cutover, la anon key devuelve `permission denied` en cada RPC/tabla, el sitio sigue renderizando todas sus superficies, y el PII sigue protegido por RLS (web_reader es un rol restringido normal). Auditado: TODAS las lecturas ya son server-only (no hay cliente browser, no hay login) → cerrar la API no rompe features de cliente.
+**Mode:** security / arquitectura (cambio de canal de datos)
+**Depends on:** ninguna funcional; toca el modelo de grants de todas las migraciones previas. Cutover coordinado con deploy de Cloudflare (operador).
+**Requirements:** LOCKDOWN-01, LOCKDOWN-02, LOCKDOWN-03, LOCKDOWN-04
+**Autonomy:** autónomo para ESCRIBIR (rol + re-grants, revokes, switch del server, tests, pgTAP, runbook); **needs-human-checkpoint** para el cutover ORDENADO a PROD (aplicar 01 → deployar 03 a Cloudflare → aplicar 02; revoke último). El agente NUNCA revoca anon antes de que el server web_reader esté vivo en prod.
+**Success Criteria** (what must be TRUE):
+
+  1. **LOCKDOWN-01:** rol `web_reader` (NOLOGIN) creado + `grant web_reader to authenticator`; migración que concede a `web_reader` EXACTAMENTE el set vivo de `anon` (execute en RPCs + select en tablas public-read + policies `for select` equivalentes), enumerado desde PROD (information_schema/pg_policies), no desde los .sql. Idempotente. pgTAP: web_reader ejecuta un RPC representativo y lee una tabla public-read. NO revoca nada aún.
+  2. **LOCKDOWN-03:** `createServerSupabase` se autentica como `web_reader` (JWT `role: web_reader` firmado con el JWT secret del proyecto), manteniéndose server-only; tests del cliente. Deploy a Cloudflare ANTES del revoke (gate de cutover).
+  3. **LOCKDOWN-02:** migración que revoca TODO de `anon` y `authenticated` (execute en RPCs + select en tablas + drop policies `to anon`). Se aplica ÚLTIMA, tras el server web_reader vivo en prod. pgTAP: anon/authenticated sin execute/select en TODO el inventario; web_reader intacto.
+  4. **LOCKDOWN-04:** verificación end-to-end — probe live con la anon key → permission denied en cada RPC/tabla; el sitio renderiza votaciones, lobby, patrimonio, dinero, NET, cruces, búsqueda, agenda, parlamentarios, proyecto. Guard anti-regresión (CI falla ante un nuevo `grant ... to anon` o un select de columna PII en el server). Runbook de cutover + rollback documentado.
+
+**Plans:** TBD (research → plan-phase)
+
+**UI hint**: no (cambio de credencial/permisos; sin cambios visuales)

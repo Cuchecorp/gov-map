@@ -57,9 +57,18 @@
 
 > Las tres deudas que destapó el code-review de Phase 37, necesarias ANTES de poder firmar/encender la superficie de cruces. CERO flip de flag aquí.
 
-- [ ] **CRUCEN-01**: Fix WR-02 (frescura honesta). Nueva migración `create or replace public.cruces_de_parlamentario` que PROYECTA `cruce_senal.fecha_captura` en la fila de retorno (sin tocar el grant — el RPC sigue deny-by-default), y `CrucesSection`/`CrucesView` la usan como `capturedAt` del `ProvenanceBadge` (frescura REAL del materializado, no la fecha de la reunión) → elimina el stale-amber falso y el "Actualizado hace …" sobre una fecha de evento. Tipos + tests actualizados. La migración es APLICABLE a PROD ya (checkpoint operador) porque NO concede nada.
+- [x] **CRUCEN-01**: Fix WR-02 (frescura honesta). Nueva migración `create or replace public.cruces_de_parlamentario` que PROYECTA `cruce_senal.fecha_captura` en la fila de retorno (sin tocar el grant — el RPC sigue deny-by-default), y `CrucesSection`/`CrucesView` la usan como `capturedAt` del `ProvenanceBadge` (frescura REAL del materializado, no la fecha de la reunión) → elimina el stale-amber falso y el "Actualizado hace …" sobre una fecha de evento. Tipos + tests actualizados. ✅ 41-01: 0041 drop+recreate (fecha_captura) + pgTAP proargnames + componente + RTL (ff2dd63/807f08b); APLICADA a PROD en el encendido 2026-06-24 (pgTAP 0041 4/4 + 0040 regresión 4/4).
 - [x] **CRUCEN-02**: Grant gated del RPC. Nueva migración que concede `execute on function public.cruces_de_parlamentario(text) to anon` (espejo de `subgrafo_red`/`lobby_de_parlamentario`), **ESCRITA pero NO aplicada** — su aplicación es checkpoint humano que ocurre SOLO DESPUÉS del sign-off legal de cruces (deny-by-default hasta la firma, espejo del patrón F17/NET). pgTAP que verifica el grant para cuando se aplique. Un agente NUNCA la aplica ni enciende el flag. ✅ 41-02: 0042_cruces_grant_anon.sql ESCRITA+commiteada (a5e410a) con precondición fail-loud do$$ + cabecera LOUD NO-APLICAR; pgTAP de encendido en supabase/tests/post-apply/ (0ad6f1c) fuera del glob; 0042 INERTE (NO aplicada / NO en schema_migrations).
 - [x] **CRUCEN-03**: Dossier legal de cruces. `docs/legal/XX-LEGAL-DOSSIER-CRUCES.md` (espejo de `17-LEGAL-DOSSIER-NET.md`), material de PREPARACIÓN para asesoría legal (`signoff: pending`), que estructura la superficie de riesgo de las señales de cruce parlamentario↔sector (composición de hechos públicos lobby↔sector, riesgo de insinuación, minimización Ley 21.719, atribución por dataset) con checklist de sign-off §9. La firma es **acción humana** (como F17). Encender cruces = firmar dossier (humano) → aplicar grant CRUCEN-02 (operador) → flip `crucesPublicEnabled` (operador).
+
+### LOCKDOWN — Cierre de la API pública de Supabase (Phase 42, rol `web_reader`)
+
+> Raíz: tras el encendido de cruces, el operador no quiere que la API pública de Supabase (rol `anon`) se use indiscriminadamente; todo debe servirse solo a través de la página. Decisión LOCKED del operador: rol dedicado `web_reader` de mínimo privilegio (NO service_role — preserva RLS/PII). Auditado: todas las lecturas ya son server-only. ORDEN DE CUTOVER load-bearing (ver 42-CONTEXT gate 1).
+
+- [ ] **LOCKDOWN-01**: Crear rol `web_reader` (NOLOGIN) + `grant web_reader to authenticator`; migración que concede a `web_reader` EXACTAMENTE el set vivo de `anon` (execute en RPCs + select en tablas public-read + recrear las policies `for select to anon using(true)` como `to web_reader`), enumerado desde PROD (information_schema/pg_policies), NO desde los .sql. Idempotente. NO revoca nada de anon todavía. pgTAP: web_reader ejecuta un RPC y lee una tabla public-read; PII sigue denegado. Aplicable a PROD = checkpoint operador.
+- [ ] **LOCKDOWN-02**: Revocar TODO de `anon` y `authenticated` (execute en cada RPC + select en cada tabla + drop de las policies `to anon`). Mata la API pública. Se aplica ÚLTIMA, DESPUÉS de que el server `web_reader` esté vivo en prod (gate de cutover). pgTAP: anon/authenticated SIN execute/select en todo el inventario; web_reader intacto. Un agente NUNCA la aplica antes del deploy del server.
+- [ ] **LOCKDOWN-03**: `createServerSupabase` (`app/lib/supabase.ts`) deja de usar la anon key como token y se autentica como `web_reader` (JWT `role: web_reader` firmado con el JWT secret del proyecto; apikey=anon solo para pasar Kong). Mantiene `import "server-only"`. Tests del cliente (forma del token, server-only, ningún `NEXT_PUBLIC_`). Deploy a Cloudflare ANTES del revoke (LOCKDOWN-02).
+- [ ] **LOCKDOWN-04**: Verificación end-to-end + guard. Probe live (operador): la anon key contra cada RPC/tabla → `permission denied`/401/42501; el sitio (server como web_reader) renderiza TODAS las superficies (votaciones, lobby, patrimonio, dinero, NET, cruces, búsqueda, agenda, parlamentarios, proyecto). Guard CI anti-regresión: falla si reaparece un `grant ... to anon` o si el server hace `select` de columna PII conocida. Runbook de cutover ordenado + rollback (re-grant anon) documentado.
 
 ### LEGAL — Gate legal transversal (Fase 4, #10)
 
@@ -109,18 +118,23 @@ Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la 
 | CRUCE-03 | Phase 36 | Complete |
 | SURF-01 | Phase 37 | Complete |
 | SURF-02 | Phase 38 | Pending |
-| CRUCEN-01 | Phase 41 | Pending |
-| CRUCEN-02 | Phase 41 | Done (0042 escrita NO aplicada; apply=human post-sign-off) |
+| CRUCEN-01 | Phase 41 | Complete (0041 aplicada a PROD en el encendido 2026-06-24) |
+| CRUCEN-02 | Phase 41 | Complete (0042 aplicada a PROD en el encendido 2026-06-24, post-firma) |
 | CRUCEN-03 | Phase 41 | Complete |
 | LEGAL-01 | Phase 39 | Pending |
 | RUTM-01 | Phase 40 | Pending |
 | RUTM-02 | Phase 40 | Pending |
 | RUTM-03 | Phase 40 | Pending |
+| LOCKDOWN-01 | Phase 42 | Pending |
+| LOCKDOWN-02 | Phase 42 | Pending |
+| LOCKDOWN-03 | Phase 42 | Pending |
+| LOCKDOWN-04 | Phase 42 | Pending |
 
 **Coverage:**
 
 - v4.0 requirements: 22 total (19 base + 3 CRUCEN, deuda de Phase 37 → Phase 41)
-- Mapped to phases: 22
+- Phase 42 (LOCKDOWN, post-encendido cruces): 4 (LOCKDOWN-01..04)
+- Mapped to phases: 26
 - Unmapped: 0 ✓
 
 ---
