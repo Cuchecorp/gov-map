@@ -1,0 +1,67 @@
+name: lobby-camara-weekly
+
+# Ingesta SEMANAL de AUDIENCIAS de lobby de la CÁMARA (listado de audiencias del portal de
+# transparencia) contra PROD. Escribe lobby_audiencia con estado_vinculo='confirmado' para los
+# sujetos que el match determinista reconcilia.
+#
+# WAF anti-bot: www.camara.cl bloquea el fetch nativo de Node (undici / TLS fingerprint) → el
+# crudo se descarga con curl (UA identificatorio Bot-Ciudadano/1.0) a /tmp/lobby.html y el CLI
+# lo lee con --html-file (bypass del WAF). Mismo transporte que agenda-weekly usa para Cámara.
+# El rate-limit lo aplica el conector (@obs/ingest, orden LOCKED). Secrets vía ${{ secrets.* }}.
+#
+# Schedule: martes 11:00 UTC (~07:00 CL) — distinto de agenda(lun)/leyes(vie). También manual.
+
+on:
+  schedule:
+    - cron: "0 11 * * 2" # martes 11:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lobby-camara-weekly
+  cancel-in-progress: false
+
+jobs:
+  lobby-camara:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install deps
+        # --ignore-scripts: tsx trae su propio esbuild; evita ERR_PNPM_IGNORED_BUILDS (gate pnpm 11).
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Descargar crudo Cámara (curl anti-WAF)
+        # Node fetch (undici) es bloqueado por el WAF de camara.cl; curl con UA identificatorio
+        # entrega el crudo. El CLI lo lee con --html-file. Gate <10KB = respuesta WAF/error.
+        run: |
+          curl -sS -A 'Bot-Ciudadano/1.0' -o /tmp/lobby.html \
+            'https://www.camara.cl/transparencia/listadodeaudiencias.aspx'
+          SIZE=$(stat -c%s /tmp/lobby.html)
+          echo "lobby.html = $SIZE bytes"
+          if [ "$SIZE" -lt 10240 ]; then echo "WAF/respuesta < 10KB"; exit 1; fi
+
+      - name: Run lobby Cámara
+        env:
+          SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          OUT=$(pnpm --filter @obs/lobby exec tsx src/run-camara-lobby-cli.ts --html-file /tmp/lobby.html)
+          echo "$OUT"
+          echo "$OUT" | grep -qE 'audiencias=[1-9][0-9]*' || { echo "audiencias=0"; exit 1; }
