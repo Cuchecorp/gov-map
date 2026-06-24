@@ -792,7 +792,7 @@ Plans:
   4. Los matches dudosos van a la cola `revision_entidad` (estado `pendiente`); ningún match dudoso se promueve a `confirmado` sin revisor humano vía RPC `resolver_entidad`; UI admin protegida `revisar-entidades` (ENT-04)
   5. El backfill de entidades es LOCAL (operador), idempotente/reanudable: una 2ª corrida produce 0 entidades/vínculos nuevos; la maestra se exporta a JSON fuera de Supabase (custodia, espejo de `backup.ts`) (ENT-05)
 
-**Plans:** 4/4 plans complete
+**Plans:** 5 plans (35-05 = gap-closure CR-01 + apply PROD)
 
 Plans:
 
@@ -800,6 +800,7 @@ Plans:
 - [x] 35-02-PLAN.md — @obs/identity: matchDeterministaEntidad (juridica-solo-RUT) + EnlaceEntidadConfirmado + writer/seeder idempotente + backup JSON + backfill-cli LOCAL (ENT-02/05)
 - [x] 35-03-PLAN.md — @obs/adjudication: pipeline-entidad (juridica salta LLM) + prompt-entidad + writer-revision-entidad + revisor-cli; gate RUT + UMBRAL 0.9 (ENT-02/04)
 - [x] 35-04-PLAN.md — Reconciliadores (reconciliar-sujeto -> contraparte_id; reconciliar-contrato -> contratista.entidad_id) + UI admin revisar-entidades protegida (ENT-03/04)
+- [ ] 35-05-PLAN.md — GAP-CLOSURE: indice unico TOTAL entidad_tercero_clave_natural (cierra CR-01/42P10) + pgTAP (no-parcial + 23505) + docstring fix; apply 0034(fijada)/0035/0036 a PROD = checkpoint operador (ENT-01/05)
 
 ### Phase 36: CRUCE — Capa de cruces parlamentario↔sector (deny-by-default)
 
