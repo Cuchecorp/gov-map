@@ -310,6 +310,12 @@ export interface CruceSenalRpcRow {
   /** Conteo NEUTRO (único agregado permitido §9.1) — sin score/ranking/afinidad. */
   conteo: number;
   evidencia: CruceEvidencia;
+  /**
+   * Fecha de materialización del cruce (cuándo corrió `materializar_cruces()`).
+   * Nivel SEÑAL: todos los items comparten esta fecha. Proyectada por 0041
+   * (CRUCEN-01). ISO string del timestamptz → `ProvenanceBadge.capturedAt`.
+   */
+  fecha_captura: string;
 }
 
 /**
@@ -322,15 +328,15 @@ export interface CruceEvidencia {
 }
 
 /**
- * Un item de evidencia de cruce (forma EXACTA del jsonb de 0039). Pitfall 1: a
- * diferencia de `LobbyAudienciaRow`, el item NO trae `fecha_captura` ni `origen`
- * → el `ProvenanceBadge` se alimenta con `fecha` (capturedAt) + `enlace_fuente`
- * (sourceUrl) + `sourceLabel("lobby")` (sourceName), NUNCA `fecha_captura`/`origen`.
+ * Un item de evidencia de cruce (forma EXACTA del jsonb de 0039). La FRESCURA del
+ * dato (capturedAt del `ProvenanceBadge`) viene de `CruceSenalRpcRow.fecha_captura`
+ * (nivel señal, proyectada por 0041 — CRUCEN-01), NO de este item. `item.fecha` es
+ * solo texto FACTUAL de la fecha de la reunión (§9.1-safe), nunca frescura.
  */
 export interface CruceEvidenciaItem {
   /** `'reunion'` hoy; etiqueta cruda del tipo de hecho. */
   tipo: string;
-  /** ISO date de la audiencia. `null` si la fuente no la publica → `ProvenanceBadge.capturedAt`. */
+  /** ISO date de la audiencia (fecha de la REUNIÓN). `null` si la fuente no la publica → texto factual plano, no frescura. */
   fecha: string | null;
   /** Nombre CRUDO de la contraparte (D-10), nunca normalizado/inferido → siempre con `IdentityMarker`. */
   contraparte_nombre_crudo: string;

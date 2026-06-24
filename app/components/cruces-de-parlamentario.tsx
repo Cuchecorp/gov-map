@@ -1,6 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { IdentityMarker } from "@/components/identity-marker";
+import { fechaCorta } from "@/lib/format";
 import {
   sourceLabel,
   type CruceSenalRpcRow,
@@ -134,28 +135,31 @@ export function CrucesView({ data }: { data: CrucesViewData }) {
                     </span>
                     <ContraparteCruda nombre={item.contraparte_nombre_crudo} />
                   </span>
+                  {/*
+                    Fecha de la REUNIÓN como texto FACTUAL plano (§9.1-safe): sin
+                    verbo causal, no es frescura del dato (esa va en el badge). Si la
+                    fuente no publica la fecha, se omite la línea (honest-state).
+                  */}
+                  {item.fecha && (
+                    <span className="text-xs text-muted-foreground">
+                      Reunión registrada el {fechaCorta(new Date(item.fecha))}
+                    </span>
+                  )}
                 </div>
 
                 {/*
-                  ProvenanceBadge por evidencia, obligatorio (FND-08). Pitfall 1:
-                  el item NO trae fecha_captura ni origen → capturedAt = item.fecha,
-                  sourceName = sourceLabel("lobby"), sourceUrl = item.enlace_fuente.
-                  ProvenanceBadge null-checkea fecha/enlace internamente (Pitfall 2).
-
-                  LIMITACIÓN CONOCIDA (WR-02, a resolver ANTES de encender en Phase 39):
-                  `capturedAt` se alimenta con la fecha de la REUNIÓN, no con la fecha de
-                  captura del dato (el RPC 0040 no proyecta `cruce_senal.fecha_captura`).
-                  Como las reuniones son antiguas, el badge marca stale-amber y "Actualizado
-                  hace …" sobre una fecha de evento, no de frescura. El fix correcto =
-                  proyectar `fecha_captura` desde `cruce_senal` en el RPC (DDL — FUERA del
-                  alcance CERO-DDL de Phase 37); pasar `null` aquí NO sirve porque el badge
-                  acopla `capturedAt===null` → "fuente desconocida" (badge.tsx), lo que
-                  CONTRADICE la fuente conocida + el enlace. Carril gated OFF: no llega a
-                  producción hasta Phase 39, cuando se hará la proyección.
+                  ProvenanceBadge por evidencia (FND-08). capturedAt = s.fecha_captura
+                  (fecha de materialización del cruce, nivel señal — proyectada por 0041,
+                  CRUCEN-01), NO item.fecha. Mata el stale-amber falso del WR-02 (la fecha
+                  de la reunión es antigua y marcaba amber sobre una fecha de evento).
+                  Nota de honestidad (R6): el badge refleja la frescura del REBUILD del
+                  pipeline (fecha_captura = now() en el FULL REBUILD diario, cron '23 3 * * *'),
+                  no la frescura de la fuente/reunión. Si el cron se pausa, todos los badges
+                  envejecen a amber juntos — señal honesta.
                 */}
                 <span className="ml-auto">
                   <ProvenanceBadge
-                    capturedAt={item.fecha ? new Date(item.fecha) : null}
+                    capturedAt={new Date(s.fecha_captura)}
                     sourceName={sourceLabel("lobby")}
                     sourceUrl={item.enlace_fuente}
                   />

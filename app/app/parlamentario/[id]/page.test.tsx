@@ -75,6 +75,9 @@ const rpcMock = vi.fn((name: string) => {
           sector_etiqueta: "Salud y farmacéutica",
           tipo_senal: "lobby_sector",
           conteo: 2,
+          // [Rule 3] 0041 proyecta fecha_captura (nivel señal) → ProvenanceBadge.capturedAt.
+          // Sin este campo el fixture daba `new Date(undefined)` = Invalid time value.
+          fecha_captura: new Date().toISOString(),
           evidencia: {
             conteo: 2,
             items: [

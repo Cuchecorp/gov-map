@@ -37,6 +37,8 @@ function makeSenal(overrides: Partial<CruceSenalRpcRow> = {}): CruceSenalRpcRow 
     tipo_senal: "lobby_sector",
     conteo: items.length,
     evidencia: { conteo: items.length, items },
+    // Frescura del cruce (nivel señal): reciente → nunca stale, determinista en la corrida.
+    fecha_captura: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -257,7 +259,87 @@ describe("CrucesView — ProvenanceBadge por item de evidencia", () => {
     );
     expect(screen.getByText("Inmobiliaria Andes SpA")).toBeInTheDocument();
     expect(screen.getByText("Constructora Beta Ltda.")).toBeInTheDocument();
-    // Provenance por evidencia: una por cada contraparte, ninguna soltada.
+    // Provenance por evidencia: una por cada contraparte, ninguna soltada (anchor-WR01).
     expect(screen.getAllByText(/fuente oficial ↗/i).length).toBe(2);
+  });
+});
+
+// ── Frescura honesta: el badge usa s.fecha_captura (nivel señal), no item.fecha ──
+//    Mata el stale-amber falso del WR-02: la fecha de la REUNIÓN (item.fecha) es
+//    antigua → marcaba amber sobre una fecha de evento; la frescura real es la de
+//    materialización del cruce (CRUCEN-01 / 0041).
+describe("CrucesView — frescura honesta (CRUCEN-01 / WR-02)", () => {
+  it("fecha_captura reciente → badge SIN text-amber-700 (no stale falso)", () => {
+    const ahora = new Date().toISOString();
+    const { container } = render(
+      <CrucesView
+        data={makeViewData({
+          cruces: [
+            makeSenal({
+              fecha_captura: ahora,
+              evidencia: {
+                conteo: 1,
+                items: [makeItem({ fecha: "2020-03-10T10:00:00Z" })],
+              },
+              conteo: 1,
+            }),
+          ],
+        })}
+      />,
+    );
+    const badges = container.querySelectorAll('span[class*="rounded-md"]');
+    expect(badges.length).toBeGreaterThan(0);
+    for (const b of badges) expect(b.className).not.toContain("text-amber-700");
+  });
+
+  it("muestra 'Actualizado' y NO 'Sin fecha de actualización'", () => {
+    render(
+      <CrucesView
+        data={makeViewData({
+          cruces: [makeSenal({ fecha_captura: new Date().toISOString() })],
+        })}
+      />,
+    );
+    expect(
+      screen.queryByText(/Sin fecha de actualización/i),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/Actualizado/i)).toBeInTheDocument();
+  });
+
+  it("texto factual de reunión: presente cuando item.fecha set, ausente cuando null", () => {
+    render(
+      <CrucesView
+        data={makeViewData({
+          cruces: [
+            makeSenal({
+              evidencia: {
+                conteo: 1,
+                items: [makeItem({ fecha: "2026-05-14T13:00:00Z" })],
+              },
+              conteo: 1,
+            }),
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByText(/Reunión registrada el/i)).toBeInTheDocument();
+
+    cleanup();
+    render(
+      <CrucesView
+        data={makeViewData({
+          cruces: [
+            makeSenal({
+              evidencia: {
+                conteo: 1,
+                items: [makeItem({ fecha: null })],
+              },
+              conteo: 1,
+            }),
+          ],
+        })}
+      />,
+    );
+    expect(screen.queryByText(/Reunión registrada el/i)).not.toBeInTheDocument();
   });
 });
