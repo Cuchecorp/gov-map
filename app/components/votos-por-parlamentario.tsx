@@ -660,10 +660,19 @@ export async function VotosSection({
   const boletines = [...new Set(todas.map((v) => v.boletin))];
   const materiaPorBoletin = new Map<string, string | null>();
   if (boletines.length > 0) {
-    const { data: proyectos } = await sb
+    const { data: proyectos, error: materiaError } = await sb
       .from("proyecto")
       .select("boletin, materia")
       .in("boletin", boletines);
+    // Enriquecimiento SECUNDARIO: a diferencia del RPC de votos, un fallo aquí NO
+    // debe tirar la página (ya tiene los votos reales). Log para observabilidad y
+    // se sigue con materia=null (degradación honesta, no error de página).
+    if (materiaError) {
+      console.error(
+        `hidratación de materia falló para ${id} (votos sin materia):`,
+        materiaError,
+      );
+    }
     for (const p of (proyectos as { boletin: string; materia: string | null }[]) ??
       []) {
       materiaPorBoletin.set(p.boletin, p.materia ?? null);
