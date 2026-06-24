@@ -13,7 +13,9 @@
 -- (catálogo sector + columna lobby_contraparte.sector_id).
 
 begin;
-select plan(11);
+-- 10 aserciones reales en este archivo (el plan(11) original estaba off-by-one — bug del
+-- conteo, no del DDL; corregido en Plan 04 al correr contra el schema aplicado).
+select plan(10);
 
 -- ── Semilla (owner, bypassa RLS) ──────────────────────────────────────────────
 -- Cinco parlamentarios confirmados, cada uno con una audiencia confirmada cuya contraparte

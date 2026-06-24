@@ -53,5 +53,11 @@ $$;
 -- invoca hasta el sign-off legal de Phase 39. No se añade ninguna policy ni grant select
 -- sobre cruce_senal (sigue deny-by-default).
 revoke execute on function public.cruces_de_parlamentario(text) from public;
+-- DEFENSA EN PROFUNDIDAD (lección 0021, confirmada por pgTAP-vs-PROD en Plan 04): este
+-- proyecto concede EXECUTE por DEFAULT PRIVILEGES a `anon` y `authenticated` sobre CADA
+-- función nueva en `public`. El `revoke from public` NO toca esos grants explícitos de rol.
+-- Hay que revocarlos directamente para que el deny-by-default del canal de lectura sea REAL
+-- (espejo del `revoke all from anon, authenticated` de la tabla en 0039).
+revoke execute on function public.cruces_de_parlamentario(text) from anon, authenticated;
 -- INTENCIONALMENTE NO HAY `grant execute on function public.cruces_de_parlamentario(text) to anon;`
 -- (deny-by-default hasta firma Phase 39 — Candado A del doble candado de cruces).
