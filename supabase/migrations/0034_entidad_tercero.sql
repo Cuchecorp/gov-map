@@ -15,8 +15,11 @@
 --     fase. Gobierna la rama juridica-solo-RUT del matcher (no existe en 0005).
 --   * `rut` NULLABLE: las contrapartes de lobby NO traen RUT; los proveedores SI
 --     (mismo patron que parlamentario.rut — uso interno).
---   * Clave natural: indice unico PARCIAL sobre `rut` (donde no nulo) — un RUT identifica
---     univocamente a una entidad.
+--   * Clave natural por RUT: indice unico PARCIAL sobre `rut` (donde no nulo) — un RUT
+--     identifica univocamente a una entidad.
+--   * Clave natural por NOMBRE: indice unico TOTAL `entidad_tercero_clave_natural` sobre
+--     `(tipo_entidad, nombre_normalizado)` — la clave del ON CONFLICT del writer; coexiste con
+--     el parcial rut (la unica clave para contrapartes de lobby sin RUT). (Δ CR-01)
 --   * RLS deny-by-default (Ley 21.719, V4/V8, leccion Phase 11): RLS habilitada SIN
 --     policies + `revoke all from anon, authenticated` en AMBAS tablas. La maestra es PII
 --     interna, nunca public-read. (0005 NO incluia el revoke; aqui SI, copiado de 0021/0023.)
@@ -44,10 +47,18 @@ create table entidad_tercero (
   enlace              text not null
 );
 
--- Clave natural: un RUT identifica univocamente (indice unico PARCIAL, donde no nulo).
+-- Clave natural por RUT: un RUT identifica univocamente (indice unico PARCIAL, donde no nulo).
 create unique index entidad_tercero_rut_key
   on entidad_tercero (rut)
   where rut is not null;
+
+-- Δ CR-01: clave natural por NOMBRE con indice unico TOTAL (NO parcial). El writer
+-- (writer-entidad-supabase.ts) hace upsert ON CONFLICT (tipo_entidad, nombre_normalizado);
+-- PostgREST .upsert(onConflict) NO puede targetear un indice parcial → sin este indice TOTAL
+-- un upsert real lanza SQLSTATE 42P10. Espejo del patron LOCKED de 0035 (vinculo_entidad_clave_natural).
+-- Coexiste con el parcial rut: el rut deduplica por RUT exacto; este por nombre normalizado
+-- (la unica clave disponible para contrapartes de lobby sin RUT).
+create unique index entidad_tercero_clave_natural on entidad_tercero (tipo_entidad, nombre_normalizado);
 
 create table entidad_tercero_alias (
   id                 bigint generated always as identity primary key,

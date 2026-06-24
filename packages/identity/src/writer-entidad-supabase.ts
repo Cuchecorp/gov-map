@@ -12,7 +12,8 @@
  * es un no-op (nunca "promueve todo").
  *
  * Idempotencia (ENT-05): la clave natural `(tipo_entidad, nombre_normalizado)` está respaldada
- * por un índice único TOTAL en 0034/0035 que `ON CONFLICT` sí puede targetear → re-correr la
+ * por el indice unico TOTAL `entidad_tercero_clave_natural` creado en 0034 (no en 0035 — ese
+ * índice es de otra tabla, vinculo_entidad) que `ON CONFLICT` sí puede targetear → re-correr la
  * siembra con el mismo input no duplica (2ª corrida = 0 nuevos).
  */
 

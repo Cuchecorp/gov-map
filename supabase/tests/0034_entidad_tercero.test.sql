@@ -5,7 +5,7 @@
 -- tambien al service role que BYPASSA RLS.
 
 begin;
-select plan(22);
+select plan(26);
 
 -- 2 tablas de la maestra existen.
 select has_table('public', 'entidad_tercero',       'tabla entidad_tercero existe');
@@ -58,6 +58,28 @@ select throws_ok(
      values ('E90002', 'rut dos', 'juridica', '76000000-0', 'test', 'http://x') $$,
   '23505', null,
   'rut duplicado viola el unique index parcial');
+
+-- Δ CR-01: clave natural por NOMBRE con indice unico TOTAL (entidad_tercero_clave_natural).
+-- Existe, es NO parcial, y un doble-insert con la misma (tipo_entidad, nombre_normalizado)
+-- y rut NULL lanza 23505 — prueba que el indice TOTAL dispara independiente del parcial rut.
+select has_index('public', 'entidad_tercero', 'entidad_tercero_clave_natural',
+  'indice entidad_tercero_clave_natural existe (clave natural por nombre, ON CONFLICT del writer)');
+select is(
+  (select i.indpred is null
+     from pg_index i
+     join pg_class c on c.oid = i.indexrelid
+    where c.relname = 'entidad_tercero_clave_natural'),
+  true,
+  'entidad_tercero_clave_natural es indice TOTAL no parcial (indpred is null)');
+select lives_ok(
+  $$ insert into entidad_tercero (id, nombre_normalizado, tipo_entidad, origen, enlace)
+     values ('E90004', 'homonimo dedup', 'natural', 'test', 'http://x') $$,
+  'primera fila (natural, "homonimo dedup", rut NULL) se inserta');
+select throws_ok(
+  $$ insert into entidad_tercero (id, nombre_normalizado, tipo_entidad, origen, enlace)
+     values ('E90005', 'homonimo dedup', 'natural', 'test', 'http://x') $$,
+  '23505', null,
+  'misma (tipo_entidad, nombre_normalizado) con rut NULL viola el indice TOTAL clave_natural (CR-01)');
 
 -- RLS deny-by-default: RLS habilitada en ambas tablas.
 select is(
