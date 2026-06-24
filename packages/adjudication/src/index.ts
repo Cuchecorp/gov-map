@@ -38,3 +38,38 @@ export type {
 // Golden set + evaluador de regresión (gate de deploy, ID-07).
 export { GOLDEN_SET, evaluarGolden } from "./golden/golden-set";
 export type { CasoGolden, Esperado, MetricasGolden } from "./golden/golden-set";
+
+// ── Adjudicación de TERCEROS (Phase 35, ENT-02/ENT-04) ──
+export type { MencionEntidadForanea, DecisionCompuertaEntidad } from "./tipos-entidad";
+export {
+  AdjudicacionEntidadSchema,
+  construirPromptEntidad,
+  SYSTEM_ADJUDICACION_ENTIDAD,
+} from "./prompt-entidad";
+export type { AdjudicacionEntidad } from "./prompt-entidad";
+export { aplicarCompuertaEntidad } from "./compuerta-entidad";
+export { UMBRAL } from "./compuerta";
+export { MockMiniMaxProviderEntidad } from "./mock-provider-entidad";
+export type { RespuestaMockEntidad } from "./mock-provider-entidad";
+
+// Orquestación + persistencia de terceros.
+export { correrPipelineEntidad, generarCandidatosEntidad } from "./pipeline-entidad";
+export type { ResultadoPipelineEntidad, PipelineEntidadWriter } from "./pipeline-entidad";
+export { RevisionEntidadWriter, ONCONFLICT_VINCULO_ENTIDAD } from "./writer-revision-entidad";
+export type {
+  RevisionEntidadWriterOptions,
+  CasoRevisionEntidad,
+  CasoRevisionEntidadRow,
+  CandidatoEntidadResumen,
+  FilaVinculoEntidad,
+  FilaAuditEntidad,
+} from "./writer-revision-entidad";
+
+// CLI revisor humano de terceros (gate humano LOCKED).
+export {
+  listar as listarEntidad,
+  mostrar as mostrarEntidad,
+  confirmar as confirmarRevisionEntidad,
+  rechazar as rechazarRevisionEntidad,
+  corregir as corregirRevisionEntidad,
+} from "./revisor-entidad-cli";
