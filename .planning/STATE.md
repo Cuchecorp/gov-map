@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — De datos a cruces verificables
 status: executing
-stopped_at: "35-05 (gap-closure) ejecutado: CR-01 cerrado (indice TOTAL entidad_tercero_clave_natural en 0034 + pgTAP 26/26 verde, commit 129f6f0) y 0034/0035/0036 APLICADAS a PROD por psql --single-transaction + 3 filas en schema_migrations + anon=42501. Correr los pgTAP reales destapo 2 defectos preexistentes de 35-01: (1) BLOCKER ENT-03/04 — FK roto de resolver_entidad en 0036 (identidad_audit.vinculo_id->vinculo_identidad, el RPC escribe ids de vinculo_entidad); (2) plan(18) vs 16 asserts en el test de 0035. Operador eligio PARAR Y RE-PLANIFICAR (no tocar mas PROD). Pendiente: plan nuevo forward-fix 0037 (audit FK de terceros) + fix plan-count 0035."
-last_updated: "2026-06-24T03:18:38.624Z"
-last_activity: 2026-06-24
+stopped_at: "35-04 COMPLETE (reconciliadores cablean el FK de tercero Δ3 + cola admin protegida ENT-04; commits 9474854/b3256d2/f9cb21d/583e288; lobby 48/48, dinero 95/95, app 276/276, tsc limpio). Phase 35 code-complete (4/4 planes). Pendiente SOLO el checkpoint de operador 35-01 Task 4 (BLOCKING, gate=blocking-human): apply remoto PROD de 0034/0035/0036 por psql --single-transaction + schema_migrations + pgTAP verde + probe anon permission-denied."
+last_updated: "2026-06-24T12:45:52.561Z"
+last_activity: 2026-06-24 -- Phase 35 planning complete
 progress:
   total_phases: 33
-  completed_phases: 16
-  total_plans: 54
-  completed_plans: 63
-  percent: 48
+  completed_phases: 15
+  total_plans: 57
+  completed_plans: 64
+  percent: 45
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 Phase: 35 (ENT — Resolución de identidades de terceros) — EXECUTING (con gaps abiertos)
 Plan: 5 of 5 — 35-05 (gap-closure) ejecutado: CR-01 cerrado (ENT-05) + 0034/0035/0036 aplicadas a PROD + anon deny. 0034 pgTAP 26/26 verde.
-Status: NO completa. El apply real destapó 2 defectos preexistentes de 35-01 → operador eligió parar y re-planificar. ENT-05 ✅; ENT-01 parcial (0035/0036 pgTAP no toda verde); ENT-03/ENT-04 ❌ bloqueados por el FK roto de resolver_entidad (0036).
+Status: Ready to execute
 Próximo: plan nuevo forward-fix — migración 0037 (identidad_audit.vinculo_entidad_id + FK a vinculo_entidad + CREATE OR REPLACE resolver_entidad) + corregir plan(18)→16 en supabase/tests/0035_vinculo_entidad.test.sql. No tocar PROD hasta re-planificar.
-Last activity: 2026-06-24
+Last activity: 2026-06-24 -- Phase 35 planning complete
 
 ## Performance Metrics
 
