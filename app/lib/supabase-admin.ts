@@ -12,18 +12,25 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * protegido por `adminRevisionEnabled` (el gate va PRIMERO; este cliente nunca se construye con el
  * gate OFF).
  *
- * Lee `SUPABASE_URL` y `SUPABASE_SERVICE_KEY` del entorno. NINGUNA de las dos lleva prefijo
- * `NEXT_PUBLIC_`: la service key JAMÁS debe viajar al bundle del navegador (T-05-10 reforzado).
- * `import "server-only"` (línea 1) lo garantiza en build.
+ * Lee `SUPABASE_URL` y la SERVICE key del entorno. La service key se busca como
+ * `SUPABASE_SECRET_KEY` (nombre canonico que el repo + `.env` realmente setean) con
+ * fallback a `SUPABASE_SERVICE_KEY` (alias historico que aun leen los CLIs de ingesta).
+ * Antes solo leia `SUPABASE_SERVICE_KEY` → en Cloudflare (donde `.env` define
+ * `SUPABASE_SECRET_KEY`) el cliente admin tiraba "Falta ..." al encender el gate
+ * (deuda DEBT/APP-01). NINGUNA de las dos lleva prefijo `NEXT_PUBLIC_`: la service key
+ * JAMÁS debe viajar al bundle del navegador (T-05-10 reforzado). `import "server-only"`
+ * (línea 1) lo garantiza en build.
  */
 export function createAdminSupabase(): SupabaseClient {
   const url = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+  const serviceKey =
+    process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_KEY;
 
   if (!url || !serviceKey) {
     throw new Error(
-      "Faltan SUPABASE_URL o SUPABASE_SERVICE_KEY en el entorno del servidor. " +
-        "La superficie admin requiere la SERVICE key (nunca la anon) para leer la cola deny-by-default."
+      "Faltan SUPABASE_URL o la service key (SUPABASE_SECRET_KEY / SUPABASE_SERVICE_KEY) " +
+        "en el entorno del servidor. La superficie admin requiere la SERVICE key (nunca la anon) " +
+        "para leer la cola deny-by-default."
     );
   }
 
