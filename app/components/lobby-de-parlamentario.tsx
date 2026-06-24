@@ -277,7 +277,11 @@ export function agruparAudiencias(
     }
   }
 
-  return orden.map((id) => porId.get(id)!);
+  // `orden` solo contiene ids ya insertados en `porId` por construcción; el filter
+  // sustituye el non-null assertion (`!`) por una guarda real sin cambiar la salida.
+  return orden
+    .map((id) => porId.get(id))
+    .filter((a): a is NonNullable<typeof a> => a !== undefined);
 }
 
 // ── Server Component: lee el RPC + el marcador de ingesta y arma la LobbyView ───
