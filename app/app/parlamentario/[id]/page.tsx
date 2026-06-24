@@ -9,7 +9,9 @@ import { LobbySection } from "@/components/lobby-de-parlamentario";
 import { PatrimonioSection } from "@/components/patrimonio-de-parlamentario";
 import { ContratosSection } from "@/components/contratos-de-parlamentario";
 import { FinanciamientoSection } from "@/components/financiamiento-de-parlamentario";
+import { CrucesSection } from "@/components/cruces-de-parlamentario";
 import { moneyPublicEnabled } from "@/lib/money-gate";
+import { crucesPublicEnabled } from "@/lib/cruces-gate";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ParlamentarioPublicoRow } from "@/lib/types";
 
@@ -84,6 +86,28 @@ export default async function ParlamentarioPage({
           <PatrimonioSection id={id} searchParams={sp} />
         </Suspense>
       </section>
+
+      {/*
+        Phase 37 — SURF Cruces sector (SURF-01, CONTEXT decisión de posición).
+        SIBLING de #patrimonio, NUNCA anidada: el mt-12 es la frontera de carril
+        (anti-insinuación §9.1). Una señal de cruce y un voto/reunión JAMÁS comparten
+        un <article>/<Card>/<li>. Posición LOCKED: DESPUÉS de #patrimonio y ANTES de
+        las secciones MONEY gated, para no leerse como un "score" pegado a #lobby.
+        GATE LOCKED (Candado B): TODA la <section id="cruces"> — incluido su <h2> — se
+        envuelve en crucesPublicEnabled(process.env). Con OFF (default) el nodo entero,
+        heading incluido, está AUSENTE del HTML; NO se depende de que CrucesSection
+        retorne null para ocultar el heading. crucesPublicEnabled es server-only
+        (chokepoint WR-02): NUNCA leer CRUCES_PUBLIC_ENABLED crudo. Heading factual,
+        sin posesivo. ENCENDER el flag = Phase 39 (firma legal humana), nunca un agente.
+      */}
+      {crucesPublicEnabled(process.env) && (
+        <section id="cruces" className="mt-12">
+          <h2 className="text-xl font-semibold mb-4">Cruces con sectores</h2>
+          <Suspense fallback={<CrucesSkeleton />}>
+            <CrucesSection id={id} />
+          </Suspense>
+        </section>
+      )}
 
       {/*
         Phase 14 — MONEY Contratos (UI-SPEC §Exposure Gate). SIBLING de #patrimonio,
@@ -265,6 +289,19 @@ function PatrimonioSkeleton() {
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-8 w-40 rounded-md" />
         </div>
+      ))}
+    </div>
+  );
+}
+
+// Shape-matched a CrucesView: línea de intro + 3 filas de señal (encabezado de
+// conteo + evidencia con provenance). Espejo de LobbySkeleton (§6.2).
+function CrucesSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden="true">
+      <Skeleton className="h-4 w-3/4" />
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Skeleton key={i} className="h-12 w-full rounded-lg" />
       ))}
     </div>
   );
