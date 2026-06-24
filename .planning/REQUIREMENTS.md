@@ -36,7 +36,7 @@
 - [x] **ENT-02**: El matcher determinista `matchDeterministaEntidad` confirma por RUT-único o nombre-único-por-tipo; toda ambigüedad → `no_confirmado` (fail-closed). Personas jurídicas: SOLO por RUT exacto, nombre-sin-RUT → siempre `no_confirmado` (nunca LLM). Persona natural usa LLM solo ante homónimos, con `assertNoRutInLlmInput` sobre el prompt (≥10 tests; el test falla si un RUT se cuela al prompt).
 - [x] **ENT-03**: Los reconciliadores existentes escriben el FK resuelto: `reconciliar-sujeto.ts` puebla `lobby_contraparte.contraparte_id` confirmado (antes siempre null); `reconciliar-contrato.ts` puebla `contratista.entidad_id`. RPC transaccional `resolver_entidad` (espejo de 0015).
 - [x] **ENT-04**: Los matches dudosos van a la cola `revision_entidad` (estado `pendiente`); ningún match dudoso se promueve a `confirmado` sin revisor humano vía RPC `resolver_entidad`. UI admin protegida `revisar-entidades`.
-- [x] **ENT-05**: El backfill de entidades es LOCAL (operador), idempotente/reanudable: una 2ª corrida produce 0 entidades/vínculos nuevos. La maestra se exporta a JSON fuera de Supabase (custodia, espejo de `backup.ts`).
+- [ ] **ENT-05**: El backfill de entidades es LOCAL (operador), idempotente/reanudable: una 2ª corrida produce 0 entidades/vínculos nuevos. La maestra se exporta a JSON fuera de Supabase (custodia, espejo de `backup.ts`). _(BLOQUEADO por CR-01: `writer-entidad-supabase` hace upsert `onConflict (tipo_entidad, nombre_normalizado)` pero 0034 no crea ese índice único → 42P10 contra DB real; la idempotencia "2ª corrida = 0 nuevos" no es ejercitable. Custodia JSON sí verificada. Ver 35-VERIFICATION.md / 35-REVIEW.md.)_
 
 ### CRUCE — Capa de cruces parlamentario↔sector (Fase 2.1)
 
@@ -95,7 +95,7 @@ Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la 
 | ENT-02 | Phase 35 | Complete |
 | ENT-03 | Phase 35 | Complete |
 | ENT-04 | Phase 35 | Complete |
-| ENT-05 | Phase 35 | Complete |
+| ENT-05 | Phase 35 | Pending (blocked: CR-01) |
 | CRUCE-01 | Phase 36 | Pending |
 | CRUCE-02 | Phase 36 | Pending |
 | CRUCE-03 | Phase 36 | Pending |

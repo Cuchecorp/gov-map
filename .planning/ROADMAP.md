@@ -663,7 +663,7 @@ OPS-01 apply remoto (Phase 23, PRECONDICIÓN — la data no es visible sin las m
 | 32. OPS — Redeploy + barrido de verificación producción | v3.0 | 0/? | Not started | - |
 | 33. INFRA — Desbloqueo de CI (loadEnv CI-safe) | v4.0 | 1/1 | Complete (quick 260623-rtl) | 2026-06-24 |
 | 34. INGEST — Ingesta lobby + probidad programada | v4.0 | 0/? | Not started | - |
-| 35. ENT — Resolución de identidades de terceros | v4.0 | 4/4 | Complete   | 2026-06-24 |
+| 35. ENT — Resolución de identidades de terceros | v4.0 | 4/4 built | Gaps (CR-01 idx; ENT-01 op apply) | 2026-06-24 |
 | 36. CRUCE — Capa de cruces parlamentario↔sector (deny-by-default) | v4.0 | 0/? | Not started | - |
 | 37. SURF — Cruces en ficha de parlamentario (gated) | v4.0 | 0/? | Not started | - |
 | 38. SURF — Cruces en ficha de proyecto (gated, diferido) | v4.0 | 0/? | Not started | - |
