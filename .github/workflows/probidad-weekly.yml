@@ -1,0 +1,70 @@
+name: probidad-weekly
+
+# Ingesta SEMANAL de DECLARACIONES de patrimonio e intereses (InfoProbidad, CPLT) contra PROD.
+# Recorre ~155-200 queries SPARQL contra datos.cplt.cl (~6-10 min). Escribe filas en `declaracion`
+# con parlamentario_id reconciliado por el match determinista.
+#
+# Sin WAF: el endpoint SPARQL responde al fetch nativo de Node → run directo, sin --html-file.
+# El rate-limit (2-3s/host) lo aplica el HostRateLimiter del conector — NO añadir sleeps en CI.
+# Los 4 R2_* habilitan el wire de provenance (Etapa 1: crudo agregado por run → source_snapshot);
+# sin ellos el CLI corre igual y el bloque R2 queda best-effort/no-op. Secrets vía ${{ secrets.* }}.
+#
+# Schedule: jueves 11:00 UTC (~07:00 CL) — distinto de agenda(lun)/lobby-camara(mar)/leylobby(mié)/leyes(vie).
+
+on:
+  schedule:
+    - cron: "0 11 * * 4" # jueves 11:00 UTC
+  workflow_dispatch:
+    inputs:
+      limite:
+        description: "Máx. parlamentarios a procesar (opcional; default: todos)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: probidad-weekly
+  cancel-in-progress: false
+
+jobs:
+  probidad:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install deps
+        # --ignore-scripts: tsx trae su propio esbuild; evita ERR_PNPM_IGNORED_BUILDS (gate pnpm 11).
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run probidad weekly ingest
+        env:
+          SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          # R2_* opcionales: habilitan la fila source_snapshot (provenance) por run; sin ellos el
+          # bloque R2 es best-effort/no-op y la carga a Supabase procede igual.
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          # Input por ENV (no interpolado en el shell) — evita inyección de comandos en un step
+          # que lleva SUPABASE_SECRET_KEY/R2_*.
+          LIMITE: ${{ github.event.inputs.limite }}
+        run: |
+          ARGS=""
+          if [ -n "$LIMITE" ]; then ARGS="$ARGS --limit $LIMITE"; fi
+          OUT=$(pnpm --filter @obs/probidad exec tsx src/run-probidad-todos-cli.ts $ARGS)
+          echo "$OUT"
+          echo "$OUT" | grep -qE 'declaraciones=[1-9][0-9]*|confirmados=[1-9][0-9]*' \
+            || { echo "sin declaraciones/confirmados"; exit 1; }
