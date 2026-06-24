@@ -17,12 +17,16 @@
 //
 // El rate-limit 2-3s/host lo aplica el `HostRateLimiter` del conector — NO se agregan sleeps aquí.
 
-import type { Parlamentario } from "@obs/core";
+import { makeProvenance, type Parlamentario } from "@obs/core";
+import { sha256Hex, type R2Store, type SnapshotWriter } from "@obs/ingest";
 import type { InfoProbidadConnector } from "./connector-infoprobidad";
 import type { ProbidadWriter } from "./writer";
 import { parseDeclaraciones } from "./parse-infoprobidad";
 import { queryDeclaracionesPorNombre } from "./sparql";
 import { reconciliarDeclaracionesObjetivo } from "./reconciliar-objetivo";
+
+/** Endpoint SPARQL representativo del run (la fila source_snapshot es run-level, no por declaración). */
+const INFOPROBIDAD_SPARQL_URL = "https://datos.cplt.cl/sparql";
 
 export interface RunProbidadTodosOpts {
   conector: InfoProbidadConnector;
@@ -33,6 +37,16 @@ export interface RunProbidadTodosOpts {
   limite?: number;
   /** Fecha de corte del marcador de ingesta (`ingestado_hasta`). Default: hoy (ISO date). */
   ingestadoHasta?: string;
+  /**
+   * Store R2 para la Etapa 1 (crudo agregado por run, content-addressed). Si se omite, no se
+   * persiste crudo (r2Path = null) — best-effort, NO fatal (espejo de run-camara-lobby).
+   */
+  r2Store?: R2Store;
+  /**
+   * Writer de source_snapshot (provenance run-level). Solo se invoca tras un put R2 exitoso. Si se
+   * omite, no se escribe la fila (la carga a Supabase de las declaraciones procede igual).
+   */
+  snapshotWriter?: SnapshotWriter;
   log?: (m: string) => void;
 }
 
@@ -49,6 +63,8 @@ export interface RunProbidadTodosResult {
   confirmados: number;
   /** Errores por parlamentario — tolerados, no abortan la corrida. */
   errores: { id: string; mensaje: string }[];
+  /** Key del crudo agregado en R2, o null (Etapa 1 omitida o fallida — no fatal). */
+  r2Path: string | null;
 }
 
 /** Cuenta los bienes de una versión sumando las 6 sub-clases (espeja ingest-run.contarBienes). */
@@ -83,6 +99,9 @@ export async function runProbidadTodos(opts: RunProbidadTodosOpts): Promise<RunP
 
   const errores: RunProbidadTodosResult["errores"] = [];
   const confirmados = new Set<string>();
+  // Crudo AGREGADO por run (decisión LOCKED RESEARCH Open Q1): cada response SPARQL se acumula y
+  // se persiste como UN solo objeto R2 → UN r2_path → UNA fila source_snapshot por run.
+  const crudos: unknown[] = [];
   let declaraciones = 0;
   let bienes = 0;
   let familiares = 0;
@@ -99,6 +118,7 @@ export async function runProbidadTodos(opts: RunProbidadTodosOpts): Promise<RunP
 
     try {
       const json = await opts.conector.fetchSparql(queryDeclaracionesPorNombre(frag));
+      crudos.push(json); // acumula el crudo SPARQL para el snapshot agregado por run (Etapa 1).
       const decls = parseDeclaraciones(json, { enlace: opts.conector.urlSparql(frag) });
       const filas = reconciliarDeclaracionesObjetivo(decls, p);
       await opts.writer.upsertDeclaraciones(filas);
@@ -116,6 +136,42 @@ export async function runProbidadTodos(opts: RunProbidadTodosOpts): Promise<RunP
 
   await opts.writer.marcarIngestado([...confirmados], hasta);
 
+  // Etapa 1 (R2, best-effort): persiste el crudo AGREGADO por run content-addressed y escribe UNA
+  // fila source_snapshot run-level. NO fatal — la carga a Supabase YA ocurrió arriba; un fallo de
+  // R2/snapshot deja r2Path null y no aborta (espejo de run-camara-lobby.ts L85–105).
+  let r2Path: string | null = null;
+  if (opts.r2Store) {
+    try {
+      const bytes = new TextEncoder().encode(JSON.stringify(crudos));
+      const sha = await sha256Hex(bytes);
+      r2Path = await opts.r2Store.putImmutable(
+        "infoprobidad",
+        "declaraciones",
+        hasta,
+        sha,
+        "json",
+        bytes,
+      );
+      log(`probidad-todos: crudo agregado en R2 → ${r2Path}`);
+      if (opts.snapshotWriter) {
+        await opts.snapshotWriter.write({
+          source: "infoprobidad",
+          resource: "declaraciones",
+          cacheKey: `infoprobidad:declaraciones:${hasta}`,
+          r2Path,
+          contentHash: sha,
+          fingerprint: sha,
+          dateBucket: hasta,
+          provenance: makeProvenance("infoprobidad", INFOPROBIDAD_SPARQL_URL),
+        });
+        log(`probidad-todos: fila source_snapshot escrita (r2_path=${r2Path})`);
+      }
+    } catch (err) {
+      r2Path = null;
+      log(`probidad-todos: Etapa 1 R2/snapshot falló (no fatal): ${(err as Error).message}`);
+    }
+  }
+
   return {
     parlamentariosConsultados: objetivos.length,
     declaraciones,
@@ -123,5 +179,6 @@ export async function runProbidadTodos(opts: RunProbidadTodosOpts): Promise<RunP
     familiares,
     confirmados: confirmados.size,
     errores,
+    r2Path,
   };
 }
