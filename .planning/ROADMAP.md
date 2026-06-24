@@ -663,7 +663,7 @@ OPS-01 apply remoto (Phase 23, PRECONDICIÓN — la data no es visible sin las m
 | 32. OPS — Redeploy + barrido de verificación producción | v3.0 | 0/? | Not started | - |
 | 33. INFRA — Desbloqueo de CI (loadEnv CI-safe) | v4.0 | 1/1 | Complete (quick 260623-rtl) | 2026-06-24 |
 | 34. INGEST — Ingesta lobby + probidad programada | v4.0 | 0/? | Not started | - |
-| 35. ENT — Resolución de identidades de terceros | v4.0 | 4/4 built | Gaps (CR-01 idx; ENT-01 op apply) | 2026-06-24 |
+| 35. ENT — Resolución de identidades de terceros | v4.0 | 7/7 | Complete (gaps 35-05/06/07 cerrados; pgTAP 0034/35/36/37 verdes en PROD; ENT-01..05 SATISFIED) | 2026-06-24 |
 | 36. CRUCE — Capa de cruces parlamentario↔sector (deny-by-default) | v4.0 | 0/? | Not started | - |
 | 37. SURF — Cruces en ficha de parlamentario (gated) | v4.0 | 0/? | Not started | - |
 | 38. SURF — Cruces en ficha de proyecto (gated, diferido) | v4.0 | 0/? | Not started | - |
@@ -792,7 +792,7 @@ Plans:
   4. Los matches dudosos van a la cola `revision_entidad` (estado `pendiente`); ningún match dudoso se promueve a `confirmado` sin revisor humano vía RPC `resolver_entidad`; UI admin protegida `revisar-entidades` (ENT-04)
   5. El backfill de entidades es LOCAL (operador), idempotente/reanudable: una 2ª corrida produce 0 entidades/vínculos nuevos; la maestra se exporta a JSON fuera de Supabase (custodia, espejo de `backup.ts`) (ENT-05)
 
-**Plans:** 5 plans (35-05 = gap-closure CR-01 + apply PROD)
+**Plans:** 7 plans (35-05/06/07 = gap-closure + apply PROD)
 
 Plans:
 
@@ -800,7 +800,9 @@ Plans:
 
 - [x] 35-01-PLAN.md — Migraciones 0034/0035/0036 + 3 pgTAP (maestra entidad_tercero + vinculo/revision + FK/RPC resolver_entidad, deny-by-default); apply a PROD = checkpoint operador (ENT-01/03/04)
 - [x] 35-02-PLAN.md — @obs/identity: matchDeterministaEntidad (juridica-solo-RUT) + EnlaceEntidadConfirmado + writer/seeder idempotente + backup JSON + backfill-cli LOCAL (ENT-02/05)
-- [ ] 35-05-PLAN.md — GAP-CLOSURE: indice unico TOTAL entidad_tercero_clave_natural (cierra CR-01/42P10) + pgTAP (no-parcial + 23505) + docstring fix; apply 0034(fijada)/0035/0036 a PROD = checkpoint operador (ENT-01/05)
+- [x] 35-05-PLAN.md — GAP-CLOSURE: indice unico TOTAL entidad_tercero_clave_natural (cierra CR-01/42P10) + pgTAP (no-parcial + 23505) + docstring fix; apply 0034(fijada)/0035/0036 a PROD = checkpoint operador (ENT-01/05) — destapó Issues 1/2 → 35-06/07
+- [x] 35-06-PLAN.md — GAP-CLOSURE Issue 1: forward-fix migración 0037 (identidad_audit.vinculo_entidad_id FK→vinculo_entidad + CHECK num_nonnulls<=1 + CREATE OR REPLACE resolver_entidad); aplicada a PROD, pgTAP 0037 12/12 + 0036 15/15 (ENT-03/04)
+- [x] 35-07-PLAN.md — GAP-CLOSURE Issue 2: +2 asserts reales a 0035 pgTAP (force-RLS asimetría + anon NO INSERT); 0035 18/18 verde en PROD → cierra ENT-01
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

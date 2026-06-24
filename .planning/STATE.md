@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — De datos a cruces verificables
-status: executing
-stopped_at: "35-04 COMPLETE (reconciliadores cablean el FK de tercero Δ3 + cola admin protegida ENT-04; commits 9474854/b3256d2/f9cb21d/583e288; lobby 48/48, dinero 95/95, app 276/276, tsc limpio). Phase 35 code-complete (4/4 planes). Pendiente SOLO el checkpoint de operador 35-01 Task 4 (BLOCKING, gate=blocking-human): apply remoto PROD de 0034/0035/0036 por psql --single-transaction + schema_migrations + pgTAP verde + probe anon permission-denied."
-last_updated: "2026-06-24T12:45:52.561Z"
-last_activity: 2026-06-24 -- Phase 35 planning complete
+status: phase-complete
+stopped_at: "Phase 35 COMPLETE (7/7 planes). Gaps de 35-05 cerrados: 35-06 forward-fix 0037 (identidad_audit.vinculo_entidad_id FK→vinculo_entidad + CHECK num_nonnulls<=1 + CREATE OR REPLACE resolver_entidad; commit ffa7346) + 35-07 (0035 plan-count +2 asserts reales; commit 46f964a). 0037 aplicada a PROD (schema_migrations). pgTAP PROD: 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12. Grants resolver_entidad: anon/authenticated/public=f, service_role=t. Verificación de fase: ENT-01..05 SATISFIED, verdicto COMPLETE. Próximo: Phase 36 (CRUCE — capa de cruces parlamentario↔sector, deny-by-default)."
+last_updated: "2026-06-24"
+last_activity: 2026-06-24 -- Phase 35 ejecutada y verificada (gaps cerrados, COMPLETE)
 progress:
   total_phases: 33
-  completed_phases: 15
-  total_plans: 57
-  completed_plans: 64
-  percent: 45
+  completed_phases: 16
+  total_plans: 60
+  completed_plans: 67
+  percent: 48
 ---
 
 # Project State
@@ -21,15 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 35 — ENT — Resolución de identidades de terceros
+**Current focus:** Phase 36 — CRUCE — Capa de cruces parlamentario↔sector (Phase 35 COMPLETE)
 
 ## Current Position
 
-Phase: 35 (ENT — Resolución de identidades de terceros) — EXECUTING (con gaps abiertos)
-Plan: 5 of 5 — 35-05 (gap-closure) ejecutado: CR-01 cerrado (ENT-05) + 0034/0035/0036 aplicadas a PROD + anon deny. 0034 pgTAP 26/26 verde.
-Status: Ready to execute
-Próximo: plan nuevo forward-fix — migración 0037 (identidad_audit.vinculo_entidad_id + FK a vinculo_entidad + CREATE OR REPLACE resolver_entidad) + corregir plan(18)→16 en supabase/tests/0035_vinculo_entidad.test.sql. No tocar PROD hasta re-planificar.
-Last activity: 2026-06-24 -- Phase 35 planning complete
+Phase: 35 (ENT — Resolución de identidades de terceros) — COMPLETE (7/7 planes, ENT-01..05 SATISFIED)
+Plan: 7 of 7 — 35-06 (forward-fix 0037: vinculo_entidad_id FK + CHECK + CREATE OR REPLACE resolver_entidad) + 35-07 (0035 pgTAP +2 asserts) ejecutados y aplicados/verificados en PROD.
+Status: Phase verified COMPLETE — listo para Phase 36
+Verificación PROD: pgTAP 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12; resolver_entidad deny-by-default (anon/auth/public=f, service_role=t); confirm-with-promote ya NO lanza 23503.
+Próximo: Phase 36 — CRUCE — Capa de cruces parlamentario↔sector (deny-by-default). Depende de Phases 34/35 (entidades resueltas).
+Last activity: 2026-06-24 -- Phase 35 ejecutada y verificada (gaps cerrados, COMPLETE)
 
 ## Performance Metrics
 
