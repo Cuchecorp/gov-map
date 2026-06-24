@@ -969,6 +969,6 @@ Plans:
 
 **Plans:** 3 plans (Wave 1, sin cross-deps — 3 deliverables independientes)
 - [x] 41-01-PLAN.md — CRUCEN-01: fix WR-02 (frescura honesta) — migración 0041 (drop+recreate proyecta fecha_captura) + pgTAP + tipo + componente + RTL; apply 0041 = checkpoint operador DIFERIDO (gate 4); suite 298/298 verde, tsc limpio [ff2dd63, 807f08b]
-- [ ] 41-02-PLAN.md — CRUCEN-02: grant gated — migración 0042 (grant a anon, ESCRITA no aplicada) + guard fail-loud + pgTAP post-apply fuera del glob
+- [x] 41-02-PLAN.md — CRUCEN-02: grant gated — migración 0042 (grant a anon, ESCRITA NO aplicada / NO en schema_migrations, gate 2) + precondición fail-loud do$$ + pgTAP post-apply en supabase/tests/post-apply/ fuera del glob; guard = 0040 assert #3 intacto; suite 298/298 verde [a5e410a, 0ad6f1c]
 - [ ] 41-03-PLAN.md — CRUCEN-03: dossier legal de cruces — 41-LEGAL-DOSSIER-CRUCES.md ×2 idénticos, signoff: pending, CRUCES-específico, jamás firmado
 **UI hint**: yes (CRUCEN-01 toca `cruces-de-parlamentario.tsx`)
