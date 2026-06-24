@@ -4,13 +4,13 @@ milestone: v4.0
 milestone_name: — De datos a cruces verificables
 status: executing
 stopped_at: Completed 36-01-PLAN.md
-last_updated: "2026-06-24T15:09:20.040Z"
+last_updated: "2026-06-24T15:20:56.438Z"
 last_activity: 2026-06-24
 progress:
   total_phases: 33
   completed_phases: 16
   total_plans: 61
-  completed_plans: 67
+  completed_plans: 68
   percent: 48
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 36 (cruce-capa-de-cruces-parlamentario-sector-deny-by-default) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Verificación PROD: pgTAP 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12; resolver_entidad deny-by-default (anon/auth/public=f, service_role=t); confirm-with-promote ya NO lanza 23503.
 Próximo: Phase 36 — CRUCE — Capa de cruces parlamentario↔sector (deny-by-default). Depende de Phases 34/35 (entidades resueltas).
@@ -106,6 +106,7 @@ Last activity: 2026-06-24
 | Phase 35 P03 | 12min | 3 tasks | 13 files |
 | Phase 35 P04 | 22min | 3 tasks | 14 files |
 | Phase 36 P01 | 14min | 4 tasks | 6 files |
+| Phase 36 P02 | 12min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -195,6 +196,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 35]: [35-02]: matchDeterministaEntidad fail-closed con juridica-solo-RUT (Δ2: juridica-sin-rut nunca confirma por nombre ni habilita el LLM); EnlaceEntidadConfirmado branded con unique symbol privado propio no exportado (grep-gate); seeder-entidad idempotente (2da corrida=0 nuevos, nunca auto-confirma); custodia JSON determinista byte-a-byte (entidad_tercero.seed.json); backfill-entidad-cli LOCAL. EntidadTercero* locales (0034-0036 no aplicadas aun). 110/110 verde + tsc -b limpio.
 - [Phase 35]: [35-04]: reconciliadores cablean el FK de tercero (Δ3) — reconciliar-sujeto puebla lobby_contraparte.contraparte_id (matchDeterministaEntidad por contraparte; opts.maestraEntidad inyectable) y reconciliar-contrato puebla contratista.entidad_id (proveedor: juridica RUT-exacto Δ2 / natural RUT o nombre). SOLO un match confirmado mintea EnlaceEntidadConfirmado (branded); null en juridica-sin-RUT/homonimo (fail-closed). Storage plano aplanado por los writers (A4). DATA-ROUTING: el RUT crudo SOLO alimenta el matcher determinista en memoria, NUNCA al LLM/jsonb (test lo asierta sobre vinculos/colas/prompts). entidad_id (col de 0036) vive en `contratista` (keyed rut_proveedor), no en la fila de contrato: ingest-run la stampa desde la resolucion. Cola web /admin/revisar-entidades protegida server-side (adminRevisionEnabled fail-closed como primera sentencia + supabase-admin service-role server-only; cliente nunca se construye con gate OFF); promocion SOLO humana via RPC resolver_entidad (p_promover=true metodo='humano'); revisor vacio/chosen_id invalido no tocan la DB. 9474854/b3256d2/f9cb21d; lobby 48/48, dinero 95/95, app 276/276, tsc limpio. Gate admin env-based (repo sin auth/sesion); apply remoto 0035/0036 = checkpoint operador (35-01 Task 4).
 - [Phase ?]: [Phase 36]: [36-01]: Capa de cruces escrita (NO aplicada — apply=Plan 04 BLOCKING). OPERADOR LOCKED Task 1: (A1) 13 macro-sectores codigo=clave estable D-04 sin catch-all D-05; (B1) token tipo_senal='lobby_sector' lobby-pura, reserva 'lobby_sector_aporte' a Phase 40. 0038 sector public-read + 3 ALTER sector_id references sector(codigo) en proyecto_ficha/lobby_contraparte/donante (NULL=honest no-match). 0039 cruce_senal deny-by-default + cruces.materializar_cruces() security definer FULL REBUILD (D-11) join lobby por identificador, evidencia jsonb nombre crudo D-10 + enlace fuente, sin partido/rut + cron cruces-materializar 23 3. 0040 RPC cruces_de_parlamentario security definer named-column KEEP revoke from public + DROP grant to anon (deny hasta firma Phase 39). 6 archivos; greps verde; commits b63696c/d796944/02fbccf. Apply remoto+pgTAP=Plan 04 (psql --db-url, PROD<=0037).
+- [Phase ?]: [Phase 36]: [36-02]: @obs/cruces clasificador escrito — sector.ts (SECTOR_CODIGOS/SECTOR_CATALOGO) fuente única espejo byte-a-byte de 0038; model.ts z.enum(SECTOR_CODIGOS).nullable() (abstención first-class, cero 'otros'); clasificarFicha (public/bulk->DeepSeek) y clasificarContraparte (personal/critical->MiniMax) con assertNoRutInLlmInput PRIMERO luego assertSensitivityAllowed antes de complete() (load-bearing, espejo pipeline-entidad). Wave 0 tests verdes (7/7): RUT-gate cero-llamadas, routing/sensibilidad, abstención, taxonomía cerrada. Commits 91e8c22/cd8ce4c.
 
 ### Pending Todos
 
@@ -236,7 +238,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-24T15:08:58.413Z
+Last session: 2026-06-24T15:17:53.142Z
 Stopped at: Completed 36-01-PLAN.md
 Resume file: None
 
