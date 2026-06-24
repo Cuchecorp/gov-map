@@ -28,3 +28,6 @@ dist/
 .DS_Store
 Thumbs.db
 *.log
+
+# Claude Code (sesiones, memoria, settings locales) — NUNCA commitear
+.claude/
