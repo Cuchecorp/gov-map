@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — De datos a cruces verificables
-status: phase-complete
-stopped_at: "Phase 35 COMPLETE (7/7 planes). Gaps de 35-05 cerrados: 35-06 forward-fix 0037 (identidad_audit.vinculo_entidad_id FK→vinculo_entidad + CHECK num_nonnulls<=1 + CREATE OR REPLACE resolver_entidad; commit ffa7346) + 35-07 (0035 plan-count +2 asserts reales; commit 46f964a). 0037 aplicada a PROD (schema_migrations). pgTAP PROD: 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12. Grants resolver_entidad: anon/authenticated/public=f, service_role=t. Verificación de fase: ENT-01..05 SATISFIED, verdicto COMPLETE. Próximo: Phase 36 (CRUCE — capa de cruces parlamentario↔sector, deny-by-default)."
-last_updated: "2026-06-24"
+status: verifying
+stopped_at: Phase 36 context gathered
+last_updated: "2026-06-24T13:51:16.907Z"
 last_activity: 2026-06-24 -- Phase 35 ejecutada y verificada (gaps cerrados, COMPLETE)
 progress:
   total_phases: 33
   completed_phases: 16
-  total_plans: 60
-  completed_plans: 67
+  total_plans: 57
+  completed_plans: 66
   percent: 48
 ---
 
@@ -233,9 +233,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-24T03:18:38.611Z
-Stopped at: 35-04 COMPLETE (reconciliadores cablean el FK de tercero Δ3 + cola admin protegida ENT-04; commits 9474854/b3256d2/f9cb21d/583e288; lobby 48/48, dinero 95/95, app 276/276, tsc limpio). Phase 35 code-complete (4/4 planes). Pendiente SOLO el checkpoint de operador 35-01 Task 4 (BLOCKING, gate=blocking-human): apply remoto PROD de 0034/0035/0036 por psql --single-transaction + schema_migrations + pgTAP verde + probe anon permission-denied.
-Resume file: None
+Last session: 2026-06-24T13:51:16.887Z
+Stopped at: Phase 36 context gathered
+Resume file: .planning/phases/36-cruce-capa-de-cruces-parlamentario-sector-deny-by-default/36-CONTEXT.md
 
 ## Operator Next Steps
 
