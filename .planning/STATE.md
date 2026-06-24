@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 Phase: 32 COMPLETA — frente automatable de v3.0 cerrado. Pendientes solo gates humanos (29/30/31).
 Plan: — (milestone NO archivable: 29/30/31 requieren acción humana)
 Status: Phases 23/24/25/26/27/28/32 COMPLETAS y desplegadas (version e4347898). Lobby 5.106 confirmadas/136 dip + NET 7.394 aristas; patrimonio 1.060/136; votos source-limited (10); provenance/header arreglados. Invariantes intactos (MONEY/NET gated-OFF).
-Last activity: 2026-06-22 — Phase 32: redeploy + verificación prod PASSED. v3.0 automatable terminado. Gates humanos restantes: 29 RUT (sin fuente cruzable de RUT), 30/31 sign-offs legales F13/F17 (dossiers listos, falta firma de abogado).
+Last activity: 2026-06-24 - Completed quick task 260623-rtl: Fase 0 v4 loadEnv CI-safe en CLIs lobby/probidad.
 
 ## Performance Metrics
 
@@ -201,6 +201,12 @@ None yet for v2.0.
 - 21-02 Task 3 checkpoint operador BLOCKING: aplicar 0026 al Supabase remoto via supabase db push --db-url + supabase test db --db-url (pgTAP 0027 = 7/7) + probe psql parlamentarios_publico() 7 columnas sin PII. Codigo Tasks 1-2 commiteado (1965b72, daeb1fc); 6 tests RTL verdes. NO ejecutado por el agente.
 - 22-01 Task 3 checkpoint operador BLOCKING: aplicar 0028_votos_instructivos.sql al Supabase remoto via supabase db push --db-url "$SUPABASE_DB_URL" + supabase test db --db-url (pgTAP 0029 verde + 0019/0020/0026/0027 sin regresion) + probe psql votos_de_parlamentario('D1054',50,0) confirmando titulo/idea_matriz/resultado/total_si/total_no/quorum/etapa pobladas para 14309-04/18296-05. Codigo Tasks 1-2 commiteado (d97b845, eb1269f); tsc verde + 13 RTL. NO ejecutado por el agente.
 - 18-01 Task 3 checkpoint operador BLOCKING (gate=blocking-human): aplicar 0030_net.sql al Supabase remoto via `psql "$SUPABASE_DB_URL" -f supabase/migrations/0030_net.sql` (NUNCA `supabase db push` — drift schema_migrations ≤0025) + seed `psql "$SUPABASE_DB_URL" -c "select net.materializar_aristas();"` + pgTAP `psql "$SUPABASE_DB_URL" -f supabase/tests/0030_net.test.sql` (16 asserts verdes) + confirmar `select count(*) from cron.job where jobname='net-materializar-aristas'` = 1 + LOGUEAR conteo de aristas materializadas `select tipo, count(*) from arista group by 1;` (un grafo vacío/engañoso se cacha al aplicar, no en producción). Codigo Tasks 1-2 commiteado (2732c53, 60ac5ff); SUMMARY 37ae22e; greps verdes. NO ejecutado por el agente. Gate NET sigue cerrado (NET_PUBLIC_ENABLED OFF hasta signoff F17).
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260623-rtl | Fase 0 v4 — loadEnv CI-safe en run-camara-lobby-cli + run-probidad-todos-cli (fallback a process.env; desbloquea workflows lobby/probidad de Fase 1) | 2026-06-24 | 399e3e2 | [260623-rtl-loadenv-ci-safe-clis](./quick/260623-rtl-loadenv-ci-safe-clis/) |
 
 ## Deferred Items
 
