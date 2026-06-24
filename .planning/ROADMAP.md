@@ -529,7 +529,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 37-03-PLAN.md — Cablear <section id=cruces> gated (sibling mt-12, envuelta entera por el gate) + CrucesSkeleton en page.tsx + test de seccion-ausente (gate OFF) / presente (gate ON) (SURF-01)
+- [x] 37-03-PLAN.md — Cablear <section id=cruces> gated (sibling mt-12, envuelta entera por el gate) + CrucesSkeleton en page.tsx + test de seccion-ausente (gate OFF) / presente (gate ON) (SURF-01)
 
 **UI hint**: yes
 
@@ -553,7 +553,7 @@ Plans:
 **Wave 1**
 
 - [x] 37-01-PLAN.md — Gate de presentacion crucesPublicEnabled (Candado B, server-only, fail-closed, espejo de money-gate) + tabla de verdad (SURF-01)
-- [ ] 37-02-PLAN.md — CrucesView (puro) + CrucesSection (Server Component, RPC cruces_de_parlamentario) + tipos del RPC + test RTL (empty-honesto/provenance/identidad/anti-insinuacion negative-match/conteo neutro) (SURF-01)
+- [x] 37-02-PLAN.md — CrucesView (puro) + CrucesSection (Server Component, RPC cruces_de_parlamentario) + tipos del RPC + test RTL (empty-honesto/provenance/identidad/anti-insinuacion negative-match/conteo neutro) (SURF-01)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -580,7 +580,7 @@ Plans:
 
 **Wave 1**
 
-- [ ] 37-01-PLAN.md — Gate de presentacion crucesPublicEnabled (Candado B, server-only, fail-closed, espejo de money-gate) + tabla de verdad (SURF-01)
+- [x] 37-01-PLAN.md — Gate de presentacion crucesPublicEnabled (Candado B, server-only, fail-closed, espejo de money-gate) + tabla de verdad (SURF-01)
 - [ ] 37-02-PLAN.md — CrucesView (puro) + CrucesSection (Server Component, RPC cruces_de_parlamentario) + tipos del RPC + test RTL (empty-honesto/provenance/identidad/anti-insinuacion negative-match/conteo neutro) (SURF-01)
 
 **Wave 2** *(blocked on Wave 1)*
@@ -701,7 +701,7 @@ Plans:
 | 34. INGEST — Ingesta lobby + probidad programada | v4.0 | 0/? | Not started | - |
 | 35. ENT — Resolución de identidades de terceros | v4.0 | 7/7 | Complete (gaps 35-05/06/07 cerrados; pgTAP 0034/35/36/37 verdes en PROD; ENT-01..05 SATISFIED) | 2026-06-24 |
 | 36. CRUCE — Capa de cruces parlamentario↔sector (deny-by-default) | v4.0 | 4/4 | Complete   | 2026-06-24 |
-| 37. SURF — Cruces en ficha de parlamentario (gated) | v4.0 | 2/3 | In Progress|  |
+| 37. SURF — Cruces en ficha de parlamentario (gated) | v4.0 | 3/3 | Complete   | 2026-06-24 |
 | 38. SURF — Cruces en ficha de proyecto (gated, diferido) | v4.0 | 0/? | Not started | - |
 | 39. LEGAL — Gate legal F13/F17/cruces (sign-off humano) | v4.0 | 0/? | Not started | - |
 | 40. RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human) | v4.0 | 0/? | Not started | - |
@@ -764,7 +764,7 @@ INFRA-01 desbloqueo CI (Phase 33, ✅ DONE) — sin esto ningún workflow progra
 - [x] **Phase 34: INGEST — Ingesta lobby + probidad programada** - Wire de los conectores ETL ya completos (lobby Cámara + LeyLobby, probidad InfoProbidad) a workflows recurrentes de GitHub Actions + paso R2 crudo faltante en probidad vía `SnapshotWriter`. NO programa ChileCompra/SERVEL. NO toca `MONEY_PUBLIC_ENABLED`. ✅ build autónomo + dry-run verificados (3/3 plans, 9 commits, tests verdes); LIVE = checkpoint operador pendiente.
 - [x] **Phase 35: ENT — Resolución de identidades de terceros** - Maestra `entidad_tercero` (ID estable, alias, matcher determinista, pipeline de adjudicación con gate humano, deny-by-default) que extiende el subsistema de identidad a donantes/proveedores y gestores de lobby; conecta los reconciliadores existentes (antes dejaban `contraparte_id`/`contratista` NULL). (completed 2026-06-24)
 - [x] **Phase 36: CRUCE — Capa de cruces parlamentario↔sector (deny-by-default)** - Modelar relaciones parlamentario↔sector cruzando lobby/aportes/votos; materializar señales factuales (conteos de evidencia, sin score); etiquetado de sector por LLM con su propio eval/golden SEPARADO. Construible deny-by-default; expuesto solo tras gate legal. (completed 2026-06-24)
-- [ ] **Phase 37: SURF — Superficie de cruces en ficha de parlamentario (gated)** - `CrucesSection` (Server Component) que llama al RPC y renderiza señales factuales con provenance inline, sibling de `#lobby`/`#patrimonio`, detrás de `crucesPublicEnabled()` (default OFF). Construible; visible solo tras gate.
+- [x] **Phase 37: SURF — Superficie de cruces en ficha de parlamentario (gated)** - `CrucesSection` (Server Component) que llama al RPC y renderiza señales factuales con provenance inline, sibling de `#lobby`/`#patrimonio`, detrás de `crucesPublicEnabled()` (default OFF). Construible; visible solo tras gate. (completed 2026-06-24)
 - [ ] **Phase 38: SURF — Superficie de cruces en ficha de proyecto (gated, diferido)** - `cruces_de_proyecto(boletin)` → parlamentarios que votaron a favor con cruces en el sector del proyecto, PII-safe, mismo gate. Hereda la advertencia anti-insinuación de las señales de voto → se DIFIERE si las señales de voto quedan OFF.
 - [ ] **Phase 39: LEGAL — Gate legal transversal F13/F17/cruces (sign-off humano)** - Revisión legal humana (Ley 21.719) que habilita `MONEY_PUBLIC_ENABLED`, `netPublicEnabled` y `crucesPublicEnabled`. Acción exclusivamente humana — un agente NUNCA flipea estos flags. Atraviesa Fases 1–3; controla toda exposición sensible.
 - [ ] **Phase 40: RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human)** - Cosecha de RUT a la maestra; wire real de ChileCompra (hoy CLI demo) + workflow; workflow manual SERVEL por elección. Bloqueado por RUT-01 (prerrequisito duro) + ticket/URL de operador; exposición pública requiere LEGAL-01.
@@ -878,7 +878,7 @@ Plans:
   2. Con gate ON renderiza sin error de hidratación; con gate OFF la sección no monta (nodo ausente del HTML, no oculto-con-CSS)
   3. Empty honesto si cero cruces; sin verbo causal (linter); cada evidencia trazable al enlace original (FND-08)
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — De datos a cruces verificables
-status: executing
-stopped_at: Completed 37-02-PLAN.md
-last_updated: "2026-06-24T16:48:22.919Z"
+status: verifying
+stopped_at: Completed 37-03-PLAN.md
+last_updated: "2026-06-24T16:56:59.425Z"
 last_activity: 2026-06-24
 progress:
   total_phases: 33
-  completed_phases: 17
+  completed_phases: 18
   total_plans: 64
-  completed_plans: 72
-  percent: 52
+  completed_plans: 73
+  percent: 55
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 Phase: 37 (surf-superficie-de-cruces-en-ficha-de-parlamentario-gated) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Verificación PROD: pgTAP 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12; resolver_entidad deny-by-default (anon/auth/public=f, service_role=t); confirm-with-promote ya NO lanza 23503.
 Próximo: Phase 37 Plan 02 (CrucesView/CrucesSection componente) → Plan 03 (cablear gate en página ficha).
 Last activity: 2026-06-24
@@ -111,6 +111,7 @@ Last activity: 2026-06-24
 | Phase 36 P04 | 25min | 2 tasks | 3 files |
 | Phase 37 P01 | 4min | 1 tasks | 2 files |
 | Phase 37 P02 | 18min | 2 tasks | 3 files |
+| Phase 37 P03 | 11min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -205,6 +206,7 @@ Recent decisions affecting current work:
 
 - [Phase 37]: 37-01: Candado B de cruces escrito — `app/lib/cruces-gate.ts` `crucesPublicEnabled(env=process.env)` server-only fail-closed (solo literal `"true"` enciende; `undefined`/`""`/`"false"`/`"1"`/`"TRUE"` => false), espejo byte-a-byte de money-gate/net-gate (solo difieren nombre de función, var `CRUCES_PUBLIC_ENABLED` SIN `NEXT_PUBLIC_`, y docstring). TDD RED(`1908e22`)→GREEN(`b09d72f`): tabla de verdad 5/5 verde. Docstring declara doble candado A (RPC `cruces_de_parlamentario` sin grant anon + RLS deny-by-default sobre `cruce_senal`, migs 0039/0040 ya en PROD) + B (este gate); ENCENDER = Phase 39 firma humana exclusiva, un agente NUNCA lo flipea (chokepoint WR-02, consumidor único = página ficha 37-03). Flag ships OFF, sin consumidor todavía. CERO DDL, CERO `.env` modificado.
 - [Phase ?]: 37-02: CrucesView/CrucesSection construido pero NO encendido (RPC sin grant + gate OFF hasta Phase 39); sin paginacion; tipo_senal desconocido degrada honesto
+- [Phase ?]: [Phase 37]: 37-03: <section id=cruces> cableada como carril hermano gated en page.tsx — gate crucesPublicEnabled(process.env) envuelve la <section> ENTERA (heading incl., espejo MONEY); OFF (default) => nodo AUSENTE del HTML + RPC cruces_de_parlamentario NUNCA invocado (Candado B load-bearing). Posicion: despues de #patrimonio, antes de MONEY gated. Test del path ON renderiza CrucesSection directamente (renderToStaticMarkup no resuelve hijos async de Suspense). CERO DDL/grant/flip; flag ships OFF (encender = Phase 39). 294 tests verdes.
 
 ### Pending Todos
 
@@ -246,8 +248,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-24T16:48:22.901Z
-Stopped at: Completed 37-02-PLAN.md
+Last session: 2026-06-24T16:56:59.404Z
+Stopped at: Completed 37-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
