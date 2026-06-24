@@ -81,14 +81,19 @@ export default async function ProyectoPage({ params }: PageProps) {
 // ── Ficha estructurada: idea matriz + cuerpos legales (proyecto_ficha 0011) ──
 // #33: envuelto en React.cache → una sola consulta por render aunque IdeaMatrizSection y
 // CuerposLegalesSection la pidan por separado (supabase-js no se deduplica como fetch).
-const leerFicha = cache(
+export const leerFicha = cache(
   async (boletin: string): Promise<ProyectoFichaRow | null> => {
     const sb = createServerSupabase();
-    const { data } = await sb
+    const { data, error } = await sb
       .from("proyecto_ficha")
       .select("*")
       .eq("boletin", boletin)
       .maybeSingle<ProyectoFichaRow>();
+    // #34: un error de DB NO es "sin ficha". Tragar el error fabricaria el estado
+    // honesto "idea matriz no disponible" a partir de una falla → propagar.
+    if (error) {
+      throw new Error(`leerFicha(${boletin}) falló: ${error.message}`);
+    }
     return data ?? null;
   },
 );
