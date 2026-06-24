@@ -224,4 +224,40 @@ describe("CrucesView — ProvenanceBadge por item de evidencia", () => {
     );
     expect(screen.getByText("Inmobiliaria Andes SpA")).toBeInTheDocument();
   });
+
+  // ── WR-01: dos contrapartes de la MISMA audiencia (mismo audiencia_id) en el
+  //    mismo sector. El materializador (0039) emite un item por (audiencia ×
+  //    contraparte), así que ambos items comparten audiencia_id. Si la clave de
+  //    React no fuera única, una fila colapsaría y SOLTARÍA una contraparte de la
+  //    evidencia (violación FND-08). Ambas DEBEN renderizarse, con 2 provenance.
+  it("dos contrapartes con el MISMO audiencia_id rinden AMBAS (FND-08, sin drop)", () => {
+    render(
+      <CrucesView
+        data={makeViewData({
+          cruces: [
+            makeSenal({
+              conteo: 2,
+              evidencia: {
+                conteo: 2,
+                items: [
+                  makeItem({
+                    audiencia_id: "AW9999",
+                    contraparte_nombre_crudo: "Inmobiliaria Andes SpA",
+                  }),
+                  makeItem({
+                    audiencia_id: "AW9999",
+                    contraparte_nombre_crudo: "Constructora Beta Ltda.",
+                  }),
+                ],
+              },
+            }),
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByText("Inmobiliaria Andes SpA")).toBeInTheDocument();
+    expect(screen.getByText("Constructora Beta Ltda.")).toBeInTheDocument();
+    // Provenance por evidencia: una por cada contraparte, ninguna soltada.
+    expect(screen.getAllByText(/fuente oficial ↗/i).length).toBe(2);
+  });
 });

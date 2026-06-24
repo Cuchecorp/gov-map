@@ -115,9 +115,15 @@ export function CrucesView({ data }: { data: CrucesViewData }) {
           <h3 className="text-base font-medium mb-3">{encabezadoSenal(s)}</h3>
 
           <ul className="space-y-4">
-            {s.evidencia.items.map((item: CruceEvidenciaItem) => (
+            {s.evidencia.items.map((item: CruceEvidenciaItem, idx: number) => (
               <li
-                key={`${s.sector_id}-${item.audiencia_id}`}
+                // El materializador (0039) emite UN item por (audiencia × contraparte):
+                // una audiencia con N contrapartes en el mismo sector produce N items
+                // con el MISMO audiencia_id → la clave DEBE incluir el índice, o React
+                // colapsaría filas con clave duplicada y SOLTARÍA silenciosamente una
+                // contraparte de la evidencia (violación FND-08). El índice basta porque
+                // la lista es estática (SSR, sin reordenamiento).
+                key={`${s.sector_id}-${item.audiencia_id}-${idx}`}
                 className="flex flex-wrap items-start gap-x-3 gap-y-2 py-3 border-t first:border-t-0"
               >
                 <div className="flex flex-col gap-1 min-w-0 flex-1">
@@ -135,6 +141,17 @@ export function CrucesView({ data }: { data: CrucesViewData }) {
                   el item NO trae fecha_captura ni origen → capturedAt = item.fecha,
                   sourceName = sourceLabel("lobby"), sourceUrl = item.enlace_fuente.
                   ProvenanceBadge null-checkea fecha/enlace internamente (Pitfall 2).
+
+                  LIMITACIÓN CONOCIDA (WR-02, a resolver ANTES de encender en Phase 39):
+                  `capturedAt` se alimenta con la fecha de la REUNIÓN, no con la fecha de
+                  captura del dato (el RPC 0040 no proyecta `cruce_senal.fecha_captura`).
+                  Como las reuniones son antiguas, el badge marca stale-amber y "Actualizado
+                  hace …" sobre una fecha de evento, no de frescura. El fix correcto =
+                  proyectar `fecha_captura` desde `cruce_senal` en el RPC (DDL — FUERA del
+                  alcance CERO-DDL de Phase 37); pasar `null` aquí NO sirve porque el badge
+                  acopla `capturedAt===null` → "fuente desconocida" (badge.tsx), lo que
+                  CONTRADICE la fuente conocida + el enlace. Carril gated OFF: no llega a
+                  producción hasta Phase 39, cuando se hará la proyección.
                 */}
                 <span className="ml-auto">
                   <ProvenanceBadge
