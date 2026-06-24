@@ -121,10 +121,22 @@ describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
     expect(offenders, `Migraciones con CREATE POLICY to anon (LOCKDOWN-regresion): ${offenders.join(", ")} — usa web_reader en lugar de anon`).toHaveLength(0);
   });
 
-  it("hay exactamente 0 migraciones > 0044 en el estado inicial del repo (pasa trivialmente)", () => {
-    // Este test documenta el estado base. Una vez que existan migraciones
-    // > 0044, los tests de arriba son los que importan; este puede ignorarse.
-    expect(futureMigrations).toHaveLength(0);
+  it("las migraciones > 0044 existentes son revoke/hardening y NINGUNA concede acceso a anon", () => {
+    // El placeholder original ("exactamente 0 migraciones > 0044") se reemplazó al
+    // landear 0045 (DEBT DB-01/03/07/08): una migración de SOLO revoke-from-public.
+    // Los guards A1/A2 (arriba) son la protección activa; aquí confirmamos que el set
+    // >0044 no está vacío y que ninguna re-expone anon (ni grant ni policy).
+    expect(futureMigrations.length).toBeGreaterThan(0);
+    for (const filename of futureMigrations) {
+      const stripped = stripSqlComments(
+        readFileSync(`${MIGRATIONS_DIR}/${filename}`, "utf-8"),
+      ).toLowerCase();
+      const reExponeAnon =
+        /grant\s+\S[\s\S]*?\bto\s+[\w,\s]*\banon\b/.test(stripped) ||
+        /create\s+policy\s+[\s\S]*?\bto\s+[\w,\s]*\banon\b/.test(stripped) ||
+        /for\s+select\s+to\s+[\w,\s]*\banon\b/.test(stripped);
+      expect(reExponeAnon, `${filename} re-expone anon`).toBe(false);
+    }
   });
 });
 
