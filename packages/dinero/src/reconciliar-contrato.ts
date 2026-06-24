@@ -449,7 +449,7 @@ function provenanceCompleta(c: Contrato): boolean {
  * Asi el RUT nunca toca un canal LLM-adyacente ni un prompt. Best-effort: un fallo del writer no aborta
  * la corrida (el candidato ya quedo en `revisionesRut` para auditarse).
  */
-async function encolarRevisionRut(
+export async function encolarRevisionRut(
   writer: PipelineWriter,
   mencion: MencionForanea,
   candidato: CandidatoRevisionRut,
@@ -473,8 +473,15 @@ async function encolarRevisionRut(
   };
   try {
     await writer.enqueueRevision(caso);
-  } catch {
-    /* best-effort: el candidato ya quedo en revisionesRut para auditoria; no abortar la corrida. */
+  } catch (err) {
+    // best-effort: el candidato ya quedo en revisionesRut para auditoria; no abortar
+    // la corrida. Pero loguear: sin esto, una caida de Supabase perdia la entrada de
+    // la cola humana SIN traza (la fila de revision_entidad se pierde en silencio).
+    console.error(
+      `encolarRevisionRut: enqueueRevision fallo para ${candidato.parlamentarioId} ` +
+        `(${mencion.nombreOriginal}); el candidato sigue en revisionesRut:`,
+      err instanceof Error ? err.message : err,
+    );
   }
 }
 
