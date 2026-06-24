@@ -664,7 +664,7 @@ OPS-01 apply remoto (Phase 23, PRECONDICIÓN — la data no es visible sin las m
 | 33. INFRA — Desbloqueo de CI (loadEnv CI-safe) | v4.0 | 1/1 | Complete (quick 260623-rtl) | 2026-06-24 |
 | 34. INGEST — Ingesta lobby + probidad programada | v4.0 | 0/? | Not started | - |
 | 35. ENT — Resolución de identidades de terceros | v4.0 | 7/7 | Complete (gaps 35-05/06/07 cerrados; pgTAP 0034/35/36/37 verdes en PROD; ENT-01..05 SATISFIED) | 2026-06-24 |
-| 36. CRUCE — Capa de cruces parlamentario↔sector (deny-by-default) | v4.0 | 0/? | Not started | - |
+| 36. CRUCE — Capa de cruces parlamentario↔sector (deny-by-default) | v4.0 | 0/4 | Planned (4 plans, 3 waves) | - |
 | 37. SURF — Cruces en ficha de parlamentario (gated) | v4.0 | 0/? | Not started | - |
 | 38. SURF — Cruces en ficha de proyecto (gated, diferido) | v4.0 | 0/? | Not started | - |
 | 39. LEGAL — Gate legal F13/F17/cruces (sign-off humano) | v4.0 | 0/? | Not started | - |
@@ -822,7 +822,11 @@ Plans:
   2. El etiquetado de sector usa un schema/pipeline/golden SEPARADO del flujo de extracción literal (clasificar a taxonomía cerrada es imputación, no extracción literal — rompería SEM-02); la clasificación corre en un CLI batch de `@obs/cruces` (etapa derivada), NUNCA por fila dentro del writer; sensibilidad LLM correcta para contrapartes (no `sensitivity:'public'`, Ley 21.719 / FND-06). CLI `--dry-run` sobre 10 proyectos: ≥7 con `sector_id` no nulo medido contra su propio golden (CRUCE-02)
   3. Tras materializar con los datos de lobby actuales, `cruce_senal` tiene ≥1 fila `lobby_sector_aporte` para ≥5 parlamentarios; las señales derivadas de voto (`lobby_sector_voto`/`aporte_sector_voto`) arrancan OFF (chocan con 17-LEGAL-DOSSIER §2) hasta sign-off explícito; wording factual obligatorio ("N reuniones con gestores del sector X", sin verbo causal); el RPC nunca proyecta rut/partido/email/donante_id (pgTAP). Con `crucesPublicEnabled()=false` la sección no monta (CRUCE-03)
 
-**Plans:** TBD
+**Plans:** 4 plans
+- [ ] 36-01-PLAN.md — Migraciones 0038/0039/0040 (sector public-read + cruce_senal deny-by-default + materializar_cruces + RPC sin grant a anon) + pgTAP (CRUCE-01/03)
+- [ ] 36-02-PLAN.md — @obs/cruces: sector.ts (taxonomía) + model.ts (zod cerrado/abstención) + clasificar.ts (gate RUT first, split DeepSeek/MiniMax) + RUT-gate test (CRUCE-02)
+- [ ] 36-03-PLAN.md — CLIs batch (fichas DeepSeek / lobby MiniMax) + writer service-role (sin LLM) + golden top-1/abstención gate ≥7/10 (CRUCE-02)
+- [ ] 36-04-PLAN.md — [BLOCKING] aplicar migraciones psql --db-url + pgTAP verde + corrida LIVE clasificar lobby + materializar → ≥5 parlamentarios (CRUCE-01/02/03)
 
 ### Phase 37: SURF — Superficie de cruces en ficha de parlamentario (gated)
 

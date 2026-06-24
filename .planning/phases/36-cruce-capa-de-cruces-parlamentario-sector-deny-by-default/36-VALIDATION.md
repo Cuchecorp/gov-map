@@ -1,8 +1,8 @@
 ---
 phase: 36
 slug: cruce-capa-de-cruces-parlamentario-sector-deny-by-default
-status: draft
-nyquist_compliant: false
+status: planned
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-06-24
 ---
@@ -40,7 +40,10 @@ created: 2026-06-24
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| {N}-01-01 | 01 | 1 | CRUCE-XX | T-36-XX / — | {expected secure behavior or "N/A"} | pgTAP | `{command}` | ❌ W0 | ⬜ pending |
+| 36-01-02 | 01 | 1 | CRUCE-01 | T-36-01..05 | sector public-read; cruce_senal deny-by-default; RPC sin grant anon; body sin partido/rut | pgTAP | psql "" -f supabase/tests/0038_sector.test.sql 0039 0040 | ❌ W0 | ⬜ pending |
+| 36-02-02 | 02 | 1 | CRUCE-02 | T-36-06..08 | assertNoRutInLlmInput first; sensitivity personal contraparte; zod enum cerrado | vitest | pnpm --filter @obs/cruces test clasificar | ❌ W0 | ⬜ pending |
+| 36-03-02 | 03 | 2 | CRUCE-02 | T-36-09..11 | golden top-1/abstención gate ≥7/10; writer sin LLM; degrade-to-dry-run | vitest | pnpm --filter @obs/cruces test golden | ❌ W0 | ⬜ pending |
+| 36-04-01 | 04 | 3 | CRUCE-01/02/03 | T-36-12..14 | apply psql --db-url; pgTAP verde PROD; probe anon 42501; ≥5 parlamentarios | pgTAP+LIVE | psql "" -f supabase/tests/0039_cruce_senal.test.sql ; select count(distinct parlamentario_id) from cruce_senal >= 5 | ❌ W0 | ⬜ pending |
 
 *Populated by the planner per task. Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
