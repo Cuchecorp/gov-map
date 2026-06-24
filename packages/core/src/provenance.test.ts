@@ -16,9 +16,11 @@ describe("makeProvenance (FND-08)", () => {
     expect(Number.isNaN(parsed)).toBe(false);
     // Round-trip ISO (descarta strings no-ISO que Date.parse aceptaria laxamente).
     expect(new Date(prov.fetchedAt).toISOString()).toBe(prov.fetchedAt);
-    // Capturado en el momento del fetch.
-    expect(parsed).toBeGreaterThanOrEqual(before);
-    expect(parsed).toBeLessThanOrEqual(after);
+    // Capturado en el momento del fetch. Ventana ±1ms para absorber redondeo de
+    // sub-milisegundo entre Date.now() y la conversión ISO (evita flakiness en runners
+    // lentos sin perder la aserción de "capturado en el momento").
+    expect(parsed).toBeGreaterThanOrEqual(before - 1);
+    expect(parsed).toBeLessThanOrEqual(after + 1);
   });
 
   it("Test 2: NO incluye snapshotRef hasta asignacion explicita", () => {
