@@ -8,6 +8,11 @@
     { "path": "./packages/adjudication" },
     { "path": "./packages/tramitacion" },
     { "path": "./packages/agenda" },
-    { "path": "./packages/votos" }
+    { "path": "./packages/votos" },
+    { "path": "./packages/lobby" },
+    { "path": "./packages/probidad" },
+    { "path": "./packages/dinero" },
+    { "path": "./packages/fichas" },
+    { "path": "./packages/cruces" }
   ]
 }
