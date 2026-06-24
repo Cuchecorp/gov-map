@@ -1,100 +1,116 @@
-# Requirements — Milestone v3.0 Cobertura de datos
+# Requirements — Milestone v4.0 De datos a cruces verificables
 
+**Defined:** 2026-06-24
 **Core Value:** La ciudadanía puede responder, sobre cualquier proyecto o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar nunca intención ni causalidad.
 
-**Premisa del milestone (LOCKED):** El shell de producto (frontend v1.0+v2.0) está terminado y en vivo. La brecha para "ser útil" es DATOS + COBERTURA + ADJUDICACIÓN DE IDENTIDAD, no pantallas. v3.0 NO construye UI nueva: puebla la nube con datos reales, adjudica identidad, arregla provenance y abre los gates (operador + legal) que hacen la data visible. Toda capacidad de código de v2.0 ya existe; lo que falta es ejercerla LIVE a escala y escribir el resultado en producción.
+**Diseño LOCKED:** El roadmap completo (Fases 0–5, WHAT/WHY/REPO TARGETS/ACCEPTANCE/AUTONOMY por sub-fase, correcciones de validadores Opus aplicadas) vive en `.planning/MILESTONE-v4-cruces.md` y es la fuente de verdad. Este documento extrae los requisitos verificables; el ROADMAP los mapea a numeración continua (Phases 33+). Requisitos de v3.0 archivados en `.planning/milestones/v3.0-REQUIREMENTS.md`.
 
-**Data posture (LOCKED):** minimización + trazabilidad estricta. Solo se muestra lo que la fuente pública ya publica, con fuente/fecha/enlace. RUT y datos de familiares quedan en uso interno para reconciliar identidad; NUNCA fabricar un RUT. Ley 21.719 (plena vigencia 2026-12-01) → pasada legal antes de exposición pública amplia.
+**Premisa (LOCKED):** El shell de producto y los datos por carril ya existen (v1.0–v3.0). v4 construye los **cimientos de datos e identidad de terceros**, luego la **capa derivada de cruces** (parlamentario↔sector), luego las **superficies de ficha** — todo **deny-by-default**. Nada sensible se enciende sin firma humana (F13 MONEY, F17 NET, sign-off de cruces). ChileCompra/SERVEL/MONEY están bloqueados por la brecha RUT-01 (RUT ausente en la maestra) y se difieren explícitamente.
 
----
-
-## v3.0 Requirements
-
-### LOBBY — Cobertura y adjudicación de reuniones de lobby
-
-> Hoy la sección lobby está 100% vacía en TODAS las fichas: las audiencias en `lobby_audiencia` están `estado_vinculo='no_confirmado'` → no enlazan, y la fuente actual (`leylobby.gob.cl`) NO cubre Cámara/Senado. Doble causa raíz: fuente + identidad.
-
-- [ ] **LOBBY-01**: El conector `@obs/lobby` amplía su fuente a `camara.cl/transparencia/ley_de_lobby.aspx` (allowlisted) — la fuente real de las audiencias de parlamentarios, ausentes de `leylobby.gob.cl` — con un spike previo que valida la estructura de la página antes de cablear el crawl (rate-limit 2–3s LOCKED, drift bloqueante, R2 crudo primero).
-- [ ] **LOBBY-02**: Una corrida LIVE acotada ingiere las audiencias de lobby a escala (todos los parlamentarios elegibles) y escribe a la nube desde el crudo en R2 (Etapa 2), idempotente y reanudable.
-- [ ] **LOBBY-03**: El operador adjudica la identidad de las audiencias ingeridas (pipeline de confirmación por nombre, auditado en `identidad_audit`): solo un match `determinista`/`confirmado` puebla el FK del sujeto pasivo; el resto queda `no_confirmado` + texto crudo. El RPC `lobby_de_parlamentario` deja de devolver vacío para los parlamentarios con audiencias confirmadas.
-- [ ] **LOBBY-04**: El ciudadano ve, en la ficha de un parlamentario con audiencias confirmadas, sus reuniones de lobby reales (contraparte como texto crudo + provenance por fila), en lugar del honest-state vacío.
-
-### PAT — Cobertura de patrimonio e intereses
-
-> El conector `@obs/probidad` existe (Phase 12) pero no se pobló en la nube por parlamentario; la sección muestra honest-state vacío.
-
-- [ ] **PAT-01**: Una corrida LIVE `@obs/probidad` (InfoProbidad) ingiere las declaraciones de patrimonio e intereses por parlamentario y las escribe a la nube versionadas por `(fuente_id, fecha_presentacion)`, idempotente, con atribución CC BY 4.0 y crudo en R2 primero.
-- [ ] **PAT-02**: El ciudadano ve las declaraciones reales de patrimonio/intereses de un parlamentario con su historial de versiones y fecha de presentación prominente, en lugar del honest-state vacío.
-
-### VOT — Cobertura de votaciones
-
-> Hoy solo 2 boletines / 10 votaciones. El código (`@obs/votos`, RPC `votos_de_parlamentario`) está validado; falta ejercerlo a escala.
-
-- [ ] **VOT-01**: Una corrida masiva (escape hatch GitHub Actions o pgmq por lotes) ingiere votaciones desde `opendata.camara.cl` (`getVotaciones`/`getVotacion_Detalle`) a escala de legislatura, con cruce determinista DIPID→`id_diputado_camara`, idempotente, rate-limit LOCKED, crudo en R2 primero. (Senado por nombre vía pipeline donde aplique.)
-- [ ] **VOT-02**: El ciudadano ve, en las fichas, cobertura real de votaciones (muchos proyectos, no 2), con desenlace factual de cada votación y la guarda de identidad aplicada; la línea de cobertura honesta refleja el conjunto ampliado.
-
-### PROV — Provenance de la maestra
-
-- [ ] **PROV-01**: El header de la ficha del parlamentario muestra la provenance real de la maestra (fuente/fecha/enlace) en lugar de "fuente desconocida": el campo `origen` de cada fila de `parlamentario` se puebla con su fuente oficial (catálogo Cámara/Senado) y fecha de snapshot.
-
-### RUT — Backfill del RUT interno (operador)
-
-> Sin RUT no hay cruce de contratos ChileCompra (MONEY). Ninguna fuente oficial cruzable expone los 186 RUTs; el backfill es acción de operador con adjudicación humana.
-
-- [ ] **RUT-01**: El operador puebla `parlamentario-rut.seed.json` con RUTs DV-válidos (módulo-11) + provenance por fila y corre el backfill (`updateRut` por id), de modo que la maestra tenga el `rut` interno de los parlamentarios enlazables. Un nombre único NO prueba propiedad del RUT → solo CORROBORACIÓN cuando hay match confirmado, o CANDIDATO a revisión; NUNCA fabricar. (Habilita el cruce MONEY una vez aplicado el gate legal.)
-
-### OPS — Gates de operador (aplicar al remoto + verificar en producción)
-
-> La data de v3.0 solo es visible tras aplicar las migraciones remotas pendientes. Aplicar SIEMPRE por `psql "$SUPABASE_DB_URL" --single-transaction -v ON_ERROR_STOP=1 -f`, NUNCA `supabase db push` (drift `schema_migrations` ≤0025). Última aplicada: 0030 (código), pero los RPC 0026/0028 siguen sin aplicar al remoto.
-
-- [ ] **OPS-01**: El operador aplica al Supabase remoto las migraciones/RPC pendientes (0026 `parlamentarios_publico`, 0028 `votos_instructivos`, 0030 `net` si no está) por `psql --db-url`, con pgTAP verde (0027/0029/0030 + sin regresión de 0019/0020/0023/0026) y probes de las RPC, antes de considerar poblada cualquier sección dependiente.
-- [ ] **OPS-02**: Tras poblar y aplicar, un redeploy + barrido de verificación en producción confirma que las secciones (lobby, patrimonio, votaciones, provenance) muestran datos reales y que los invariantes (noindex, sin foto, sin partido, provenance por dato, MONEY/NET gated-OFF) siguen intactos.
-
-### SIGNOFF — Compuertas legales (acción humana, mantiene los gates)
-
-> Acción humana, no código. Los gates `MONEY_PUBLIC_ENABLED` / `NET_PUBLIC_ENABLED` siguen en OFF hasta firma. Los dossiers de preparación ya existen.
-
-- [ ] **SIGNOFF-01**: El sign-off legal F13 (MONEY, `13-LEGAL-DOSSIER.md`, Ley 21.719) se obtiene y queda registrado → habilita encender `MONEY_PUBLIC_ENABLED` (depende de RUT-01 para que el cruce tenga datos).
-- [ ] **SIGNOFF-02**: El sign-off legal F17 (NET, `17-LEGAL-DOSSIER.md`) se obtiene y queda registrado → habilita encender `NET_PUBLIC_ENABLED` (depende de LOBBY-03 confirmado para que el grafo no esté vacío).
+**Data posture (LOCKED):** minimización + trazabilidad estricta. RUT NUNCA cruza al LLM (`assertNoRutInLlmInput`); personas jurídicas se identifican SOLO por RUT exacto (sin LLM, fail-closed); terceros deny-by-default; RPCs públicos jamás proyectan rut/partido/email/donante_id. Las señales de cruce son conteos factuales, nunca scores de correlación; linter de texto prohíbe vocabulario causal/insinuante. Convención de ingesta de dos etapas (Fuente→R2 crudo→Supabase), rate-limit 2–3s, degradación honesta (nunca fabricar). DDL por `psql --db-url --single-transaction` + fila en `schema_migrations` (NUNCA `db push`); pgTAP es la única prueba válida.
 
 ---
 
-## Future Requirements (diferidos a v3.1+)
+## v4.0 Requirements
 
-- **IDEA — Completar ideas matrices faltantes** (OCR de ~8 PDFs escaneados nulos + 1 schema-fail; las 8 bloqueadas por guarda PII/RUT quedan correctamente nulas). Diferido: cobertura marginal frente a los 5 frentes principales.
-- **Pulido UI menor**: distrito para diputados en el directorio (paridad con senadores); enlace "fuente oficial ↗" en `/buscar` correcto por cámara (hoy siempre apunta a `tramitacion.senado.cl`). Diferido: el milestone es de datos, no de UI; barato cuando toque frontend.
-- **Cron de novedades a régimen**: confirmar/documentar la cadencia diaria L–V de ingesta incremental una vez que el snapshot base esté poblado.
+### INFRA — Desbloqueo de CI (Fase 0, transversal)
 
-## Out of Scope (exclusiones explícitas — heredadas, siguen vigentes)
+> Blocker que mata cualquier workflow programado antes de tocar la red. Barato, desbloquea toda la Fase 1.
 
-- **Scores de ideología/influencia/poder** — inventan un veredicto a partir de correlación. Viola la regla rectora.
-- **Flags de "conflicto de interés"** — el sistema muestra hechos, no concluye conflictos.
-- **Correlación donación→voto** — la más pedida y la más difamatoria; prohibida.
-- **Aristas inferidas por LLM en el grafo** — solo aristas con fuente verificable.
-- **Alertas de "enriquecimiento"** sobre deltas de patrimonio — muestra, no concluye.
-- **Exposición pública de RUT y datos de familiares** — uso interno para reconciliar identidad; minimización por diseño.
-- **Conclusiones de causalidad/intención** — el sistema nunca afirma motivo; solo correlaciones con contexto temporal y fuente.
-- **UI nueva** — el shell está cerrado; v3.0 no agrega pantallas (salvo lo que el poblamiento de datos requiera mínimamente, sin re-abrir el diseño Phase 19).
+- [x] **INFRA-01**: Los CLIs estrella de ingesta (`run-camara-lobby-cli`, `run-probidad-todos-cli`) cargan credenciales con fallback a `process.env` (no solo `.env` en disco) → corren en GitHub Actions sin `.env`. ✅ Ejecutado (quick task 260623-rtl, commits 1844b2f/399e3e2).
 
----
+### INGEST — Ingesta lobby + probidad programada (Fase 1.1)
+
+> Los pipelines ETL existen completos (writers reales, reconciliación de identidad) pero nunca fueron programados. Lobby ya tiene R2; probidad no. ChileCompra/SERVEL NO se programan aquí (RUT-01).
+
+- [ ] **INGEST-01**: El workflow `lobby-camara-weekly` corre en dispatch manual, pasa el WAF de camara.cl vía `curl` (fail si respuesta < 10 KB) con `--html-file`, loguea `audiencias=N>0` y escribe `lobby_audiencia` con `estado_vinculo='confirmado'` para los matches deterministas.
+- [ ] **INGEST-02**: El workflow `lobby-leylobby-weekly` (instituciones del ejecutivo; Cámara/Senado NO publican en leylobby.gob.cl) loguea `audiencias=N>0` o degrada honesto con `LeylobbyBloqueadaError`.
+- [ ] **INGEST-03**: El workflow `probidad-weekly` corre las ~155–200 consultas SPARQL (rate-limit 3s, dentro de límites GH), loguea `declaraciones/bienes/confirmados>0` y escribe filas `declaracion` con `parlamentario_id` no nulo.
+- [ ] **INGEST-04**: La provenance run-level de cada corrida se persiste vía la tabla `source_snapshot` existente + `SnapshotWriter` (NO un `crudo_r2_key` paralelo sobre tablas per-parlamentario): tras un run LIVE, `source_snapshot` tiene una fila por run con `r2_path` poblado. Incluye el paso R2 crudo faltante en `run-probidad-todos.ts` (espejo de `run-camara-lobby.ts`, best-effort try/catch).
+
+### ENT — Resolución de identidades de terceros (Fase 1.2)
+
+> Hoy `lobby_contraparte.contraparte_id` y `contratista` quedan NULL por diseño (no hay maestra de terceros). Prerrequisito de la corrección de los cruces.
+
+- [ ] **ENT-01**: Existe la maestra `entidad_tercero` (+ `entidad_tercero_alias`, sequence `entidad_id_seq`, trigger anti-demotion espejo de 0007/0012, RLS deny-by-default) y las tablas `vinculo_entidad` + `revision_entidad` (espejo de `revision_identidad`), aplicadas por `psql --db-url` con pgTAP verde.
+- [ ] **ENT-02**: El matcher determinista `matchDeterministaEntidad` confirma por RUT-único o nombre-único-por-tipo; toda ambigüedad → `no_confirmado` (fail-closed). Personas jurídicas: SOLO por RUT exacto, nombre-sin-RUT → siempre `no_confirmado` (nunca LLM). Persona natural usa LLM solo ante homónimos, con `assertNoRutInLlmInput` sobre el prompt (≥10 tests; el test falla si un RUT se cuela al prompt).
+- [ ] **ENT-03**: Los reconciliadores existentes escriben el FK resuelto: `reconciliar-sujeto.ts` puebla `lobby_contraparte.contraparte_id` confirmado (antes siempre null); `reconciliar-contrato.ts` puebla `contratista.entidad_id`. RPC transaccional `resolver_entidad` (espejo de 0015).
+- [ ] **ENT-04**: Los matches dudosos van a la cola `revision_entidad` (estado `pendiente`); ningún match dudoso se promueve a `confirmado` sin revisor humano vía RPC `resolver_entidad`. UI admin protegida `revisar-entidades`.
+- [ ] **ENT-05**: El backfill de entidades es LOCAL (operador), idempotente/reanudable: una 2ª corrida produce 0 entidades/vínculos nuevos. La maestra se exporta a JSON fuera de Supabase (custodia, espejo de `backup.ts`).
+
+### CRUCE — Capa de cruces parlamentario↔sector (Fase 2.1)
+
+> El valor diferenciador y el dato de mayor impacto reputacional. Construible deny-by-default; NO publicable sin gate legal (Fase 4).
+
+- [ ] **CRUCE-01**: Existe el catálogo `sector` (public-read) + `sector_id` en `proyecto_ficha`, `lobby_contraparte` y `donante`; la tabla `cruce_senal` (deny-by-default, fila única parlamentario+sector+evidencia jsonb — NO espejo de `arista`); el materializador `materializar_cruces()` (security definer, `search_path=''`, pg_cron con offset); y el RPC `cruces_de_parlamentario` SIN grant a anon hasta firma. Migraciones por `psql --db-url`, pgTAP: `sector` public-read, `cruce_senal` deny-by-default, el cuerpo del materializador no referencia partido ni RUT.
+- [ ] **CRUCE-02**: El etiquetado de sector usa un schema/pipeline/golden SEPARADO del flujo de extracción literal (clasificar a taxonomía cerrada es imputación, no extracción literal — rompería SEM-02). La clasificación corre en un CLI batch de `@obs/cruces` (etapa derivada), NUNCA por fila dentro del writer. Sensibilidad LLM correcta para contrapartes (no `sensitivity:'public'`, Ley 21.719 / FND-06). CLI `--dry-run` sobre 10 proyectos: ≥7 con `sector_id` no nulo medido contra su propio golden.
+- [ ] **CRUCE-03**: Tras materializar con los datos de lobby actuales, `cruce_senal` tiene ≥1 fila `lobby_sector_aporte` para ≥5 parlamentarios. Las señales derivadas de voto (`lobby_sector_voto`/`aporte_sector_voto`) arrancan OFF (chocan con 17-LEGAL-DOSSIER §2) hasta sign-off explícito. Wording factual obligatorio ("N reuniones con gestores del sector X", sin verbo causal); el RPC nunca proyecta rut/partido/email/donante_id (pgTAP).
+
+### SURF — Superficies de cruces en ficha (Fase 3)
+
+> Consumen `cruce_senal`. Construibles tras la capa de cruces; visibles solo tras gate.
+
+- [ ] **SURF-01**: `CrucesSection` (Server Component) en la ficha de parlamentario renderiza las señales factuales con provenance inline, sibling de `#lobby`/`#patrimonio` (nunca anidado — anti-insinuación §9.1), detrás de `crucesPublicEnabled()` (default OFF, espejo de `money-gate.ts`/`net-gate.ts`). Con gate ON renderiza sin error de hidratación; con gate OFF la sección no monta; empty honesto si cero cruces; sin verbo causal (linter); cada evidencia trazable al enlace original (FND-08).
+- [ ] **SURF-02**: `cruces_de_proyecto(boletin)` + `CrucesSection` en la ficha de proyecto (parlamentarios que votaron a favor con cruces en el sector del proyecto), PII-safe (proyección vía `parlamentario_publico`, nunca rut/partido), mismo gate. Hereda la advertencia anti-insinuación de las señales de voto → **se difiere si las señales de voto quedan OFF**.
+
+### LEGAL — Gate legal transversal (Fase 4, #10)
+
+> No es una fase tardía sino el gate que controla la exposición de todo lo sensible. Un agente autónomo NUNCA flipea estos flags.
+
+- [ ] **LEGAL-01**: Revisión legal humana (Ley 21.719) que habilita los flags `MONEY_PUBLIC_ENABLED` (aportes/contratos), `netPublicEnabled` (datos de red) y `crucesPublicEnabled` (señales de cruce). Requiere firmas F13 (MONEY, `docs/legal/13-LEGAL-DOSSIER.md`) y F17 (NET, `17-LEGAL-DOSSIER.md`) + sign-off de cruces registrados; flags encendidos por el operador en Cloudflare Pages; despliegue verificado. MONEY también depende de RUT-01; NET es doble-candado (RLS + flag). **Acción exclusivamente humana.**
+
+### RUTM — RUT-01 + ChileCompra/SERVEL (Fase 5, diferido)
+
+> Bloqueado por RUT-01 (prerrequisito duro no resuelto por estos diseños) + F13. Se difiere explícitamente en lugar de fingir que el CLI demo es un pipeline.
+
+- [ ] **RUTM-01**: Cosecha de RUT a la maestra (`backfill-rut.ts`), DV-válido + provenance, NUNCA fabricar un RUT. Acción de operador (needs-human-checkpoint).
+- [ ] **RUTM-02**: Wire real de ChileCompra (hoy CLI demo: maestra vacía, RUT hardcodeado, falta `MERCADOPUBLICO_TICKET`): `run-dinero-prod-cli.ts` (carga maestra + `TareaRut[]` de la semana) + workflow `dinero-chilecompra-weekly` + bloque R2/`SnapshotWriter` en `ingest-run.ts`. Degrada a dry-run sin ticket → assert post-run `if [ $CONTRATOS -eq 0 ]; exit 1`. Con ticket y RUTs reales: `contratos=N>0`, cruce por RUT confirmado.
+- [ ] **RUTM-03**: Workflow `dinero-servel-manual` (`workflow_dispatch` only, URL Azure Blob por elección provista por el operador): con datos reales, `aportes=N>0`. Exposición pública requiere LEGAL-01.
+
+## Out of Scope
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| Encender cualquier flag `*_PUBLIC_ENABLED` por un agente autónomo | LOCKED: gate humano. El "flip por quality floor" del diseño #1 está eliminado. |
+| Señales de cruce derivadas de voto (`co_votacion`, `*_sector_voto`) en el MVP | 17-LEGAL-DOSSIER §2 (anti-insinuación); arrancan OFF, requieren re-justificación legal. |
+| Lobby del Senado | No hay portal equivalente confirmado (leylobby = solo ejecutivo). |
+| Scores de correlación / afirmación de causalidad | Regla rectora; las señales son conteos factuales con wording sin verbo causal. |
+| Exposición pública de RUT / donante_id / partido / email | Minimización (Ley 21.719); RPCs públicos jamás los proyectan; RUT nunca al LLM. |
+| ChileCompra/SERVEL a escala sin RUT-01 | Sin RUT, ChileCompra cruza cero parlamentarios; se difiere a Fase 5 en vez de fingir cobertura. |
 
 ## Traceability
 
-| REQ-ID | Phase | Status |
-|--------|-------|--------|
-| LOBBY-01 | Phase 24 | Pending |
-| LOBBY-02 | Phase 25 | Pending |
-| LOBBY-03 | Phase 25 | Pending |
-| LOBBY-04 | Phase 25 | Pending |
-| PAT-01 | Phase 26 | Pending |
-| PAT-02 | Phase 26 | Pending |
-| VOT-01 | Phase 27 | Pending |
-| VOT-02 | Phase 27 | Pending |
-| PROV-01 | Phase 28 | Pending |
-| RUT-01 | Phase 29 | Pending |
-| OPS-01 | Phase 23 | Pending |
-| OPS-02 | Phase 32 | Pending |
-| SIGNOFF-01 | Phase 30 | Pending |
-| SIGNOFF-02 | Phase 31 | Pending |
+Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la última; v4.0 arranca en Phase 33). El detalle de diseño por sub-fase vive en `.planning/MILESTONE-v4-cruces.md`.
 
-**Coverage:** 14 v3.0 requirements · phases asignadas por el roadmapper · No orphans · No duplicates
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| INFRA-01 | Phase 33 | Complete |
+| INGEST-01 | Phase 34 | Pending |
+| INGEST-02 | Phase 34 | Pending |
+| INGEST-03 | Phase 34 | Pending |
+| INGEST-04 | Phase 34 | Pending |
+| ENT-01 | Phase 35 | Pending |
+| ENT-02 | Phase 35 | Pending |
+| ENT-03 | Phase 35 | Pending |
+| ENT-04 | Phase 35 | Pending |
+| ENT-05 | Phase 35 | Pending |
+| CRUCE-01 | Phase 36 | Pending |
+| CRUCE-02 | Phase 36 | Pending |
+| CRUCE-03 | Phase 36 | Pending |
+| SURF-01 | Phase 37 | Pending |
+| SURF-02 | Phase 38 | Pending |
+| LEGAL-01 | Phase 39 | Pending |
+| RUTM-01 | Phase 40 | Pending |
+| RUTM-02 | Phase 40 | Pending |
+| RUTM-03 | Phase 40 | Pending |
+
+**Coverage:**
+- v4.0 requirements: 19 total
+- Mapped to phases: 19
+- Unmapped: 0 ✓
+
+---
+*Requirements defined: 2026-06-24*
+*Last updated: 2026-06-24 after initial definition (transcribed from .planning/MILESTONE-v4-cruces.md)*

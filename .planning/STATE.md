@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Cobertura de datos
+milestone: v4.0
+milestone_name: De datos a cruces verificables
 status: planning
-last_updated: "2026-06-22T18:30:00.000Z"
-last_activity: 2026-06-22
+last_updated: "2026-06-24T01:00:00.000Z"
+last_activity: 2026-06-24
 progress:
-  total_phases: 10
-  completed_phases: 7
-  total_plans: 7
-  completed_plans: 7
-  percent: 70
+  total_phases: 8
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
+  percent: 13
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** v3.0 frente AUTOMATABLE COMPLETO (23-28, 32). Restan solo 3 gates HUMANOS: 29 (RUT), 30 (F13 MONEY), 31 (F17 NET).
+**Current focus:** v4.0 "De datos a cruces verificables" (Phases 33–40). Fase 0 (Phase 33, loadEnv CI) ✅ done. Próximo: Fase 1 — ingesta lobby+probidad programada (Phase 34) + entity-resolution de terceros (Phase 35). Diseño locked en .planning/MILESTONE-v4-cruces.md.
 
 ## Current Position
 
-Phase: 32 COMPLETA — frente automatable de v3.0 cerrado. Pendientes solo gates humanos (29/30/31).
-Plan: — (milestone NO archivable: 29/30/31 requieren acción humana)
-Status: Phases 23/24/25/26/27/28/32 COMPLETAS y desplegadas (version e4347898). Lobby 5.106 confirmadas/136 dip + NET 7.394 aristas; patrimonio 1.060/136; votos source-limited (10); provenance/header arreglados. Invariantes intactos (MONEY/NET gated-OFF).
-Last activity: 2026-06-24 - Completed quick task 260623-rtl: Fase 0 v4 loadEnv CI-safe en CLIs lobby/probidad.
+Phase: Phase 34 — INGEST: Ingesta lobby + probidad programada (next; not started)
+Plan: —
+Status: Roadmap created (Phases 33–40). Phase 33 (INFRA — loadEnv CI-safe) ✅ COMPLETE via quick task 260623-rtl. Ready to plan Phase 34.
+Last activity: 2026-06-24 — Roadmap v4.0 transcrito desde .planning/MILESTONE-v4-cruces.md (8 fases, 19 reqs mapeados 1:1, 0 huérfanos)
 
 ## Performance Metrics
 
@@ -107,6 +107,9 @@ Last activity: 2026-06-24 - Completed quick task 260623-rtl: Fase 0 v4 loadEnv C
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- [Roadmap v4.0]: Numeración continúa desde v3.0 — Phase 32 fue la última; v4.0 arranca en Phase 33 (no reset). 19 reqs (INFRA 1, INGEST 4, ENT 5, CRUCE 3, SURF 2, LEGAL 1, RUTM 3) mapeados 1:1 a Phases 33–40, 0 huérfanos. Transcripción del diseño LOCKED `.planning/MILESTONE-v4-cruces.md` (validado por Opus) — NO re-diseño.
+- [Roadmap v4.0]: Phase 33 (INFRA-01, loadEnv CI-safe) ✅ DONE (quick 260623-rtl). Ruta crítica: ingesta (34) + entity-resolution (35) = cimientos → cruces (36) → superficies (37/38); el gate legal (39) atraviesa y controla la exposición; RUT-01 (40) gatea ChileCompra/MONEY.
+- [Roadmap v4.0 — GATES LOCKED]: (a) Phase 36 `cruce_senal` deny-by-default, RPC sin grant a anon hasta firma; (b) Phases 37/38 detrás de `crucesPublicEnabled()` default OFF; (c) Phase 39 = firma humana exclusiva — un agente NUNCA flipea un flag `*_PUBLIC_ENABLED` (el "quality floor flip" del diseño #1 está eliminado); (d) Phase 38 + señales de voto DIFERIDAS hasta sign-off (17-LEGAL-DOSSIER §2); (e) Phase 40 bloqueada por RUT-01 (prerrequisito duro) + ticket/URL de operador.
 - [Roadmap v3.0]: Numeración continúa desde v2.0 — Phase 22 fue la última; v3.0 arranca en Phase 23 (no reset). 14 reqs mapeados 1:1 a Phases 23–32, 0 huérfanos.
 - [Roadmap v3.0]: OPS-01 (apply remoto 0026/0028/0030 por psql --db-url, NUNCA db push) es PRECONDICIÓN (Phase 23) — sin migraciones la data poblada no es visible.
 - [Roadmap v3.0]: LOBBY partido en fuente+spike (Phase 24, LOBBY-01) y LIVE+adjudicación+ficha (Phase 25, LOBBY-02/03/04); LOBBY es el mayor impacto (hoy 100% vacío) y desbloquea las aristas NET.
