@@ -39,3 +39,9 @@ export { DriftDetector, fingerprint, structuralPaths } from "./drift";
 export type { DriftResult, DriftStore } from "./drift";
 export { SnapshotWriter } from "./snapshot";
 export type { SnapshotRef, SnapshotWrite, SnapshotStore } from "./snapshot";
+export { SupabaseSnapshotStore } from "./snapshot-store-supabase";
+export type {
+  SupabaseSnapshotStoreOptions,
+  SupabaseClientLike,
+  CreateSupabaseClient,
+} from "./snapshot-store-supabase";
