@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — De datos a cruces verificables
 status: verifying
-stopped_at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
-last_updated: "2026-06-24T19:30:56.747Z"
-last_activity: 2026-06-24 -- Phase 41 Plan 03 (CRUCEN-03) completado
+stopped_at: Phase 42 (LOCKDOWN) WRITE-COMPLETE — cutover operador pendiente
+last_updated: "2026-06-24T21:30:00.000Z"
+last_activity: 2026-06-24 -- Phase 42 (LOCKDOWN) 4/4 plans escritos + gsd-verifier PASS (cutover diferido)
 progress:
-  total_phases: 34
-  completed_phases: 19
-  total_plans: 67
-  completed_plans: 76
-  percent: 56
+  total_phases: 35
+  completed_phases: 20
+  total_plans: 71
+  completed_plans: 80
+  percent: 57
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 41 — crucen-habilitaci-n-de-cruces-grant-gated-dossier-fecha-capt
+**Current focus:** Phase 42 — LOCKDOWN (cierre de la API pública de Supabase; rol web_reader)
 
 ## Current Position
 
-Phase: 41 (crucen-habilitaci-n-de-cruces-grant-gated-dossier-fecha-capt) — COMPLETE (3/3 plans)
-Plan: 3 of 3 (todos completados)
-Status: Phase complete — ready for verification
-Verificación PROD: pgTAP 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12; resolver_entidad deny-by-default (anon/auth/public=f, service_role=t); confirm-with-promote ya NO lanza 23503. 0041 ESCRITA (no aplicada — apply=operador). 0042 ESCRITA (grant gated, INERTE — NO aplicada, NO en schema_migrations; apply=checkpoint humano post-sign-off). 41-LEGAL-DOSSIER-CRUCES.md ×2 escrito signoff: pending (gate 3 — firma humana Phase 39).
-Próximo: verificar Phase 41; firma humana del dossier (Phase 39) + apply 0042 + flip crucesPublicEnabled (operador, post-firma) son deuda fuera de la corrida autónoma.
-Last activity: 2026-06-24 -- Phase 41 Plan 03 (CRUCEN-03) completado
+Phase: 42 (lockdown-api-supabase-rol-web-reader) — WRITE-COMPLETE (4/4 plans; gsd-verifier PASS 4/4)
+Plan: 4 of 4 (todos escritos + verificados)
+Status: Phase write-complete — cutover a PROD diferido (checkpoint operador, orden load-bearing)
+Artefactos: 0043 (web_reader + grants enumerados 26 tablas/15 RPCs + 26 policies _wr) ESCRITA; 0044 (revoke anon/auth + ALTER DEFAULT PRIVILEGES FOR ROLE postgres) ESCRITA; app/lib/web-reader-jwt.ts + supabase.ts (accessToken HS256 fail-closed) HECHO; guard CI + docs/RUNBOOK-lockdown-cutover.md HECHO. Suite 316/316, tsc limpio. Read-only PROD probe: los 15 RPCs + 26 tablas resuelven (apply no fallará por target inexistente). NADA aplicado a PROD, NADA deployado.
+Próximo (cutover operador, ORDEN load-bearing): 0) añadir SUPABASE_JWT_SECRET (.env + Cloudflare) + verificar offline → 1) aplicar 0043 (psql + schema_migrations; pgTAP 0043) → 2) deploy 03 a Cloudflare + smoke → 3) aplicar 0044 ÚLTIMO (pgTAP post-apply + probe curl anon=permission denied). Rollback = reverse-0044. Ver docs/RUNBOOK-lockdown-cutover.md.
+Last activity: 2026-06-24 -- Phase 42 (LOCKDOWN) write-complete + verificada
 
 ## Performance Metrics
 

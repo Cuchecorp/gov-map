@@ -990,12 +990,12 @@ Plans:
   3. **LOCKDOWN-02:** migración que revoca TODO de `anon` y `authenticated` (execute en RPCs + select en tablas + drop policies `to anon`). Se aplica ÚLTIMA, tras el server web_reader vivo en prod. pgTAP: anon/authenticated sin execute/select en TODO el inventario; web_reader intacto.
   4. **LOCKDOWN-04:** verificación end-to-end — probe live con la anon key → permission denied en cada RPC/tabla; el sitio renderiza votaciones, lobby, patrimonio, dinero, NET, cruces, búsqueda, agenda, parlamentarios, proyecto. Guard anti-regresión (CI falla ante un nuevo `grant ... to anon` o un select de columna PII en el server). Runbook de cutover + rollback documentado.
 
-**Plans:** 4 plans
+**Plans:** 4 plans — **WRITE-COMPLETE 2026-06-24** (gsd-verifier PASS 4/4, suite 316/316, tsc limpio). Cutover a PROD = checkpoint operador pendiente (aplicar 0043 → deploy 03 a Cloudflare → aplicar 0044). Runbook: `docs/RUNBOOK-lockdown-cutover.md`.
 
 Plans:
-- [ ] 42-01-PLAN.md — LOCKDOWN-01: migración 0043 (crear web_reader + grants enumerados + 26 policies _wr) + pgTAP
-- [ ] 42-02-PLAN.md — LOCKDOWN-02: migración 0044 (revoke anon/authenticated + default privileges) + pgTAP post-apply
-- [ ] 42-03-PLAN.md — LOCKDOWN-03: createServerSupabase lee como web_reader (JWT HS256 fail-closed) + tests
-- [ ] 42-04-PLAN.md — LOCKDOWN-04: guard CI anti-regresión + runbook de cutover ordenado
+- [x] 42-01-PLAN.md — LOCKDOWN-01: migración 0043 (crear web_reader + grants enumerados + 26 policies _wr) + pgTAP — ESCRITA (apply=operador)
+- [x] 42-02-PLAN.md — LOCKDOWN-02: migración 0044 (revoke anon/authenticated + default privileges FOR ROLE postgres) + pgTAP post-apply — ESCRITA (apply ÚLTIMO=operador)
+- [x] 42-03-PLAN.md — LOCKDOWN-03: createServerSupabase lee como web_reader (JWT HS256 fail-closed) + tests — ESCRITO (deploy=operador)
+- [x] 42-04-PLAN.md — LOCKDOWN-04: guard CI anti-regresión + runbook de cutover ordenado — HECHO
 
 **UI hint**: no (cambio de credencial/permisos; sin cambios visuales)
