@@ -37,3 +37,13 @@ export {
   MockClasificadorProvider,
   type RespuestaMockSector,
 } from "./mock-provider";
+
+// ── Writer service-role del etiquetado de sector (etapa derivada, sin LLM — D-13) ──
+export {
+  SupabaseCrucesWriter,
+  type SupabaseCrucesWriterOptions,
+  type SectorAsignado,
+  type ActualizacionFicha,
+  type ActualizacionContraparte,
+  type CrucesWriter,
+} from "./writer-supabase";
