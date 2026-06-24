@@ -30,6 +30,24 @@ export type { EntidadTerceroWriter, EntidadTerceroSeed } from "./seeder-entidad"
 export { SupabaseEntidadWriter } from "./writer-entidad-supabase";
 export type { SupabaseEntidadWriterOptions } from "./writer-entidad-supabase";
 
+// Custodia JSON determinista de la maestra de terceros (ENT-05): export byte-a-byte a
+// supabase/seeds/entidad_tercero.seed.json. SEED_PATH/SeedFileWriter de terceros se exponen
+// como `SEED_PATH_ENTIDAD`/`SeedFileWriterEntidad` para no chocar con los de parlamentario.
+export {
+  exportMaestraEntidad,
+  serializeMaestraEntidad,
+  SEED_PATH as SEED_PATH_ENTIDAD,
+} from "./backup-entidad";
+export type {
+  EntidadTercero,
+  ExportEntidadOptions,
+  ExportEntidadResult,
+} from "./backup-entidad";
+
+// Backfill LOCAL idempotente/reanudable (ENT-05): matcher → seeder → custodia.
+export { runBackfillEntidad, buildWriterFromEnv, loadEnv as loadEnvEntidad } from "./backfill-entidad-cli";
+export type { BackfillEntidadOptions, BackfillEntidadResult } from "./backfill-entidad-cli";
+
 // Backfill del RUT interno (IDENT-10): DV-gate (isRutValido) + provenance + updateRut.
 // NUNCA fabrica un RUT — un DV inválido o sin provenance se rechaza a revisión.
 export { aceptarRutBackfill, runBackfillRut } from "./backfill-rut";
