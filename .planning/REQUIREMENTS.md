@@ -53,6 +53,14 @@
 - [x] **SURF-01**: `CrucesSection` (Server Component) en la ficha de parlamentario renderiza las señales factuales con provenance inline, sibling de `#lobby`/`#patrimonio` (nunca anidado — anti-insinuación §9.1), detrás de `crucesPublicEnabled()` (default OFF, espejo de `money-gate.ts`/`net-gate.ts`). Con gate ON renderiza sin error de hidratación; con gate OFF la sección no monta; empty honesto si cero cruces; sin verbo causal (linter); cada evidencia trazable al enlace original (FND-08).
 - [ ] **SURF-02**: `cruces_de_proyecto(boletin)` + `CrucesSection` en la ficha de proyecto (parlamentarios que votaron a favor con cruces en el sector del proyecto), PII-safe (proyección vía `parlamentario_publico`, nunca rut/partido), mismo gate. Hereda la advertencia anti-insinuación de las señales de voto → **se difiere si las señales de voto quedan OFF**.
 
+### CRUCEN — Habilitación de cruces (Fase 3.5, deuda de Phase 37, prep para encender `crucesPublicEnabled`)
+
+> Las tres deudas que destapó el code-review de Phase 37, necesarias ANTES de poder firmar/encender la superficie de cruces. CERO flip de flag aquí.
+
+- [ ] **CRUCEN-01**: Fix WR-02 (frescura honesta). Nueva migración `create or replace public.cruces_de_parlamentario` que PROYECTA `cruce_senal.fecha_captura` en la fila de retorno (sin tocar el grant — el RPC sigue deny-by-default), y `CrucesSection`/`CrucesView` la usan como `capturedAt` del `ProvenanceBadge` (frescura REAL del materializado, no la fecha de la reunión) → elimina el stale-amber falso y el "Actualizado hace …" sobre una fecha de evento. Tipos + tests actualizados. La migración es APLICABLE a PROD ya (checkpoint operador) porque NO concede nada.
+- [ ] **CRUCEN-02**: Grant gated del RPC. Nueva migración que concede `execute on function public.cruces_de_parlamentario(text) to anon` (espejo de `subgrafo_red`/`lobby_de_parlamentario`), **ESCRITA pero NO aplicada** — su aplicación es checkpoint humano que ocurre SOLO DESPUÉS del sign-off legal de cruces (deny-by-default hasta la firma, espejo del patrón F17/NET). pgTAP que verifica el grant para cuando se aplique. Un agente NUNCA la aplica ni enciende el flag.
+- [ ] **CRUCEN-03**: Dossier legal de cruces. `docs/legal/XX-LEGAL-DOSSIER-CRUCES.md` (espejo de `17-LEGAL-DOSSIER-NET.md`), material de PREPARACIÓN para asesoría legal (`signoff: pending`), que estructura la superficie de riesgo de las señales de cruce parlamentario↔sector (composición de hechos públicos lobby↔sector, riesgo de insinuación, minimización Ley 21.719, atribución por dataset) con checklist de sign-off §9. La firma es **acción humana** (como F17). Encender cruces = firmar dossier (humano) → aplicar grant CRUCEN-02 (operador) → flip `crucesPublicEnabled` (operador).
+
 ### LEGAL — Gate legal transversal (Fase 4, #10)
 
 > No es una fase tardía sino el gate que controla la exposición de todo lo sensible. Un agente autónomo NUNCA flipea estos flags.
@@ -101,6 +109,9 @@ Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la 
 | CRUCE-03 | Phase 36 | Complete |
 | SURF-01 | Phase 37 | Complete |
 | SURF-02 | Phase 38 | Pending |
+| CRUCEN-01 | Phase 41 | Pending |
+| CRUCEN-02 | Phase 41 | Pending |
+| CRUCEN-03 | Phase 41 | Pending |
 | LEGAL-01 | Phase 39 | Pending |
 | RUTM-01 | Phase 40 | Pending |
 | RUTM-02 | Phase 40 | Pending |
@@ -108,8 +119,8 @@ Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la 
 
 **Coverage:**
 
-- v4.0 requirements: 19 total
-- Mapped to phases: 19
+- v4.0 requirements: 22 total (19 base + 3 CRUCEN, deuda de Phase 37 → Phase 41)
+- Mapped to phases: 22
 - Unmapped: 0 ✓
 
 ---

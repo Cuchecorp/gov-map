@@ -717,9 +717,10 @@ Plans:
 
 ### Coverage
 
-- v4.0 requirements: 19 (INFRA 1, INGEST 4, ENT 5, CRUCE 3, SURF 2, LEGAL 1, RUTM 3)
-- Mapped to phases: 19/19 ✓
+- v4.0 requirements: 22 (INFRA 1, INGEST 4, ENT 5, CRUCE 3, SURF 2, CRUCEN 3, LEGAL 1, RUTM 3)
+- Mapped to phases: 22/22 ✓
 - Orphaned: 0 · Duplicated: 0
+- Nota: CRUCEN (3) es deuda destapada por el code-review de Phase 37 → Phase 41 (añadida 2026-06-24).
 
 ### Mapeo Fase-doc → Phase-roadmap (LOCKED)
 
@@ -733,6 +734,7 @@ Plans:
 | 38 | Fase 3.2 — Superficie de cruces en ficha de proyecto | SURF-02 | needs-legal-signoff (diferido si señales de voto OFF) |
 | 39 | Fase 4.1 — Gate legal F13/F17/cruces | LEGAL-01 | needs-legal-signoff (exclusivamente humano) |
 | 40 | Fase 5.1 — RUT-01 + ChileCompra/SERVEL | RUTM-01..03 | needs-human-checkpoint (RUT/ticket/URL) · exposición needs-legal-signoff |
+| 41 | Fase 3.5 — Habilitación de cruces (grant gated + dossier + fecha_captura) | CRUCEN-01..03 | autónomo (build: WR-02 fix, grant escrito, dossier) · needs-human-checkpoint (aplicar 0041 a PROD) · needs-legal-signoff (firmar dossier + aplicar grant + flip) |
 
 ### Insight de ruta crítica (LOCKED)
 
@@ -768,6 +770,7 @@ INFRA-01 desbloqueo CI (Phase 33, ✅ DONE) — sin esto ningún workflow progra
 - [ ] **Phase 38: SURF — Superficie de cruces en ficha de proyecto (gated, diferido)** - `cruces_de_proyecto(boletin)` → parlamentarios que votaron a favor con cruces en el sector del proyecto, PII-safe, mismo gate. Hereda la advertencia anti-insinuación de las señales de voto → se DIFIERE si las señales de voto quedan OFF.
 - [ ] **Phase 39: LEGAL — Gate legal transversal F13/F17/cruces (sign-off humano)** - Revisión legal humana (Ley 21.719) que habilita `MONEY_PUBLIC_ENABLED`, `netPublicEnabled` y `crucesPublicEnabled`. Acción exclusivamente humana — un agente NUNCA flipea estos flags. Atraviesa Fases 1–3; controla toda exposición sensible.
 - [ ] **Phase 40: RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human)** - Cosecha de RUT a la maestra; wire real de ChileCompra (hoy CLI demo) + workflow; workflow manual SERVEL por elección. Bloqueado por RUT-01 (prerrequisito duro) + ticket/URL de operador; exposición pública requiere LEGAL-01.
+- [ ] **Phase 41: CRUCEN — Habilitación de cruces (grant gated + dossier + fecha_captura)** - Cierra las 3 deudas del code-review de Phase 37 para dejar la superficie de cruces LISTA para firmar/encender (sin encenderla): fix WR-02 (proyectar `cruce_senal.fecha_captura` en el RPC → frescura honesta, migración aplicable ya), migración de grant del RPC a anon ESCRITA pero NO aplicada (deny-by-default hasta sign-off), y dossier legal de cruces (prep para firma humana, espejo F17). CERO flip de flag.
 
 ## Phase Details (v4.0)
 
@@ -950,3 +953,19 @@ Plans:
   3. Workflow `dinero-servel-manual` (`workflow_dispatch` only, URL Azure Blob por elección provista por el operador): con datos reales `aportes=N>0`; la exposición pública requiere LEGAL-01 (RUTM-03)
 
 **Plans:** TBD
+
+### Phase 41: CRUCEN — Habilitación de cruces (grant gated + dossier + fecha_captura)
+
+**Goal:** Cerrar las tres deudas que destapó el code-review de Phase 37 para dejar la superficie de cruces (`crucesPublicEnabled`) LISTA para ser firmada y encendida — **sin encenderla ni firmarla** (eso sigue siendo humano). (1) Fix WR-02: el `ProvenanceBadge` de cruces marca stale-amber falso porque usa la fecha de la REUNIÓN como `capturedAt` (el RPC 0040 no proyecta la fecha de captura real); proyectar `cruce_senal.fecha_captura` en el RPC y consumirla en el componente. (2) El RPC `cruces_de_parlamentario` no tiene grant a anon → encender el flag hoy rompería `/parlamentario/[id]`; escribir la migración de grant (espejo `subgrafo_red`/`lobby_de_parlamentario`) **sin aplicarla** (deny-by-default hasta el sign-off). (3) No existe dossier legal de cruces; crearlo (espejo F17) como prep para la firma humana.
+**Mode:** capability (deuda de superficie / gated)
+**Depends on:** Phase 37 (superficie construida), Phase 36 (RPC/`cruce_senal` en PROD). Para ENCENDER: Phase 39 (firma del dossier de cruces).
+**Requirements:** CRUCEN-01, CRUCEN-02, CRUCEN-03
+**Autonomy:** autónomo para construir (WR-02 fix, migración de grant escrita, dossier); **needs-human-checkpoint** para aplicar la migración de `fecha_captura` (CRUCEN-01) a PROD (`psql --db-url` + `schema_migrations`); **needs-legal-signoff** para firmar el dossier + aplicar el grant (CRUCEN-02) + flipear `crucesPublicEnabled`. Un agente NUNCA aplica el grant ni flipea el flag.
+**Success Criteria** (what must be TRUE):
+
+  1. **CRUCEN-01:** nueva migración `create or replace public.cruces_de_parlamentario(text)` que añade `fecha_captura` (de `cruce_senal`) a la fila de retorno SIN tocar el grant (sigue revocado de anon/authenticated); `CrucesSection`/`CrucesView` usan `fecha_captura` como `capturedAt` del `ProvenanceBadge` (frescura real del materializado); tipos + tests RTL actualizados; el stale-amber falso desaparece. pgTAP verifica la nueva columna y que el RPC sigue deny-by-default. Aplicación a PROD = checkpoint operador.
+  2. **CRUCEN-02:** nueva migración con `grant execute on function public.cruces_de_parlamentario(text) to anon` (espejo de `subgrafo_red`/0030 y `lobby_de_parlamentario`/0021), **escrita y commiteada pero NO aplicada** (su aplicación es checkpoint humano post-sign-off); pgTAP que afirma el grant para cuando se aplique; un grep/test garantiza que ninguna corrida autónoma la aplica. CERO flip de `crucesPublicEnabled`.
+  3. **CRUCEN-03:** `docs/legal/XX-LEGAL-DOSSIER-CRUCES.md` (espejo estructural de `17-LEGAL-DOSSIER-NET.md`): `signoff: pending`, propósito = preparación para asesoría legal, secciones de superficie de riesgo (composición lobby↔sector como posible insinuación, minimización Ley 21.719, atribución por dataset, doble candado RPC-grant + flag), checklist de sign-off §9. La firma es acción humana (como F17). Documenta la secuencia de encendido: firmar dossier → aplicar grant CRUCEN-02 → flip `crucesPublicEnabled`.
+
+**Plans:** TBD (research vía sonnet-swarm + validadores Opus → plan-phase → execute-phase, en ventana fresca)
+**UI hint**: yes (CRUCEN-01 toca `cruces-de-parlamentario.tsx`)
