@@ -4,7 +4,7 @@ milestone: v4.0
 milestone_name: — De datos a cruces verificables
 status: verifying
 stopped_at: Completed 37-03-PLAN.md
-last_updated: "2026-06-24T16:56:59.425Z"
+last_updated: "2026-06-24T17:34:07.521Z"
 last_activity: 2026-06-24
 progress:
   total_phases: 33
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 ## Current Position
 
-Phase: 37 (surf-superficie-de-cruces-en-ficha-de-parlamentario-gated) — EXECUTING
-Plan: 3 of 3
+Phase: 38
+Plan: Not started
 Status: Phase complete — ready for verification
 Verificación PROD: pgTAP 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12; resolver_entidad deny-by-default (anon/auth/public=f, service_role=t); confirm-with-promote ya NO lanza 23503.
 Próximo: Phase 37 Plan 02 (CrucesView/CrucesSection componente) → Plan 03 (cablear gate en página ficha).
@@ -44,7 +44,7 @@ Last activity: 2026-06-24
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 37 | 3 | - | - |
 
 **Recent Trend:**
 

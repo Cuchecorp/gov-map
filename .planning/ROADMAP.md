@@ -557,7 +557,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 37-03-PLAN.md — Cablear <section id=cruces> gated (sibling mt-12, envuelta entera por el gate) + CrucesSkeleton en page.tsx + test de seccion-ausente (gate OFF) / presente (gate ON) (SURF-01)
+- [x] 37-03-PLAN.md — Cablear <section id=cruces> gated (sibling mt-12, envuelta entera por el gate) + CrucesSkeleton en page.tsx + test de seccion-ausente (gate OFF) / presente (gate ON) (SURF-01)
 
 **UI hint**: yes
 
@@ -581,7 +581,7 @@ Plans:
 **Wave 1**
 
 - [x] 37-01-PLAN.md — Gate de presentacion crucesPublicEnabled (Candado B, server-only, fail-closed, espejo de money-gate) + tabla de verdad (SURF-01)
-- [ ] 37-02-PLAN.md — CrucesView (puro) + CrucesSection (Server Component, RPC cruces_de_parlamentario) + tipos del RPC + test RTL (empty-honesto/provenance/identidad/anti-insinuacion negative-match/conteo neutro) (SURF-01)
+- [x] 37-02-PLAN.md — CrucesView (puro) + CrucesSection (Server Component, RPC cruces_de_parlamentario) + tipos del RPC + test RTL (empty-honesto/provenance/identidad/anti-insinuacion negative-match/conteo neutro) (SURF-01)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -701,7 +701,7 @@ Plans:
 | 34. INGEST — Ingesta lobby + probidad programada | v4.0 | 0/? | Not started | - |
 | 35. ENT — Resolución de identidades de terceros | v4.0 | 7/7 | Complete (gaps 35-05/06/07 cerrados; pgTAP 0034/35/36/37 verdes en PROD; ENT-01..05 SATISFIED) | 2026-06-24 |
 | 36. CRUCE — Capa de cruces parlamentario↔sector (deny-by-default) | v4.0 | 4/4 | Complete   | 2026-06-24 |
-| 37. SURF — Cruces en ficha de parlamentario (gated) | v4.0 | 3/3 | Complete   | 2026-06-24 |
+| 37. SURF — Cruces en ficha de parlamentario (gated) | v4.0 | 3/3 | Complete    | 2026-06-24 |
 | 38. SURF — Cruces en ficha de proyecto (gated, diferido) | v4.0 | 0/? | Not started | - |
 | 39. LEGAL — Gate legal F13/F17/cruces (sign-off humano) | v4.0 | 0/? | Not started | - |
 | 40. RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human) | v4.0 | 0/? | Not started | - |
@@ -884,7 +884,7 @@ Plans:
 
 **Wave 1**
 
-- [ ] 37-01-PLAN.md — Gate de presentacion crucesPublicEnabled (Candado B, server-only, fail-closed, espejo de money-gate) + tabla de verdad (SURF-01)
+- [x] 37-01-PLAN.md — Gate de presentacion crucesPublicEnabled (Candado B, server-only, fail-closed, espejo de money-gate) + tabla de verdad (SURF-01)
 - [ ] 37-02-PLAN.md — CrucesView (puro) + CrucesSection (Server Component, RPC cruces_de_parlamentario) + tipos del RPC + test RTL (empty-honesto/provenance/identidad/anti-insinuacion negative-match/conteo neutro) (SURF-01)
 
 **Wave 2** *(blocked on Wave 1)*
