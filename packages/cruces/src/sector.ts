@@ -37,8 +37,11 @@ export const SECTOR_CATALOGO = [
 ] as const;
 
 /**
- * Tupla `as const` SOLO de los códigos (para `z.enum`). Derivada del catálogo para que el
- * orden y el contenido nunca puedan divergir de `SECTOR_CATALOGO`. SIN 'otros' (D-05).
+ * Tupla `as const` SOLO de los códigos (para `z.enum`). NO se deriva con `.map()` de
+ * `SECTOR_CATALOGO` a propósito: `z.enum(...)` exige una tupla de literales, y un
+ * `.map()` produce `string[]` (pierde el tipo literal → no compila). Se mantiene a mano
+ * y `sector.test.ts` ASEGURA que coincida 1:1 (orden+contenido) con `SECTOR_CATALOGO`.
+ * SIN 'otros' (D-05).
  */
 export const SECTOR_CODIGOS = [
   "salud",
