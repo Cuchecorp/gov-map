@@ -1,3 +1,5 @@
+<!-- COMPLETED: 2026-06-24 — fase cerrada/encendida; se conserva por contexto histórico, NO es trabajo pendiente. Activos: HANDOFF-42-lockdown, HANDOFF-43-debt. -->
+
 # HANDOFF — Cobertura de búsqueda + Agenda (citaciones/tabla) + deploy a prod
 
 **Fecha:** 2026-06-23 · **Para:** ventana nueva (contexto limpio) · **Regla transversal:** toda ingesta respeta la convención LOCKED de 2 etapas (**fuente → R2 crudo → Supabase**) y el rate-limit 2-3s/host, para NO estresar los servidores gubernamentales. **Al final: dejar la página DESPLEGADA en producción y verificada.**

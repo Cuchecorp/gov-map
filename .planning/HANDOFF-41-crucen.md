@@ -1,3 +1,5 @@
+<!-- COMPLETED: 2026-06-24 — fase cerrada/encendida; se conserva por contexto histórico, NO es trabajo pendiente. Activos: HANDOFF-42-lockdown, HANDOFF-43-debt. -->
+
 # HANDOFF — Phase 41 (CRUCEN) — listo para ventana fresca
 
 Pegá el bloque de abajo en una sesión nueva (tras `/clear`). Todo el andamiaje ya está commiteado (`ef4426f`): ROADMAP + REQUIREMENTS (CRUCEN-01/02/03) + `41-CONTEXT.md`.

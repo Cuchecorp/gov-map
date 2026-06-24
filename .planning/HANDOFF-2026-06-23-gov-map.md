@@ -1,3 +1,5 @@
+<!-- COMPLETED: 2026-06-24 — fase cerrada/encendida; se conserva por contexto histórico, NO es trabajo pendiente. Activos: HANDOFF-42-lockdown, HANDOFF-43-debt. -->
+
 # HANDOFF — gov-map (Cuchecorp) · 2026-06-23
 
 Estado para retomar en sesión nueva con contexto limpio.
