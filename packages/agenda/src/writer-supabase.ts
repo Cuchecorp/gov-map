@@ -5,7 +5,8 @@
 // `upsert(filas, { onConflict: '<clave natural>' })` idempotente por la clave natural de
 // migración 0010:
 //   * citacion           → onConflict 'id' (PK)
-//   * citacion_invitado  → onConflict 'citacion_id,nombre' (unique)
+//   * citacion_invitado  → onConflict 'citacion_id,nombre,calidad' (unique; migración 0016
+//                          reemplazó el unique 2-col de 0010 por el 3-col que usa el código)
 //   * citacion_punto     → onConflict 'citacion_id,posicion' (unique)
 //   * sesion_sala        → onConflict 'id' (PK)
 //   * sesion_tabla_item  → onConflict 'sesion_id,posicion' (unique)
