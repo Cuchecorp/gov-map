@@ -968,7 +968,7 @@ Plans:
   3. **CRUCEN-03:** `docs/legal/XX-LEGAL-DOSSIER-CRUCES.md` (espejo estructural de `17-LEGAL-DOSSIER-NET.md`): `signoff: pending`, propósito = preparación para asesoría legal, secciones de superficie de riesgo (composición lobby↔sector como posible insinuación, minimización Ley 21.719, atribución por dataset, doble candado RPC-grant + flag), checklist de sign-off §9. La firma es acción humana (como F17). Documenta la secuencia de encendido: firmar dossier → aplicar grant CRUCEN-02 → flip `crucesPublicEnabled`.
 
 **Plans:** 3 plans (Wave 1, sin cross-deps — 3 deliverables independientes)
-- [ ] 41-01-PLAN.md — CRUCEN-01: fix WR-02 (frescura honesta) — migración 0041 (drop+recreate proyecta fecha_captura) + pgTAP + tipo + componente + RTL; apply 0041 = checkpoint operador
+- [x] 41-01-PLAN.md — CRUCEN-01: fix WR-02 (frescura honesta) — migración 0041 (drop+recreate proyecta fecha_captura) + pgTAP + tipo + componente + RTL; apply 0041 = checkpoint operador DIFERIDO (gate 4); suite 298/298 verde, tsc limpio [ff2dd63, 807f08b]
 - [ ] 41-02-PLAN.md — CRUCEN-02: grant gated — migración 0042 (grant a anon, ESCRITA no aplicada) + guard fail-loud + pgTAP post-apply fuera del glob
 - [ ] 41-03-PLAN.md — CRUCEN-03: dossier legal de cruces — 41-LEGAL-DOSSIER-CRUCES.md ×2 idénticos, signoff: pending, CRUCES-específico, jamás firmado
 **UI hint**: yes (CRUCEN-01 toca `cruces-de-parlamentario.tsx`)

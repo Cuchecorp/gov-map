@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — De datos a cruces verificables
-status: verifying
-stopped_at: Completed 37-03-PLAN.md
-last_updated: "2026-06-24T17:34:07.521Z"
-last_activity: 2026-06-24
+status: executing
+stopped_at: Completed 41-01-PLAN.md
+last_updated: "2026-06-24T19:15:00.000Z"
+last_activity: 2026-06-24 -- Phase 41 Plan 01 (CRUCEN-01) completado; apply 0041 diferido a operador
 progress:
-  total_phases: 33
+  total_phases: 34
   completed_phases: 18
-  total_plans: 64
-  completed_plans: 73
-  percent: 55
+  total_plans: 67
+  completed_plans: 74
+  percent: 54
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 37 — surf-superficie-de-cruces-en-ficha-de-parlamentario-gated
+**Current focus:** Phase 41 — crucen-habilitaci-n-de-cruces-grant-gated-dossier-fecha-capt
 
 ## Current Position
 
-Phase: 38
-Plan: Not started
-Status: Phase complete — ready for verification
-Verificación PROD: pgTAP 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12; resolver_entidad deny-by-default (anon/auth/public=f, service_role=t); confirm-with-promote ya NO lanza 23503.
-Próximo: Phase 37 Plan 02 (CrucesView/CrucesSection componente) → Plan 03 (cablear gate en página ficha).
-Last activity: 2026-06-24
+Phase: 41 (crucen-habilitaci-n-de-cruces-grant-gated-dossier-fecha-capt) — EXECUTING
+Plan: 2 of 3
+Status: Executing Phase 41 (Plan 01 CRUCEN-01 completado)
+Verificación PROD: pgTAP 0034=26/26, 0035=18/18, 0036=15/15, 0037=12/12; resolver_entidad deny-by-default (anon/auth/public=f, service_role=t); confirm-with-promote ya NO lanza 23503. 0041 ESCRITA (no aplicada — apply=operador).
+Próximo: Phase 41 Plan 02 (CRUCEN-02: grant gated 0042 escrita no aplicada) → Plan 03 (CRUCEN-03: dossier legal pending).
+Last activity: 2026-06-24 -- Phase 41 Plan 01 (CRUCEN-01) completado; apply 0041 diferido a operador
 
 ## Performance Metrics
 
@@ -112,6 +112,7 @@ Last activity: 2026-06-24
 | Phase 37 P01 | 4min | 1 tasks | 2 files |
 | Phase 37 P02 | 18min | 2 tasks | 3 files |
 | Phase 37 P03 | 11min | 2 tasks | 2 files |
+| Phase 41 P01 | ~9min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -206,6 +207,7 @@ Recent decisions affecting current work:
 
 - [Phase 37]: 37-01: Candado B de cruces escrito — `app/lib/cruces-gate.ts` `crucesPublicEnabled(env=process.env)` server-only fail-closed (solo literal `"true"` enciende; `undefined`/`""`/`"false"`/`"1"`/`"TRUE"` => false), espejo byte-a-byte de money-gate/net-gate (solo difieren nombre de función, var `CRUCES_PUBLIC_ENABLED` SIN `NEXT_PUBLIC_`, y docstring). TDD RED(`1908e22`)→GREEN(`b09d72f`): tabla de verdad 5/5 verde. Docstring declara doble candado A (RPC `cruces_de_parlamentario` sin grant anon + RLS deny-by-default sobre `cruce_senal`, migs 0039/0040 ya en PROD) + B (este gate); ENCENDER = Phase 39 firma humana exclusiva, un agente NUNCA lo flipea (chokepoint WR-02, consumidor único = página ficha 37-03). Flag ships OFF, sin consumidor todavía. CERO DDL, CERO `.env` modificado.
 - [Phase ?]: 37-02: CrucesView/CrucesSection construido pero NO encendido (RPC sin grant + gate OFF hasta Phase 39); sin paginacion; tipo_senal desconocido degrada honesto
+- [Phase 41]: 41-01 (CRUCEN-01, fix WR-02): 0041 ESCRITA (ff2dd63) — drop+recreate de cruces_de_parlamentario con fecha_captura timestamptz AL FINAL del returns table (42P13 -> drop obligatorio) + doble revoke re-emitido (from public; from anon,authenticated; DEFAULT PRIVILEGES re-concede a anon en cada funcion nueva -> gate 5) + CERO grant a anon (deny-by-default intacto). pgTAP 0041 plan(4) idiom proargnames bag_has + array_to_string ordenado (NO pg_get_function_result) + anon-deny + no-PII. Componente (807f08b): ProvenanceBadge capturedAt={new Date(s.fecha_captura)} (nivel SEÑAL) mata el stale-amber falso del WR-02; fecha de reunion = texto factual plano 'Reunion registrada el {fechaCorta}' §9.1-safe; comentario LIMITACION CONOCIDA borrado; nota honestidad R6 (badge = frescura del rebuild diario cron '23 3 * * *', no de la fuente). CruceSenalRpcRow.fecha_captura: string. Suite 298/298 verde, tsc limpio. [Rule 3] fixture page-test #cruces ON-path +fecha_captura (sin el -> new Date(undefined) Invalid time value). APPLY de 0041 a PROD DIFERIDO (gate 4, checkpoint operador) — agente NO ejecuto psql ni toco schema_migrations.
 - [Phase ?]: [Phase 37]: 37-03: <section id=cruces> cableada como carril hermano gated en page.tsx — gate crucesPublicEnabled(process.env) envuelve la <section> ENTERA (heading incl., espejo MONEY); OFF (default) => nodo AUSENTE del HTML + RPC cruces_de_parlamentario NUNCA invocado (Candado B load-bearing). Posicion: despues de #patrimonio, antes de MONEY gated. Test del path ON renderiza CrucesSection directamente (renderToStaticMarkup no resuelve hijos async de Suspense). CERO DDL/grant/flip; flag ships OFF (encender = Phase 39). 294 tests verdes.
 
 ### Pending Todos
@@ -230,6 +232,8 @@ None yet for v2.0.
 - 18-01 Task 3 checkpoint operador BLOCKING (gate=blocking-human): aplicar 0030_net.sql al Supabase remoto via `psql "$SUPABASE_DB_URL" -f supabase/migrations/0030_net.sql` (NUNCA `supabase db push` — drift schema_migrations ≤0025) + seed `psql "$SUPABASE_DB_URL" -c "select net.materializar_aristas();"` + pgTAP `psql "$SUPABASE_DB_URL" -f supabase/tests/0030_net.test.sql` (16 asserts verdes) + confirmar `select count(*) from cron.job where jobname='net-materializar-aristas'` = 1 + LOGUEAR conteo de aristas materializadas `select tipo, count(*) from arista group by 1;` (un grafo vacío/engañoso se cacha al aplicar, no en producción). Codigo Tasks 1-2 commiteado (2732c53, 60ac5ff); SUMMARY 37ae22e; greps verdes. NO ejecutado por el agente. Gate NET sigue cerrado (NET_PUBLIC_ENABLED OFF hasta signoff F17).
 - ✅ RESUELTO 2026-06-24 (Plan 04): 0038/0039/0040 APLICADAS a PROD por psql --db-url + 3 filas en schema_migrations; pgTAP 0038=11/0039=10/0040=4 verdes + 6 previas sin regresion (0021=19/0030=17/0034=26/0035=18/0036=15/0037=12); probe anon-key cruce_senal+RPC=42501. FORWARD-FIX [Rule 2] commit 9f3139a: 0040 debia revocar EXECUTE de anon,authenticated (Supabase concede por DEFAULT PRIVILEGES; pgTAP-vs-PROD cazo la fuga). LIVE: golden gate cobertura 1.000 -> clasificar-lobby-cli --limite 60 -> materializar_cruces() -> cruce_senal 30 senales lobby-puras/24 parlamentarios distintos/10 sectores (CRUCE-03 >=5). RPC + gate presentacion siguen deny-by-default/OFF hasta firma Phase 39.
 
+- 41-01 Task 3 checkpoint operador BLOCKING (gate=blocking-human): aplicar 0041_cruces_rpc_fecha_captura.sql al Supabase remoto PROD por `psql "$SUPABASE_DB_URL" --single-transaction -v ON_ERROR_STOP=1 -f supabase/migrations/0041_cruces_rpc_fecha_captura.sql` (NUNCA `supabase db push` — la ultima en PROD es 0040) + registrar fila 0041 en schema_migrations + correr pgTAP `psql "$SUPABASE_DB_URL" -tA -f supabase/tests/0041_cruces_rpc_fecha_captura.test.sql` (4/4) + regresion `psql … -f supabase/tests/0040_cruces_rpc.test.sql` (anon NO execute sigue verde). Esquivar BOM U+FEFF; Windows PGCLIENTENCODING=UTF8. Codigo Tasks 1-2 commiteado (ff2dd63, 807f08b); suite 298/298 verde + tsc limpio. NO ejecutado por el agente (sin autorizacion en la corrida). Resume-signal: "pgTAP verde" o "diferido". 0041 NO concede nada (deny-by-default intacto) — apply seguro post-verificacion.
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
@@ -248,8 +252,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-24T16:56:59.404Z
-Stopped at: Completed 37-03-PLAN.md
+Last session: 2026-06-24T19:15:00.000Z
+Stopped at: Completed 41-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
