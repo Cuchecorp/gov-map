@@ -1,10 +1,10 @@
 ---
 documento: 17-LEGAL-DOSSIER
 alcance: NET (grafo de influencia)
-signoff: pending          # pending | approved | rejected
-asesor: ""                # nombre del asesor legal externo (vacio hasta firmar)
-fecha_signoff: ""         # ISO 8601 al firmar
-observaciones: ""
+signoff: approved         # pending | approved | rejected
+asesor: "Carlos Sánchez Rossi"   # asesor legal externo que revisó y firmó
+fecha_signoff: "2026-06-24"      # ISO 8601
+observaciones: "Aprobado sujeto a mantener el tratamiento de los datos bajo el principio de proporcionalidad y finalidad, y a nueva revisión antes de la entrada en vigor de la nueva ley de datos personales (diciembre de 2026)."
 depende_de: "deuda operador F17; ROADMAP Phase 17 success criterion 3"
 nota: "Encender NET_PUBLIC_ENABLED requiere signoff: approved."
 ---

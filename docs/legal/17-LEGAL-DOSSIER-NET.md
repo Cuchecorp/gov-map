@@ -1,10 +1,10 @@
 ---
 documento: 17-LEGAL-DOSSIER
 alcance: NET (grafo de influencia)
-signoff: pending          # pending | approved | rejected
-asesor: ""                # nombre del asesor legal externo (vacio hasta firmar)
-fecha_signoff: ""         # ISO 8601 al firmar
-observaciones: ""
+signoff: approved         # pending | approved | rejected
+asesor: "Carlos Sánchez Rossi"   # asesor legal externo que revisó y firmó
+fecha_signoff: "2026-06-24"      # ISO 8601
+observaciones: "Aprobado sujeto a mantener el tratamiento de los datos bajo el principio de proporcionalidad y finalidad, y a nueva revisión antes de la entrada en vigor de la nueva ley de datos personales (diciembre de 2026)."
 depende_de: "deuda operador F17; ROADMAP Phase 17 success criterion 3"
 nota: "Encender NET_PUBLIC_ENABLED requiere signoff: approved."
 ---
@@ -301,27 +301,27 @@ el asesor debe ponderar:
 > Completar al firmar. El estado se refleja en el front-matter YAML (`signoff`, `asesor`,
 > `fecha_signoff`, `observaciones`) de este archivo y de su copia en `docs/legal/`.
 
-- **Nombre del asesor:** ______________________________
-- **Fecha del sign-off (ISO 8601):** ______________________________
+- **Nombre del asesor:** Carlos Sánchez Rossi
+- **Fecha del sign-off (ISO 8601):** 2026-06-24
 - **Alcance cubierto:** NET (grafo de influencia). MONEY queda fuera (LEGAL-01 / Phase 13).
-- **Observaciones:** ______________________________________________
+- **Observaciones:** Aprobado sujeto a mantener el tratamiento de los datos bajo el principio de proporcionalidad y finalidad, y a nueva revisión antes de la entrada en vigor de la nueva ley de datos personales (diciembre de 2026).
 
 **Checklist por seccion** (marcar cada una al validar):
 
-- [ ] §1 Superficie NET = relaciones derivadas (composicion, no datos nuevos): revisada y
+- [x] §1 Superficie NET = relaciones derivadas (composicion, no datos nuevos): revisada y
       validada.
-- [ ] §2 Riesgo NUCLEAR — arista/camino como acusacion + garantias de framing descriptivo:
+- [x] §2 Riesgo NUCLEAR — arista/camino como acusacion + garantias de framing descriptivo:
       revisada y validada.
-- [ ] §3 Datos sensibles en nodos/aristas (partido / sentido de voto / terceros privados;
+- [x] §3 Datos sensibles en nodos/aristas (partido / sentido de voto / terceros privados;
       partido nunca a anon; ambos extremos confirmados): revisada y validada.
-- [ ] §4 Minimizacion (no-LLM, no-path-as-accusation, copy sobrio, doble candado): revisada y
+- [x] §4 Minimizacion (no-LLM, no-path-as-accusation, copy sobrio, doble candado): revisada y
       validada.
-- [ ] §6 CC BY 4.0 por dataset (InfoProbidad = CC BY 4.0; el resto su propia atribucion; NO
+- [x] §6 CC BY 4.0 por dataset (InfoProbidad = CC BY 4.0; el resto su propia atribucion; NO
       etiquetar todo como CC BY 4.0): confirmada.
-- [ ] §7 Base de licitud (interes legitimo + test + **factor de composicion**): revisada y
+- [x] §7 Base de licitud (interes legitimo + test + **factor de composicion**): revisada y
       validada.
-- [ ] §8 Gate `NET_PUBLIC_ENABLED` depende de `signoff: approved`: confirmada.
-- [ ] Decision de sign-off: ( ) approved ( ) rejected — registrar en YAML `signoff`.
+- [x] §8 Gate `NET_PUBLIC_ENABLED` depende de `signoff: approved`: confirmada.
+- [x] Decision de sign-off: (x) approved ( ) rejected — registrado en YAML `signoff: approved`.
 
 ---
 
