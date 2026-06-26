@@ -48,7 +48,13 @@ export interface ConteoCarriles {
   lobby: CarrilEstado;
   patrimonio: CarrilEstado;
   cruces: CarrilEstado;
-  dinero: CarrilEstado;
+  // WR-01/IN-03: los DOS carriles MONEY tienen conteo PROPIO (cada header/chip
+  // refleja SOLO su carril). `dineroContratos` → #dinero ("Contratos del Estado");
+  // `dineroAportes` → #financiamiento ("Aportes de campaña SERVEL"). NUNCA un
+  // combinado: sumarlos haría que cada header sobre-declare su propio carril
+  // (fabricación de densidad / anti-insinuación, en la superficie más sensible).
+  dineroContratos: CarrilEstado;
+  dineroAportes: CarrilEstado;
 }
 
 /**
@@ -175,9 +181,12 @@ export const contarCarriles = cache(
 
     // ── DINERO (MONEY gated, hoy OFF) ───────────────────────────────────────────
     // Con MONEY OFF NO se invoca ningún RPC de dinero: el resumen arma el chip
-    // honest-state `pendiente`. Con MONEY ON el conteo combina contratos + aportes
-    // (ambos en el allowlist); 0 → `vacio`.
-    let dinero: CarrilEstado = { tipo: "pendiente" };
+    // honest-state `pendiente`. Con MONEY ON cada carril MONEY tiene su PROPIO
+    // conteo (WR-01/IN-03): contratos → #dinero, aportes → #financiamiento; ambos
+    // RPCs en el allowlist; 0 → `vacio`. JAMÁS se combinan (cada header refleja
+    // SOLO lo que su sección renderiza).
+    let dineroContratos: CarrilEstado = { tipo: "pendiente" };
+    let dineroAportes: CarrilEstado = { tipo: "pendiente" };
     if (moneyPublicEnabled(process.env)) {
       const { data: contratosData, error: contratosError } = await sb.rpc(
         "contratos_de_parlamentario",
@@ -197,12 +206,12 @@ export const contarCarriles = cache(
           `aportes_de_parlamentario falló para ${id}: ${aportesError.message}`,
         );
       }
-      const dineroTotal =
-        ((contratosData as unknown[] | null)?.length ?? 0) +
-        ((aportesData as unknown[] | null)?.length ?? 0);
-      dinero = derivarEstado({ total: dineroTotal, ingestado: true });
+      const contratosTotal = (contratosData as unknown[] | null)?.length ?? 0;
+      const aportesTotal = (aportesData as unknown[] | null)?.length ?? 0;
+      dineroContratos = derivarEstado({ total: contratosTotal, ingestado: true });
+      dineroAportes = derivarEstado({ total: aportesTotal, ingestado: true });
     }
 
-    return { votos, lobby, patrimonio, cruces, dinero };
+    return { votos, lobby, patrimonio, cruces, dineroContratos, dineroAportes };
   },
 );

@@ -198,14 +198,15 @@ export default async function ParlamentarioPage({
         entero, header incluido, está AUSENTE del HTML; NO se depende de que
         ContratosSection retorne null para ocultar el heading. moneyPublicEnabled es
         server-only (chokepoint WR-02): NUNCA leer MONEY_PUBLIC_ENABLED crudo. Heading
-        EXACTO, sin posesivo. (conteos.dinero combina contratos+aportes con MONEY ON.)
+        EXACTO, sin posesivo. WR-01: este header refleja SOLO contratos
+        (`conteos.dineroContratos`), nunca el combinado contratos+aportes.
       */}
       {moneyPublicEnabled(process.env) && (
         <section id="dinero" className="mt-12">
           <CarrilAccordion
             titulo="Contratos del Estado asociados al RUT"
-            conteo={conteoLabel(conteos.dinero)}
-            defaultOpen={abrePorDefecto(conteos.dinero)}
+            conteo={conteoLabel(conteos.dineroContratos)}
+            defaultOpen={abrePorDefecto(conteos.dineroContratos)}
           >
             <Suspense fallback={<ContratosSkeleton />}>
               <ContratosSection id={id} searchParams={sp} />
@@ -229,8 +230,8 @@ export default async function ParlamentarioPage({
         <section id="financiamiento" className="mt-12">
           <CarrilAccordion
             titulo="Aportes de campaña registrados en SERVEL"
-            conteo={conteoLabel(conteos.dinero)}
-            defaultOpen={abrePorDefecto(conteos.dinero)}
+            conteo={conteoLabel(conteos.dineroAportes)}
+            defaultOpen={abrePorDefecto(conteos.dineroAportes)}
           >
             <Suspense fallback={<FinanciamientoSkeleton />}>
               {/*

@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import {
   contarCarriles,
   type CarrilEstado,
+  type ConteoCarriles,
 } from "@/lib/parlamentario-resumen-conteos";
 import { crucesPublicEnabled } from "@/lib/cruces-gate";
 import { moneyPublicEnabled } from "@/lib/money-gate";
@@ -86,13 +87,22 @@ export function ResumenView({ chips }: { chips: ResumenChip[] }) {
   );
 }
 
-// ── Server fetch wrapper (igual rol que LobbySection) ────────────────────────────
-export async function ParlamentarioResumen({ id }: { id: string }) {
-  const c = await contarCarriles(id);
-
-  // ORDEN LOCKED (espejo de page.tsx): votos → lobby → patrimonio → cruces (gated)
-  // → dinero (MONEY ON) | financiamiento-pendiente (MONEY OFF honest-state).
-  const chips: ResumenChip[] = [
+/**
+ * Construcción PURA de los chips del índice a partir de los conteos + los gates
+ * (testeable con `env` inyectado, sin runtime async). ORDEN LOCKED (espejo de
+ * page.tsx): votos → lobby → patrimonio → cruces (gated) → MONEY.
+ *
+ * MONEY ON (WR-01/IN-03): DOS chips, uno por carril presente en el HTML —
+ * `#dinero` (Contratos del Estado, `dineroContratos`) y `#financiamiento`
+ * (Aportes SERVEL, `dineroAportes`) — para que CADA carril MONEY tenga su propia
+ * entrada de índice (regla LEG-02 "un chip por carril presente") y su conteo
+ * honesto propio. MONEY OFF: el único chip honest-state `#financiamiento-pendiente`.
+ */
+export function construirChips(
+  c: ConteoCarriles,
+  env: Record<string, string | undefined> = process.env,
+): ResumenChip[] {
+  return [
     { href: "#votos", label: "Votaciones", estado: c.votos },
     { href: "#lobby", label: "Reuniones de lobby", estado: c.lobby },
     {
@@ -100,7 +110,7 @@ export async function ParlamentarioResumen({ id }: { id: string }) {
       label: "Declaraciones de patrimonio",
       estado: c.patrimonio,
     },
-    ...(crucesPublicEnabled(process.env)
+    ...(crucesPublicEnabled(env)
       ? [
           {
             href: "#cruces",
@@ -109,12 +119,17 @@ export async function ParlamentarioResumen({ id }: { id: string }) {
           },
         ]
       : []),
-    ...(moneyPublicEnabled(process.env)
+    ...(moneyPublicEnabled(env)
       ? [
           {
             href: "#dinero",
-            label: "Contratos y financiamiento",
-            estado: c.dinero,
+            label: "Contratos del Estado",
+            estado: c.dineroContratos,
+          },
+          {
+            href: "#financiamiento",
+            label: "Aportes de campaña",
+            estado: c.dineroAportes,
           },
         ]
       : [
@@ -125,6 +140,10 @@ export async function ParlamentarioResumen({ id }: { id: string }) {
           },
         ]),
   ];
+}
 
-  return <ResumenView chips={chips} />;
+// ── Server fetch wrapper (igual rol que LobbySection) ────────────────────────────
+export async function ParlamentarioResumen({ id }: { id: string }) {
+  const c = await contarCarriles(id);
+  return <ResumenView chips={construirChips(c)} />;
 }

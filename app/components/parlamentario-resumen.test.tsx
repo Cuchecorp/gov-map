@@ -1,8 +1,15 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup, within } from "@testing-library/react";
 
-import { ResumenView, type ResumenChip } from "./parlamentario-resumen";
-import type { CarrilEstado } from "@/lib/parlamentario-resumen-conteos";
+import {
+  ResumenView,
+  construirChips,
+  type ResumenChip,
+} from "./parlamentario-resumen";
+import type {
+  CarrilEstado,
+  ConteoCarriles,
+} from "@/lib/parlamentario-resumen-conteos";
 
 afterEach(cleanup);
 
@@ -184,6 +191,75 @@ describe("ResumenView — negative-density (anti-insinuación)", () => {
     for (const chip of screen.getAllByRole("link")) {
       expect(chip.textContent ?? "").not.toMatch(/\d/);
     }
+  });
+});
+
+// ── construirChips — gates + per-carril MONEY (WR-01/IN-03) ─────────────────────
+const CONTEOS_BASE: ConteoCarriles = {
+  votos: { tipo: "dato", n: 9 },
+  lobby: { tipo: "dato", n: 6 },
+  patrimonio: { tipo: "vacio" },
+  cruces: { tipo: "dato", n: 2 },
+  dineroContratos: { tipo: "dato", n: 3 },
+  dineroAportes: { tipo: "dato", n: 7 },
+};
+
+describe("construirChips — gates + índice por carril presente (LEG-02)", () => {
+  it("MONEY OFF + CRUCES ON → un solo chip MONEY honest-state (#financiamiento-pendiente)", () => {
+    const chips = construirChips(CONTEOS_BASE, {
+      CRUCES_PUBLIC_ENABLED: "true",
+    });
+    const hrefs = chips.map((c) => c.href);
+    expect(hrefs).toEqual([
+      "#votos",
+      "#lobby",
+      "#patrimonio",
+      "#cruces",
+      "#financiamiento-pendiente",
+    ]);
+    // MONEY OFF: NUNCA aparece un carril MONEY real ni su conteo.
+    expect(hrefs).not.toContain("#dinero");
+    expect(hrefs).not.toContain("#financiamiento");
+    const pendiente = chips.find((c) => c.href === "#financiamiento-pendiente");
+    expect(pendiente?.estado).toEqual({ tipo: "pendiente" });
+  });
+
+  it("MONEY ON → DOS chips MONEY (#dinero + #financiamiento), uno por carril presente (IN-03)", () => {
+    const chips = construirChips(CONTEOS_BASE, {
+      CRUCES_PUBLIC_ENABLED: "true",
+      MONEY_PUBLIC_ENABLED: "true",
+    });
+    const hrefs = chips.map((c) => c.href);
+    expect(hrefs).toEqual([
+      "#votos",
+      "#lobby",
+      "#patrimonio",
+      "#cruces",
+      "#dinero",
+      "#financiamiento",
+    ]);
+    // Cada carril MONEY del HTML tiene su entrada de índice (no hay #financiamiento huérfano).
+    expect(hrefs).toContain("#dinero");
+    expect(hrefs).toContain("#financiamiento");
+    expect(hrefs).not.toContain("#financiamiento-pendiente");
+  });
+
+  it("MONEY ON → cada chip MONEY refleja SU PROPIO conteo, nunca el combinado (WR-01)", () => {
+    const chips = construirChips(CONTEOS_BASE, {
+      CRUCES_PUBLIC_ENABLED: "true",
+      MONEY_PUBLIC_ENABLED: "true",
+    });
+    const dinero = chips.find((c) => c.href === "#dinero");
+    const financiamiento = chips.find((c) => c.href === "#financiamiento");
+    // #dinero = SOLO contratos (n:3); #financiamiento = SOLO aportes (n:7).
+    // Nunca el combinado (10) en ninguno de los dos.
+    expect(dinero?.estado).toEqual({ tipo: "dato", n: 3 });
+    expect(financiamiento?.estado).toEqual({ tipo: "dato", n: 7 });
+  });
+
+  it("CRUCES OFF → sin chip de cruces (gate byte-faithful)", () => {
+    const chips = construirChips(CONTEOS_BASE, {});
+    expect(chips.map((c) => c.href)).not.toContain("#cruces");
   });
 });
 
