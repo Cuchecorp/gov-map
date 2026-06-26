@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { createServerSupabase } from "@/lib/supabase";
+import { PatrimonioChart } from "@/components/patrimonio-chart";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { IdentityMarker } from "@/components/identity-marker";
 import {
@@ -79,6 +80,12 @@ export interface PatrimonioViewData {
   noIngestado: boolean;
   /** versión cuyo detalle de campos está abierto (`?ver=<versionId>`), si alguna. */
   verAbierta: string | null;
+  /**
+   * Serie de CONTEO de ítems declarados por versión (un punto por declaración),
+   * derivada del set COMPLETO `todas` — NO la rebanada paginada `versiones`. Data
+   * plana (strings+numbers) que el shell pasa al island Recharts `<PatrimonioChart>`.
+   */
+  serie: SeriePunto[];
 }
 
 /**
@@ -129,6 +136,37 @@ export function seriePatrimonio(
       ...counts,
     };
   });
+}
+
+/**
+ * Shell SERVER del chart de patrimonio (SSR; el island Recharts solo se monta con
+ * ≥2 puntos). Renderiza SIEMPRE el caveat honesto de montos-como-URI y el footer
+ * CC BY 4.0 (reusa `AtribucionCcBy`). Con <2 declaraciones muestra el degrade
+ * "datos insuficientes para una tendencia" (HECHO neutro, espejo del idiom de
+ * `DeclaracionComparacion`) y NO monta la isla — el degrade es grep-testable sin
+ * SVG. SOLO conteos; los montos NUNCA se grafican (son URIs CPLT, no cifras).
+ */
+function PatrimonioChartShell({ serie }: { serie: SeriePunto[] }) {
+  return (
+    <section aria-label="Bienes declarados por año" className="my-6">
+      {serie.length < 2 ? (
+        <p className="text-sm text-muted-foreground">
+          Datos insuficientes para una tendencia: se necesitan al menos dos
+          declaraciones para mostrar el conteo de ítems por año.
+        </p>
+      ) : (
+        <PatrimonioChart serie={serie} />
+      )}
+      {/* Caveat honesto: los montos vienen como URIs en la fuente, no como cifra. */}
+      <p className="mt-2 text-sm text-muted-foreground">
+        Montos no disponibles como cifra en la fuente. El gráfico muestra el N.º de
+        bienes declarados por año, nunca su valor.
+      </p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        <AtribucionCcBy />
+      </p>
+    </section>
+  );
 }
 
 function buildHistorialHref(id: string, page: number): string {
@@ -451,6 +489,10 @@ export function PatrimonioView({ data }: { data: PatrimonioViewData }) {
           : "versiones registradas"}
         .
       </p>
+
+      {/* Chart del conteo de ítems por año (VIZ-01/02/03): isla cliente Recharts
+          montada solo con ≥2 declaraciones, con caveat de montos + footer CC BY. */}
+      <PatrimonioChartShell serie={data.serie} />
 
       <ul>
         {versiones.map((v) => (
@@ -794,6 +836,9 @@ export async function PatrimonioSection({
           totalPages,
           noIngestado,
           verAbierta,
+          // Serie del chart desde el SET COMPLETO `todas` (todos los años), NO la
+          // rebanada paginada `versiones`. Cero query nueva, cero RPC nueva.
+          serie: seriePatrimonio(todas),
         }}
       />
       {totalVersiones > 0 && (

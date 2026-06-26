@@ -80,6 +80,9 @@ function makeViewData(
     totalPages: 1,
     noIngestado: false,
     verAbierta: null,
+    // Por defecto vacía → el shell del chart muestra el degrade <2 y NO monta la
+    // isla Recharts (estos tests no mockean recharts; ver patrimonio-chart.test.tsx).
+    serie: [],
     ...overrides,
   };
 }
@@ -219,7 +222,11 @@ describe("PatrimonioView — ProvenanceBadge por versión + CC BY 4.0 en intro",
       />,
     );
     expect(screen.getAllByText(/fuente oficial ↗/i).length).toBe(2);
-    expect(screen.getByText(/Datos bajo licencia CC BY 4\.0/i)).toBeInTheDocument();
+    // La atribución CC BY 4.0 vive en el intro Y ahora también al pie del chart
+    // (VIZ-03): hay ≥1 ocurrencia; el footer del chart es obligatorio (CONTEXT v5).
+    expect(
+      screen.getAllByText(/Datos bajo licencia CC BY 4\.0/i).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 });
 
