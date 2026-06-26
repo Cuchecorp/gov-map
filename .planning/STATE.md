@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
 status: Ready to execute
-stopped_at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
+stopped_at: F45 COMPLETE + F46 code-complete (46-01); halted at --to 46. DEUDA ÚNICA = deploy operador (OpenNext Docker Linux + wrangler) cubre F45+F46.
 last_updated: "2026-06-26T20:54:11.517Z"
 last_activity: 2026-06-26
 progress:
@@ -21,17 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 46 — VIZ — Chart de patrimonio (conteo de ítems por año)
+**Current focus:** Pista legibilidad v5 (F45+F46) code-complete autónoma; pendiente deploy operador único (Docker Linux + wrangler).
 
 ## Current Position
 
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
-Phase: 46 (VIZ — Chart de patrimonio (conteo de ítems por año)) — EXECUTING
-Plan: 2 of 2
-Hallazgo clave: la mayoría de los charts están bloqueados por gaps de DATOS, no UI (votos=10 votaciones, autores=0/74, montos=URIs). Decisión usuario = A+B (legibilidad ya + ingesta paralela).
-Próximo (AUTÓNOMO, pista de legibilidad): Phase 45 (LEG, navegación: acordeones por carril + resumen/índice above-fold) → Phase 46 (chart patrimonio-conteo). F45 es data-independiente, mayor ROI. F47/F48/F49 GATED tras ingesta (NO autónomas).
-Diseño LOCKED para F45/F46: `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md` (frontera de carril mt-12 intacta, Radix accordion, Recharts a instalar, RPC nueva → PUBLIC_RPC_ALLOWLIST + PII-safe).
-Last activity: 2026-06-26
+Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to 46`, 2026-06-26):
+- **Phase 45 (LEG navegación)** COMPLETE (disk=complete): acordeones Radix por carril + resumen/índice above-fold con conteo 3-estado honesto. 3 planes, suite app/ 365 verde, guard verde, tsc limpio. Code-review (0 blockers/3 warnings→fixed) + verifier 8/8 + UI-review 23/24. `@radix-ui/react-accordion@1.2.14` instalado. Frontera mt-12 intacta, SSR no-leak verificado.
+- **Phase 46 (VIZ chart patrimonio)** code-complete (disk=partial; 46-01 done, 46-02=checkpoint operador): chart Recharts (stacked BarChart, NO line/area → no insinúa tendencia), conteo de ítems por declaración (composite key anio·tipo·version_id → versiones mismo-año NO se fusionan), SIN montos (caveat URIs), degrade <2, footer CC BY. `recharts@3.9.0`. Suite app/ 377 verde, guard verde. Code-review 6 findings→todos fixed + verifier 9/9 + UI-review 21/24.
+- Charts data-hambrientos (votos/autoría/comparativos) siguen GATED → F47/F48/F49 tras ingesta (NO autónomas).
+**DEUDA ÚNICA OPERADOR (cubre F45+F46 en un solo deploy):** build OpenNext en **Docker Linux** (Windows rompe worker → 500) + deploy `wrangler` local (creds CF NO en .env) + verificación visual (reduce-motion; barras mismo-año distintas). Polish advisory diferido: tokenizar fill ramp del chart, tematizar legend/tooltip Recharts, a11y data-table fallback.
+Diseño LOCKED F45/F46: `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md`.
+Last activity: 2026-06-26 -- F45 COMPLETE + F46 code-complete (autónomo); pendiente deploy operador
 
 ## Performance Metrics
 
