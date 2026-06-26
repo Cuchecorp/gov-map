@@ -277,6 +277,11 @@ describe("patrimonio-chart.tsx — isla \"use client\" sin fuga (VIZ-02)", () =>
     expect(fuente).toMatch(/from "recharts"/);
     expect(fuente).not.toMatch(/createServerSupabase/);
     expect(fuente).not.toMatch(/@\/lib\/supabase/);
+    // El eje X SE clavija en la categoría compuesta, NUNCA en el `anio` desnudo
+    // (WR-02): regresar a `dataKey="anio"` fundiría declaraciones del mismo año en
+    // una sola banda comparable (rompe la propiedad anti-insinuación).
+    expect(fuente).toMatch(/dataKey="categoria"/);
+    expect(fuente).not.toMatch(/dataKey="anio"/);
     // Nunca línea/área conectada (insinuaría una "tendencia" de riqueza).
     expect(fuente).not.toMatch(/LineChart|AreaChart|<Line|<Area/);
     // Nunca runtime edge (OpenNext no lo soporta) ni tokens de identidad política.
