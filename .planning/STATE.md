@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v5.0
-milestone_name: — De datos a comprensión (legibilidad + análisis)
-status: planning
-stopped_at: Phase 44 (auditoría+plan) COMPLETE — próximo Phase 45 (navegación, autónomo)
-last_updated: "2026-06-26T18:00:00.000Z"
-last_activity: 2026-06-26 -- Phase 44 COMPLETE (UI-SPEC + auditoría + inventario; decisión A+B); v5 abierto como milestone
+milestone_name: — De datos a comprensión
+status: Ready to execute
+stopped_at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
+last_updated: "2026-06-26T19:26:14.779Z"
+last_activity: 2026-06-26
 progress:
-  total_phases: 49
-  completed_phases: 21
-  total_plans: 71
-  completed_plans: 80
-  percent: 0
+  total_phases: 38
+  completed_phases: 20
+  total_plans: 76
+  completed_plans: 82
+  percent: 53
 ---
 
 # Project State
@@ -21,16 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** v5.0 — De datos a comprensión (legibilidad + análisis). Phase 45 (navegación: acordeones + resumen) lista para planear/ejecutar autónomo.
+**Current focus:** Phase 45 — LEG — Navegación: acordeones por carril + resumen/índice above-fold
 
 ## Current Position
 
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
-Phase: 44 (legibilidad-auditoria-plan) — COMPLETE. Auditoría UX (browseros) + inventario de datos (psql PROD) + UI-SPEC + roadmap F45–F49. Commits d387f39 + 2888db5.
+Phase: 45 (LEG — Navegación: acordeones por carril + resumen/índice above-fold) — EXECUTING
+Plan: 2 of 3
 Hallazgo clave: la mayoría de los charts están bloqueados por gaps de DATOS, no UI (votos=10 votaciones, autores=0/74, montos=URIs). Decisión usuario = A+B (legibilidad ya + ingesta paralela).
 Próximo (AUTÓNOMO, pista de legibilidad): Phase 45 (LEG, navegación: acordeones por carril + resumen/índice above-fold) → Phase 46 (chart patrimonio-conteo). F45 es data-independiente, mayor ROI. F47/F48/F49 GATED tras ingesta (NO autónomas).
 Diseño LOCKED para F45/F46: `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md` (frontera de carril mt-12 intacta, Radix accordion, Recharts a instalar, RPC nueva → PUBLIC_RPC_ALLOWLIST + PII-safe).
-Last activity: 2026-06-26 -- Phase 44 COMPLETE; v5 abierto como milestone
+Last activity: 2026-06-26
 
 ## Performance Metrics
 
@@ -259,7 +260,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-24T19:37:00.000Z
+Last session: 2026-06-26T19:26:14.763Z
 Stopped at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
 Resume file: None
 

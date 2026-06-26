@@ -710,7 +710,7 @@ Plans:
 | 42. LOCKDOWN — API Supabase rol web_reader | v4.0 | 4/4 | Complete (cutover Camino A aplicado a PROD) | 2026-06-26 |
 | 43. DEBT — Eliminación de deuda técnica (exhaustiva) | v4.0 | — | Complete (24 FIX-NOW; suite 316→341) | 2026-06-24 |
 | 44. LEG — Auditoría UX + inventario + plan (v5) | v5.0 | 3/3 | Complete (UI-SPEC + auditoría + inventario) | 2026-06-26 |
-| 45. LEG — Navegación: acordeones por carril + resumen above-fold | v5.0 | 0/? | Not started (autónomo, data-independiente) | - |
+| 45. LEG — Navegación: acordeones por carril + resumen above-fold | v5.0 | 1/3 | In Progress|  |
 | 46. VIZ — Chart patrimonio (conteo de ítems/año) | v5.0 | 0/? | Not started (autónomo tras F45) | - |
 | 47. VIZ — Chart votos/ausencias | v5.0 | 0/? | Blocked — gated por ingesta de votaciones | - |
 | 48. VIZ — Autoría + similares-del-parlamentario | v5.0 | 0/? | Blocked — gated por ingesta autores + identidad | - |
@@ -1004,6 +1004,7 @@ Plans:
 **Plans:** 4 plans — **WRITE-COMPLETE 2026-06-24** (gsd-verifier PASS 4/4, suite 316/316, tsc limpio). Cutover a PROD = checkpoint operador pendiente (aplicar 0043 → deploy 03 a Cloudflare → aplicar 0044). Runbook: `docs/RUNBOOK-lockdown-cutover.md`.
 
 Plans:
+
 - [x] 42-01-PLAN.md — LOCKDOWN-01: migración 0043 (crear web_reader + grants enumerados + 26 policies _wr) + pgTAP — ESCRITA (apply=operador)
 - [x] 42-02-PLAN.md — LOCKDOWN-02: migración 0044 (revoke anon/authenticated + default privileges FOR ROLE postgres) + pgTAP post-apply — ESCRITA (apply ÚLTIMO=operador)
 - [x] 42-03-PLAN.md — LOCKDOWN-03: createServerSupabase lee como web_reader (JWT HS256 fail-closed) + tests — ESCRITO (deploy=operador)
@@ -1062,6 +1063,7 @@ F45 (navegación: acordeones + resumen)  ──►  F46 (chart patrimonio: conte
 ### Decisión (RESUELTA 2026-06-26): A + B — ambas pistas en paralelo
 
 El usuario eligió **A y B**: legibilidad construible ahora **y** ingesta que desbloquea los charts gated, todo dentro de v5 (no se difiere a v6). Dos pistas concurrentes:
+
 - **LEGIBILIDAD (empieza ya):** F45 navegación → F46 chart patrimonio.
 - **INGESTA (en paralelo):** votaciones masivas (reabrir Phase 27) → desbloquea F47→F49; ingesta autores+identidad → desbloquea F48.
 
@@ -1082,9 +1084,9 @@ Cada fase de chart pasa de GATED a construible cuando su gap de ingesta cierra; 
   2. **LEG-02:** resumen+índice above-fold (tras la cabecera, antes del primer carril) con un chip por carril que muestra conteo/estado honesto (3-estado: dato/vacío-honesto/no-ingerido) y ancla al carril.
   3. **LEG-03:** comportamiento-preservante: contenido de secciones intacto (fuente+fecha+enlace por dato), sin `.from('parlamentario')` ni RPC fuera del allowlist (guard verde), SSR intacto (solo el toggle es cliente), default colapsa carriles vacíos/ralos; suite `app/` verde + `tsc -b` limpio.
 
-**Plans:** 3 plans en 2 olas
+**Plans:** 1/3 plans executed
 
-- [ ] 45-01-PLAN.md — Instalar @radix-ui/react-accordion@1.2.14 + CarrilAccordion (wrapper cliente; <h2> en header siempre visible, forceMount, no-leak) [LEG-01]
+- [x] 45-01-PLAN.md — Instalar @radix-ui/react-accordion@1.2.14 + CarrilAccordion (wrapper cliente; <h2> en header siempre visible, forceMount, no-leak) [LEG-01]
 - [ ] 45-02-PLAN.md — Resumen+índice above-fold: contarCarriles (server-only, RPCs allowlisted + ingesta-estado) + ParlamentarioResumen/ResumenView 3-estado [LEG-02]
 - [ ] 45-03-PLAN.md — Re-layout de page.tsx (cada carril en CarrilAccordion; mt-12 + gates intactos) + test estructural + suite app/ verde [LEG-01/LEG-03]
 
