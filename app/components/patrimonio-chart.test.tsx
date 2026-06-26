@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import path from "node:path";
 
 import {
   describe,
@@ -271,8 +270,11 @@ describe("PatrimonioChartShell (vía PatrimonioView) — copy honesto (VIZ-03)",
 // ── VIZ-02: la isla es client-only y nunca filtra el cliente Supabase ───────────
 describe("patrimonio-chart.tsx — isla \"use client\" sin fuga (VIZ-02)", () => {
   it("empieza con \"use client\", importa recharts y NUNCA @/lib/supabase", () => {
+    // Anclado al directorio de ESTE archivo de test (IN-01): robusto ante drift de
+    // cwd del runner. `import.meta.dirname` es la ruta nativa del módulo (no la URL
+    // jsdom reescrita a http://, que rompe `readFileSync`).
     const fuente = readFileSync(
-      path.join(process.cwd(), "components", "patrimonio-chart.tsx"),
+      `${import.meta.dirname}/patrimonio-chart.tsx`,
       "utf8",
     );
     expect(fuente).toMatch(/^"use client"/);
