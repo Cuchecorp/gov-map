@@ -96,6 +96,14 @@
 - [ ] **LEG-02**: Arriba del pliegue (después de la cabecera, antes del primer carril) se renderiza un **resumen + índice** con un chip por carril que (a) muestra el **conteo/estado honesto** del carril respetando los 3 estados (dato / vacío-honesto / no-ingerido; nunca inventa densidad) y (b) **ancla** (salto interno) al carril correspondiente.
 - [ ] **LEG-03**: El rediseño es **comportamiento-preservante de datos y seguridad**: no toca el contenido de las secciones (cada dato conserva fuente+fecha+enlace), no introduce `.from('parlamentario')` ni RPCs fuera del `PUBLIC_RPC_ALLOWLIST` (guard `lockdown-guard.test.ts` verde), no rompe el SSR (la ficha sigue server-rendered; solo el toggle del acordeón es cliente), y el default de apertura colapsa carriles vacíos/ralos. Suite `app/` verde + `tsc -b` limpio; build validado en Docker Linux (no build Windows).
 
+### VIZ — Chart de patrimonio (Phase 46)
+
+> Único gráfico con cobertura densa hoy (135 parlamentarios con ≥2 años de declaraciones, 2016-2026). Solo CONTEO de ítems, NO montos (son URIs `datos.cplt.cl/.../moneda_*` → gap de ingesta). Ver `44-DATA-INVENTORY.md`. Vive DENTRO del acordeón de patrimonio creado en F45.
+
+- [ ] **VIZ-01**: La sección de patrimonio muestra un **gráfico de evolución = serie temporal del CONTEO de ítems** (bienes / pasivos / inmuebles, etc.) por `declaracion.fecha_presentacion`, rotulando el **tipo de declaración** (periódica vs rectificación vs cese — no mezclar peras con manzanas). Usa SOLO los RPCs ya allowlisted (`declaraciones_de_parlamentario`, `bienes_de_parlamentario`); **NO grafica montos** (caveat honesto visible: "montos no disponibles como cifra"). Degrada a "datos insuficientes para una tendencia" cuando hay <2 declaraciones.
+- [ ] **VIZ-02**: **Recharts** instalado en `app/` (única dep de charts; visx reservado para timeline a medida fuera de v5). El chart es una **isla cliente** (`"use client"`); el resto de la ficha sigue SSR. El build OpenNext/Cloudflare **no se rompe** (validado en Docker Linux, no build Windows). `pnpm test` + `tsc -b` verdes.
+- [ ] **VIZ-03**: El gráfico es **descriptivo, nunca causal**: ejes/leyendas neutros ("N.º de bienes declarados por año"), sin verbo causal (negative-match del vocabulario prohibido verde), con **fuente + fecha + enlace** (CC BY 4.0 CPLT) al pie igual que las tablas. NO introduce RPC nueva ni `.from('parlamentario')`; guard `lockdown-guard.test.ts` verde.
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.

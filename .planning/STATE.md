@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.0
-milestone_name: — De datos a cruces verificables
-status: verifying
-stopped_at: Phase 42 (LOCKDOWN) WRITE-COMPLETE — cutover operador pendiente
-last_updated: "2026-06-24T21:30:00.000Z"
-last_activity: 2026-06-24 -- Phase 42 (LOCKDOWN) 4/4 plans escritos + gsd-verifier PASS (cutover diferido)
+milestone: v5.0
+milestone_name: — De datos a comprensión (legibilidad + análisis)
+status: planning
+stopped_at: Phase 44 (auditoría+plan) COMPLETE — próximo Phase 45 (navegación, autónomo)
+last_updated: "2026-06-26T18:00:00.000Z"
+last_activity: 2026-06-26 -- Phase 44 COMPLETE (UI-SPEC + auditoría + inventario; decisión A+B); v5 abierto como milestone
 progress:
-  total_phases: 35
-  completed_phases: 20
+  total_phases: 49
+  completed_phases: 21
   total_plans: 71
   completed_plans: 80
-  percent: 57
+  percent: 0
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 42 — LOCKDOWN (cierre de la API pública de Supabase; rol web_reader)
+**Current focus:** v5.0 — De datos a comprensión (legibilidad + análisis). Phase 45 (navegación: acordeones + resumen) lista para planear/ejecutar autónomo.
 
 ## Current Position
 
-Phase: 42 (lockdown-api-supabase-rol-web-reader) — WRITE-COMPLETE (4/4 plans; gsd-verifier PASS 4/4)
-Plan: 4 of 4 (todos escritos + verificados)
-Status: Phase write-complete — cutover a PROD diferido (checkpoint operador, orden load-bearing)
-Artefactos: 0043 (web_reader + grants enumerados 26 tablas/15 RPCs + 26 policies _wr) ESCRITA; 0044 (revoke anon/auth + ALTER DEFAULT PRIVILEGES FOR ROLE postgres) ESCRITA; app/lib/web-reader-jwt.ts + supabase.ts (accessToken HS256 fail-closed) HECHO; guard CI + docs/RUNBOOK-lockdown-cutover.md HECHO. Suite 316/316, tsc limpio. Read-only PROD probe: los 15 RPCs + 26 tablas resuelven (apply no fallará por target inexistente). NADA aplicado a PROD, NADA deployado.
-Próximo (cutover operador, ORDEN load-bearing): 0) añadir SUPABASE_JWT_SECRET (.env + Cloudflare) + verificar offline → 1) aplicar 0043 (psql + schema_migrations; pgTAP 0043) → 2) deploy 03 a Cloudflare + smoke → 3) aplicar 0044 ÚLTIMO (pgTAP post-apply + probe curl anon=permission denied). Rollback = reverse-0044. Ver docs/RUNBOOK-lockdown-cutover.md.
-Last activity: 2026-06-24 -- Phase 42 (LOCKDOWN) write-complete + verificada
+Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
+Phase: 44 (legibilidad-auditoria-plan) — COMPLETE. Auditoría UX (browseros) + inventario de datos (psql PROD) + UI-SPEC + roadmap F45–F49. Commits d387f39 + 2888db5.
+Hallazgo clave: la mayoría de los charts están bloqueados por gaps de DATOS, no UI (votos=10 votaciones, autores=0/74, montos=URIs). Decisión usuario = A+B (legibilidad ya + ingesta paralela).
+Próximo (AUTÓNOMO, pista de legibilidad): Phase 45 (LEG, navegación: acordeones por carril + resumen/índice above-fold) → Phase 46 (chart patrimonio-conteo). F45 es data-independiente, mayor ROI. F47/F48/F49 GATED tras ingesta (NO autónomas).
+Diseño LOCKED para F45/F46: `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md` (frontera de carril mt-12 intacta, Radix accordion, Recharts a instalar, RPC nueva → PUBLIC_RPC_ALLOWLIST + PII-safe).
+Last activity: 2026-06-26 -- Phase 44 COMPLETE; v5 abierto como milestone
 
 ## Performance Metrics
 

@@ -7,7 +7,7 @@
 - ✅ **v1.0 MVP — Proyectos de Ley + Fundaciones de Identidad** — Phases 1-7 (shipped 2026-06-18)
 - ✅ **v2.0 — Parlamentarios 360** — Phases 8-18 (voto individual, lobby/patrimonio, dinero, grafo de influencia) — shipped (gates F13/F17 = sign-off humano)
 - ✅ **v3.0 — Cobertura de datos** — Phases 23-32 (lobby con identidad adjudicada + fuente camara.cl, patrimonio LIVE, votaciones masivas, provenance, RUT operador, gates OPS/LEGAL) — shipped
-- 🚧 **v4.0 — De datos a cruces verificables** — Phases 33-43 (desbloqueo CI, ingesta lobby+probidad programada, entity-resolution de terceros, capa de cruces parlamentario↔sector deny-by-default, superficies de ficha gated, gate legal F13/F17/cruces, lockdown API, deuda técnica; RUT+ChileCompra/SERVEL diferido) — cruces ENCENDIDOS; **lockdown API resuelto vía Camino A** (sitio en service_role, anon muerta, legacy revocado, web_reader dropeado — 2026-06-26)
+- ✅ **v4.0 — De datos a cruces verificables** — Phases 33-43 (desbloqueo CI, ingesta lobby+probidad programada, entity-resolution de terceros, capa de cruces parlamentario↔sector deny-by-default, superficies de ficha gated, gate legal F13/F17/cruces, lockdown API, deuda técnica; RUT+ChileCompra/SERVEL diferido) — cruces ENCENDIDOS; **lockdown API resuelto vía Camino A** (sitio en service_role, anon muerta, legacy revocado, web_reader dropeado — cutover aplicado a PROD 2026-06-26)
 - 🚧 **v5.0 — De datos a comprensión (legibilidad + análisis)** — Phases 44+ (auditoría UX + inventario → plan; luego acordeones/navegación y gráficos descriptivos). **Phase 44 (auditoría+plan) COMPLETE 2026-06-26**: hallazgo que reordena el milestone — la navegación es construible hoy (gran ROI), pero **la mayoría de los charts están bloqueados por gaps de DATOS, no de UI** (votos=10 votaciones, autores=0/74, montos=URIs). Re-secuencia: **F45 nav + F46 patrimonio-conteo = v5 construible**; F47/F48/F49 (votos/autoría/vs-cámara) GATED tras ingesta. Docs: `phases/44-legibilidad-auditoria-plan/{UI-SPEC,44-AUDIT-UX,44-DATA-INVENTORY}.md` · `MILESTONE-v5-legibilidad.md`
 
 ## Phases
@@ -706,8 +706,17 @@ Plans:
 | 38. SURF — Cruces en ficha de proyecto (gated, diferido) | v4.0 | 0/? | Not started | - |
 | 39. LEGAL — Gate legal F13/F17/cruces (sign-off humano) | v4.0 | 0/? | Not started | - |
 | 40. RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human) | v4.0 | 0/? | Not started | - |
+| 41. CRUCEN — Habilitación de cruces (grant gated + dossier) | v4.0 | 3/3 | Complete (encendido 2026-06-24) | 2026-06-24 |
+| 42. LOCKDOWN — API Supabase rol web_reader | v4.0 | 4/4 | Complete (cutover Camino A aplicado a PROD) | 2026-06-26 |
+| 43. DEBT — Eliminación de deuda técnica (exhaustiva) | v4.0 | — | Complete (24 FIX-NOW; suite 316→341) | 2026-06-24 |
+| 44. LEG — Auditoría UX + inventario + plan (v5) | v5.0 | 3/3 | Complete (UI-SPEC + auditoría + inventario) | 2026-06-26 |
+| 45. LEG — Navegación: acordeones por carril + resumen above-fold | v5.0 | 0/? | Not started (autónomo, data-independiente) | - |
+| 46. VIZ — Chart patrimonio (conteo de ítems/año) | v5.0 | 0/? | Not started (autónomo tras F45) | - |
+| 47. VIZ — Chart votos/ausencias | v5.0 | 0/? | Blocked — gated por ingesta de votaciones | - |
+| 48. VIZ — Autoría + similares-del-parlamentario | v5.0 | 0/? | Blocked — gated por ingesta autores + identidad | - |
+| 49. VIZ — Comparativo vs cámara (ausencias/actividad) | v5.0 | 0/? | Blocked — gated por F47 + RPC agregada | - |
 
-## 📋 v4.0 — De datos a cruces verificables
+## ✅ v4.0 — De datos a cruces verificables
 
 **Mode:** data-coverage + capability (milestone BROWNFIELD/cruces — transcripción del diseño LOCKED `.planning/MILESTONE-v4-cruces.md`, validado por Opus. v4 construye los cimientos de datos e identidad de terceros, luego la capa derivada de cruces parlamentario↔sector, luego las superficies de ficha — todo deny-by-default. Nada sensible se enciende sin firma humana.)
 **Granularity:** fine
@@ -1076,3 +1085,20 @@ Cada fase de chart pasa de GATED a construible cuando su gap de ingesta cierra; 
 **Plans:** TBD (research → plan-phase)
 
 **UI hint**: sí (re-layout de la ficha de parlamentario; UI-SPEC ya existe en `phases/44-...`)
+
+### Phase 46: VIZ — Chart de patrimonio (conteo de ítems por año)
+
+**Goal:** Agregar a la sección de patrimonio de la ficha (dentro del acordeón creado en F45) un gráfico descriptivo de **evolución del conteo de ítems** (bienes/pasivos) por año de declaración, rotulando el tipo de declaración. Es el único chart con cobertura densa hoy (135 parlamentarios con ≥2 años); solo conteos, NO montos (son URIs → caveat honesto). Instala Recharts como isla cliente sin romper el build de Cloudflare. Descriptivo, nunca causal, con fuente+fecha+enlace.
+**Mode:** producto (UI / visualización descriptiva; sin cambios de datos ni RPC nueva)
+**Depends on:** Phase 45 (el chart vive dentro del acordeón de patrimonio). Phase 44 (inventario: cobertura + caveat montos-como-URI).
+**Requirements:** VIZ-01, VIZ-02, VIZ-03
+**Autonomy:** autónomo para construir + testear (incluye `pnpm add recharts` + validar build OpenNext en Docker Linux); deploy a Cloudflare = checkpoint operador (wrangler, no build Windows).
+**Success Criteria** (what must be TRUE):
+
+  1. **VIZ-01:** chart = serie temporal del conteo de ítems por `declaracion.fecha_presentacion`, rotulado por tipo de declaración, vía RPCs ya allowlisted; sin montos (caveat honesto); degrada a "datos insuficientes" con <2 declaraciones.
+  2. **VIZ-02:** Recharts instalado, chart como isla `"use client"`, resto SSR; build OpenNext/Cloudflare no se rompe (Docker Linux); `pnpm test` + `tsc -b` verdes.
+  3. **VIZ-03:** descriptivo/neutro (negative-match vocabulario prohibido verde), fuente+fecha+enlace (CC BY 4.0 CPLT) al pie; sin RPC nueva ni `.from('parlamentario')`; guard verde.
+
+**Plans:** TBD (research → plan-phase)
+
+**UI hint**: sí (gráfico en la sección de patrimonio; depende del acordeón de F45)
