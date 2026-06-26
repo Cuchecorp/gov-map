@@ -62,7 +62,7 @@ export function PatrimonioChart({ serie }: { serie: SeriePunto[] }) {
     <div
       className="h-72 w-full"
       role="img"
-      aria-label="N.º de bienes declarados por año"
+      aria-label="N.º de bienes declarados por declaración (año y tipo)"
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={datos}>
