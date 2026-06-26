@@ -81,6 +81,56 @@ export interface PatrimonioViewData {
   verAbierta: string | null;
 }
 
+/**
+ * Un punto de la serie de patrimonio = el CONTEO de bienes por `tipo_bien` de UNA
+ * versión de declaración. Forma PLANA y serializable (solo strings+numbers) que
+ * cruza la frontera RSC→client island sin `Date` ni objeto. `tipo_declaracion`
+ * mantiene cada versión DISTINTA: el chart NUNCA fusiona versiones incomparables
+ * (periódica vs rectificación) en una serie continua (VIZ-01, anti-insinuación).
+ * NUNCA lleva montos (son URIs CPLT, no cifras): el caveat lo dice server-side.
+ */
+export interface SeriePunto {
+  /** Año de `fecha_presentacion.slice(0,4)` como number — NUNCA `new Date()`. */
+  anio: number;
+  /** Categoría literal de la fuente (periódica / rectificación / cese). */
+  tipo_declaracion: string;
+  inmueble: number;
+  mueble: number;
+  actividad: number;
+  pasivo: number;
+  accion_derecho: number;
+  valor: number;
+}
+
+/**
+ * Transform PURO `DeclaracionVersionRow[]` → `SeriePunto[]`: una versión = un punto.
+ * Cuenta `v.bienes` por `tipo_bien` (los 6 `TipoBien` inicializados en 0), deriva el
+ * `anio` del string ISO `fecha_presentacion` (slice, sin `Date` — la salida cruza al
+ * cliente y debe ser JSON plano) y arrastra `v.tipo` como `tipo_declaracion`. NUNCA
+ * agrupa por año cruzando tipos de declaración, NUNCA lee `contenido`, NUNCA toca un
+ * monto. El degrade `<2` lo decide el shell, no el transform (aquí `[] → []`, 1 → 1).
+ */
+export function seriePatrimonio(
+  versiones: DeclaracionVersionRow[],
+): SeriePunto[] {
+  return versiones.map((v) => {
+    const counts: Record<TipoBien, number> = {
+      inmueble: 0,
+      mueble: 0,
+      actividad: 0,
+      pasivo: 0,
+      accion_derecho: 0,
+      valor: 0,
+    };
+    for (const b of v.bienes) counts[b.tipo_bien]++;
+    return {
+      anio: Number(v.fecha_presentacion.slice(0, 4)),
+      tipo_declaracion: v.tipo,
+      ...counts,
+    };
+  });
+}
+
 function buildHistorialHref(id: string, page: number): string {
   const qs = new URLSearchParams({ patrimonioPage: String(page) }).toString();
   return `/parlamentario/${id}?${qs}#patrimonio`;
