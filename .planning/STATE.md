@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
-status: Ready to execute
+status: Phase complete — ready for verification
 stopped_at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
-last_updated: "2026-06-26T19:35:21.677Z"
+last_updated: "2026-06-26T19:45:24.104Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 38
-  completed_phases: 20
+  completed_phases: 21
   total_plans: 76
-  completed_plans: 83
-  percent: 53
+  completed_plans: 84
+  percent: 55
 ---
 
 # Project State
@@ -116,6 +116,7 @@ Last activity: 2026-06-26
 | Phase 41 P01 | ~9min | 2 tasks | 6 files |
 | Phase 41 P02 | ~2min | 2 tasks | 2 files |
 | Phase 41 P03 | 12min | 2 tasks | 2 files |
+| Phase 45 P03 | 12min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -215,6 +216,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 37]: 37-03: <section id=cruces> cableada como carril hermano gated en page.tsx — gate crucesPublicEnabled(process.env) envuelve la <section> ENTERA (heading incl., espejo MONEY); OFF (default) => nodo AUSENTE del HTML + RPC cruces_de_parlamentario NUNCA invocado (Candado B load-bearing). Posicion: despues de #patrimonio, antes de MONEY gated. Test del path ON renderiza CrucesSection directamente (renderToStaticMarkup no resuelve hijos async de Suspense). CERO DDL/grant/flip; flag ships OFF (encender = Phase 39). 294 tests verdes.
 - [Phase ?]: [Phase 41]: 41-03 (CRUCEN-03): dossier legal de cruces escrito x2 byte-identicos (docs/legal/41-LEGAL-DOSSIER-CRUCES.md + twin phase-dir), signoff: pending JAMAS firmado (gate 3). CRUCES-especifico (agregacion intra-bloque lobby->sector, NO NET): 1 lobby_sector; 2 agregacion por sector se lee como afinidad/captura sin aristas/caminos; 3 sin partido/sentido-de-voto; 6 fuente unica lobby NO CC BY 4.0; 8 ref 0042_cruces_grant_anon. nota sin la subcadena signoff:approved (grep-hygiene). 9 checklist sin marcar. Firma = humana Phase 39; encender = firmar->aplicar 0042->flip flag. Commits d6ac182 + 7b01957.
 - [Phase ?]: [Phase 45]: 45-02: contarCarriles(id) server-only (import server-only + React.cache) deriva el 3-estado honesto via RPCs allowlisted + .from(*_ingesta_estado) NO-PII; throw #34. ParlamentarioResumen server + ResumenView pura emiten chip ancla por carril replicando gates cruces/money de page.tsx; MONEY OFF => chip pendiente honest-state, nunca un numero. Suite 352/352, lockdown verde. 45-03 lo cablea above-fold.
+- [Phase ?]: [Phase 45]: 45-03: ficha /parlamentario/[id] navegable — ParlamentarioResumen above-fold (Suspense) + cada <section mt-12> envuelve UN CarrilAccordion (h2 al header, body forceMount). contarCarriles UNA vez (React.cache, compartido con resumen) -> conteo header + defaultOpen (abrir solo tipo dato). mt-12 intacto por carril, gates cruces/money envuelven la <section> entera (OFF=nodo ausente), SSR intacto. Test estructural source-scan (mt-12/1xdominio/gates/resumen/no-leak). [Rule 3] page.test.tsx mock +.from(). Suite 357/357, tsc limpio, lockdown 7/7. Build/deploy Cloudflare = checkpoint operador.
 
 ### Pending Todos
 
@@ -261,7 +263,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-26T19:34:54.144Z
+Last session: 2026-06-26T19:44:34.805Z
 Stopped at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
 Resume file: None
 

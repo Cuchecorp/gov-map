@@ -710,7 +710,7 @@ Plans:
 | 42. LOCKDOWN — API Supabase rol web_reader | v4.0 | 4/4 | Complete (cutover Camino A aplicado a PROD) | 2026-06-26 |
 | 43. DEBT — Eliminación de deuda técnica (exhaustiva) | v4.0 | — | Complete (24 FIX-NOW; suite 316→341) | 2026-06-24 |
 | 44. LEG — Auditoría UX + inventario + plan (v5) | v5.0 | 3/3 | Complete (UI-SPEC + auditoría + inventario) | 2026-06-26 |
-| 45. LEG — Navegación: acordeones por carril + resumen above-fold | v5.0 | 2/3 | In Progress|  |
+| 45. LEG — Navegación: acordeones por carril + resumen above-fold | v5.0 | 3/3 | Complete   | 2026-06-26 |
 | 46. VIZ — Chart patrimonio (conteo de ítems/año) | v5.0 | 0/? | Not started (autónomo tras F45) | - |
 | 47. VIZ — Chart votos/ausencias | v5.0 | 0/? | Blocked — gated por ingesta de votaciones | - |
 | 48. VIZ — Autoría + similares-del-parlamentario | v5.0 | 0/? | Blocked — gated por ingesta autores + identidad | - |
@@ -1054,7 +1054,7 @@ F45 (navegación: acordeones + resumen)  ──►  F46 (chart patrimonio: conte
 ### Phases (v5.0)
 
 - [x] **Phase 44: Auditoría UX + Inventario de datos + Plan** — ✅ COMPLETE 2026-06-26 (browseros sobre PROD + psql + lectura `app/`). Entregables: `UI-SPEC.md`, `44-AUDIT-UX.md`, `44-DATA-INVENTORY.md`. Hallazgo: navegación ROI-alto data-independiente; charts mayormente data-gated.
-- [ ] **Phase 45: Navegación — acordeones por carril + resumen/índice above-fold.** Construible hoy. Dep: `@radix-ui/react-accordion`. Preserva frontera de carril `mt-12` (un acordeón por dominio, header siempre visible). **Mayor ROI del milestone.**
+- [x] **Phase 45: Navegación — acordeones por carril + resumen/índice above-fold.** Construible hoy. Dep: `@radix-ui/react-accordion`. Preserva frontera de carril `mt-12` (un acordeón por dominio, header siempre visible). **Mayor ROI del milestone.** (completed 2026-06-26)
 - [ ] **Phase 46: Chart patrimonio (conteo de bienes/pasivos por año).** Recharts (instalar + validar build CF Docker). Único chart con cobertura densa hoy (135 parlamentarios ≥2 años); solo conteos (montos=URI → degrade). Dep: F45.
 - [ ] **Phase 47: Chart votos/ausencias** — GATED. Pre-req: re-ingesta masiva de votaciones (Phase 27 no logró cobertura). Hasta entonces el carril votos degrada a "datos insuficientes".
 - [ ] **Phase 48: Autoría + similares-del-parlamentario** — GATED. Pre-req: ingesta `proyecto.autores` + resolución nombre→`parlamentario_id` + RPC `proyectos_de_parlamentario`.
@@ -1084,11 +1084,11 @@ Cada fase de chart pasa de GATED a construible cuando su gap de ingesta cierra; 
   2. **LEG-02:** resumen+índice above-fold (tras la cabecera, antes del primer carril) con un chip por carril que muestra conteo/estado honesto (3-estado: dato/vacío-honesto/no-ingerido) y ancla al carril.
   3. **LEG-03:** comportamiento-preservante: contenido de secciones intacto (fuente+fecha+enlace por dato), sin `.from('parlamentario')` ni RPC fuera del allowlist (guard verde), SSR intacto (solo el toggle es cliente), default colapsa carriles vacíos/ralos; suite `app/` verde + `tsc -b` limpio.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 - [x] 45-01-PLAN.md — Instalar @radix-ui/react-accordion@1.2.14 + CarrilAccordion (wrapper cliente; <h2> en header siempre visible, forceMount, no-leak) [LEG-01]
 - [x] 45-02-PLAN.md — Resumen+índice above-fold: contarCarriles (server-only, RPCs allowlisted + ingesta-estado) + ParlamentarioResumen/ResumenView 3-estado [LEG-02]
-- [ ] 45-03-PLAN.md — Re-layout de page.tsx (cada carril en CarrilAccordion; mt-12 + gates intactos) + test estructural + suite app/ verde [LEG-01/LEG-03]
+- [x] 45-03-PLAN.md — Re-layout de page.tsx (cada carril en CarrilAccordion; mt-12 + gates intactos) + test estructural + suite app/ verde [LEG-01/LEG-03]
 
 **UI hint**: sí (re-layout de la ficha de parlamentario; UI-SPEC ya existe en `phases/44-...`)
 
