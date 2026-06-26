@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import path from "node:path";
 
 import { CarrilAccordion } from "./carril-accordion";
 
@@ -73,8 +73,10 @@ describe("CarrilAccordion — isla cliente que preserva el <h2> (LEG-01)", () =>
 // ── LEG-03: no-leak SSR (grep del fuente, espejo del estilo source-scan) ─────
 describe("CarrilAccordion — no-leak SSR: el wrapper nunca importa una sección (LEG-03)", () => {
   it("Test 5: el fuente NO contiene Section, createServerSupabase ni @/lib/supabase", () => {
+    // vitest corre desde app/ (vitest.config.ts vive ahí); espejo del estilo
+    // source-scan de lockdown-guard.test.ts (process.cwd() + path.join).
     const fuente = readFileSync(
-      fileURLToPath(new URL("./carril-accordion.tsx", import.meta.url)),
+      path.join(process.cwd(), "components", "carril-accordion.tsx"),
       "utf8",
     );
     expect(fuente).not.toMatch(/Section/);
