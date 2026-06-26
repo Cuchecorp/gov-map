@@ -193,6 +193,29 @@ describe("seriePatrimonio — transform puro (VIZ-01)", () => {
     expect(seriePatrimonio([makeVersion()])).toHaveLength(1);
   });
 
+  it("una fecha_presentacion null/vacía se EXCLUYE sin reventar (WR-03, guarda 500)", () => {
+    const valida = makeVersion({
+      version_id: "OK",
+      fecha_presentacion: "2024-05-14",
+      bienes: [makeBien({ tipo_bien: "inmueble" })],
+    });
+    const nula = makeVersion({
+      version_id: "NULA",
+      // El RPC puede emitir null; el transform NO debe lanzar (sin 500).
+      fecha_presentacion: null as unknown as string,
+    });
+    const vacia = makeVersion({ version_id: "VACIA", fecha_presentacion: "" });
+
+    let serie: SeriePunto[] = [];
+    expect(() => {
+      serie = seriePatrimonio([valida, nula, vacia]);
+    }).not.toThrow();
+    // Solo el punto con año parseable sobrevive: ninguna barra NaN/0 se grafica.
+    expect(serie).toHaveLength(1);
+    expect(serie[0].anio).toBe(2024);
+    expect(serie[0].version_id).toBe("OK");
+  });
+
   it("la salida es JSON plano: solo numbers y strings (cruza la frontera al cliente)", () => {
     const [punto] = seriePatrimonio([
       makeVersion({ bienes: [makeBien({ tipo_bien: "valor" })] }),

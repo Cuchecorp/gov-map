@@ -126,7 +126,16 @@ export interface SeriePunto {
 export function seriePatrimonio(
   versiones: DeclaracionVersionRow[],
 ): SeriePunto[] {
-  return versiones.map((v) => {
+  return versiones.flatMap((v) => {
+    // Guarda anti-500 (WR-03): `fecha_presentacion` puede venir null/vacía/no-ISO
+    // del RPC. Sin esta guarda `.slice` sobre null reventaba el Server Component
+    // entero (TypeError → 500), y una vacía pintaba una barra `NaN`/`0`. Un año no
+    // parseable (no son 4 dígitos) se EXCLUYE del chart en vez de graficar basura.
+    const raw = v.fecha_presentacion ?? "";
+    const yyyy = raw.slice(0, 4);
+    const anio = Number(yyyy);
+    if (!/^\d{4}$/.test(yyyy) || !Number.isFinite(anio)) return [];
+
     const counts: Record<TipoBien, number> = {
       inmueble: 0,
       mueble: 0,
@@ -136,14 +145,16 @@ export function seriePatrimonio(
       valor: 0,
     };
     for (const b of v.bienes) counts[b.tipo_bien]++;
-    return {
-      anio: Number(v.fecha_presentacion.slice(0, 4)),
-      tipo_declaracion: v.tipo,
-      // Discriminador estable por versión (VIZ-01): el chart no funde dos
-      // declaraciones del mismo año Y mismo tipo en una sola banda.
-      version_id: v.version_id,
-      ...counts,
-    };
+    return [
+      {
+        anio,
+        tipo_declaracion: v.tipo,
+        // Discriminador estable por versión (VIZ-01): el chart no funde dos
+        // declaraciones del mismo año Y mismo tipo en una sola banda.
+        version_id: v.version_id,
+        ...counts,
+      },
+    ];
   });
 }
 
