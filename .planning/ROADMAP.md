@@ -1082,7 +1082,11 @@ Cada fase de chart pasa de GATED a construible cuando su gap de ingesta cierra; 
   2. **LEG-02:** resumen+índice above-fold (tras la cabecera, antes del primer carril) con un chip por carril que muestra conteo/estado honesto (3-estado: dato/vacío-honesto/no-ingerido) y ancla al carril.
   3. **LEG-03:** comportamiento-preservante: contenido de secciones intacto (fuente+fecha+enlace por dato), sin `.from('parlamentario')` ni RPC fuera del allowlist (guard verde), SSR intacto (solo el toggle es cliente), default colapsa carriles vacíos/ralos; suite `app/` verde + `tsc -b` limpio.
 
-**Plans:** TBD (research → plan-phase)
+**Plans:** 3 plans en 2 olas
+
+- [ ] 45-01-PLAN.md — Instalar @radix-ui/react-accordion@1.2.14 + CarrilAccordion (wrapper cliente; <h2> en header siempre visible, forceMount, no-leak) [LEG-01]
+- [ ] 45-02-PLAN.md — Resumen+índice above-fold: contarCarriles (server-only, RPCs allowlisted + ingesta-estado) + ParlamentarioResumen/ResumenView 3-estado [LEG-02]
+- [ ] 45-03-PLAN.md — Re-layout de page.tsx (cada carril en CarrilAccordion; mt-12 + gates intactos) + test estructural + suite app/ verde [LEG-01/LEG-03]
 
 **UI hint**: sí (re-layout de la ficha de parlamentario; UI-SPEC ya existe en `phases/44-...`)
 
