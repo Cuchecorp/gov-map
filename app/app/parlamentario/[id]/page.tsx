@@ -379,11 +379,13 @@ function ParlamentarioHeaderSkeleton() {
   );
 }
 
-// Shape-matched a ResumenView: fila de chips (índice above-fold) (§1.1).
+// Shape-matched a ResumenView: fila de chips (índice above-fold) (§1.1). IN-02:
+// 5 placeholders = config maximal-present actual (CRUCES ON + MONEY OFF: votos,
+// lobby, patrimonio, cruces, financiamiento-pendiente) → sin layout shift al swap.
 function ResumenSkeleton() {
   return (
     <div className="mt-6 flex flex-wrap gap-2" aria-hidden="true">
-      {Array.from({ length: 4 }).map((_, i) => (
+      {Array.from({ length: 5 }).map((_, i) => (
         <Skeleton key={i} className="h-11 w-40 rounded-full" />
       ))}
     </div>
