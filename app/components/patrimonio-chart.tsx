@@ -49,14 +49,28 @@ const SERIES: ReadonlyArray<{
   { dataKey: "pasivo", label: "Pasivos", fill: "hsl(215 14% 74%)" },
 ];
 
-// Categoría compuesta del eje X: año + tipo de declaración → dos declaraciones del
-// mismo año pero distinto tipo NO se fusionan en una sola banda (render-honesty).
-function categoria(p: SeriePunto): string {
+// Categoría ÚNICA del eje X: año + tipo + version_id. Recharts funde en UNA banda
+// dos puntos con el MISMO valor de categoría; por eso el version_id (estable, no un
+// índice de array) entra en la clave → dos declaraciones del mismo año Y mismo tipo
+// (p.ej. dos "Rectificación" de 2020) quedan como DOS barras distintas, nunca
+// fundidas (render-honesty HARD, VIZ-01, anti-insinuación).
+export function categoria(p: SeriePunto): string {
+  return `${p.anio} · ${p.tipo_declaracion} · ${p.version_id}`;
+}
+
+// Etiqueta humana visible (tick del eje + título del tooltip): año + tipo, SIN el
+// version_id — ese solo garantiza unicidad de banda, no es para leerse.
+function etiquetaVisible(p: SeriePunto): string {
   return `${p.anio} · ${p.tipo_declaracion}`;
 }
 
 export function PatrimonioChart({ serie }: { serie: SeriePunto[] }) {
   const datos = serie.map((p) => ({ ...p, categoria: categoria(p) }));
+  const etiquetaPorCategoria = new Map(
+    serie.map((p) => [categoria(p), etiquetaVisible(p)]),
+  );
+  const formatEtiqueta = (valor: string): string =>
+    etiquetaPorCategoria.get(valor) ?? valor;
 
   return (
     <div
@@ -66,9 +80,9 @@ export function PatrimonioChart({ serie }: { serie: SeriePunto[] }) {
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={datos}>
-          <XAxis dataKey="categoria" />
+          <XAxis dataKey="categoria" tickFormatter={formatEtiqueta} />
           <YAxis allowDecimals={false} />
-          <Tooltip />
+          <Tooltip labelFormatter={(label) => formatEtiqueta(String(label))} />
           <Legend />
           {SERIES.map((s) => (
             <Bar

@@ -16,6 +16,7 @@ import {
   type SeriePunto,
   type PatrimonioViewData,
 } from "./patrimonio-de-parlamentario";
+import { categoria } from "./patrimonio-chart";
 import type { DeclaracionVersionRow, BienRpcRow } from "@/lib/types";
 
 // ── Mock de Recharts en jsdom (espejo red-graph.test.tsx :24-79) ────────────────
@@ -104,6 +105,7 @@ function makePunto(overrides: Partial<SeriePunto> = {}): SeriePunto {
   return {
     anio: 2024,
     tipo_declaracion: "Declaración de patrimonio",
+    version_id: "http://datos.cplt.cl/recurso/declaracion/V1",
     inmueble: 0,
     mueble: 0,
     actividad: 0,
@@ -146,6 +148,7 @@ describe("seriePatrimonio — transform puro (VIZ-01)", () => {
     expect(serie[0]).toEqual<SeriePunto>({
       anio: 2024,
       tipo_declaracion: "Declaración de patrimonio",
+      version_id: "http://datos.cplt.cl/recurso/declaracion/V1",
       inmueble: 2,
       mueble: 0,
       actividad: 0,
@@ -264,6 +267,27 @@ describe("PatrimonioChartShell (vía PatrimonioView) — copy honesto (VIZ-03)",
     expect(texto).not.toMatch(PROHIBIDO_VEREDICTO);
     expect(texto).not.toMatch(PROHIBIDO_CONECTIVO);
     expect(texto).not.toMatch(PATRON_RUT);
+  });
+});
+
+// ── VIZ-01: la categoría del eje X discrimina cada declaración (anti-fusión) ─────
+describe("categoria() — banda única por declaración (VIZ-01)", () => {
+  it("dos declaraciones MISMO año + MISMO tipo → categorías DISTINTAS (no fusión)", () => {
+    const a = makePunto({
+      anio: 2020,
+      tipo_declaracion: "Rectificación",
+      version_id: "A",
+    });
+    const b = makePunto({
+      anio: 2020,
+      tipo_declaracion: "Rectificación",
+      version_id: "B",
+    });
+    // Mismo año + mismo tipo: sin el discriminador colapsarían en UNA sola banda.
+    expect(categoria(a)).not.toBe(categoria(b));
+    // La etiqueta sigue siendo significativa (año + tipo presentes en la clave).
+    expect(categoria(a)).toContain("2020");
+    expect(categoria(a)).toContain("Rectificación");
   });
 });
 

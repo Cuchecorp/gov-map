@@ -101,6 +101,12 @@ export interface SeriePunto {
   anio: number;
   /** Categoría literal de la fuente (periódica / rectificación / cese). */
   tipo_declaracion: string;
+  /**
+   * Identificador ESTABLE de la versión (no un índice de array que se corre al
+   * reordenar). Discrimina dos declaraciones del MISMO año Y MISMO tipo para que
+   * el chart NO las funda en una sola banda comparable (VIZ-01, anti-insinuación).
+   */
+  version_id: string;
   inmueble: number;
   mueble: number;
   actividad: number;
@@ -133,6 +139,9 @@ export function seriePatrimonio(
     return {
       anio: Number(v.fecha_presentacion.slice(0, 4)),
       tipo_declaracion: v.tipo,
+      // Discriminador estable por versión (VIZ-01): el chart no funde dos
+      // declaraciones del mismo año Y mismo tipo en una sola banda.
+      version_id: v.version_id,
       ...counts,
     };
   });
