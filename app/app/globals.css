@@ -76,6 +76,40 @@
   }
 }
 
+/* ── Acordeón por carril (Phase 45, LEG-01) ──────────────────────────────────
+ * Animación de altura NO load-bearing: el colapso real lo hace
+ * `data-[state=closed]:hidden` en carril-accordion.tsx (el carril funciona
+ * aunque la animación no aplique). Radix expone la altura del contenido como
+ * `--radix-accordion-content-height`. Gated por prefers-reduced-motion (Pitfall
+ * 5): con reduce-motion la transición NO corre, solo el toggle de visibilidad. */
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .accordion-content[data-state="open"] {
+    animation: accordion-down 200ms ease-out;
+  }
+
+  .accordion-content[data-state="closed"] {
+    animation: accordion-up 200ms ease-out;
+  }
+}
+
 /* ── NET — isla del grafo de relaciones (Phase 18, NET-02) ────────────────────
  * Estilos de la client island @xyflow/react bajo app/components/red/. EXTIENDE
  * globals.css con tokens crema/petróleo de Phase 19; NO toca civic-tokens.css.
