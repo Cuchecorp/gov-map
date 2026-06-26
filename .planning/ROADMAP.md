@@ -7,7 +7,8 @@
 - ✅ **v1.0 MVP — Proyectos de Ley + Fundaciones de Identidad** — Phases 1-7 (shipped 2026-06-18)
 - ✅ **v2.0 — Parlamentarios 360** — Phases 8-18 (voto individual, lobby/patrimonio, dinero, grafo de influencia) — shipped (gates F13/F17 = sign-off humano)
 - ✅ **v3.0 — Cobertura de datos** — Phases 23-32 (lobby con identidad adjudicada + fuente camara.cl, patrimonio LIVE, votaciones masivas, provenance, RUT operador, gates OPS/LEGAL) — shipped
-- 🚧 **v4.0 — De datos a cruces verificables** — Phases 33-43 (desbloqueo CI, ingesta lobby+probidad programada, entity-resolution de terceros, capa de cruces parlamentario↔sector deny-by-default, superficies de ficha gated, gate legal F13/F17/cruces, lockdown API, deuda técnica; RUT+ChileCompra/SERVEL diferido) — en progreso (cruces ENCENDIDOS; Phase 42 cutover + Phase 39/40 pendientes de operador)
+- 🚧 **v4.0 — De datos a cruces verificables** — Phases 33-43 (desbloqueo CI, ingesta lobby+probidad programada, entity-resolution de terceros, capa de cruces parlamentario↔sector deny-by-default, superficies de ficha gated, gate legal F13/F17/cruces, lockdown API, deuda técnica; RUT+ChileCompra/SERVEL diferido) — cruces ENCENDIDOS; **lockdown API resuelto vía Camino A** (sitio en service_role, anon muerta, legacy revocado, web_reader dropeado — 2026-06-26)
+- 📋 **v5.0 — De datos a comprensión (legibilidad + análisis)** — Phases 44+ (auditoría UX con browseros + inventario de datos → plan; luego acordeones/navegación y gráficos de análisis objetivo: votos en el tiempo, evolución de patrimonio, ausencias y comparativos, autoría, proyectos similares). Arranca con Phase 44 (auditoría+plan). Doc: `MILESTONE-v5-legibilidad.md` · Prompt: `PROMPT-v5-legibilidad.md`
 
 ## Phases
 
