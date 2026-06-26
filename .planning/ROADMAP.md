@@ -8,7 +8,7 @@
 - ✅ **v2.0 — Parlamentarios 360** — Phases 8-18 (voto individual, lobby/patrimonio, dinero, grafo de influencia) — shipped (gates F13/F17 = sign-off humano)
 - ✅ **v3.0 — Cobertura de datos** — Phases 23-32 (lobby con identidad adjudicada + fuente camara.cl, patrimonio LIVE, votaciones masivas, provenance, RUT operador, gates OPS/LEGAL) — shipped
 - 🚧 **v4.0 — De datos a cruces verificables** — Phases 33-43 (desbloqueo CI, ingesta lobby+probidad programada, entity-resolution de terceros, capa de cruces parlamentario↔sector deny-by-default, superficies de ficha gated, gate legal F13/F17/cruces, lockdown API, deuda técnica; RUT+ChileCompra/SERVEL diferido) — cruces ENCENDIDOS; **lockdown API resuelto vía Camino A** (sitio en service_role, anon muerta, legacy revocado, web_reader dropeado — 2026-06-26)
-- 📋 **v5.0 — De datos a comprensión (legibilidad + análisis)** — Phases 44+ (auditoría UX con browseros + inventario de datos → plan; luego acordeones/navegación y gráficos de análisis objetivo: votos en el tiempo, evolución de patrimonio, ausencias y comparativos, autoría, proyectos similares). Arranca con Phase 44 (auditoría+plan). Doc: `MILESTONE-v5-legibilidad.md` · Prompt: `PROMPT-v5-legibilidad.md`
+- 🚧 **v5.0 — De datos a comprensión (legibilidad + análisis)** — Phases 44+ (auditoría UX + inventario → plan; luego acordeones/navegación y gráficos descriptivos). **Phase 44 (auditoría+plan) COMPLETE 2026-06-26**: hallazgo que reordena el milestone — la navegación es construible hoy (gran ROI), pero **la mayoría de los charts están bloqueados por gaps de DATOS, no de UI** (votos=10 votaciones, autores=0/74, montos=URIs). Re-secuencia: **F45 nav + F46 patrimonio-conteo = v5 construible**; F47/F48/F49 (votos/autoría/vs-cámara) GATED tras ingesta. Docs: `phases/44-legibilidad-auditoria-plan/{UI-SPEC,44-AUDIT-UX,44-DATA-INVENTORY}.md` · `MILESTONE-v5-legibilidad.md`
 
 ## Phases
 
@@ -1021,3 +1021,39 @@ Plans:
 **Plans:** TBD (research/descubrimiento → plan-phase)
 
 **UI hint**: no (higiene de código/config/docs; sin cambios visuales)
+
+## 🚧 v5.0 — De datos a comprensión (legibilidad + análisis)
+
+**Mode:** producto (legibilidad + viz descriptiva) · **Numbering:** continúa desde v4.0 — arranca en **Phase 44**.
+**Milestone:** transformar la ficha de parlamentario de muro plano (~900 KB, 1 columna) a navegable (acordeones + resumen above-fold) + gráficos descriptivos. Principio rector intacto (fuente+fecha+enlace, nunca causal).
+
+### Hallazgo de Phase 44 que reordena el milestone
+
+El inventario de datos (PROD real) muestra que **la mayoría de los charts propuestos están bloqueados por gaps de DATOS, no de UI**: votos=10 votaciones (≤9/persona), `proyecto.autores`=0/74, montos de patrimonio=URIs (no números), sin RPC agregada cross-cámara. → Se **desacopla navegación (ship ya) de charts (gated por ingesta)**. Docs: `phases/44-legibilidad-auditoria-plan/{UI-SPEC,44-AUDIT-UX,44-DATA-INVENTORY}.md`.
+
+### Build order (re-secuenciado por evidencia)
+
+```
+F45 (navegación: acordeones + resumen)  ──►  F46 (chart patrimonio: conteo/año)   [v5 CONSTRUIBLE HOY]
+                                                   │
+   ────────────── gap de ingesta (milestone aparte) ──────────────
+   ingesta votaciones masiva ──► F47 (chart votos/ausencias) ──► F49 (vs cámara: RPC tasa_ausencia_comparada)
+   ingesta autores + identidad ──► F48 (autoría + similares-del-parlamentario: RPC proyectos_de_parlamentario)
+```
+
+### Phases (v5.0)
+
+- [x] **Phase 44: Auditoría UX + Inventario de datos + Plan** — ✅ COMPLETE 2026-06-26 (browseros sobre PROD + psql + lectura `app/`). Entregables: `UI-SPEC.md`, `44-AUDIT-UX.md`, `44-DATA-INVENTORY.md`. Hallazgo: navegación ROI-alto data-independiente; charts mayormente data-gated.
+- [ ] **Phase 45: Navegación — acordeones por carril + resumen/índice above-fold.** Construible hoy. Dep: `@radix-ui/react-accordion`. Preserva frontera de carril `mt-12` (un acordeón por dominio, header siempre visible). **Mayor ROI del milestone.**
+- [ ] **Phase 46: Chart patrimonio (conteo de bienes/pasivos por año).** Recharts (instalar + validar build CF Docker). Único chart con cobertura densa hoy (135 parlamentarios ≥2 años); solo conteos (montos=URI → degrade). Dep: F45.
+- [ ] **Phase 47: Chart votos/ausencias** — GATED. Pre-req: re-ingesta masiva de votaciones (Phase 27 no logró cobertura). Hasta entonces el carril votos degrada a "datos insuficientes".
+- [ ] **Phase 48: Autoría + similares-del-parlamentario** — GATED. Pre-req: ingesta `proyecto.autores` + resolución nombre→`parlamentario_id` + RPC `proyectos_de_parlamentario`.
+- [ ] **Phase 49: Comparativo vs cámara (ausencias/actividad)** — GATED. Pre-req: F47 (cobertura votos) + RPC `tasa_ausencia_comparada` (security definer, PII-safe, allowlist).
+
+### Decisión (RESUELTA 2026-06-26): A + B — ambas pistas en paralelo
+
+El usuario eligió **A y B**: legibilidad construible ahora **y** ingesta que desbloquea los charts gated, todo dentro de v5 (no se difiere a v6). Dos pistas concurrentes:
+- **LEGIBILIDAD (empieza ya):** F45 navegación → F46 chart patrimonio.
+- **INGESTA (en paralelo):** votaciones masivas (reabrir Phase 27) → desbloquea F47→F49; ingesta autores+identidad → desbloquea F48.
+
+Cada fase de chart pasa de GATED a construible cuando su gap de ingesta cierra; la pista de legibilidad no espera. Ver `UI-SPEC.md §5`.
