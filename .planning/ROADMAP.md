@@ -711,7 +711,7 @@ Plans:
 | 43. DEBT — Eliminación de deuda técnica (exhaustiva) | v4.0 | — | Complete (24 FIX-NOW; suite 316→341) | 2026-06-24 |
 | 44. LEG — Auditoría UX + inventario + plan (v5) | v5.0 | 3/3 | Complete (UI-SPEC + auditoría + inventario) | 2026-06-26 |
 | 45. LEG — Navegación: acordeones por carril + resumen above-fold | v5.0 | 3/3 | Complete   | 2026-06-26 |
-| 46. VIZ — Chart patrimonio (conteo de ítems/año) | v5.0 | 0/? | Not started (autónomo tras F45) | - |
+| 46. VIZ — Chart patrimonio (conteo de ítems/año) | v5.0 | 1/2 | In Progress|  |
 | 47. VIZ — Chart votos/ausencias | v5.0 | 0/? | Blocked — gated por ingesta de votaciones | - |
 | 48. VIZ — Autoría + similares-del-parlamentario | v5.0 | 0/? | Blocked — gated por ingesta autores + identidad | - |
 | 49. VIZ — Comparativo vs cámara (ausencias/actividad) | v5.0 | 0/? | Blocked — gated por F47 + RPC agregada | - |
@@ -1105,9 +1105,9 @@ Cada fase de chart pasa de GATED a construible cuando su gap de ingesta cierra; 
   2. **VIZ-02:** Recharts instalado, chart como isla `"use client"`, resto SSR; build OpenNext/Cloudflare no se rompe (Docker Linux); `pnpm test` + `tsc -b` verdes.
   3. **VIZ-03:** descriptivo/neutro (negative-match vocabulario prohibido verde), fuente+fecha+enlace (CC BY 4.0 CPLT) al pie; sin RPC nueva ni `.from('parlamentario')`; guard verde.
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
-- [ ] 46-01-PLAN.md — Recharts + seriePatrimonio() transform + isla cliente patrimonio-chart.tsx + shell server (caveat/degrade/footer) + tests
+- [x] 46-01-PLAN.md — Recharts + seriePatrimonio() transform + isla cliente patrimonio-chart.tsx + shell server (caveat/degrade/footer) + tests
 - [ ] 46-02-PLAN.md — Checkpoint operador: build OpenNext Docker Linux + deploy wrangler
 
 **UI hint**: sí (gráfico en la sección de patrimonio; depende del acordeón de F45)

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
-status: Phase complete — ready for verification
+status: Ready to execute
 stopped_at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
-last_updated: "2026-06-26T19:45:24.104Z"
+last_updated: "2026-06-26T20:54:11.517Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 38
   completed_phases: 21
-  total_plans: 76
-  completed_plans: 84
+  total_plans: 78
+  completed_plans: 85
   percent: 55
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 45 — LEG — Navegación: acordeones por carril + resumen/índice above-fold
+**Current focus:** Phase 46 — VIZ — Chart de patrimonio (conteo de ítems por año)
 
 ## Current Position
 
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
-Phase: 45 (LEG — Navegación: acordeones por carril + resumen/índice above-fold) — EXECUTING
-Plan: 3 of 3
+Phase: 46 (VIZ — Chart de patrimonio (conteo de ítems por año)) — EXECUTING
+Plan: 2 of 2
 Hallazgo clave: la mayoría de los charts están bloqueados por gaps de DATOS, no UI (votos=10 votaciones, autores=0/74, montos=URIs). Decisión usuario = A+B (legibilidad ya + ingesta paralela).
 Próximo (AUTÓNOMO, pista de legibilidad): Phase 45 (LEG, navegación: acordeones por carril + resumen/índice above-fold) → Phase 46 (chart patrimonio-conteo). F45 es data-independiente, mayor ROI. F47/F48/F49 GATED tras ingesta (NO autónomas).
 Diseño LOCKED para F45/F46: `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md` (frontera de carril mt-12 intacta, Radix accordion, Recharts a instalar, RPC nueva → PUBLIC_RPC_ALLOWLIST + PII-safe).
@@ -117,6 +117,7 @@ Last activity: 2026-06-26
 | Phase 41 P02 | ~2min | 2 tasks | 2 files |
 | Phase 41 P03 | 12min | 2 tasks | 2 files |
 | Phase 45 P03 | 12min | 2 tasks | 3 files |
+| Phase 46 P01 | 15m | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -217,6 +218,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 41]: 41-03 (CRUCEN-03): dossier legal de cruces escrito x2 byte-identicos (docs/legal/41-LEGAL-DOSSIER-CRUCES.md + twin phase-dir), signoff: pending JAMAS firmado (gate 3). CRUCES-especifico (agregacion intra-bloque lobby->sector, NO NET): 1 lobby_sector; 2 agregacion por sector se lee como afinidad/captura sin aristas/caminos; 3 sin partido/sentido-de-voto; 6 fuente unica lobby NO CC BY 4.0; 8 ref 0042_cruces_grant_anon. nota sin la subcadena signoff:approved (grep-hygiene). 9 checklist sin marcar. Firma = humana Phase 39; encender = firmar->aplicar 0042->flip flag. Commits d6ac182 + 7b01957.
 - [Phase ?]: [Phase 45]: 45-02: contarCarriles(id) server-only (import server-only + React.cache) deriva el 3-estado honesto via RPCs allowlisted + .from(*_ingesta_estado) NO-PII; throw #34. ParlamentarioResumen server + ResumenView pura emiten chip ancla por carril replicando gates cruces/money de page.tsx; MONEY OFF => chip pendiente honest-state, nunca un numero. Suite 352/352, lockdown verde. 45-03 lo cablea above-fold.
 - [Phase ?]: [Phase 45]: 45-03: ficha /parlamentario/[id] navegable — ParlamentarioResumen above-fold (Suspense) + cada <section mt-12> envuelve UN CarrilAccordion (h2 al header, body forceMount). contarCarriles UNA vez (React.cache, compartido con resumen) -> conteo header + defaultOpen (abrir solo tipo dato). mt-12 intacto por carril, gates cruces/money envuelven la <section> entera (OFF=nodo ausente), SSR intacto. Test estructural source-scan (mt-12/1xdominio/gates/resumen/no-leak). [Rule 3] page.test.tsx mock +.from(). Suite 357/357, tsc limpio, lockdown 7/7. Build/deploy Cloudflare = checkpoint operador.
+- [Phase ?]: 46-01: chart patrimonio BarChart apilado discreto (no linea/area); eje X anio+tipo_declaracion; seriePatrimonio() puro en server file
 
 ### Pending Todos
 
@@ -263,7 +265,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-26T19:44:34.805Z
+Last session: 2026-06-26T20:54:02.209Z
 Stopped at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
 Resume file: None
 
