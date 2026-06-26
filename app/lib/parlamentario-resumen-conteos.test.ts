@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 
-import { derivarEstado, type CarrilEstado } from "./parlamentario-resumen-conteos";
+import {
+  derivarEstado,
+  conteosDesconocidos,
+  type CarrilEstado,
+} from "./parlamentario-resumen-conteos";
 
 /**
  * Test PURO del mapeo conteo→3-estado (sin runtime Supabase). El módulo
@@ -63,5 +67,38 @@ describe("derivarEstado — mapeo puro conteo→CarrilEstado (3-estado honesto)"
       tipo: "dato",
       n: 3,
     });
+  });
+});
+
+/**
+ * WR-02 — el fallback honesto de `contarCarrilesSeguro`. Cuando un fallo de
+ * conteo degrada el índice/headers, NINGÚN carril fabrica densidad (jamás un
+ * número) ni afirma "sin registros": todos quedan en "—" (no_ingerido), el
+ * estado más honesto para "no podemos mostrar el conteo ahora".
+ */
+describe("conteosDesconocidos — fallback honesto del shell (WR-02)", () => {
+  it("TODOS los carriles quedan en no_ingerido ('—'), nunca dato ni vacío", () => {
+    const c = conteosDesconocidos();
+    const estados: CarrilEstado[] = [
+      c.votos,
+      c.lobby,
+      c.patrimonio,
+      c.cruces,
+      c.dineroContratos,
+      c.dineroAportes,
+    ];
+    for (const e of estados) {
+      expect(e).toEqual({ tipo: "no_ingerido" });
+      // NUNCA fabrica densidad ni afirma vacío en un fallo.
+      expect(e.tipo).not.toBe("dato");
+      expect(e.tipo).not.toBe("vacio");
+    }
+  });
+
+  it("incluye los DOS carriles MONEY por separado (WR-01: no hay 'dinero' combinado)", () => {
+    const c = conteosDesconocidos();
+    expect(c).toHaveProperty("dineroContratos");
+    expect(c).toHaveProperty("dineroAportes");
+    expect(c).not.toHaveProperty("dinero");
   });
 });

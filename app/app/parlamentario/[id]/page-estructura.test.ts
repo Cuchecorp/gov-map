@@ -138,4 +138,24 @@ describe("page-estructura — invariantes LOCKED del re-layout (LEG-01/LEG-03)",
     expect(ACCORDION_SRC).not.toContain("@/lib/supabase");
     expect(ACCORDION_SRC).not.toContain("createServerSupabase");
   });
+
+  // ── Test 6: WR-02 — conteos tras Suspense vía wrapper seguro (no eager top-level) ─
+  it("Test 6 (WR-02): los conteos se leen con contarCarrilesSeguro y los carriles van tras <Suspense>", () => {
+    // La lectura usa el wrapper a prueba de fallos, NUNCA el `contarCarriles` crudo
+    // (que lanza #34 y tumbaría la ficha entera, cabecera incluida).
+    expect(PAGE_SRC).toContain("contarCarrilesSeguro");
+    // NINGUNA llamada cruda `contarCarriles(` en el shell (sólo el wrapper seguro).
+    expect(PAGE_SRC).not.toMatch(/contarCarriles\(/);
+    // Los carriles (CarrilesSection) viven DENTRO de un <Suspense> → streaming
+    // independiente del shell; un fallo degrada sólo este subárbol.
+    expect(PAGE_SRC).toMatch(/<Suspense[\s\S]*?<CarrilesSection/);
+  });
+
+  // ── Test 7: WR-01 — cada carril MONEY lee su PROPIO conteo (no el combinado) ────
+  it("Test 7 (WR-01): #dinero usa dineroContratos y #financiamiento usa dineroAportes; sin combinado", () => {
+    expect(PAGE_SRC).toContain("conteos.dineroContratos");
+    expect(PAGE_SRC).toContain("conteos.dineroAportes");
+    // El conteo combinado `conteos.dinero` ya NO existe (el \b evita casar dineroContratos/dineroAportes).
+    expect(PAGE_SRC).not.toMatch(/conteos\.dinero\b/);
+  });
 });

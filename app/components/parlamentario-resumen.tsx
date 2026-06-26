@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import {
-  contarCarriles,
+  contarCarrilesSeguro,
   type CarrilEstado,
   type ConteoCarriles,
 } from "@/lib/parlamentario-resumen-conteos";
@@ -144,6 +144,8 @@ export function construirChips(
 
 // ── Server fetch wrapper (igual rol que LobbySection) ────────────────────────────
 export async function ParlamentarioResumen({ id }: { id: string }) {
-  const c = await contarCarriles(id);
+  // WR-02: lectura segura — un fallo de conteo degrada a estado honesto
+  // "desconocido" (—), nunca tira el subárbol del resumen.
+  const c = await contarCarrilesSeguro(id);
   return <ResumenView chips={construirChips(c)} />;
 }

@@ -13,7 +13,7 @@ import { ContratosSection } from "@/components/contratos-de-parlamentario";
 import { FinanciamientoSection } from "@/components/financiamiento-de-parlamentario";
 import { CrucesSection } from "@/components/cruces-de-parlamentario";
 import {
-  contarCarriles,
+  contarCarrilesSeguro,
   type CarrilEstado,
 } from "@/lib/parlamentario-resumen-conteos";
 import { moneyPublicEnabled } from "@/lib/money-gate";
@@ -88,12 +88,6 @@ export default async function ParlamentarioPage({
     notFound();
   }
 
-  // Conteos 3-estado por carril, UNA sola lectura (React.cache deduplica la que
-  // también hace `ParlamentarioResumen`). Alimentan el `conteo` del header y el
-  // `defaultOpen` de cada `CarrilAccordion`. Respeta los gates internamente:
-  // cruces/dinero NO se consultan si su candado está OFF.
-  const conteos = await contarCarriles(id);
-
   return (
     <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
       <Suspense fallback={<ParlamentarioHeaderSkeleton />}>
@@ -110,6 +104,46 @@ export default async function ParlamentarioPage({
         <ParlamentarioResumen id={id} />
       </Suspense>
 
+      {/*
+        WR-02: los carriles y SUS CONTEOS viven tras su propio <Suspense>. Así el
+        shell (cabecera + resumen) hace streaming independiente y un fallo de
+        conteo degrada SOLO este subárbol (a estado honesto "—"), nunca tumba la
+        ficha entera (la cabecera, aislada en su propio Suspense, sigue en pie).
+        La lectura de conteos es server-only y NUNCA vuelve al cliente.
+      */}
+      <Suspense fallback={<CarrilesSkeleton />}>
+        <CarrilesSection id={id} searchParams={sp} />
+      </Suspense>
+    </main>
+  );
+}
+
+/**
+ * Lista de carriles de dominio (server component). Lee los conteos 3-estado UNA
+ * vez vía `contarCarrilesSeguro(id)` — React.cache deduplica la lectura que
+ * también hace `ParlamentarioResumen`, y el wrapper DEGRADA un fallo de conteo a
+ * estado honesto "desconocido" (—) en vez de lanzar (WR-02). De ahí deriva el
+ * `conteo` del header y el `defaultOpen` de cada acordeón. Respeta los gates
+ * cruces/money internamente (espejo byte-a-byte): el carril sólo aparece si su
+ * candado está abierto.
+ *
+ * Vive tras un <Suspense> en la página (WR-02): el shell (cabecera + resumen)
+ * streamea independiente; un fallo de este subárbol no derriba la cabecera, y un
+ * fallo de conteo ya no lanza (degrada honesto) — la ficha nunca se cae entera
+ * por un error transitorio de un solo carril.
+ */
+async function CarrilesSection({
+  id,
+  searchParams,
+}: {
+  id: string;
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  const conteos = await contarCarrilesSeguro(id);
+  const sp = searchParams;
+
+  return (
+    <>
       {/*
         Cada carril = su propia <section id className="mt-12"> HERMANA. El mt-12 es
         la frontera anti-insinuación LOCKED (DESIGN-SYSTEM §3/§8); NO se mueve al
@@ -270,7 +304,7 @@ export default async function ParlamentarioPage({
           </CarrilAccordion>
         </section>
       )}
-    </main>
+    </>
   );
 }
 
@@ -351,6 +385,23 @@ function ResumenSkeleton() {
     <div className="mt-6 flex flex-wrap gap-2" aria-hidden="true">
       {Array.from({ length: 4 }).map((_, i) => (
         <Skeleton key={i} className="h-11 w-40 rounded-full" />
+      ))}
+    </div>
+  );
+}
+
+// Shape-matched a la lista de carriles: una fila de header de acordeón por
+// carril (título + conteo), mientras los conteos 3-estado resuelven (WR-02).
+function CarrilesSkeleton() {
+  return (
+    <div className="space-y-12" aria-hidden="true">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="mt-12 first:mt-12">
+          <div className="flex items-center justify-between gap-4">
+            <Skeleton className="h-6 w-56" />
+            <Skeleton className="h-5 w-10" />
+          </div>
+        </div>
       ))}
     </div>
   );

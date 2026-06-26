@@ -215,3 +215,49 @@ export const contarCarriles = cache(
     return { votos, lobby, patrimonio, cruces, dineroContratos, dineroAportes };
   },
 );
+
+/**
+ * Estado HONESTO "desconocido" de TODOS los carriles (`no_ingerido` → "—").
+ * Es el fallback seguro de `contarCarrilesSeguro`: un fallo de conteo NUNCA
+ * fabrica densidad (jamás un número) y nunca afirma "vacío/sin registros"
+ * (que sería una afirmación positiva sobre la fuente). "—" es lo más honesto
+ * disponible: "no podemos mostrar el conteo ahora". PURO (testeable).
+ */
+export function conteosDesconocidos(): ConteoCarriles {
+  return {
+    votos: { tipo: "no_ingerido" },
+    lobby: { tipo: "no_ingerido" },
+    patrimonio: { tipo: "no_ingerido" },
+    cruces: { tipo: "no_ingerido" },
+    dineroContratos: { tipo: "no_ingerido" },
+    dineroAportes: { tipo: "no_ingerido" },
+  };
+}
+
+/**
+ * WR-02: lectura de conteos a prueba de fallos para el SHELL de la ficha.
+ *
+ * `contarCarriles` aplica el patrón #34 (lanza ante un error real de RPC/`.from()`)
+ * — correcto para una SECCIÓN de datos (UI de error honesta), pero los CONTEOS
+ * alimentan el resumen/índice y los headers de TODOS los acordeones: un fallo
+ * transitorio en un solo carril NO debe tumbar la ficha entera (cabecera incluida).
+ * Aquí el fallo se DEGRADA a estado honesto "desconocido" (—) y se loguea para
+ * observabilidad. Sigue deduplicado por request (reusa el `cache()` de abajo).
+ *
+ * Las SECCIONES de datos conservan su propio #34 (cada `*Section` lanza su error
+ * real bajo su Suspense): la degradación honesta es SOLO del índice/headers, no
+ * del contenido de cada carril.
+ */
+export async function contarCarrilesSeguro(
+  id: string,
+): Promise<ConteoCarriles> {
+  try {
+    return await contarCarriles(id);
+  } catch (e) {
+    console.error(
+      `contarCarriles degradó a estado honesto "desconocido" para ${id}:`,
+      e,
+    );
+    return conteosDesconocidos();
+  }
+}
