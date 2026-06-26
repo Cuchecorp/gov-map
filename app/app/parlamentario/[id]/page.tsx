@@ -4,34 +4,77 @@ import { notFound } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase";
 import { PARLAMENTARIO_ID_RE } from "@/lib/buscar";
 import { ParlamentarioHeader } from "@/components/parlamentario-header";
+import { ParlamentarioResumen } from "@/components/parlamentario-resumen";
+import { CarrilAccordion } from "@/components/carril-accordion";
 import { VotosSection } from "@/components/votos-por-parlamentario";
 import { LobbySection } from "@/components/lobby-de-parlamentario";
 import { PatrimonioSection } from "@/components/patrimonio-de-parlamentario";
 import { ContratosSection } from "@/components/contratos-de-parlamentario";
 import { FinanciamientoSection } from "@/components/financiamiento-de-parlamentario";
 import { CrucesSection } from "@/components/cruces-de-parlamentario";
+import {
+  contarCarriles,
+  type CarrilEstado,
+} from "@/lib/parlamentario-resumen-conteos";
 import { moneyPublicEnabled } from "@/lib/money-gate";
 import { crucesPublicEnabled } from "@/lib/cruces-gate";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ParlamentarioPublicoRow } from "@/lib/types";
 
 /**
- * /parlamentario/[id] — la PRIMERA ficha del parlamentario (VOTE-03/04/05).
+ * /parlamentario/[id] — la ficha del parlamentario (VOTE-03/04/05 + LEG navegación).
  *
- * Shell de UNA columna con secciones APILABLES e independientes: hoy solo VOTE;
- * Phase 11+ (INT lobby/patrimonio) y 14–16 (MONEY) APILAN su propia `<section>`
- * DESPUÉS, cada una con su `<h2>`, su Suspense y su empty honesto — sin anidar en
- * `#votos`. El shell mantiene válida la jerarquía h1 → h2 → h3 al crecer.
+ * Shell de UNA columna NAVEGABLE (Phase 45): un resumen + índice above-fold (tras
+ * la cabecera, antes del primer carril) y cada carril de dominio envuelto en un
+ * `CarrilAccordion` (header con su `<h2>` siempre visible, cuerpo colapsable).
+ * Cada carril sigue siendo su propia `<section className="mt-12">` HERMANA — el
+ * `mt-12` es la frontera anti-insinuación LOCKED (DESIGN-SYSTEM §3/§8), NUNCA se
+ * mueve al wrapper ni se colapsa. JAMÁS dos dominios en un mismo acordeón.
  *
  * `params`/`searchParams` son Promises (Next 16). El `[id]` se valida contra
  * PARLAMENTARIO_ID_RE ANTES de tocar la DB (V5). La cabecera se lee vía el RPC
  * `parlamentario_publico` (security definer) porque `parlamentario` es
  * deny-by-default: anon no lo lee directo (LEGAL-03).
+ *
+ * Los conteos se obtienen UNA vez vía `contarCarriles(id)` (server-only,
+ * React.cache → la misma lectura la reusa `ParlamentarioResumen`). De ahí se
+ * deriva el `conteo` (3-estado honesto) del header de cada acordeón y el
+ * `defaultOpen` (heurística conservadora).
  */
 
 interface PageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+/**
+ * Conteo 3-estado HONESTO → etiqueta del header del acordeón. Espejo textual de
+ * `ChipConteo` (parlamentario-resumen.tsx): `dato`→n; `vacio`→"sin registros";
+ * `no_ingerido`→"—"; `pendiente`→"pendiente". NUNCA un número fabricado;
+ * `vacio`/`no_ingerido`/`pendiente` JAMÁS muestran un dígito.
+ */
+function conteoLabel(estado: CarrilEstado): string {
+  switch (estado.tipo) {
+    case "dato":
+      return String(estado.n);
+    case "vacio":
+      return "sin registros";
+    case "no_ingerido":
+      return "—";
+    case "pendiente":
+      return "pendiente";
+  }
+}
+
+/**
+ * Heurística de apertura por default (conservadora, determinista): se abre SOLO
+ * el carril con datos sustantivos (`tipo === "dato"`, i.e. total > 0). Los
+ * carriles `vacio`/`no_ingerido`/`pendiente` (sin datos o ralos) arrancan
+ * colapsados — el header con su conteo honesto sigue visible, así el lector ve
+ * el estado sin ruido. Regla simple para no aparentar densidad donde no la hay.
+ */
+function abrePorDefecto(estado: CarrilEstado): boolean {
+  return estado.tipo === "dato";
 }
 
 export default async function ParlamentarioPage({
@@ -45,46 +88,79 @@ export default async function ParlamentarioPage({
     notFound();
   }
 
+  // Conteos 3-estado por carril, UNA sola lectura (React.cache deduplica la que
+  // también hace `ParlamentarioResumen`). Alimentan el `conteo` del header y el
+  // `defaultOpen` de cada `CarrilAccordion`. Respeta los gates internamente:
+  // cruces/dinero NO se consultan si su candado está OFF.
+  const conteos = await contarCarriles(id);
+
   return (
     <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
       <Suspense fallback={<ParlamentarioHeaderSkeleton />}>
         <HeaderSection id={id} />
       </Suspense>
 
+      {/*
+        Phase 45 — Resumen + índice above-fold (UI-SPEC §1.1). DESPUÉS de la
+        cabecera y ANTES del primer carril: un chip por carril PRESENTE con su
+        conteo/estado honesto + ancla de salto. Replica los gates cruces/money
+        (lista solo carriles efectivamente en el HTML).
+      */}
+      <Suspense fallback={<ResumenSkeleton />}>
+        <ParlamentarioResumen id={id} />
+      </Suspense>
+
+      {/*
+        Cada carril = su propia <section id className="mt-12"> HERMANA. El mt-12 es
+        la frontera anti-insinuación LOCKED (DESIGN-SYSTEM §3/§8); NO se mueve al
+        CarrilAccordion. El <h2> del carril migra al header del acordeón (titulo=),
+        que queda SIEMPRE visible (preserva h1→h2→h3). UN acordeón por dominio.
+      */}
       <section id="votos" className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">Votaciones</h2>
-        <Suspense fallback={<VotosSkeleton />}>
-          <VotosSection id={id} searchParams={sp} />
-        </Suspense>
+        <CarrilAccordion
+          titulo="Votaciones"
+          conteo={conteoLabel(conteos.votos)}
+          defaultOpen={abrePorDefecto(conteos.votos)}
+        >
+          <Suspense fallback={<VotosSkeleton />}>
+            <VotosSection id={id} searchParams={sp} />
+          </Suspense>
+        </CarrilAccordion>
       </section>
 
       {/*
         Phase 11 — INT Lobby (§3.0). SIBLING de #votos, NUNCA anidada: el mt-12 es
         la frontera de carril (anti-insinuación §9.1). Una reunión de lobby y un
-        voto JAMÁS comparten un <article>/<Card>/<li>. Su propio <h2> + Suspense +
-        empty honesto.
+        voto JAMÁS comparten un <article>/<Card>/<li>. Su propio acordeón.
       */}
       <section id="lobby" className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">Reuniones de lobby</h2>
-        <Suspense fallback={<LobbySkeleton />}>
-          <LobbySection id={id} searchParams={sp} />
-        </Suspense>
+        <CarrilAccordion
+          titulo="Reuniones de lobby"
+          conteo={conteoLabel(conteos.lobby)}
+          defaultOpen={abrePorDefecto(conteos.lobby)}
+        >
+          <Suspense fallback={<LobbySkeleton />}>
+            <LobbySection id={id} searchParams={sp} />
+          </Suspense>
+        </CarrilAccordion>
       </section>
 
       {/*
         Phase 12 — INT Patrimonio/Intereses (§3.0). SIBLING de #lobby, NUNCA
         anidada: el mt-12 es la frontera de carril (anti-insinuación §9.1). Una
         declaración y un voto/reunión JAMÁS comparten un <article>/<Card>/<li>/<tr>.
-        Su propio <h2> + Suspense + empty honesto + comparación SOLO-datos sin
-        veredicto (INT-04/05). CC BY 4.0 visible en el intro Y en el caption.
+        Su propio acordeón + comparación SOLO-datos sin veredicto (INT-04/05).
       */}
       <section id="patrimonio" className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">
-          Declaraciones de patrimonio e intereses
-        </h2>
-        <Suspense fallback={<PatrimonioSkeleton />}>
-          <PatrimonioSection id={id} searchParams={sp} />
-        </Suspense>
+        <CarrilAccordion
+          titulo="Declaraciones de patrimonio e intereses"
+          conteo={conteoLabel(conteos.patrimonio)}
+          defaultOpen={abrePorDefecto(conteos.patrimonio)}
+        >
+          <Suspense fallback={<PatrimonioSkeleton />}>
+            <PatrimonioSection id={id} searchParams={sp} />
+          </Suspense>
+        </CarrilAccordion>
       </section>
 
       {/*
@@ -93,39 +169,48 @@ export default async function ParlamentarioPage({
         (anti-insinuación §9.1). Una señal de cruce y un voto/reunión JAMÁS comparten
         un <article>/<Card>/<li>. Posición LOCKED: DESPUÉS de #patrimonio y ANTES de
         las secciones MONEY gated, para no leerse como un "score" pegado a #lobby.
-        GATE LOCKED (Candado B): TODA la <section id="cruces"> — incluido su <h2> — se
-        envuelve en crucesPublicEnabled(process.env). Con OFF (default) el nodo entero,
-        heading incluido, está AUSENTE del HTML; NO se depende de que CrucesSection
-        retorne null para ocultar el heading. crucesPublicEnabled es server-only
-        (chokepoint WR-02): NUNCA leer CRUCES_PUBLIC_ENABLED crudo. Heading factual,
-        sin posesivo. ENCENDER el flag = Phase 39 (firma legal humana), nunca un agente.
+        GATE LOCKED (Candado B): TODA la <section id="cruces"> — incluido su header de
+        acordeón — se envuelve en crucesPublicEnabled(process.env). Con OFF (default)
+        el nodo entero, header incluido, está AUSENTE del HTML; NO se depende de que
+        CrucesSection retorne null para ocultar el heading. crucesPublicEnabled es
+        server-only (chokepoint WR-02): NUNCA leer CRUCES_PUBLIC_ENABLED crudo. Heading
+        factual, sin posesivo. ENCENDER el flag = Phase 39 (firma legal humana).
       */}
       {crucesPublicEnabled(process.env) && (
         <section id="cruces" className="mt-12">
-          <h2 className="text-xl font-semibold mb-4">Cruces con sectores</h2>
-          <Suspense fallback={<CrucesSkeleton />}>
-            <CrucesSection id={id} />
-          </Suspense>
+          <CarrilAccordion
+            titulo="Cruces con sectores"
+            conteo={conteoLabel(conteos.cruces)}
+            defaultOpen={abrePorDefecto(conteos.cruces)}
+          >
+            <Suspense fallback={<CrucesSkeleton />}>
+              <CrucesSection id={id} />
+            </Suspense>
+          </CarrilAccordion>
         </section>
       )}
 
       {/*
         Phase 14 — MONEY Contratos (UI-SPEC §Exposure Gate). SIBLING de #patrimonio,
         NUNCA anidada: el mt-12 es la frontera de carril (anti-insinuación §9.1).
-        GATE LOCKED: TODA la <section id="dinero"> — incluido su <h2> — se envuelve en
-        moneyPublicEnabled(process.env). Con OFF (default) el nodo entero, heading
-        incluido, está AUSENTE del HTML; NO se depende de que ContratosSection retorne
-        null para ocultar el heading. moneyPublicEnabled es server-only (chokepoint
-        WR-02): NUNCA leer MONEY_PUBLIC_ENABLED crudo. Heading EXACTO, sin posesivo.
+        GATE LOCKED: TODA la <section id="dinero"> — incluido su header de acordeón —
+        se envuelve en moneyPublicEnabled(process.env). Con OFF (default) el nodo
+        entero, header incluido, está AUSENTE del HTML; NO se depende de que
+        ContratosSection retorne null para ocultar el heading. moneyPublicEnabled es
+        server-only (chokepoint WR-02): NUNCA leer MONEY_PUBLIC_ENABLED crudo. Heading
+        EXACTO, sin posesivo. (conteos.dinero combina contratos+aportes con MONEY ON.)
       */}
       {moneyPublicEnabled(process.env) && (
         <section id="dinero" className="mt-12">
-          <h2 className="text-xl font-semibold mb-4">
-            Contratos del Estado asociados al RUT
-          </h2>
-          <Suspense fallback={<ContratosSkeleton />}>
-            <ContratosSection id={id} searchParams={sp} />
-          </Suspense>
+          <CarrilAccordion
+            titulo="Contratos del Estado asociados al RUT"
+            conteo={conteoLabel(conteos.dinero)}
+            defaultOpen={abrePorDefecto(conteos.dinero)}
+          >
+            <Suspense fallback={<ContratosSkeleton />}>
+              <ContratosSection id={id} searchParams={sp} />
+            </Suspense>
+          </CarrilAccordion>
         </section>
       )}
 
@@ -133,8 +218,8 @@ export default async function ParlamentarioPage({
         Phase 15 — MONEY Financiamiento (UI-SPEC §Exposure Gate). SIBLING de
         #dinero (contratos), NUNCA anidada: el mt-12 es la frontera de carril
         (anti-insinuación §9.1). GATE LOCKED: TODA la <section id="financiamiento">
-        — incluido su <h2> — se envuelve en moneyPublicEnabled(process.env). Con OFF
-        (default) el nodo entero, heading incluido, está AUSENTE del HTML; NO se
+        — incluido su header de acordeón — se envuelve en moneyPublicEnabled(process.env).
+        Con OFF (default) el nodo entero, header incluido, está AUSENTE del HTML; NO se
         depende de que FinanciamientoSection retorne null para ocultar el heading.
         moneyPublicEnabled es server-only (chokepoint WR-02): NUNCA leer
         MONEY_PUBLIC_ENABLED crudo. Heading EXACTO, sin posesivo. A1: el enlace al
@@ -142,19 +227,22 @@ export default async function ParlamentarioPage({
       */}
       {moneyPublicEnabled(process.env) && (
         <section id="financiamiento" className="mt-12">
-          <h2 className="text-xl font-semibold mb-4">
-            Aportes de campaña registrados en SERVEL
-          </h2>
-          <Suspense fallback={<FinanciamientoSkeleton />}>
-            {/*
-              `eleccionActual` se deriva del periodo PÚBLICO del parlamentario
-              (`parlamentario_publico.periodo`) para que el caveat ámbar de
-              "candidatura anterior" pueda dispararse contra datos reales. El
-              wrapper lo resuelve server-side; si el periodo no es derivable, pasa
-              null (conservador: ningún grupo se etiqueta "anterior").
-            */}
-            <FinanciamientoSectionConPeriodo id={id} searchParams={sp} />
-          </Suspense>
+          <CarrilAccordion
+            titulo="Aportes de campaña registrados en SERVEL"
+            conteo={conteoLabel(conteos.dinero)}
+            defaultOpen={abrePorDefecto(conteos.dinero)}
+          >
+            <Suspense fallback={<FinanciamientoSkeleton />}>
+              {/*
+                `eleccionActual` se deriva del periodo PÚBLICO del parlamentario
+                (`parlamentario_publico.periodo`) para que el caveat ámbar de
+                "candidatura anterior" pueda dispararse contra datos reales. El
+                wrapper lo resuelve server-side; si el periodo no es derivable, pasa
+                null (conservador: ningún grupo se etiqueta "anterior").
+              */}
+              <FinanciamientoSectionConPeriodo id={id} searchParams={sp} />
+            </Suspense>
+          </CarrilAccordion>
         </section>
       )}
 
@@ -165,16 +253,20 @@ export default async function ParlamentarioPage({
         secciones reales #dinero/#financiamiento (ON futuro). CLAVE anti-insinuación:
         este bloque NO toca Supabase, NO compone con un voto, NO menciona monto/
         contrato/donante — sólo el texto legal LOCKED. Carril propio mt-12 (SIBLING,
-        nunca anidado en #votos); su propia <section> con su <h2>.
+        nunca anidado en #votos); su propio acordeón con conteo "pendiente". El gate
+        !moneyPublicEnabled y el texto legal se conservan VERBATIM.
       */}
       {!moneyPublicEnabled(process.env) && (
         <section id="financiamiento-pendiente" className="mt-12">
-          <h2 className="text-xl font-semibold mb-4">
-            Financiamiento y contratos del Estado
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Pendiente de revisión legal (Ley 21.719) antes de publicarse.
-          </p>
+          <CarrilAccordion
+            titulo="Financiamiento y contratos del Estado"
+            conteo={conteoLabel({ tipo: "pendiente" })}
+            defaultOpen={false}
+          >
+            <p className="text-sm text-muted-foreground">
+              Pendiente de revisión legal (Ley 21.719) antes de publicarse.
+            </p>
+          </CarrilAccordion>
         </section>
       )}
     </main>
@@ -248,6 +340,17 @@ function ParlamentarioHeaderSkeleton() {
       <Skeleton className="h-9 w-3/4" />
       <Skeleton className="h-4 w-48" />
       <Skeleton className="h-4 w-56 mt-4" />
+    </div>
+  );
+}
+
+// Shape-matched a ResumenView: fila de chips (índice above-fold) (§1.1).
+function ResumenSkeleton() {
+  return (
+    <div className="mt-6 flex flex-wrap gap-2" aria-hidden="true">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton key={i} className="h-11 w-40 rounded-full" />
+      ))}
     </div>
   );
 }

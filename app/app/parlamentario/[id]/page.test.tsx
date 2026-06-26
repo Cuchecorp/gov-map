@@ -98,7 +98,21 @@ const rpcMock = vi.fn((name: string) => {
   }
   return Promise.resolve({ data: null, error: null });
 });
-const createServerSupabaseMock = vi.fn(() => ({ rpc: rpcMock }));
+/**
+ * `.from()` mock — Phase 45: la página ahora llama `contarCarriles(id)` en su
+ * cuerpo (para el conteo/defaultOpen de cada CarrilAccordion), que lee los
+ * marcadores `*_ingesta_estado` vía `.from(tabla).select().eq().maybeSingle()`.
+ * Devolvemos `{data:null,error:null}` (sin marcador → carril `no_ingerido`),
+ * suficiente para que la página resuelva sin tocar PROD.
+ */
+const fromMock = vi.fn((_tabla: string) => ({
+  select: () => ({
+    eq: () => ({
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    }),
+  }),
+}));
+const createServerSupabaseMock = vi.fn(() => ({ rpc: rpcMock, from: fromMock }));
 vi.mock("@/lib/supabase", () => ({
   createServerSupabase: () => createServerSupabaseMock(),
 }));
@@ -111,6 +125,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 beforeEach(() => {
   notFoundMock.mockClear();
   rpcMock.mockClear();
+  fromMock.mockClear();
   createServerSupabaseMock.mockClear();
   crucesEnabledMock.mockReset();
 });
