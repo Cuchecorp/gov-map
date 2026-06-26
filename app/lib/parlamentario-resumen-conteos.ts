@@ -106,6 +106,14 @@ export const contarCarriles = cache(
     // existe `votos_ingesta_estado`: los votos son un dataset poblado a nivel
     // global, así que un parlamentario con 0 votos es "ingestado, sin registros"
     // (`vacio`), NUNCA "no ingerido" (no podemos afirmar honestamente lo segundo).
+    // WR-03 (conocido, dormante ~10 votaciones): el conteo es `length` con
+    // `p_limit: 1000`. Para >1000 votos confirmados mostraría "1000" como si
+    // fuera el total exacto. Se DEJA ASÍ A PROPÓSITO: es el espejo BYTE-A-BYTE
+    // del mismo cap en `VotosSection` (mismo RPC, mismo p_limit), así chip y
+    // sección SIEMPRE coinciden. Una presentación honesta "1000+" exigiría
+    // cambiarlo en AMBOS lados a la vez (chip + "Emitió N votos" de VotosView)
+    // para no desincronizarlos; el fix real es un RPC de conteo dedicado (F46+),
+    // NO introducir aquí un RPC nuevo (queda fuera del allowlist/alcance F45).
     const { data: votosData, error: votosError } = await sb.rpc(
       "votos_de_parlamentario",
       { p_id: id, p_limit: 1000, p_offset: 0 },
