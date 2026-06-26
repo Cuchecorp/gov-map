@@ -1,5 +1,5 @@
 /**
- * LOCKDOWN-04 — Guard CI anti-regresion (42-04)
+ * LOCKDOWN-04 — Guard CI anti-regresion (42-04, actualizado Camino A post-legacy)
  *
  * Dos bloques:
  *
@@ -15,18 +15,20 @@
  *     `supabase/tests/post-apply/0044_revoke_anon.test.sql`
  *     contra PROD (ver RUNBOOK-lockdown-cutover.md §Riesgo residual).
  *
- * (B) El chokepoint web_reader (`app/lib/supabase.ts`) no usa
- *     métodos `.auth.` en el cliente Supabase ni selecciona columnas
- *     o tablas PII conocidas. Esto es defensa-en-profundidad: RLS ya
- *     protege el dato en la DB, pero el guard atrapa el intento en código.
+ * (B) [Camino A] El sitio publico server-side lee con la SERVICE key
+ *     (`service_role`, que BYPASSA RLS). La proteccion de PII ya no esta en
+ *     la DB para esta ruta -> el guard escanea TODO el arbol de `app/`
+ *     (excepto la superficie admin gateada) y FALLA si algun archivo accede
+ *     directamente a una tabla PII via `.from('<tabla_pii>')`. Defensa-en-
+ *     profundidad: el dato PII debe leerse SOLO via RPCs PII-safe o por el
+ *     cliente admin (`createAdminSupabase`) detras de su gate.
  *
  *     NOTA: el literal de config `auth: { persistSession: false, … }` es
  *     VALIDO y no debe ser flaggeado. El guard busca exclusivamente el
- *     patron `.auth.` (punto antes de auth) que indica una llamada a metodo
- *     como `client.auth.signIn(…)` / `supabase.auth.getSession()`.
+ *     patron `.from('<tabla_pii>')`.
  */
 
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -76,6 +78,100 @@ function stripTsComments(content: string): string {
   return stripped;
 }
 
+/**
+ * Camina recursivamente un directorio devolviendo todos los archivos .ts/.tsx
+ * que NO son tests ni viven en directorios de build/deps.
+ */
+const SKIP_DIRS = new Set([
+  "node_modules",
+  ".next",
+  ".open-next",
+  ".turbo",
+  "dist",
+  "coverage",
+  ".vercel",
+  ".wrangler",
+]);
+
+function walkSourceFiles(dir: string): string[] {
+  const out: string[] = [];
+  let entries: string[];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return out;
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry);
+    let st;
+    try {
+      st = statSync(full);
+    } catch {
+      continue;
+    }
+    if (st.isDirectory()) {
+      if (SKIP_DIRS.has(entry)) continue;
+      out.push(...walkSourceFiles(full));
+    } else if (/\.(ts|tsx)$/.test(entry) && !/\.test\.(ts|tsx)$/.test(entry)) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+// Tablas PII catalogadas en _FACTS-live-prod.md §"PII tables" + la tabla maestra
+// `parlamentario` (rut + datos crudos). Acceso directo via `.from()` prohibido en
+// el arbol publico; permitido SOLO en la superficie admin gateada (ver allowlist).
+const PII_TABLES = [
+  "parlamentario",
+  "donante",
+  "cruce_senal",
+  "identidad_audit",
+  "vinculo_identidad",
+  "vinculo_entidad",
+  "declaracion_familiar",
+  "parlamentario_alias",
+  "entidad_tercero",
+  "revision_entidad",
+];
+
+/**
+ * Archivos/dirs autorizados a tocar tablas PII directamente: la superficie admin
+ * (detras de `adminRevisionEnabled`) y su cliente service-role dedicado. El resto
+ * del arbol publico NO debe aparecer aqui.
+ */
+function isAdminAllowlisted(file: string): boolean {
+  const rel = path.relative(APP_ROOT, file).split(path.sep).join("/");
+  return (
+    rel.startsWith("app/admin/") ||
+    rel === "lib/supabase-admin.ts" ||
+    rel.startsWith("lib/admin/")
+  );
+}
+
+// RPCs PII-safe que el arbol publico SI puede invocar (security-definer, nunca
+// proyectan rut/donante crudo; auditadas en RESEARCH §1). Bajo Camino A el cliente
+// publico es `service_role` -> puede EJECUTAR cualquier RPC, incluso admin/write
+// (`resolver_entidad`, materializadores). La DB ya no lo bloquea, asi que el guard
+// FALLA si el arbol publico llama un RPC fuera de esta lista. Mantener en sync.
+const PUBLIC_RPC_ALLOWLIST = new Set([
+  "agregado_por_contraparte",
+  "aportes_de_parlamentario",
+  "bienes_de_parlamentario",
+  "buscar_citaciones",
+  "comparar_declaraciones",
+  "contratos_de_parlamentario",
+  "cruces_de_parlamentario",
+  "declaraciones_de_parlamentario",
+  "lobby_de_parlamentario",
+  "match_proyectos",
+  "parlamentario_publico",
+  "parlamentarios_publico",
+  "rebeldias_de_parlamentario",
+  "subgrafo_red",
+  "votos_de_parlamentario",
+]);
+
 // ---------------------------------------------------------------------------
 // (A) Ningun archivo de migracion con numero > 0044 re-concede acceso a anon
 // ---------------------------------------------------------------------------
@@ -102,7 +198,7 @@ describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
         offenders.push(filename);
       }
     }
-    expect(offenders, `Migraciones con GRANT a anon (LOCKDOWN-regresion): ${offenders.join(", ")} — elimina el grant o muevelo a una seccion post-0044 que use web_reader`).toHaveLength(0);
+    expect(offenders, `Migraciones con GRANT a anon (LOCKDOWN-regresion): ${offenders.join(", ")} — elimina el grant o muevelo a una seccion post-0044`).toHaveLength(0);
   });
 
   it("no existe ningun `CREATE POLICY … TO anon` en migraciones > 0044 (sin contar comentarios)", () => {
@@ -118,7 +214,7 @@ describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
         offenders.push(filename);
       }
     }
-    expect(offenders, `Migraciones con CREATE POLICY to anon (LOCKDOWN-regresion): ${offenders.join(", ")} — usa web_reader en lugar de anon`).toHaveLength(0);
+    expect(offenders, `Migraciones con CREATE POLICY to anon (LOCKDOWN-regresion): ${offenders.join(", ")}`).toHaveLength(0);
   });
 
   it("las migraciones > 0044 existentes son revoke/hardening y NINGUNA concede acceso a anon", () => {
@@ -141,65 +237,74 @@ describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
 });
 
 // ---------------------------------------------------------------------------
-// (B) Chokepoint web_reader (app/lib/supabase.ts) — sin .auth. ni selects PII
+// (B) [Camino A] El arbol publico server-side no accede a tablas PII directas
 // ---------------------------------------------------------------------------
 
-describe("(B) Guard — chokepoint supabase.ts no usa .auth. ni selecciona PII", () => {
-  const content = readFileSync(SUPABASE_TS, "utf-8");
-  // Strip TS/JS comments (JSDoc, block comments, line comments) so that
-  // documentation prose like `client.auth.signIn` in a JSDoc comment does NOT
-  // trigger the guard — only actual source code is scanned.
-  const stripped = stripTsComments(content);
+describe("(B) Guard — el arbol publico (service-role) no toca tablas PII", () => {
+  const sourceFiles = walkSourceFiles(APP_ROOT);
 
-  it("no contiene uso de metodo .auth. (e.g. client.auth.signIn, supabase.auth.getSession)", () => {
-    // Buscar el patron `.auth.` (punto antes de auth + punto despues).
-    // Esto distingue la llamada a metodo `client.auth.signIn()` del literal
-    // de config `auth: { persistSession: false }` que usa `auth:` (sin punto antes).
-    const hasAuthMethod = /\.auth\./.test(stripped);
-    expect(hasAuthMethod, `app/lib/supabase.ts contiene una llamada a metodo .auth.* — el cliente web_reader NO debe usar auth de usuarios (supabase-js lanza cuando accessToken esta seteado). Elimina el uso o muevelo al cliente admin.`).toBe(false);
+  it("escanea al menos los modulos del sitio (sanity: el walker encontro archivos)", () => {
+    expect(sourceFiles.length).toBeGreaterThan(10);
   });
 
-  it("no contiene .select() nombrando columnas PII conocidas (rut, donante_id, partido)", () => {
-    // PII columns catalogadas en _FACTS-live-prod.md
-    const PII_COLUMNS = ["rut", "donante_id", "partido"];
-    const selectMatches: string[] = [];
-    for (const col of PII_COLUMNS) {
-      // Buscar `.select(…col…)` — columna PII en un string de select
-      const pattern = new RegExp(`\\.select\\([^)]*\\b${col}\\b[^)]*\\)`, "i");
-      if (pattern.test(stripped)) {
-        selectMatches.push(col);
-      }
-    }
-    expect(selectMatches, `app/lib/supabase.ts contiene un .select() con columnas PII: [${selectMatches.join(", ")}]. El servidor web_reader NO debe proyectar PII directamente — usa un RPC secdef si necesitas datos de parlamentario.`).toHaveLength(0);
-  });
-
-  it("no contiene .from('parlamentario') ni .from(\"parlamentario\") (tabla PII directa)", () => {
-    // `parlamentario` es la tabla PII maestra (rut + datos crudos); nunca debe
-    // ser accedida directamente por el chokepoint web_reader.
-    const hasPiiTable =
-      /\.from\(\s*['"]parlamentario['"]\s*\)/.test(stripped);
-    expect(hasPiiTable, `app/lib/supabase.ts contiene un .from('parlamentario') — tabla PII; accede via RPC parlamentario_publico() en su lugar.`).toBe(false);
-  });
-
-  it("no contiene .from() con otras tablas PII conocidas (donante, cruce_senal, identidad_audit)", () => {
-    // Tablas PII adicionales de _FACTS-live-prod.md §"PII tables"
-    const PII_TABLES = [
-      "donante",
-      "cruce_senal",
-      "identidad_audit",
-      "vinculo_identidad",
-      "vinculo_entidad",
-      "declaracion_familiar",
-      "parlamentario_alias",
-      "entidad_tercero",
-    ];
+  it("ningun archivo fuera de la superficie admin gateada hace `.from('<tabla_pii>')`", () => {
     const offenders: string[] = [];
-    for (const table of PII_TABLES) {
-      const pattern = new RegExp(`\\.from\\(\\s*['"]${table}['"]\\s*\\)`, "i");
-      if (pattern.test(stripped)) {
-        offenders.push(table);
+    for (const file of sourceFiles) {
+      if (isAdminAllowlisted(file)) continue;
+      const stripped = stripTsComments(readFileSync(file, "utf-8"));
+      for (const table of PII_TABLES) {
+        const pattern = new RegExp(
+          `\\.from\\(\\s*['"\`]${table}['"\`]\\s*\\)`,
+          "i",
+        );
+        if (pattern.test(stripped)) {
+          const rel = path.relative(APP_ROOT, file).split(path.sep).join("/");
+          offenders.push(`${rel} -> ${table}`);
+        }
       }
     }
-    expect(offenders, `app/lib/supabase.ts contiene acceso directo a tablas PII: [${offenders.join(", ")}]. El chokepoint web_reader debe acceder SOLO a las 26 tablas public-read o via RPCs curadas.`).toHaveLength(0);
+    expect(
+      offenders,
+      `Acceso directo a tabla PII desde el arbol publico (service_role bypassa RLS): ` +
+        `[${offenders.join("; ")}]. Lee via RPC PII-safe o por createAdminSupabase() ` +
+        `detras del gate admin.`,
+    ).toHaveLength(0);
+  });
+
+  it("ningun archivo del arbol publico invoca un `.rpc()` fuera del allowlist PII-safe", () => {
+    const offenders: string[] = [];
+    // Scan sobre el contenido completo (no linea-a-linea) para capturar
+    // llamadas `.rpc(\n  "nombre"` multilinea.
+    const rpcPattern = /\.rpc\(\s*['"`]([a-zA-Z_][\w]*)['"`]/g;
+    for (const file of sourceFiles) {
+      if (isAdminAllowlisted(file)) continue;
+      const stripped = stripTsComments(readFileSync(file, "utf-8"));
+      let m: RegExpExecArray | null;
+      rpcPattern.lastIndex = 0;
+      while ((m = rpcPattern.exec(stripped)) !== null) {
+        const name = m[1];
+        if (!PUBLIC_RPC_ALLOWLIST.has(name)) {
+          const rel = path.relative(APP_ROOT, file).split(path.sep).join("/");
+          offenders.push(`${rel} -> ${name}`);
+        }
+      }
+    }
+    expect(
+      offenders,
+      `RPC no-allowlisted invocado desde el arbol publico (service_role puede ejecutar ` +
+        `admin/write RPCs que la DB ya no bloquea): [${offenders.join("; ")}]. ` +
+        `Si es PII-safe agregalo a PUBLIC_RPC_ALLOWLIST; si es admin, muevelo tras el gate.`,
+    ).toHaveLength(0);
+  });
+
+  it("el chokepoint publico supabase.ts no proyecta columnas PII conocidas (rut, donante_id)", () => {
+    const stripped = stripTsComments(readFileSync(SUPABASE_TS, "utf-8"));
+    const PII_COLUMNS = ["rut", "donante_id"];
+    const hits: string[] = [];
+    for (const col of PII_COLUMNS) {
+      const pattern = new RegExp(`\\.select\\([^)]*\\b${col}\\b[^)]*\\)`, "i");
+      if (pattern.test(stripped)) hits.push(col);
+    }
+    expect(hits, `app/lib/supabase.ts proyecta columnas PII: [${hits.join(", ")}]`).toHaveLength(0);
   });
 });

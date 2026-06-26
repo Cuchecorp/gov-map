@@ -10,9 +10,11 @@ name: deploy-cloudflare
 #   CLOUDFLARE_API_TOKEN   - token con permiso "Edit Cloudflare Workers"
 #   CLOUDFLARE_ACCOUNT_ID  - id de la cuenta (el del endpoint, 10fb709d...)
 #
-# Los SECRETS de RUNTIME del Worker (SUPABASE_URL, SUPABASE_ANON_KEY,
-# GEMINI_API_KEY) NO se setean aquí: van una vez con `wrangler secret put`
-# (ver docs/deploy-cloudflare.md). El build NO los necesita (rutas dinámicas).
+# Los SECRETS de RUNTIME del Worker (SUPABASE_URL, SUPABASE_SECRET_KEY,
+# GEMINI_API_KEY, CRUCES_PUBLIC_ENABLED) NO se setean aquí: van una vez con
+# `wrangler secret put` (ver docs/deploy-cloudflare.md). El build NO los necesita
+# (rutas dinámicas). NOTA post-legacy (Camino A): el sitio lee con la SERVICE key
+# (sb_secret_…, service_role) — ya NO usa SUPABASE_ANON_KEY ni el legacy JWT.
 
 on:
   workflow_dispatch:

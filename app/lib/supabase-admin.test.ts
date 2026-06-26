@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Captura los argumentos con que se construye el cliente service-role sin tocar red.
-const createClientMock = vi.fn(() => ({ __admin: true }));
+const createClientMock = vi.fn(
+  (_url?: string, _key?: string, _opts?: unknown) => ({ __admin: true }),
+);
 vi.mock("@supabase/supabase-js", () => ({
   createClient: (url: string, key: string, opts: unknown) =>
     createClientMock(url, key, opts),

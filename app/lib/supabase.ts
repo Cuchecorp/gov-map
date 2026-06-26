@@ -2,47 +2,49 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import { mintWebReaderToken } from "./web-reader-jwt";
-
 /**
- * LOCKDOWN-03 — Cliente Supabase server-only autenticado como `web_reader`.
+ * Cliente Supabase SERVER-ONLY para la superficie PUBLICA del sitio (solo lecturas).
  *
- * La diferencia respecto al original es el campo `accessToken`: supabase-js
- * 2.108.2 acepta `accessToken?: () => Promise<string | null>`. Cuando esta
- * presente, el SDK usa el valor retornado como `Authorization: Bearer` en
- * cada peticion HTTP hacia PostgREST/Kong, mientras sigue enviando la
- * `anonKey` como header `apikey` (Kong la valida por firma; el rol DB lo
- * determina el Bearer, NO el apikey).
+ * MODELO POST-LEGACY (Camino A — cero secreto simetrico):
+ * Tras DESACTIVAR el legacy JWT del proyecto, el approach `web_reader` (auto-firma
+ * HS256 con un secreto simetrico) queda abandonado: auto-firmar un rol = tener un
+ * secreto de firma en el server = exactamente el riesgo que el lockdown cierra.
+ * Este cliente lee con la SERVICE key nueva (`SUPABASE_SECRET_KEY`, formato
+ * `sb_secret_...`) -> PostgREST resuelve `service_role`. supabase-js manda la key
+ * como header `apikey` y como `Authorization: Bearer` (sin `accessToken`).
  *
- * PostgREST recibe el Bearer con `role: "web_reader"` -> ejecuta
- * `SET ROLE web_reader` -> el cliente lee solo las tablas/RPCs cubiertas por
- * las policies y grants de `web_reader` (espejo exacto de `anon`, LOCKDOWN-01).
+ * IMPLICACION DE SEGURIDAD (trade-off aceptado del Camino A): `service_role`
+ * BYPASSA RLS. La proteccion de PII ya NO esta en la DB para esta ruta; recae en
+ * DISCIPLINA DE CODIGO: este cliente y todo el arbol server-side del sitio publico
+ * NUNCA deben consultar tablas PII (`parlamentario`, `donante`, `cruce_senal`,
+ * `identidad_audit`, ...). Los datos de parlamentario se leen SIEMPRE via RPCs
+ * PII-safe (`parlamentario_publico`, `votos_de_parlamentario`, etc.). El guard CI
+ * `lockdown-guard.test.ts` (Block B) escanea TODO `app/` (excepto la superficie
+ * admin gateada) para hacer cumplir esto estaticamente. Las lecturas PII legitimas
+ * (cola humana de terceros) van por `createAdminSupabase()` detras de su gate.
  *
- * NOTA: cuando `accessToken` esta seteado, `client.auth.*` lanza por diseno
- * de supabase-js. El servidor no usa auth de usuarios; solo lee datos publicos.
- *
- * CUTOVER: este modulo se deploya a Cloudflare ANTES de que se aplique
- * LOCKDOWN-02 (revoke anon). Ver _FACTS-live-prod.md §Cutover order.
+ * `import "server-only"` (linea 1) garantiza que la service key jamas viaje al
+ * bundle del navegador.
  *
  * Variables de entorno requeridas:
- *   SUPABASE_URL        e.g. https://<ref>.supabase.co
- *   SUPABASE_ANON_KEY   anon key (sigue siendo el `apikey` para Kong)
- *   SUPABASE_JWT_SECRET JWT secret del proyecto (Dashboard -> Settings -> API
- *                       -> JWT Secret). NO es SUPABASE_SECRET_KEY (sb_secret_).
+ *   SUPABASE_URL         e.g. https://<ref>.supabase.co
+ *   SUPABASE_SECRET_KEY  service key nueva (sb_secret_...). Fallback historico:
+ *                        SUPABASE_SERVICE_KEY (alias que aun leen los CLIs de ingesta).
  */
 export function createServerSupabase(): SupabaseClient {
   const url = process.env.SUPABASE_URL;
-  const anonKey = process.env.SUPABASE_ANON_KEY;
+  const serviceKey =
+    process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_KEY;
 
-  if (!url || !anonKey) {
+  if (!url || !serviceKey) {
     throw new Error(
-      "Faltan SUPABASE_URL o SUPABASE_ANON_KEY en el entorno del servidor. " +
-        "Configuralas con los valores del proyecto Supabase."
+      "Faltan SUPABASE_URL o SUPABASE_SECRET_KEY en el entorno del servidor. " +
+        "El sitio publico lee con la service key (sb_secret_...) tras el cutover " +
+        "post-legacy. Configuralas con los valores del proyecto Supabase."
     );
   }
 
-  return createClient(url, anonKey, {
-    accessToken: async () => mintWebReaderToken(),
+  return createClient(url, serviceKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
