@@ -1,4 +1,4 @@
-# Roadmap: Observatorio del Congreso 360
+﻿# Roadmap: Observatorio del Congreso 360
 
 **Core Value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato lleva fuente, fecha y enlace original, sin afirmar intención ni causalidad.
 
@@ -1105,6 +1105,9 @@ Cada fase de chart pasa de GATED a construible cuando su gap de ingesta cierra; 
   2. **VIZ-02:** Recharts instalado, chart como isla `"use client"`, resto SSR; build OpenNext/Cloudflare no se rompe (Docker Linux); `pnpm test` + `tsc -b` verdes.
   3. **VIZ-03:** descriptivo/neutro (negative-match vocabulario prohibido verde), fuente+fecha+enlace (CC BY 4.0 CPLT) al pie; sin RPC nueva ni `.from('parlamentario')`; guard verde.
 
-**Plans:** TBD (research → plan-phase)
+**Plans:** 2 plans
+
+- [ ] 46-01-PLAN.md — Recharts + seriePatrimonio() transform + isla cliente patrimonio-chart.tsx + shell server (caveat/degrade/footer) + tests
+- [ ] 46-02-PLAN.md — Checkpoint operador: build OpenNext Docker Linux + deploy wrangler
 
 **UI hint**: sí (gráfico en la sección de patrimonio; depende del acordeón de F45)
