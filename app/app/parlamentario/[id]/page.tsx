@@ -132,7 +132,7 @@ export default async function ParlamentarioPage({
  * fallo de conteo ya no lanza (degrada honesto) — la ficha nunca se cae entera
  * por un error transitorio de un solo carril.
  */
-async function CarrilesSection({
+export async function CarrilesSection({
   id,
   searchParams,
 }: {

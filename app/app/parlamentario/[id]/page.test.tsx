@@ -99,11 +99,11 @@ const rpcMock = vi.fn((name: string) => {
   return Promise.resolve({ data: null, error: null });
 });
 /**
- * `.from()` mock — Phase 45: la página ahora llama `contarCarriles(id)` en su
- * cuerpo (para el conteo/defaultOpen de cada CarrilAccordion), que lee los
- * marcadores `*_ingesta_estado` vía `.from(tabla).select().eq().maybeSingle()`.
- * Devolvemos `{data:null,error:null}` (sin marcador → carril `no_ingerido`),
- * suficiente para que la página resuelva sin tocar PROD.
+ * `.from()` mock — Phase 45 (WR-02): `CarrilesSection` lee los conteos vía
+ * `contarCarrilesSeguro(id)` (para el conteo/defaultOpen de cada CarrilAccordion),
+ * que consulta los marcadores `*_ingesta_estado` con
+ * `.from(tabla).select().eq().maybeSingle()`. Devolvemos `{data:null,error:null}`
+ * (sin marcador → carril `no_ingerido`), suficiente para resolver sin tocar PROD.
  */
 const fromMock = vi.fn((_tabla: string) => ({
   select: () => ({
@@ -118,7 +118,7 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 // Importar DESPUÉS de los mocks.
-import ParlamentarioPage from "./page";
+import ParlamentarioPage, { CarrilesSection } from "./page";
 import { CrucesSection } from "@/components/cruces-de-parlamentario";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -138,13 +138,22 @@ function makeProps(id = "P00001") {
 }
 
 /**
- * Renderiza la página resolviendo el Suspense de la sección de cruces (Server
- * Component async). renderToStaticMarkup no resuelve promesas de RSC, así que
- * pre-montamos manualmente el árbol esperando los hijos async.
+ * Renderiza la página + sus carriles. WR-02: los carriles y sus conteos viven
+ * ahora tras su propio <Suspense> en un server child async (`CarrilesSection`),
+ * que `renderToStaticMarkup` NO resuelve (muestra el fallback). Para asertar el
+ * HTML real de los carriles (id=cruces, títulos) montamos `CarrilesSection`
+ * explícitamente y concatenamos su markup con el del shell — espejo de cómo el
+ * test 3 ya monta `CrucesSection` a mano. Esto además ejercita el path real de
+ * `contarCarrilesSeguro` (gate-aware) que decide qué carriles aparecen.
  */
 async function renderPage(props: ReturnType<typeof makeProps>): Promise<string> {
-  const el = await ParlamentarioPage(props);
-  return renderToStaticMarkup(el);
+  const shell = renderToStaticMarkup(await ParlamentarioPage(props));
+  const { id } = await props.params;
+  const sp = await props.searchParams;
+  const carriles = renderToStaticMarkup(
+    await CarrilesSection({ id, searchParams: sp }),
+  );
+  return shell + carriles;
 }
 
 describe("/parlamentario/[id] — gate a nivel de sección #cruces (Candado B, LOCKED)", () => {
