@@ -1057,3 +1057,22 @@ El usuario eligió **A y B**: legibilidad construible ahora **y** ingesta que de
 - **INGESTA (en paralelo):** votaciones masivas (reabrir Phase 27) → desbloquea F47→F49; ingesta autores+identidad → desbloquea F48.
 
 Cada fase de chart pasa de GATED a construible cuando su gap de ingesta cierra; la pista de legibilidad no espera. Ver `UI-SPEC.md §5`.
+
+## Phase Details (v5.0)
+
+### Phase 45: LEG — Navegación: acordeones por carril + resumen/índice above-fold
+
+**Goal:** Transformar la ficha de parlamentario de un muro de 1 columna apilada (~900 KB, sin resumen ni navegación) a una ficha **navegable**: cada carril de dominio se vuelve un acordeón independiente (header siempre visible, cuerpo colapsable) y se agrega un resumen+índice arriba del pliegue con conteo/estado honesto y anclas de salto por carril — todo SIN romper la frontera de carril anti-insinuación (DESIGN-SYSTEM §3/§8, LOCKED), el SSR, ni el guard de lockdown (Camino A). Es la pista de legibilidad: data-independiente, mayor ROI del milestone.
+**Mode:** producto (UI / legibilidad; comportamiento-preservante de datos y seguridad)
+**Depends on:** Phase 44 (auditoría+plan: `UI-SPEC.md`, `44-AUDIT-UX.md`, `44-DATA-INVENTORY.md`). Ninguna dependencia de datos.
+**Requirements:** LEG-01, LEG-02, LEG-03
+**Autonomy:** autónomo para construir + testear; build/deploy a Cloudflare = checkpoint operador (Docker Linux + wrangler, no build Windows).
+**Success Criteria** (what must be TRUE):
+
+  1. **LEG-01:** cada carril (`#votos`/`#lobby`/`#patrimonio`/`#cruces`/MONEY gated) es un acordeón independiente (uno por dominio, header con `<h2>` siempre visible, cuerpo colapsable); la frontera `mt-12` nunca se colapsa; jamás dos dominios en una unidad; `@radix-ui/react-accordion`, SSR + thin client wrapper.
+  2. **LEG-02:** resumen+índice above-fold (tras la cabecera, antes del primer carril) con un chip por carril que muestra conteo/estado honesto (3-estado: dato/vacío-honesto/no-ingerido) y ancla al carril.
+  3. **LEG-03:** comportamiento-preservante: contenido de secciones intacto (fuente+fecha+enlace por dato), sin `.from('parlamentario')` ni RPC fuera del allowlist (guard verde), SSR intacto (solo el toggle es cliente), default colapsa carriles vacíos/ralos; suite `app/` verde + `tsc -b` limpio.
+
+**Plans:** TBD (research → plan-phase)
+
+**UI hint**: sí (re-layout de la ficha de parlamentario; UI-SPEC ya existe en `phases/44-...`)

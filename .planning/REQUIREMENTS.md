@@ -84,6 +84,18 @@
 - [ ] **RUTM-02**: Wire real de ChileCompra (hoy CLI demo: maestra vacía, RUT hardcodeado, falta `MERCADOPUBLICO_TICKET`): `run-dinero-prod-cli.ts` (carga maestra + `TareaRut[]` de la semana) + workflow `dinero-chilecompra-weekly` + bloque R2/`SnapshotWriter` en `ingest-run.ts`. Degrada a dry-run sin ticket → assert post-run `if [ $CONTRATOS -eq 0 ]; exit 1`. Con ticket y RUTs reales: `contratos=N>0`, cruce por RUT confirmado.
 - [ ] **RUTM-03**: Workflow `dinero-servel-manual` (`workflow_dispatch` only, URL Azure Blob por elección provista por el operador): con datos reales, `aportes=N>0`. Exposición pública requiere LEGAL-01.
 
+## v5.0 Requirements — Legibilidad + análisis
+
+> Milestone v5 (Phases 44+). Diseño LOCKED en `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md` (decisión A+B: legibilidad ya + ingesta paralela). Estos son los requisitos verificables de la pista de **legibilidad** (F45 navegación). Los requisitos de charts (VIZ-*) se definen al planear F46+ según la cobertura real de datos (ver `44-DATA-INVENTORY.md`).
+
+### LEG — Navegación de la ficha de parlamentario (Phase 45)
+
+> La ficha es hoy 1 columna apilada (~900 KB) sin resumen ni navegación. Hacerla navegable SIN romper la frontera de carril anti-insinuación (DESIGN-SYSTEM §3/§8, LOCKED) ni el guard de lockdown (Camino A).
+
+- [ ] **LEG-01**: Cada carril de dominio (`#votos`, `#lobby`, `#patrimonio`, `#cruces`, y los MONEY gated) se renderiza como un **acordeón independiente** (uno por dominio, JAMÁS dos dominios en una unidad): el `<h2>` vive en un header **siempre visible** (no colapsable, preserva `h1→h2→h3`), el cuerpo es colapsable, y la frontera de carril `mt-12` entre acordeones **nunca se colapsa** (ni con un carril vacío). Componente: `@radix-ui/react-accordion` (coherente con el stack Radix instalado), SSR-friendly, server-component + thin client wrapper para el toggle.
+- [ ] **LEG-02**: Arriba del pliegue (después de la cabecera, antes del primer carril) se renderiza un **resumen + índice** con un chip por carril que (a) muestra el **conteo/estado honesto** del carril respetando los 3 estados (dato / vacío-honesto / no-ingerido; nunca inventa densidad) y (b) **ancla** (salto interno) al carril correspondiente.
+- [ ] **LEG-03**: El rediseño es **comportamiento-preservante de datos y seguridad**: no toca el contenido de las secciones (cada dato conserva fuente+fecha+enlace), no introduce `.from('parlamentario')` ni RPCs fuera del `PUBLIC_RPC_ALLOWLIST` (guard `lockdown-guard.test.ts` verde), no rompe el SSR (la ficha sigue server-rendered; solo el toggle del acordeón es cliente), y el default de apertura colapsa carriles vacíos/ralos. Suite `app/` verde + `tsc -b` limpio; build validado en Docker Linux (no build Windows).
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
