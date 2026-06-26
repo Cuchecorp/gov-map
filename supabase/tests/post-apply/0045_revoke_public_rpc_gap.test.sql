@@ -14,7 +14,7 @@
 -- contra PROD ya aplicado.
 
 begin;
-select plan(15);
+select plan(14);
 
 -- Helper inline: 1 si PUBLIC (grantee=0) tiene EXECUTE en la función, 0 si no.
 -- (No se puede `has_function_privilege('public', ...)` — 'public' no es un rol real.)
@@ -45,11 +45,7 @@ select is((select count(*)::int from pg_proc p, aclexplode(p.proacl) a
     and a.grantee = 0 and a.privilege_type = 'EXECUTE'),
   0, 'PUBLIC sin EXECUTE en parlamentarios_publico');
 
-select is((select count(*)::int from pg_proc p, aclexplode(p.proacl) a
-  where p.oid = 'public.buscar_citaciones(text,int)'::regprocedure
-    and a.grantee = 0 and a.privilege_type = 'EXECUTE'),
-  0, 'PUBLIC sin EXECUTE en buscar_citaciones (2-arg, 0032)');
-
+-- (el overload 2-arg de 0032 ya no existe en PROD: 0033 lo reemplazo por el 3-arg)
 select is((select count(*)::int from pg_proc p, aclexplode(p.proacl) a
   where p.oid = 'public.buscar_citaciones(text,int,text)'::regprocedure
     and a.grantee = 0 and a.privilege_type = 'EXECUTE'),

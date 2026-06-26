@@ -46,8 +46,15 @@ begin
   end;
 
   -- 2. Revoca TODO privilegio concedido A web_reader (SELECT en 26 tablas,
-  --    EXECUTE en 15 RPCs, USAGE en schema) + cualquier objeto que poseyera.
-  drop owned by web_reader;
+  --    EXECUTE en 15 RPCs, USAGE en schema). 0043 solo concedio en `public`
+  --    (verificado: role_table/routine_grants -> schema = public unicamente).
+  --    NO se usa `drop owned by` porque el rol postgres de Supabase no es miembro
+  --    de web_reader (ni superuser) -> "permission denied to drop objects". El owner
+  --    postgres SI puede revocar lo que concedio.
+  revoke all on all tables    in schema public from web_reader;
+  revoke all on all sequences in schema public from web_reader;
+  revoke all on all routines  in schema public from web_reader;
+  revoke usage on schema public from web_reader;
 
   -- 3. Quita la membresia (authenticator era miembro de web_reader).
   if exists (

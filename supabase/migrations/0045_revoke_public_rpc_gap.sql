@@ -38,8 +38,10 @@ revoke execute on function public.votos_de_parlamentario(text, int, int)     fro
 revoke execute on function public.rebeldias_de_parlamentario(text)           from public;
 revoke execute on function public.parlamentario_publico(text)                from public;
 revoke execute on function public.parlamentarios_publico()                   from public;
--- buscar_citaciones tiene dos overloads granted a anon (0032 2-arg, 0033 3-arg).
-revoke execute on function public.buscar_citaciones(text, int)               from public;
+-- buscar_citaciones: en PROD solo existe el overload 3-arg (0033 reemplazo al 2-arg
+-- de 0032 via drop+recreate). Verificado contra pg_proc 2026-06-26: la unica firma es
+-- (q text, limite integer, p_camara text). El revoke del 2-arg inexistente se elimino
+-- (lanzaba "function ... does not exist" -> rollback).
 revoke execute on function public.buscar_citaciones(text, int, text)         from public;
 
 -- Materializadores secdef destructivos en esquemas no-public (DB-07/08). Defense-in-depth:
