@@ -225,7 +225,9 @@ describe("PatrimonioChartShell (vía PatrimonioView) — copy honesto (VIZ-03)",
       <PatrimonioView data={makeViewData({ serie: [makePunto()] })} />,
     );
     expect(
-      screen.getByText(/Datos insuficientes para una tendencia/i),
+      screen.getByText(
+        /Datos insuficientes para mostrar el conteo de ítems por año/i,
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("rc-barchart")).not.toBeInTheDocument();
     // El caveat de montos se renderiza SIEMPRE, también en el degrade.

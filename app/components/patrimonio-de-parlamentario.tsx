@@ -142,8 +142,9 @@ export function seriePatrimonio(
  * Shell SERVER del chart de patrimonio (SSR; el island Recharts solo se monta con
  * ≥2 puntos). Renderiza SIEMPRE el caveat honesto de montos-como-URI y el footer
  * CC BY 4.0 (reusa `AtribucionCcBy`). Con <2 declaraciones muestra el degrade
- * "datos insuficientes para una tendencia" (HECHO neutro, espejo del idiom de
- * `DeclaracionComparacion`) y NO monta la isla — el degrade es grep-testable sin
+ * "datos insuficientes para mostrar el conteo de ítems por año" (HECHO neutro en
+ * marco de CONTEO, jamás "tendencia" — el header del chart prohíbe insinuar una
+ * trayectoria) y NO monta la isla — el degrade es grep-testable sin
  * SVG. SOLO conteos; los montos NUNCA se grafican (son URIs CPLT, no cifras).
  */
 function PatrimonioChartShell({ serie }: { serie: SeriePunto[] }) {
@@ -151,8 +152,8 @@ function PatrimonioChartShell({ serie }: { serie: SeriePunto[] }) {
     <section aria-label="Bienes declarados por año" className="my-6">
       {serie.length < 2 ? (
         <p className="text-sm text-muted-foreground">
-          Datos insuficientes para una tendencia: se necesitan al menos dos
-          declaraciones para mostrar el conteo de ítems por año.
+          Datos insuficientes para mostrar el conteo de ítems por año: se
+          necesitan al menos dos declaraciones.
         </p>
       ) : (
         <PatrimonioChart serie={serie} />
