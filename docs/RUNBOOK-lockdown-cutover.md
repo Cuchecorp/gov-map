@@ -1,6 +1,28 @@
 # RUNBOOK — Cutover LOCKDOWN anon → web_reader
 
-**Fase:** LOCKDOWN-04 (Phase 42)
+> ⚠️ **OBSOLETO / SUPERSEDED — 2026-06-26.** Este runbook describe el plan original
+> `anon → web_reader` (auto-firma HS256 con el legacy JWT secret). Ese approach fue
+> **ABANDONADO**: como tener un secreto de firma simetrico en el server ES el riesgo
+> que el lockdown intenta cerrar, era incompatible con el objetivo del operador de
+> **desactivar el legacy JWT**.
+>
+> **Lo que realmente se aplico a PROD (Camino A — cero secreto simetrico, 2026-06-26):**
+> el sitio publico (SSR) lee con la **service key nueva** `SUPABASE_SECRET_KEY`
+> (`sb_secret_…`, `service_role`) en vez de un JWT `web_reader` auto-firmado.
+> Orden aplicado: `0043` (web_reader, additivo) → deploy service_role →
+> `0044` (revoke anon) → `0045` (revoke PUBLIC) → `0046` (**drop web_reader**) →
+> migracion a JWT signing key **ECC (P-256)** + **revoke del legacy HS256**.
+> Resultado verificado: anon REST → 401; sitio → 200 via service_role; legacy keys
+> disabled. Trade-off: `service_role` bypassa RLS → la proteccion PII pasa de
+> DB-enforced (web_reader) a **guard CI estatico** (`app/lib/lockdown-guard.test.ts`
+> Block B escanea todo `app/` por `.from('<pii>')` y `.rpc()` fuera del allowlist).
+>
+> Detalle: memoria `camino-a-post-legacy-cutover` · commits `9fddbe1`, `bb84e65`.
+> El contenido abajo se conserva como referencia historica del plan web_reader.
+
+---
+
+**Fase:** LOCKDOWN-04 (Phase 42) — *plan original, superseded por Camino A*
 **Fecha de redaccion:** 2026-06-24
 **Autoridad:** `_FACTS-live-prod.md` + `42-RESEARCH.md` §4 (tabla de pasos)
 
