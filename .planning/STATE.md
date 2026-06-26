@@ -4,13 +4,13 @@ milestone: v5.0
 milestone_name: — De datos a comprensión
 status: Ready to execute
 stopped_at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
-last_updated: "2026-06-26T19:26:14.779Z"
+last_updated: "2026-06-26T19:35:21.677Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 38
   completed_phases: 20
   total_plans: 76
-  completed_plans: 82
+  completed_plans: 83
   percent: 53
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
 Phase: 45 (LEG — Navegación: acordeones por carril + resumen/índice above-fold) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Hallazgo clave: la mayoría de los charts están bloqueados por gaps de DATOS, no UI (votos=10 votaciones, autores=0/74, montos=URIs). Decisión usuario = A+B (legibilidad ya + ingesta paralela).
 Próximo (AUTÓNOMO, pista de legibilidad): Phase 45 (LEG, navegación: acordeones por carril + resumen/índice above-fold) → Phase 46 (chart patrimonio-conteo). F45 es data-independiente, mayor ROI. F47/F48/F49 GATED tras ingesta (NO autónomas).
 Diseño LOCKED para F45/F46: `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md` (frontera de carril mt-12 intacta, Radix accordion, Recharts a instalar, RPC nueva → PUBLIC_RPC_ALLOWLIST + PII-safe).
@@ -214,6 +214,7 @@ Recent decisions affecting current work:
 - [Phase 41]: 41-02 (CRUCEN-02, grant gated): 0042_cruces_grant_anon.sql ESCRITA (a5e410a) — válvula del Candado A: el único `grant execute on function public.cruces_de_parlamentario(text) to anon` que 0040 omite intencionalmente + cabecera LOUD "NO APLICAR EN CORRIDAS AUTÓNOMAS" + precondición fail-loud `do$$ raise exception` si 0041 no aplicada (fecha_captura ausente de proargnames → el grant caería sobre una función que 0041 luego dropea). **0042 INERTE: NO aplicada a PROD, NO en schema_migrations (gate 2 LOCKED); apply = checkpoint humano post-sign-off CRUCEN-03 (espejo F17/NET).** pgTAP de encendido (0ad6f1c) en supabase/tests/post-apply/ (NUEVO subdir, FUERA del glob de la suite: vitest globea solo .test.{ts,tsx} bajo lib/components/app; sin runner pgTAP automático sobre supabase/tests) → plan(2): anon TIENE execute (espejo INVERTIDO del 0040 assert #3) + sigue security definer; lo corre el operador a mano el día del encendido. Guard de no-apply-prematuro = assert #3 EXISTENTE de 0040_cruces_rpc.test.sql (anon NO execute), dejado SIN cambios (la variante condicional fue RECHAZADA por el validador: moot + security regression). Suite 298/298 verde (0042 no toca frontend). CERO DDL aplicado, CERO grant ejecutado, CERO flip.
 - [Phase ?]: [Phase 37]: 37-03: <section id=cruces> cableada como carril hermano gated en page.tsx — gate crucesPublicEnabled(process.env) envuelve la <section> ENTERA (heading incl., espejo MONEY); OFF (default) => nodo AUSENTE del HTML + RPC cruces_de_parlamentario NUNCA invocado (Candado B load-bearing). Posicion: despues de #patrimonio, antes de MONEY gated. Test del path ON renderiza CrucesSection directamente (renderToStaticMarkup no resuelve hijos async de Suspense). CERO DDL/grant/flip; flag ships OFF (encender = Phase 39). 294 tests verdes.
 - [Phase ?]: [Phase 41]: 41-03 (CRUCEN-03): dossier legal de cruces escrito x2 byte-identicos (docs/legal/41-LEGAL-DOSSIER-CRUCES.md + twin phase-dir), signoff: pending JAMAS firmado (gate 3). CRUCES-especifico (agregacion intra-bloque lobby->sector, NO NET): 1 lobby_sector; 2 agregacion por sector se lee como afinidad/captura sin aristas/caminos; 3 sin partido/sentido-de-voto; 6 fuente unica lobby NO CC BY 4.0; 8 ref 0042_cruces_grant_anon. nota sin la subcadena signoff:approved (grep-hygiene). 9 checklist sin marcar. Firma = humana Phase 39; encender = firmar->aplicar 0042->flip flag. Commits d6ac182 + 7b01957.
+- [Phase ?]: [Phase 45]: 45-02: contarCarriles(id) server-only (import server-only + React.cache) deriva el 3-estado honesto via RPCs allowlisted + .from(*_ingesta_estado) NO-PII; throw #34. ParlamentarioResumen server + ResumenView pura emiten chip ancla por carril replicando gates cruces/money de page.tsx; MONEY OFF => chip pendiente honest-state, nunca un numero. Suite 352/352, lockdown verde. 45-03 lo cablea above-fold.
 
 ### Pending Todos
 
@@ -260,7 +261,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-26T19:26:14.763Z
+Last session: 2026-06-26T19:34:54.144Z
 Stopped at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
 Resume file: None
 
