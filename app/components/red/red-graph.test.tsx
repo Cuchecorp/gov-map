@@ -43,7 +43,12 @@ vi.mock("@xyflow/react", async () => {
       nodeTypes,
       edgeTypes,
     }: {
-      nodes: { id: string; type: string; data: unknown }[];
+      nodes: {
+        id: string;
+        type: string;
+        data: unknown;
+        position: { x: number; y: number };
+      }[];
       edges: { id: string; type: string; data: unknown }[];
       nodeTypes: Record<string, React.ComponentType<{ data: unknown }>>;
       edgeTypes: Record<string, React.ComponentType<{ data: unknown }>>;
@@ -51,9 +56,20 @@ vi.mock("@xyflow/react", async () => {
       React.createElement(
         "div",
         { "data-testid": "rf-canvas" },
+        // Cada nodo se envuelve en un div que expone su posición inyectada
+        // (data-x/data-y) para poder asertar el layout determinista por carril.
         nodes.map((n) => {
           const Cmp = nodeTypes[n.type];
-          return React.createElement(Cmp, { key: n.id, data: n.data });
+          return React.createElement(
+            "div",
+            {
+              key: n.id,
+              "data-testid": `rf-node-${n.id}`,
+              "data-x": String(n.position?.x),
+              "data-y": String(n.position?.y),
+            },
+            React.createElement(Cmp, { data: n.data }),
+          );
         }),
         edges.map((e) => {
           const Cmp = edgeTypes[e.type];
@@ -303,5 +319,85 @@ describe("RedGraph — estado honesto (grafo vacío, NUNCA error/nodo falso)", (
   it("subgrafo null → estado honesto, sin crash", () => {
     render(<RedGraph subgrafo={null} />);
     expect(screen.getByText(/aún no hay relaciones/i)).toBeInTheDocument();
+  });
+});
+
+describe("RedGraph — nodos huérfanos excluidos (B20a) + layout por carril (B20b)", () => {
+  const tres_nodos: Subgrafo["nodos"] = [
+    { id: "D1", nombre: "Diputada Uno", camara: "diputados" },
+    { id: "D2", nombre: "Diputado Dos", camara: "diputados" },
+    { id: "D3", nombre: "Diputada Tres", camara: "diputados" },
+  ];
+
+  it("un nodo sin arista visible NO se monta en el lienzo", () => {
+    render(
+      <RedGraph
+        subgrafo={{
+          nodos: tres_nodos,
+          // Única arista D1↔D2 → D3 queda huérfano.
+          aristas: [arista({ a: "D1", b: "D2" })],
+        }}
+      />,
+    );
+    // D1/D2 participan de la arista visible → presentes.
+    expect(screen.getByText("Diputada Uno")).toBeInTheDocument();
+    expect(screen.getByText("Diputado Dos")).toBeInTheDocument();
+    // D3 no participa de ninguna arista visible → AUSENTE del lienzo.
+    expect(screen.queryByText("Diputada Tres")).not.toBeInTheDocument();
+  });
+
+  it("destildar el tipo saca también sus nodos (lienzo ausente)", () => {
+    const { container } = render(
+      <RedGraph
+        subgrafo={{
+          nodos: tres_nodos,
+          aristas: [arista({ a: "D1", b: "D2" })],
+        }}
+      />,
+    );
+    // El lienzo existe con la arista visible.
+    expect(within(container).queryByTestId("rf-canvas")).toBeInTheDocument();
+    // Destildar el único tipo → aristasVisibles = 0 → el lienzo entero no monta,
+    // así que ningún nodo (ni huérfano ni conectado) queda flotando.
+    fireEvent.click(screen.getByLabelText(/tipo de relaci/i));
+    expect(
+      within(container).queryByTestId("rf-canvas"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("layout por carril es determinista y separa cámaras", () => {
+    const { container } = render(
+      <RedGraph
+        subgrafo={{
+          nodos: [
+            { id: "D1", nombre: "Diputada Uno", camara: "diputados" },
+            { id: "D2", nombre: "Diputado Dos", camara: "diputados" },
+            { id: "S1", nombre: "Senadora Tres", camara: "senado" },
+          ],
+          // D1↔D2 y D2↔S1 → los tres participan de aristas visibles.
+          aristas: [
+            arista({ a: "D1", b: "D2" }),
+            arista({ a: "D2", b: "S1" }),
+          ],
+        }}
+      />,
+    );
+
+    const y = (id: string) =>
+      Number(
+        within(container)
+          .getByTestId(`rf-node-${id}`)
+          .getAttribute("data-y"),
+      );
+
+    // La banda de senado empieza en ROW*3 = 420; los diputados caen bajo esa cota.
+    const BANDA_SENADO = 420;
+    expect(y("D1")).toBeLessThan(BANDA_SENADO);
+    expect(y("D2")).toBeLessThan(BANDA_SENADO);
+    // El senador cae en una banda DISTINTA (>= 420) — separación por cámara.
+    expect(y("S1")).toBeGreaterThanOrEqual(BANDA_SENADO);
+    // Dos nodos de la misma cámara comparten banda pero difieren de posición
+    // (índice-de-carril local): el layout es determinista, no colapsa nodos.
+    expect(y("D1")).not.toBe(y("D2"));
   });
 });

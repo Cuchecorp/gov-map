@@ -91,16 +91,25 @@ function ms(iso: string | null): number | null {
   return Number.isNaN(t) ? null : t;
 }
 
-/** Layout determinista por cámara (rejilla); jamás una simulación física. */
+/**
+ * Layout determinista por CARRIL de cámara (rejilla pura); jamás una simulación
+ * física. `laneIndex` es el índice LOCAL del nodo DENTRO de su carril de cámara
+ * (contador separado por cámara), NO el índice global — así las columnas avanzan
+ * por-carril y cada cámara ocupa su propia banda horizontal (senado = banda 1,
+ * resto = banda 0). La proximidad visual NO codifica relación (anti-insinuación
+ * LOCKED): es una rejilla fija por posición de llegada al carril, no una medida de
+ * cercanía entre personas.
+ */
 function posicion(
-  index: number,
+  laneIndex: number,
   camara: string | null,
 ): { x: number; y: number } {
   const COL = 220;
   const ROW = 140;
-  const fila = camara === "senado" ? 1 : 0; // dos carriles por cámara
-  const col = Math.floor(index / 1);
-  return { x: col * COL, y: fila * ROW * 3 + (index % 3) * ROW };
+  const fila = camara === "senado" ? 1 : 0; // banda por cámara
+  const col = Math.floor(laneIndex / 3);
+  const row = laneIndex % 3;
+  return { x: col * COL, y: fila * ROW * 3 + row * ROW };
 }
 
 export function RedGraph({ subgrafo }: RedGraphProps) {
@@ -160,19 +169,35 @@ export function RedGraph({ subgrafo }: RedGraphProps) {
     );
   }
 
-  // Nodos que aún participan de alguna arista visible (más el conjunto base).
+  // Nodos que aún participan de alguna arista visible.
   const nodosVisiblesIds = new Set<string>();
   aristasVisibles.forEach((a) => {
     nodosVisiblesIds.add(a.a);
     nodosVisiblesIds.add(a.b);
   });
 
-  const rfNodes: Node<NodoParlamentarioData>[] = nodos.map((n, i) => ({
-    id: n.id,
-    type: "parlamentario",
-    position: posicion(i, n.camara),
-    data: { nombre: n.nombre, camara: n.camara, id: n.id },
-  }));
+  // B20a — Solo los nodos que participan de alguna arista VISIBLE llegan al
+  // lienzo: un nodo huérfano flotando se leería como una persona "suelta" sin
+  // hecho que la vincule. El early-return de `aristas.length === 0` (arriba) cubre
+  // el grafo genuinamente vacío; este filtro cubre el caso de filtros que dejan
+  // nodos sin arista visible.
+  const nodosVisibles = nodos.filter((n) => nodosVisiblesIds.has(n.id));
+
+  // B20b — Contador por carril: el índice que alimenta `posicion` es LOCAL a la
+  // cámara del nodo, no global, de modo que los carriles existan de verdad (las
+  // columnas avanzan DENTRO de cada banda de cámara, no a través de ambas).
+  const laneCounters: Record<string, number> = {};
+  const rfNodes: Node<NodoParlamentarioData>[] = nodosVisibles.map((n) => {
+    const lane = n.camara === "senado" ? "senado" : "diputados";
+    const laneIndex = laneCounters[lane] ?? 0;
+    laneCounters[lane] = laneIndex + 1;
+    return {
+      id: n.id,
+      type: "parlamentario",
+      position: posicion(laneIndex, n.camara),
+      data: { nombre: n.nombre, camara: n.camara, id: n.id },
+    };
+  });
 
   const rfEdges: Edge<AristaHechoData>[] = aristasVisibles.map((a, i) => ({
     id: `${a.tipo}-${a.a}-${a.b}-${i}`,
