@@ -174,7 +174,15 @@ export async function CarrilesSection({
           defaultOpen={abrePorDefecto(conteos.lobby)}
         >
           <Suspense fallback={<LobbySkeleton />}>
-            <LobbySection id={id} searchParams={sp} />
+            {/*
+              B10: el frame/intro de lobby debe reflejar la cámara REAL del
+              parlamentario (senadores NO se atribuyen a "la Cámara
+              camara.cl/transparencia"). El wrapper deriva `camara` del RPC público
+              `parlamentario_publico` (ya allowlisted) — espejo de
+              FinanciamientoSectionConPeriodo. El enlace por fila (fuente real) no
+              se toca.
+            */}
+            <LobbySectionConCamara id={id} searchParams={sp} />
           </Suspense>
         </CarrilAccordion>
       </section>
@@ -305,6 +313,40 @@ export async function CarrilesSection({
         </section>
       )}
     </>
+  );
+}
+
+// ── Wrapper B10 Lobby: deriva `camara` para parametrizar el frame de la fuente ──
+// La cámara del parlamentario NO llega a LobbySection por props; vive en
+// `parlamentario_publico.camara` (campo público, no sensible). La leemos aquí y la
+// pasamos EXPLÍCITA a LobbySection para que el intro/empty-state atribuyan la
+// fuente que corresponde (senado vs diputados) — un senador NUNCA se atribuye a
+// "la Cámara (camara.cl/transparencia)". Espejo VERBATIM de
+// FinanciamientoSectionConPeriodo: un error real de DB/red se lanza (#34), nunca se
+// degrada; cámara ausente (null) → frame genérico honesto. El enlace por fila
+// (fuente real) no se toca. CERO RPC nueva: `parlamentario_publico` ya allowlisted.
+async function LobbySectionConCamara({
+  id,
+  searchParams,
+}: {
+  id: string;
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  const sb = createServerSupabase();
+  const { data, error } = await sb
+    .rpc("parlamentario_publico", { p_id: id })
+    .maybeSingle<ParlamentarioPublicoRow>();
+  // #34: un error real de DB/red se lanza (UI de error honesta), nunca se degrada.
+  if (error) {
+    throw new Error(
+      `parlamentario_publico falló para ${id}: ${error.message}`,
+    );
+  }
+  // cámara ausente (null) → frame genérico honesto, sin atribuir una cámara.
+  const camara = data?.camara ?? null;
+
+  return (
+    <LobbySection id={id} searchParams={searchParams} camara={camara} />
   );
 }
 

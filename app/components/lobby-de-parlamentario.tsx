@@ -61,6 +61,32 @@ export interface LobbyViewData {
    * infiere de la AUSENCIA de fila en `lobby_ingesta_estado`.
    */
   noIngestado: boolean;
+  /**
+   * B10 — cámara del parlamentario (`parlamentario_publico.camara`), para
+   * parametrizar el FRAME/intro con la fuente que corresponde (senado vs
+   * diputados). NO altera el `enlace` por fila (la fuente REAL del dato). Ausente
+   * (`undefined`/`null`) → frame genérico sin atribuir una cámara concreta.
+   */
+  camara?: string | null;
+}
+
+/**
+ * B10 — frase de fuente del FRAME de lobby, parametrizada por la cámara real del
+ * parlamentario. Antes el intro/empty-state atribuían SIEMPRE "la Cámara
+ * (camara.cl/transparencia)", fabricando trazabilidad falsa en fichas de senador.
+ * Normalización idéntica a `classify` en `camara-chip.tsx`. El enlace por fila
+ * (`sourceUrl={a.enlace}`) es la fuente real y NO se toca — esto es solo el frame.
+ */
+function fuenteLobbyPorCamara(camara: string | null): string {
+  const v = (camara ?? "").toLowerCase();
+  if (v.includes("senado")) {
+    return "el registro de la Ley del Lobby del Senado";
+  }
+  if (v.includes("diput") || v.includes("cámara") || v.includes("camara")) {
+    return "el registro oficial de la Cámara (camara.cl/transparencia)";
+  }
+  // Cámara desconocida → frame genérico honesto, sin atribuir una cámara.
+  return "el registro oficial de la Ley del Lobby";
 }
 
 /** Construye un href de paginación preservando el resto de la query. */
@@ -98,12 +124,17 @@ function ContraparteCruda({ c }: { c: LobbyContraparteRow }) {
 export function LobbyView({ data }: { data: LobbyViewData }) {
   const { id, audiencias, totalAudiencias, page, totalPages, noIngestado } = data;
 
+  // B10 — frase de fuente del FRAME según la cámara REAL del parlamentario. Para
+  // senadores no se dirá "la Cámara (camara.cl/transparencia)". El enlace por fila
+  // (fuente real) NO se toca; esto es solo el texto del frame/intro.
+  const fuente = fuenteLobbyPorCamara(data.camara ?? null);
+
   // ── Línea de intro honesta (§3.1) — el frame ANTES de cualquier fila ──────────
   const intro = (
     <p className="text-sm text-muted-foreground mb-4">
       Audiencias registradas bajo la Ley del Lobby (Ley 20.730). Cada reunión se
-      muestra tal como la publica el registro oficial de la Cámara
-      (camara.cl/transparencia); el enlace de cada fila apunta a la fuente.
+      muestra tal como la publica {fuente}; el enlace de cada fila apunta a la
+      fuente.
     </p>
   );
 
@@ -128,7 +159,7 @@ export function LobbyView({ data }: { data: LobbyViewData }) {
         {intro}
         <p className="text-sm text-muted-foreground">
           No se registran reuniones de lobby confirmadas para este parlamentario en
-          el periodo consultado, según el registro de la Cámara (camara.cl/transparencia).
+          el periodo consultado, según {fuente}.
         </p>
       </>
     );
@@ -288,9 +319,16 @@ export function agruparAudiencias(
 export async function LobbySection({
   id,
   searchParams,
+  camara,
 }: {
   id: string;
   searchParams: { [key: string]: string | string[] | undefined };
+  /**
+   * B10 — cámara del parlamentario, derivada por el wrapper de page.tsx vía el RPC
+   * `parlamentario_publico` (ya allowlisted). Parametriza SOLO el frame/intro; el
+   * enlace por fila (fuente real) no depende de esto.
+   */
+  camara: string | null;
 }) {
   const sb = createServerSupabase();
 
@@ -343,6 +381,7 @@ export async function LobbySection({
         page: pageClamped,
         totalPages,
         noIngestado,
+        camara,
       }}
     />
   );
