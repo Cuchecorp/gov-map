@@ -18,6 +18,7 @@ import {
 } from "@/lib/parlamentario-resumen-conteos";
 import { moneyPublicEnabled } from "@/lib/money-gate";
 import { crucesPublicEnabled } from "@/lib/cruces-gate";
+import { netPublicEnabled } from "@/lib/net-gate";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ParlamentarioPublicoRow } from "@/lib/types";
 
@@ -126,6 +127,29 @@ export default async function ParlamentarioPage({
       <Suspense fallback={<ResumenSkeleton />}>
         <ParlamentarioResumen id={id} />
       </Suspense>
+
+      {/*
+        B21b — Enlace gated a /red?seed=<id>. Aparece SOLO cuando
+        netPublicEnabled(process.env) es true (espejo EXACTO de los gates
+        cruces/money): con OFF (default fail-closed) el nodo ENTERO está AUSENTE del
+        DOM (no oculto por CSS ni dependiendo de que un hijo retorne null).
+        netPublicEnabled es server-only (chokepoint): NUNCA leer NET_PUBLIC_ENABLED
+        crudo. El enlace es navegación PURA — NO compone hechos de otro parlamentario,
+        así que no cruza la frontera anti-insinuación (mt-12 se respeta igual). `id`
+        ya validó contra PARLAMENTARIO_ID_RE al inicio de la page. Copy SOBRIO, sin
+        influencia/conexiones/afinidad/score/causa. ENCENDER el flag = deuda F17
+        (firma legal humana); un agente NUNCA lo flipea.
+      */}
+      {netPublicEnabled(process.env) && (
+        <nav aria-label="Relaciones entre parlamentarios" className="mt-12">
+          <a
+            href={`/red?seed=${id}`}
+            className="text-sm font-medium underline underline-offset-4"
+          >
+            Ver relaciones con otros parlamentarios
+          </a>
+        </nav>
+      )}
 
       {/*
         WR-02: los carriles y SUS CONTEOS viven tras su propio <Suspense>. Así el

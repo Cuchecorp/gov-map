@@ -28,6 +28,13 @@ vi.mock("@/lib/money-gate", () => ({
   moneyPublicEnabled: () => false,
 }));
 
+// Gate NET inyectable por test (default OFF, fail-closed) — B21b: el enlace a /red
+// aparece SOLO con NET ON, espejo del mock de cruces-gate.
+const netEnabledMock = vi.fn<() => boolean>(() => false);
+vi.mock("@/lib/net-gate", () => ({
+  netPublicEnabled: () => netEnabledMock(),
+}));
+
 // notFound() — no debe dispararse en un id válido; sentinel detectable si pasa.
 class NotFoundSignal extends Error {
   constructor() {
@@ -128,6 +135,7 @@ beforeEach(() => {
   fromMock.mockClear();
   createServerSupabaseMock.mockClear();
   crucesEnabledMock.mockReset();
+  netEnabledMock.mockReset();
 });
 
 function makeProps(id = "P00001") {
@@ -203,6 +211,34 @@ describe("/parlamentario/[id] — gate a nivel de sección #cruces (Candado B, L
   it("gate ON → la página resuelve truthy sin lanzar sobre un fixture normal", async () => {
     crucesEnabledMock.mockReturnValue(true);
     await expect(ParlamentarioPage(makeProps())).resolves.toBeTruthy();
+    expect(notFoundMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("/parlamentario/[id] — enlace gated a /red (B21b, Candado B NET)", () => {
+  it("NET gate OFF (default) → la ficha NO contiene enlace a /red (nodo ausente)", async () => {
+    netEnabledMock.mockReturnValue(false);
+    crucesEnabledMock.mockReturnValue(false);
+    // El enlace vive en el shell de la página (fuera de Suspense), así que
+    // renderToStaticMarkup del shell basta para asertarlo.
+    const html = renderToStaticMarkup(await ParlamentarioPage(makeProps()));
+
+    // Candado B (NET): el nodo entero está AUSENTE del HTML (no oculto-con-CSS).
+    expect(html).not.toContain('href="/red?seed=');
+    expect(html).not.toContain("Ver relaciones con otros parlamentarios");
+    expect(notFoundMock).not.toHaveBeenCalled();
+  });
+
+  it("NET gate ON → la ficha contiene enlace a /red?seed=<id> con copy sobrio", async () => {
+    netEnabledMock.mockReturnValue(true);
+    crucesEnabledMock.mockReturnValue(false);
+    const html = renderToStaticMarkup(await ParlamentarioPage(makeProps()));
+
+    // El enlace navega a /red con la semilla del id del fixture.
+    expect(html).toContain("/red?seed=P00001");
+    expect(html).toContain("Ver relaciones con otros parlamentarios");
+    // Negative-match anti-insinuación: sin vocabulario de influencia/afinidad/score.
+    expect(html).not.toMatch(/influencia|conexion|sospechos|afinidad|score/i);
     expect(notFoundMock).not.toHaveBeenCalled();
   });
 });
