@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
 status: Ready to execute
-stopped_at: Completed 50-05-PLAN.md (B7 throw-on-error #34 + B12 capitalización + B17 guard de fecha)
+stopped_at: Phase 50 COMPLETE (verifier 12/12 passed, code-review 2 warnings fixed, suite 406 verde, tsc limpio, lockdown 7/7). Halted at --to 50. Próximo = Phase 51 (LEG2) / Phase 52 (CRUCE2) o deploy operador F45+F46+F50.
 last_updated: "2026-07-02T19:11:00.000Z"
 last_activity: 2026-07-02
 progress:
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 50 — FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)
+**Current focus:** Phase 50 COMPLETE (P1 quick wins); siguiente = Phase 51 (LEG2 legibilidad profunda) / Phase 52 (CRUCE2) / F47-F49 desbloqueadas; deploy operador F45+F46+F50 pendiente.
 
 ## Current Position
 
-Phase: 50 (FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)) — EXECUTING
-Plan: 5 of 5 (50-05 COMPLETE — B7 throw-on-error #34 agenda + B12 capitalizarPrimera + B17 fechaCortaSegura patrimonio; suite app/ 400 verde, tsc limpio, lockdown 7/7. Wave 2 = única de wave 2, consumió contratos de 50-01/50-03)
+Phase: 50 (FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)) — **COMPLETE 2026-07-02**
+5/5 planes ejecutados (2 waves secuenciales). Verifier Opus **12/12 passed** contra código. Code-review thorough: 0 critical, 2 warnings **fixed** (WR-01 `esHistorica` guard fecha null — no fabrica "histórica"; WR-02 `getParlamentarioPublico` React.cache dedup 3 RPC), 3 info diferidos (incl. dead code voto-ficha-row → B24/Phase 51). Suite app/ **377→406 verde**, `tsc -b` limpio, lockdown-guard 7/7, Camino A intacto (cero RPC nueva/DDL/flag). Bugs cerrados: B1 pill→14309-04, B6 ámbar 14d, B7 agenda throw #34, B8 chip omitido, B9 error.tsx ×4 (`unstable_retry`), B10 copy lobby por cámara, B12 locale, B14 desenlace null explícito, B15 "Iniciativa del Ejecutivo (Mensaje).", B17 fechaCortaSegura, HS 1×/sección.
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
 Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to 46`, 2026-06-26):
 
