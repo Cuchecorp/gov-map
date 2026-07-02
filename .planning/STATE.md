@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
 status: Ready to execute
-stopped_at: F45 COMPLETE + F46 code-complete (46-01); halted at --to 46. DEUDA ÚNICA = deploy operador (OpenNext Docker Linux + wrangler) cubre F45+F46.
-last_updated: "2026-06-26T20:54:11.517Z"
-last_activity: 2026-06-26
+stopped_at: Diagnóstico 2026-07-02 convertido a fases 50/51/52; F47/F49 desbloqueadas (gate PROD verificado). Próximo = plan+execute Phase 50.
+last_updated: "2026-07-02T00:00:00.000Z"
+last_activity: 2026-07-02
 progress:
   total_phases: 38
   completed_phases: 21
@@ -121,6 +121,11 @@ Last activity: 2026-06-26 -- F45 COMPLETE + F46 code-complete (autónomo); pendi
 | Phase 46 P01 | 15m | 2 tasks | 6 files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- 2026-07-02: Diagnóstico completo gov-map (`.planning/DIAGNOSTICO-govmap-2026-07-02.md`, 28 bugs B1–B28) → 3 fases nuevas en v5: Phase 50 (FIX quick wins P1), Phase 51 (LEG2 legibilidad profunda P2), Phase 52 (CRUCE2 cruces nuevos P3). Directorio 50 = `phases/50-fix-quick-wins-diagnostico-p1/`.
+- 2026-07-02: Gates re-verificados contra PROD (psql read-only): **F47 y F49 DESBLOQUEADAS** (133 votaciones / 18.700 votos / 17.378 confirmados / 546 ausencias / 186 parlamentarios con voto — la ingesta masiva ya corrió; la 44-AUDIT que decía 10/1.389 quedó obsoleta). **F48 sigue GATED** (`proyecto.autores` vacío 136/136).
 
 ### Decisions
 

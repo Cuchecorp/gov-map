@@ -1047,18 +1047,25 @@ El inventario de datos (PROD real) muestra que **la mayoría de los charts propu
 F45 (navegación: acordeones + resumen)  ──►  F46 (chart patrimonio: conteo/año)   [v5 CONSTRUIBLE HOY]
                                                    │
    ────────────── gap de ingesta (milestone aparte) ──────────────
-   ingesta votaciones masiva ──► F47 (chart votos/ausencias) ──► F49 (vs cámara: RPC tasa_ausencia_comparada)
-   ingesta autores + identidad ──► F48 (autoría + similares-del-parlamentario: RPC proyectos_de_parlamentario)
+   ingesta votaciones masiva ✅ CORRIÓ (verificado PROD 2026-07-02: 133 votaciones/18.700 votos) ──► F47 DESBLOQUEADA ──► F49 DESBLOQUEADA (falta solo RPC)
+   ingesta autores + identidad (PENDIENTE: autores 0/136) ──► F48 (autoría + similares-del-parlamentario: RPC proyectos_de_parlamentario)
 ```
+
+### Diagnóstico 2026-07-02 (post-F46) — fases P1/P2/P3
+
+Auditoría completa del sitio en vivo (`.planning/DIAGNOSTICO-govmap-2026-07-02.md`: 28 bugs B1–B28, propuestas anti-sobrecarga, catálogo de cruces) → Phases 50 (quick wins), 51 (legibilidad profunda), 52 (cruces nuevos). P0 = checklist operador (deploy F45+F46, flip NET tras B20/B21, rotar DB password). B20/B21 (RedGraph/`/red`) quedan en backlog hasta decidir el flip NET.
 
 ### Phases (v5.0)
 
 - [x] **Phase 44: Auditoría UX + Inventario de datos + Plan** — ✅ COMPLETE 2026-06-26 (browseros sobre PROD + psql + lectura `app/`). Entregables: `UI-SPEC.md`, `44-AUDIT-UX.md`, `44-DATA-INVENTORY.md`. Hallazgo: navegación ROI-alto data-independiente; charts mayormente data-gated.
 - [x] **Phase 45: Navegación — acordeones por carril + resumen/índice above-fold.** Construible hoy. Dep: `@radix-ui/react-accordion`. Preserva frontera de carril `mt-12` (un acordeón por dominio, header siempre visible). **Mayor ROI del milestone.** (completed 2026-06-26)
 - [ ] **Phase 46: Chart patrimonio (conteo de bienes/pasivos por año).** Recharts (instalar + validar build CF Docker). Único chart con cobertura densa hoy (135 parlamentarios ≥2 años); solo conteos (montos=URI → degrade). Dep: F45.
-- [ ] **Phase 47: Chart votos/ausencias** — GATED. Pre-req: re-ingesta masiva de votaciones (Phase 27 no logró cobertura). Hasta entonces el carril votos degrada a "datos insuficientes".
-- [ ] **Phase 48: Autoría + similares-del-parlamentario** — GATED. Pre-req: ingesta `proyecto.autores` + resolución nombre→`parlamentario_id` + RPC `proyectos_de_parlamentario`.
-- [ ] **Phase 49: Comparativo vs cámara (ausencias/actividad)** — GATED. Pre-req: F47 (cobertura votos) + RPC `tasa_ausencia_comparada` (security definer, PII-safe, allowlist).
+- [ ] **Phase 47: Chart votos/ausencias** — **DESBLOQUEADA 2026-07-02**: gate de datos CUMPLIDO verificado contra PROD (133 votaciones / 18.700 votos / 17.378 confirmados / 186 parlamentarios con voto). La ingesta masiva ya corrió; construible.
+- [ ] **Phase 48: Autoría + similares-del-parlamentario** — GATED (re-verificado 2026-07-02: `proyecto.autores` vacío 136/136). Pre-req: ingesta `proyecto.autores` + resolución nombre→`parlamentario_id` + RPC `proyectos_de_parlamentario`.
+- [ ] **Phase 49: Comparativo vs cámara (ausencias/actividad)** — **gate de datos CUMPLIDO 2026-07-02** (546 ausencias / 18.700 votos en PROD; F47 desbloqueada). Falta solo: RPC `tasa_ausencia_comparada` (security definer, PII-safe, allowlist).
+- [ ] **Phase 50: FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)** — 11 fixes de código acotados (B1, B6, B7, B8, B9, B10, B12, B14, B15, B17 + supresión de honest-state repetido). Sin DDL, sin deploy (checkpoint operador aparte).
+- [ ] **Phase 51: LEG2 — Legibilidad profunda (P2)** — votos agregados por proyecto, timeline dos niveles + "¿dónde está hoy?", patrimonio tarjeta-resumen sin URIs (B3), comparador cableado (B4), rebeldías honestas (B5), lobby agrupado por contraparte, provenance por sección, footer global.
+- [ ] **Phase 52: CRUCE2 — Cruces nuevos con datos ya disponibles (P3)** — clasificador sectorial (enciende `cruce_senal` de verdad), lobby×tramitación temporal, proyecto→agenda inverso, módulo de actualidad en home. (Asistencia comparada = Phase 49; chart votos = Phase 47 — ya desbloqueadas.)
 
 ### Decisión (RESUELTA 2026-06-26): A + B — ambas pistas en paralelo
 
@@ -1111,3 +1118,77 @@ Cada fase de chart pasa de GATED a construible cuando su gap de ingesta cierra; 
 - [ ] 46-02-PLAN.md — Checkpoint operador: build OpenNext Docker Linux + deploy wrangler
 
 **UI hint**: sí (gráfico en la sección de patrimonio; depende del acordeón de F45)
+
+### Phase 50: FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)
+
+**Goal:** Eliminar los bugs de código acotados y verificados en vivo del diagnóstico `.planning/DIAGNOSTICO-govmap-2026-07-02.md` (§1) — cada uno con file:line conocido, sin DDL nuevo, sin deploy (el deploy F45+F46+F50 es un checkpoint operador único). La primera impresión del sitio deja de estar rota y la doctrina de estados honestos vuelve a cumplirse en el 100% de las rutas.
+**Mode:** fix (código puro; comportamiento-corrector, cero cambio de schema/RPC salvo copy)
+**Depends on:** Phase 46 (código; el deploy pendiente NO bloquea). Diagnóstico: `.planning/DIAGNOSTICO-govmap-2026-07-02.md`.
+**Requirements:** (bugs del diagnóstico — no mapea a REQ nuevo)
+**Autonomy:** autónomo para construir + testear; deploy = checkpoint operador (Docker Linux + wrangler).
+**Success Criteria** (what must be TRUE):
+
+  1. **B1** — el pill del hero del home no apunta a un boletín inexistente: ejemplos validados contra la DB o reemplazados por boletines reales (`app/app/page.tsx:23-28`).
+  2. **B6** — el umbral ámbar del ProvenanceBadge deja de estar en alarma permanente: umbral por cadence de fuente (~10-14 días para ingesta semanal), no 48 h fijas (`lib/format.ts:56-58`).
+  3. **B7** — `/agenda` deja de tragar errores de DB: `CitacionesSection` y `SalaTableServer` chequean `.error` y lanzan (doctrina #34; `agenda/page.tsx:276-284,404-421`) — un fallo de red nunca se renderiza como "No hay citaciones esta semana".
+  4. **B8** — el timeline nunca muestra el chip literal "Cámara origen desconocida" (fallback de label honesto).
+  5. **B9** — `/proyecto/[boletin]`, `/parlamentarios`, `/buscar` y `/agenda` tienen `error.tsx` propio en español (paridad con parlamentario/contraparte).
+  6. **B10** — el copy de lobby se parametriza por cámara: la ficha de un senador nunca dice "la Cámara (camara.cl/transparencia)".
+  7. **B12** — fechas con locale correcto ("jueves 2 de julio", no "Jueves, 2 De Julio") en headers de agenda.
+  8. **B14** — votación sin resultado en la fuente muestra línea explícita "desenlace no informado por la fuente" (paridad Cámara/Senado, honest-state, nunca silencio).
+  9. **B15** — proyectos de tipo Mensaje dicen "Iniciativa del Ejecutivo", nunca "Autores no informados.".
+  10. **B17** — `VersionRow` guarda `fecha_presentacion` contra null/empty antes de `new Date()` (paridad con el guard WR-03 del chart; `patrimonio-de-parlamentario.tsx:383,713-720`).
+  11. **Honest-state repetido suprimido** — "De qué trata: no disponible aún" aparece a lo más UNA vez por sección, no por cada arco de proyecto.
+  12. Suite `app/` verde (≥377, cero regresión), `tsc -b` limpio, lockdown-guard verde; cero vocabulario prohibido nuevo.
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd:plan-phase 50 to break down)
+
+### Phase 51: LEG2 — Legibilidad profunda (P2)
+
+**Goal:** Ejecutar las propuestas anti-sobrecarga del diagnóstico (§2): que la ficha de parlamentario y la ficha de proyecto se lean en minutos sin perder un solo dato ni violar la doctrina anti-insinuación. El volumen repetitivo se agrega y colapsa; el detalle queda a un clic, server-driven.
+**Mode:** producto (UI / legibilidad; puede requerir ajuste de RPC existente — toda RPC tocada/nueva entra al allowlist del lockdown-guard)
+**Depends on:** Phase 50 (bugs de base limpios), Phase 45/46 (acordeones + chart como marco). Diseño de referencia: `DIAGNOSTICO-govmap-2026-07-02.md §2` + `phases/44-legibilidad-auditoria-plan/UI-SPEC.md`.
+**Requirements:** (legibilidad — extiende LEG-01..03 de F45)
+**Autonomy:** autónomo para construir + testear; deploy = checkpoint operador.
+**Success Criteria** (what must be TRUE):
+
+  1. **Votos agregados por proyecto:** cada arco de proyecto muestra UNA línea-resumen (conteos por sentido + rango de fechas) con las líneas individuales bajo "ver detalle" — las ~90 líneas idénticas por proyecto desaparecen sin perder dato.
+  2. **Timeline dos niveles + "¿dónde está hoy?":** la ficha de proyecto abre con bloque de estado actual (etapa + último hito + urgencia vigente + hace cuánto); hitos estructurales siempre visibles; pares repetitivos de urgencia colapsados en una línea por período (B19).
+  3. **Patrimonio tarjeta-resumen (B3):** cada versión = tarjeta (fecha, tipo, conteos por categoría) con "Ver detalle" server-driven; ningún campo cuyo valor sea URI de CPLT se renderiza como valor; jamás el `<dl>` completo inline.
+  4. **Comparador cableado (B4):** UI para seleccionar dos versiones (el deep-link `?comparar=A,B` deja de ser el único camino); copy no contradictorio.
+  5. **Rebeldías honestas (B5):** ausencias excluidas o separadas de "votó distinto a su bancada" (ajuste RPC `rebeldias_de_parlamentario` si hace falta, allowlisted), título del proyecto hidratado, dedupe por votación.
+  6. **Lobby agrupado por contraparte:** vista "con quién se reúne más" (contraparte + conteo + fechas) además del cronológico; caveat de identidad UNA vez por sección, no por fila (B11).
+  7. **Provenance por sección** donde hoy hay 100+ badges idénticos (timeline de proyecto), sin perder trazabilidad por dato.
+  8. **Footer global:** licencia CC BY 4.0, metodología, fuentes y contacto en toda página.
+  9. Suite verde + tsc limpio + lockdown-guard verde; anti-insinuación intacta (negative-match).
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd:plan-phase 51 to break down)
+
+### Phase 52: CRUCE2 — Cruces nuevos con datos ya disponibles (P3)
+
+**Goal:** Encender los cruces de mayor ROI que NO requieren ingesta nueva (diagnóstico §3.2): clasificador sectorial (des-raquitiza `cruce_senal`: hoy 30 señales porque solo 34/17.681 contrapartes tienen sector), lobby×tramitación por ventana temporal (yuxtaposición pura "en el mismo período", jamás causal), cruce inverso proyecto→agenda, y módulo de actualidad en el home. Los comparativos de votos (F47) y asistencia (F49) son fases propias ya desbloqueadas — no se duplican aquí.
+**Mode:** producto+datos (pipeline clasificador ya escrito + RPCs nuevas allowlisted + UI)
+**Depends on:** Phase 50. Independiente de Phase 51 (puede paralelizarse). Pipeline CRUCE de Phase 36 (`@obs/cruces`) ya escrito.
+**Requirements:** (cruces — extiende CRUCE-01..03 de v4)
+**Autonomy:** autónomo para código + clasificador local acotado; toda RPC nueva = security definer PII-safe + allowlist lockdown-guard; ningún flag `*_PUBLIC_ENABLED` se flipea (doctrina LOCKED).
+**Success Criteria** (what must be TRUE):
+
+  1. **Clasificador sectorial corrido** (local, lotes acotados, golden gate vigente) sobre contrapartes y `proyecto_ficha` → `cruce_senal` re-materializado con cobertura real (>>30 señales); resultado verificado con psql.
+  2. **Lobby×tramitación temporal:** RPC + UI "reuniones registradas mientras se tramitaba el boletín" presentado estrictamente como yuxtaposición fechada con fuente ("en el mismo período"), cero lenguaje causal (negative-match).
+  3. **Proyecto→agenda inverso:** la ficha de proyecto muestra "citado en comisión el {fecha}" cuando `citacion_punto.boletin` matchea.
+  4. **Módulo de actualidad en home:** qué se votó esta semana / urgencias vigentes / última actualización por fuente — el home deja de ser solo un buscador.
+  5. Suite verde + tsc limpio + lockdown-guard verde (RPCs nuevas allowlisted); anti-insinuación intacta.
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd:plan-phase 52 to break down)
