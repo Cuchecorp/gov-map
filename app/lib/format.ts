@@ -3,7 +3,11 @@
  * UI-SPEC §1.2 / §4 / §9.4. Tono sobrio, sin abreviaturas en inglés.
  */
 
-const STALE_THRESHOLD_MS = 48 * 60 * 60 * 1000; // 48 horas (UI-SPEC §4)
+// Umbral de frescura por CADENCE de ingesta (~14 días), no por 48 h fijas.
+// La ingesta de la mayoría de las fuentes es semanal ⇒ 2× cadence da un margen
+// honesto: un dato de 10-13 días es normal, no una alarma. 48 h dejaba el badge
+// en ámbar permanente para datos con ingesta semanal (falso positivo de frescura).
+const STALE_THRESHOLD_MS = 14 * 24 * 60 * 60 * 1000; // 14 días (cadence de ingesta)
 
 const fechaCortaFormatter = new Intl.DateTimeFormat("es-CL", {
   day: "2-digit",
@@ -50,11 +54,20 @@ export function relativeTimeEs(capturedAt: Date, now: Date = new Date()): string
 }
 
 /**
- * `true` si el dato tiene más de 48h (potencialmente desactualizado).
+ * `true` si el dato supera el umbral de frescura por cadence de ingesta
+ * (por defecto ~14 días, ingesta semanal ⇒ 2× cadence, margen honesto).
  * UI-SPEC §4: no se oculta el dato, se marca en amber.
+ *
+ * Firma retro-compatible: `staleAfterMs` es opcional (tercer parámetro) para
+ * que el único call-site `esStale(capturedAt)` compile sin cambios y el nuevo
+ * default propague a todos los consumidores de ProvenanceBadge.
  */
-export function esStale(capturedAt: Date, now: Date = new Date()): boolean {
-  return now.getTime() - capturedAt.getTime() > STALE_THRESHOLD_MS;
+export function esStale(
+  capturedAt: Date,
+  now: Date = new Date(),
+  staleAfterMs: number = STALE_THRESHOLD_MS,
+): boolean {
+  return now.getTime() - capturedAt.getTime() > staleAfterMs;
 }
 
 /**

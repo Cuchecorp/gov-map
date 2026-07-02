@@ -26,8 +26,8 @@ describe("ProvenanceBadge — frescura + fuente (TRAM-09, UI-SPEC §4)", () => {
     expect(badge?.className).not.toMatch(/amber/);
   });
 
-  it("dato stale (>48h) → aplica override amber (text-amber-700 border-amber-400)", () => {
-    const capturedAt = new Date(Date.now() - 72 * 60 * 60 * 1000); // hace 72h
+  it("dato stale (>14d) → aplica override amber (text-amber-700 border-amber-400)", () => {
+    const capturedAt = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000); // hace 15 días
     render(
       <ProvenanceBadge
         capturedAt={capturedAt}

@@ -54,14 +54,19 @@ describe("fechaCorta", () => {
   });
 });
 
-describe("esStale", () => {
-  it("≤ 48h → false", () => {
+describe("esStale (umbral por cadence de ingesta, ~14 días)", () => {
+  it("dato reciente (47h) → false", () => {
     const captured = new Date(NOW.getTime() - 47 * 60 * 60 * 1000);
     expect(esStale(captured, NOW)).toBe(false);
   });
 
-  it("> 48h → true", () => {
-    const captured = new Date(NOW.getTime() - 49 * 60 * 60 * 1000);
+  it("≤ 14d (13 días) → false", () => {
+    const captured = new Date(NOW.getTime() - 13 * 24 * 60 * 60 * 1000);
+    expect(esStale(captured, NOW)).toBe(false);
+  });
+
+  it("> 14d (15 días) → true", () => {
+    const captured = new Date(NOW.getTime() - 15 * 24 * 60 * 60 * 1000);
     expect(esStale(captured, NOW)).toBe(true);
   });
 });
