@@ -96,3 +96,34 @@ export function extractoIdea(idea: string, max = 160): string {
 export function conteoVotacion(si: number, no: number): string {
   return `${si}–${no}`;
 }
+
+/**
+ * Capitaliza SOLO la primera letra de la cadena, conservando el resto tal cual
+ * (incluida la coma del locale es-CL: "jueves, 2 de julio" → "Jueves, 2 de julio").
+ *
+ * NO usar la utilidad CSS `capitalize` de Tailwind (`text-transform: capitalize`):
+ * capitaliza CADA palabra → "Jueves, 2 De Julio". Este helper es puro y quirúrgico.
+ * Cadena vacía → cadena vacía (sin crash).
+ */
+export function capitalizarPrimera(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * Formatea una fecha ISO cruda a fecha corta es-CL, DEGRADANDO a copy honesto
+ * cuando el dato es null/vacío/no-ISO — NUNCA renderiza "Invalid Date".
+ *
+ * Espeja el guard anti-500 WR-03 de patrimonio (slice ISO + regex antes de
+ * `new Date`), pero en vez de EXCLUIR la fila (como el chart) DEGRADA a un
+ * fallback honesto ("fecha no informada") para superficies que sí muestran la fila.
+ * Reutiliza `fechaCorta` para el caso válido (no duplica el formateo).
+ */
+export function fechaCortaSegura(
+  raw: string | null,
+  fallback = "fecha no informada",
+): string {
+  const iso = (raw ?? "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return fallback;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? fallback : fechaCorta(d);
+}

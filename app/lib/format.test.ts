@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 
-import { relativeTimeEs, fechaCorta, esStale } from "./format";
+import {
+  relativeTimeEs,
+  fechaCorta,
+  esStale,
+  capitalizarPrimera,
+  fechaCortaSegura,
+} from "./format";
 
 const NOW = new Date("2026-05-20T12:00:00Z");
 
@@ -68,5 +74,37 @@ describe("esStale (umbral por cadence de ingesta, ~14 días)", () => {
   it("> 14d (15 días) → true", () => {
     const captured = new Date(NOW.getTime() - 15 * 24 * 60 * 60 * 1000);
     expect(esStale(captured, NOW)).toBe(true);
+  });
+});
+
+describe("capitalizarPrimera", () => {
+  it("capitaliza solo la primera letra, conserva la coma del locale", () => {
+    expect(capitalizarPrimera("jueves, 2 de julio")).toBe("Jueves, 2 de julio");
+  });
+
+  it("cadena vacía → cadena vacía (sin crash)", () => {
+    expect(capitalizarPrimera("")).toBe("");
+  });
+});
+
+describe("fechaCortaSegura (degrada, nunca 'Invalid Date')", () => {
+  it("null → fallback honesto", () => {
+    expect(fechaCortaSegura(null)).toBe("fecha no informada");
+  });
+
+  it("cadena vacía → fallback honesto", () => {
+    expect(fechaCortaSegura("")).toBe("fecha no informada");
+  });
+
+  it("no-ISO → fallback honesto", () => {
+    expect(fechaCortaSegura("no-es-fecha")).toBe("fecha no informada");
+  });
+
+  it("ISO válida → mismo output que fechaCorta(new Date(iso))", () => {
+    expect(fechaCortaSegura("2024-03-15")).toBe(fechaCorta(new Date("2024-03-15")));
+  });
+
+  it("nunca retorna la cadena 'Invalid Date'", () => {
+    expect(fechaCortaSegura("2024-13-99")).toBe("fecha no informada");
   });
 });
