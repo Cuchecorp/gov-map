@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, cache } from "react";
 import { notFound } from "next/navigation";
 
 import { createServerSupabase } from "@/lib/supabase";
@@ -76,6 +76,29 @@ function conteoLabel(estado: CarrilEstado): string {
 function abrePorDefecto(estado: CarrilEstado): boolean {
   return estado.tipo === "dato";
 }
+
+/**
+ * WR-02: lectura ÚNICA y deduplicada del RPC público `parlamentario_publico`.
+ * `HeaderSection`, `LobbySectionConCamara` y `FinanciamientoSectionConPeriodo`
+ * necesitan la MISMA fila (nombre/cámara/periodo) en el mismo request — antes eran
+ * tres bloques copy-paste con tres round-trips a la misma RPC (mismo `p_id`).
+ * `React.cache` deduplica: una sola RPC por request, cero copy-paste, mismo #34
+ * (un error real de DB/red se LANZA → UI de error honesta, nunca se degrada).
+ * `.maybeSingle()` no lanza por 0 filas → el llamador distingue "no existe" (data
+ * null → 404 en Header) de un fallo real (error → throw). CERO RPC nueva.
+ */
+const getParlamentarioPublico = cache(async (id: string) => {
+  const sb = createServerSupabase();
+  const { data, error } = await sb
+    .rpc("parlamentario_publico", { p_id: id })
+    .maybeSingle<ParlamentarioPublicoRow>();
+  if (error) {
+    throw new Error(
+      `parlamentario_publico falló para ${id}: ${error.message}`,
+    );
+  }
+  return data;
+});
 
 export default async function ParlamentarioPage({
   params,
@@ -332,16 +355,9 @@ async function LobbySectionConCamara({
   id: string;
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  const sb = createServerSupabase();
-  const { data, error } = await sb
-    .rpc("parlamentario_publico", { p_id: id })
-    .maybeSingle<ParlamentarioPublicoRow>();
-  // #34: un error real de DB/red se lanza (UI de error honesta), nunca se degrada.
-  if (error) {
-    throw new Error(
-      `parlamentario_publico falló para ${id}: ${error.message}`,
-    );
-  }
+  // WR-02: lectura deduplicada (React.cache) — misma fila que Header/Financiamiento.
+  // #34: un error real de DB/red se lanza dentro del lector, nunca se degrada.
+  const data = await getParlamentarioPublico(id);
   // cámara ausente (null) → frame genérico honesto, sin atribuir una cámara.
   const camara = data?.camara ?? null;
 
@@ -364,16 +380,9 @@ async function FinanciamientoSectionConPeriodo({
   id: string;
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  const sb = createServerSupabase();
-  const { data, error } = await sb
-    .rpc("parlamentario_publico", { p_id: id })
-    .maybeSingle<ParlamentarioPublicoRow>();
-  // #34: un error real de DB/red se lanza (UI de error honesta), nunca se degrada.
-  if (error) {
-    throw new Error(
-      `parlamentario_publico falló para ${id}: ${error.message}`,
-    );
-  }
+  // WR-02: lectura deduplicada (React.cache) — misma fila que Header/Lobby.
+  // #34: un error real de DB/red se lanza dentro del lector, nunca se degrada.
+  const data = await getParlamentarioPublico(id);
   // periodo ausente (null) → conservador: eleccionActual null, sin caveat anterior.
   const eleccionActual = data?.periodo ?? null;
 
@@ -388,18 +397,10 @@ async function FinanciamientoSectionConPeriodo({
 
 // ── Cabecera (RPC parlamentario_publico, deny-by-default → 404 honesto) ────────
 async function HeaderSection({ id }: { id: string }) {
-  const sb = createServerSupabase();
-  const { data, error } = await sb
-    .rpc("parlamentario_publico", { p_id: id })
-    .maybeSingle<ParlamentarioPublicoRow>();
-
-  // #34: distinguir "no existe" (→ 404) de un fallo real de DB/red (→ error
-  // honesto). `.maybeSingle()` no lanza por 0 filas; un `error` real se propaga.
-  if (error) {
-    throw new Error(
-      `No se pudo leer el parlamentario ${id}: ${error.message}`,
-    );
-  }
+  // WR-02: lectura deduplicada (React.cache) — misma fila que Lobby/Financiamiento.
+  // #34: un error real de DB/red se lanza dentro del lector (UI de error honesta);
+  // `.maybeSingle()` no lanza por 0 filas → data null = "no existe" → 404.
+  const data = await getParlamentarioPublico(id);
   if (!data) {
     notFound();
   }
