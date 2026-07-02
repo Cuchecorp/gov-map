@@ -1063,7 +1063,7 @@ Auditoría completa del sitio en vivo (`.planning/DIAGNOSTICO-govmap-2026-07-02.
 - [ ] **Phase 47: Chart votos/ausencias** — **DESBLOQUEADA 2026-07-02**: gate de datos CUMPLIDO verificado contra PROD (133 votaciones / 18.700 votos / 17.378 confirmados / 186 parlamentarios con voto). La ingesta masiva ya corrió; construible.
 - [ ] **Phase 48: Autoría + similares-del-parlamentario** — GATED (re-verificado 2026-07-02: `proyecto.autores` vacío 136/136). Pre-req: ingesta `proyecto.autores` + resolución nombre→`parlamentario_id` + RPC `proyectos_de_parlamentario`.
 - [ ] **Phase 49: Comparativo vs cámara (ausencias/actividad)** — **gate de datos CUMPLIDO 2026-07-02** (546 ausencias / 18.700 votos en PROD; F47 desbloqueada). Falta solo: RPC `tasa_ausencia_comparada` (security definer, PII-safe, allowlist).
-- [ ] **Phase 50: FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)** — 11 fixes de código acotados (B1, B6, B7, B8, B9, B10, B12, B14, B15, B17 + supresión de honest-state repetido). Sin DDL, sin deploy (checkpoint operador aparte).
+- [x] **Phase 50: FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)** — 11 fixes de código acotados (B1, B6, B7, B8, B9, B10, B12, B14, B15, B17 + supresión de honest-state repetido). Sin DDL, sin deploy (checkpoint operador aparte). (completed 2026-07-02)
 - [ ] **Phase 51: LEG2 — Legibilidad profunda (P2)** — votos agregados por proyecto, timeline dos niveles + "¿dónde está hoy?", patrimonio tarjeta-resumen sin URIs (B3), comparador cableado (B4), rebeldías honestas (B5), lobby agrupado por contraparte, provenance por sección, footer global.
 - [ ] **Phase 52: CRUCE2 — Cruces nuevos con datos ya disponibles (P3)** — clasificador sectorial (enciende `cruce_senal` de verdad), lobby×tramitación temporal, proyecto→agenda inverso, módulo de actualidad en home. (Asistencia comparada = Phase 49; chart votos = Phase 47 — ya desbloqueadas.)
 
@@ -1141,7 +1141,7 @@ Cada fase de chart pasa de GATED a construible cuando su gap de ingesta cierra; 
   11. **Honest-state repetido suprimido** — "De qué trata: no disponible aún" aparece a lo más UNA vez por sección, no por cada arco de proyecto.
   12. Suite `app/` verde (≥377, cero regresión), `tsc -b` limpio, lockdown-guard verde; cero vocabulario prohibido nuevo.
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 
@@ -1149,7 +1149,7 @@ Plans:
 - [x] 50-02-PLAN.md — Pill home 14309-04 (B1), votación sin desenlace (B14), honest-state 1x/sección (HS-rep)
 - [x] 50-03-PLAN.md — CamaraChip omite null (B8), autores Mensaje (B15), 4 error.tsx (B9)
 - [x] 50-04-PLAN.md — Copy lobby por cámara (B10) vía RPC allowlisted
-- [ ] 50-05-PLAN.md — Agenda throw-on-error (B7), locale (B12-app), guard fecha patrimonio (B17-app) [wave 2]
+- [x] 50-05-PLAN.md — Agenda throw-on-error (B7), locale (B12-app), guard fecha patrimonio (B17-app) [wave 2]
 
 ### Phase 51: LEG2 — Legibilidad profunda (P2)
 
