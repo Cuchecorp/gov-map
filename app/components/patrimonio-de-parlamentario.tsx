@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { fechaCorta } from "@/lib/format";
+import { fechaCortaSegura } from "@/lib/format";
 import {
   sourceLabel,
   type DeclaracionRpcRow,
@@ -380,7 +380,8 @@ function VersionRow({
   const captured = version.fecha_captura
     ? new Date(version.fecha_captura)
     : null;
-  const fechaTexto = fechaCorta(new Date(version.fecha_presentacion));
+  // B17 (WR-03): guard ISO antes de `new Date` → "fecha no informada", nunca "Invalid Date".
+  const fechaTexto = fechaCortaSegura(version.fecha_presentacion);
   const noConfirmado = version.parlamentario_estado_vinculo !== "confirmado";
 
   return (
@@ -604,7 +605,7 @@ export function DeclaracionComparacion({
             <TableHead scope="col">Campo</TableHead>
             {columnas.map((c, i) => (
               <TableHead key={`col-${i}`} scope="col" className="font-mono">
-                Presentada el {fechaCorta(new Date(c.fecha_presentacion))}
+                Presentada el {fechaCortaSegura(c.fecha_presentacion)}
               </TableHead>
             ))}
           </TableRow>
