@@ -4,6 +4,7 @@ import { createServerSupabase } from "@/lib/supabase";
 import { PARLAMENTARIO_ID_RE } from "@/lib/buscar";
 import { netPublicEnabled } from "@/lib/net-gate";
 import { RedGraph, type Subgrafo } from "@/components/red/red-graph";
+import type { ParlamentarioListadoRow } from "@/lib/types";
 
 /**
  * /red — el grafo de influencia ciudadano de NET (NET-02). Server Component que
@@ -49,8 +50,25 @@ export default async function RedPage({ searchParams }: PageProps) {
   const seedRaw = sp.seed;
   const seed = typeof seedRaw === "string" ? seedRaw : undefined;
 
-  // 3. Sin semilla → estado honesto sobrio. NUNCA consultamos el grafo entero.
+  // 3. Sin semilla → SELECTOR de semilla server-rendered (JS-free), espejo del
+  //    directorio /parlamentarios: un <form method="get" action="/red"> con un
+  //    <select name="seed"> agrupado por cámara. NUNCA consultamos el grafo entero
+  //    (subgrafo_red EXIGE semilla; no hay variante seedless → evita enumeración de
+  //    todos los nodos). Se lee `parlamentarios_publico` (el ÚNICO canal anon a la
+  //    maestra deny-by-default, ya allowlisted; NUNCA partido/rut/email). Al enviar,
+  //    el GET recarga /red?seed=<id> y cae en el path de validación PARLAMENTARIO_ID_RE.
   if (!seed) {
+    const sb = createServerSupabase();
+    const { data, error } = await sb.rpc("parlamentarios_publico");
+    // #34 (honest degradation): un fallo real de DB/red es un ERROR, NUNCA se
+    // degrada a "sin opciones" — se lanza para que la UI muestre el error.
+    if (error) {
+      throw new Error(`parlamentarios_publico falló: ${error.message}`);
+    }
+    const rows = (data as ParlamentarioListadoRow[] | null) ?? [];
+    const diputados = rows.filter((r) => r.camara === "diputados");
+    const senadores = rows.filter((r) => r.camara === "senado");
+
     return (
       <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
         <h1 className="text-xl font-semibold">Relaciones entre parlamentarios</h1>
@@ -59,6 +77,46 @@ export default async function RedPage({ searchParams }: PageProps) {
           —por ejemplo, haber recibido audiencia de la misma contraparte de
           lobby—. Cada relación se muestra con su fuente y su fecha.
         </p>
+
+        <form
+          method="get"
+          action="/red"
+          className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end"
+        >
+          <label className="flex-1">
+            <span className="block text-sm font-medium">Parlamentario</span>
+            <select
+              name="seed"
+              defaultValue=""
+              required
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="" disabled>
+                Elige un parlamentario…
+              </option>
+              <optgroup label="Cámara">
+                {diputados.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.nombre}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Senado">
+                {senadores.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.nombre}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Ver relaciones
+          </button>
+        </form>
       </main>
     );
   }

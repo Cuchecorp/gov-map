@@ -38,12 +38,35 @@ vi.mock("@/lib/net-gate", () => ({
   netPublicEnabled: () => netEnabledMock(),
 }));
 
-// RPC inyectable; rastrea si la DB se tocó.
+// RPC inyectable; rastrea si la DB se tocó y con qué RPC (picker vs semilla).
 const rpcMock = vi.fn();
 const createServerSupabaseMock = vi.fn(() => ({ rpc: rpcMock }));
 vi.mock("@/lib/supabase", () => ({
   createServerSupabase: () => createServerSupabaseMock(),
 }));
+
+// Fixture del selector de semilla (parlamentarios_publico, PII-safe): una fila por
+// cámara para ejercitar los dos optgroups.
+const PARLS_FIXTURE = [
+  {
+    id: "D1009",
+    nombre: "Ada Aguilar",
+    camara: "diputados",
+    region: "Región de Prueba",
+    distrito: "1",
+    circunscripcion: null,
+    periodo: "2022-2026",
+  },
+  {
+    id: "S3001",
+    nombre: "Bruno Bravo",
+    camara: "senado",
+    region: "Región de Prueba",
+    distrito: null,
+    circunscripcion: "2",
+    periodo: "2022-2030",
+  },
+];
 
 // Importar DESPUÉS de los mocks.
 import RedPage from "./page";
@@ -74,15 +97,43 @@ describe("/red — gate a nivel de página (candado B, LOCKED)", () => {
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
-  it("gate ON + sin semilla → estado honesto (picker), NUNCA seedless RPC", async () => {
+  it("gate ON + sin semilla → selector con optgroups por cámara (form GET), NUNCA subgrafo_red", async () => {
     netEnabledMock.mockReturnValue(true);
+    rpcMock.mockImplementation((name: string) =>
+      name === "parlamentarios_publico"
+        ? Promise.resolve({ data: PARLS_FIXTURE, error: null })
+        : Promise.resolve({ data: null, error: null }),
+    );
     const el = await RedPage(makeProps(undefined));
     const html = renderToStaticMarkup(el);
-    // Sin semilla NO se consulta la DB (no whole-graph enumeration).
-    expect(rpcMock).not.toHaveBeenCalled();
+    // El picker consulta parlamentarios_publico, NUNCA el grafo por semilla
+    // (no whole-graph enumeration).
+    const subgrafoCalls = rpcMock.mock.calls.filter(
+      ([name]) => name === "subgrafo_red",
+    );
+    expect(subgrafoCalls).toHaveLength(0);
     expect(notFoundMock).not.toHaveBeenCalled();
-    // Estado honesto sobrio: invita a elegir, sin lenguaje insinuante.
-    expect(html).toMatch(/parlamentari/i);
+    // Selector JS-free: form GET a /red, select name=seed, optgroups por cámara.
+    expect(html).toContain('method="get"');
+    expect(html).toContain('action="/red"');
+    expect(html).toContain('name="seed"');
+    expect(html).toContain("<optgroup");
+    expect(html).toContain('label="Cámara"');
+    expect(html).toContain('label="Senado"');
+    expect(html).toContain("Ada Aguilar");
+    expect(html).toContain("Bruno Bravo");
+    expect(html).toContain('value="D1009"');
+  });
+
+  it("error del RPC parlamentarios_publico en el picker → THROW (#34)", async () => {
+    netEnabledMock.mockReturnValue(true);
+    rpcMock.mockImplementation((name: string) =>
+      name === "parlamentarios_publico"
+        ? Promise.resolve({ data: null, error: { message: "boom" } })
+        : Promise.resolve({ data: null, error: null }),
+    );
+    await expect(RedPage(makeProps(undefined))).rejects.toThrow(/boom/);
+    expect(notFoundMock).not.toHaveBeenCalled();
   });
 
   it("gate ON + semilla inválida → notFound() ANTES de tocar la DB", async () => {
