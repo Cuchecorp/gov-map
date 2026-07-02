@@ -262,6 +262,7 @@ None yet for v2.0.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260623-rtl | Fase 0 v4 — loadEnv CI-safe en run-camara-lobby-cli + run-probidad-todos-cli (fallback a process.env; desbloquea workflows lobby/probidad de Fase 1) | 2026-06-24 | 399e3e2 | [260623-rtl-loadenv-ci-safe-clis](./quick/260623-rtl-loadenv-ci-safe-clis/) |
+| 260702-rbb | B20+B21 pre-flip NET — red-graph sin nodos huérfanos + carriles reales por cámara + /red selector de semilla JS-free (RPC parlamentarios_publico) + link gated en ficha (`<nav>`, no `<section>` — invariante 1:1 carril↔acordeón). Suite 406→412 | 2026-07-02 | 2c958e5..4ce0d3a | [260702-rbb-fix-b20-b21-pre-flip-net-red-graph-nodos](./quick/260702-rbb-fix-b20-b21-pre-flip-net-red-graph-nodos/) |
 
 ## Deferred Items
 
