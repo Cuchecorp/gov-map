@@ -83,7 +83,7 @@ describe("Landing — paridad con el mockup CERRADO (héroe editorial)", () => {
       screen.getByRole("button", { name: "40 horas / jornada laboral" }),
     ).toBeInTheDocument();
 
-    const boletin = screen.getByRole("button", { name: "15234-07" });
+    const boletin = screen.getByRole("button", { name: "14309-04" });
     expect(boletin).toHaveClass("font-mono");
   });
 
@@ -108,8 +108,8 @@ describe("Landing — paridad con el mockup CERRADO (héroe editorial)", () => {
   it("la pill de boletín navega con el número de boletín", () => {
     render(<Home />);
 
-    fireEvent.click(screen.getByRole("button", { name: "15234-07" }));
-    expect(pushMock).toHaveBeenCalledWith("/buscar?q=15234-07");
+    fireEvent.click(screen.getByRole("button", { name: "14309-04" }));
+    expect(pushMock).toHaveBeenCalledWith("/buscar?q=14309-04");
   });
 
   it("renderiza la trust line LOCKED y el link '¿Cómo leer esto?'", () => {

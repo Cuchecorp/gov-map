@@ -24,7 +24,7 @@ const EXAMPLE_CHIPS: readonly ExampleChip[] = [
   { query: "protección de datos personales" },
   { query: "delitos económicos y medio ambiente" },
   { query: "40 horas / jornada laboral" },
-  { query: "15234-07", mono: true },
+  { query: "14309-04", mono: true },
 ];
 
 export default function Home() {
