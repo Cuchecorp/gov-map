@@ -1141,14 +1141,14 @@ Cada fase de chart pasa de GATED a construible cuando su gap de ingesta cierra; 
   11. **Honest-state repetido suprimido** — "De qué trata: no disponible aún" aparece a lo más UNA vez por sección, no por cada arco de proyecto.
   12. Suite `app/` verde (≥377, cero regresión), `tsc -b` limpio, lockdown-guard verde; cero vocabulario prohibido nuevo.
 
-**Plans:** 2/5 plans executed
+**Plans:** 4/5 plans executed
 
 Plans:
 
 - [x] 50-01-PLAN.md — Helpers puros lib/format (B6 umbral 14d, B12 capitalizarPrimera, B17 fechaCortaSegura) + tests dependientes
 - [x] 50-02-PLAN.md — Pill home 14309-04 (B1), votación sin desenlace (B14), honest-state 1x/sección (HS-rep)
-- [ ] 50-03-PLAN.md — CamaraChip omite null (B8), autores Mensaje (B15), 4 error.tsx (B9)
-- [ ] 50-04-PLAN.md — Copy lobby por cámara (B10) vía RPC allowlisted
+- [x] 50-03-PLAN.md — CamaraChip omite null (B8), autores Mensaje (B15), 4 error.tsx (B9)
+- [x] 50-04-PLAN.md — Copy lobby por cámara (B10) vía RPC allowlisted
 - [ ] 50-05-PLAN.md — Agenda throw-on-error (B7), locale (B12-app), guard fecha patrimonio (B17-app) [wave 2]
 
 ### Phase 51: LEG2 — Legibilidad profunda (P2)
