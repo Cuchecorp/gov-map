@@ -136,6 +136,21 @@ describe("PatrimonioView — fecha prominente + frescura (INT-04)", () => {
     expect(screen.getByText(/Presentada el/i)).toBeInTheDocument();
   });
 
+  it("fecha_presentacion null → 'fecha no informada' (B17, WR-03); nunca 'Invalid Date'", () => {
+    const { container } = render(
+      <PatrimonioView
+        data={makeViewData({
+          versiones: [
+            makeVersion({ fecha_presentacion: null as unknown as string }),
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByText(/Presentada el fecha no informada/i)).toBeInTheDocument();
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(/Invalid Date/i);
+  });
+
   it("una versión histórica muestra el caveat §6.4; la más reciente NO se rotula 'actual'", () => {
     const { container } = render(
       <PatrimonioView
