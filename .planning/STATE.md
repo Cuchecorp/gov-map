@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
 status: Ready to execute
-stopped_at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
-last_updated: "2026-07-02T22:54:11.172Z"
+stopped_at: Completed 50-03-PLAN.md (B8/B15/B9 — fixes de superficie)
+last_updated: "2026-07-02T19:00:00.000Z"
 last_activity: 2026-07-02
 progress:
   total_phases: 41
   completed_phases: 21
   total_plans: 83
-  completed_plans: 87
+  completed_plans: 88
   percent: 51
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 50 (FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5 (50-03 B8/B15/B9 COMPLETE — suite app/ 394 verde, tsc limpio)
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
 Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to 46`, 2026-06-26):
 
