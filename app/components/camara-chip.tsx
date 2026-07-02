@@ -19,7 +19,10 @@ function classify(value: string | null): CamaraKind {
   return "desconocida";
 }
 
-const STYLES: Record<CamaraKind, { label: string; className: string }> = {
+// B8: solo las cámaras REALES tienen chip. `desconocida` NO fabrica un
+// chip-alarma ("Cámara origen desconocida"): cuando la cámara no aplica el
+// componente se omite (retorna null). El dato ausente NO se comunica como defecto.
+const STYLES: Record<"diputados" | "senado", { label: string; className: string }> = {
   diputados: {
     label: "Cámara",
     className: "bg-[--camara-muted] text-[--camara-muted-foreground]",
@@ -28,14 +31,14 @@ const STYLES: Record<CamaraKind, { label: string; className: string }> = {
     label: "Senado",
     className: "bg-[--senado-muted] text-[--senado-muted-foreground]",
   },
-  desconocida: {
-    label: "Cámara origen desconocida",
-    className: "bg-muted text-muted-foreground",
-  },
 };
 
 export function CamaraChip({ camara }: { camara: string | null }) {
   const kind = classify(camara);
+  // B8: cámara no aplica → se omite el chip (seguro en los 4 call-sites, todos
+  // dentro de `flex flex-wrap gap-2`: omitir no deja hueco). El dot del timeline
+  // (camaraDotColor) sigue degradando a neutro — ese comportamiento no cambia.
+  if (kind === "desconocida") return null;
   const { label, className } = STYLES[kind];
   return (
     <Badge variant="outline" className={cn("border-transparent", className)}>
