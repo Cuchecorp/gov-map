@@ -62,7 +62,7 @@ export function VotacionCard({ votacion }: { votacion: VotacionRow }) {
           {votacion.total_abstencion} · Pareo: {votacion.total_pareo}
         </p>
 
-        {votacion.resultado && (
+        {votacion.resultado ? (
           <div className="mt-3 space-y-2">
             {/* DESENLACE factual (Phase 22, SC6): resultado + conteo como HECHO de la
                 votación — espejo de VotoFichaRow en la ficha del parlamentario. Sin
@@ -79,6 +79,15 @@ export function VotacionCard({ votacion }: { votacion: VotacionRow }) {
               <EtapaBadge estado={votacion.resultado} />
             </div>
           </div>
+        ) : (
+          /* B14 (revierte omisión Phase 22): la ausencia de desenlace es un HECHO
+             honesto, no un silencio. Da paridad con la ficha del parlamentario y
+             evita que una votación sin resultado se lea como incompleta sin decirlo.
+             La barra y los totales (arriba) quedan intactos. Copy sobrio §6/§9.1,
+             sin causalidad ni juicio. */
+          <p className="mt-3 text-sm text-muted-foreground">
+            Desenlace no informado por la fuente.
+          </p>
         )}
 
         <div className="mt-4">

@@ -48,7 +48,7 @@ describe("VotacionCard — desenlace factual (Phase 22, §3.3/§9)", () => {
     expect(screen.getByText("58–81")).toHaveClass("font-mono");
   });
 
-  it("resultado null → omite la frase de desenlace pero conserva la barra y los totales", () => {
+  it("resultado null → muestra 'Desenlace no informado por la fuente.' y conserva la barra y los totales", () => {
     render(
       <VotacionCard
         votacion={makeVotacion({
@@ -58,9 +58,13 @@ describe("VotacionCard — desenlace factual (Phase 22, §3.3/§9)", () => {
         })}
       />,
     );
-    // La frase de desenlace desaparece (degrada honesto).
+    // B14: la ausencia de desenlace es un HECHO honesto explícito (no un silencio).
+    expect(
+      screen.getByText("Desenlace no informado por la fuente."),
+    ).toBeInTheDocument();
+    // La frase con conteo de un desenlace real NO aparece (no hay resultado).
     expect(screen.queryByText(/El proyecto fue/)).not.toBeInTheDocument();
-    // Pero los totales y la barra se conservan.
+    // Los totales y la barra se conservan intactos.
     expect(screen.getByText(/Sí: 30 · No: 12/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Resultado de votación/i)).toBeInTheDocument();
   });
