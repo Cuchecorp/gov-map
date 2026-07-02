@@ -273,13 +273,19 @@ async function ResultadosBusqueda({
 async function CitacionesSection({ year, week }: ISOWeek) {
   const key = semanaIsoKey(year, week);
   const sb = createServerSupabase();
-  const { data } = await sb
+  const { data, error } = await sb
     .from("citacion")
     .select("*, citacion_invitado(*), citacion_punto(*)")
     .eq("semana_iso", key)
     .order("fecha", { ascending: true })
     .order("camara", { ascending: true })
     .order("comision", { ascending: true });
+
+  // #34: error real de DB/red ≠ "sin citaciones". Se lanza para la frontera de
+  // error honesta (agenda/error.tsx); NUNCA se degrada a "No hay citaciones".
+  if (error) {
+    throw new Error(`citacion falló para semana ${key}: ${error.message}`);
+  }
 
   const citaciones = (data as CitacionRow[]) ?? [];
 
@@ -418,6 +424,15 @@ async function SalaTableServer({ year, week }: ISOWeek) {
       .order("fecha", { ascending: true }),
   ]);
 
+  // #34: un error real de DB/red de cualquiera de las dos cámaras se lanza para
+  // la frontera de error honesta; NUNCA se degrada a tabla vacía / PDF fabricado.
+  if (senadoRes.error) {
+    throw new Error(`sesion_sala (senado) falló: ${senadoRes.error.message}`);
+  }
+  if (camaraRes.error) {
+    throw new Error(`sesion_sala (cámara) falló: ${camaraRes.error.message}`);
+  }
+
   const sesionesSenado = (senadoRes.data as SesionSalaRow[]) ?? [];
   const sesionesCamara = (camaraRes.data as SesionSalaRow[]) ?? [];
   const weekLabel = formatWeekLabel(year, week);
@@ -426,12 +441,18 @@ async function SalaTableServer({ year, week }: ISOWeek) {
   // distinguir "fuera de la ventana capturada" de "sin sesión".
   let fueraDeVentanaSenado = false;
   if (sesionesSenado.length === 0) {
-    const { data: primera } = await sb
+    const { data: primera, error: probeError } = await sb
       .from("sesion_sala")
       .select("fecha")
       .eq("camara", "senado")
       .order("fecha", { ascending: true })
       .limit(1);
+    // #34: un fallo del probe NO debe fabricar `fueraDeVentanaSenado`; se lanza.
+    if (probeError) {
+      throw new Error(
+        `sesion_sala (probe forward-only senado) falló: ${probeError.message}`,
+      );
+    }
     const primeraFecha = (primera as { fecha: string }[] | null)?.[0]?.fecha;
     if (primeraFecha && nextMonday.toISOString() <= new Date(primeraFecha).toISOString()) {
       fueraDeVentanaSenado = true;
