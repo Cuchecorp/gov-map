@@ -207,15 +207,39 @@ describe("VotoFichaRow — sustancia + desenlace (Phase 22, §9)", () => {
     ).toBeInTheDocument();
   });
 
-  it("idea_matriz null → honest-state 'no disponible aún', NUNCA fabrica", () => {
+  it("idea_matriz null en VotosView → nota de sección UNA vez, sin repetir per-arco 'no disponible aún'", () => {
     render(
-      <ul>
-        <VotoFichaRow voto={makeVoto({ titulo: "Proyecto X", idea_matriz: null })} />
-      </ul>,
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: [
+            makeVoto({
+              boletin: "18296-05",
+              votacion_id: "camara:1",
+              titulo: "Proyecto X",
+              idea_matriz: null,
+            }),
+            makeVoto({
+              boletin: "14309-04",
+              votacion_id: "camara:2",
+              titulo: "Proyecto Y",
+              idea_matriz: null,
+            }),
+          ],
+          totalVotos: 2,
+          conteos: { si: 2, no: 0, abstencion: 0, pareo: 0, ausente: 0 },
+        })}
+      />,
     );
+    // La línea per-arco "no disponible aún" ya NO se repite (fue removida del arco).
     expect(
-      screen.getByText(/De qué trata: no disponible aún/),
-    ).toBeInTheDocument();
+      screen.queryByText(/De qué trata: no disponible aún/),
+    ).not.toBeInTheDocument();
+    // El honest-state de idea matriz aparece UNA sola vez como nota de sección.
+    const notas = screen.getAllByText(
+      /la idea matriz aún no está disponible/i,
+    );
+    expect(notas.length).toBe(1);
   });
 
   it("titulo null → cae al boletín como fallback (cero fabricación)", () => {

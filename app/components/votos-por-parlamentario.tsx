@@ -222,11 +222,14 @@ function ProyectoGrupo({ grupo }: { grupo: ProyectoArco }) {
           Boletín N°{grupo.boletin}
         </Link>
       )}
-      <p className="text-sm text-muted-foreground mt-1">
-        {grupo.idea_matriz
-          ? `De qué trata: ${extractoIdea(grupo.idea_matriz)}`
-          : "De qué trata: no disponible aún"}
-      </p>
+      {/* Idea matriz: se muestra cuando existe. Si es null, NO se repite el
+          honest-state por arco (sería ruido); una única nota de sección lo cubre
+          más abajo en VotosView. */}
+      {grupo.idea_matriz && (
+        <p className="text-sm text-muted-foreground mt-1">
+          De qué trata: {extractoIdea(grupo.idea_matriz)}
+        </p>
+      )}
 
       {/* Etapas votadas — la trayectoria del proyecto en su tramitación. */}
       <ul className="mt-2 space-y-1">
@@ -320,6 +323,12 @@ export function VotosView({
   // fabricación de asistencia perfecta).
   const ausentes = conteos.ausente;
   const presentes = totalConteos - ausentes;
+
+  // Arcos por proyecto (una sola pasada, reusada por la lista y la nota de sección).
+  const arcos = agruparPorProyecto(votos);
+  // Honest-state de idea matriz: si AL MENOS un arco no la tiene, se dice UNA vez
+  // por sección (no por arco). Repetir "no disponible aún" en cada arco es ruido.
+  const hayArcoSinIdea = arcos.some((g) => !g.idea_matriz);
 
   return (
     <div className="space-y-10">
@@ -421,10 +430,20 @@ export function VotosView({
           </p>
         ) : (
           <ul className="mt-4 space-y-6">
-            {agruparPorProyecto(votos).map((grupo) => (
+            {arcos.map((grupo) => (
               <ProyectoGrupo key={grupo.boletin} grupo={grupo} />
             ))}
           </ul>
+        )}
+
+        {/* Idea matriz aún no disponible en ≥1 proyecto: se dice UNA vez por
+            sección (espejo del bloque de cobertura), nunca por arco. HECHO honesto,
+            sin fabricar la idea (§9.1). */}
+        {votos.length > 0 && hayArcoSinIdea && (
+          <p className="text-sm text-muted-foreground mt-4">
+            En algunos proyectos, la idea matriz aún no está disponible en las
+            fuentes consultadas; se irá incorporando.
+          </p>
         )}
 
         {/* Cobertura honesta: con pocos proyectos NO se aparenta exhaustividad. */}
