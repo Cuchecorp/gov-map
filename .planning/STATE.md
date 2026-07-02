@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
 status: Ready to execute
-stopped_at: Diagnóstico 2026-07-02 convertido a fases 50/51/52; F47/F49 desbloqueadas (gate PROD verificado). Próximo = plan+execute Phase 50.
-last_updated: "2026-07-02T00:00:00.000Z"
+stopped_at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
+last_updated: "2026-07-02T22:47:40.651Z"
 last_activity: 2026-07-02
 progress:
-  total_phases: 38
+  total_phases: 41
   completed_phases: 21
-  total_plans: 78
-  completed_plans: 85
-  percent: 55
+  total_plans: 83
+  completed_plans: 86
+  percent: 51
 ---
 
 # Project State
@@ -21,18 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Pista legibilidad v5 (F45+F46) code-complete autónoma; pendiente deploy operador único (Docker Linux + wrangler).
+**Current focus:** Phase 50 — FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)
 
 ## Current Position
 
+Phase: 50 (FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)) — EXECUTING
+Plan: 2 of 5
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
 Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to 46`, 2026-06-26):
+
 - **Phase 45 (LEG navegación)** COMPLETE (disk=complete): acordeones Radix por carril + resumen/índice above-fold con conteo 3-estado honesto. 3 planes, suite app/ 365 verde, guard verde, tsc limpio. Code-review (0 blockers/3 warnings→fixed) + verifier 8/8 + UI-review 23/24. `@radix-ui/react-accordion@1.2.14` instalado. Frontera mt-12 intacta, SSR no-leak verificado.
 - **Phase 46 (VIZ chart patrimonio)** code-complete (disk=partial; 46-01 done, 46-02=checkpoint operador): chart Recharts (stacked BarChart, NO line/area → no insinúa tendencia), conteo de ítems por declaración (composite key anio·tipo·version_id → versiones mismo-año NO se fusionan), SIN montos (caveat URIs), degrade <2, footer CC BY. `recharts@3.9.0`. Suite app/ 377 verde, guard verde. Code-review 6 findings→todos fixed + verifier 9/9 + UI-review 21/24.
 - Charts data-hambrientos (votos/autoría/comparativos) siguen GATED → F47/F48/F49 tras ingesta (NO autónomas).
+
 **DEUDA ÚNICA OPERADOR (cubre F45+F46 en un solo deploy):** build OpenNext en **Docker Linux** (Windows rompe worker → 500) + deploy `wrangler` local (creds CF NO en .env) + verificación visual (reduce-motion; barras mismo-año distintas). Polish advisory diferido: tokenizar fill ramp del chart, tematizar legend/tooltip Recharts, a11y data-table fallback.
 Diseño LOCKED F45/F46: `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md`.
-Last activity: 2026-06-26 -- F45 COMPLETE + F46 code-complete (autónomo); pendiente deploy operador
+Last activity: 2026-07-02
 
 ## Performance Metrics
 
@@ -271,7 +275,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-26T20:54:02.209Z
+Last session: 2026-07-02T22:47:40.622Z
 Stopped at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
 Resume file: None
 
