@@ -37,6 +37,7 @@ function makeViewData(overrides: Partial<LobbyViewData> = {}): LobbyViewData {
     page: 1,
     totalPages: 1,
     noIngestado: false,
+    camara: "diputados",
     ...overrides,
   };
 }
@@ -64,6 +65,71 @@ describe("LobbyView (sección lobby) — carril aislado (anti-insinuación §9.1
     expect(
       screen.getByText(/Audiencias registradas bajo la Ley del Lobby \(Ley 20\.730\)/i),
     ).toBeInTheDocument();
+  });
+});
+
+// ── B10 — frame de la fuente parametrizado por cámara (trazabilidad honesta) ────
+describe("LobbyView (sección lobby) — frame de fuente por cámara (B10)", () => {
+  // El frame de un DIPUTADO sí puede atribuir a la Cámara (fuente que corresponde).
+  it("cámara diputados → el intro atribuye a la Cámara (camara.cl/transparencia)", () => {
+    const { container } = render(
+      <LobbyView data={makeViewData({ camara: "diputados" })} />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("camara.cl/transparencia");
+    expect(texto).toMatch(/registro oficial de la Cámara/i);
+  });
+
+  // El frame de un SENADOR NUNCA se atribuye a la Cámara (fabricaría la fuente).
+  it("cámara senado → el intro NO dice 'camara.cl/transparencia' ni 'la Cámara'; refiere el Senado", () => {
+    const { container } = render(
+      <LobbyView data={makeViewData({ camara: "senado" })} />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).not.toContain("camara.cl/transparencia");
+    expect(texto).not.toMatch(/registro oficial de la Cámara/i);
+    expect(texto).toMatch(/Ley del Lobby del Senado/i);
+  });
+
+  // El empty-state (b) de un senador tampoco atribuye a la Cámara.
+  it("senado + 0 audiencias → el empty-state (b) no atribuye a la Cámara", () => {
+    const { container } = render(
+      <LobbyView
+        data={makeViewData({
+          camara: "senado",
+          noIngestado: false,
+          audiencias: [],
+          totalAudiencias: 0,
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toMatch(/No se registran reuniones de lobby confirmadas/i);
+    expect(texto).not.toContain("camara.cl/transparencia");
+    expect(texto).toMatch(/Ley del Lobby del Senado/i);
+  });
+
+  // Cámara desconocida (null) → frame genérico, sin atribuir una cámara concreta.
+  it("cámara null → frame genérico honesto, sin nombrar Cámara ni Senado", () => {
+    const { container } = render(
+      <LobbyView data={makeViewData({ camara: null })} />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).not.toContain("camara.cl/transparencia");
+    expect(texto).toMatch(/registro oficial de la Ley del Lobby/i);
+    // El prefijo neutro (Ley 20.730) siempre está.
+    expect(texto).toContain("Ley del Lobby (Ley 20.730)");
+  });
+
+  // Negative-match: el copy nuevo por cámara no introduce vocabulario prohibido §9.1.
+  it("ninguna cámara introduce vocabulario prohibido §9.1 en el frame", () => {
+    const PROHIBIDO =
+      /cercano a|vinculad[oa] a|aliad[oa] de|afinidad|conflicto de inter|influencia|influyente|score|ranking|índice de|sospechos|polémic|controversial|oscuro/i;
+    for (const camara of ["diputados", "senado", null] as const) {
+      const { container } = render(<LobbyView data={makeViewData({ camara })} />);
+      expect(container.textContent ?? "").not.toMatch(PROHIBIDO);
+      cleanup();
+    }
   });
 });
 
