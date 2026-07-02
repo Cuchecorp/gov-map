@@ -52,7 +52,10 @@ export function FichaHeader({ proyecto }: { proyecto: ProyectoRow }) {
         )}
       </div>
 
-      <AutoresList autores={proyecto.autores ?? []} />
+      <AutoresList
+        autores={proyecto.autores ?? []}
+        iniciativa={proyecto.iniciativa}
+      />
 
       <div className="mt-4">
         <ProvenanceBadge

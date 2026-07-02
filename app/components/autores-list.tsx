@@ -8,15 +8,25 @@ import { useState } from "react";
  * inline (sin modal). Los nombres NUNCA son enlaces en Fase 5 (la ficha de
  * parlamentario es de un milestone posterior).
  */
-export function AutoresList({ autores }: { autores: string[] }) {
+export function AutoresList({
+  autores,
+  iniciativa,
+}: {
+  autores: string[];
+  iniciativa: string | null;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   if (autores.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground mt-2">
-        Autores no informados.
-      </p>
-    );
+    // B15: un proyecto de tipo Mensaje NO tiene "autores" (lo presenta el
+    // Ejecutivo), así que "Autores no informados." fabricaba una ausencia. Solo
+    // cuando `iniciativa === "Mensaje"` se explica el origen; Moción sin autores
+    // o `iniciativa` null (ruta Cámara) sigue honesto: no se inventa nada.
+    const texto =
+      iniciativa === "Mensaje"
+        ? "Iniciativa del Ejecutivo (Mensaje)."
+        : "Autores no informados.";
+    return <p className="text-sm text-muted-foreground mt-2">{texto}</p>;
   }
 
   const collapsed = autores.length > 3 && !expanded;
