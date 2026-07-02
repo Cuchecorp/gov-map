@@ -19,6 +19,7 @@ import {
   type ISOWeek,
 } from "@/lib/week-utils";
 import { sourceLabel } from "@/lib/types";
+import { capitalizarPrimera } from "@/lib/format";
 import {
   CAMARA_TABLA_PDF_URL,
   type CitacionRow,
@@ -239,8 +240,8 @@ async function ResultadosBusqueda({
                       {camaraLabel(c.camara)}
                     </span>
                     {c.fecha && (
-                      <span className="capitalize">
-                        {diaFmt.format(new Date(c.fecha))}
+                      <span>
+                        {capitalizarPrimera(diaFmt.format(new Date(c.fecha)))}
                       </span>
                     )}
                     {c.estado && <span className="text-foreground">· {c.estado}</span>}
@@ -318,10 +319,12 @@ async function CitacionesSection({ year, week }: ISOWeek) {
       {Array.from(grupos.entries()).map(([dayKey, items]) => (
         <div key={dayKey}>
           <div className="mt-6 mb-3">
-            <h3 className="text-base font-semibold capitalize">
+            <h3 className="text-base font-semibold">
               {dayKey === "sin-fecha"
                 ? "Sin fecha asignada"
-                : diaFmt.format(new Date(`${dayKey}T00:00:00Z`))}
+                : capitalizarPrimera(
+                    diaFmt.format(new Date(`${dayKey}T00:00:00Z`)),
+                  )}
             </h3>
             <Separator className="mt-1" />
           </div>
