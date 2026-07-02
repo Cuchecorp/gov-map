@@ -73,3 +73,7 @@ None. Sin superficie de seguridad nueva: cero endpoint, cero auth, cero `.from()
 - `abaa180` fix(50): B1 — pill del home 15234-07 → 14309-04 (boletín real en PROD)
 - `37d9f5b` fix(50): B14 — votación sin resultado muestra honest-state explícito
 - `2e966a0` fix(50): HS — honest-state de idea matriz una-vez-por-sección en votos
+
+## Self-Check: PASSED
+
+All modified files present on disk; all 3 task commits + SUMMARY commit found in git log.
