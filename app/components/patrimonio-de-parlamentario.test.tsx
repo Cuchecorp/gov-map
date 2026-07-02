@@ -8,6 +8,7 @@ import {
   agruparBienesPorFuente,
   paresDeContenido,
   etiquetaBien,
+  esHistorica,
   type PatrimonioViewData,
 } from "./patrimonio-de-parlamentario";
 import type {
@@ -524,5 +525,39 @@ describe("PatrimonioView — bienes por versión", () => {
     expect(
       screen.queryByText(/no tiene patrimonio|limpio|sin bienes que declarar/i),
     ).not.toBeInTheDocument();
+  });
+});
+
+// ── WR-01: esHistorica NUNCA fabrica "histórica" sobre fecha ausente ────────────
+// B17 completo: una fecha null/vacía/no-ISO NO se etiqueta "declaración histórica"
+// (afirmación fabricada sobre un dato ausente — honest-states la prohíbe). Guard
+// ISO espejo de `fechaCortaSegura`, ANTES de `new Date` (que trataría null → epoch).
+describe("esHistorica — guard ISO (WR-01, B17)", () => {
+  // Ancla el "ahora" para determinismo (2026-07-02), como el resto del fase.
+  const now = new Date("2026-07-02T00:00:00Z");
+
+  it("fecha null → false (no se afirma 'histórica' sobre un dato ausente)", () => {
+    // new Date(null).getTime() === 0 (epoch) daría true sin el guard.
+    expect(esHistorica(null, now)).toBe(false);
+  });
+
+  it("cadena vacía → false", () => {
+    expect(esHistorica("", now)).toBe(false);
+  });
+
+  it("cadena no-ISO/basura → false", () => {
+    expect(esHistorica("no informada", now)).toBe(false);
+  });
+
+  it("fecha ISO > ~1 año atrás → true (histórica real)", () => {
+    expect(esHistorica("2020-01-01", now)).toBe(true);
+  });
+
+  it("fecha ISO reciente (< 1 año) → false", () => {
+    expect(esHistorica("2026-06-01", now)).toBe(false);
+  });
+
+  it("timestamp ISO completo se recorta al día (slice 0,10) y evalúa", () => {
+    expect(esHistorica("2020-01-01T12:34:56Z", now)).toBe(true);
   });
 });

@@ -710,12 +710,21 @@ export function agruparBienesPorFuente(
  * `true` si la declaración es de un periodo legislativo anterior (umbral de
  * dominio para "histórica" — > ~1 año), distinto del umbral 48h de frescura de
  * captura. Una vieja se marca histórica + ámbar, nunca se lee como actual.
+ *
+ * WR-01 (B17 completo): guard ISO (slice + regex) ANTES de `new Date`, espejo de
+ * `fechaCortaSegura`. `fecha_presentacion` puede venir null/vacía/no-ISO en runtime
+ * (el tipo `string` es optimista); `new Date(null).getTime() === 0` etiquetaría
+ * "histórica" un dato AUSENTE (afirmación fabricada, honest-states la prohíbe).
+ * Ante fecha no parseable NO se afirma "histórica" (conservador, no fabrica).
  */
 export function esHistorica(
-  fechaPresentacion: string,
+  fechaPresentacion: string | null,
   now: Date = new Date(),
 ): boolean {
-  const presentada = new Date(fechaPresentacion).getTime();
+  const iso = (fechaPresentacion ?? "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false; // sin fecha válida → no se afirma "histórica"
+  const presentada = new Date(iso).getTime();
+  if (Number.isNaN(presentada)) return false;
   const unAnioMs = 365 * 24 * 60 * 60 * 1000;
   return now.getTime() - presentada > unAnioMs;
 }
