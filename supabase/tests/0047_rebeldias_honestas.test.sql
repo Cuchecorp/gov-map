@@ -39,12 +39,13 @@ select ok(
     like '%search_path=%',
   'rebeldias_de_parlamentario conserva set search_path= en proconfig');
 
--- ── (5) anon TIENE EXECUTE (sigue en PUBLIC_RPC_ALLOWLIST; espejo INVERTIDO del
---        deny de 0040). El drop+recreate re-concede por DEFAULT PRIVILEGES, pero
---        el grant explícito es lo que lo hace determinista. ─────────────────────
+-- ── (5) anon NO tiene EXECUTE (espejo de post-apply/0044_revoke_anon.test.sql:
+--        Camino A = anon a cero grants; el sitio lee con service_role, que bypassa
+--        ACL). El drop+recreate podría re-conceder por DEFAULT PRIVILEGES según el
+--        rol de aplicación → el revoke explícito de 0047 hace esto determinista. ─
 select ok(
-  has_function_privilege('anon', 'public.rebeldias_de_parlamentario(text)', 'execute'),
-  'anon TIENE EXECUTE sobre rebeldias_de_parlamentario (público desde 0019, status quo)');
+  not has_function_privilege('anon', 'public.rebeldias_de_parlamentario(text)', 'execute'),
+  'anon NO tiene EXECUTE sobre rebeldias_de_parlamentario (Camino A post-0044: deny)');
 
 -- ── (6) no-PII: el cuerpo NUNCA emite partido/rut/email en el returns (LEGAL-03)
 -- (partido se LEE internamente en la CTE `yo`, pero jamás se devuelve al cliente).

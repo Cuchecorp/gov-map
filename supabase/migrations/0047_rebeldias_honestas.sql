@@ -15,11 +15,13 @@
 --
 -- El `returns table` CRECE (añade `titulo`/`etapa`) → Postgres prohíbe `create or
 -- replace` al cambiar el tipo de retorno (42P13; espejo de 0028/0041) → DROP + recreate.
--- Tras el recreate, Supabase re-concede EXECUTE por DEFAULT PRIVILEGES sobre CADA función
--- nueva de public → hay que RE-EMITIR el revoke/grant explícito para dejar el ACL
--- determinista. El RPC ES PÚBLICO desde 0019 (ya está en PUBLIC_RPC_ALLOWLIST del
--- lockdown-guard) → `grant execute ... to anon` preserva el STATUS QUO, NO abre
--- superficie nueva; el guard refinado (Task 3) lo exime por estar allowlisted.
+-- Tras el recreate, los DEFAULT PRIVILEGES del rol que aplica el DDL pueden re-conceder
+-- EXECUTE sobre la función nueva → hay que RE-EMITIR el revoke explícito para dejar el
+-- ACL determinista. Bajo Camino A (0044 APLICADA a PROD: `revoke all on all routines
+-- from anon, authenticated`; anon REST muerta 401/42501) el sitio lee con service_role
+-- (bypassa ACL) y el status quo real pre-0047 es anon SIN execute — CERO grant a anon:
+-- re-emitir uno re-abriría superficie REST no autenticada y rompería el pgTAP post-apply
+-- (post-apply/0044_revoke_anon.test.sql afirma NOT has_function_privilege('anon', …)).
 --
 -- PII-safe intacto (LEGAL-03, Ley 21.719): sigue `security definer set search_path=''`,
 -- lee `parlamentario.partido` INTERNAMENTE (CTE `yo`) pero el returns table SOLO emite
@@ -69,11 +71,10 @@ language sql stable security definer set search_path = '' as $$
   order by v.votacion_id;
 $$;
 
--- ── ACL determinista: lock-down + grant preciso (doble revoke/grant) ──────────
--- El drop+recreate re-concede EXECUTE por DEFAULT PRIVILEGES; `revoke all from public`
--- limpia la concesión implícita y el `grant execute to anon` re-emite EXACTAMENTE el
--- status quo de 0019 (RPC público desde su nacimiento, en PUBLIC_RPC_ALLOWLIST). NO se
--- abre superficie nueva: es el mismo canal PII-safe security-definer que ya existía.
+-- ── ACL determinista: lock-down sin grants (Camino A, espejo de 0044) ─────────
+-- El drop+recreate puede re-conceder EXECUTE por DEFAULT PRIVILEGES según el rol que
+-- aplica; el revoke explícito limpia la concesión implícita. CERO grant a anon: el
+-- sitio lee con service_role (bypassa ACL) y anon quedó a cero grants desde 0044 —
+-- este RPC debe quedar igual que el resto de las rutinas de public (deny).
 -- CERO grant select sobre `parlamentario` (LEGAL-03).
 revoke all on function rebeldias_de_parlamentario(text) from public;
-grant execute on function rebeldias_de_parlamentario(text) to anon;
