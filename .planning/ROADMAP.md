@@ -1172,7 +1172,7 @@ Plans:
   8. **Footer global:** licencia CC BY 4.0, metodología, fuentes y contacto en toda página.
   9. Suite verde + tsc limpio + lockdown-guard verde; anti-insinuación intacta (negative-match).
 
-**Plans:** 5/7 plans executed
+**Plans:** 6/7 plans executed
 
 Plans:
 
@@ -1181,7 +1181,7 @@ Plans:
 - [x] 51-03-PLAN.md — SC3/SC4: patrimonio tarjeta-resumen + filtro URI + comparador form GET
 - [x] 51-04-PLAN.md — SC6: lobby agrupado por contraparte + toggle ?vista + caveat 1x/seccion
 - [x] 51-05-PLAN.md — SC2/SC7: bloque "Donde esta hoy?" + timeline 2 niveles + 1 ProvenanceBadge/seccion
-- [ ] 51-06-PLAN.md — SC8: footer global CC BY (scope-caveat) + pagina /metodologia
+- [x] 51-06-PLAN.md — SC8: footer global CC BY (scope-caveat) + pagina /metodologia
 - [ ] 51-07-PLAN.md — SC1 §2.1: header con periodo + chip "Presente en N de M" (sin PII)
 
 ### Phase 52: CRUCE2 — Cruces nuevos con datos ya disponibles (P3)
