@@ -4,8 +4,10 @@
  * Dos bloques:
  *
  * (A) Ningun migración futura (numero > 0044) re-expone `anon` via
- *     `GRANT … TO anon` ni via `CREATE POLICY … TO anon`. Si no hay
- *     migraciones con numero > 0044, el test pasa trivialmente.
+ *     `GRANT … TO anon`, `GRANT … TO public` (anon es miembro IMPLICITO del
+ *     pseudo-rol `public` — un grant a public concede a anon igual, WR-07) ni
+ *     via `CREATE POLICY … TO anon`. Si no hay migraciones con numero > 0044,
+ *     el test pasa trivialmente.
  *
  *     ALCANCE HONESTO (VALIDATION B2): este guard es ESTATICO sobre los
  *     archivos de migracion del repo. NO detecta re-grants a anon que
@@ -179,8 +181,16 @@ const PUBLIC_RPC_ALLOWLIST = new Set([
 ]);
 
 /**
- * Extrae los `grant … to … anon` de una migración (SQL ya con comentarios
- * stripeados y en minúscula). Guard ESTRICTO, SIN EXENCIONES.
+ * Extrae los `grant … to … anon` Y `grant … to … public` de una migración
+ * (SQL ya con comentarios stripeados y en minúscula). Guard ESTRICTO, SIN
+ * EXENCIONES.
+ *
+ * WR-07: `public` cuenta como offender porque anon es miembro IMPLICITO del
+ * pseudo-rol `public` en Postgres — `grant execute … to public` re-abre la
+ * superficie REST no autenticada EXACTAMENTE igual que un grant a anon
+ * (`has_function_privilege('anon', …)` pasa a true). `revoke … from public`
+ * NO matchea (no contiene `grant`); ninguna migración >0044 usa grant-to-public
+ * legítimamente (verificado al cerrar WR-07).
  *
  * La exención de Phase 51 ("grant execute on function <RPC allowlisted> to anon")
  * se REVIRTIÓ en el review-fix de la fase (CR-01/CR-03): (1) su premisa
@@ -197,7 +207,7 @@ const PUBLIC_RPC_ALLOWLIST = new Set([
  */
 function anonGrantOffenders(strippedLowerSql: string): string[] {
   const offenders: string[] = [];
-  const grantToAnon = /grant\s+\S[\s\S]*?\bto\s+[\w,\s]*\banon\b/;
+  const grantToAnon = /grant\s+\S[\s\S]*?\bto\s+[\w,\s]*\b(anon|public)\b/;
   for (const stmt of strippedLowerSql.split(";")) {
     if (!grantToAnon.test(stmt)) continue;
     offenders.push(stmt.trim().replace(/\s+/g, " ").slice(0, 100));
@@ -222,7 +232,7 @@ describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
     })
     .sort();
 
-  it("no existe ningun `GRANT … TO … anon` en migraciones > 0044 (sin contar comentarios)", () => {
+  it("no existe ningun `GRANT … TO … anon/public` en migraciones > 0044 (sin contar comentarios)", () => {
     const offenders: string[] = [];
     for (const filename of futureMigrations) {
       const raw = readFileSync(`${MIGRATIONS_DIR}/${filename}`, "utf-8");
@@ -232,7 +242,7 @@ describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
         offenders.push(`${filename}: ${off}`);
       }
     }
-    expect(offenders, `Migraciones con GRANT a anon (LOCKDOWN-regresion): ${offenders.join(", ")} — bajo Camino A anon tiene CERO grants (el sitio lee con service_role); elimina el grant`).toHaveLength(0);
+    expect(offenders, `Migraciones con GRANT a anon/public (LOCKDOWN-regresion; anon es miembro implicito de public): ${offenders.join(", ")} — bajo Camino A anon tiene CERO grants (el sitio lee con service_role); elimina el grant`).toHaveLength(0);
   });
 
   it("no existe ningun `CREATE POLICY … TO anon` en migraciones > 0044 (sin contar comentarios)", () => {
@@ -275,7 +285,7 @@ describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
   // PUBLIC_RPC_ALLOWLIST (la exención de Phase 51 se REVIRTIÓ: premisa stale
   // post-0044 + bypasseable con listas multi-función, ver doc de
   // anonGrantOffenders).
-  it("BLOQUEA todo `grant … to anon`: RPC allowlisted, tabla, y listas multi-función", () => {
+  it("BLOQUEA todo `grant … to anon/public`: RPC allowlisted, tabla, listas multi-función y la puerta de al lado `to public`", () => {
     // (a) grant execute de un RPC allowlisted → TAMBIÉN offender (sin carve-out;
     // anon quedó a cero grants desde 0044).
     expect(
@@ -300,6 +310,28 @@ describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
         "grant execute on function public.funcion_no_listada(text) to anon;",
       ),
     ).toHaveLength(1);
+    // (e) WR-07: grant a `public` → offender (anon es miembro implicito del
+    // pseudo-rol public; re-abre la superficie REST igual que un grant a anon).
+    expect(
+      anonGrantOffenders(
+        "grant execute on function public.f(text) to public;",
+      ),
+    ).toHaveLength(1);
+    // (f) el DOBLE revoke idiomático (0041/0047) NO matchea: `revoke … from
+    // public` no contiene `grant`; el `public.` de schema-qualification antes
+    // del `to` tampoco dispara (el regex exige anon|public DESPUÉS del `to`).
+    expect(
+      anonGrantOffenders(
+        "revoke all on function public.f(text) from public; revoke all on function public.f(text) from anon, authenticated;",
+      ),
+    ).toHaveLength(0);
+    // (g) grant a un rol NO-anon/public con nombres schema-qualified `public.…`
+    // en la sentencia → NO offender (cero falsos positivos sobre el idiom real).
+    expect(
+      anonGrantOffenders(
+        "grant execute on function public.f(text) to service_role;",
+      ),
+    ).toHaveLength(0);
   });
 });
 
