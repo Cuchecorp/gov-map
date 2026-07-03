@@ -4,11 +4,13 @@ import { notFound } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase";
 import { BOLETIN_RE } from "@/lib/buscar";
 import { FichaHeader } from "@/components/ficha-header";
+import { EstadoActualBlock } from "@/components/estado-actual-block";
 import { TimelineView } from "@/components/timeline-view";
 import { VotacionCard } from "@/components/votacion-card";
 import { IdeaMatrizBlock } from "@/components/idea-matriz-block";
 import { CuerposLegalesList } from "@/components/cuerpos-legales-list";
 import { ProyectosSimilares } from "@/components/proyectos-similares";
+import { ProvenanceBadge } from "@/components/provenance-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sourceLabel } from "@/lib/types";
 import { extractoIdea } from "@/lib/format";
@@ -23,10 +25,12 @@ import type {
 
 interface PageProps {
   params: Promise<{ boletin: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function ProyectoPage({ params }: PageProps) {
+export default async function ProyectoPage({ params, searchParams }: PageProps) {
   const { boletin } = await params;
+  const sp = await searchParams;
 
   // Validación del input no confiable del path (T-05-09). `.eq()` de supabase-js
   // ya parametriza, pero rechazamos formatos no-boletín antes de tocar la DB.
@@ -34,16 +38,33 @@ export default async function ProyectoPage({ params }: PageProps) {
     notFound();
   }
 
+  // Período de urgencia expandido (SC2, server-driven): ?urgencias=<id>. Normalizado
+  // como los demás params del repo (string[] → primer valor; vacío → null). Nunca se
+  // interpola en SQL — se compara por igualdad contra ids de período ya conocidos
+  // (T-51-17): la TimelineView sólo expande un período cuyo id derivó ella misma.
+  const urgenciaExpandida =
+    (Array.isArray(sp.urgencias) ? sp.urgencias[0] : sp.urgencias)?.trim() || null;
+
   return (
     <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
       <Suspense fallback={<FichaHeaderSkeleton />}>
         <FichaSection boletin={boletin} />
       </Suspense>
 
+      {/*
+        SC2 — "¿Dónde está hoy?" (EstadoActualBlock). PRIMER elemento tras el header,
+        ANTES de #idea-matriz: responde el estado actual derivando de datos existentes
+        (etapa/estado + último hito + urgencia vigente), omitiendo cada línea no
+        derivable. Carril propio (superficie --background, no petróleo); no compone
+        con otros dominios.
+      */}
+      <Suspense fallback={<EstadoActualSkeleton />}>
+        <EstadoActualBlock boletin={boletin} />
+      </Suspense>
+
       <section id="timeline" className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">Tramitación</h2>
         <Suspense fallback={<TimelineSkeleton />}>
-          <TimelineSection boletin={boletin} />
+          <TimelineSection boletin={boletin} urgenciaExpandida={urgenciaExpandida} />
         </Suspense>
       </section>
 
@@ -146,7 +167,13 @@ async function FichaSection({ boletin }: { boletin: string }) {
 }
 
 // ── Timeline (tramitacion_evento) ────────────────────────────────────────────
-async function TimelineSection({ boletin }: { boletin: string }) {
+async function TimelineSection({
+  boletin,
+  urgenciaExpandida,
+}: {
+  boletin: string;
+  urgenciaExpandida: string | null;
+}) {
   const sb = createServerSupabase();
   const { data, error } = await sb
     .from("tramitacion_evento")
@@ -163,7 +190,37 @@ async function TimelineSection({ boletin }: { boletin: string }) {
     );
   }
 
-  return <TimelineView eventos={(data as TramitacionEventoRow[]) ?? []} />;
+  const eventos = (data as TramitacionEventoRow[]) ?? [];
+
+  // SC7: UN ProvenanceBadge por sección (aquí, en el heading), en vez de 100+ badges
+  // idénticos (uno por evento). Frescura = el `fecha_captura` MÁS RECIENTE del set
+  // (esStale/14d lo evalúa el propio badge); la fuente = el `origen` de ese evento.
+  // Cada evento CONSERVA su link "Ver fuente oficial ↗" (trazabilidad por dato, SC7).
+  const masReciente = eventos.reduce<TramitacionEventoRow | null>((acc, e) => {
+    if (!e.fecha_captura) return acc;
+    if (!acc) return e;
+    return new Date(e.fecha_captura) > new Date(acc.fecha_captura) ? e : acc;
+  }, null);
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h2 className="text-xl font-semibold">Tramitación</h2>
+        {masReciente && (
+          <ProvenanceBadge
+            capturedAt={new Date(masReciente.fecha_captura)}
+            sourceName={sourceLabel(masReciente.origen)}
+            sourceUrl={null}
+          />
+        )}
+      </div>
+      <TimelineView
+        eventos={eventos}
+        boletin={boletin}
+        urgenciaExpandida={urgenciaExpandida}
+      />
+    </>
+  );
 }
 
 // ── Votaciones (votacion + voto embed) ───────────────────────────────────────
@@ -236,6 +293,19 @@ function FichaHeaderSkeleton() {
       <Skeleton className="h-9 w-3/4" />
       <Skeleton className="h-4 w-32" />
       <Skeleton className="h-4 w-48 mt-4" />
+    </div>
+  );
+}
+
+function EstadoActualSkeleton() {
+  return (
+    <div
+      className="mt-6 rounded-lg border p-6 space-y-2"
+      aria-hidden="true"
+    >
+      <Skeleton className="h-6 w-48" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-2/3" />
     </div>
   );
 }
