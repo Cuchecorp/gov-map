@@ -4,7 +4,9 @@
 -- insinuación falsa. La asistencia ya es métrica propia (0022); rebeldías debe medir
 -- SOLO disidencia real. Tres cambios de semántica + dos de contrato:
 --   (a) la mayoría de la bancada se computa EXCLUYENDO ausencias (una ausencia ajena
---       no debe mover la opción modal);
+--       no debe mover la opción modal) y SOLO cuando la opción mayoritaria es ÚNICA
+--       (empate de frecuencias = NO hay mayoría = la votación se excluye; jamás se
+--       fabrica una "mayoría de bancada" inexistente);
 --   (b) el WHERE final EXCLUYE la ausencia propia (una ausencia PROPIA no es "votó
 --       distinto");
 --   (c) `distinct on (votacion_id)` deduplica por votación (datos con filas repetidas
@@ -48,15 +50,25 @@ language sql stable security definer set search_path = '' as $$
   with yo as (
     select partido from public.parlamentario where id = p_id
   ),
-  mayoria as (  -- opción modal de la bancada por votación, EXCLUYENDO ausencias (a)
-    select v.votacion_id,
-           mode() within group (order by v.seleccion) as mayoria
-    from public.voto v
-    join public.parlamentario p on p.id = v.parlamentario_id
-    where p.partido = (select partido from yo)
-      and v.estado_vinculo = 'confirmado'
-      and v.seleccion <> 'ausente'
-    group by v.votacion_id
+  mayoria as (  -- opción MAYORITARIA ÚNICA de la bancada por votación, EXCLUYENDO
+                -- ausencias (a). NO se usa mode(): ante empate de frecuencias mode()
+                -- devuelve un valor arbitrario y fabricaría una "mayoría de bancada"
+                -- inexistente (insinuación falsa). Sin mayoría única → la votación
+                -- se EXCLUYE (having count(*) = 1: exactamente UNA opción con rank 1).
+    select votacion_id, min(seleccion) as mayoria
+    from (
+      select v.votacion_id, v.seleccion,
+             rank() over (partition by v.votacion_id order by count(*) desc) as rk
+      from public.voto v
+      join public.parlamentario p on p.id = v.parlamentario_id
+      where p.partido = (select partido from yo)
+        and v.estado_vinculo = 'confirmado'
+        and v.seleccion <> 'ausente'
+      group by v.votacion_id, v.seleccion
+    ) conteos
+    where rk = 1
+    group by votacion_id
+    having count(*) = 1
   )
   select distinct on (v.votacion_id)     -- (c) dedupe por votación
          v.votacion_id, vo.boletin, pr.titulo, vo.etapa, vo.fecha, v.seleccion, m.mayoria

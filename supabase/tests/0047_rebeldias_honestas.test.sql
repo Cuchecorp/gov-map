@@ -7,7 +7,7 @@
 -- el texto del resultado de la función está prohibido por convención. Siembra datos mínimos en la
 -- transacción de test (rollback), NUNCA depende de datos PROD.
 begin;
-select plan(9);
+select plan(10);
 
 -- ── (1) la función existe con la firma de parámetros (text) ────────────────────
 select has_function(
@@ -59,16 +59,21 @@ select is(
   true,
   'el returns table de rebeldias_de_parlamentario NO expone partido/rut/email (no-PII)');
 
--- ── Fixture mínimo para los asserts de DATOS (7)(8)(9) ─────────────────────────
+-- ── Fixture mínimo para los asserts de DATOS (7)(8)(9)(10) ─────────────────────
 -- Un partido de prueba con bancada que vota 'si'; un disidente real ('no', con fila
 -- DUPLICADA para probar dedupe) y un ausente-puro (todas sus filas 'ausente').
+-- Además un partido EMPATADO (2 'si' / 2 'no') para el caso sin-mayoría-única (10).
 insert into public.parlamentario (id, nombre_normalizado, camara, periodo, partido, origen, enlace)
 values
   ('PTEST_A',   'test a',   'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x'),
   ('PTEST_B',   'test b',   'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x'),
   ('PTEST_C',   'test c',   'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x'),
   ('PTEST_REB', 'test reb', 'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x'),
-  ('PTEST_AUS', 'test aus', 'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x');
+  ('PTEST_AUS', 'test aus', 'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x'),
+  ('PTEST_E1',  'test e1',  'diputados', '2022-2026', 'PART_EMPATE', 'test', 'http://x'),
+  ('PTEST_E2',  'test e2',  'diputados', '2022-2026', 'PART_EMPATE', 'test', 'http://x'),
+  ('PTEST_E3',  'test e3',  'diputados', '2022-2026', 'PART_EMPATE', 'test', 'http://x'),
+  ('PTEST_E4',  'test e4',  'diputados', '2022-2026', 'PART_EMPATE', 'test', 'http://x');
 
 insert into public.proyecto (boletin, boletin_num, titulo, origen, enlace)
 values ('BTEST-01', 'BTEST', 'Proyecto de prueba honestidad', 'test', 'http://x');
@@ -86,7 +91,12 @@ values
   ('vtest:1', 'reb 1',   'PTEST_REB', 'no',      'determinista', 'confirmado'),
   ('vtest:1', 'reb 2',   'PTEST_REB', 'no',      'determinista', 'confirmado'),
   -- ausente puro: bajo la vieja lógica ausente<>'si' habría contado como rebeldía
-  ('vtest:1', 'aus',     'PTEST_AUS', 'ausente', 'determinista', 'confirmado');
+  ('vtest:1', 'aus',     'PTEST_AUS', 'ausente', 'determinista', 'confirmado'),
+  -- bancada EMPATADA (2 'si' / 2 'no'): NO existe mayoría única → nadie es "rebelde"
+  ('vtest:1', 'e1',      'PTEST_E1',  'si',      'determinista', 'confirmado'),
+  ('vtest:1', 'e2',      'PTEST_E2',  'si',      'determinista', 'confirmado'),
+  ('vtest:1', 'e3',      'PTEST_E3',  'no',      'determinista', 'confirmado'),
+  ('vtest:1', 'e4',      'PTEST_E4',  'no',      'determinista', 'confirmado');
 
 -- ── (7) EXCLUSIÓN DE AUSENCIAS: un parlamentario cuya única "disidencia" es una
 --        ausencia devuelve 0 filas (una ausencia PROPIA no es "votó distinto"). ──
@@ -106,6 +116,14 @@ select is(
   (select titulo from public.rebeldias_de_parlamentario('PTEST_REB') limit 1),
   'Proyecto de prueba honestidad',
   'rebeldias_de_parlamentario hidrata el título del proyecto vía left join a proyecto');
+
+-- ── (10) EMPATE DE BANCADA: con 2 'si' / 2 'no' NO existe opción mayoritaria única
+--         → 0 filas para CUALQUIER miembro (mode() habría elegido un valor arbitrario
+--         y fabricado una "mayoría de bancada" inexistente — insinuación falsa). ──
+select is(
+  (select count(*)::int from public.rebeldias_de_parlamentario('PTEST_E1')),
+  0,
+  'rebeldias_de_parlamentario devuelve 0 filas cuando la bancada está empatada (sin mayoría única no hay disidencia afirmable)');
 
 select * from finish();
 rollback;
