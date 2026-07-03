@@ -58,12 +58,30 @@ export interface ResumenChip {
   estado: CarrilEstado;
 }
 
-export function ResumenView({ chips }: { chips: ResumenChip[] }) {
+export function ResumenView({
+  chips,
+  asistencia = null,
+}: {
+  chips: ResumenChip[];
+  asistencia?: ConteoCarriles["asistencia"];
+}) {
   return (
-    <nav
-      aria-label="Índice de secciones"
-      className="mt-6 flex flex-wrap gap-2"
-    >
+    <div className="mt-6">
+      {/* Chip de asistencia (SC1 §2.1): conteo neutro derivado de los votos, NUNCA
+          ranking/score/juicio. Se OMITE cuando `asistencia` es null (sin filas de
+          voto → no se fabrica "0 de 0", T-51-22). {presentes}/{total} en Mono. */}
+      {asistencia && (
+        <p className="text-sm text-muted-foreground">
+          Presente en{" "}
+          <span className="font-mono tabular-nums">{asistencia.presentes}</span>{" "}
+          de <span className="font-mono tabular-nums">{asistencia.total}</span>{" "}
+          votaciones
+        </p>
+      )}
+      <nav
+        aria-label="Índice de secciones"
+        className="mt-3 flex flex-wrap gap-2"
+      >
       {chips.map((ch) => (
         <a
           key={ch.href}
@@ -83,7 +101,8 @@ export function ResumenView({ chips }: { chips: ResumenChip[] }) {
           </span>
         </a>
       ))}
-    </nav>
+      </nav>
+    </div>
   );
 }
 
@@ -147,5 +166,5 @@ export async function ParlamentarioResumen({ id }: { id: string }) {
   // WR-02: lectura segura — un fallo de conteo degrada a estado honesto
   // "desconocido" (—), nunca tira el subárbol del resumen.
   const c = await contarCarrilesSeguro(id);
-  return <ResumenView chips={construirChips(c)} />;
+  return <ResumenView chips={construirChips(c)} asistencia={c.asistencia} />;
 }

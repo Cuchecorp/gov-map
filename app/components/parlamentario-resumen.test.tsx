@@ -194,6 +194,43 @@ describe("ResumenView — negative-density (anti-insinuación)", () => {
   });
 });
 
+// ── Chip de asistencia "Presente en N de M" (SC1 §2.1) ──────────────────────────
+describe("ResumenView — chip de asistencia derivado (SC1 §2.1)", () => {
+  it("con asistencia {presentes:40,total:52} muestra 'Presente en 40 de 52' (Mono)", () => {
+    const { container } = render(
+      <ResumenView chips={makeChips()} asistencia={{ presentes: 40, total: 52 }} />,
+    );
+    const texto = (container.textContent ?? "").replace(/\s+/g, " ");
+    expect(texto).toContain("Presente en 40 de 52");
+    // Ambos números en Geist Mono (UI-SPEC: conteos/IDs).
+    expect(screen.getByText("40").className).toContain("font-mono");
+    expect(screen.getByText("52").className).toContain("font-mono");
+  });
+
+  it("con asistencia null el chip se OMITE (sin fabricar '0 de 0', T-51-22)", () => {
+    render(<ResumenView chips={makeChips()} asistencia={null} />);
+    expect(screen.queryByText(/Presente en/)).not.toBeInTheDocument();
+  });
+
+  it("sin prop asistencia (default) el chip no aparece — no rompe callers previos", () => {
+    render(<ResumenView chips={makeChips()} />);
+    expect(screen.queryByText(/Presente en/)).not.toBeInTheDocument();
+    // El índice de secciones sigue intacto (5 chips ancla).
+    expect(screen.getAllByRole("link")).toHaveLength(5);
+  });
+
+  it("el copy del chip es un conteo neutro — sin ranking/score/juicio (banned-vocab)", () => {
+    const { container } = render(
+      <ResumenView chips={makeChips()} asistencia={{ presentes: 40, total: 52 }} />,
+    );
+    const texto = container.textContent ?? "";
+    // Negative-match §9.1: el chip es un hecho, nunca petróleo/ranking/score.
+    expect(texto).not.toMatch(
+      /ranking|puntaje|score|índice|mejor|peor|destac|ejemplar|comprometid|cumplidor/i,
+    );
+  });
+});
+
 // ── construirChips — gates + per-carril MONEY (WR-01/IN-03) ─────────────────────
 const CONTEOS_BASE: ConteoCarriles = {
   votos: { tipo: "dato", n: 9 },
@@ -202,6 +239,7 @@ const CONTEOS_BASE: ConteoCarriles = {
   cruces: { tipo: "dato", n: 2 },
   dineroContratos: { tipo: "dato", n: 3 },
   dineroAportes: { tipo: "dato", n: 7 },
+  asistencia: { presentes: 40, total: 52 },
 };
 
 describe("construirChips — gates + índice por carril presente (LEG-02)", () => {

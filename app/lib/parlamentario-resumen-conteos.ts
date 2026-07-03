@@ -43,11 +43,29 @@ export type CarrilEstado =
   | { tipo: "no_ingerido" } // no ingestado → "—"
   | { tipo: "pendiente" }; // MONEY OFF honest-state
 
+/**
+ * Asistencia derivada de las filas de voto ya traídas (SC1 §2.1). `total` = nº de
+ * votaciones confirmadas del parlamentario; `presentes` = las que NO son `ausente`
+ * (misma regla que `VotosView`: presente = total − ausentes). `null` cuando NO hay
+ * filas de voto: sin datos NO se fabrica "0 de 0" (T-51-22, honesto).
+ */
+export interface Asistencia {
+  presentes: number;
+  total: number;
+}
+
 export interface ConteoCarriles {
   votos: CarrilEstado;
   lobby: CarrilEstado;
   patrimonio: CarrilEstado;
   cruces: CarrilEstado;
+  /**
+   * Asistencia derivada de las MISMAS filas de `votos_de_parlamentario` que este
+   * módulo YA lee para el conteo de votos (una sola lectura, React.cache — sin
+   * segundo fetch). `null` si no hay filas (sin fabricar). El resumen la muestra
+   * como chip "Presente en N de M".
+   */
+  asistencia: Asistencia | null;
   // WR-01/IN-03: los DOS carriles MONEY tienen conteo PROPIO (cada header/chip
   // refleja SOLO su carril). `dineroContratos` → #dinero ("Contratos del Estado");
   // `dineroAportes` → #financiamiento ("Aportes de campaña SERVEL"). NUNCA un
@@ -123,8 +141,22 @@ export const contarCarriles = cache(
         `votos_de_parlamentario falló para ${id}: ${votosError.message}`,
       );
     }
-    const votosTotal = (votosData as unknown[] | null)?.length ?? 0;
+    const votosRows =
+      (votosData as { seleccion: string }[] | null) ?? [];
+    const votosTotal = votosRows.length;
     const votos = derivarEstado({ total: votosTotal, ingestado: true });
+
+    // Asistencia derivada de las MISMAS filas (no un segundo fetch): presente =
+    // seleccion !== 'ausente' (regla idéntica a VotosView). Sin filas → null:
+    // no se fabrica un "0 de 0" (T-51-22, honesto).
+    const asistencia =
+      votosTotal > 0
+        ? {
+            total: votosTotal,
+            presentes: votosRows.filter((v) => v.seleccion !== "ausente")
+              .length,
+          }
+        : null;
 
     // ── LOBBY ─────────────────────────────────────────────────────────────────
     // El RPC trae left-join (una fila por contraparte) → el conteo de audiencias
@@ -220,7 +252,15 @@ export const contarCarriles = cache(
       dineroAportes = derivarEstado({ total: aportesTotal, ingestado: true });
     }
 
-    return { votos, lobby, patrimonio, cruces, dineroContratos, dineroAportes };
+    return {
+      votos,
+      lobby,
+      patrimonio,
+      cruces,
+      dineroContratos,
+      dineroAportes,
+      asistencia,
+    };
   },
 );
 
@@ -239,6 +279,8 @@ export function conteosDesconocidos(): ConteoCarriles {
     cruces: { tipo: "no_ingerido" },
     dineroContratos: { tipo: "no_ingerido" },
     dineroAportes: { tipo: "no_ingerido" },
+    // Sin conteo confiable no se afirma asistencia (jamás un "0 de 0" fabricado).
+    asistencia: null,
   };
 }
 

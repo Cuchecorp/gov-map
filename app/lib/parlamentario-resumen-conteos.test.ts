@@ -101,4 +101,8 @@ describe("conteosDesconocidos — fallback honesto del shell (WR-02)", () => {
     expect(c).toHaveProperty("dineroAportes");
     expect(c).not.toHaveProperty("dinero");
   });
+
+  it("asistencia queda en null (sin conteo confiable NO se fabrica '0 de 0', T-51-22)", () => {
+    expect(conteosDesconocidos().asistencia).toBeNull();
+  });
 });
