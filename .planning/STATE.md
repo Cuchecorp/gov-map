@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
 status: Ready to execute
-stopped_at: "P0 EJECUTADO 2026-07-02: deploy F45+F46+F50 EN VIVO (3ade68b8) + B20/B21 + /red force-dynamic + NET FLIPEADO (/red LIVE). Pendiente usuario: rotar DB password. Próximo = /gsd-autonomous --from 51 --to 52 (o F47/F49, desbloqueadas)."
-last_updated: "2026-07-02T19:11:00.000Z"
-last_activity: 2026-07-02
+stopped_at: Phase 51 planned (7 plans, wave 1) — checker 0 blockers, warnings fixed
+last_updated: "2026-07-03T04:02:47.658Z"
+last_activity: 2026-07-03
 progress:
   total_phases: 41
-  completed_phases: 21
-  total_plans: 83
-  completed_plans: 90
-  percent: 51
+  completed_phases: 22
+  total_plans: 90
+  completed_plans: 91
+  percent: 54
 ---
 
 # Project State
@@ -21,11 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Sitio EN VIVO con F45+F46+F50 y **NET encendido** (`/red` LIVE, deploy `3ade68b8`, 2026-07-02). Siguiente = Phase 51 (LEG2 legibilidad profunda) y Phase 52 (CRUCE2, independiente de 51); F47/F49 desbloqueadas (solo F49 necesita RPC nueva allowlisted). ÚNICO pendiente operador: rotar DB password (B26).
+**Current focus:** Phase 51 — LEG2 — Legibilidad profunda (P2)
 
 ## Current Position
 
-Phase: 50 (FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)) — **COMPLETE 2026-07-02**
+Phase: 51 (LEG2 — Legibilidad profunda (P2)) — EXECUTING
+Plan: 2 of 7
 5/5 planes ejecutados (2 waves secuenciales). Verifier Opus **12/12 passed** contra código. Code-review thorough: 0 critical, 2 warnings **fixed** (WR-01 `esHistorica` guard fecha null — no fabrica "histórica"; WR-02 `getParlamentarioPublico` React.cache dedup 3 RPC), 3 info diferidos (incl. dead code voto-ficha-row → B24/Phase 51). Suite app/ **377→406 verde**, `tsc -b` limpio, lockdown-guard 7/7, Camino A intacto (cero RPC nueva/DDL/flag). Bugs cerrados: B1 pill→14309-04, B6 ámbar 14d, B7 agenda throw #34, B8 chip omitido, B9 error.tsx ×4 (`unstable_retry`), B10 copy lobby por cámara, B12 locale, B14 desenlace null explícito, B15 "Iniciativa del Ejecutivo (Mensaje).", B17 fechaCortaSegura, HS 1×/sección.
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
 Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to 46`, 2026-06-26):
@@ -36,7 +37,7 @@ Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to
 
 **DEPLOY EJECUTADO 2026-07-02** (cubrió F45+F46+F50+B20/B21+flip NET en un deploy, versión `3ade68b8`): build Docker Linux (`docker-cf-build.sh` → `docker cp` → `wrangler deploy` desde host). Verificación curl: home pill 14309-04 ✓, acordeones Radix en ficha ✓, `/red` selector 200 / seed D1012 grafo 305 aristas / seed inválida 404 ✓, link "Ver relaciones" en ficha ✓, agenda/proyecto/parlamentarios 200 ✓. GOTCHA NUEVO load-bearing: ruta con gate `notFound()` ANTES del primer API dinámico queda **estática en build** con el flag horneado → 500 en runtime con flag ON; fix = `export const dynamic = "force-dynamic"` (aplicado a `/red`; `/admin/revisar-entidades` tiene el mismo bug latente). Polish advisory diferido: tokenizar fill ramp del chart, tematizar legend/tooltip Recharts, a11y data-table fallback, verificación visual reduce-motion.
 Diseño LOCKED F45/F46: `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md`.
-Last activity: 2026-07-02
+Last activity: 2026-07-03
 
 ## Performance Metrics
 
@@ -276,8 +277,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-02T22:54:11.157Z
-Stopped at: Completed 41-03-PLAN.md (Phase 41 COMPLETA)
+Last session: 2026-07-03T04:02:47.644Z
+Stopped at: Phase 51 planned (7 plans, wave 1) — checker 0 blockers, warnings fixed
 Resume file: None
 
 ## Operator Next Steps
