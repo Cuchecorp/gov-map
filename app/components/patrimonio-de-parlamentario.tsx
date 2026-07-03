@@ -847,6 +847,23 @@ export function esHistorica(
 }
 
 /**
+ * `true` solo si `f` es una fecha ISO `YYYY-MM-DD` REAL de calendario.
+ *
+ * WR-06: la forma sola no basta — `2026-99-99` pasa el regex y, casteada a
+ * `date[]` en el RPC `comparar_declaraciones`, produce `date/time field value
+ * out of range` (500 de Postgres) para TODA la ficha. El check de NaN tampoco
+ * basta: V8 hace ROLLOVER (`new Date("2026-02-30")` → 2026-03-02, sin NaN) →
+ * el round-trip `toISOString().slice(0,10) === f` es obligatorio (una fecha
+ * que rueda a otro día NO es la fecha pedida). Se parsea anclado a `T00:00:00Z`
+ * para que el round-trip UTC no cruce de día por timezone local.
+ */
+export function esFechaISOValida(f: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return false;
+  const d = new Date(`${f}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === f;
+}
+
+/**
  * Modela las filas crudas del RPC `comparar_declaraciones` (una fila por
  * versión × campo, etiqueta/valor literal) en columnas por `fecha_presentacion`.
  * El UI NO computa NADA: cada celda es el valor literal de esa versión.
@@ -914,9 +931,10 @@ export async function PatrimonioSection({
   // Saneo fail-safe (espejo de `normalizarVista`): estos params viajan al cast
   // `date[]` del RPC `comparar_declaraciones` — un valor no-fecha produciría
   // `invalid input syntax for type date` (500 de Postgres) para TODA la ficha.
-  // Formato ISO estricto o el param se trata como AUSENTE (sin comparación).
-  const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-  fechasComparar = fechasComparar.filter((f) => ISO_DATE_RE.test(f));
+  // WR-06: la validación es SEMÁNTICA (round-trip), no solo de forma — `2026-99-99`
+  // pasa el regex pero Postgres lo rechaza con `date/time field value out of
+  // range` (mismo 500). Fecha inválida = param AUSENTE (sin comparación), nunca 500.
+  fechasComparar = fechasComparar.filter(esFechaISOValida);
   if (fechasComparar.length < 2) fechasComparar = [];
 
   // Historial (el RPC solo devuelve confirmadas, orden fecha_presentacion DESC).

@@ -8,6 +8,7 @@ import {
   agruparBienesPorFuente,
   paresDeContenido,
   etiquetaBien,
+  esFechaISOValida,
   esHistorica,
   esUriCplt,
   type PatrimonioViewData,
@@ -770,5 +771,45 @@ describe("esHistorica — guard ISO (WR-01, B17)", () => {
 
   it("timestamp ISO completo se recorta al día (slice 0,10) y evalúa", () => {
     expect(esHistorica("2020-01-01T12:34:56Z", now)).toBe(true);
+  });
+});
+
+// ── WR-06: esFechaISOValida valida CALENDARIO, no solo forma ────────────────────
+// El saneo de `?a`/`?b`/`?comparar` viaja al cast `date[]` de `comparar_declaraciones`.
+// La forma sola no basta: `2026-99-99` pasa el regex y Postgres responde
+// `date/time field value out of range` → 500 para TODA la ficha (URL manipulada
+// barata y repetible). El check de NaN tampoco basta: V8 hace rollover
+// (`new Date("2026-02-30")` → 2026-03-02) → round-trip obligatorio.
+describe("esFechaISOValida — round-trip semántico (WR-06)", () => {
+  it("fecha real → true", () => {
+    expect(esFechaISOValida("2024-05-14")).toBe(true);
+  });
+
+  it("29 de febrero en año bisiesto → true", () => {
+    expect(esFechaISOValida("2024-02-29")).toBe(true);
+  });
+
+  it("shape-válida pero fuera de rango (2026-99-99) → false (el 500 de WR-02)", () => {
+    expect(esFechaISOValida("2026-99-99")).toBe(false);
+  });
+
+  it("día inexistente con rollover de V8 (2026-02-30 → mar-02, sin NaN) → false", () => {
+    expect(esFechaISOValida("2026-02-30")).toBe(false);
+  });
+
+  it("29 de febrero en año NO bisiesto → false", () => {
+    expect(esFechaISOValida("2023-02-29")).toBe(false);
+  });
+
+  it("mes 00 / día 00 → false", () => {
+    expect(esFechaISOValida("2026-00-10")).toBe(false);
+    expect(esFechaISOValida("2026-01-00")).toBe(false);
+  });
+
+  it("forma no-ISO (basura, fecha corta, timestamp completo) → false", () => {
+    expect(esFechaISOValida("zzz")).toBe(false);
+    expect(esFechaISOValida("2024-5-14")).toBe(false);
+    expect(esFechaISOValida("2024-05-14T00:00:00Z")).toBe(false);
+    expect(esFechaISOValida("")).toBe(false);
   });
 });
