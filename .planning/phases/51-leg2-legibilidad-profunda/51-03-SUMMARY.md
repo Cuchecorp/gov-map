@@ -79,3 +79,9 @@ None - plan executed exactly as written. Nota de diseño (no desviación): el fi
 
 - Los cambios son solo-frontend (presentación pura + wiring server-side de searchParams). Cero DDL, cero RPC nueva, cero flag flip, cero `.env`. Camino A intacto.
 - El deploy a Cloudflare (build Docker Linux) queda como checkpoint de operador, agregado con el resto de la fase 51.
+
+## Self-Check: PASSED
+
+- Commits verificados en git: 1f9f170 (RED test), 6a5f430 (feat T1), 7767f6c (feat T2), c2eceac (docs SUMMARY).
+- Archivo 51-03-SUMMARY.md presente en disco.
+- Suite 432 verde, tsc -b limpio.
