@@ -858,7 +858,9 @@ export function esHistorica(
  * para que el round-trip UTC no cruce de día por timezone local.
  */
 export function esFechaISOValida(f: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return false;
+  // (?!0000): JS tiene año 0 (round-trip limpio) pero Postgres rechaza
+  // '0000-01-01'::date con "field value out of range" (WR-08, mismo 500).
+  if (!/^(?!0000)\d{4}-\d{2}-\d{2}$/.test(f)) return false;
   const d = new Date(`${f}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === f;
 }

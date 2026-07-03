@@ -806,6 +806,11 @@ describe("esFechaISOValida — round-trip semántico (WR-06)", () => {
     expect(esFechaISOValida("2026-01-00")).toBe(false);
   });
 
+  it("año 0000 (válido en JS, fuera de rango en Postgres) → false (WR-08)", () => {
+    expect(esFechaISOValida("0000-01-01")).toBe(false);
+    expect(esFechaISOValida("0000-12-31")).toBe(false);
+  });
+
   it("forma no-ISO (basura, fecha corta, timestamp completo) → false", () => {
     expect(esFechaISOValida("zzz")).toBe(false);
     expect(esFechaISOValida("2024-5-14")).toBe(false);
