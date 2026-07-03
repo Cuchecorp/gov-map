@@ -6,7 +6,9 @@
 --   (a) la mayoría de la bancada se computa EXCLUYENDO ausencias (una ausencia ajena
 --       no debe mover la opción modal) y SOLO cuando la opción mayoritaria es ÚNICA
 --       (empate de frecuencias = NO hay mayoría = la votación se excluye; jamás se
---       fabrica una "mayoría de bancada" inexistente);
+--       fabrica una "mayoría de bancada" inexistente); la frecuencia se cuenta por
+--       PARLAMENTARIO DISTINTO, no por fila cruda — una fila duplicada de bancada
+--       (mismo dato sucio de (c)) no rompe un empate real ni voltea la mayoría;
 --   (b) el WHERE final EXCLUYE la ausencia propia (una ausencia PROPIA no es "votó
 --       distinto");
 --   (c) `distinct on (votacion_id)` deduplica por votación (datos con filas repetidas
@@ -55,10 +57,15 @@ language sql stable security definer set search_path = '' as $$
                 -- devuelve un valor arbitrario y fabricaría una "mayoría de bancada"
                 -- inexistente (insinuación falsa). Sin mayoría única → la votación
                 -- se EXCLUYE (having count(*) = 1: exactamente UNA opción con rank 1).
+                -- La frecuencia rankeada cuenta PARLAMENTARIOS DISTINTOS, no filas:
+                -- con filas duplicadas de bancada (dato sucio real, ver (c)) un
+                -- count(*) crudo rompería un empate real o voltearía la mayoría —
+                -- la misma fabricación que motivó eliminar mode() (CR-04).
     select votacion_id, min(seleccion) as mayoria
     from (
       select v.votacion_id, v.seleccion,
-             rank() over (partition by v.votacion_id order by count(*) desc) as rk
+             rank() over (partition by v.votacion_id
+                          order by count(distinct v.parlamentario_id) desc) as rk
       from public.voto v
       join public.parlamentario p on p.id = v.parlamentario_id
       where p.partido = (select partido from yo)

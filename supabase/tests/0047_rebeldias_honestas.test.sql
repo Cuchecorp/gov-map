@@ -7,7 +7,7 @@
 -- el texto del resultado de la función está prohibido por convención. Siembra datos mínimos en la
 -- transacción de test (rollback), NUNCA depende de datos PROD.
 begin;
-select plan(10);
+select plan(11);
 
 -- ── (1) la función existe con la firma de parámetros (text) ────────────────────
 select has_function(
@@ -59,10 +59,13 @@ select is(
   true,
   'el returns table de rebeldias_de_parlamentario NO expone partido/rut/email (no-PII)');
 
--- ── Fixture mínimo para los asserts de DATOS (7)(8)(9)(10) ─────────────────────
+-- ── Fixture mínimo para los asserts de DATOS (7)(8)(9)(10)(11) ─────────────────
 -- Un partido de prueba con bancada que vota 'si'; un disidente real ('no', con fila
 -- DUPLICADA para probar dedupe) y un ausente-puro (todas sus filas 'ausente').
--- Además un partido EMPATADO (2 'si' / 2 'no') para el caso sin-mayoría-única (10).
+-- Además un partido EMPATADO (2 'si' / 2 'no') para el caso sin-mayoría-única (10)
+-- y un partido EMPATADO-CON-DUPLICADO (2 'si' / 2 'no' donde UNA fila 'si' viene
+-- duplicada) para el caso CR-04 (11): la mayoría cuenta parlamentarios DISTINTOS,
+-- no filas — el duplicado (3 filas 'si' / 2 'no' crudas) NO rompe el empate real.
 insert into public.parlamentario (id, nombre_normalizado, camara, periodo, partido, origen, enlace)
 values
   ('PTEST_A',   'test a',   'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x'),
@@ -73,7 +76,11 @@ values
   ('PTEST_E1',  'test e1',  'diputados', '2022-2026', 'PART_EMPATE', 'test', 'http://x'),
   ('PTEST_E2',  'test e2',  'diputados', '2022-2026', 'PART_EMPATE', 'test', 'http://x'),
   ('PTEST_E3',  'test e3',  'diputados', '2022-2026', 'PART_EMPATE', 'test', 'http://x'),
-  ('PTEST_E4',  'test e4',  'diputados', '2022-2026', 'PART_EMPATE', 'test', 'http://x');
+  ('PTEST_E4',  'test e4',  'diputados', '2022-2026', 'PART_EMPATE', 'test', 'http://x'),
+  ('PTEST_D1',  'test d1',  'diputados', '2022-2026', 'PART_EMPDUP', 'test', 'http://x'),
+  ('PTEST_D2',  'test d2',  'diputados', '2022-2026', 'PART_EMPDUP', 'test', 'http://x'),
+  ('PTEST_D3',  'test d3',  'diputados', '2022-2026', 'PART_EMPDUP', 'test', 'http://x'),
+  ('PTEST_D4',  'test d4',  'diputados', '2022-2026', 'PART_EMPDUP', 'test', 'http://x');
 
 insert into public.proyecto (boletin, boletin_num, titulo, origen, enlace)
 values ('BTEST-01', 'BTEST', 'Proyecto de prueba honestidad', 'test', 'http://x');
@@ -96,7 +103,16 @@ values
   ('vtest:1', 'e1',      'PTEST_E1',  'si',      'determinista', 'confirmado'),
   ('vtest:1', 'e2',      'PTEST_E2',  'si',      'determinista', 'confirmado'),
   ('vtest:1', 'e3',      'PTEST_E3',  'no',      'determinista', 'confirmado'),
-  ('vtest:1', 'e4',      'PTEST_E4',  'no',      'determinista', 'confirmado');
+  ('vtest:1', 'e4',      'PTEST_E4',  'no',      'determinista', 'confirmado'),
+  -- bancada EMPATADA con fila DUPLICADA (CR-04): 2 'si' / 2 'no' reales, pero D1
+  -- trae su 'si' repetido → 3 filas 'si' / 2 filas 'no' crudas. Contando FILAS la
+  -- mayoría 'si' se fabricaría y D3/D4 se publicarían como rebeldes de una bancada
+  -- EMPATADA; contando parlamentarios DISTINTOS el empate 2/2 se preserva → 0 filas.
+  ('vtest:1', 'd1 a',    'PTEST_D1',  'si',      'determinista', 'confirmado'),
+  ('vtest:1', 'd1 b',    'PTEST_D1',  'si',      'determinista', 'confirmado'),
+  ('vtest:1', 'd2',      'PTEST_D2',  'si',      'determinista', 'confirmado'),
+  ('vtest:1', 'd3',      'PTEST_D3',  'no',      'determinista', 'confirmado'),
+  ('vtest:1', 'd4',      'PTEST_D4',  'no',      'determinista', 'confirmado');
 
 -- ── (7) EXCLUSIÓN DE AUSENCIAS: un parlamentario cuya única "disidencia" es una
 --        ausencia devuelve 0 filas (una ausencia PROPIA no es "votó distinto"). ──
@@ -124,6 +140,16 @@ select is(
   (select count(*)::int from public.rebeldias_de_parlamentario('PTEST_E1')),
   0,
   'rebeldias_de_parlamentario devuelve 0 filas cuando la bancada está empatada (sin mayoría única no hay disidencia afirmable)');
+
+-- ── (11) EMPATE + FILA DUPLICADA (CR-04): la mayoría cuenta parlamentarios
+--         DISTINTOS, no filas crudas — un 'si' duplicado (3 filas / 2 personas)
+--         NO rompe el empate real 2/2 → 0 filas para cualquier miembro (contar
+--         filas habría fabricado mayoría 'si' y publicado a los 'no' como
+--         "votó distinto a la mayoría de su bancada" — insinuación falsa). ──────
+select is(
+  (select count(*)::int from public.rebeldias_de_parlamentario('PTEST_D3')),
+  0,
+  'rebeldias_de_parlamentario ignora filas duplicadas de bancada al computar la mayoría (empate real 2/2 se preserva → 0 filas)');
 
 select * from finish();
 rollback;
