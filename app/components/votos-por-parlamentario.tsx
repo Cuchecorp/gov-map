@@ -145,6 +145,11 @@ export interface VotosViewData {
    * marcador honesto; por ahora `false` cuando hay datos, `null` desconocido.
    */
   noIngestado: boolean;
+  /**
+   * Boletín del arco cuyo detalle está expandido (searchParam `?votosVer`), o
+   * `null` si todos están colapsados (SC1). Server-driven, sin estado cliente.
+   */
+  votosVer: string | null;
 }
 
 /** Construye los hrefs del facet/paginación preservando los otros params. */
@@ -170,6 +175,86 @@ interface ProyectoArco {
   idea_matriz: string | null;
   etapas: VotoFichaConMateria[];
 }
+
+// Formateador "mmm AAAA" (es-CL): "may 2026". Se usa SOLO para el rango de la
+// línea-resumen del arco; el detalle sigue usando `fechaCorta` (día incluido).
+const mesAnioFormatter = new Intl.DateTimeFormat("es-CL", {
+  month: "short",
+  year: "numeric",
+});
+function mesAnio(d: Date): string {
+  return mesAnioFormatter.format(d);
+}
+
+/**
+ * Resumen agregado de un arco de proyecto (SC1): nº de votaciones, conteo por
+ * sentido y rango de meses en que votó. PURO y exportado para test. CERO
+ * fabricación: `n` = etapas del arco; los conteos salen de `e.seleccion`;
+ * `mesInicio`/`mesFin` = min/max de `e.fecha` formateado "mmm AAAA" (cadena vacía
+ * si no hay fechas válidas → el llamador omite el rango).
+ */
+export interface ResumenArco {
+  n: number;
+  si: number;
+  no: number;
+  abstencion: number;
+  pareo: number;
+  ausente: number;
+  mesInicio: string;
+  mesFin: string;
+}
+
+export function resumenDeArco(arco: ProyectoArco): ResumenArco {
+  const conteo: Record<Seleccion, number> = {
+    si: 0,
+    no: 0,
+    abstencion: 0,
+    pareo: 0,
+    ausente: 0,
+  };
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (const e of arco.etapas) {
+    conteo[e.seleccion] += 1;
+    const t = new Date(e.fecha).getTime();
+    if (!Number.isNaN(t)) {
+      if (t < min) min = t;
+      if (t > max) max = t;
+    }
+  }
+  return {
+    n: arco.etapas.length,
+    si: conteo.si,
+    no: conteo.no,
+    abstencion: conteo.abstencion,
+    pareo: conteo.pareo,
+    ausente: conteo.ausente,
+    mesInicio: Number.isFinite(min) ? mesAnio(new Date(min)) : "",
+    mesFin: Number.isFinite(max) ? mesAnio(new Date(max)) : "",
+  };
+}
+
+/**
+ * Href server-driven del toggle de detalle por arco (SC1), replicando el patrón
+ * `buildVerHref` de patrimonio: setea (o quita) el searchParam `votosVer` y ancla
+ * en `#votos`. Si el arco ya está abierto, el link lo CIERRA (quita votosVer).
+ */
+function buildVotosVerHref(id: string, boletin: string, abierto: boolean): string {
+  const qs = new URLSearchParams();
+  if (!abierto) qs.set("votosVer", boletin);
+  const q = qs.toString();
+  return `/parlamentario/${id}${q ? `?${q}` : ""}#votos`;
+}
+
+// Sentidos en orden de despliegue para la línea-resumen, con su etiqueta en
+// minúscula ("1 a favor · 2 en contra"). Se omite cualquier sentido en 0.
+const RESUMEN_SENTIDOS: { key: Exclude<keyof ResumenArco, "n" | "mesInicio" | "mesFin">; label: string }[] = [
+  { key: "si", label: "a favor" },
+  { key: "no", label: "en contra" },
+  { key: "abstencion", label: "abstención" },
+  { key: "pareo", label: "pareo" },
+  { key: "ausente", label: "ausente" },
+];
 
 /**
  * Agrupa las votaciones por `boletin` preservando el orden de aparición (el RPC
@@ -198,12 +283,72 @@ function agruparPorProyecto(votos: VotoFichaConMateria[]): ProyectoArco[] {
 }
 
 /**
- * Cabecera de proyecto (titulo enlazado + extracto de idea o honest-state) + las
- * etapas votadas bajo él (cada una: opción + etapa + desenlace factual). PURO.
- * El framing del desenlace es un HECHO de la votación (DESIGN-SYSTEM §8), nunca
- * un juicio del voto.
+ * Línea-resumen del arco (SC1): "Votó en {N} ocasiones sobre este proyecto: {a} a
+ * favor · {b} en contra …, entre {mesInicio} y {mesFin}." Mono para N/tallies/rango;
+ * OMITE cualquier sentido en 0. Cuando mesInicio === mesFin dice "en {mes}" (sin
+ * repetir el mismo mes). PURO — hecho factual, cero juicio (DESIGN-SYSTEM §6/§8).
  */
-function ProyectoGrupo({ grupo }: { grupo: ProyectoArco }) {
+function ResumenLinea({ resumen }: { resumen: ResumenArco }) {
+  const tallies = RESUMEN_SENTIDOS.map((s) => ({
+    label: s.label,
+    n: resumen[s.key],
+  })).filter((t) => t.n > 0);
+
+  const hayRango = resumen.mesInicio !== "" && resumen.mesFin !== "";
+  const mismoMes = resumen.mesInicio === resumen.mesFin;
+
+  return (
+    <p className="text-sm text-muted-foreground mt-2">
+      Votó en <span className="font-mono">{resumen.n}</span>{" "}
+      {resumen.n === 1 ? "ocasión" : "ocasiones"} sobre este proyecto
+      {tallies.length > 0 && (
+        <>
+          :{" "}
+          {tallies.map((t, i) => (
+            <span key={t.label}>
+              {i > 0 && " · "}
+              <span className="font-mono">{t.n}</span> {t.label}
+            </span>
+          ))}
+        </>
+      )}
+      {hayRango && (
+        <>
+          ,{" "}
+          {mismoMes ? (
+            <>
+              en <span className="font-mono">{resumen.mesInicio}</span>
+            </>
+          ) : (
+            <>
+              entre <span className="font-mono">{resumen.mesInicio}</span> y{" "}
+              <span className="font-mono">{resumen.mesFin}</span>
+            </>
+          )}
+        </>
+      )}
+      .
+    </p>
+  );
+}
+
+/**
+ * Cabecera de proyecto (titulo enlazado + extracto de idea o honest-state). Por
+ * defecto muestra UNA línea-resumen del arco (SC1); con `?votosVer=<boletin>` para
+ * ESTE arco se expanden las etapas individuales (opción + etapa + desenlace
+ * factual). PURO. El framing del desenlace es un HECHO de la votación
+ * (DESIGN-SYSTEM §8), nunca un juicio del voto.
+ */
+function ProyectoGrupo({
+  id,
+  grupo,
+  votosVer,
+}: {
+  id: string;
+  grupo: ProyectoArco;
+  votosVer: string | null;
+}) {
+  const abierto = votosVer === grupo.boletin;
   return (
     <li className="border-t first:border-t-0 pt-4">
       {/* Cabecera del proyecto — el titulo aparece UNA vez por arco. */}
@@ -231,52 +376,67 @@ function ProyectoGrupo({ grupo }: { grupo: ProyectoArco }) {
         </p>
       )}
 
-      {/* Etapas votadas — la trayectoria del proyecto en su tramitación. */}
-      <ul className="mt-2 space-y-1">
-        {grupo.etapas.map((e) => {
-          const hayConteo = e.total_si != null && e.total_no != null;
-          return (
-            <li
-              key={e.votacion_id}
-              className="flex flex-wrap items-center gap-2 py-1 text-sm"
-            >
-              <Badge
-                variant="outline"
-                className={cn(
-                  "border-transparent shrink-0",
-                  SELECCION_STYLE[e.seleccion].className,
-                )}
+      {abierto ? (
+        /* Detalle abierto — etapas votadas, la trayectoria en su tramitación. */
+        <ul className="mt-2 space-y-1">
+          {grupo.etapas.map((e) => {
+            const hayConteo = e.total_si != null && e.total_no != null;
+            return (
+              <li
+                key={e.votacion_id}
+                className="flex flex-wrap items-center gap-2 py-1 text-sm"
               >
-                {OPCION_LABEL[e.seleccion]}
-              </Badge>
-              {e.etapa && <span className="text-muted-foreground">{e.etapa}</span>}
-              <span className="font-mono text-muted-foreground">
-                {fechaCorta(new Date(e.fecha))}
-              </span>
-              {e.resultado && (
-                <span className="text-muted-foreground">
-                  · el proyecto fue {e.resultado}
-                  {hayConteo && (
-                    <>
-                      {" "}
-                      <span className="font-mono">
-                        {conteoVotacion(e.total_si!, e.total_no!)}
-                      </span>
-                    </>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "border-transparent shrink-0",
+                    SELECCION_STYLE[e.seleccion].className,
                   )}
+                >
+                  {OPCION_LABEL[e.seleccion]}
+                </Badge>
+                {e.etapa && (
+                  <span className="text-muted-foreground">{e.etapa}</span>
+                )}
+                <span className="font-mono text-muted-foreground">
+                  {fechaCorta(new Date(e.fecha))}
                 </span>
-              )}
-              <span className="ml-auto">
-                <ProvenanceBadge
-                  capturedAt={e.fecha_captura ? new Date(e.fecha_captura) : null}
-                  sourceName={sourceLabel(e.origen)}
-                  sourceUrl={e.enlace ?? null}
-                />
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+                {e.resultado && (
+                  <span className="text-muted-foreground">
+                    · el proyecto fue {e.resultado}
+                    {hayConteo && (
+                      <>
+                        {" "}
+                        <span className="font-mono">
+                          {conteoVotacion(e.total_si!, e.total_no!)}
+                        </span>
+                      </>
+                    )}
+                  </span>
+                )}
+                <span className="ml-auto">
+                  <ProvenanceBadge
+                    capturedAt={e.fecha_captura ? new Date(e.fecha_captura) : null}
+                    sourceName={sourceLabel(e.origen)}
+                    sourceUrl={e.enlace ?? null}
+                  />
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        /* Colapsado (default) — la línea-resumen del arco sin perder ningún dato. */
+        <ResumenLinea resumen={resumenDeArco(grupo)} />
+      )}
+
+      {/* Afford server-driven: abre/cierra el detalle vía ?votosVer (SC1). */}
+      <Link
+        href={buildVotosVerHref(id, grupo.boletin, abierto)}
+        className="inline-flex items-center min-h-[44px] text-sm text-primary underline underline-offset-2"
+      >
+        {abierto ? "Ocultar detalle" : "Ver detalle"}
+      </Link>
     </li>
   );
 }
@@ -289,7 +449,7 @@ export function VotosView({
   id: string;
   data: VotosViewData;
 }) {
-  const { votos, totalVotos, conteos, rebeldias, materiaActiva, materias, page, totalPages, noIngestado, totalProyectos: totalProyectosProp } =
+  const { votos, totalVotos, conteos, rebeldias, materiaActiva, materias, page, totalPages, noIngestado, votosVer, totalProyectos: totalProyectosProp } =
     data;
   // Cobertura: nº de proyectos distintos. Si el server no lo pasó, se deriva de
   // los boletines distintos en la página (conservador, nunca aparenta más).
@@ -431,7 +591,12 @@ export function VotosView({
         ) : (
           <ul className="mt-4 space-y-6">
             {arcos.map((grupo) => (
-              <ProyectoGrupo key={grupo.boletin} grupo={grupo} />
+              <ProyectoGrupo
+                key={grupo.boletin}
+                id={id}
+                grupo={grupo}
+                votosVer={votosVer}
+              />
             ))}
           </ul>
         )}
@@ -564,11 +729,13 @@ export function derivarVotosViewData({
   materiaActiva,
   page,
   rebeldias,
+  votosVer = null,
 }: {
   todasConMateria: VotoFichaConMateria[];
   materiaActiva: string | null;
   page: number;
   rebeldias: RebeldiaRow[];
+  votosVer?: string | null;
 }): VotosViewData {
   // Materias disponibles (faceta) — derivadas, deduplicadas, ordenadas. WR-03: el
   // mapa slug→materia desambigua colisiones de slug para que dos materias distintas
@@ -634,6 +801,7 @@ export function derivarVotosViewData({
     page: pageClamped,
     totalPages,
     noIngestado: false,
+    votosVer,
     totalProyectos,
   };
 }
@@ -655,6 +823,15 @@ export async function VotosSection({
     Array.isArray(searchParams.materia)
       ? searchParams.materia[0]
       : searchParams.materia
+  )?.trim() || null;
+
+  // Arco expandido (SC1): server-driven vía ?votosVer, normalizado como los demás
+  // params del repo (string[] → primer valor; vacío → null). Nunca se interpola en
+  // SQL: es una comparación de igualdad contra boletines ya conocidos (T-51-05).
+  const votosVer = (
+    Array.isArray(searchParams.votosVer)
+      ? searchParams.votosVer[0]
+      : searchParams.votosVer
   )?.trim() || null;
 
   const page = normalizarPagina(rawPage);
@@ -720,6 +897,7 @@ export async function VotosSection({
     materiaActiva,
     page,
     rebeldias,
+    votosVer,
   });
 
   return (
