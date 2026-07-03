@@ -911,6 +911,13 @@ export async function PatrimonioSection({
   } else if (compararRaw) {
     fechasComparar = compararRaw.split(",").map((s) => s.trim()).filter(Boolean);
   }
+  // Saneo fail-safe (espejo de `normalizarVista`): estos params viajan al cast
+  // `date[]` del RPC `comparar_declaraciones` — un valor no-fecha produciría
+  // `invalid input syntax for type date` (500 de Postgres) para TODA la ficha.
+  // Formato ISO estricto o el param se trata como AUSENTE (sin comparación).
+  const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  fechasComparar = fechasComparar.filter((f) => ISO_DATE_RE.test(f));
+  if (fechasComparar.length < 2) fechasComparar = [];
 
   // Historial (el RPC solo devuelve confirmadas, orden fecha_presentacion DESC).
   const { data: rpcData, error: rpcError } = await sb.rpc(
