@@ -34,6 +34,14 @@ import type { ParlamentarioListadoRow } from "@/lib/types";
  * su visibilidad SOLO por esa función, nunca leyendo el flag crudo del entorno.
  */
 
+// FORCE-DYNAMIC (load-bearing): sin esto, el `notFound()` del gate corre DURANTE
+// el build (flag OFF en el contenedor) ANTES de tocar searchParams → Next clasifica
+// /red como estática (○) y hornea el 404. Con el flag ON en runtime, servir esa
+// prerender rota el render RSC (500 en TODAS las ramas). Todas las demás rutas de
+// datos son dinámicas por segmento o por acceso temprano a searchParams; /red es
+// la única cuyo gate lanza antes del primer API dinámico.
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
