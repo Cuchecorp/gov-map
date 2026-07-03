@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { createServerSupabase } from "@/lib/supabase";
 import { ProvenanceBadge } from "@/components/provenance-badge";
-import { IdentityMarker } from "@/components/identity-marker";
 import { fechaCorta } from "@/lib/format";
 import {
   sourceLabel,
@@ -32,7 +31,8 @@ import {
  * │    de reuniones es el único agregado permitido.                             │
  * │ 5. CERO adjetivo de juicio: "polémico", "influyente", "oscuro",             │
  * │    "controversial", "sospechoso".                                           │
- * │ 6. Incertidumbre de identidad = exactamente "identidad no verificada".      │
+ * │ 6. Incertidumbre de identidad = caveat ÚNICO por sección (B11): las         │
+ * │    contrapartes son texto crudo verbatim, su identidad no está verificada.  │
  * │ 7. PRIVACIDAD DE TERCERO ABSOLUTA: NUNCA un RUT de contraparte ni campo      │
  * │    interno; el RPC `lobby_de_parlamentario` no emite `contraparte_id`.      │
  * │ 8. PROVENANCE obligatoria por fila; si se desconoce → "fuente desconocida". │
@@ -42,6 +42,12 @@ import {
  * `LobbyView` es PURO (props) → RTL lo testea con fixtures, sin runtime
  * Supabase/Next. `LobbySection` es el Server Component que lee el RPC y el
  * marcador de ingesta. NO hay `"use client"` en este archivo.
+ *
+ * SC6/B11 (Phase 51): la vista por DEFECTO agrupa por contraparte (orden por
+ * frecuencia DESC) — responde "¿con quién se reúne más?" sin ruido. Un toggle
+ * server-driven `?vista=cronologica` preserva la lista cronológica paginada
+ * existente. El caveat de identidad aparece UNA vez al tope de la sección (ya no
+ * un `IdentityMarker` por fila).
  */
 
 const PAGE_SIZE = 20;
@@ -49,12 +55,23 @@ const PAGE_SIZE = 20;
 // ── Datos que la vista necesita (forma pura, testeable) ────────────────────────
 export interface LobbyViewData {
   id: string;
-  /** audiencias de la página actual (ya paginadas), orden fecha DESC. */
+  /** audiencias de la página actual (ya paginadas), orden fecha DESC. Vista cronológica. */
   audiencias: LobbyAudienciaRow[];
+  /**
+   * Grupos por contraparte (orden por frecuencia DESC) sobre el conjunto COMPLETO
+   * de audiencias — la vista agrupada NO se pagina (bounded a cientos). Derivado
+   * server-side con `agruparPorContraparte`.
+   */
+  grupos: GrupoContraparte[];
   /** total de audiencias confirmadas (para "Página N de M" y el conteo neutro). */
   totalAudiencias: number;
   page: number;
   totalPages: number;
+  /**
+   * Vista activa. `"agrupada"` (default) responde "¿con quién se reúne más?";
+   * `"cronologica"` es la lista paginada por fecha existente (toggle `?vista`).
+   */
+  vista: "agrupada" | "cronologica";
   /**
    * `true` si la ingesta de lobby de este parlamentario aún NO ha corrido
    * (estado (a) "no ingestado" — distinto de "ingestado, 0 confirmadas"). Se
@@ -68,6 +85,76 @@ export interface LobbyViewData {
    * (`undefined`/`null`) → frame genérico sin atribuir una cámara concreta.
    */
   camara?: string | null;
+}
+
+/**
+ * Grupo de audiencias por contraparte (SC6/B11). `contraparte` es el nombre CRUDO
+ * verbatim de la fuente; `n` es el conteo NEUTRO de reuniones (único agregado
+ * permitido §3.4, jamás un score/ranking); `fechas` son las fechas de cada
+ * reunión ya formateadas para render.
+ */
+export interface GrupoContraparte {
+  contraparte: string;
+  n: number;
+  fechas: string[];
+}
+
+/**
+ * Agrupa audiencias por contraparte (nombre CRUDO verbatim), ordenado por
+ * frecuencia DESC. Una audiencia cuenta 1 vez por contraparte (nombres
+ * deduplicados dentro de la misma fila → no infla `n` si la fuente repite el
+ * nombre). Las audiencias SIN contraparte se EXCLUYEN de la agrupación (nunca se
+ * fabrica un nombre — la vista cronológica sigue mostrándolas). El sort es
+ * estable → los empates conservan el orden de aparición.
+ */
+export function agruparPorContraparte(
+  audiencias: LobbyAudienciaRow[],
+): GrupoContraparte[] {
+  const porNombre = new Map<string, { n: number; fechas: string[] }>();
+  const orden: string[] = [];
+
+  for (const a of audiencias) {
+    const fechaTexto = a.fecha
+      ? fechaCorta(new Date(a.fecha))
+      : a.fecha_raw ?? "Fecha no publicada";
+    // Nombres crudos ÚNICOS dentro de la audiencia → cuenta 1 por contraparte.
+    const nombresUnicos = new Set(
+      a.contrapartes
+        .map((c) => c.contraparte_nombre)
+        .filter((n): n is string => Boolean(n)),
+    );
+    for (const nombre of nombresUnicos) {
+      let g = porNombre.get(nombre);
+      if (!g) {
+        g = { n: 0, fechas: [] };
+        porNombre.set(nombre, g);
+        orden.push(nombre);
+      }
+      g.n += 1;
+      g.fechas.push(fechaTexto);
+    }
+  }
+
+  const grupos: GrupoContraparte[] = [];
+  for (const contraparte of orden) {
+    const g = porNombre.get(contraparte);
+    if (g) grupos.push({ contraparte, n: g.n, fechas: g.fechas });
+  }
+  // Orden por frecuencia DESC; `sort` es estable → empates conservan aparición.
+  return grupos.sort((a, b) => b.n - a.n);
+}
+
+/**
+ * Normaliza el searchParam `?vista` a un enum efectivo (fail-safe): SOLO el valor
+ * literal `"cronologica"` activa la vista cronológica; cualquier otro valor
+ * (`undefined`, `""`, `"basura"`, etc.) → `"agrupada"` (default). Nunca alcanza
+ * SQL crudo (T-51-12).
+ */
+export function normalizarVista(
+  raw: string | string[] | undefined,
+): "agrupada" | "cronologica" {
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  return v === "cronologica" ? "cronologica" : "agrupada";
 }
 
 /**
@@ -89,13 +176,53 @@ function fuenteLobbyPorCamara(camara: string | null): string {
   return "el registro oficial de la Ley del Lobby";
 }
 
-/** Construye un href de paginación preservando el resto de la query. */
-function buildHref(id: string, page: number): string {
-  const qs = new URLSearchParams({ lobbyPage: String(page) }).toString();
+/** Construye un href de paginación preservando la vista cronológica y el ancla. */
+function buildHref(id: string, page: number, vista: "agrupada" | "cronologica"): string {
+  const params: Record<string, string> = { lobbyPage: String(page) };
+  // La paginación solo existe en la vista cronológica → preservar el toggle.
+  if (vista === "cronologica") params.vista = "cronologica";
+  const qs = new URLSearchParams(params).toString();
   return `/parlamentario/${id}?${qs}#lobby`;
 }
 
-// ── Una contraparte cruda (texto + tipo + representado), NUNCA enlace, +marca ──
+// ── Toggle server-driven entre vista agrupada y cronológica (SC6) ──────────────
+function VistaToggle({
+  id,
+  vista,
+}: {
+  id: string;
+  vista: "agrupada" | "cronologica";
+}) {
+  const agrupadaActiva = vista !== "cronologica";
+  // Estado activo petróleo (UI-SPEC §0 reserved-for #3): subrayado --accent-product.
+  const activoCls =
+    "text-accent-product underline decoration-2 decoration-accent-product underline-offset-4 font-medium inline-flex items-center min-h-11";
+  const inactivoCls =
+    "text-primary underline underline-offset-2 inline-flex items-center min-h-11";
+  return (
+    <nav
+      className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-4 text-sm"
+      aria-label="Vista de reuniones de lobby"
+    >
+      <Link
+        href={`/parlamentario/${id}#lobby`}
+        aria-current={agrupadaActiva ? "true" : undefined}
+        className={agrupadaActiva ? activoCls : inactivoCls}
+      >
+        Agrupar por contraparte
+      </Link>
+      <Link
+        href={`/parlamentario/${id}?vista=cronologica#lobby`}
+        aria-current={!agrupadaActiva ? "true" : undefined}
+        className={!agrupadaActiva ? activoCls : inactivoCls}
+      >
+        Ver en orden cronológico
+      </Link>
+    </nav>
+  );
+}
+
+// ── Una contraparte cruda (texto + tipo + representado), NUNCA enlace ──────────
 function ContraparteCruda({ c }: { c: LobbyContraparteRow }) {
   return (
     <span className="inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
@@ -111,18 +238,42 @@ function ContraparteCruda({ c }: { c: LobbyContraparteRow }) {
         </span>
       )}
       {/*
-        P11: la contraparte NUNCA está confirmada (el RPC no emite contraparte_id
-        ni estado_vinculo) → siempre texto crudo + IdentityMarker, JAMÁS un enlace
-        (nunca un enlace muerto a una sub-maestra inexistente). §3.2.
+        P11/B11: la contraparte NUNCA está confirmada (el RPC no emite
+        contraparte_id ni estado_vinculo) → siempre texto crudo, JAMÁS un enlace
+        (nunca un enlace muerto a una sub-maestra inexistente). §3.2. El caveat de
+        identidad único al tope de la sección (SC6) reemplaza el IdentityMarker
+        por fila que antes vivía aquí.
       */}
-      <IdentityMarker />
     </span>
+  );
+}
+
+// ── Caveat de identidad ÚNICO por sección (B11) — reemplaza el marcador por fila ─
+function CaveatIdentidad() {
+  return (
+    <p
+      className="text-sm mb-4 px-3 py-2 rounded border
+                 bg-[--identity-warn-bg] text-[--identity-warn-fg]
+                 border-[--identity-warn-border]"
+    >
+      Las contrapartes se muestran tal como las registra la fuente; su identidad
+      no está verificada.
+    </p>
   );
 }
 
 // ── Vista pura (RTL la testea con fixtures) ────────────────────────────────────
 export function LobbyView({ data }: { data: LobbyViewData }) {
-  const { id, audiencias, totalAudiencias, page, totalPages, noIngestado } = data;
+  const {
+    id,
+    audiencias,
+    grupos,
+    totalAudiencias,
+    page,
+    totalPages,
+    noIngestado,
+    vista,
+  } = data;
 
   // B10 — frase de fuente del FRAME según la cámara REAL del parlamentario. Para
   // senadores no se dirá "la Cámara (camara.cl/transparencia)". El enlace por fila
@@ -165,20 +316,68 @@ export function LobbyView({ data }: { data: LobbyViewData }) {
     );
   }
 
-  // Estado (c) — con audiencias.
+  // Estado (c) — con audiencias. Caveat 1×/sección + toggle + conteo neutro, luego
+  // la vista activa (agrupada por defecto, o cronológica paginada tras el toggle).
   return (
     <div>
       {intro}
 
+      {/* Caveat de identidad ÚNICO al tope (B11) — no por fila. */}
+      <CaveatIdentidad />
+
+      {/* Toggle server-driven agrupada ↔ cronológica. */}
+      <VistaToggle id={id} vista={vista} />
+
       {/* Conteo NEUTRO (único agregado permitido §3.4) — sin score, sin ranking. */}
       <p className="text-sm text-muted-foreground mb-4">
         {totalAudiencias}{" "}
-        {totalAudiencias === 1
-          ? "reunión registrada"
-          : "reuniones registradas"}
-        .
+        {totalAudiencias === 1 ? "reunión registrada" : "reuniones registradas"}.
       </p>
 
+      {vista === "cronologica" ? (
+        <VistaCronologica id={id} audiencias={audiencias} page={page} totalPages={totalPages} />
+      ) : (
+        <VistaAgrupada grupos={grupos} />
+      )}
+    </div>
+  );
+}
+
+// ── Vista agrupada por contraparte (DEFAULT, freq DESC) ────────────────────────
+function VistaAgrupada({ grupos }: { grupos: GrupoContraparte[] }) {
+  return (
+    <ul className="space-y-4">
+      {grupos.map((g) => (
+        <li key={g.contraparte} className="py-3 border-t first:border-t-0">
+          {/* Contraparte VERBATIM (h3) — NUNCA enlazada. */}
+          <h3 className="text-base font-medium">{g.contraparte}</h3>
+          {/* Conteo neutro + fechas (Mono). "{contraparte} — {N} reuniones: {fechas}". */}
+          <p className="text-sm text-muted-foreground">
+            <span aria-hidden="true">— </span>
+            <span className="font-mono">{g.n}</span>{" "}
+            {g.n === 1 ? "reunión" : "reuniones"}:{" "}
+            <span className="font-mono">{g.fechas.join(" · ")}</span>
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// ── Vista cronológica paginada (preservada intacta tras el toggle) ─────────────
+function VistaCronologica({
+  id,
+  audiencias,
+  page,
+  totalPages,
+}: {
+  id: string;
+  audiencias: LobbyAudienciaRow[];
+  page: number;
+  totalPages: number;
+}) {
+  return (
+    <>
       <ul className="space-y-4">
         {audiencias.map((a) => {
           const captured = a.fecha_captura ? new Date(a.fecha_captura) : null;
@@ -196,7 +395,7 @@ export function LobbyView({ data }: { data: LobbyViewData }) {
               </span>
 
               <div className="flex flex-col gap-1 min-w-0 flex-1">
-                {/* Contraparte(s): TEXTO CRUDO + IdentityMarker, sin enlace, sin RUT. */}
+                {/* Contraparte(s): TEXTO CRUDO, sin enlace, sin RUT. */}
                 {a.contrapartes.length > 0 ? (
                   <div className="flex flex-col gap-1">
                     {a.contrapartes.map((c, i) => (
@@ -243,7 +442,7 @@ export function LobbyView({ data }: { data: LobbyViewData }) {
         >
           {page > 1 ? (
             <Link
-              href={buildHref(id, page - 1)}
+              href={buildHref(id, page - 1, "cronologica")}
               className="text-primary underline underline-offset-2 inline-flex items-center min-h-[44px]"
             >
               Anteriores
@@ -256,7 +455,7 @@ export function LobbyView({ data }: { data: LobbyViewData }) {
           </span>
           {page < totalPages ? (
             <Link
-              href={buildHref(id, page + 1)}
+              href={buildHref(id, page + 1, "cronologica")}
               className="text-primary underline underline-offset-2 inline-flex items-center min-h-[44px]"
             >
               Siguientes
@@ -266,7 +465,7 @@ export function LobbyView({ data }: { data: LobbyViewData }) {
           )}
         </nav>
       )}
-    </div>
+    </>
   );
 }
 
@@ -332,10 +531,14 @@ export async function LobbySection({
 }) {
   const sb = createServerSupabase();
 
-  const rawPage = Array.isArray(searchParams.lobbyPage)
-    ? searchParams.lobbyPage[0]
-    : searchParams.lobbyPage;
-  const page = Math.max(1, Number.parseInt(rawPage ?? "1", 10) || 1);
+  const single = (k: string): string | undefined => {
+    const v = searchParams[k];
+    return Array.isArray(v) ? v[0] : v;
+  };
+
+  const page = Math.max(1, Number.parseInt(single("lobbyPage") ?? "1", 10) || 1);
+  // Toggle server-driven (SC6): normalización fail-safe del searchParam ?vista.
+  const vista = normalizarVista(searchParams.vista);
 
   // Audiencias confirmadas (el RPC solo devuelve confirmadas, orden fecha DESC).
   const { data: rpcData, error: rpcError } = await sb.rpc(
@@ -365,21 +568,26 @@ export async function LobbySection({
   }
   const noIngestado = estadoData === null && todas.length === 0;
 
-  // Paginación server-driven sobre el conjunto ya cargado.
+  // Paginación server-driven sobre el conjunto ya cargado (vista cronológica).
   const totalAudiencias = todas.length;
   const totalPages = Math.max(1, Math.ceil(totalAudiencias / PAGE_SIZE));
   const pageClamped = Math.min(page, totalPages);
   const start = (pageClamped - 1) * PAGE_SIZE;
   const audiencias = todas.slice(start, start + PAGE_SIZE);
 
+  // Agrupación por contraparte sobre el conjunto COMPLETO (vista agrupada, default).
+  const grupos = agruparPorContraparte(todas);
+
   return (
     <LobbyView
       data={{
         id,
         audiencias,
+        grupos,
         totalAudiencias,
         page: pageClamped,
         totalPages,
+        vista,
         noIngestado,
         camara,
       }}
