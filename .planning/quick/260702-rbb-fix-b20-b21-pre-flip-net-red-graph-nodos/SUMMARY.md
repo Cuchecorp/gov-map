@@ -112,3 +112,10 @@ el flip de NET_PUBLIC_ENABLED (que hace el operador despues del sign-off legal F
 - Archivos modificados presentes en disco: red-graph.tsx/.test.tsx, red/page.tsx/.test.tsx,
   parlamentario/[id]/page.tsx/.test.tsx.
 - Suite 412 verde, tsc exit 0, lockdown 7/7.
+
+## Post-deploy addendum (2026-07-02, orquestador)
+
+**Bug adicional encontrado y arreglado en el primer encendido real de /red (commit `1144ba6`):**
+`/red` era la única ruta de datos **estática (○)** en el build: el gate `netPublicEnabled` lanza `notFound()` ANTES de tocar `searchParams`, y como en el contenedor de build el flag está OFF, Next prerenderizó el 404 y clasificó la ruta como estática. Con `NET_PUBLIC_ENABLED=true` en runtime, el render RSC revienta (500 en TODAS las ramas — selector, semilla válida e inválida). Fix: `export const dynamic = "force-dynamic"` con comentario load-bearing.
+
+**Bug latente gemelo (NO arreglado, fuera de alcance):** `/admin/revisar-entidades` también aparece ○ estática con su gate horneado — si algún día se enciende `adminRevisionEnabled` en runtime servirá el mismo 500. Mismo fix cuando toque.
