@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import { GlobalHeader } from "@/components/global-header";
 
@@ -38,6 +39,58 @@ export default function RootLayout({
       <body>
         <GlobalHeader />
         {children}
+        {/*
+          Footer global (SC8): atribución + licencia CC BY 4.0 con SCOPE-CAVEAT.
+          La línea de licencia cubre SOLO la compilación propia; NO reafirma ni
+          contradice las atribuciones por-dataset (ChileCompra "mención de la
+          fuente", SERVEL "términos por verificar") que viven en sus secciones
+          y en /metodologia — por eso el footer global NO nombra esos datasets.
+        */}
+        <footer className="mt-16 border-t bg-muted/40">
+          <div className="max-w-3xl mx-auto px-4 md:px-8 py-8 text-sm text-muted-foreground">
+            <p className="leading-relaxed">
+              Datos de fuentes públicas del Congreso de Chile, con fuente, fecha y
+              enlace en cada dato.
+            </p>
+            <p className="mt-3 leading-relaxed">
+              Contenido bajo{" "}
+              <a
+                href="https://creativecommons.org/licenses/by/4.0/deed.es"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent-product underline-offset-4 hover:underline"
+              >
+                CC BY 4.0
+              </a>{" "}
+              — atribución a Observatorio del Congreso 360. Esta licencia cubre la
+              compilación propia; cada fuente conserva sus propios términos, indicados
+              en su sección y en la metodología.
+            </p>
+            <nav className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-1">
+              <Link
+                href="/metodologia"
+                className="inline-flex min-h-11 items-center text-accent-product underline-offset-4 hover:underline"
+              >
+                Metodología
+              </Link>
+              <Link
+                href="/sobre"
+                className="inline-flex min-h-11 items-center text-accent-product underline-offset-4 hover:underline"
+              >
+                Sobre el proyecto
+              </Link>
+              <a
+                href="mailto:contacto@observatoriocongreso.cl"
+                className="inline-flex min-h-11 items-center text-accent-product underline-offset-4 hover:underline"
+              >
+                Contacto
+              </a>
+            </nav>
+            <p className="mt-4 text-xs leading-relaxed">
+              Fuente, fecha y enlace en cada dato · Sin afirmar intención ni causalidad.
+            </p>
+          </div>
+        </footer>
       </body>
     </html>
   );
