@@ -63,15 +63,21 @@ function stripSqlComments(content: string): string {
  *  - bloques `/** … *\/` y `/* … *\/`
  *  - lineas `// …`
  * Esto evita que prosa en JSDoc/comentarios dispare los guards de Block B.
+ *
+ * OJO (WR-05): NO tratar `//` como comentario cuando va precedido de `:` —
+ * cortar en el `//` de una URL en un string literal (`"https://x.cl"`)
+ * truncaria la linea ANTES de un `.rpc(…)`/`.from(…)` posterior y crearia un
+ * FALSO NEGATIVO en el escaner de seguridad (este archivo ES el control CI de
+ * la superficie Camino A). Heuristica barata que cubre `http://`/`https://`.
  */
 function stripTsComments(content: string): string {
   // Remove block comments (including JSDoc /** … */ and /* … */)
   let stripped = content.replace(/\/\*[\s\S]*?\*\//g, "");
-  // Remove line comments (// …)
+  // Remove line comments (// …) — skipping `://` (URLs inside string literals)
   stripped = stripped
     .split("\n")
     .map((line) => {
-      const idx = line.indexOf("//");
+      const idx = line.search(/(?<!:)\/\//);
       return idx >= 0 ? line.slice(0, idx) : line;
     })
     .join("\n");

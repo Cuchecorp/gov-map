@@ -22,13 +22,17 @@ import { describe, expect, it } from "vitest";
 const APP_ROOT = process.cwd(); // app/
 const LAYOUT_TSX = path.join(APP_ROOT, "app", "layout.tsx");
 
-/** Elimina comentarios TS/JS y JSX (`/* … *\/`, `// …`, `{/* … *\/}`) para no contar prosa. */
+/**
+ * Elimina comentarios TS/JS y JSX (`/* … *\/`, `// …`, `{/* … *\/}`) para no contar
+ * prosa. WR-05: un `//` precedido de `:` NO es comentario (URL en string literal,
+ * `"https://…"`) — cortarlo truncaría la línea y ocultaría código posterior al scan.
+ */
 function stripComments(content: string): string {
   let stripped = content.replace(/\/\*[\s\S]*?\*\//g, ""); // bloque (cubre {/* … */})
   stripped = stripped
     .split("\n")
     .map((line) => {
-      const idx = line.indexOf("//");
+      const idx = line.search(/(?<!:)\/\//);
       return idx >= 0 ? line.slice(0, idx) : line;
     })
     .join("\n");
