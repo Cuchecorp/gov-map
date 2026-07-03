@@ -1,12 +1,184 @@
+import Link from "next/link";
+
 import { TimelineEvent } from "@/components/timeline-event";
 import type { TramitacionEventoRow } from "@/lib/types";
 
 /**
- * TimelineView — contenedor vertical del timeline (UI-SPEC §3.2).
- * Lista CSS con rail izquierdo. El orden lo provee el servidor (fecha ASC,
- * eventos de ambas cámaras ya fusionados por boletín). Empty state §6.1.
+ * TimelineView — timeline de DOS niveles (UI-SPEC §SC2, Pitfall 3 LOCKED).
+ *
+ * Los HITOS ESTRUCTURALES (informe, oficio, votación, cambio de trámite…) SIEMPRE
+ * están visibles, sin paginación. Sólo los PARES REPETITIVOS de urgencia (que
+ * enterraban la señal — "Suma" renovada N veces) se colapsan en UNA línea por
+ * período, expandible server-driven vía `?urgencias=<id>`.
+ *
+ * Heurística CONSERVADORA (Pitfall 3): sólo colapsa runs contiguos de eventos-
+ * urgencia del MISMO tipo y de longitud ≥ 2. Cualquier otra cosa se renderiza como
+ * `TimelineEvent` normal (T-51-15: nunca esconder un hito estructural).
  */
-export function TimelineView({ eventos }: { eventos: TramitacionEventoRow[] }) {
+
+const mesAnioFormatter = new Intl.DateTimeFormat("es-CL", {
+  month: "short",
+  year: "numeric",
+});
+function mesAnio(d: Date): string {
+  return mesAnioFormatter.format(d);
+}
+
+/** Fecha ISO parseable → Date válida, o null. */
+function fechaValida(raw: string | null | undefined): Date | null {
+  if (!raw) return null;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * `true` si el evento es de urgencia (heurística LOCKED, Pitfall 3): o su `tipo` es
+ * "urgencia", o es un "tramite" cuya descripción menciona urgencia ("hace presente
+ * la urgencia …" / "retira … urgencia"). TODO evento fuera de este patrón es un hito
+ * estructural y se renderiza normal, SIEMPRE visible.
+ */
+export function esEventoUrgencia(e: TramitacionEventoRow): boolean {
+  return (
+    e.tipo === "urgencia" ||
+    (e.tipo === "tramite" && /urgencia/i.test(e.descripcion ?? ""))
+  );
+}
+
+/**
+ * Tipo NORMALIZADO de urgencia (para agrupar runs del mismo tipo). Para `tipo:
+ * "urgencia"` es la descripción cruda (el TIPO: "Suma"/"Simple"); para un `tramite`
+ * de urgencia, el texto tras "urgencia …". Fallback "urgencia" si no se captura.
+ */
+function tipoUrgenciaKey(e: TramitacionEventoRow): string {
+  if (e.tipo === "urgencia") return (e.descripcion ?? "").trim().toLowerCase();
+  const m = (e.descripcion ?? "").match(/urgencia\s+([^.,;]+)/i);
+  return m ? m[1].trim().toLowerCase() : "urgencia";
+}
+
+/** Tipo de urgencia para MOSTRAR (caso original de la fuente, sin bajar a minúsculas). */
+function tipoUrgenciaDisplay(e: TramitacionEventoRow): string {
+  if (e.tipo === "urgencia") return (e.descripcion ?? "").trim() || "sin tipo";
+  const m = (e.descripcion ?? "").match(/urgencia\s+([^.,;]+)/i);
+  return m ? m[1].trim() : "sin tipo";
+}
+
+/** Un período de urgencia colapsable (run contiguo del mismo tipo, longitud ≥ 2). */
+export interface PeriodoUrgencia {
+  /** Id estable server-driven ("u1", "u2", …) — se compara por igualdad (T-51-17). */
+  id: string;
+  /** Tipo para mostrar (caso de la fuente). */
+  tipo: string;
+  /** Eventos del período (en orden). */
+  eventos: TramitacionEventoRow[];
+  desde: Date;
+  hasta: Date;
+}
+
+type TimelineItem =
+  | { kind: "evento"; evento: TramitacionEventoRow; key: string }
+  | { kind: "periodo"; periodo: PeriodoUrgencia };
+
+/**
+ * Construye los ítems ordenados del timeline: hitos estructurales sueltos + períodos
+ * de urgencia colapsados. Sólo colapsa runs CONTIGUOS de eventos-urgencia del mismo
+ * tipo con longitud ≥ 2 (un evento-urgencia aislado se renderiza normal — no es un
+ * "par" repetitivo). PURO. El orden de entrada se preserva por fecha ASC.
+ */
+function construirItems(eventos: TramitacionEventoRow[]): TimelineItem[] {
+  const ordenados = [...eventos].sort((a, b) => {
+    const da = fechaValida(a.fecha)?.getTime() ?? 0;
+    const db = fechaValida(b.fecha)?.getTime() ?? 0;
+    return da - db;
+  });
+
+  const items: TimelineItem[] = [];
+  let i = 0;
+  let periodoIdx = 0;
+  while (i < ordenados.length) {
+    const e = ordenados[i];
+    if (!esEventoUrgencia(e)) {
+      items.push({ kind: "evento", evento: e, key: `${e.camara}-${e.fecha}-${e.tipo}-${i}` });
+      i += 1;
+      continue;
+    }
+    // Run contiguo de eventos-urgencia del MISMO tipo normalizado.
+    const key = tipoUrgenciaKey(e);
+    let j = i + 1;
+    while (
+      j < ordenados.length &&
+      esEventoUrgencia(ordenados[j]) &&
+      tipoUrgenciaKey(ordenados[j]) === key
+    ) {
+      j += 1;
+    }
+    const run = ordenados.slice(i, j);
+    if (run.length >= 2) {
+      periodoIdx += 1;
+      const desde = fechaValida(run[0].fecha) ?? new Date(0);
+      const hasta = fechaValida(run[run.length - 1].fecha) ?? desde;
+      items.push({
+        kind: "periodo",
+        periodo: {
+          id: `u${periodoIdx}`,
+          tipo: tipoUrgenciaDisplay(run[0]),
+          eventos: run,
+          desde,
+          hasta,
+        },
+      });
+    } else {
+      items.push({
+        kind: "evento",
+        evento: run[0],
+        key: `${run[0].camara}-${run[0].fecha}-${run[0].tipo}-${i}`,
+      });
+    }
+    i = j;
+  }
+  return items;
+}
+
+/**
+ * Períodos de urgencia colapsables derivados de los eventos (PURO, exportado para
+ * test). Sólo runs contiguos del mismo tipo con ≥ 2 eventos.
+ */
+export function paresDeUrgencia(
+  eventos: TramitacionEventoRow[],
+): PeriodoUrgencia[] {
+  return construirItems(eventos)
+    .filter((it): it is { kind: "periodo"; periodo: PeriodoUrgencia } => it.kind === "periodo")
+    .map((it) => it.periodo);
+}
+
+/** href server-driven para expandir/colapsar un período de urgencia (ancla #timeline). */
+function buildUrgenciasHref(
+  boletin: string,
+  periodoId: string,
+  abierto: boolean,
+): string {
+  const qs = new URLSearchParams();
+  if (!abierto) qs.set("urgencias", periodoId);
+  const q = qs.toString();
+  return `/proyecto/${boletin}${q ? `?${q}` : ""}#timeline`;
+}
+
+/** Línea colapsada de un período de urgencia. */
+function periodoLinea(p: PeriodoUrgencia): string {
+  const mesX = mesAnio(p.desde);
+  const mesY = mesAnio(p.hasta);
+  const rango = mesX === mesY ? `en ${mesX}` : `entre ${mesX} y ${mesY}`;
+  return `Urgencia ${p.tipo} renovada ${p.eventos.length} veces ${rango}`;
+}
+
+export function TimelineView({
+  eventos,
+  boletin,
+  urgenciaExpandida = null,
+}: {
+  eventos: TramitacionEventoRow[];
+  boletin: string;
+  urgenciaExpandida?: string | null;
+}) {
   if (eventos.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -15,14 +187,51 @@ export function TimelineView({ eventos }: { eventos: TramitacionEventoRow[] }) {
     );
   }
 
+  const items = construirItems(eventos);
+
   return (
     <ul className="relative pl-8 border-l-2 border-border">
-      {eventos.map((evento, i) => (
-        <TimelineEvent
-          key={`${evento.camara}-${evento.fecha}-${evento.tipo}-${i}`}
-          evento={evento}
-        />
-      ))}
+      {items.map((item) => {
+        if (item.kind === "evento") {
+          return <TimelineEvent key={item.key} evento={item.evento} />;
+        }
+        const p = item.periodo;
+        const abierto = urgenciaExpandida === p.id;
+        if (abierto) {
+          return (
+            <li key={p.id} className="mb-6 last:mb-0">
+              <ul>
+                {p.eventos.map((e, k) => (
+                  <TimelineEvent key={`${p.id}-${e.fecha}-${k}`} evento={e} />
+                ))}
+              </ul>
+              <Link
+                href={buildUrgenciasHref(boletin, p.id, true)}
+                className="inline-flex items-center min-h-[44px] text-sm text-primary underline underline-offset-2"
+              >
+                Ocultar urgencias
+              </Link>
+            </li>
+          );
+        }
+        return (
+          <li key={p.id} className="relative mb-6 last:mb-0">
+            <span
+              className="absolute -left-[17px] top-2 w-3 h-3 rounded-full border-2 border-background bg-muted-foreground/50"
+              aria-hidden="true"
+            />
+            <p className="text-base leading-relaxed text-muted-foreground">
+              {periodoLinea(p)} —{" "}
+              <Link
+                href={buildUrgenciasHref(boletin, p.id, false)}
+                className="text-primary underline underline-offset-2"
+              >
+                ver todas
+              </Link>
+            </p>
+          </li>
+        );
+      })}
     </ul>
   );
 }

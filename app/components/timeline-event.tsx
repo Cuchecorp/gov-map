@@ -1,20 +1,19 @@
 import { CamaraChip, camaraDotColor } from "@/components/camara-chip";
-import { ProvenanceBadge } from "@/components/provenance-badge";
 import { cn } from "@/lib/utils";
 import { fechaCorta } from "@/lib/format";
 import type { TramitacionEventoRow } from "@/lib/types";
-import { sourceLabel } from "@/lib/types";
 
 /**
  * TimelineEvent — fila de un evento del timeline (UI-SPEC §3.2).
  * Rail izquierdo CSS (sin SVG); dot coloreado por cámara; CamaraChip + fecha
- * (mono) + tipo + descripción + "Ver fuente oficial ↗" + ProvenanceBadge.
+ * (mono) + tipo + descripción + "Ver fuente oficial ↗".
+ *
+ * SC7: el `ProvenanceBadge` por-evento se RETIRÓ (había 100+ badges idénticos en un
+ * timeline largo); ahora hay UN solo badge en el heading de la sección (page.tsx).
+ * La trazabilidad por dato se conserva con el link "Ver fuente oficial ↗" por evento.
  */
 export function TimelineEvent({ evento }: { evento: TramitacionEventoRow }) {
   const fecha = evento.fecha ? new Date(evento.fecha) : null;
-  const capturedAt = evento.fecha_captura
-    ? new Date(evento.fecha_captura)
-    : null;
 
   return (
     <li className="relative mb-6 last:mb-0">
@@ -49,14 +48,6 @@ export function TimelineEvent({ evento }: { evento: TramitacionEventoRow }) {
           Ver fuente oficial ↗
         </a>
       )}
-
-      <div className="mt-2">
-        <ProvenanceBadge
-          capturedAt={capturedAt}
-          sourceName={sourceLabel(evento.origen)}
-          sourceUrl={evento.enlace}
-        />
-      </div>
     </li>
   );
 }
