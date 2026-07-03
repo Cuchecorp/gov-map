@@ -337,13 +337,20 @@ describe("DeclaracionComparacion — SOLO DATOS, CERO veredicto (§3.5, release 
   it("con < 2 versiones oculta el selector y muestra el hecho neutro", () => {
     const { colA } = comparacion();
     const { container } = render(
-      <DeclaracionComparacion id="P00001" columnas={[colA]} totalVersiones={1} />,
+      <DeclaracionComparacion
+        id="P00001"
+        columnas={[colA]}
+        totalVersiones={1}
+        fechasDisponibles={["2024-05-14"]}
+      />,
     );
     expect(
       screen.getByText(/Se necesita más de una versión para comparar/i),
     ).toBeInTheDocument();
     // Sin tabla de comparación cuando no hay 2 columnas.
     expect(container.querySelector("table")).toBeNull();
+    // Y sin el form comparador (cero contradicción con "Elige dos fechas…").
+    expect(container.querySelector("form")).toBeNull();
   });
 
   it("ninguna celda usa color de valencia ni estilo diff (sin clases red/green/added/removed)", () => {
@@ -357,6 +364,84 @@ describe("DeclaracionComparacion — SOLO DATOS, CERO veredicto (§3.5, release 
     );
     const html = container.innerHTML;
     expect(html).not.toMatch(/text-red|text-green|bg-red|bg-green|line-through|diff-added|diff-removed/i);
+  });
+});
+
+// ── Comparador form GET nativo (SC4) — cero JS, degrade <2 versiones ────────────
+describe("DeclaracionComparacion — comparador form GET (SC4)", () => {
+  it("(a) ≥2 versiones → form method=get con dos selects (a/b) + botón Comparar", () => {
+    const { container } = render(
+      <DeclaracionComparacion
+        id="P00001"
+        columnas={[]}
+        totalVersiones={2}
+        fechasDisponibles={["2024-05-14", "2022-03-10"]}
+      />,
+    );
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    expect(form?.getAttribute("method")).toBe("get");
+    // Exactamente dos selects, con names a/b.
+    const selects = container.querySelectorAll("select");
+    expect(selects.length).toBe(2);
+    expect(container.querySelector('select[name="a"]')).not.toBeNull();
+    expect(container.querySelector('select[name="b"]')).not.toBeNull();
+    // Botón submit "Comparar" + label del form.
+    expect(
+      screen.getByRole("button", { name: /Comparar/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Elige dos fechas para comparar/i)).toBeInTheDocument();
+    // Cero JS: sin onClick/onSubmit inline; método declarativo GET.
+    expect(form?.getAttribute("onsubmit")).toBeNull();
+    const btn = screen.getByRole("button", { name: /Comparar/i });
+    expect(btn.getAttribute("onclick")).toBeNull();
+    // Banned-vocab sobre el copy del comparador.
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(PROHIBIDO_VEREDICTO);
+    expect(texto).not.toMatch(PROHIBIDO_CONECTIVO);
+  });
+
+  it("(b) con dos columnas seleccionadas la tabla de comparación se renderiza (bajo el form)", () => {
+    const colA = makeColumna({ fecha_presentacion: "2022-03-10" });
+    const colB = makeColumna({ fecha_presentacion: "2024-05-14" });
+    const { container } = render(
+      <DeclaracionComparacion
+        id="P00001"
+        columnas={[colA, colB]}
+        totalVersiones={2}
+        fechasDisponibles={["2024-05-14", "2022-03-10"]}
+      />,
+    );
+    // Form Y tabla coexisten.
+    expect(container.querySelector("form")).not.toBeNull();
+    expect(container.querySelector("table")).not.toBeNull();
+  });
+
+  it("(c) <2 versiones → el form se OMITE y aparece el hecho neutro", () => {
+    const { container } = render(
+      <DeclaracionComparacion
+        id="P00001"
+        columnas={[]}
+        totalVersiones={1}
+        fechasDisponibles={["2024-05-14"]}
+      />,
+    );
+    expect(container.querySelector("form")).toBeNull();
+    expect(
+      screen.getByText(/Se necesita más de una versión para comparar/i),
+    ).toBeInTheDocument();
+  });
+
+  it("compat: el deep-link ?comparar=A,B sigue rindiendo la tabla aun sin fechasDisponibles", () => {
+    // El server resuelve `?comparar` → columnas; la tabla se muestra por columnas≥2
+    // aunque no se pase fechasDisponibles (deep-link histórico, sin form).
+    const colA = makeColumna({ fecha_presentacion: "2022-03-10" });
+    const colB = makeColumna({ fecha_presentacion: "2024-05-14" });
+    const { container } = render(
+      <DeclaracionComparacion id="P00001" columnas={[colA, colB]} totalVersiones={2} />,
+    );
+    expect(container.querySelector("table")).not.toBeNull();
+    expect(container.querySelector("form")).toBeNull();
   });
 });
 

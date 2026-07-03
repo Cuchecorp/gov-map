@@ -616,17 +616,28 @@ export function PatrimonioView({ data }: { data: PatrimonioViewData }) {
 
 // ── Vista pura de la COMPARACIÓN lado-a-lado (SOLO DATOS, CERO veredicto) ────────
 export function DeclaracionComparacion({
+  id,
   columnas,
   totalVersiones,
+  fechasDisponibles = [],
 }: {
   id: string;
-  /** columnas seleccionadas (`?comparar=A,B`), ya resueltas a etiqueta→valor. */
+  /** columnas seleccionadas (`?a`/`?b` o `?comparar=A,B`), ya resueltas a etiqueta→valor. */
   columnas: DeclaracionComparacionColumna[];
   /** total de versiones confirmadas registradas (para el hecho neutro). */
   totalVersiones: number;
+  /**
+   * Fechas de presentación de TODAS las versiones (para los dos `<select>` del
+   * comparador). Con <2, el form se OMITE y queda el hecho neutro (SC4, §6.1).
+   */
+  fechasDisponibles?: string[];
 }) {
-  // Hecho neutro (no deficiencia) si no hay ≥2 versiones para comparar (§6.1).
-  if (columnas.length < 2) {
+  const puedeComparar = fechasDisponibles.length >= 2;
+  const hayComparacion = columnas.length >= 2;
+
+  // <2 versiones Y sin comparación en curso → hecho neutro (no deficiencia, §6.1).
+  // Se omite el form por completo: cero contradicción con "Elige dos fechas…".
+  if (!puedeComparar && !hayComparacion) {
     return (
       <div className="mt-8">
         <h3 className="text-sm font-semibold mb-2">Comparar versiones</h3>
@@ -647,6 +658,57 @@ export function DeclaracionComparacion({
   return (
     <div className="mt-8">
       <h3 className="text-sm font-semibold mb-2">Comparar versiones</h3>
+
+      {/* Comparador = <form method="get"> nativo (cero JS, SSR): dos selects de
+          fecha + submit. El server lee `?a`/`?b` (compat `?comparar=A,B`). SC4. */}
+      {puedeComparar && (
+        <form
+          method="get"
+          action={`/parlamentario/${id}`}
+          className="mb-4 flex flex-wrap items-end gap-3"
+        >
+          <p className="w-full text-sm text-muted-foreground">
+            Elige dos fechas para comparar
+          </p>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-muted-foreground">Primera versión</span>
+            <select
+              name="a"
+              defaultValue={fechasDisponibles[0]}
+              className="min-h-11 rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {fechasDisponibles.map((f) => (
+                <option key={`a-${f}`} value={f}>
+                  Presentada el {fechaCortaSegura(f)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-muted-foreground">Segunda versión</span>
+            <select
+              name="b"
+              defaultValue={fechasDisponibles[1]}
+              className="min-h-11 rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {fechasDisponibles.map((f) => (
+                <option key={`b-${f}`} value={f}>
+                  Presentada el {fechaCortaSegura(f)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="min-h-11 rounded-lg bg-accent-product px-6 font-semibold text-background hover:bg-accent-product/90"
+          >
+            Comparar
+          </button>
+        </form>
+      )}
+
+      {hayComparacion && (
+        <>
       <Table>
         <TableCaption>
           Comparación de declaraciones. Cada columna es una versión, fechada por
@@ -703,6 +765,8 @@ export function DeclaracionComparacion({
           />
         ))}
       </div>
+        </>
+      )}
     </div>
   );
 }
@@ -836,10 +900,17 @@ export async function PatrimonioSection({
 
   const page = Math.max(1, Number.parseInt(single("patrimonioPage") ?? "1", 10) || 1);
   const verAbierta = single("ver") ?? null;
+  // Comparador (SC4): el form GET nativo manda `?a`/`?b`; el deep-link histórico
+  // `?comparar=A,B` sigue soportado (compat). Prioridad: si vienen a+b, úsalos.
+  const a = single("a")?.trim();
+  const b = single("b")?.trim();
   const compararRaw = single("comparar");
-  const fechasComparar = compararRaw
-    ? compararRaw.split(",").map((s) => s.trim()).filter(Boolean)
-    : [];
+  let fechasComparar: string[] = [];
+  if (a && b) {
+    fechasComparar = [a, b];
+  } else if (compararRaw) {
+    fechasComparar = compararRaw.split(",").map((s) => s.trim()).filter(Boolean);
+  }
 
   // Historial (el RPC solo devuelve confirmadas, orden fecha_presentacion DESC).
   const { data: rpcData, error: rpcError } = await sb.rpc(
@@ -870,6 +941,16 @@ export async function PatrimonioSection({
   );
 
   const todas = modelarVersiones(filas, id, bienesPorFuente);
+
+  // Fechas de presentación de TODAS las versiones (para los selects del comparador),
+  // únicas y sin nulos. El form se muestra solo con ≥2 (lo decide el componente).
+  const fechasDisponibles = Array.from(
+    new Set(
+      todas
+        .map((v) => v.fecha_presentacion)
+        .filter((f): f is string => Boolean(f)),
+    ),
+  );
 
   // Estado (a) vs (b): AUSENCIA de fila en probidad_ingesta_estado = "no ingestado".
   const { data: estadoData, error: estadoError } = await sb
@@ -930,6 +1011,7 @@ export async function PatrimonioSection({
           id={id}
           columnas={columnas}
           totalVersiones={totalVersiones}
+          fechasDisponibles={fechasDisponibles}
         />
       )}
     </>
