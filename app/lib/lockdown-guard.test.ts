@@ -172,8 +172,42 @@ const PUBLIC_RPC_ALLOWLIST = new Set([
   "votos_de_parlamentario",
 ]);
 
+/**
+ * Extrae los `grant … to … anon` NO EXENTOS de una migración (SQL ya con
+ * comentarios stripeados y en minúscula).
+ *
+ * EXENTO ÚNICAMENTE (Open Question 1, LOCKED en Phase 51): un
+ * `grant execute on function [public.]<name>(<args>) to anon` cuando
+ * `<name>` ∈ PUBLIC_RPC_ALLOWLIST. Bajo Camino A, anon NUNCA es el rol de
+ * lectura del sitio (service_role lo es); el grant execute sobre un
+ * security-definer PII-safe YA allowlisted no expone filas — solo permite
+ * ejecutar el RPC — y preserva el status quo (p.ej. rebeldias_de_parlamentario
+ * es público desde 0019). El guard sigue protegiendo contra re-exposición de
+ * TABLAS: `grant select on <tabla> to anon`, `grant all …`, o `grant execute`
+ * de una función NO allowlisted SIGUEN siendo offenders.
+ *
+ * Decisión POR-SENTENCIA, no por-archivo: una migración podría mezclar un grant
+ * legítimo (RPC allowlisted) con uno ilegítimo (tabla) — no eximimos el archivo
+ * entero. Se parte el SQL por `;` y se evalúa cada sentencia.
+ */
+function anonGrantOffenders(strippedLowerSql: string): string[] {
+  const offenders: string[] = [];
+  const grantToAnon = /grant\s+\S[\s\S]*?\bto\s+[\w,\s]*\banon\b/;
+  const exemptExecute =
+    /grant\s+execute\s+on\s+function\s+(?:public\.)?(\w+)\s*\(/;
+  for (const stmt of strippedLowerSql.split(";")) {
+    if (!grantToAnon.test(stmt)) continue;
+    const m = exemptExecute.exec(stmt);
+    // Exento solo si es grant execute on function de un RPC allowlisted.
+    if (m && PUBLIC_RPC_ALLOWLIST.has(m[1])) continue;
+    offenders.push(stmt.trim().replace(/\s+/g, " ").slice(0, 100));
+  }
+  return offenders;
+}
+
 // ---------------------------------------------------------------------------
 // (A) Ningun archivo de migracion con numero > 0044 re-concede acceso a anon
+//     EXCEPCIÓN: grant execute on function de un RPC en PUBLIC_RPC_ALLOWLIST.
 // ---------------------------------------------------------------------------
 
 describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
@@ -188,17 +222,17 @@ describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
     })
     .sort();
 
-  it("no existe ningun `GRANT … TO … anon` en migraciones > 0044 (sin contar comentarios)", () => {
+  it("no existe ningun `GRANT … TO … anon` en migraciones > 0044 salvo grant execute de RPC allowlisted (sin contar comentarios)", () => {
     const offenders: string[] = [];
     for (const filename of futureMigrations) {
       const raw = readFileSync(`${MIGRATIONS_DIR}/${filename}`, "utf-8");
       const stripped = stripSqlComments(raw).toLowerCase();
-      // Patron: grant <cualquier cosa> to <cualquier cosa> anon
-      if (/grant\s+\S[\s\S]*?\bto\s+[\w,\s]*\banon\b/.test(stripped)) {
-        offenders.push(filename);
+      // Por-sentencia: exime SOLO grant execute on function de RPC allowlisted.
+      for (const off of anonGrantOffenders(stripped)) {
+        offenders.push(`${filename}: ${off}`);
       }
     }
-    expect(offenders, `Migraciones con GRANT a anon (LOCKDOWN-regresion): ${offenders.join(", ")} — elimina el grant o muevelo a una seccion post-0044`).toHaveLength(0);
+    expect(offenders, `Migraciones con GRANT a anon NO exento (LOCKDOWN-regresion): ${offenders.join(", ")} — elimina el grant, muevelo a una seccion post-0044, o (si es grant execute de un RPC PII-safe) agregalo a PUBLIC_RPC_ALLOWLIST`).toHaveLength(0);
   });
 
   it("no existe ningun `CREATE POLICY … TO anon` en migraciones > 0044 (sin contar comentarios)", () => {
@@ -227,12 +261,32 @@ describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
       const stripped = stripSqlComments(
         readFileSync(`${MIGRATIONS_DIR}/${filename}`, "utf-8"),
       ).toLowerCase();
+      // grant a anon: por-sentencia, exento solo grant execute de RPC allowlisted.
       const reExponeAnon =
-        /grant\s+\S[\s\S]*?\bto\s+[\w,\s]*\banon\b/.test(stripped) ||
+        anonGrantOffenders(stripped).length > 0 ||
         /create\s+policy\s+[\s\S]*?\bto\s+[\w,\s]*\banon\b/.test(stripped) ||
         /for\s+select\s+to\s+[\w,\s]*\banon\b/.test(stripped);
       expect(reExponeAnon, `${filename} re-expone anon`).toBe(false);
     }
+  });
+
+  // Regla documentada por dos casos sintéticos in-memory (sin tocar disco):
+  // grant execute sobre RPC allowlisted PERMITIDO; grant select sobre tabla BLOQUEADO.
+  it("exime `grant execute on function <RPC allowlisted> to anon` pero BLOQUEA `grant select on <tabla> to anon`", () => {
+    const permitido =
+      "grant execute on function public.rebeldias_de_parlamentario(text) to anon;";
+    const bloqueado = "grant select on public.parlamentario to anon;";
+
+    // (a) RPC allowlisted → 0 offenders (exento).
+    expect(anonGrantOffenders(permitido.toLowerCase())).toHaveLength(0);
+    // (b) grant select sobre tabla → 1 offender (sigue protegido).
+    expect(anonGrantOffenders(bloqueado.toLowerCase())).toHaveLength(1);
+    // (c) grant execute de una función NO allowlisted tampoco se exime.
+    expect(
+      anonGrantOffenders(
+        "grant execute on function public.funcion_no_listada(text) to anon;",
+      ),
+    ).toHaveLength(1);
   });
 });
 
