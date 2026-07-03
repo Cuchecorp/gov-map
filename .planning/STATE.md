@@ -4,13 +4,13 @@ milestone: v5.0
 milestone_name: — De datos a comprensión
 status: Ready to execute
 stopped_at: Phase 51 planned (7 plans, wave 1) — checker 0 blockers, warnings fixed
-last_updated: "2026-07-03T13:31:16.456Z"
+last_updated: "2026-07-03T13:45:33.895Z"
 last_activity: 2026-07-03
 progress:
   total_phases: 41
   completed_phases: 22
   total_plans: 90
-  completed_plans: 94
+  completed_plans: 95
   percent: 54
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 51 (LEG2 — Legibilidad profunda (P2)) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 5/5 planes ejecutados (2 waves secuenciales). Verifier Opus **12/12 passed** contra código. Code-review thorough: 0 critical, 2 warnings **fixed** (WR-01 `esHistorica` guard fecha null — no fabrica "histórica"; WR-02 `getParlamentarioPublico` React.cache dedup 3 RPC), 3 info diferidos (incl. dead code voto-ficha-row → B24/Phase 51). Suite app/ **377→406 verde**, `tsc -b` limpio, lockdown-guard 7/7, Camino A intacto (cero RPC nueva/DDL/flag). Bugs cerrados: B1 pill→14309-04, B6 ámbar 14d, B7 agenda throw #34, B8 chip omitido, B9 error.tsx ×4 (`unstable_retry`), B10 copy lobby por cámara, B12 locale, B14 desenlace null explícito, B15 "Iniciativa del Ejecutivo (Mensaje).", B17 fechaCortaSegura, HS 1×/sección.
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
 Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to 46`, 2026-06-26):
@@ -231,6 +231,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 45]: 45-03: ficha /parlamentario/[id] navegable — ParlamentarioResumen above-fold (Suspense) + cada <section mt-12> envuelve UN CarrilAccordion (h2 al header, body forceMount). contarCarriles UNA vez (React.cache, compartido con resumen) -> conteo header + defaultOpen (abrir solo tipo dato). mt-12 intacto por carril, gates cruces/money envuelven la <section> entera (OFF=nodo ausente), SSR intacto. Test estructural source-scan (mt-12/1xdominio/gates/resumen/no-leak). [Rule 3] page.test.tsx mock +.from(). Suite 357/357, tsc limpio, lockdown 7/7. Build/deploy Cloudflare = checkpoint operador.
 - [Phase ?]: 46-01: chart patrimonio BarChart apilado discreto (no linea/area); eje X anio+tipo_declaracion; seriePatrimonio() puro en server file
 - [Phase ?]: [51-04]: lobby agrupado por contraparte (freq DESC) = vista DEFAULT + toggle ?vista=cronologica (normalizarVista fail-safe, preserva paginada); caveat identidad 1x/seccion reemplaza IdentityMarker por fila; contraparte verbatim NUNCA enlazada. Suite 448 verde, tsc limpio.
+- [Phase ?]: [51-05]: EstadoActualBlock '¿Dónde está hoy?' deriva etapa/estado + último hito + urgencia vigente (hace-presente sin retira posterior), OMITE cada línea no derivable (espejo seriePatrimonio), throw #34; timeline dos niveles colapsa SÓLO pares de urgencia contiguos mismo-tipo ≥2 (Pitfall 3), hitos siempre visibles, expand ?urgencias=u{ordinal}; SC7 1 badge/heading + link por evento. Suite 448→471, tsc limpio.
 
 ### Pending Todos
 
@@ -278,7 +279,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-03T13:30:47.713Z
+Last session: 2026-07-03T13:45:15.322Z
 Stopped at: Phase 51 planned (7 plans, wave 1) — checker 0 blockers, warnings fixed
 Resume file: None
 
