@@ -95,6 +95,53 @@ describe("paresDeUrgencia — sólo runs contiguos del mismo tipo, ≥ 2", () =>
     ];
     expect(paresDeUrgencia(eventos).length).toBe(0);
   });
+
+  it("un 'retira la urgencia' NO se colapsa ni cuenta: corta el run y queda visible como hito (WR-03)", () => {
+    const eventos = [
+      makeEvento({
+        fecha: "2026-02-01T00:00:00Z",
+        tipo: "tramite",
+        descripcion: "hace presente la urgencia Suma",
+        enlace: "https://senado.cl/urg/1",
+      }),
+      makeEvento({
+        fecha: "2026-03-01T00:00:00Z",
+        tipo: "urgencia",
+        descripcion: "Suma",
+        enlace: "https://senado.cl/urg/2",
+      }),
+      makeEvento({
+        fecha: "2026-04-01T00:00:00Z",
+        tipo: "tramite",
+        descripcion: "retira la urgencia Suma",
+        enlace: "https://senado.cl/urg/3",
+      }),
+    ];
+    // El retiro queda FUERA del período (2 eventos, no 3).
+    const periodos = paresDeUrgencia(eventos);
+    expect(periodos.length).toBe(1);
+    expect(periodos[0].eventos.length).toBe(2);
+    // Y se renderiza como hito normal, SIEMPRE visible (nunca "renovación").
+    render(<TimelineView eventos={eventos} boletin="16284-07" />);
+    expect(screen.getByText("retira la urgencia Suma")).toBeInTheDocument();
+    expect(screen.getByText(/Urgencia Suma: 2 eventos/)).toBeInTheDocument();
+  });
+
+  it("un par [hace presente, retira] contiguo NO forma período (el retiro no es renovación)", () => {
+    const eventos = [
+      makeEvento({
+        fecha: "2026-02-01T00:00:00Z",
+        tipo: "tramite",
+        descripcion: "hace presente la urgencia Suma",
+      }),
+      makeEvento({
+        fecha: "2026-03-01T00:00:00Z",
+        tipo: "tramite",
+        descripcion: "retira la urgencia Suma",
+      }),
+    ];
+    expect(paresDeUrgencia(eventos).length).toBe(0);
+  });
 });
 
 // ── TimelineView — dos niveles ───────────────────────────────────────────────
@@ -105,9 +152,12 @@ describe("TimelineView — hitos visibles + colapso de urgencias (SC2)", () => {
     expect(screen.getByText("Votación en general")).toBeInTheDocument();
   });
 
-  it("(b) el par de urgencia se colapsa en 'renovada N veces' (colapsado por defecto)", () => {
+  it("(b) el par de urgencia se colapsa en conteo NEUTRO 'N eventos' (colapsado por defecto)", () => {
     render(<TimelineView eventos={fixtureMixto()} boletin="16284-07" />);
-    expect(screen.getByText(/Urgencia Suma renovada 2 veces/)).toBeInTheDocument();
+    // Copy neutra (WR-03): NUNCA "renovada N veces" — contaría la presentación
+    // inicial (y antes, incluso un retiro) como renovación: afirmación fabricada.
+    expect(screen.getByText(/Urgencia Suma: 2 eventos/)).toBeInTheDocument();
+    expect(screen.queryByText(/renovada/)).not.toBeInTheDocument();
     // Los eventos individuales de urgencia NO aparecen colapsado.
     expect(screen.queryByText("hace presente la urgencia Suma")).not.toBeInTheDocument();
     // Afford server-driven presente.

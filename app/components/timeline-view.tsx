@@ -13,7 +13,10 @@ import type { TramitacionEventoRow } from "@/lib/types";
  *
  * Heurística CONSERVADORA (Pitfall 3): sólo colapsa runs contiguos de eventos-
  * urgencia del MISMO tipo y de longitud ≥ 2. Cualquier otra cosa se renderiza como
- * `TimelineEvent` normal (T-51-15: nunca esconder un hito estructural).
+ * `TimelineEvent` normal (T-51-15: nunca esconder un hito estructural). Los RETIROS
+ * de urgencia ("retira … la urgencia") NUNCA se colapsan ni se cuentan: un retiro no
+ * es una renovación — cortan el run y se muestran como hito normal (espejo de
+ * `urgenciaVigente` en estado-actual-block.tsx, que también distingue retira).
  */
 
 const mesAnioFormatter = new Intl.DateTimeFormat("es-CL", {
@@ -42,6 +45,16 @@ export function esEventoUrgencia(e: TramitacionEventoRow): boolean {
     e.tipo === "urgencia" ||
     (e.tipo === "tramite" && /urgencia/i.test(e.descripcion ?? ""))
   );
+}
+
+/**
+ * `true` si el evento de urgencia es un RETIRO ("retira … la urgencia …"). Un retiro
+ * NO es parte del par repetitivo presenta/renueva: colapsarlo lo contaría como
+ * "evento de urgencia" del mismo tipo y fabricaría una afirmación falsa. Corta el
+ * run colapsable y se renderiza como `TimelineEvent` normal, siempre visible.
+ */
+export function esRetiroUrgencia(e: TramitacionEventoRow): boolean {
+  return /retira/i.test(e.descripcion ?? "");
 }
 
 /**
@@ -96,17 +109,20 @@ function construirItems(eventos: TramitacionEventoRow[]): TimelineItem[] {
   let periodoIdx = 0;
   while (i < ordenados.length) {
     const e = ordenados[i];
-    if (!esEventoUrgencia(e)) {
+    // Un RETIRO de urgencia no es colapsable (no es una renovación): hito normal.
+    if (!esEventoUrgencia(e) || esRetiroUrgencia(e)) {
       items.push({ kind: "evento", evento: e, key: `${e.camara}-${e.fecha}-${e.tipo}-${i}` });
       i += 1;
       continue;
     }
-    // Run contiguo de eventos-urgencia del MISMO tipo normalizado.
+    // Run contiguo de eventos-urgencia del MISMO tipo normalizado (los retiros
+    // cortan el run: quedan fuera y se renderizan como evento normal).
     const key = tipoUrgenciaKey(e);
     let j = i + 1;
     while (
       j < ordenados.length &&
       esEventoUrgencia(ordenados[j]) &&
+      !esRetiroUrgencia(ordenados[j]) &&
       tipoUrgenciaKey(ordenados[j]) === key
     ) {
       j += 1;
@@ -162,12 +178,16 @@ function buildUrgenciasHref(
   return `/proyecto/${boletin}${q ? `?${q}` : ""}#timeline`;
 }
 
-/** Línea colapsada de un período de urgencia. */
+/**
+ * Línea colapsada de un período de urgencia. Conteo NEUTRO ("N eventos"), sin
+ * semántica de renovación: "renovada N veces" contaba la presentación inicial como
+ * renovación (N eventos ≠ N renovaciones) — una afirmación fabricada.
+ */
 function periodoLinea(p: PeriodoUrgencia): string {
   const mesX = mesAnio(p.desde);
   const mesY = mesAnio(p.hasta);
   const rango = mesX === mesY ? `en ${mesX}` : `entre ${mesX} y ${mesY}`;
-  return `Urgencia ${p.tipo} renovada ${p.eventos.length} veces ${rango}`;
+  return `Urgencia ${p.tipo}: ${p.eventos.length} eventos ${rango}`;
 }
 
 export function TimelineView({
