@@ -28,6 +28,10 @@ export function ParlamentarioHeader({
     : null;
 
   // Cargo: distrito (Cámara) o circunscripción (Senado) + región, si están.
+  // TODAS son columnas públicas de `ParlamentarioPublicoRow` — NUNCA partido/
+  // afiliación (LEGAL-03, ver docstring). El `periodo` (0020) se añade aparte
+  // porque va en Mono (UI-SPEC: fechas/IDs en Geist Mono); si es null se OMITE
+  // la etiqueta entera (honesto, sin "Período " suelto).
   const cargoPartes = [
     parlamentario.distrito ? `Distrito ${parlamentario.distrito}` : null,
     parlamentario.circunscripcion
@@ -35,6 +39,8 @@ export function ParlamentarioHeader({
       : null,
     parlamentario.region,
   ].filter((p): p is string => Boolean(p));
+
+  const periodo = parlamentario.periodo;
 
   return (
     <header>
@@ -46,9 +52,15 @@ export function ParlamentarioHeader({
         {parlamentario.nombre}
       </h1>
 
-      {cargoPartes.length > 0 && (
+      {(cargoPartes.length > 0 || periodo) && (
         <p className="text-sm font-normal text-muted-foreground mt-1">
           {cargoPartes.join(" · ")}
+          {periodo && (
+            <>
+              {cargoPartes.length > 0 && " · "}
+              Período <span className="font-mono">{periodo}</span>
+            </>
+          )}
         </p>
       )}
 
