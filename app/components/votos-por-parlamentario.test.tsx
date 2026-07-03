@@ -255,6 +255,19 @@ describe("VotoFichaRow — sustancia + desenlace (Phase 22, §9)", () => {
     ).toBeInTheDocument();
   });
 
+  it("B24: idea_matriz null → la fila OMITE 'De qué trata: no disponible aún' (dead code eliminado)", () => {
+    render(
+      <ul>
+        <VotoFichaRow voto={makeVoto({ idea_matriz: null })} />
+      </ul>,
+    );
+    // El honest-state por fila ya NO se renderiza (se dice 1× por sección en VotosView).
+    expect(
+      screen.queryByText(/no disponible aún/),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/De qué trata:/)).not.toBeInTheDocument();
+  });
+
   it("resultado='Rechazado' total 58/81 seleccion='no' → desenlace factual con conteo mono", () => {
     render(
       <ul>
@@ -375,6 +388,8 @@ describe("VotosView — sección VOTE (asistencia, tema, votó distinto, §3.3�
       {
         votacion_id: "camara:1",
         boletin: "16284-07",
+        titulo: null,
+        etapa: null,
         fecha: "2026-05-14T00:00:00Z",
         seleccion_propia: "no",
         mayoria_bancada: "si",
@@ -387,6 +402,43 @@ describe("VotosView — sección VOTE (asistencia, tema, votó distinto, §3.3�
     ).toBeInTheDocument();
     expect(
       screen.getByText(/opción mayoritaria de su bancada en esa misma votación/i),
+    ).toBeInTheDocument();
+  });
+
+  it("SC5: fila de rebeldías con titulo → renderiza el título enlazado a /proyecto/[boletin]", () => {
+    const rebeldias: RebeldiaRow[] = [
+      {
+        votacion_id: "camara:1",
+        boletin: "18296-05",
+        titulo: "Reforma previsional",
+        etapa: "Tercer trámite",
+        fecha: "2026-05-14T00:00:00Z",
+        seleccion_propia: "no",
+        mayoria_bancada: "si",
+      },
+    ];
+    render(<VotosView id="P00001" data={makeViewData({ rebeldias })} />);
+    const link = screen.getByRole("link", { name: "Reforma previsional" });
+    expect(link).toHaveAttribute("href", "/proyecto/18296-05");
+    // La etapa acompaña al título cuando existe.
+    expect(screen.getByText(/Tercer trámite/)).toBeInTheDocument();
+  });
+
+  it("SC5: fila de rebeldías con titulo null → fallback honesto al boletín (cero fabricación)", () => {
+    const rebeldias: RebeldiaRow[] = [
+      {
+        votacion_id: "camara:1",
+        boletin: "16284-07",
+        titulo: null,
+        etapa: null,
+        fecha: "2026-05-14T00:00:00Z",
+        seleccion_propia: "no",
+        mayoria_bancada: "si",
+      },
+    ];
+    render(<VotosView id="P00001" data={makeViewData({ rebeldias })} />);
+    expect(
+      screen.getByRole("link", { name: /Boletín N°16284-07/ }),
     ).toBeInTheDocument();
   });
 
@@ -418,6 +470,8 @@ describe("VotosView — sección VOTE (asistencia, tema, votó distinto, §3.3�
       {
         votacion_id: "camara:1",
         boletin: "16284-07",
+        titulo: null,
+        etapa: null,
         fecha: "2026-05-14T00:00:00Z",
         seleccion_propia: "no",
         mayoria_bancada: "si",

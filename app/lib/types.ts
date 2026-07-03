@@ -210,14 +210,20 @@ export interface VotoFichaMencion {
 }
 
 /**
- * Fila del RPC `rebeldias_de_parlamentario` (migración 0019, security definer).
- * Derivado público: votación + boletín + selección propia + opción mayoritaria
- * de la bancada en ESA misma votación. CERO score, CERO etiqueta de juicio; la
- * bancada cruda nunca se expone.
+ * Fila del RPC `rebeldias_de_parlamentario` (migración 0047 — extiende 0019,
+ * security definer). Derivado público: votación + boletín + TÍTULO/ETAPA del
+ * proyecto (left join → null honesto pre-apply) + selección propia + opción
+ * mayoritaria de la bancada en ESA misma votación. CERO score, CERO etiqueta de
+ * juicio; la bancada cruda nunca se expone. El orden de los campos espeja el
+ * `returns table` de 0047 (votacion_id, boletin, titulo, etapa, fecha,
+ * seleccion_propia, mayoria_bancada). `titulo`/`etapa` pueden ser null; el
+ * consumidor degrada honesto (fallback al boletín) mientras 0047 no esté aplicada.
  */
 export interface RebeldiaRow {
   votacion_id: string;
   boletin: string;
+  titulo: string | null;
+  etapa: string | null;
   fecha: string;
   seleccion_propia: Seleccion;
   mayoria_bancada: Seleccion;

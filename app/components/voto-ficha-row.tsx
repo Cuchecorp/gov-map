@@ -19,8 +19,9 @@ import type {
  * Hermano de `VotoRow` (que vive en la ficha del PROYECTO). Aquí la subjetividad
  * es el parlamentario. Phase 22 la hace INSTRUCTIVA: ya no muestra sólo el chip +
  * boletín, sino la SUSTANCIA del proyecto (titulo + extracto literal de la idea
- * matriz, o el honest-state "no disponible aún" cuando es null — NUNCA fabricado)
- * y el DESENLACE de la votación (cómo votó la persona enmarcado contra el
+ * matriz cuando existe; si es null se OMITE la línea — B24, la honestidad se dice
+ * 1× por sección, NUNCA por fila) y el DESENLACE de la votación (cómo votó la
+ * persona enmarcado contra el
  * resultado + el conteo total_si–total_no en Mono). El framing del desenlace es un
  * HECHO de la votación (DESIGN-SYSTEM §8), nunca una valoración del voto.
  *
@@ -83,11 +84,13 @@ function SustanciaYDesenlace({
   const hayConteo = total_si != null && total_no != null;
   return (
     <div className="w-full space-y-1">
-      <p className="text-sm text-muted-foreground">
-        {idea_matriz
-          ? `De qué trata: ${extractoIdea(idea_matriz)}`
-          : "De qué trata: no disponible aún"}
-      </p>
+      {/* B24: cuando la idea es null se OMITE la línea (no se repite el
+          honest-state por fila); la nota se dice 1× por sección en VotosView. */}
+      {idea_matriz && (
+        <p className="text-sm text-muted-foreground">
+          De qué trata: {extractoIdea(idea_matriz)}
+        </p>
+      )}
       {resultado && (
         <p className="text-sm text-muted-foreground">
           Votó {OPCION_LABEL[seleccion]} · el proyecto fue {resultado}

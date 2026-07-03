@@ -677,12 +677,27 @@ export function VotosView({
                   key={r.votacion_id}
                   className="flex flex-wrap items-center gap-2 py-2 text-sm border-t first:border-t-0"
                 >
-                  <Link
-                    href={`/proyecto/${r.boletin}`}
-                    className="font-mono text-primary underline underline-offset-2"
-                  >
-                    Boletín N°{r.boletin}
-                  </Link>
+                  {/* Título del proyecto cuando el RPC 0047 lo hidrata; fallback
+                      honesto al boletín mientras 0047 no esté aplicada (titulo
+                      null/undefined → NUNCA se fabrica un título). */}
+                  {r.titulo ? (
+                    <Link
+                      href={`/proyecto/${r.boletin}`}
+                      className="text-base text-primary underline underline-offset-2"
+                    >
+                      {r.titulo}
+                    </Link>
+                  ) : (
+                    <Link
+                      href={`/proyecto/${r.boletin}`}
+                      className="font-mono text-primary underline underline-offset-2"
+                    >
+                      Boletín N°{r.boletin}
+                    </Link>
+                  )}
+                  {r.etapa && (
+                    <span className="text-muted-foreground">{r.etapa}</span>
+                  )}
                   <span className="font-mono text-muted-foreground">
                     {fechaCorta(new Date(r.fecha))}
                   </span>
