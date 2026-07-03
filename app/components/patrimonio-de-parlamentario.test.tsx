@@ -9,6 +9,7 @@ import {
   paresDeContenido,
   etiquetaBien,
   esHistorica,
+  esUriCplt,
   type PatrimonioViewData,
 } from "./patrimonio-de-parlamentario";
 import type {
@@ -37,7 +38,7 @@ function makeVersion(
   return {
     declaracion_id: "http://datos.cplt.cl/recurso/declaracion/V1",
     version_id: "http://datos.cplt.cl/recurso/declaracion/V1",
-    tipo: "Declaración de patrimonio",
+    tipo: "periódica",
     fecha_presentacion: "2024-05-14",
     parlamentario_id: "P00001",
     parlamentario_estado_vinculo: "confirmado",
@@ -206,9 +207,12 @@ describe("PatrimonioView — tres estados honestos (§6.1)", () => {
     expect(screen.queryByText(/Aún no hemos ingerido/i)).not.toBeInTheDocument();
   });
 
-  it("(c) con versiones → renderiza las filas", () => {
+  it("(c) con versiones → renderiza la tarjeta-resumen (título + fecha), no los estados vacíos", () => {
     render(<PatrimonioView data={makeViewData()} />);
-    expect(screen.getByText("Departamento en Santiago")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /Declaración de periódica/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Presentada el/i)).toBeInTheDocument();
     expect(screen.queryByText(/Aún no hemos ingerido/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/No se registran declaraciones/i)).not.toBeInTheDocument();
   });
@@ -473,10 +477,11 @@ describe("bienes — helpers de agrupación y etiquetas", () => {
 
 // ── Render de bienes por versión (encabezados de grupo + valores literales) ──────
 describe("PatrimonioView — bienes por versión", () => {
-  it("una versión con bienes renderiza encabezados de grupo con conteo + valores literales", () => {
+  it("una versión con bienes renderiza encabezados de grupo con conteo + valores literales (detalle ?ver)", () => {
     const { container } = render(
       <PatrimonioView
         data={makeViewData({
+          verAbierta: "http://datos.cplt.cl/recurso/declaracion/V1",
           versiones: [
             makeVersion({
               bienes: [
@@ -513,10 +518,13 @@ describe("PatrimonioView — bienes por versión", () => {
     expect(texto).not.toMatch(PROHIBIDO_CONECTIVO);
   });
 
-  it("una versión sin bienes muestra la línea honesta-vacía (no 'no tiene patrimonio')", () => {
+  it("una versión sin bienes muestra la línea honesta-vacía (no 'no tiene patrimonio'; detalle ?ver)", () => {
     render(
       <PatrimonioView
-        data={makeViewData({ versiones: [makeVersion({ bienes: [] })] })}
+        data={makeViewData({
+          verAbierta: "http://datos.cplt.cl/recurso/declaracion/V1",
+          versiones: [makeVersion({ bienes: [] })],
+        })}
       />,
     );
     expect(
@@ -525,6 +533,124 @@ describe("PatrimonioView — bienes por versión", () => {
     expect(
       screen.queryByText(/no tiene patrimonio|limpio|sin bienes que declarar/i),
     ).not.toBeInTheDocument();
+  });
+});
+
+// ── esUriCplt: las URIs nunca son valores (B3, Open Question 3 LOCKED) ───────────
+describe("esUriCplt — URI absoluta genérica, NO host hardcodeado", () => {
+  it("true para una URI http de CPLT y una https de cualquier host (a prueba de drift)", () => {
+    expect(esUriCplt("http://datos.cplt.cl/recurso/x")).toBe(true);
+    expect(esUriCplt("https://cualquier.host/y")).toBe(true);
+    // Con espacios alrededor sigue siendo URI (trim).
+    expect(esUriCplt("  https://otro.host/z  ")).toBe(true);
+  });
+
+  it("false para valores humanos (montos, texto libre)", () => {
+    expect(esUriCplt("1.234")).toBe(false);
+    expect(esUriCplt("Casa habitación")).toBe(false);
+    expect(esUriCplt("$10.000.000")).toBe(false);
+    expect(esUriCplt("")).toBe(false);
+  });
+});
+
+// ── Tarjeta-resumen por versión (SC3): conteos desde seriePatrimonio ─────────────
+describe("PatrimonioView — tarjeta-resumen por versión (SC3)", () => {
+  it("renderiza conteos por categoría desde los bienes ('12 inmuebles', '5 valores'), Mono", () => {
+    const bienes: BienRpcRow[] = [
+      ...Array.from({ length: 12 }, () =>
+        makeBien({ tipo_bien: "inmueble", contenido: { ubicadoEn: "Santiago" } }),
+      ),
+      ...Array.from({ length: 5 }, () =>
+        makeBien({ tipo_bien: "valor", contenido: { entidadEmisora: "Banco" } }),
+      ),
+    ];
+    render(
+      <PatrimonioView
+        data={makeViewData({
+          versiones: [makeVersion({ tipo: "periódica", bienes })],
+        })}
+      />,
+    );
+    // Conteo-resumen en una sola línea Mono, orden ORDEN_GRUPOS_BIENES.
+    const conteo = screen.getByText(/12 inmuebles/);
+    expect(conteo).toBeInTheDocument();
+    expect(conteo).toHaveClass("font-mono");
+    expect(conteo.textContent ?? "").toMatch(/5 valores/);
+    // Banned-vocab sobre el copy nuevo de la tarjeta.
+    expect(conteo.textContent ?? "").not.toMatch(PROHIBIDO_VEREDICTO);
+  });
+
+  it("título 'Declaración de {tipo}' es un heading; fecha prominente Mono", () => {
+    const { container } = render(
+      <PatrimonioView
+        data={makeViewData({ versiones: [makeVersion({ tipo: "periódica" })] })}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: /Declaración de periódica/i }),
+    ).toBeInTheDocument();
+    const fecha = screen.getByText(/Presentada el/i);
+    expect(fecha).toHaveClass("font-mono");
+    // Cero vocabulario de veredicto en el copy de la tarjeta.
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(PROHIBIDO_VEREDICTO);
+    expect(texto).not.toMatch(PROHIBIDO_CONECTIVO);
+  });
+});
+
+// ── B3: valores-URI (CPLT) NUNCA se renderizan (ni tarjeta ni detalle) ───────────
+describe("PatrimonioView — filtro esUriCplt (B3, T-51-08)", () => {
+  it("un campo/bien cuyo valor es una URI se excluye del DOM; el valor humano sí aparece", () => {
+    const version = makeVersion({
+      version_id: "VURI",
+      declaracion_id: "VURI",
+      campos: [
+        { etiqueta: "Cargo", valor: "Diputado" },
+        { etiqueta: "Ficha", valor: "http://datos.cplt.cl/recurso/x" },
+      ],
+      bienes: [
+        makeBien({
+          tipo_bien: "inmueble",
+          contenido: { ubicadoEn: "Santiago", ficha: "https://otro.host/y" },
+        }),
+      ],
+    });
+    // Con ?ver abierto para ejercer TANTO tarjeta COMO detalle.
+    const { container } = render(
+      <PatrimonioView
+        data={makeViewData({ versiones: [version], verAbierta: "VURI" })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(/http:\/\/datos\.cplt\.cl/);
+    expect(texto).not.toMatch(/https:\/\/otro\.host/);
+    // Los valores humanos sí se muestran.
+    expect(screen.getByText("Diputado")).toBeInTheDocument();
+    expect(screen.getByText("Santiago")).toBeInTheDocument();
+  });
+});
+
+// ── Detalle <dl> SOLO bajo ?ver=<versionId> (nunca inline en la tarjeta) ──────────
+describe("PatrimonioView — detalle bajo ?ver (SC3)", () => {
+  it("sin ?ver el detalle no está en el DOM; con ?ver=<versionId> sí", () => {
+    const version = makeVersion({
+      version_id: "VDET",
+      declaracion_id: "VDET",
+      campos: [{ etiqueta: "Cargo", valor: "Senador" }],
+      bienes: [
+        makeBien({ tipo_bien: "inmueble", contenido: { ubicadoEn: "Arica" } }),
+      ],
+    });
+    // (a) sin ?ver → detalle ausente, pero enlace "Ver detalle" presente.
+    render(<PatrimonioView data={makeViewData({ versiones: [version], verAbierta: null })} />);
+    expect(screen.queryByText("Senador")).not.toBeInTheDocument();
+    expect(screen.queryByText("Arica")).not.toBeInTheDocument();
+    expect(screen.getByText(/Ver detalle de la declaración/i)).toBeInTheDocument();
+    cleanup();
+    // (b) con ?ver → detalle presente.
+    render(<PatrimonioView data={makeViewData({ versiones: [version], verAbierta: "VDET" })} />);
+    expect(screen.getByText("Senador")).toBeInTheDocument();
+    expect(screen.getByText("Arica")).toBeInTheDocument();
   });
 });
 
