@@ -1066,7 +1066,7 @@ Auditoría completa del sitio en vivo (`.planning/DIAGNOSTICO-govmap-2026-07-02.
 - [ ] **Phase 48: Autoría + similares-del-parlamentario** — GATED (re-verificado 2026-07-02: `proyecto.autores` vacío 136/136). Pre-req: ingesta `proyecto.autores` + resolución nombre→`parlamentario_id` + RPC `proyectos_de_parlamentario`.
 - [ ] **Phase 49: Comparativo vs cámara (ausencias/actividad)** — **gate de datos CUMPLIDO 2026-07-02** (546 ausencias / 18.700 votos en PROD; F47 desbloqueada). Falta solo: RPC `tasa_ausencia_comparada` (security definer, PII-safe, allowlist).
 - [x] **Phase 50: FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)** — 11 fixes de código acotados (B1, B6, B7, B8, B9, B10, B12, B14, B15, B17 + supresión de honest-state repetido). Sin DDL, sin deploy (checkpoint operador aparte). (completed 2026-07-02)
-- [ ] **Phase 51: LEG2 — Legibilidad profunda (P2)** — votos agregados por proyecto, timeline dos niveles + "¿dónde está hoy?", patrimonio tarjeta-resumen sin URIs (B3), comparador cableado (B4), rebeldías honestas (B5), lobby agrupado por contraparte, provenance por sección, footer global.
+- [x] **Phase 51: LEG2 — Legibilidad profunda (P2)** — votos agregados por proyecto, timeline dos niveles + "¿dónde está hoy?", patrimonio tarjeta-resumen sin URIs (B3), comparador cableado (B4), rebeldías honestas (B5), lobby agrupado por contraparte, provenance por sección, footer global. (completed 2026-07-03)
 - [ ] **Phase 52: CRUCE2 — Cruces nuevos con datos ya disponibles (P3)** — clasificador sectorial (enciende `cruce_senal` de verdad), lobby×tramitación temporal, proyecto→agenda inverso, módulo de actualidad en home. (Asistencia comparada = Phase 49; chart votos = Phase 47 — ya desbloqueadas.)
 
 ### Decisión (RESUELTA 2026-06-26): A + B — ambas pistas en paralelo
@@ -1172,7 +1172,7 @@ Plans:
   8. **Footer global:** licencia CC BY 4.0, metodología, fuentes y contacto en toda página.
   9. Suite verde + tsc limpio + lockdown-guard verde; anti-insinuación intacta (negative-match).
 
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 
@@ -1182,7 +1182,7 @@ Plans:
 - [x] 51-04-PLAN.md — SC6: lobby agrupado por contraparte + toggle ?vista + caveat 1x/seccion
 - [x] 51-05-PLAN.md — SC2/SC7: bloque "Donde esta hoy?" + timeline 2 niveles + 1 ProvenanceBadge/seccion
 - [x] 51-06-PLAN.md — SC8: footer global CC BY (scope-caveat) + pagina /metodologia
-- [ ] 51-07-PLAN.md — SC1 §2.1: header con periodo + chip "Presente en N de M" (sin PII)
+- [x] 51-07-PLAN.md — SC1 §2.1: header con periodo + chip "Presente en N de M" (sin PII)
 
 ### Phase 52: CRUCE2 — Cruces nuevos con datos ya disponibles (P3)
 

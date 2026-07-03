@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
-status: Ready to execute
+status: Phase complete — ready for verification
 stopped_at: Phase 51 planned (7 plans, wave 1) — checker 0 blockers, warnings fixed
-last_updated: "2026-07-03T13:50:47.516Z"
+last_updated: "2026-07-03T13:59:03.731Z"
 last_activity: 2026-07-03
 progress:
   total_phases: 41
-  completed_phases: 22
+  completed_phases: 23
   total_plans: 90
-  completed_plans: 96
-  percent: 54
+  completed_plans: 97
+  percent: 56
 ---
 
 # Project State
@@ -232,6 +232,7 @@ Recent decisions affecting current work:
 - [Phase ?]: 46-01: chart patrimonio BarChart apilado discreto (no linea/area); eje X anio+tipo_declaracion; seriePatrimonio() puro en server file
 - [Phase ?]: [51-04]: lobby agrupado por contraparte (freq DESC) = vista DEFAULT + toggle ?vista=cronologica (normalizarVista fail-safe, preserva paginada); caveat identidad 1x/seccion reemplaza IdentityMarker por fila; contraparte verbatim NUNCA enlazada. Suite 448 verde, tsc limpio.
 - [Phase ?]: [51-05]: EstadoActualBlock '¿Dónde está hoy?' deriva etapa/estado + último hito + urgencia vigente (hace-presente sin retira posterior), OMITE cada línea no derivable (espejo seriePatrimonio), throw #34; timeline dos niveles colapsa SÓLO pares de urgencia contiguos mismo-tipo ≥2 (Pitfall 3), hitos siempre visibles, expand ?urgencias=u{ordinal}; SC7 1 badge/heading + link por evento. Suite 448→471, tsc limpio.
+- [Phase ?]: [51-07]: header con Periodo (Mono, solo columnas publicas ParlamentarioPublicoRow, LEGAL-03 intacto, omitido si null); chip Presente en N de M en resumen above-fold derivado de las MISMAS filas de votos_de_parlamentario que contarCarriles ya cachea (cero 2do fetch grep-verificado; presente = seleccion distinta de ausente igual que VotosView; asistencia null sin filas omite el chip, T-51-22). Suite 476 a 486, tsc limpio. Phase 51 COMPLETE 7/7.
 
 ### Pending Todos
 
@@ -279,7 +280,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-03T13:50:47.500Z
+Last session: 2026-07-03T13:58:11.214Z
 Stopped at: Phase 51 planned (7 plans, wave 1) — checker 0 blockers, warnings fixed
 Resume file: None
 
