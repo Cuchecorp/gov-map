@@ -6,6 +6,7 @@ import {
   VotosView,
   derivarVotosViewData,
   normalizarPagina,
+  resumenDeArco,
   type VotosViewData,
   type VotoFichaConMateria,
 } from "./votos-por-parlamentario";
@@ -72,6 +73,7 @@ function makeViewData(overrides: Partial<VotosViewData> = {}): VotosViewData {
     page: 1,
     totalPages: 1,
     noIngestado: false,
+    votosVer: null,
     ...overrides,
   };
 }
@@ -534,13 +536,15 @@ describe("VotosView — instructiva (asistencia corregida, arco, cobertura, §3.
           ],
           totalVotos: 2,
           conteos: { si: 0, no: 2, abstencion: 0, pareo: 0, ausente: 0 },
+          // Con el detalle abierto para ESE arco: las etapas se listan.
+          votosVer: "18296-05",
         })}
       />,
     );
     // Una sola cabecera de proyecto (el titulo aparece una vez como encabezado de grupo).
     const cabeceras = screen.getAllByText("Reforma previsional");
     expect(cabeceras.length).toBe(1);
-    // Las dos etapas votadas se listan bajo ese único proyecto.
+    // Las dos etapas votadas se listan bajo ese único proyecto (detalle abierto).
     expect(screen.getByText(/Primer trámite/)).toBeInTheDocument();
     expect(screen.getByText(/Tercer trámite/)).toBeInTheDocument();
   });
@@ -591,6 +595,155 @@ describe("VotosView — instructiva (asistencia corregida, arco, cobertura, §3.
     const texto = container.textContent ?? "";
     const PROHIBIDO =
       /afinidad|alinead|en l[ií]nea con|af[ií]n a|aliad|rival|d[ií]scolo|rebeld|leal(?!es)|disciplina|score|ranking|índice de|por presión de|a cambio de|favoreciendo a|porque|conflicto de inter|enriquecimiento|sospechos/i;
+    expect(texto).not.toMatch(PROHIBIDO);
+  });
+});
+
+// ── SC1 (51-02): línea-resumen por arco + detalle server-driven (?votosVer) ─────
+describe("resumenDeArco — agregación pura de conteos + rango de fechas (SC1)", () => {
+  it("un arco {2 a favor, 1 en contra} → n=3, si=2, no=1 y rango correcto", () => {
+    const arco = {
+      boletin: "18296-05",
+      titulo: "Reforma X",
+      idea_matriz: null,
+      etapas: [
+        makeVoto({ votacion_id: "c:1", boletin: "18296-05", seleccion: "si", fecha: "2026-03-10T00:00:00Z" }),
+        makeVoto({ votacion_id: "c:2", boletin: "18296-05", seleccion: "si", fecha: "2026-05-14T00:00:00Z" }),
+        makeVoto({ votacion_id: "c:3", boletin: "18296-05", seleccion: "no", fecha: "2026-04-01T00:00:00Z" }),
+      ],
+    };
+    const r = resumenDeArco(arco);
+    expect(r.n).toBe(3);
+    expect(r.si).toBe(2);
+    expect(r.no).toBe(1);
+    expect(r.ausente).toBe(0);
+    expect(r.abstencion).toBe(0);
+    expect(r.pareo).toBe(0);
+    // Rango: marzo 2026 → mayo 2026 (formato "mmm AAAA").
+    expect(r.mesInicio).toMatch(/mar/i);
+    expect(r.mesInicio).toMatch(/2026/);
+    expect(r.mesFin).toMatch(/may/i);
+    expect(r.mesFin).toMatch(/2026/);
+  });
+
+  it("un arco de una sola etapa → n=1, sin fabricar sentidos ausentes", () => {
+    const arco = {
+      boletin: "14309-04",
+      titulo: null,
+      idea_matriz: null,
+      etapas: [makeVoto({ votacion_id: "c:9", boletin: "14309-04", seleccion: "no" })],
+    };
+    const r = resumenDeArco(arco);
+    expect(r.n).toBe(1);
+    expect(r.no).toBe(1);
+    expect(r.si).toBe(0);
+    expect(r.ausente).toBe(0);
+  });
+});
+
+describe("VotosView — línea-resumen por arco + toggle ?votosVer (SC1, 51-02)", () => {
+  const arcoVotos = () => [
+    makeVoto({
+      votacion_id: "camara:1",
+      boletin: "18296-05",
+      titulo: "Reforma X",
+      etapa: "Primer trámite",
+      seleccion: "si",
+      fecha: "2026-03-10T00:00:00Z",
+    }),
+    makeVoto({
+      votacion_id: "camara:2",
+      boletin: "18296-05",
+      titulo: "Reforma X",
+      etapa: "Tercer trámite",
+      seleccion: "no",
+      fecha: "2026-05-14T00:00:00Z",
+    }),
+  ];
+
+  it("por defecto (sin votosVer) renderiza UNA línea-resumen por arco, NO las etapas", () => {
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: arcoVotos(),
+          totalVotos: 2,
+          conteos: { si: 1, no: 1, abstencion: 0, pareo: 0, ausente: 0 },
+          votosVer: null,
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    // Línea-resumen con conteos por sentido.
+    expect(texto).toMatch(/Votó en 2 ocasiones sobre este proyecto/);
+    expect(texto).toMatch(/1 a favor/);
+    expect(texto).toMatch(/1 en contra/);
+    // Rango de fechas presente.
+    expect(texto).toMatch(/mar/i);
+    expect(texto).toMatch(/may/i);
+    // Las etapas individuales NO se muestran colapsado.
+    expect(screen.queryByText(/Primer trámite/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tercer trámite/)).not.toBeInTheDocument();
+    // El afford "Ver detalle" está presente y apunta a ?votosVer del boletín.
+    const ver = screen.getByRole("link", { name: /Ver detalle/ });
+    expect(ver.getAttribute("href")).toContain("votosVer=18296-05");
+    expect(ver.getAttribute("href")).toContain("#votos");
+  });
+
+  it("OMITE cualquier sentido cuyo conteo sea 0 (nunca '0 ausente')", () => {
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: arcoVotos(),
+          totalVotos: 2,
+          conteos: { si: 1, no: 1, abstencion: 0, pareo: 0, ausente: 0 },
+          votosVer: null,
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(/0 ausente/);
+    expect(texto).not.toMatch(/0 abstención/);
+    expect(texto).not.toMatch(/0 pareo/);
+  });
+
+  it("con votosVer=<boletin> expande las etapas de ESE arco y muestra 'Ocultar detalle'", () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: arcoVotos(),
+          totalVotos: 2,
+          conteos: { si: 1, no: 1, abstencion: 0, pareo: 0, ausente: 0 },
+          votosVer: "18296-05",
+        })}
+      />,
+    );
+    // Las etapas individuales aparecen al abrir el detalle.
+    expect(screen.getByText(/Primer trámite/)).toBeInTheDocument();
+    expect(screen.getByText(/Tercer trámite/)).toBeInTheDocument();
+    // El afford cambia a "Ocultar detalle" (quita votosVer).
+    const ocultar = screen.getByRole("link", { name: /Ocultar detalle/ });
+    expect(ocultar.getAttribute("href")).not.toContain("votosVer");
+    expect(ocultar.getAttribute("href")).toContain("#votos");
+  });
+
+  it("GATE §9.1: el copy nuevo de la línea-resumen no contiene banned-vocab", () => {
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: arcoVotos(),
+          totalVotos: 2,
+          conteos: { si: 1, no: 1, abstencion: 0, pareo: 0, ausente: 0 },
+          votosVer: null,
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    const PROHIBIDO =
+      /afinidad|alinead|en l[ií]nea con|af[ií]n a|aliad|rival|d[ií]scolo|rebeld|leal(?!es)|disciplina|score|ranking|índice de|por presión de|a cambio de|favoreciendo a|porque|mejor|peor/i;
     expect(texto).not.toMatch(PROHIBIDO);
   });
 });
