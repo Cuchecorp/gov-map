@@ -83,8 +83,13 @@ export interface PeriodoUrgencia {
   tipo: string;
   /** Eventos del período (en orden). */
   eventos: TramitacionEventoRow[];
-  desde: Date;
-  hasta: Date;
+  /**
+   * Primer/último evento del run CON fecha válida. `null` cuando ningún evento del
+   * run tiene fecha parseable → la línea colapsada OMITE el rango (nunca se muestra
+   * una fecha fabricada tipo "ene 1970"; idiom fechaValida/fechaCortaSegura).
+   */
+  desde: Date | null;
+  hasta: Date | null;
 }
 
 type TimelineItem =
@@ -130,8 +135,14 @@ function construirItems(eventos: TramitacionEventoRow[]): TimelineItem[] {
     const run = ordenados.slice(i, j);
     if (run.length >= 2) {
       periodoIdx += 1;
-      const desde = fechaValida(run[0].fecha) ?? new Date(0);
-      const hasta = fechaValida(run[run.length - 1].fecha) ?? desde;
+      // Rango SOLO de fechas válidas del run (el sort manda las inválidas al inicio
+      // con time 0 — usarlas fabricaría "ene 1970"). Sin fecha válida → null (la
+      // línea colapsada omite el rango, nunca epoch).
+      const fechasValidas = run
+        .map((e) => fechaValida(e.fecha))
+        .filter((d): d is Date => d !== null);
+      const desde = fechasValidas[0] ?? null;
+      const hasta = fechasValidas.length > 0 ? fechasValidas[fechasValidas.length - 1] : null;
       items.push({
         kind: "periodo",
         periodo: {
@@ -181,13 +192,16 @@ function buildUrgenciasHref(
 /**
  * Línea colapsada de un período de urgencia. Conteo NEUTRO ("N eventos"), sin
  * semántica de renovación: "renovada N veces" contaba la presentación inicial como
- * renovación (N eventos ≠ N renovaciones) — una afirmación fabricada.
+ * renovación (N eventos ≠ N renovaciones) — una afirmación fabricada. Si el run no
+ * tiene NINGUNA fecha válida, se omite el rango (nunca una fecha fabricada).
  */
 function periodoLinea(p: PeriodoUrgencia): string {
+  const base = `Urgencia ${p.tipo}: ${p.eventos.length} eventos`;
+  if (p.desde === null || p.hasta === null) return base;
   const mesX = mesAnio(p.desde);
   const mesY = mesAnio(p.hasta);
   const rango = mesX === mesY ? `en ${mesX}` : `entre ${mesX} y ${mesY}`;
-  return `Urgencia ${p.tipo}: ${p.eventos.length} eventos ${rango}`;
+  return `${base} ${rango}`;
 }
 
 export function TimelineView({

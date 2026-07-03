@@ -127,6 +127,32 @@ describe("paresDeUrgencia — sólo runs contiguos del mismo tipo, ≥ 2", () =>
     expect(screen.getByText(/Urgencia Suma: 2 eventos/)).toBeInTheDocument();
   });
 
+  it("fechas inválidas en el run NUNCA fabrican 'ene 1970': el rango se deriva de fechas válidas u se omite (WR-04)", () => {
+    // (a) run SIN ninguna fecha válida → línea sin rango (nunca epoch).
+    const sinFechas = [
+      makeEvento({ fecha: "no-es-fecha", tipo: "urgencia", descripcion: "Suma" }),
+      makeEvento({ fecha: "tampoco", tipo: "urgencia", descripcion: "Suma" }),
+    ];
+    const { container } = render(
+      <TimelineView eventos={sinFechas} boletin="16284-07" />,
+    );
+    expect(screen.getByText(/Urgencia Suma: 2 eventos/)).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/1970/);
+    cleanup();
+
+    // (b) run con UNA fecha inválida → el rango usa solo las válidas (sin epoch).
+    const mixtas = [
+      makeEvento({ fecha: "no-es-fecha", tipo: "urgencia", descripcion: "Suma" }),
+      makeEvento({ fecha: "2026-03-10T00:00:00Z", tipo: "urgencia", descripcion: "Suma" }),
+      makeEvento({ fecha: "2026-04-11T00:00:00Z", tipo: "urgencia", descripcion: "Suma" }),
+    ];
+    const periodos = paresDeUrgencia(mixtas);
+    expect(periodos.length).toBe(1);
+    expect(periodos[0].desde?.getUTCFullYear()).toBe(2026);
+    const r2 = render(<TimelineView eventos={mixtas} boletin="16284-07" />);
+    expect(r2.container.textContent).not.toMatch(/1970/);
+  });
+
   it("un par [hace presente, retira] contiguo NO forma período (el retiro no es renovación)", () => {
     const eventos = [
       makeEvento({
