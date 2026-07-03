@@ -432,21 +432,23 @@ const { data: rpcData } = await sb.rpc("lobby_de_parlamentario", { p_id: id });
 | A5 | El colapso de urgencias se basa en `/urgencia/i` en descripcion + `tipo` | Pitfall 3 | Si hay eventos de urgencia con descripcion que no menciona "urgencia" (p.ej. sólo el TIPO crudo), la heurística `tipo==='urgencia'` los captura igual; validar con fixture real |
 | A6 | `VotoFichaMencionRow` es dead code seguro de eliminar | State of the Art | Puede tener consumidores en tests/fixtures RTL; grep antes de borrar el archivo completo |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Reconciliación guard-lockdown vs `grant execute ... to anon` de la migración de rebeldías**
+> Las 4 preguntas quedaron RESUELTAS en planning: OQ1 -> 51-01 Task 3 (guard refinado por-statement, solo `grant execute on function` de RPCs en PUBLIC_RPC_ALLOWLIST, test negativo sintetico; ack de operador en checkpoint Task 4). OQ2 -> 51-01 Task 2 (EXCLUIR ausencias). OQ3 -> 51-03 Task 1 (filtro generico ^https?:// - URIs nunca son valores). OQ4 -> 51-06 (pagina minima honesta).
+
+1. **RESOLVED - Reconciliación guard-lockdown vs `grant execute ... to anon` de la migración de rebeldías**
    - What we know: el RPC ya está en `PUBLIC_RPC_ALLOWLIST`; el intent es que anon lo ejecute. El guard bloquea `grant ... to anon` en migraciones > 0044.
    - What's unclear: si el equipo prefiere refinar el regex del guard (excluir `grant execute on function`) o exentar el archivo.
    - Recommendation: refinar el guard para no marcar `grant execute on function` (que no expone filas, sólo ejecuta security-definer PII-safe), con un test que lo documente. Decisión de seguridad → confirmar con operador en el plan.
 
-2. **Excluir vs separar ausencias en rebeldías (SC5)**
+2. **RESOLVED — Excluir vs separar ausencias en rebeldías (SC5)**
    - What we know: CONTEXT permite ambas ("excluir ausencias del cálculo/salida (o separarlas explícitamente)"). UI-SPEC copy prevé ambas (línea separada "Ausente en {M} votaciones" si se separan).
    - What's unclear: cuál se implementa.
    - Recommendation: EXCLUIR del cómputo de "votó distinto" (más simple, cierra B5); si el equipo quiere mostrar ausencias, hacerlo como línea neutra separada, NUNCA mezclada. El esbozo SQL excluye.
 
-3. **Prefijo exacto de URI CPLT (A1)** — validar contra un `contenido` real antes de anclar el regex del filtro.
+3. **RESOLVED — Prefijo exacto de URI CPLT (A1)** — validar contra un `contenido` real antes de anclar el regex del filtro.
 
-4. **Alcance de `/metodologia`** — página mínima honesta ahora; el diccionario de datos completo es un milestone futuro (`/sobre` ya lo declara). Confirmar que el footer no promete más de lo que la página entrega.
+4. **RESOLVED — Alcance de `/metodologia`** — página mínima honesta ahora; el diccionario de datos completo es un milestone futuro (`/sobre` ya lo declara). Confirmar que el footer no promete más de lo que la página entrega.
 
 ## Environment Availability
 
