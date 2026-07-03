@@ -289,6 +289,31 @@ export function etiquetaBien(clave: string): string {
 }
 
 /**
+ * Etiquetas cortas en plural para el CONTEO-resumen de la tarjeta (SC3). Mismo
+ * `TipoBien` y mismo orden que `ORDEN_GRUPOS_BIENES`; la tarjeta compone la línea
+ * "{n} inmuebles · {n} valores · …" (NEUTRO, factual — nunca suma de montos).
+ */
+const CONTEO_LABELS: Readonly<Record<TipoBien, string>> = {
+  inmueble: "inmuebles",
+  actividad: "actividades",
+  accion_derecho: "acciones y derechos",
+  valor: "valores",
+  mueble: "bienes muebles",
+  pasivo: "pasivos",
+};
+
+/**
+ * `true` cuando `valor` es una URI absoluta genérica (`^https?://`, trimmeado).
+ * Regla LOCKED (Open Question 3): "las URIs nunca son valores" — un valor así es
+ * ruido de dereferencia de la fuente CPLT, NUNCA un dato ciudadano (B3, T-51-08).
+ * Se filtra por URI absoluta GENÉRICA, NO por host hardcodeado, para resistir el
+ * drift del host CPLT. La trazabilidad a la fuente queda por ProvenanceBadge.
+ */
+export function esUriCplt(valor: string): boolean {
+  return /^https?:\/\//.test(valor.trim());
+}
+
+/**
  * Agrupa los bienes de UNA versión por `tipo_bien` en el orden fijo §3.3. Omite
  * grupos vacíos. El UI NO computa nada salvo el conteo NEUTRO por grupo.
  */
@@ -302,15 +327,21 @@ export function agruparBienesPorTipo(
   })).filter((g) => g.bienes.length > 0);
 }
 
-/** Pares clave→valor literal de un `contenido`, etiqueta NOUN + valor verbatim. */
+/**
+ * Pares clave→valor literal de un `contenido`, etiqueta NOUN + valor verbatim.
+ * EXCLUYE los pares cuyo valor casa `esUriCplt` (B3): una URI de dereferencia
+ * CPLT es ruido interno, no un dato ciudadano — se descarta de tarjeta Y detalle.
+ */
 export function paresDeContenido(
   contenido: Record<string, unknown>,
 ): Array<{ etiqueta: string; valor: string }> {
-  return Object.entries(contenido).map(([clave, valor]) => ({
-    etiqueta: etiquetaBien(clave),
-    // Valor LITERAL verbatim (string como vino de la fuente; otros tipos → String()).
-    valor: typeof valor === "string" ? valor : String(valor),
-  }));
+  return Object.entries(contenido)
+    .map(([clave, valor]) => ({
+      etiqueta: etiquetaBien(clave),
+      // Valor LITERAL verbatim (string como vino de la fuente; otros tipos → String()).
+      valor: typeof valor === "string" ? valor : String(valor),
+    }))
+    .filter((p) => !esUriCplt(p.valor));
 }
 
 /**
@@ -384,15 +415,26 @@ function VersionRow({
   const fechaTexto = fechaCortaSegura(version.fecha_presentacion);
   const noConfirmado = version.parlamentario_estado_vinculo !== "confirmado";
 
+  // Conteo-resumen por categoría desde la MISMA fuente que el chart F46
+  // (`seriePatrimonio`, LOCKED por CONTEXT). Un punto por versión; si la fecha no
+  // parsea (`[]`), la tarjeta simplemente omite la línea de conteos (no fabrica).
+  const punto = seriePatrimonio([version])[0];
+  const conteos = punto
+    ? ORDEN_GRUPOS_BIENES.map(({ tipo }) => ({
+        n: punto[tipo],
+        label: CONTEO_LABELS[tipo],
+      })).filter((c) => c.n > 0)
+    : [];
+
+  // Campos SIN valores-URI (B3): una URI de dereferencia CPLT nunca es un valor.
+  const camposVisibles = version.campos.filter((c) => !esUriCplt(c.valor));
+  const hayDetalle = camposVisibles.length > 0 || version.bienes.length > 0;
+
   return (
-    <li className="flex flex-col gap-2 py-4 border-t first:border-t-0">
+    <li className="mt-4 flex flex-col gap-3 rounded-lg border bg-card p-6 first:mt-0">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        {/* Fecha de presentación PROMINENTE (mono, text-base, labeled). INT-04. */}
-        <span className="font-mono text-base leading-none">
-          Presentada el {fechaTexto}
-        </span>
-        {/* Tipo de declaración: label literal de la fuente, muted, sin editorializar. */}
-        <span className="text-sm text-muted-foreground">{version.tipo}</span>
+        {/* Título de la tarjeta: tipo de declaración literal de la fuente. */}
+        <h3 className="text-base font-semibold">Declaración de {version.tipo}</h3>
         {/* ProvenanceBadge por versión (obligatorio); ámbar = frescura. */}
         <span className="ml-auto">
           <ProvenanceBadge
@@ -402,6 +444,9 @@ function VersionRow({
           />
         </span>
       </div>
+
+      {/* Fecha de presentación PROMINENTE (mono, text-base, labeled). INT-04. */}
+      <p className="font-mono text-base leading-none">Presentada el {fechaTexto}</p>
 
       {/* Caveat de frescura §6.4: una vieja se marca histórica, nunca "actual". */}
       {version.es_historica && (
@@ -419,37 +464,45 @@ function VersionRow({
         </p>
       )}
 
-      {/*
-        Campos declarados: <dl> NOUN label + valor literal verbatim (§3.3). Se
-        muestran inline (escaneable); para una declaración larga, el detalle
-        completo se abre server-driven con `?ver=<versionId>`. Cada valor es
-        verbatim de la fuente — el UI NO computa ni resume nada.
-      */}
-      {version.campos.length > 0 ? (
-        <dl className="grid grid-cols-1 gap-1 sm:grid-cols-[max-content_1fr] sm:gap-x-4">
-          {(abierta ? version.campos : version.campos.slice(0, 4)).map((c, i) => (
-            <div key={`${version.version_id}-${i}`} className="contents">
-              <dt className="text-sm text-muted-foreground">{c.etiqueta}:</dt>
-              <dd className="text-base">{c.valor}</dd>
-            </div>
-          ))}
-        </dl>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          Esta versión no detalla campos en la fuente.
+      {/* Conteo-resumen NEUTRO por categoría (§3.6, único agregado permitido), Mono.
+          El detalle completo NUNCA se vuelca inline: se abre bajo `?ver`. */}
+      {conteos.length > 0 && (
+        <p className="font-mono text-sm text-muted-foreground">
+          {conteos.map((c) => `${c.n} ${c.label}`).join(" · ")}
         </p>
       )}
-      {!abierta && version.campos.length > 4 && (
-        <Link
-          href={buildVerHref(id, version.version_id)}
-          className="text-primary underline underline-offset-2 inline-flex items-center min-h-[44px] text-sm self-start"
-        >
-          Ver detalle de la declaración
-        </Link>
-      )}
 
-      {/* Bienes declarados de esta versión (agrupados por tipo, solo datos). */}
-      <BienesDeVersion bienes={version.bienes} />
+      {abierta ? (
+        // Detalle completo (solo bajo `?ver=<versionId>`): campos <dl> + bienes.
+        <div className="mt-1 flex flex-col gap-3 border-t pt-3">
+          {camposVisibles.length > 0 ? (
+            <dl className="grid grid-cols-1 gap-1 sm:grid-cols-[max-content_1fr] sm:gap-x-4">
+              {camposVisibles.map((c, i) => (
+                <div key={`${version.version_id}-${i}`} className="contents">
+                  <dt className="text-sm text-muted-foreground">{c.etiqueta}:</dt>
+                  {/* Valor LITERAL verbatim de la fuente — nunca computado. */}
+                  <dd className="text-base">{c.valor}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Esta versión no detalla campos en la fuente.
+            </p>
+          )}
+          {/* Bienes declarados de esta versión (agrupados por tipo, solo datos). */}
+          <BienesDeVersion bienes={version.bienes} />
+        </div>
+      ) : (
+        hayDetalle && (
+          <Link
+            href={buildVerHref(id, version.version_id)}
+            className="text-primary underline underline-offset-2 inline-flex items-center min-h-[44px] text-sm self-start"
+          >
+            Ver detalle de la declaración
+          </Link>
+        )
+      )}
     </li>
   );
 }
