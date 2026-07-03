@@ -497,7 +497,7 @@ function VersionRow({
         hayDetalle && (
           <Link
             href={buildVerHref(id, version.version_id)}
-            className="text-primary underline underline-offset-2 inline-flex items-center min-h-[44px] text-sm self-start"
+            className="text-accent-product underline underline-offset-2 inline-flex items-center min-h-11 text-sm self-start"
           >
             Ver detalle de la declaración
           </Link>
@@ -588,7 +588,7 @@ export function PatrimonioView({ data }: { data: PatrimonioViewData }) {
           {page > 1 ? (
             <Link
               href={buildHistorialHref(id, page - 1)}
-              className="text-primary underline underline-offset-2 inline-flex items-center min-h-[44px]"
+              className="text-accent-product underline underline-offset-2 inline-flex items-center min-h-11"
             >
               Anteriores
             </Link>
@@ -601,7 +601,7 @@ export function PatrimonioView({ data }: { data: PatrimonioViewData }) {
           {page < totalPages ? (
             <Link
               href={buildHistorialHref(id, page + 1)}
-              className="text-primary underline underline-offset-2 inline-flex items-center min-h-[44px]"
+              className="text-accent-product underline underline-offset-2 inline-flex items-center min-h-11"
             >
               Siguientes
             </Link>

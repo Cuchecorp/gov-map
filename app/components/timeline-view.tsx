@@ -241,7 +241,7 @@ export function TimelineView({
               </ul>
               <Link
                 href={buildUrgenciasHref(boletin, p.id, true)}
-                className="inline-flex items-center min-h-[44px] text-sm text-primary underline underline-offset-2"
+                className="inline-flex items-center min-h-11 text-sm text-accent-product underline underline-offset-2"
               >
                 Ocultar urgencias
               </Link>
@@ -258,7 +258,7 @@ export function TimelineView({
               {periodoLinea(p)} —{" "}
               <Link
                 href={buildUrgenciasHref(boletin, p.id, false)}
-                className="text-primary underline underline-offset-2"
+                className="text-accent-product underline underline-offset-2"
               >
                 ver todas
               </Link>

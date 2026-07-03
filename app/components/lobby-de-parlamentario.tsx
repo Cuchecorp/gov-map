@@ -196,9 +196,9 @@ function VistaToggle({
   const agrupadaActiva = vista !== "cronologica";
   // Estado activo petróleo (UI-SPEC §0 reserved-for #3): subrayado --accent-product.
   const activoCls =
-    "text-accent-product underline decoration-2 decoration-accent-product underline-offset-4 font-medium inline-flex items-center min-h-11";
+    "text-accent-product underline decoration-2 decoration-accent-product underline-offset-4 font-semibold inline-flex items-center min-h-11";
   const inactivoCls =
-    "text-primary underline underline-offset-2 inline-flex items-center min-h-11";
+    "text-accent-product underline underline-offset-2 inline-flex items-center min-h-11";
   return (
     <nav
       className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-4 text-sm"
@@ -350,7 +350,7 @@ function VistaAgrupada({ grupos }: { grupos: GrupoContraparte[] }) {
       {grupos.map((g) => (
         <li key={g.contraparte} className="py-3 border-t first:border-t-0">
           {/* Contraparte VERBATIM (h3) — NUNCA enlazada. */}
-          <h3 className="text-base font-medium">{g.contraparte}</h3>
+          <h3 className="text-base font-semibold">{g.contraparte}</h3>
           {/* Conteo neutro + fechas (Mono). "{contraparte} — {N} reuniones: {fechas}". */}
           <p className="text-sm text-muted-foreground">
             <span aria-hidden="true">— </span>
@@ -443,7 +443,7 @@ function VistaCronologica({
           {page > 1 ? (
             <Link
               href={buildHref(id, page - 1, "cronologica")}
-              className="text-primary underline underline-offset-2 inline-flex items-center min-h-[44px]"
+              className="text-accent-product underline underline-offset-2 inline-flex items-center min-h-11"
             >
               Anteriores
             </Link>
@@ -456,7 +456,7 @@ function VistaCronologica({
           {page < totalPages ? (
             <Link
               href={buildHref(id, page + 1, "cronologica")}
-              className="text-primary underline underline-offset-2 inline-flex items-center min-h-[44px]"
+              className="text-accent-product underline underline-offset-2 inline-flex items-center min-h-11"
             >
               Siguientes
             </Link>

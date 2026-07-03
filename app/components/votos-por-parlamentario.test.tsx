@@ -398,7 +398,11 @@ describe("VotosView — sección VOTE (asistencia, tema, votó distinto, §3.3�
     render(<VotosView id="P00001" data={makeViewData({ rebeldias })} />);
     expect(screen.getByText(/Votó distinto a su bancada/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Votó distinto a la mayoría de su bancada 1 vez/i),
+      screen.getByText((_, el) =>
+        /Votó distinto a la mayoría de su bancada\s*1\s*vez/i.test(
+          el?.tagName === "P" ? (el.textContent ?? "") : "",
+        ),
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/opción mayoritaria de su bancada en esa misma votación/i),
@@ -547,9 +551,19 @@ describe("VotosView — instructiva (asistencia corregida, arco, cobertura, §3.
     );
     // Presente = total − ausente; lo expresa como métrica propia.
     expect(
-      screen.getByText(/Presente en 1 de 2 votaciones/),
+      screen.getByText((_, el) =>
+        /Presente en\s*1 de 2\s*votaciones/.test(
+          el?.tagName === "P" ? (el.textContent ?? "") : "",
+        ),
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/[Aa]usente en 1/)).toBeInTheDocument();
+    expect(
+      screen.getByText((_, el) =>
+        /[Aa]usente en\s*1/.test(
+          el?.tagName === "P" ? (el.textContent ?? "") : "",
+        ),
+      ),
+    ).toBeInTheDocument();
   });
 
   it("sin ausentes → NO inventa asistencia; dice 'Emitió N votos registrados'", () => {

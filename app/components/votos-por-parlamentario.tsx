@@ -355,14 +355,14 @@ function ProyectoGrupo({
       {grupo.titulo ? (
         <Link
           href={`/proyecto/${grupo.boletin}`}
-          className="text-base text-primary underline underline-offset-2"
+          className="text-base text-accent-product underline underline-offset-2"
         >
           {grupo.titulo}
         </Link>
       ) : (
         <Link
           href={`/proyecto/${grupo.boletin}`}
-          className="font-mono text-primary underline underline-offset-2"
+          className="font-mono text-accent-product underline underline-offset-2"
         >
           Boletín N°{grupo.boletin}
         </Link>
@@ -433,7 +433,7 @@ function ProyectoGrupo({
       {/* Afford server-driven: abre/cierra el detalle vía ?votosVer (SC1). */}
       <Link
         href={buildVotosVerHref(id, grupo.boletin, abierto)}
-        className="inline-flex items-center min-h-[44px] text-sm text-primary underline underline-offset-2"
+        className="inline-flex items-center min-h-11 text-sm text-accent-product underline underline-offset-2"
       >
         {abierto ? "Ocultar detalle" : "Ver detalle"}
       </Link>
@@ -524,8 +524,11 @@ export function VotosView({
             {/* Asistencia REAL como métrica propia, separada del sentido. */}
             {ausentes > 0 ? (
               <p className="text-sm text-muted-foreground mt-1">
-                Presente en {presentes} de {totalConteos} votaciones · Ausente en{" "}
-                {ausentes}.
+                Presente en{" "}
+                <span className="font-mono">
+                  {presentes} de {totalConteos}
+                </span>{" "}
+                votaciones · Ausente en <span className="font-mono">{ausentes}</span>.
               </p>
             ) : (
               <p className="text-sm text-muted-foreground mt-1">
@@ -548,7 +551,7 @@ export function VotosView({
             <Link
               href={buildHref(id, { materia: null })}
               className={cn(
-                "inline-flex items-center min-h-[44px]",
+                "inline-flex items-center min-h-11",
                 materiaActiva === null && "border-b-2 border-primary",
               )}
             >
@@ -561,7 +564,7 @@ export function VotosView({
                 key={m.slug}
                 href={buildHref(id, { materia: m.slug })}
                 className={cn(
-                  "inline-flex items-center min-h-[44px]",
+                  "inline-flex items-center min-h-11",
                   materiaActiva === m.slug && "border-b-2 border-primary",
                 )}
               >
@@ -631,7 +634,7 @@ export function VotosView({
                   votosPage: String(page - 1),
                   materia: materiaActiva,
                 })}
-                className="text-primary underline underline-offset-2 inline-flex items-center min-h-[44px]"
+                className="text-accent-product underline underline-offset-2 inline-flex items-center min-h-11"
               >
                 Anteriores
               </Link>
@@ -647,7 +650,7 @@ export function VotosView({
                   votosPage: String(page + 1),
                   materia: materiaActiva,
                 })}
-                className="text-primary underline underline-offset-2 inline-flex items-center min-h-[44px]"
+                className="text-accent-product underline underline-offset-2 inline-flex items-center min-h-11"
               >
                 Siguientes
               </Link>
@@ -668,7 +671,8 @@ export function VotosView({
         ) : (
           <>
             <p className="text-base mt-2">
-              Votó distinto a la mayoría de su bancada {rebeldias.length}{" "}
+              Votó distinto a la mayoría de su bancada{" "}
+              <span className="font-mono">{rebeldias.length}</span>{" "}
               {rebeldias.length === 1 ? "vez" : "veces"}.
             </p>
             <ul className="mt-2">
@@ -683,14 +687,14 @@ export function VotosView({
                   {r.titulo ? (
                     <Link
                       href={`/proyecto/${r.boletin}`}
-                      className="text-base text-primary underline underline-offset-2"
+                      className="text-base text-accent-product underline underline-offset-2"
                     >
                       {r.titulo}
                     </Link>
                   ) : (
                     <Link
                       href={`/proyecto/${r.boletin}`}
-                      className="font-mono text-primary underline underline-offset-2"
+                      className="font-mono text-accent-product underline underline-offset-2"
                     >
                       Boletín N°{r.boletin}
                     </Link>
