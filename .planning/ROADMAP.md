@@ -1053,13 +1053,15 @@ F45 (navegación: acordeones + resumen)  ──►  F46 (chart patrimonio: conte
 
 ### Diagnóstico 2026-07-02 (post-F46) — fases P1/P2/P3
 
-Auditoría completa del sitio en vivo (`.planning/DIAGNOSTICO-govmap-2026-07-02.md`: 28 bugs B1–B28, propuestas anti-sobrecarga, catálogo de cruces) → Phases 50 (quick wins), 51 (legibilidad profunda), 52 (cruces nuevos). P0 = checklist operador (deploy F45+F46, flip NET tras B20/B21, rotar DB password). B20/B21 (RedGraph/`/red`) quedan en backlog hasta decidir el flip NET.
+Auditoría completa del sitio en vivo (`.planning/DIAGNOSTICO-govmap-2026-07-02.md`: 28 bugs B1–B28, propuestas anti-sobrecarga, catálogo de cruces) → Phases 50 (quick wins), 51 (legibilidad profunda), 52 (cruces nuevos).
+
+**P0 EJECUTADO 2026-07-02 (autorización directa del usuario):** deploy F45+F46+F50 EN VIVO (build Docker Linux + wrangler, versión `3ade68b8`) · B20/B21 arreglados (quick `260702-rbb` + fix `/red` force-dynamic — el gate OFF en build horneaba notFound estático → 500 con flag ON) · **`NET_PUBLIC_ENABLED=true` FLIPEADO** (dossier F17 firmado; `/red` LIVE con selector de semilla, grafo verificado con D1012 = 305 aristas, semilla inválida → 404) · `CRUCES_PUBLIC_ENABLED` ya estaba ON (Camino A). **Pendiente único de P0: rotar DB password (usuario, B26).** Bug latente anotado: `/admin/revisar-entidades` = misma clase estática-con-gate-horneado (fix force-dynamic cuando se encienda).
 
 ### Phases (v5.0)
 
 - [x] **Phase 44: Auditoría UX + Inventario de datos + Plan** — ✅ COMPLETE 2026-06-26 (browseros sobre PROD + psql + lectura `app/`). Entregables: `UI-SPEC.md`, `44-AUDIT-UX.md`, `44-DATA-INVENTORY.md`. Hallazgo: navegación ROI-alto data-independiente; charts mayormente data-gated.
 - [x] **Phase 45: Navegación — acordeones por carril + resumen/índice above-fold.** Construible hoy. Dep: `@radix-ui/react-accordion`. Preserva frontera de carril `mt-12` (un acordeón por dominio, header siempre visible). **Mayor ROI del milestone.** (completed 2026-06-26)
-- [ ] **Phase 46: Chart patrimonio (conteo de bienes/pasivos por año).** Recharts (instalar + validar build CF Docker). Único chart con cobertura densa hoy (135 parlamentarios ≥2 años); solo conteos (montos=URI → degrade). Dep: F45.
+- [x] **Phase 46: Chart patrimonio (conteo de bienes/pasivos por año).** Recharts (instalar + validar build CF Docker). Único chart con cobertura densa hoy (135 parlamentarios ≥2 años); solo conteos (montos=URI → degrade). Dep: F45. (completed 2026-07-02 — 46-02 deploy ejecutado: F45+F46+F50 EN VIVO)
 - [ ] **Phase 47: Chart votos/ausencias** — **DESBLOQUEADA 2026-07-02**: gate de datos CUMPLIDO verificado contra PROD (133 votaciones / 18.700 votos / 17.378 confirmados / 186 parlamentarios con voto). La ingesta masiva ya corrió; construible.
 - [ ] **Phase 48: Autoría + similares-del-parlamentario** — GATED (re-verificado 2026-07-02: `proyecto.autores` vacío 136/136). Pre-req: ingesta `proyecto.autores` + resolución nombre→`parlamentario_id` + RPC `proyectos_de_parlamentario`.
 - [ ] **Phase 49: Comparativo vs cámara (ausencias/actividad)** — **gate de datos CUMPLIDO 2026-07-02** (546 ausencias / 18.700 votos en PROD; F47 desbloqueada). Falta solo: RPC `tasa_ausencia_comparada` (security definer, PII-safe, allowlist).
@@ -1115,7 +1117,7 @@ Cada fase de chart pasa de GATED a construible cuando su gap de ingesta cierra; 
 **Plans:** 1/2 plans executed
 
 - [x] 46-01-PLAN.md — Recharts + seriePatrimonio() transform + isla cliente patrimonio-chart.tsx + shell server (caveat/degrade/footer) + tests
-- [ ] 46-02-PLAN.md — Checkpoint operador: build OpenNext Docker Linux + deploy wrangler
+- [x] 46-02-PLAN.md — Checkpoint operador: build OpenNext Docker Linux + deploy wrangler (ejecutado 2026-07-02, versión `3ade68b8`)
 
 **UI hint**: sí (gráfico en la sección de patrimonio; depende del acordeón de F45)
 

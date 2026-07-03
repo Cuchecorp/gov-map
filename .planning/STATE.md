@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
 status: Ready to execute
-stopped_at: Phase 50 COMPLETE (verifier 12/12 passed, code-review 2 warnings fixed, suite 406 verde, tsc limpio, lockdown 7/7). Halted at --to 50. Próximo = Phase 51 (LEG2) / Phase 52 (CRUCE2) o deploy operador F45+F46+F50.
+stopped_at: "P0 EJECUTADO 2026-07-02: deploy F45+F46+F50 EN VIVO (3ade68b8) + B20/B21 + /red force-dynamic + NET FLIPEADO (/red LIVE). Pendiente usuario: rotar DB password. Próximo = /gsd-autonomous --from 51 --to 52 (o F47/F49, desbloqueadas)."
 last_updated: "2026-07-02T19:11:00.000Z"
 last_activity: 2026-07-02
 progress:
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 50 COMPLETE (P1 quick wins); siguiente = Phase 51 (LEG2 legibilidad profunda) / Phase 52 (CRUCE2) / F47-F49 desbloqueadas; deploy operador F45+F46+F50 pendiente.
+**Current focus:** Sitio EN VIVO con F45+F46+F50 y **NET encendido** (`/red` LIVE, deploy `3ade68b8`, 2026-07-02). Siguiente = Phase 51 (LEG2 legibilidad profunda) y Phase 52 (CRUCE2, independiente de 51); F47/F49 desbloqueadas (solo F49 necesita RPC nueva allowlisted). ÚNICO pendiente operador: rotar DB password (B26).
 
 ## Current Position
 
@@ -34,7 +34,7 @@ Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to
 - **Phase 46 (VIZ chart patrimonio)** code-complete (disk=partial; 46-01 done, 46-02=checkpoint operador): chart Recharts (stacked BarChart, NO line/area → no insinúa tendencia), conteo de ítems por declaración (composite key anio·tipo·version_id → versiones mismo-año NO se fusionan), SIN montos (caveat URIs), degrade <2, footer CC BY. `recharts@3.9.0`. Suite app/ 377 verde, guard verde. Code-review 6 findings→todos fixed + verifier 9/9 + UI-review 21/24.
 - Charts data-hambrientos (votos/autoría/comparativos) siguen GATED → F47/F48/F49 tras ingesta (NO autónomas).
 
-**DEUDA ÚNICA OPERADOR (cubre F45+F46 en un solo deploy):** build OpenNext en **Docker Linux** (Windows rompe worker → 500) + deploy `wrangler` local (creds CF NO en .env) + verificación visual (reduce-motion; barras mismo-año distintas). Polish advisory diferido: tokenizar fill ramp del chart, tematizar legend/tooltip Recharts, a11y data-table fallback.
+**DEPLOY EJECUTADO 2026-07-02** (cubrió F45+F46+F50+B20/B21+flip NET en un deploy, versión `3ade68b8`): build Docker Linux (`docker-cf-build.sh` → `docker cp` → `wrangler deploy` desde host). Verificación curl: home pill 14309-04 ✓, acordeones Radix en ficha ✓, `/red` selector 200 / seed D1012 grafo 305 aristas / seed inválida 404 ✓, link "Ver relaciones" en ficha ✓, agenda/proyecto/parlamentarios 200 ✓. GOTCHA NUEVO load-bearing: ruta con gate `notFound()` ANTES del primer API dinámico queda **estática en build** con el flag horneado → 500 en runtime con flag ON; fix = `export const dynamic = "force-dynamic"` (aplicado a `/red`; `/admin/revisar-entidades` tiene el mismo bug latente). Polish advisory diferido: tokenizar fill ramp del chart, tematizar legend/tooltip Recharts, a11y data-table fallback, verificación visual reduce-motion.
 Diseño LOCKED F45/F46: `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md`.
 Last activity: 2026-07-02
 
