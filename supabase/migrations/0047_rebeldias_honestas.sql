@@ -85,8 +85,11 @@ $$;
 
 -- ── ACL determinista: lock-down sin grants (Camino A, espejo de 0044) ─────────
 -- El drop+recreate puede re-conceder EXECUTE por DEFAULT PRIVILEGES según el rol que
--- aplica; el revoke explícito limpia la concesión implícita. CERO grant a anon: el
--- sitio lee con service_role (bypassa ACL) y anon quedó a cero grants desde 0044 —
--- este RPC debe quedar igual que el resto de las rutinas de public (deny).
--- CERO grant select sobre `parlamentario` (LEGAL-03).
+-- aplica; el DOBLE revoke explícito (idiom 0041) limpia la concesión implícita SEA
+-- CUAL SEA ese rol (los default privileges de `supabase_admin` — p.ej. SQL editor del
+-- dashboard — auto-conceden a anon/authenticated y el `from public` solo no los
+-- limpiaría). CERO grant a anon: el sitio lee con service_role (bypassa ACL) y anon
+-- quedó a cero grants desde 0044 — este RPC debe quedar igual que el resto de las
+-- rutinas de public (deny). CERO grant select sobre `parlamentario` (LEGAL-03).
 revoke all on function rebeldias_de_parlamentario(text) from public;
+revoke all on function rebeldias_de_parlamentario(text) from anon, authenticated;
