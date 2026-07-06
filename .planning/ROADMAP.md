@@ -1199,7 +1199,7 @@ Plans:
   4. **Módulo de actualidad en home:** qué se votó esta semana / urgencias vigentes / última actualización por fuente — el home deja de ser solo un buscador.
   5. Suite verde + tsc limpio + lockdown-guard verde (RPCs nuevas allowlisted); anti-insinuación intacta.
 
-**Plans:** 4/6 plans executed
+**Plans:** 5/6 plans executed
 
 Plans:
 
@@ -1207,5 +1207,5 @@ Plans:
 - [x] 52-02-PLAN.md — SC2/SC5: migracion 0048 RPC lobby_en_tramitacion (idiom 0047, PII-safe, semana ISO) + pgTAP + allowlist
 - [x] 52-03-PLAN.md — SC2/SC3: carril lobby x tramitacion en ficha proyecto (degrade honesto) + linea de citacion en Donde esta hoy
 - [x] 52-04-PLAN.md — SC4: modulo de actualidad en el home (3 bloques no-PII, force-dynamic) + RTL
-- [ ] 52-05-PLAN.md — SC1: corrida LIVE del clasificador (golden gate -> dry-run -> lotes -> materializar_cruces() -> verificacion psql)
+- [x] 52-05-PLAN.md — SC1: corrida LIVE del clasificador (golden gate -> dry-run -> lotes -> materializar_cruces() -> verificacion psql)
 - [ ] 52-06-PLAN.md — SC2/SC5: checkpoint operador — apply 0047+0048 por psql + pgTAP + stamping schema_migrations
