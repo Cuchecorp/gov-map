@@ -160,6 +160,24 @@ describe("citacionVigente — deriva la citación vigente/futura más próxima",
     expect(c!.comision).toBe("Próxima");
   });
 
+  it("WR-04: una citación de HOY sigue vigente en la tarde-noche de Chile (server en UTC ya está en el día siguiente)", () => {
+    // 2026-07-07T01:00Z = 2026-07-06 21:00 en Chile (-04, invierno). La citación
+    // de HOY (2026-07-06, convención del conector: fecha impresa a medianoche
+    // UTC) NO debe expirar por la medianoche UTC del server: "hoy" se ancla al
+    // día calendario de America/Santiago.
+    const nocheChile = new Date("2026-07-07T01:00:00Z");
+    const c = citacionVigente(
+      [makeCitacion({ fecha: "2026-07-06T00:00:00Z" })],
+      nocheChile,
+    );
+    expect(c).not.toBeNull();
+    expect(c!.fecha.toISOString()).toBe("2026-07-06T00:00:00.000Z");
+    // La de AYER (día calendario chileno anterior) sí queda fuera.
+    expect(
+      citacionVigente([makeCitacion({ fecha: "2026-07-05T00:00:00Z" })], nocheChile),
+    ).toBeNull();
+  });
+
   it("(d) citación sin comisión o sin fecha válida → se ignora (no fabrica)", () => {
     const c = citacionVigente(
       [

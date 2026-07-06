@@ -73,21 +73,35 @@ export function urgenciaVigente(
   return vigente;
 }
 
+/** Día calendario YYYY-MM-DD en Chile (en-CA emite ISO; DST-safe vía tzdb). */
+const DIA_CALENDARIO_CHILE = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Santiago",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 /**
  * Citación vigente/futura más próxima (SC3, Phase 52 — omit-when-not-derivable).
  * Recorre las citaciones crudas del boletín, descarta las sin comisión o sin fecha
- * válida, se queda con las de `fecha >= inicio del día de hoy` (una citación de HOY
+ * válida, se queda con las del día calendario de HOY o futuras (una citación de HOY
  * sigue vigente) y devuelve la de MENOR fecha (la más próxima). Si ninguna es
  * derivable → null (la línea se omite; espejo de `urgenciaVigente`). CERO fabricación.
+ *
+ * "HOY" es el día calendario de CHILE, no la medianoche del server (WR-04): en
+ * Workers el server corre en UTC, así que desde las ~20:00 de Chile el server ya
+ * está en el día UTC siguiente y una citación de HOY (convención del conector:
+ * fecha impresa almacenada a medianoche UTC) expiraría horas antes — mientras la
+ * sesión aún puede estar en curso. Se compara por FECHA DE CALENDARIO (string
+ * YYYY-MM-DD): hoy en America/Santiago vs. el día UTC de la citación (espejo de
+ * cómo se almacena) — cero aritmética en la zona del server. Es el mismo pitfall
+ * de timezone que 0048 documenta para el lado SQL.
  */
 export function citacionVigente(
   citaciones: CitacionCruda[],
   hoy: Date = new Date(),
 ): { comision: string; fecha: Date } | null {
-  // Inicio del día de hoy: una citación de hoy cuenta como vigente (no expira al
-  // pasar la medianoche del propio día).
-  const inicioHoy = new Date(hoy);
-  inicioHoy.setHours(0, 0, 0, 0);
+  const hoyChile = DIA_CALENDARIO_CHILE.format(hoy); // YYYY-MM-DD
 
   const futuras = citaciones
     .map((c) => ({ c, d: fechaValida(c.fecha) }))
@@ -95,7 +109,7 @@ export function citacionVigente(
       (x): x is { c: CitacionCruda; d: Date } =>
         x.d !== null &&
         !!x.c.comision?.trim() &&
-        x.d.getTime() >= inicioHoy.getTime(),
+        x.d.toISOString().slice(0, 10) >= hoyChile,
     )
     .sort((a, b) => a.d.getTime() - b.d.getTime());
 
