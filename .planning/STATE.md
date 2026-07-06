@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
-status: Phase complete — ready for verification
-stopped_at: "F51 COMPLETE (7/7, verifier 9/9, code-review clean 3 iter, UI 19/24+fixes). F52 PLANNED: CONTEXT+UI-SPEC(6/6)+RESEARCH+VALIDATION+PATTERNS+6 planes/2 waves commiteados (1bdd062); PENDIENTE: plan-checker 52 -> execute-phase 52 -> code-review/ui-review. Deuda operador: aplicar 0047 (+0048 cuando exista) por psql + deploy CF. Retomar: /gsd-autonomous --from 52 --to 52 (discuss/ui-spec/planes se saltan solos)"
-last_updated: "2026-07-03T16:07:59.026Z"
-last_activity: 2026-07-03
+status: Ready to execute
+stopped_at: "F52 EN EJECUCIÓN — 52-01 COMPLETE (1/6): --solo-confirmadas en clasificar-lobby-cli (carga incremental confirmadas-sin-sector, embed lobby_audiencia!inner + is(sector_id,null), RUT-gate intacto). Suite @obs/cruces 29 verde, tsc limpio. NO LIVE / NO DDL (eso es 52-05). SIGUIENTE: 52-02. Deuda operador: aplicar 0047 (+0048 cuando exista) por psql + deploy CF."
+last_updated: "2026-07-06T21:37:58.354Z"
+last_activity: 2026-07-06
 progress:
   total_phases: 41
   completed_phases: 23
   total_plans: 96
-  completed_plans: 97
+  completed_plans: 98
   percent: 56
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 51 — LEG2 — Legibilidad profunda (P2)
+**Current focus:** Phase 52 — cruce2-cruces-nuevos
 
 ## Current Position
 
-Phase: 51 (LEG2 — Legibilidad profunda (P2)) — EXECUTING
-Plan: 7 of 7
+Phase: 52 (cruce2-cruces-nuevos) — EXECUTING
+Plan: 2 of 6
 5/5 planes ejecutados (2 waves secuenciales). Verifier Opus **12/12 passed** contra código. Code-review thorough: 0 critical, 2 warnings **fixed** (WR-01 `esHistorica` guard fecha null — no fabrica "histórica"; WR-02 `getParlamentarioPublico` React.cache dedup 3 RPC), 3 info diferidos (incl. dead code voto-ficha-row → B24/Phase 51). Suite app/ **377→406 verde**, `tsc -b` limpio, lockdown-guard 7/7, Camino A intacto (cero RPC nueva/DDL/flag). Bugs cerrados: B1 pill→14309-04, B6 ámbar 14d, B7 agenda throw #34, B8 chip omitido, B9 error.tsx ×4 (`unstable_retry`), B10 copy lobby por cámara, B12 locale, B14 desenlace null explícito, B15 "Iniciativa del Ejecutivo (Mensaje).", B17 fechaCortaSegura, HS 1×/sección.
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
 Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to 46`, 2026-06-26):
@@ -37,7 +37,7 @@ Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to
 
 **DEPLOY EJECUTADO 2026-07-02** (cubrió F45+F46+F50+B20/B21+flip NET en un deploy, versión `3ade68b8`): build Docker Linux (`docker-cf-build.sh` → `docker cp` → `wrangler deploy` desde host). Verificación curl: home pill 14309-04 ✓, acordeones Radix en ficha ✓, `/red` selector 200 / seed D1012 grafo 305 aristas / seed inválida 404 ✓, link "Ver relaciones" en ficha ✓, agenda/proyecto/parlamentarios 200 ✓. GOTCHA NUEVO load-bearing: ruta con gate `notFound()` ANTES del primer API dinámico queda **estática en build** con el flag horneado → 500 en runtime con flag ON; fix = `export const dynamic = "force-dynamic"` (aplicado a `/red`; `/admin/revisar-entidades` tiene el mismo bug latente). Polish advisory diferido: tokenizar fill ramp del chart, tematizar legend/tooltip Recharts, a11y data-table fallback, verificación visual reduce-motion.
 Diseño LOCKED F45/F46: `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md`.
-Last activity: 2026-07-03
+Last activity: 2026-07-06
 
 ## Performance Metrics
 
@@ -233,6 +233,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [51-04]: lobby agrupado por contraparte (freq DESC) = vista DEFAULT + toggle ?vista=cronologica (normalizarVista fail-safe, preserva paginada); caveat identidad 1x/seccion reemplaza IdentityMarker por fila; contraparte verbatim NUNCA enlazada. Suite 448 verde, tsc limpio.
 - [Phase ?]: [51-05]: EstadoActualBlock '¿Dónde está hoy?' deriva etapa/estado + último hito + urgencia vigente (hace-presente sin retira posterior), OMITE cada línea no derivable (espejo seriePatrimonio), throw #34; timeline dos niveles colapsa SÓLO pares de urgencia contiguos mismo-tipo ≥2 (Pitfall 3), hitos siempre visibles, expand ?urgencias=u{ordinal}; SC7 1 badge/heading + link por evento. Suite 448→471, tsc limpio.
 - [Phase ?]: [51-07]: header con Periodo (Mono, solo columnas publicas ParlamentarioPublicoRow, LEGAL-03 intacto, omitido si null); chip Presente en N de M en resumen above-fold derivado de las MISMAS filas de votos_de_parlamentario que contarCarriles ya cachea (cero 2do fetch grep-verificado; presente = seleccion distinta de ausente igual que VotosView; asistencia null sin filas omite el chip, T-51-22). Suite 476 a 486, tsc limpio. Phase 51 COMPLETE 7/7.
+- [Phase ?]: [52-01]: --solo-confirmadas es un case booleano en el parser COMPARTIDO (un solo case cubre lobby+fichas; inerte en fichas). cargarContrapartes gana rama con embed lobby_audiencia!inner (estado_vinculo=confirmado + parlamentario_id no-null) + is(sector_id,null); el is-null hace la corrida incremental/resumible (re-correr AVANZA, no re-paga MiniMax). cargarContrapartes exportado para test de query-shape. RUT-gate intacto (loop sin try/catch). Suite @obs/cruces 29 verde, tsc limpio. NO LIVE, NO DDL (eso es 52-05).
 
 ### Pending Todos
 
@@ -280,9 +281,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-03T16:07:59.004Z
+Last session: 2026-07-06T21:34:28.269Z
 Stopped at: F51 COMPLETE (7/7, verifier 9/9, code-review clean 3 iter, UI 19/24+fixes). F52 PLANNED: CONTEXT+UI-SPEC(6/6)+RESEARCH+VALIDATION+PATTERNS+6 planes/2 waves commiteados (1bdd062); PENDIENTE: plan-checker 52 -> execute-phase 52 -> code-review/ui-review. Deuda operador: aplicar 0047 (+0048 cuando exista) por psql + deploy CF. Retomar: /gsd-autonomous --from 52 --to 52 (discuss/ui-spec/planes se saltan solos)
-Resume file: .planning/phases/52-cruce2-cruces-nuevos/52-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
