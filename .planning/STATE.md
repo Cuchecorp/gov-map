@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
 status: Ready to execute
-stopped_at: "F52 EN EJECUCIÓN — 52-01 COMPLETE (1/6): --solo-confirmadas en clasificar-lobby-cli (carga incremental confirmadas-sin-sector, embed lobby_audiencia!inner + is(sector_id,null), RUT-gate intacto). Suite @obs/cruces 29 verde, tsc limpio. NO LIVE / NO DDL (eso es 52-05). SIGUIENTE: 52-02. Deuda operador: aplicar 0047 (+0048 cuando exista) por psql + deploy CF."
-last_updated: "2026-07-06T21:37:58.354Z"
+stopped_at: "F52 EN EJECUCIÓN — 52-02 COMPLETE (2/6): RPC lobby_en_tramitacion(p_boletin) escrita (0048, idiom 0047, security definer PII-safe, join por semana ISO con at time zone America/Santiago explícito A1, doble revoke + CERO grant) + pgTAP 0048 (plan(9): 6 contrato + fixture coincidencia semana positivo/negativo) + allowlist +1. lockdown-guard 8/8, suite app/ 497 verde, tsc limpio. NO LIVE / NO DDL (apply = 52-06). SIGUIENTE: 52-03 (UI consume el contrato verbatim, degrada honesta pre-apply). Deuda operador: aplicar 0047+0048 por psql + deploy CF."
+last_updated: "2026-07-06T21:44:46.645Z"
 last_activity: 2026-07-06
 progress:
   total_phases: 41
   completed_phases: 23
   total_plans: 96
-  completed_plans: 98
+  completed_plans: 99
   percent: 56
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 52 (cruce2-cruces-nuevos) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 5/5 planes ejecutados (2 waves secuenciales). Verifier Opus **12/12 passed** contra código. Code-review thorough: 0 critical, 2 warnings **fixed** (WR-01 `esHistorica` guard fecha null — no fabrica "histórica"; WR-02 `getParlamentarioPublico` React.cache dedup 3 RPC), 3 info diferidos (incl. dead code voto-ficha-row → B24/Phase 51). Suite app/ **377→406 verde**, `tsc -b` limpio, lockdown-guard 7/7, Camino A intacto (cero RPC nueva/DDL/flag). Bugs cerrados: B1 pill→14309-04, B6 ámbar 14d, B7 agenda throw #34, B8 chip omitido, B9 error.tsx ×4 (`unstable_retry`), B10 copy lobby por cámara, B12 locale, B14 desenlace null explícito, B15 "Iniciativa del Ejecutivo (Mensaje).", B17 fechaCortaSegura, HS 1×/sección.
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
 Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to 46`, 2026-06-26):
