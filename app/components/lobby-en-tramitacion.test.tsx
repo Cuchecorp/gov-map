@@ -178,9 +178,16 @@ describe("lobby-en-tramitacion — invariantes de fuente", () => {
 
   it("degrade honesto: distingue PGRST202/function-missing (→null) de error real (→throw)", () => {
     expect(SRC).toContain("PGRST202");
-    expect(SRC).toMatch(/does not exist|schema cache/);
     expect(SRC).toMatch(/return null/);
     expect(SRC).toMatch(/throw new Error/);
+  });
+
+  it("WR-01: el camino 1 gatea SOLO por código PGRST202 — sin fallback por regex de mensaje", () => {
+    // Un regex sobre error.message ("does not exist" / "schema cache") tragaría
+    // errores REALES de schema (columna/relación renombrada) como "función ausente"
+    // y ocultaría la sección en silencio, violando el degrade-honesto (camino 3).
+    expect(SRC).not.toMatch(/\.test\(\s*error\??\.message/);
+    expect(SRC).toMatch(/error\?\.code === "PGRST202"/);
   });
 
   it("consume el RPC lobby_en_tramitacion con p_boletin", () => {

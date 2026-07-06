@@ -35,7 +35,9 @@ import { safeExternalHref } from "@/lib/utils";
  * DEGRADE HONESTO (LOAD-BEARING, 52-UI-SPEC §Degrade honesto): la migración 0048 se
  * aplica a PROD sólo en el checkpoint de operador (52-06). El build debe renderizar
  * con la RPC ausente sin 500 y sin fabricar una banda vacía. Tres caminos distintos:
- *   1. función ausente (PGRST202 / "does not exist" / "schema cache") → return null.
+ *   1. función ausente (PGRST202, el código PostgREST de function-not-found — SOLO
+ *      ese código; un fallback por regex de mensaje tragaría errores REALES de
+ *      schema como "column ... does not exist", WR-01) → return null.
  *   2. RPC presente, 0 filas → heading + caveat + empty honesto.
  *   3. cualquier otro error real de DB/red → throw (#34).
  */
@@ -208,13 +210,12 @@ export async function LobbyEnTramitacionSection({ boletin }: { boletin: string }
     p_boletin: boletin,
   });
 
-  // Camino 1: la función NO existe en PROD (pre-apply 0048). PGRST202 =
-  // function-not-found de PostgREST; el fallback de mensaje cubre variantes de
-  // "does not exist" / "schema cache". → nodo AUSENTE del HTML (null), sin 500.
-  if (
-    error?.code === "PGRST202" ||
-    /does not exist|schema cache/i.test(error?.message ?? "")
-  ) {
+  // Camino 1: la función NO existe (PGRST202 = function-not-found de PostgREST).
+  // SOLO ese código exacto → nodo AUSENTE del HTML (null), sin 500. NO se usa un
+  // fallback por regex de mensaje: "column ... does not exist" / "relation ...
+  // does not exist" son errores REALES de schema que deben ir al camino 3 (throw),
+  // no ocultar la sección en silencio (WR-01, degrade-honesto).
+  if (error?.code === "PGRST202") {
     return null;
   }
 
