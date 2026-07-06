@@ -103,6 +103,31 @@ describe("LobbyEnTramitacionView — carril de yuxtaposición temporal", () => {
     expect(fuentes.length).toBe(2);
   });
 
+  it("WR-02: la MISMA audiencia citada por DOS comisiones la misma semana se muestra UNA vez (conteo no inflado)", () => {
+    // El RPC emite una fila por (audiencia × semana × comisión): dos comisiones
+    // viendo el boletín la misma semana duplican la misma reunión. La unidad de
+    // presentación es (audiencia × semana): 1 fila, {N}=1, comisiones agregadas.
+    const { container } = render(
+      <LobbyEnTramitacionView
+        rows={[
+          makeRow({ comision: "Comisión de Vivienda" }),
+          makeRow({ comision: "Comisión de Hacienda" }),
+        ]}
+      />,
+    );
+    // Una sola fila de audiencia (un solo enlace de fuente, un solo nombre).
+    expect(screen.getAllByText(/Ver fuente oficial ↗/i).length).toBe(1);
+    expect(screen.getAllByText("Ana Pérez").length).toBe(1);
+    // El conteo neutro es 1 (reuniones reales), nunca 2 (filas del join).
+    const texto = container.textContent ?? "";
+    expect(texto).toMatch(/comisiones Comisión de Vivienda, Comisión de Hacienda/);
+    const monos = Array.from(container.querySelectorAll("span.font-mono")).map(
+      (m) => (m.textContent ?? "").trim(),
+    );
+    expect(monos).toContain("1");
+    expect(monos).not.toContain("2");
+  });
+
   it("agrupa por semana ISO cuando hay más de una semana (summary por semana)", () => {
     const { container } = render(
       <LobbyEnTramitacionView

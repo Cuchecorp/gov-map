@@ -60,20 +60,43 @@ function fechaValida(raw: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-// ── Grupo por semana ISO (+ comisión) para el summary por semana ────────────────
+// ── Grupo por semana ISO para el summary por semana ─────────────────────────────
+// UNIDAD SEMÁNTICA (WR-02): (audiencia × semana), NO (audiencia × comisión). El RPC
+// emite una fila por (audiencia × semana × comisión): si DOS comisiones vieron el
+// boletín la misma semana (p.ej. la temática + Hacienda), la MISMA reunión llega
+// duplicada. Aquí se deduplica por audiencia dentro de la semana (mismo
+// parlamentario + fecha + materia + enlace) y las comisiones se AGREGAN al grupo —
+// el conteo neutro {N} cuenta reuniones reales, nunca infladas por el join.
 interface GrupoSemana {
   semanaIso: string;
-  comision: string;
+  /** Comisiones que vieron el boletín esa semana (distintas, orden de aparición). */
+  comisiones: string[];
   rows: LobbyEnTramitacionRow[];
 }
 
 function agruparPorSemana(rows: LobbyEnTramitacionRow[]): GrupoSemana[] {
   const mapa = new Map<string, GrupoSemana>();
+  const audienciasVistas = new Set<string>();
   for (const r of rows) {
-    const key = `${r.semana_iso}∷${r.comision}`;
-    const g = mapa.get(key);
-    if (g) g.rows.push(r);
-    else mapa.set(key, { semanaIso: r.semana_iso, comision: r.comision, rows: [r] });
+    let g = mapa.get(r.semana_iso);
+    if (!g) {
+      g = { semanaIso: r.semana_iso, comisiones: [], rows: [] };
+      mapa.set(r.semana_iso, g);
+    }
+    if (!g.comisiones.includes(r.comision)) g.comisiones.push(r.comision);
+    // Clave de la audiencia dentro de la semana (el RPC no expone un id de
+    // audiencia): misma persona + mismo instante + misma materia + mismo enlace
+    // = la misma reunión citada por otra comisión → una sola fila.
+    const claveAudiencia = [
+      r.semana_iso,
+      r.parlamentario_nombre,
+      r.fecha_reunion,
+      r.materia ?? "",
+      r.enlace_detalle ?? "",
+    ].join("∷");
+    if (audienciasVistas.has(claveAudiencia)) continue;
+    audienciasVistas.add(claveAudiencia);
+    g.rows.push(r);
   }
   return [...mapa.values()];
 }
@@ -161,7 +184,8 @@ export function LobbyEnTramitacionView({
   }
 
   const grupos = agruparPorSemana(rows);
-  const total = rows.length;
+  // Total DEDUPLICADO (WR-02): reuniones reales, no filas del join por comisión.
+  const total = grupos.reduce((n, g) => n + g.rows.length, 0);
 
   return (
     <div className="space-y-6">
@@ -169,11 +193,12 @@ export function LobbyEnTramitacionView({
       {caveat}
 
       {/*
-        Summary de conteo NEUTRO. Una sola semana → línea única con {N} en Mono.
-        Varias semanas → una línea por semana (semana + comisión + conteo), cada
-        {N} en Mono. Cero ranking / score / "los más …".
+        Summary de conteo NEUTRO. Una sola semana con una sola comisión → línea
+        única con {N} en Mono. En otro caso → una línea por semana (semana +
+        comisión(es) + conteo), cada {N} en Mono. El {N} cuenta reuniones
+        DEDUPLICADAS (WR-02). Cero ranking / score / "los más …".
       */}
-      {grupos.length === 1 ? (
+      {grupos.length === 1 && grupos[0]!.comisiones.length === 1 ? (
         <p className="text-base leading-relaxed">
           En la misma semana en que la comisión vio este proyecto se registraron{" "}
           <span className="font-mono">{total}</span>{" "}
@@ -182,9 +207,11 @@ export function LobbyEnTramitacionView({
       ) : (
         <ul className="space-y-1 text-base leading-relaxed">
           {grupos.map((g) => (
-            <li key={`${g.semanaIso}-${g.comision}`}>
-              Semana <span className="font-mono">{g.semanaIso}</span> · comisión{" "}
-              {g.comision}: <span className="font-mono">{g.rows.length}</span>{" "}
+            <li key={g.semanaIso}>
+              Semana <span className="font-mono">{g.semanaIso}</span> ·{" "}
+              {plural(g.comisiones.length, "comisión", "comisiones")}{" "}
+              {g.comisiones.join(", ")}:{" "}
+              <span className="font-mono">{g.rows.length}</span>{" "}
               {plural(g.rows.length, "reunión", "reuniones")}.
             </li>
           ))}
@@ -192,7 +219,7 @@ export function LobbyEnTramitacionView({
       )}
 
       {grupos.map((g) => (
-        <ul key={`filas-${g.semanaIso}-${g.comision}`} className="space-y-0">
+        <ul key={`filas-${g.semanaIso}`} className="space-y-0">
           {g.rows.map((r, idx) => (
             <FilaAudiencia key={`${g.semanaIso}-${r.parlamentario_nombre}-${idx}`} row={r} />
           ))}
