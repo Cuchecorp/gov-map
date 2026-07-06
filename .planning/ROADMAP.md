@@ -1067,7 +1067,7 @@ Auditoría completa del sitio en vivo (`.planning/DIAGNOSTICO-govmap-2026-07-02.
 - [ ] **Phase 49: Comparativo vs cámara (ausencias/actividad)** — **gate de datos CUMPLIDO 2026-07-02** (546 ausencias / 18.700 votos en PROD; F47 desbloqueada). Falta solo: RPC `tasa_ausencia_comparada` (security definer, PII-safe, allowlist).
 - [x] **Phase 50: FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)** — 11 fixes de código acotados (B1, B6, B7, B8, B9, B10, B12, B14, B15, B17 + supresión de honest-state repetido). Sin DDL, sin deploy (checkpoint operador aparte). (completed 2026-07-02)
 - [x] **Phase 51: LEG2 — Legibilidad profunda (P2)** — votos agregados por proyecto, timeline dos niveles + "¿dónde está hoy?", patrimonio tarjeta-resumen sin URIs (B3), comparador cableado (B4), rebeldías honestas (B5), lobby agrupado por contraparte, provenance por sección, footer global. (completed 2026-07-03)
-- [ ] **Phase 52: CRUCE2 — Cruces nuevos con datos ya disponibles (P3)** — clasificador sectorial (enciende `cruce_senal` de verdad), lobby×tramitación temporal, proyecto→agenda inverso, módulo de actualidad en home. (Asistencia comparada = Phase 49; chart votos = Phase 47 — ya desbloqueadas.)
+- [x] **Phase 52: CRUCE2 — Cruces nuevos con datos ya disponibles (P3)** — clasificador sectorial (enciende `cruce_senal` de verdad), lobby×tramitación temporal, proyecto→agenda inverso, módulo de actualidad en home. (Asistencia comparada = Phase 49; chart votos = Phase 47 — ya desbloqueadas.) (completed 2026-07-06)
 
 ### Decisión (RESUELTA 2026-06-26): A + B — ambas pistas en paralelo
 
@@ -1199,7 +1199,7 @@ Plans:
   4. **Módulo de actualidad en home:** qué se votó esta semana / urgencias vigentes / última actualización por fuente — el home deja de ser solo un buscador.
   5. Suite verde + tsc limpio + lockdown-guard verde (RPCs nuevas allowlisted); anti-insinuación intacta.
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 
@@ -1208,4 +1208,4 @@ Plans:
 - [x] 52-03-PLAN.md — SC2/SC3: carril lobby x tramitacion en ficha proyecto (degrade honesto) + linea de citacion en Donde esta hoy
 - [x] 52-04-PLAN.md — SC4: modulo de actualidad en el home (3 bloques no-PII, force-dynamic) + RTL
 - [x] 52-05-PLAN.md — SC1: corrida LIVE del clasificador (golden gate -> dry-run -> lotes -> materializar_cruces() -> verificacion psql)
-- [ ] 52-06-PLAN.md — SC2/SC5: checkpoint operador — apply 0047+0048 por psql + pgTAP + stamping schema_migrations
+- [x] 52-06-PLAN.md — SC2/SC5: checkpoint operador — apply 0047+0048 por psql + pgTAP + stamping schema_migrations
