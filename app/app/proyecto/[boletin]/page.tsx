@@ -5,6 +5,7 @@ import { createServerSupabase } from "@/lib/supabase";
 import { BOLETIN_RE } from "@/lib/buscar";
 import { FichaHeader } from "@/components/ficha-header";
 import { EstadoActualBlock } from "@/components/estado-actual-block";
+import { LobbyEnTramitacionSection } from "@/components/lobby-en-tramitacion";
 import { TimelineView } from "@/components/timeline-view";
 import { VotacionCard } from "@/components/votacion-card";
 import { IdeaMatrizBlock } from "@/components/idea-matriz-block";
@@ -72,6 +73,21 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
         <h2 className="text-xl font-semibold mb-4">Votaciones</h2>
         <Suspense fallback={<VotacionesSkeleton />}>
           <VotacionesSection boletin={boletin} />
+        </Suspense>
+      </section>
+
+      {/*
+        SC2 (Phase 52) — Carril lobby×tramitación: yuxtaposición TEMPORAL de
+        audiencias de lobby con la semana ISO en que una comisión vio el boletín.
+        Carril HERMANO (mt-12), NUNCA anidado ni compuesto con votos. El h2 y el
+        caveat viven DENTRO del componente: en el degrade honesto pre-apply
+        (RPC 0048 ausente → PGRST202) `LobbyEnTramitacionSection` retorna null y
+        NO deja heading huérfano; el wrapper mt-12 preserva la frontera aunque el
+        contenido esté ausente (frontier rule, 52-UI-SPEC §Spacing).
+      */}
+      <section id="lobby-tramitacion" className="mt-12">
+        <Suspense fallback={<LobbyTramitacionSkeleton />}>
+          <LobbyEnTramitacionSection boletin={boletin} />
         </Suspense>
       </section>
 
@@ -338,6 +354,16 @@ function IdeaMatrizSkeleton() {
       <Skeleton className="h-4 w-full" />
       <Skeleton className="h-4 w-11/12" />
       <Skeleton className="h-4 w-2/3" />
+    </div>
+  );
+}
+
+function LobbyTramitacionSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden="true">
+      <Skeleton className="h-6 w-2/3" />
+      <Skeleton className="h-16 w-full rounded-md" />
+      <Skeleton className="h-4 w-1/2" />
     </div>
   );
 }

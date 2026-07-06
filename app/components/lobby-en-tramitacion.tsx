@@ -135,11 +135,20 @@ export function LobbyEnTramitacionView({
     </p>
   );
 
+  // El h2 vive DENTRO del componente (no en la page) para que el degrade honesto
+  // path-1 (Section → null) NO deje un heading huérfano sin banda: nodo ausente.
+  const heading = (
+    <h2 className="text-xl font-semibold mb-4">
+      Reuniones de lobby registradas en el mismo período
+    </h2>
+  );
+
   // Empty honesto — la RPC respondió con 0 coincidencias. NUNCA se lee como
-  // "limpio" ni "transparente"; el caveat se mantiene.
+  // "limpio" ni "transparente"; heading + caveat se mantienen.
   if (rows.length === 0) {
     return (
       <>
+        {heading}
         {caveat}
         <p className="text-sm text-muted-foreground">
           No se registran reuniones de lobby en las semanas en que una comisión
@@ -154,6 +163,7 @@ export function LobbyEnTramitacionView({
 
   return (
     <div className="space-y-6">
+      {heading}
       {caveat}
 
       {/*

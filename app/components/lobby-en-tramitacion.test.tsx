@@ -37,6 +37,15 @@ function makeRow(
 
 // ── Vista pura con N filas ───────────────────────────────────────────────────────
 describe("LobbyEnTramitacionView — carril de yuxtaposición temporal", () => {
+  it("emite su propio h2 (para que el degrade path-1 no deje heading huérfano)", () => {
+    render(<LobbyEnTramitacionView rows={[makeRow()]} />);
+    expect(
+      screen.getByRole("heading", {
+        name: /Reuniones de lobby registradas en el mismo período/i,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("renderiza el caveat anti-causal UNA sola vez", () => {
     render(
       <LobbyEnTramitacionView
