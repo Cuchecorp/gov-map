@@ -88,31 +88,34 @@ values ('BTEST-01', 'BTEST', 'Proyecto de prueba honestidad', 'test', 'http://x'
 insert into public.votacion (id, boletin, fecha, etapa, camara, origen, enlace)
 values ('vtest:1', 'BTEST-01', now(), 'Primer trámite', 'diputados', 'test', 'http://x');
 
-insert into public.voto (votacion_id, mencion_nombre, parlamentario_id, seleccion, metodo, estado_vinculo)
+-- fuente_voter_id: NOT NULL + UNIQUE (votacion_id, fuente_voter_id) en PROD → cada
+-- fila del fixture lleva un id de fuente DISTINTO (el "duplicado" de dedupe es la
+-- MISMA persona con dos ids de fuente distintos, como ocurre en el crudo real).
+insert into public.voto (votacion_id, mencion_nombre, parlamentario_id, seleccion, metodo, estado_vinculo, fuente_voter_id)
 values
   -- bancada: mayoría 'si'
-  ('vtest:1', 'a',       'PTEST_A',   'si',      'determinista', 'confirmado'),
-  ('vtest:1', 'b',       'PTEST_B',   'si',      'determinista', 'confirmado'),
-  ('vtest:1', 'c',       'PTEST_C',   'si',      'determinista', 'confirmado'),
+  ('vtest:1', 'a',       'PTEST_A',   'si',      'determinista', 'confirmado', 'fvt-a'),
+  ('vtest:1', 'b',       'PTEST_B',   'si',      'determinista', 'confirmado', 'fvt-b'),
+  ('vtest:1', 'c',       'PTEST_C',   'si',      'determinista', 'confirmado', 'fvt-c'),
   -- disidente real: 'no' distinto de la mayoría 'si', con fila DUPLICADA (dedupe)
-  ('vtest:1', 'reb 1',   'PTEST_REB', 'no',      'determinista', 'confirmado'),
-  ('vtest:1', 'reb 2',   'PTEST_REB', 'no',      'determinista', 'confirmado'),
+  ('vtest:1', 'reb 1',   'PTEST_REB', 'no',      'determinista', 'confirmado', 'fvt-reb-1'),
+  ('vtest:1', 'reb 2',   'PTEST_REB', 'no',      'determinista', 'confirmado', 'fvt-reb-2'),
   -- ausente puro: bajo la vieja lógica ausente<>'si' habría contado como rebeldía
-  ('vtest:1', 'aus',     'PTEST_AUS', 'ausente', 'determinista', 'confirmado'),
+  ('vtest:1', 'aus',     'PTEST_AUS', 'ausente', 'determinista', 'confirmado', 'fvt-aus'),
   -- bancada EMPATADA (2 'si' / 2 'no'): NO existe mayoría única → nadie es "rebelde"
-  ('vtest:1', 'e1',      'PTEST_E1',  'si',      'determinista', 'confirmado'),
-  ('vtest:1', 'e2',      'PTEST_E2',  'si',      'determinista', 'confirmado'),
-  ('vtest:1', 'e3',      'PTEST_E3',  'no',      'determinista', 'confirmado'),
-  ('vtest:1', 'e4',      'PTEST_E4',  'no',      'determinista', 'confirmado'),
+  ('vtest:1', 'e1',      'PTEST_E1',  'si',      'determinista', 'confirmado', 'fvt-e1'),
+  ('vtest:1', 'e2',      'PTEST_E2',  'si',      'determinista', 'confirmado', 'fvt-e2'),
+  ('vtest:1', 'e3',      'PTEST_E3',  'no',      'determinista', 'confirmado', 'fvt-e3'),
+  ('vtest:1', 'e4',      'PTEST_E4',  'no',      'determinista', 'confirmado', 'fvt-e4'),
   -- bancada EMPATADA con fila DUPLICADA (CR-04): 2 'si' / 2 'no' reales, pero D1
   -- trae su 'si' repetido → 3 filas 'si' / 2 filas 'no' crudas. Contando FILAS la
   -- mayoría 'si' se fabricaría y D3/D4 se publicarían como rebeldes de una bancada
   -- EMPATADA; contando parlamentarios DISTINTOS el empate 2/2 se preserva → 0 filas.
-  ('vtest:1', 'd1 a',    'PTEST_D1',  'si',      'determinista', 'confirmado'),
-  ('vtest:1', 'd1 b',    'PTEST_D1',  'si',      'determinista', 'confirmado'),
-  ('vtest:1', 'd2',      'PTEST_D2',  'si',      'determinista', 'confirmado'),
-  ('vtest:1', 'd3',      'PTEST_D3',  'no',      'determinista', 'confirmado'),
-  ('vtest:1', 'd4',      'PTEST_D4',  'no',      'determinista', 'confirmado');
+  ('vtest:1', 'd1 a',    'PTEST_D1',  'si',      'determinista', 'confirmado', 'fvt-d1-a'),
+  ('vtest:1', 'd1 b',    'PTEST_D1',  'si',      'determinista', 'confirmado', 'fvt-d1-b'),
+  ('vtest:1', 'd2',      'PTEST_D2',  'si',      'determinista', 'confirmado', 'fvt-d2'),
+  ('vtest:1', 'd3',      'PTEST_D3',  'no',      'determinista', 'confirmado', 'fvt-d3'),
+  ('vtest:1', 'd4',      'PTEST_D4',  'no',      'determinista', 'confirmado', 'fvt-d4');
 
 -- ── (7) EXCLUSIÓN DE AUSENCIAS: un parlamentario cuya única "disidencia" es una
 --        ausencia devuelve 0 filas (una ausencia PROPIA no es "votó distinto"). ──

@@ -66,7 +66,12 @@ returns table (
   enlace_detalle       text
 )
 language sql stable security definer set search_path = '' as $$
-  select p.nombre_normalizado,   -- proyección pública (espejo de parlamentario_publico/0020)
+  -- DISTINCT (load-bearing): un boletín citado 2+ veces en la MISMA semana/comisión
+  -- (p.ej. sesiones martes y miércoles) multiplicaría cada audiencia por citación e
+  -- inflaría el conteo neutro "N audiencias" de la UI. La unidad semántica del cruce
+  -- es (audiencia × semana coincidente), no (audiencia × citación).
+  select distinct
+         p.nombre_normalizado,   -- proyección pública (espejo de parlamentario_publico/0020)
          p.camara,
          a.materia,
          a.fecha,

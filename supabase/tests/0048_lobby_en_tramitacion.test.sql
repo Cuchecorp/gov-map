@@ -59,47 +59,67 @@ select is(
   'el returns table de lobby_en_tramitacion NO expone partido/rut/email (no-PII)');
 
 -- ── Fixture mínimo para los asserts de DATOS (7)(8)(9) ─────────────────────────
--- Un parlamentario confirmado + un boletín de prueba + una citación de comisión en la
--- semana ISO '2024-W10' + un punto con ese boletín + una audiencia de lobby cuya fecha
--- (2024-03-06, ISO week 10 bajo America/Santiago) cae en ESA misma semana. Además una
--- audiencia en OTRA semana ('2024-04-10', ISO week 15) que NO debe aparecer.
+-- Un parlamentario confirmado + un boletín de prueba + una citación de comisión + una
+-- audiencia de lobby cuya fecha cae en la MISMA semana ISO, y otra en OTRA semana que
+-- NO debe aparecer.
+-- ROBUSTEZ CONTRA PROD: la RPC junta TODAS las audiencias confirmadas de la semana ISO
+-- (ancla temporal pura, decisión LOCKED de 52-CONTEXT). Con una semana con datos reales
+-- (p.ej. 2024-W10) el count del assert (7) arrastraría audiencias reales de PROD. El
+-- fixture usa una semana FUTURA garantizada vacía (2091) y deriva `semana_iso` con la
+-- MISMA expresión de la RPC (mismo día calendario Santiago para citación y audiencia →
+-- coincidencia por construcción, sin hardcodear el número de semana).
 insert into public.parlamentario (id, nombre_normalizado, camara, periodo, partido, origen, enlace)
 values ('PTEST_LOB', 'test lobby', 'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x');
 
 insert into public.proyecto (boletin, boletin_num, titulo, origen, enlace)
 values ('BTEST-01', 'BTEST', 'Proyecto de prueba cruce lobby', 'test', 'http://x');
 
--- citación de comisión en la semana ISO 2024-W10 (semana_iso es "IYYY-Www").
+-- citación de comisión en una semana ISO futura vacía (semana_iso es "IYYY-Www",
+-- derivada con la convención exacta de la RPC: America/Santiago + IYYY/IW).
 insert into public.citacion (id, camara, comision, fecha, semana_iso, origen, enlace)
-values ('ctest:1', 'camara', 'Comisión de Prueba', timestamptz '2024-03-05 10:00:00-03',
-        '2024-W10', 'test', 'http://x');
+values ('ctest:1', 'camara', 'Comisión de Prueba', timestamptz '2091-03-06 10:00:00-03',
+        to_char((timestamptz '2091-03-06 10:00:00-03' at time zone 'America/Santiago'), 'IYYY"-W"IW'),
+        'test', 'http://x');
 
 insert into public.citacion_punto (citacion_id, posicion, boletin)
 values ('ctest:1', 0, 'BTEST-01');
 
--- audiencia de lobby CONFIRMADA en la MISMA semana ISO (2024-03-06 = ISO week 10).
+-- SEGUNDA citación del MISMO boletín en la MISMA semana/comisión (día siguiente):
+-- sin el `select distinct` de la RPC, cada audiencia se multiplicaría por citación
+-- y el assert (7) contaría 2. La unidad del cruce es (audiencia × semana), no
+-- (audiencia × citación).
+insert into public.citacion (id, camara, comision, fecha, semana_iso, origen, enlace)
+values ('ctest:2', 'camara', 'Comisión de Prueba', timestamptz '2091-03-07 10:00:00-03',
+        to_char((timestamptz '2091-03-06 10:00:00-03' at time zone 'America/Santiago'), 'IYYY"-W"IW'),
+        'test', 'http://x');
+
+insert into public.citacion_punto (citacion_id, posicion, boletin)
+values ('ctest:2', 0, 'BTEST-01');
+
+-- audiencia de lobby CONFIRMADA el MISMO día calendario Santiago (misma semana ISO).
 insert into public.lobby_audiencia
   (identificador, institucion_codigo, parlamentario_id, mencion_sujeto, estado_vinculo,
    fecha, materia, enlace_detalle, origen, enlace)
 values
   ('ATEST-MATCH', 'INST01', 'PTEST_LOB', 'test lobby', 'confirmado',
-   timestamptz '2024-03-06 15:00:00-03', 'Materia de la audiencia', 'http://detalle', 'test', 'http://x'),
-  -- audiencia en OTRA semana ISO (2024-04-10 ≈ ISO week 15): NO debe aparecer.
+   timestamptz '2091-03-06 15:00:00-03', 'Materia de la audiencia', 'http://detalle', 'test', 'http://x'),
+  -- audiencia en OTRA semana ISO (un mes después): NO debe aparecer.
   ('ATEST-OTHER', 'INST01', 'PTEST_LOB', 'test lobby', 'confirmado',
-   timestamptz '2024-04-10 15:00:00-03', 'Materia otra semana', 'http://detalle2', 'test', 'http://x');
+   timestamptz '2091-04-10 15:00:00-03', 'Materia otra semana', 'http://detalle2', 'test', 'http://x');
 
--- ── (7) COINCIDENCIA POR SEMANA: la audiencia de la misma semana ISO aparece
---        (count = 1); la de otra semana queda EXCLUIDA (no se cuela). ───────────
+-- ── (7) COINCIDENCIA POR SEMANA + DEDUPE POR CITACIÓN: la audiencia de la misma
+--        semana ISO aparece UNA vez (count = 1) aunque el boletín tenga DOS
+--        citaciones esa semana; la de otra semana queda EXCLUIDA (no se cuela). ──
 select is(
   (select count(*)::int from public.lobby_en_tramitacion('BTEST-01')),
   1,
-  'lobby_en_tramitacion devuelve exactamente 1 fila (la audiencia de la misma semana ISO; la de otra semana NO)');
+  'lobby_en_tramitacion devuelve exactamente 1 fila (misma semana ISO, deduplicada por citación; la de otra semana NO)');
 
 -- ── (8) la fila trae el derivado público esperado (nombre/semana/comisión) ─────
 select is(
   (select parlamentario_nombre || '|' || semana_iso || '|' || comision
      from public.lobby_en_tramitacion('BTEST-01') limit 1),
-  'test lobby|2024-W10|Comisión de Prueba',
+  'test lobby|' || to_char((timestamptz '2091-03-06 10:00:00-03' at time zone 'America/Santiago'), 'IYYY"-W"IW') || '|Comisión de Prueba',
   'lobby_en_tramitacion emite nombre_normalizado + semana_iso + comisión correctos');
 
 -- ── (9) CASO NEGATIVO explícito: la audiencia de otra semana (ATEST-OTHER) NO
