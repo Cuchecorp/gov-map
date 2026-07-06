@@ -37,6 +37,11 @@ export interface FichasCliOptions {
   limite?: number;
   dryRun?: boolean;
   serviceKey?: string;
+  /**
+   * Solo lobby: carga únicamente contrapartes en audiencia confirmada y sin sector_id.
+   * INERTE en fichas (fichas clasifica TODAS, decisión LOCKED); el parser lo comparte.
+   */
+  soloConfirmadas?: boolean;
   /** Override de URL (default: SUPABASE_URL / SUPABASE_API_URL del entorno). */
   url?: string;
   /** Filas inyectadas (tests / dry-run sin DB). */
@@ -74,6 +79,11 @@ export function parseArgs(argv: string[]): FichasCliOptions {
     switch (a) {
       case "--dry-run":
         opts.dryRun = true;
+        break;
+      case "--solo-confirmadas":
+        // Espejo booleano de --dry-run. Solo altera la CARGA de lobby (clasificar-lobby-cli);
+        // inerte en fichas. El parser es compartido → un solo case cubre ambos CLIs.
+        opts.soloConfirmadas = true;
         break;
       case "--limite": {
         const raw = argv[++i];

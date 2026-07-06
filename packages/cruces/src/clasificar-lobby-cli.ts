@@ -38,6 +38,12 @@ export interface LobbyCliOptions {
   limite?: number;
   dryRun?: boolean;
   serviceKey?: string;
+  /**
+   * Carga únicamente contrapartes que (a) aparecen en un lobby_audiencia confirmado con
+   * parlamentario enlazado Y (b) tienen sector_id is null. El filtro sector_id is null hace
+   * la corrida naturalmente incremental y resumible (RESEARCH Pitfall 1). Default off.
+   */
+  soloConfirmadas?: boolean;
   url?: string;
   /** Filas inyectadas (tests / dry-run sin DB). */
   filas?: ContrapartePorClasificar[];
