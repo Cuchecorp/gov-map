@@ -24,6 +24,14 @@ export interface EstadoActual {
   ultimoHito?: { descripcion: string; fecha: Date };
   /** Última urgencia "hace presente" sin "retira" posterior. */
   urgenciaVigente?: { tipo: string; desde: Date };
+  /** SC3 (Phase 52): citación vigente/futura más próxima (fecha >= hoy). */
+  citacionVigente?: { comision: string; fecha: Date };
+}
+
+/** Fila cruda de citación aplanada desde el embed `citacion_punto × citacion`. */
+export interface CitacionCruda {
+  comision: string | null;
+  fecha: string | null;
 }
 
 /** Fecha ISO parseable → Date válida, o null (nunca "Invalid Date"). */
@@ -66,12 +74,45 @@ export function urgenciaVigente(
 }
 
 /**
- * Deriva las (hasta) 3 líneas del bloque, omitiendo cada una cuando el dato no es
- * derivable. PURO y exportado para test. CERO fabricación.
+ * Citación vigente/futura más próxima (SC3, Phase 52 — omit-when-not-derivable).
+ * Recorre las citaciones crudas del boletín, descarta las sin comisión o sin fecha
+ * válida, se queda con las de `fecha >= inicio del día de hoy` (una citación de HOY
+ * sigue vigente) y devuelve la de MENOR fecha (la más próxima). Si ninguna es
+ * derivable → null (la línea se omite; espejo de `urgenciaVigente`). CERO fabricación.
+ */
+export function citacionVigente(
+  citaciones: CitacionCruda[],
+  hoy: Date = new Date(),
+): { comision: string; fecha: Date } | null {
+  // Inicio del día de hoy: una citación de hoy cuenta como vigente (no expira al
+  // pasar la medianoche del propio día).
+  const inicioHoy = new Date(hoy);
+  inicioHoy.setHours(0, 0, 0, 0);
+
+  const futuras = citaciones
+    .map((c) => ({ c, d: fechaValida(c.fecha) }))
+    .filter(
+      (x): x is { c: CitacionCruda; d: Date } =>
+        x.d !== null &&
+        !!x.c.comision?.trim() &&
+        x.d.getTime() >= inicioHoy.getTime(),
+    )
+    .sort((a, b) => a.d.getTime() - b.d.getTime());
+
+  const prox = futuras[0];
+  return prox ? { comision: prox.c.comision!.trim(), fecha: prox.d } : null;
+}
+
+/**
+ * Deriva las líneas del bloque, omitiendo cada una cuando el dato no es
+ * derivable. PURO y exportado para test. CERO fabricación. `citaciones`/`hoy` son
+ * opcionales → la firma previa (2 args) sigue compilando.
  */
 export function derivarEstadoActual(
   proyecto: Pick<ProyectoRow, "etapa" | "estado">,
   eventos: TramitacionEventoRow[],
+  citaciones: CitacionCruda[] = [],
+  hoy: Date = new Date(),
 ): EstadoActual {
   const est: EstadoActual = {};
 
@@ -101,6 +142,10 @@ export function derivarEstadoActual(
   const urg = urgenciaVigente(eventos);
   if (urg) est.urgenciaVigente = urg;
 
+  // SC3: citación vigente/futura más próxima; si no derivable, se omite.
+  const cit = citacionVigente(citaciones, hoy);
+  if (cit) est.citacionVigente = cit;
+
   return est;
 }
 
@@ -110,11 +155,12 @@ export function derivarEstadoActual(
  * padding `p-6` (lg). Heading factual neutro permitido ("¿Dónde está hoy?").
  */
 export function EstadoActualView({ estado }: { estado: EstadoActual }) {
-  const { etapaLinea, ultimoHito, urgenciaVigente } = estado;
+  const { etapaLinea, ultimoHito, urgenciaVigente, citacionVigente } = estado;
 
   // Sin ninguna línea derivable → no se renderiza el bloque (cero contenido
   // fabricado). El resto de la ficha cubre la información.
-  if (!etapaLinea && !ultimoHito && !urgenciaVigente) return null;
+  if (!etapaLinea && !ultimoHito && !urgenciaVigente && !citacionVigente)
+    return null;
 
   return (
     <section
@@ -143,6 +189,20 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
             ).
           </p>
         )}
+        {/*
+          SC3 (Phase 52): línea de citación vigente/futura. Hecho de tramitación
+          (compone dentro del bloque estado-actual, NUNCA con lobby/voto). Se
+          omite por completo si no hay citación derivable (nunca "—").
+        */}
+        {citacionVigente && (
+          <p>
+            Citado en {citacionVigente.comision} el{" "}
+            <span className="font-mono">
+              {fechaCorta(citacionVigente.fecha)}
+            </span>
+            .
+          </p>
+        )}
       </div>
     </section>
   );
@@ -156,19 +216,29 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
 export async function EstadoActualBlock({ boletin }: { boletin: string }) {
   const sb = createServerSupabase();
 
-  const [{ data: proyecto, error: proyectoError }, { data: eventos, error: eventosError }] =
-    await Promise.all([
-      sb
-        .from("proyecto")
-        .select("etapa, estado")
-        .eq("boletin", boletin)
-        .maybeSingle<Pick<ProyectoRow, "etapa" | "estado">>(),
-      sb
-        .from("tramitacion_evento")
-        .select("*")
-        .eq("boletin", boletin)
-        .order("fecha", { ascending: true }),
-    ]);
+  const [
+    { data: proyecto, error: proyectoError },
+    { data: eventos, error: eventosError },
+    { data: puntos, error: citacionError },
+  ] = await Promise.all([
+    sb
+      .from("proyecto")
+      .select("etapa, estado")
+      .eq("boletin", boletin)
+      .maybeSingle<Pick<ProyectoRow, "etapa" | "estado">>(),
+    sb
+      .from("tramitacion_evento")
+      .select("*")
+      .eq("boletin", boletin)
+      .order("fecha", { ascending: true }),
+    // SC3: citaciones del boletín vía embed `citacion_punto × citacion` (tablas
+    // no-PID/no-PII, public-read 0010; guard-permitidas). Sólo comisión + fecha:
+    // lo mínimo para derivar la citación vigente/futura más próxima.
+    sb
+      .from("citacion_punto")
+      .select("citacion:citacion(comision, fecha, semana_iso)")
+      .eq("boletin", boletin),
+  ]);
 
   // #34: un fallo real de DB/red ≠ "sin estado". Se lanza para la UI de error
   // honesta en vez de fabricar un bloque vacío (que se leería como "sin datos").
@@ -182,13 +252,35 @@ export async function EstadoActualBlock({ boletin }: { boletin: string }) {
       `EstadoActualBlock: no se pudo leer la tramitación de ${boletin}: ${eventosError.message}`,
     );
   }
+  if (citacionError) {
+    throw new Error(
+      `EstadoActualBlock: no se pudo leer la citación de ${boletin}: ${citacionError.message}`,
+    );
+  }
 
   // Proyecto ausente → sin bloque (la page ya resuelve el 404 en su FichaSection).
   if (!proyecto) return null;
 
+  // Aplana el embed a filas `{ comision, fecha }`. Supabase tipa el embed to-one
+  // como objeto | array según el shape de la relación; se normaliza a objeto.
+  type PuntoEmbed = {
+    citacion:
+      | { comision: string | null; fecha: string | null }
+      | { comision: string | null; fecha: string | null }[]
+      | null;
+  };
+  const citaciones: CitacionCruda[] = ((puntos as PuntoEmbed[] | null) ?? [])
+    .flatMap((p) => {
+      const c = p.citacion;
+      if (!c) return [];
+      return Array.isArray(c) ? c : [c];
+    })
+    .map((c) => ({ comision: c.comision, fecha: c.fecha }));
+
   const estado = derivarEstadoActual(
     proyecto,
     (eventos as TramitacionEventoRow[]) ?? [],
+    citaciones,
   );
   return <EstadoActualView estado={estado} />;
 }

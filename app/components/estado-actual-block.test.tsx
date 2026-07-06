@@ -5,8 +5,10 @@ import { render, screen, cleanup } from "@testing-library/react";
 
 import {
   derivarEstadoActual,
+  citacionVigente,
   EstadoActualView,
   type EstadoActual,
+  type CitacionCruda,
 } from "./estado-actual-block";
 import type { ProyectoRow, TramitacionEventoRow } from "@/lib/types";
 
@@ -116,6 +118,92 @@ describe("derivarEstadoActual — deriva 3 líneas, omite lo no derivable", () =
   });
 });
 
+// ── citacionVigente — SC3, futura más próxima, omit-when-not-derivable ───────
+describe("citacionVigente — deriva la citación vigente/futura más próxima", () => {
+  const HOY = new Date("2026-07-06T12:00:00Z");
+
+  function makeCitacion(overrides: Partial<CitacionCruda> = {}): CitacionCruda {
+    return { comision: "Comisión de Salud", fecha: "2026-07-10T00:00:00Z", ...overrides };
+  }
+
+  it("(a) citación con fecha >= hoy → { comision, fecha }", () => {
+    const c = citacionVigente([makeCitacion()], HOY);
+    expect(c).not.toBeNull();
+    expect(c!.comision).toBe("Comisión de Salud");
+    expect(c!.fecha.toISOString()).toBe("2026-07-10T00:00:00.000Z");
+  });
+
+  it("(b) todas las citaciones en el pasado → null (línea omitida, nunca '—')", () => {
+    const c = citacionVigente(
+      [
+        makeCitacion({ fecha: "2026-05-01T00:00:00Z" }),
+        makeCitacion({ fecha: "2026-06-20T00:00:00Z" }),
+      ],
+      HOY,
+    );
+    expect(c).toBeNull();
+  });
+
+  it("(b') sin citaciones → null", () => {
+    expect(citacionVigente([], HOY)).toBeNull();
+  });
+
+  it("(c) varias futuras → la MÁS próxima (menor fecha >= hoy)", () => {
+    const c = citacionVigente(
+      [
+        makeCitacion({ comision: "Lejana", fecha: "2026-08-30T00:00:00Z" }),
+        makeCitacion({ comision: "Próxima", fecha: "2026-07-08T00:00:00Z" }),
+        makeCitacion({ comision: "Pasada", fecha: "2026-06-01T00:00:00Z" }),
+      ],
+      HOY,
+    );
+    expect(c!.comision).toBe("Próxima");
+  });
+
+  it("(d) citación sin comisión o sin fecha válida → se ignora (no fabrica)", () => {
+    const c = citacionVigente(
+      [
+        makeCitacion({ comision: null, fecha: "2026-07-08T00:00:00Z" }),
+        makeCitacion({ comision: "Válida", fecha: "no-es-fecha" }),
+        makeCitacion({ comision: "Buena", fecha: "2026-07-20T00:00:00Z" }),
+      ],
+      HOY,
+    );
+    expect(c!.comision).toBe("Buena");
+  });
+});
+
+// ── derivarEstadoActual — integra citacionVigente sin romper firma previa ──────
+describe("derivarEstadoActual — línea de citación SC3", () => {
+  const HOY = new Date("2026-07-06T12:00:00Z");
+
+  it("con citación futura → est.citacionVigente presente", () => {
+    const est = derivarEstadoActual(
+      makeProyecto(),
+      [],
+      [{ comision: "Comisión de Hacienda", fecha: "2026-07-15T00:00:00Z" }],
+      HOY,
+    );
+    expect(est.citacionVigente).toBeDefined();
+    expect(est.citacionVigente!.comision).toBe("Comisión de Hacienda");
+  });
+
+  it("sin citación futura → est.citacionVigente ausente (omitida)", () => {
+    const est = derivarEstadoActual(
+      makeProyecto(),
+      [],
+      [{ comision: "Comisión de Hacienda", fecha: "2026-05-15T00:00:00Z" }],
+      HOY,
+    );
+    expect(est.citacionVigente).toBeUndefined();
+  });
+
+  it("firma previa (2 args) sigue compilando y no fabrica citación", () => {
+    const est = derivarEstadoActual(makeProyecto(), []);
+    expect(est.citacionVigente).toBeUndefined();
+  });
+});
+
 // ── EstadoActualView — presentación pura (omisión + banned-vocab) ────────────
 describe("EstadoActualView — render honesto", () => {
   it("renderiza el heading '¿Dónde está hoy?' y las líneas derivadas", () => {
@@ -131,6 +219,29 @@ describe("EstadoActualView — render honesto", () => {
     expect(screen.getByText(/Etapa: Primer trámite · En tramitación/)).toBeInTheDocument();
     expect(screen.getByText(/Último hito: Pasa a comisión/)).toBeInTheDocument();
     expect(screen.getByText(/Urgencia Suma vigente desde el/)).toBeInTheDocument();
+  });
+
+  it("SC3: con citacionVigente presente renderiza 'Citado en {comisión} el {fecha}.' con fecha Mono", () => {
+    const estado: EstadoActual = {
+      etapaLinea: "Etapa: Primer trámite",
+      citacionVigente: {
+        comision: "Comisión de Salud",
+        fecha: new Date("2026-07-10T00:00:00Z"),
+      },
+    };
+    const { container } = render(<EstadoActualView estado={estado} />);
+    expect(
+      screen.getByText(/Citado en Comisión de Salud el/),
+    ).toBeInTheDocument();
+    // La fecha vive en un span font-mono.
+    const monos = container.querySelectorAll("span.font-mono");
+    expect(monos.length).toBeGreaterThan(0);
+  });
+
+  it("SC3: sin citacionVigente → la línea de citación se OMITE por completo", () => {
+    const estado: EstadoActual = { etapaLinea: "Etapa: Primer trámite" };
+    render(<EstadoActualView estado={estado} />);
+    expect(screen.queryByText(/Citado en/)).not.toBeInTheDocument();
   });
 
   it("omite la línea de urgencia cuando no es derivable (assert de ausencia)", () => {
