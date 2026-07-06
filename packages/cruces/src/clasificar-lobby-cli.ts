@@ -79,8 +79,31 @@ function inputDeFila(f: ContrapartePorClasificar): ClasificarContraparteInput {
   };
 }
 
-/** Lee lobby_contraparte (deny-by-default; el service-role bypassa RLS) acotado a `limite`. */
-async function cargarContrapartes(
+/** Fila cruda de lobby_contraparte (con o sin el embed de audiencia) — mapeo compartido. */
+type ContraparteRow = { identificador: string; nombre: string; rol: string | null };
+
+/** Mapea la fila cruda a ContrapartePorClasificar (rol omitido si null) — idéntico en ambas ramas. */
+function mapearFila(r: ContraparteRow): ContrapartePorClasificar {
+  return {
+    identificador: r.identificador,
+    nombre: r.nombre,
+    ...(r.rol != null ? { rol: r.rol } : {}),
+  };
+}
+
+/**
+ * Lee lobby_contraparte (deny-by-default; el service-role bypassa RLS) acotado a `limite`.
+ *
+ * Con `opts.soloConfirmadas` construye la carga ALTO-ROI e INCREMENTAL (RESEARCH Pitfall 1):
+ * solo contrapartes que (a) aparecen en un lobby_audiencia con estado_vinculo='confirmado' y
+ * parlamentario_id no-null (embed !inner) Y (b) tienen sector_id is null. El `is("sector_id",null)`
+ * es load-bearing: cada corrida excluye lo ya clasificado, así re-correr AVANZA en vez de re-pagar
+ * las mismas llamadas MiniMax. Sin el flag, conserva la carga plana original como fallback.
+ *
+ * Exportada para test directo (spy sobre el builder encadenado). El loop de clasificación
+ * (main) sigue corriendo assertNoRutInLlmInput PRIMERO — esta carga no toca esa ruta.
+ */
+export async function cargarContrapartes(
   client: SupabaseClient | null,
   opts: LobbyCliOptions,
   limite: number,
@@ -91,17 +114,25 @@ async function cargarContrapartes(
     log("cruces-lobby: dry-run sin filas inyectadas → conjunto vacío (no hay qué clasificar)");
     return [];
   }
+  if (opts.soloConfirmadas) {
+    // Carga filtrada: embed !inner a lobby_audiencia (restringe a contrapartes con audiencia
+    // confirmada + parlamentario enlazado) y sector_id is null (incremental/resumible).
+    const { data, error } = await client
+      .from("lobby_contraparte")
+      .select("identificador, nombre, rol, lobby_audiencia!inner(estado_vinculo, parlamentario_id)")
+      .is("sector_id", null)
+      .eq("lobby_audiencia.estado_vinculo", "confirmado")
+      .not("lobby_audiencia.parlamentario_id", "is", null)
+      .limit(limite);
+    if (error) throw new Error(`cargarContrapartes falló: ${error.message}`);
+    return ((data ?? []) as unknown as ContraparteRow[]).map(mapearFila);
+  }
   const { data, error } = await client
     .from("lobby_contraparte")
     .select("identificador, nombre, rol")
     .limit(limite);
   if (error) throw new Error(`cargarContrapartes falló: ${error.message}`);
-  type Row = { identificador: string; nombre: string; rol: string | null };
-  return ((data ?? []) as unknown as Row[]).map((r) => ({
-    identificador: r.identificador,
-    nombre: r.nombre,
-    ...(r.rol != null ? { rol: r.rol } : {}),
-  }));
+  return ((data ?? []) as unknown as ContraparteRow[]).map(mapearFila);
 }
 
 /**
