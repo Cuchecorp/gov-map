@@ -53,9 +53,56 @@ function normWs(s: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
+const TZ_CHILE = "America/Santiago";
+
+/** Partes wall-clock en Chile (DST-safe; h23 evita "24:00"). Formatter cacheado. */
+const PARTES_CHILE = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TZ_CHILE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
+/** Wall-clock de Chile del instante `t` (ms UTC), re-expresado como ms UTC (para restar). */
+function wallChileComoUtc(t: number): number {
+  const p: Record<string, number> = {};
+  for (const parte of PARTES_CHILE.formatToParts(t)) {
+    if (parte.type !== "literal") p[parte.type] = Number(parte.value);
+  }
+  return Date.UTC(p.year!, p.month! - 1, p.day!, p.hour!, p.minute!, p.second!);
+}
+
+/**
+ * Instante UTC (ms) de la MEDIANOCHE de Chile del día calendario pedido. El offset real
+ * (-04 invierno / -03 verano) se DERIVA vía Intl (tzdb), nunca se hardcodea (CR-02).
+ * Si la medianoche no existe (el salto DST chileno ocurre a las 24:00 → el día del
+ * cambio arranca a la 01:00), devuelve el primer instante existente de ese día.
+ */
+function instanteMedianocheChile(anio: number, mes: number, dia: number): number {
+  const objetivo = Date.UTC(anio, mes, dia);
+  let t = objetivo;
+  // Dos pasadas de corrección por offset (con offset estable converge en la primera).
+  for (let i = 0; i < 2; i++) t = objetivo - (wallChileComoUtc(t) - t);
+  // Medianoche inexistente (salto DST): el wall queda en el día anterior — avanza de a
+  // 1 h hasta caer dentro del día pedido (a lo más 2 h; guard acotado).
+  for (let guard = 0; guard < 3 && wallChileComoUtc(t) < objetivo; guard++) {
+    t += 3_600_000;
+  }
+  return t;
+}
+
 /**
  * Parsea la fecha de la Cámara (`26 jun. 2026` — DD mmm. YYYY, mes abreviado con punto) a
- * ISO 8601 (UTC). Si no parsea, devuelve null (el caller preserva `fechaRaw` — NUNCA fabrica).
+ * ISO 8601. La fuente imprime un DÍA CALENDARIO de CHILE: se ancla a la MEDIANOCHE de
+ * `America/Santiago` (p.ej. `2026-06-26T04:00:00.000Z` ≡ `2026-06-26T00:00:00-04:00`),
+ * NO a la medianoche UTC — así `fecha at time zone 'America/Santiago'` (RPC 0048)
+ * recupera el día calendario impreso y la semana ISO del cruce no se corre (CR-02: con
+ * medianoche UTC, toda audiencia de LUNES caía en la semana ISO anterior).
+ * Si no parsea, devuelve null (el caller preserva `fechaRaw` — NUNCA fabrica).
  */
 export function parseFechaCamara(raw: string): string | null {
   const t = normWs(raw);
@@ -69,11 +116,12 @@ export function parseFechaCamara(raw: string): string | null {
   const mes = MESES[mesKey];
   if (mes === undefined || !Number.isFinite(dia) || !Number.isFinite(anio)) return null;
   if (dia < 1 || dia > 31) return null;
-  const d = new Date(Date.UTC(anio, mes, dia));
-  if (Number.isNaN(d.getTime())) return null;
-  // Verifica que la fecha no haya "rebalsado" (p.ej. 31 feb → mar): si el día/mes cambió, drift.
-  if (d.getUTCDate() !== dia || d.getUTCMonth() !== mes) return null;
-  return d.toISOString();
+  // Verifica que la fecha no haya "rebalsado" (p.ej. 31 feb → mar) sobre una fecha UTC
+  // neutra: si el día/mes cambió, drift.
+  const chequeo = new Date(Date.UTC(anio, mes, dia));
+  if (Number.isNaN(chequeo.getTime())) return null;
+  if (chequeo.getUTCDate() !== dia || chequeo.getUTCMonth() !== mes) return null;
+  return new Date(instanteMedianocheChile(anio, mes, dia)).toISOString();
 }
 
 /** Clave natural determinista sintetizada (la fuente no trae id). `CAMARA-<sha256 16 hex>`. */

@@ -85,4 +85,43 @@ describe("parseFechaCamara", () => {
     expect(parseFechaCamara("garbage")).toBeNull();
     expect(parseFechaCamara("")).toBeNull();
   });
+
+  // ── CR-02: la fecha impresa es un día calendario de CHILE → medianoche de
+  //    America/Santiago (offset real por tzdb), NUNCA medianoche UTC. Con UTC-
+  //    midnight, `at time zone 'America/Santiago'` (RPC 0048) corría el día un
+  //    día hacia atrás y toda audiencia de LUNES caía en la semana ISO anterior. ──
+  it("ancla a la MEDIANOCHE de Chile en invierno (-04): '23 jun. 2026' → 2026-06-23T04:00:00Z", () => {
+    // 2026-06-23 es LUNES: el caso exacto que corrompía la semana ISO del cruce.
+    expect(parseFechaCamara("23 jun. 2026")).toBe("2026-06-23T04:00:00.000Z");
+  });
+
+  it("ancla a la MEDIANOCHE de Chile en verano (-03, DST): '15 ene. 2026' → 2026-01-15T03:00:00Z", () => {
+    expect(parseFechaCamara("15 ene. 2026")).toBe("2026-01-15T03:00:00.000Z");
+  });
+
+  it("día calendario en America/Santiago = día impreso para TODOS los días de 2026 (DST-safe, incl. salto a las 24:00)", () => {
+    const fmtDia = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Santiago",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const MESES_ES = [
+      "ene", "feb", "mar", "abr", "may", "jun",
+      "jul", "ago", "sep", "oct", "nov", "dic",
+    ];
+    const DIA_MS = 86_400_000;
+    for (let t = Date.UTC(2026, 0, 1, 12); t < Date.UTC(2027, 0, 1); t += DIA_MS) {
+      const d = new Date(t);
+      const raw = `${d.getUTCDate()} ${MESES_ES[d.getUTCMonth()]}. ${d.getUTCFullYear()}`;
+      const iso = parseFechaCamara(raw);
+      expect(iso).not.toBeNull();
+      const esperado =
+        `${d.getUTCFullYear()}-` +
+        `${String(d.getUTCMonth() + 1).padStart(2, "0")}-` +
+        `${String(d.getUTCDate()).padStart(2, "0")}`;
+      // El instante parseado, leído como wall-clock de Chile, cae en el día impreso.
+      expect(fmtDia.format(new Date(iso!))).toBe(esperado);
+    }
+  });
 });
