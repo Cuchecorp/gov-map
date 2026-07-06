@@ -1,6 +1,14 @@
 import Link from "next/link";
 
 import { SearchBox, type ExampleChip } from "@/components/search-box";
+import { ActualidadModule } from "@/components/actualidad-module";
+
+// FORCE-DYNAMIC (load-bearing, gotcha F50 — espejo de /red): el módulo de
+// actualidad lee datos vivos (votacion/tramitacion_evento/proyecto/…) en cada
+// request. Sin esto, Next hornea `/` como estática (○) durante el build y sirve
+// una portada con datos congelados/500 en runtime. El home deja de ser una ruta
+// prerenderable en cuanto muestra frescura → debe ser dinámica por request.
+export const dynamic = "force-dynamic";
 
 /**
  * Landing `/` — search-as-hero (UI-SPEC §11.1, mockup `mockup/landing.html`,
@@ -65,6 +73,13 @@ export default function Home() {
           </Link>
         </p>
       </section>
+
+      {/*
+        Módulo de actualidad (SC4, 52-UI-SPEC §SC4) — BAJO el hero, dentro de
+        <main>. Tres bloques server-rendered que degradan honesto e independiente;
+        el hero (pills/copy) queda LOCKED e intacto. Cero JS cliente nuevo.
+      */}
+      <ActualidadModule />
     </main>
   );
 }

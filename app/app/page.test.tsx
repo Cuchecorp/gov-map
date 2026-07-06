@@ -19,6 +19,14 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
+// ActualidadModule (SC4) es un Server Component con hijos async que leen Supabase
+// (bloques de actualidad bajo el hero). Este test cubre EXCLUSIVAMENTE el héroe
+// editorial; el módulo tiene su propia suite (actualidad-module.test.tsx). Se
+// stubbea a null para aislar el héroe y evitar el runtime Supabase en jsdom.
+vi.mock("@/components/actualidad-module", () => ({
+  ActualidadModule: () => null,
+}));
+
 // next/link → <a> simple en jsdom.
 vi.mock("next/link", () => ({
   default: ({

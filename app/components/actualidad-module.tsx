@@ -178,7 +178,7 @@ export async function VotadoEstaSemana() {
   );
 
   const items: VotadoItem[] = votaciones
-    .map((v) => {
+    .map((v): VotadoItem | null => {
       const fecha = fechaValida(v.fecha);
       if (!fecha) return null; // fecha inválida → no se fabrica el hecho fechado
       return {
@@ -189,7 +189,7 @@ export async function VotadoEstaSemana() {
         totalNo: v.total_no,
         fecha,
         enlace: v.enlace,
-      } satisfies VotadoItem;
+      };
     })
     .filter((x): x is VotadoItem => x !== null);
 
