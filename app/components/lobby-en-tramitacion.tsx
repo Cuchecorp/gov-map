@@ -135,7 +135,7 @@ function FilaAudiencia({ row }: { row: LobbyEnTramitacionRow }) {
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center min-h-11 text-sm underline underline-offset-2 text-[--accent-product] hover:text-[--accent-product]"
+          className="inline-flex items-center min-h-11 text-sm underline underline-offset-2 text-accent-product"
         >
           Ver fuente oficial ↗
         </a>

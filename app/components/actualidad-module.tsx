@@ -128,14 +128,14 @@ export function VotadoEstaSemanaView({ items }: { items: VotadoItem[] }) {
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1 inline-flex items-center text-sm underline underline-offset-2 text-[--accent-product]"
+                    className="mt-1 inline-flex items-center text-sm underline underline-offset-2 text-accent-product"
                   >
                     Ver fuente oficial ↗
                   </a>
                 ) : (
                   <Link
                     href={`/proyecto/${it.boletin}`}
-                    className="mt-1 inline-flex items-center text-sm underline underline-offset-2 text-[--accent-product]"
+                    className="mt-1 inline-flex items-center text-sm underline underline-offset-2 text-accent-product"
                   >
                     Ver proyecto →
                   </Link>
@@ -234,7 +234,7 @@ export function UrgenciasVigentesView({ items }: { items: UrgenciaItem[] }) {
               </p>
               <Link
                 href={`/proyecto/${it.boletin}`}
-                className="mt-1 inline-flex items-center text-sm underline underline-offset-2 text-[--accent-product]"
+                className="mt-1 inline-flex items-center text-sm underline underline-offset-2 text-accent-product"
               >
                 Ver proyecto →
               </Link>
