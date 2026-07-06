@@ -42,6 +42,13 @@ export interface FichasCliOptions {
    * INERTE en fichas (fichas clasifica TODAS, decisión LOCKED); el parser lo comparte.
    */
   soloConfirmadas?: boolean;
+  /**
+   * Solo lobby (WR-05): cursor de reanudación para --solo-confirmadas — carga solo
+   * identificadores estrictamente MAYORES que este valor (orden determinista). Las
+   * abstenciones dejan sector_id en null y volverían a seleccionarse por siempre;
+   * el cursor permite AVANZAR sin re-pagar esas llamadas. INERTE en fichas.
+   */
+  desde?: string;
   /** Override de URL (default: SUPABASE_URL / SUPABASE_API_URL del entorno). */
   url?: string;
   /** Filas inyectadas (tests / dry-run sin DB). */
@@ -102,6 +109,18 @@ export function parseArgs(argv: string[]): FichasCliOptions {
           throw new CrucesCliArgsError("--service-key vacío (esperado una key)");
         }
         opts.serviceKey = raw;
+        break;
+      }
+      case "--desde": {
+        // Cursor de reanudación (WR-05, solo lobby). Fail-fast: un valor ausente o que
+        // parece otro flag (--dry-run tragado como valor) sería un cursor basura.
+        const raw = argv[++i];
+        if (raw == null || raw.trim().length === 0 || raw.startsWith("--")) {
+          throw new CrucesCliArgsError(
+            `--desde inválido: ${raw ?? "(vacío)"} (esperado un identificador)`,
+          );
+        }
+        opts.desde = raw;
         break;
       }
       default:

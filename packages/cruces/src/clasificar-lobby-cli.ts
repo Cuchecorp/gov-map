@@ -41,9 +41,18 @@ export interface LobbyCliOptions {
   /**
    * Carga únicamente contrapartes que (a) aparecen en un lobby_audiencia confirmado con
    * parlamentario enlazado Y (b) tienen sector_id is null. El filtro sector_id is null hace
-   * la corrida naturalmente incremental y resumible (RESEARCH Pitfall 1). Default off.
+   * la corrida incremental para lo CLASIFICADO (RESEARCH Pitfall 1); las ABSTENCIONES dejan
+   * sector_id en null y se re-seleccionan — ver `desde` (WR-05). Default off.
    */
   soloConfirmadas?: boolean;
+  /**
+   * Cursor de reanudación (WR-05): con soloConfirmadas, carga solo identificadores
+   * estrictamente MAYORES que este valor (la carga va ordenada por identificador). Es el
+   * mecanismo para AVANZAR más allá de filas abstenidas (que siguen con sector_id null)
+   * sin re-pagar sus llamadas MiniMax: el log final imprime el último identificador
+   * procesado para usarlo como `--desde` en la corrida siguiente.
+   */
+  desde?: string;
   url?: string;
   /** Filas inyectadas (tests / dry-run sin DB). */
   filas?: ContrapartePorClasificar[];
@@ -97,8 +106,12 @@ function mapearFila(r: ContraparteRow): ContrapartePorClasificar {
  * Con `opts.soloConfirmadas` construye la carga ALTO-ROI e INCREMENTAL (RESEARCH Pitfall 1):
  * solo contrapartes que (a) aparecen en un lobby_audiencia con estado_vinculo='confirmado' y
  * parlamentario_id no-null (embed !inner) Y (b) tienen sector_id is null. El `is("sector_id",null)`
- * es load-bearing: cada corrida excluye lo ya clasificado, así re-correr AVANZA en vez de re-pagar
- * las mismas llamadas MiniMax. Sin el flag, conserva la carga plana original como fallback.
+ * excluye lo ya CLASIFICADO en corridas previas. OJO (WR-05): una ABSTENCIÓN deja sector_id
+ * en null (writer no-op), así que las abstenidas se re-seleccionan; sin orden determinista la
+ * página devuelta era arbitraria y una corrida podía quemar `limite` llamadas sin avanzar.
+ * La carga va `order by identificador` (determinista) y `opts.desde` filtra
+ * `identificador > desde` — el cursor del operador para saltar lo ya visto/abstenido.
+ * Sin el flag, conserva la carga plana original como fallback.
  *
  * Exportada para test directo (spy sobre el builder encadenado). El loop de clasificación
  * (main) sigue corriendo assertNoRutInLlmInput PRIMERO — esta carga no toca esa ruta.
@@ -117,12 +130,18 @@ export async function cargarContrapartes(
   if (opts.soloConfirmadas) {
     // Carga filtrada: embed !inner a lobby_audiencia (restringe a contrapartes con audiencia
     // confirmada + parlamentario enlazado) y sector_id is null (incremental/resumible).
-    const { data, error } = await client
+    // Orden determinista + cursor --desde (WR-05): página estable, reanudable.
+    let query = client
       .from("lobby_contraparte")
       .select("identificador, nombre, rol, lobby_audiencia!inner(estado_vinculo, parlamentario_id)")
       .is("sector_id", null)
       .eq("lobby_audiencia.estado_vinculo", "confirmado")
-      .not("lobby_audiencia.parlamentario_id", "is", null)
+      .not("lobby_audiencia.parlamentario_id", "is", null);
+    if (opts.desde !== undefined) {
+      query = query.gt("identificador", opts.desde);
+    }
+    const { data, error } = await query
+      .order("identificador", { ascending: true })
       .limit(limite);
     if (error) throw new Error(`cargarContrapartes falló: ${error.message}`);
     return ((data ?? []) as unknown as ContraparteRow[]).map(mapearFila);
@@ -214,6 +233,17 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
       `(gate CRUCE-02 ≥70%)`,
   );
 
+  // Cursor de reanudación (WR-05): las abstenciones dejan sector_id en null y volverían a
+  // seleccionarse en la corrida siguiente. Se imprime el último identificador procesado
+  // (la carga va ordenada por identificador) para que el operador AVANCE con --desde.
+  if (opts.soloConfirmadas && filas.length > 0) {
+    const ultimo = filas[filas.length - 1]!.identificador;
+    log(
+      `cruces-lobby: último identificador procesado = ${ultimo} ` +
+        `(para continuar sin re-pagar abstenciones: --desde ${ultimo})`,
+    );
+  }
+
   return {
     procesados: filas.length,
     asignados,
@@ -224,7 +254,11 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
   };
 }
 
-// Entry-point CLI: `tsx clasificar-lobby-cli.ts --limite 50 [--dry-run] [--service-key K]`.
+// Entry-point CLI:
+//   `tsx clasificar-lobby-cli.ts --limite 50 [--dry-run] [--service-key K]
+//    [--solo-confirmadas] [--desde ID]`
+// --desde (WR-05): cursor de reanudación sobre el orden por identificador; el log final
+// de cada corrida imprime el valor a pasar en la siguiente (salta abstenciones ya pagadas).
 const isMain =
   typeof process !== "undefined" &&
   process.argv[1] != null &&

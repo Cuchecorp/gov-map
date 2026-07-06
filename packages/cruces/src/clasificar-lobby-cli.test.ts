@@ -34,6 +34,16 @@ describe("parseArgs --solo-confirmadas (Task 1)", () => {
   it("un flag desconocido sigue lanzando CrucesCliArgsError (fail-fast intacto)", () => {
     expect(() => parseArgs(["--no-existe"])).toThrow(CrucesCliArgsError);
   });
+
+  // ── WR-05: cursor --desde ──────────────────────────────────────────────────
+  it("--desde ID → desde === ID", () => {
+    expect(parseArgs(["--desde", "CAMARA-abc123"]).desde).toBe("CAMARA-abc123");
+  });
+
+  it("--desde sin valor o tragándose otro flag lanza CrucesCliArgsError (fail-fast)", () => {
+    expect(() => parseArgs(["--desde"])).toThrow(CrucesCliArgsError);
+    expect(() => parseArgs(["--desde", "--dry-run"])).toThrow(CrucesCliArgsError);
+  });
 });
 
 // ── Task 2: carga filtrada ──────────────────────────────────────────────────────
@@ -44,11 +54,22 @@ interface QuerySpy {
   is: [string, unknown][];
   eq: [string, unknown][];
   not: [string, string, unknown][];
+  gt: [string, unknown][];
+  order: [string, unknown][];
   limit?: number;
 }
 
 function makeFakeClient(data: unknown[] = [], error: unknown = null) {
-  const spy: QuerySpy = { table: "", select: "", is: [], eq: [], not: [], limit: undefined };
+  const spy: QuerySpy = {
+    table: "",
+    select: "",
+    is: [],
+    eq: [],
+    not: [],
+    gt: [],
+    order: [],
+    limit: undefined,
+  };
   const client = {
     from(table: string) {
       spy.table = table;
@@ -67,6 +88,14 @@ function makeFakeClient(data: unknown[] = [], error: unknown = null) {
         },
         not(col: string, op: string, val: unknown) {
           spy.not.push([col, op, val]);
+          return builder;
+        },
+        gt(col: string, val: unknown) {
+          spy.gt.push([col, val]);
+          return builder;
+        },
+        order(col: string, opts: unknown) {
+          spy.order.push([col, opts]);
           return builder;
         },
         limit(n: number) {
@@ -103,12 +132,28 @@ describe("cargarContrapartes — modo --solo-confirmadas (Task 2)", () => {
     expect(spy.table).toBe("lobby_contraparte");
     // embed !inner a lobby_audiencia (join que restringe a contrapartes con audiencia)
     expect(spy.select).toMatch(/lobby_audiencia!inner/);
-    // (a) sector_id is null → naturalmente incremental (excluye lo ya clasificado)
+    // (a) sector_id is null → incremental para lo clasificado (excluye lo ya etiquetado)
     expect(spy.is).toContainEqual(["sector_id", null]);
     // (b) audiencia confirmada + con parlamentario enlazado
     expect(spy.eq).toContainEqual(["lobby_audiencia.estado_vinculo", "confirmado"]);
     expect(spy.not).toContainEqual(["lobby_audiencia.parlamentario_id", "is", null]);
     expect(spy.limit).toBe(25);
+    // WR-05: orden DETERMINISTA (sin .order(), Postgres devolvía una página arbitraria
+    // y una corrida podía quemar `limite` llamadas sin avanzar). Sin --desde, sin .gt.
+    expect(spy.order).toContainEqual(["identificador", { ascending: true }]);
+    expect(spy.gt).toHaveLength(0);
+  });
+
+  it("WR-05: con opts.desde agrega gt(identificador, desde) — cursor de reanudación", async () => {
+    const { client, spy } = makeFakeClient([]);
+    await cargarContrapartes(
+      client,
+      { soloConfirmadas: true, desde: "CAMARA-00ff" },
+      25,
+      noLog,
+    );
+    expect(spy.gt).toContainEqual(["identificador", "CAMARA-00ff"]);
+    expect(spy.order).toContainEqual(["identificador", { ascending: true }]);
   });
 
   it("mapea las filas preservando identificador/nombre/rol (rol omitido si null)", async () => {
