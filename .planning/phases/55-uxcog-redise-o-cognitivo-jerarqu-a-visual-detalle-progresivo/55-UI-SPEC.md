@@ -1,7 +1,9 @@
 ---
 phase: 55
 slug: uxcog-redise-o-cognitivo-jerarqu-a-visual-detalle-progresivo
-status: draft
+status: approved
+reviewed_at: 2026-07-07
+checker: gsd-ui-checker (opus) — PASS 6/6
 shadcn_initialized: true
 preset: "default / slate (existing — app/components.json)"
 created: 2026-07-07
