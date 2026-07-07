@@ -91,7 +91,13 @@ const ESTADO: EstadoActual = {
 
 describe("TramitacionStepper — stepper capa-1 (hitos clave + urgencia agrupada)", () => {
   it("(a) los hitos CLAVE (informe, votación, cambio de comisión) están SIEMPRE visibles", () => {
-    render(<TramitacionStepper eventos={fixture()} estado={ESTADO} />);
+    render(
+      <TramitacionStepper
+        eventos={fixture()}
+        estado={ESTADO}
+        boletin="16284-07"
+      />,
+    );
     expect(
       screen.getByText("Informe de comisión de Hacienda"),
     ).toBeInTheDocument();
@@ -102,7 +108,13 @@ describe("TramitacionStepper — stepper capa-1 (hitos clave + urgencia agrupada
   });
 
   it("(a2) WR-03: los trámites RUTINARIOS NO se muestran en capa-1 (viven en el detalle)", () => {
-    render(<TramitacionStepper eventos={fixture()} estado={ESTADO} />);
+    render(
+      <TramitacionStepper
+        eventos={fixture()}
+        estado={ESTADO}
+        boletin="16284-07"
+      />,
+    );
     expect(
       screen.queryByText("Cuenta de proyecto en la Sala"),
     ).not.toBeInTheDocument();
@@ -117,7 +129,7 @@ describe("TramitacionStepper — stepper capa-1 (hitos clave + urgencia agrupada
   it("(a3) WR-03: el stepper capa-1 renderiza MENOS ítems que el timeline completo", () => {
     const eventos = fixture();
     const { container } = render(
-      <TramitacionStepper eventos={eventos} estado={ESTADO} />,
+      <TramitacionStepper eventos={eventos} estado={ESTADO} boletin="16284-07" />,
     );
     // El detalle (TimelineView) lista construirItems completo; capa-1 lo reduce.
     const totalTimeline = construirItems(eventos).length;
@@ -127,14 +139,22 @@ describe("TramitacionStepper — stepper capa-1 (hitos clave + urgencia agrupada
 
   it("(b) las corridas de urgencia ≥2 se agrupan en 1 línea con el copy LOCKED neutro", () => {
     const { container } = render(
-      <TramitacionStepper eventos={fixture()} estado={ESTADO} />,
+      <TramitacionStepper
+        eventos={fixture()}
+        estado={ESTADO}
+        boletin="16284-07"
+      />,
     );
     // Copy LOCKED (UI-SPEC §Copywriting), conteo neutro, sin verbo causal.
     expect(container.textContent).toMatch(
       /2 trámites de urgencia · ver todos/,
     );
+    // WR-04: deep-link REAL que expande el período dentro del TimelineView (no un
+    // ancla a la propia sección que no revela nada).
     const ver = screen.getByRole("link", { name: /ver todos/ });
-    expect(ver.getAttribute("href")).toBe("#timeline");
+    expect(ver.getAttribute("href")).toBe(
+      "/proyecto/16284-07?urgencias=u1#timeline",
+    );
     // Los eventos individuales de urgencia NO se listan uno por uno en capa-1.
     expect(
       screen.queryByText("hace presente la urgencia Suma"),
@@ -143,14 +163,24 @@ describe("TramitacionStepper — stepper capa-1 (hitos clave + urgencia agrupada
 
   it("(c) omisión honesta: un trámite con fecha inválida muestra su descripción SIN fabricar fecha (nunca 1970)", () => {
     const { container } = render(
-      <TramitacionStepper eventos={fixture()} estado={ESTADO} />,
+      <TramitacionStepper
+        eventos={fixture()}
+        estado={ESTADO}
+        boletin="16284-07"
+      />,
     );
     expect(screen.getByText("Trámite sin fecha válida")).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/1970/);
   });
 
   it("(d) ELEVA el '¿Dónde está hoy?': etapa actual + urgencia vigente derivadas del estado", () => {
-    render(<TramitacionStepper eventos={fixture()} estado={ESTADO} />);
+    render(
+      <TramitacionStepper
+        eventos={fixture()}
+        estado={ESTADO}
+        boletin="16284-07"
+      />,
+    );
     expect(
       screen.getByText(/Etapa: Primer trámite constitucional/),
     ).toBeInTheDocument();
@@ -158,7 +188,7 @@ describe("TramitacionStepper — stepper capa-1 (hitos clave + urgencia agrupada
   });
 
   it("(e) estado vacío + sin eventos → mensaje honesto, sin fabricar etapas", () => {
-    render(<TramitacionStepper eventos={[]} estado={{}} />);
+    render(<TramitacionStepper eventos={[]} estado={{}} boletin="16284-07" />);
     expect(
       screen.getByText(/Aún no hay etapas de tramitación registradas/),
     ).toBeInTheDocument();
@@ -166,7 +196,11 @@ describe("TramitacionStepper — stepper capa-1 (hitos clave + urgencia agrupada
 
   it("(f) GATE §9.1: el copy no contiene banned-vocab causal/de juicio", () => {
     const { container } = render(
-      <TramitacionStepper eventos={fixture()} estado={ESTADO} />,
+      <TramitacionStepper
+        eventos={fixture()}
+        estado={ESTADO}
+        boletin="16284-07"
+      />,
     );
     const texto = container.textContent ?? "";
     const PROHIBIDO =

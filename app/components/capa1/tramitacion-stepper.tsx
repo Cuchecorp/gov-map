@@ -104,7 +104,21 @@ function PasoEvento({
   );
 }
 
-function LineaUrgenciaAgrupada({ n }: { n: number }) {
+function LineaUrgenciaAgrupada({
+  n,
+  boletin,
+  periodoId,
+}: {
+  n: number;
+  boletin: string;
+  periodoId: string;
+}) {
+  // MISMO deep-link que la vista completa (buildUrgenciasHref): el param ?urgencias
+  // expande ESTE período dentro del TimelineView, y la página abre el detalle
+  // colapsado (defaultOpen) cuando el param está presente. Así "ver todos" revela de
+  // verdad los N trámites (WR-04), no salta a la propia sección sin mostrar nada.
+  const qs = new URLSearchParams({ urgencias: periodoId });
+  const href = `/proyecto/${boletin}?${qs.toString()}#timeline`;
   return (
     <li className={"relative " + CONECTOR}>
       <span
@@ -114,9 +128,9 @@ function LineaUrgenciaAgrupada({ n }: { n: number }) {
       <p className="text-sm leading-snug text-muted-foreground">
         {/* Copy LOCKED (UI-SPEC §Copywriting): conteo NEUTRO, sin verbo causal. */}
         {n} trámites de urgencia{" · "}
-        {/* Afordance de drill-down (petróleo permitido): salta al detalle completo. */}
+        {/* Afordance de drill-down (petróleo permitido): expande el período completo. */}
         <a
-          href="#timeline"
+          href={href}
           className="text-accent-product underline underline-offset-2"
         >
           ver todos
@@ -129,11 +143,14 @@ function LineaUrgenciaAgrupada({ n }: { n: number }) {
 export function TramitacionStepper({
   eventos,
   estado,
+  boletin,
 }: {
   /** Eventos de tramitación YA leídos por el server (vista pura). */
   eventos: TramitacionEventoRow[];
   /** Estado derivado (reusa `derivarEstadoActual`); cada campo opcional se omite. */
   estado: EstadoActual;
+  /** Boletín del proyecto: construye el deep-link real de "ver todos" (WR-04). */
+  boletin: string;
 }) {
   if (eventos.length === 0) {
     return (
@@ -189,6 +206,8 @@ export function TramitacionStepper({
             <LineaUrgenciaAgrupada
               key={item.periodo.id}
               n={item.periodo.eventos.length}
+              boletin={boletin}
+              periodoId={item.periodo.id}
             />
           ) : (
             <PasoEvento

@@ -369,14 +369,19 @@ export async function TramitacionSection({
       </div>
 
       {/* Capa-1: stepper de etapas SIEMPRE visible (hitos clave + urgencia agrupada). */}
-      <TramitacionStepper eventos={eventos} estado={estado} />
+      <TramitacionStepper eventos={eventos} estado={estado} boletin={boletin} />
 
-      {/* Capa-2: tramitación COMPLETA colapsada (default cerrado). El mecanismo
-          server ?urgencias=<id> sigue operando DENTRO del TimelineView. Ningún
+      {/* Capa-2: tramitación COMPLETA colapsada. Arranca ABIERTO cuando la URL trae
+          ?urgencias=<id> (deep-link de "ver todos" en capa-1, WR-04) para que el
+          período expandido dentro del TimelineView sea VISIBLE al aterrizar. El
+          mecanismo server ?urgencias sigue operando DENTRO del TimelineView. Ningún
           hito se pierde: el detalle contiene todos los eventos. */}
       {eventos.length > 0 && (
         <div className="mt-4">
-          <DetalleColapsable n={eventos.length}>
+          <DetalleColapsable
+            n={eventos.length}
+            defaultOpen={urgenciaExpandida != null}
+          >
             <TimelineView
               eventos={eventos}
               boletin={boletin}
