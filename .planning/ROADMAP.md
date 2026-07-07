@@ -703,7 +703,7 @@ Plans:
 | 35. ENT — Resolución de identidades de terceros | v4.0 | 7/7 | Complete (gaps 35-05/06/07 cerrados; pgTAP 0034/35/36/37 verdes en PROD; ENT-01..05 SATISFIED) | 2026-06-24 |
 | 36. CRUCE — Capa de cruces parlamentario↔sector (deny-by-default) | v4.0 | 4/4 | Complete   | 2026-06-24 |
 | 37. SURF — Cruces en ficha de parlamentario (gated) | v4.0 | 3/3 | Complete    | 2026-06-24 |
-| 38. SURF — Cruces en ficha de proyecto (gated, diferido) | v4.0 | 0/? | Not started | - |
+| 38. SURF — Cruces en ficha de proyecto (DESTRABADA: sign-off señales-voto 2026-07-07) | v4.0 | 0/? | Not started | - |
 | 39. LEGAL — Gate legal F13/F17/cruces (sign-off humano) | v4.0 | 0/? | Not started | - |
 | 40. RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human) | v4.0 | 0/? | Not started | - |
 | 41. CRUCEN — Habilitación de cruces (grant gated + dossier) | v4.0 | 3/3 | Complete (encendido 2026-06-24) | 2026-06-24 |
@@ -711,10 +711,15 @@ Plans:
 | 43. DEBT — Eliminación de deuda técnica (exhaustiva) | v4.0 | — | Complete (24 FIX-NOW; suite 316→341) | 2026-06-24 |
 | 44. LEG — Auditoría UX + inventario + plan (v5) | v5.0 | 3/3 | Complete (UI-SPEC + auditoría + inventario) | 2026-06-26 |
 | 45. LEG — Navegación: acordeones por carril + resumen above-fold | v5.0 | 3/3 | Complete   | 2026-06-26 |
-| 46. VIZ — Chart patrimonio (conteo de ítems/año) | v5.0 | 1/2 | In Progress|  |
-| 47. VIZ — Chart votos/ausencias | v5.0 | 0/? | Blocked — gated por ingesta de votaciones | - |
+| 46. VIZ — Chart patrimonio (conteo de ítems/año) | v5.0 | 2/2 | Complete (deploy 2026-07-02) | 2026-07-02 |
+| 47. VIZ — Chart votos/ausencias | v5.0 | 0/? | Not Started (desbloqueada 2026-07-02) | - |
 | 48. VIZ — Autoría + similares-del-parlamentario | v5.0 | 0/? | Blocked — gated por ingesta autores + identidad | - |
-| 49. VIZ — Comparativo vs cámara (ausencias/actividad) | v5.0 | 0/? | Blocked — gated por F47 + RPC agregada | - |
+| 49. VIZ — Comparativo vs cámara (ausencias/actividad) | v5.0 | 0/? | Not Started (desbloqueada 2026-07-02; depende F47) | - |
+| 50. FIX — Quick wins diagnóstico (P1) | v5.0 | 4/4 | Complete | 2026-07-02 |
+| 51. LEG2 — Legibilidad profunda (P2) | v5.0 | 7/7 | Complete | 2026-07-03 |
+| 52. CRUCE2 — Cruces nuevos (P3) | v5.0 | 6/6 | Complete (deploy ee6b7544) | 2026-07-06 |
+| 53. UXNAV — Auditoría UX navegada (BrowserOS) + fixes P0 | v5.0 | 0/? | Not Started | - |
+| 54. UXDEMO — Pulido presentacional demo | v5.0 | 0/? | Not Started | - |
 
 ## ✅ v4.0 — De datos a cruces verificables
 
@@ -777,11 +782,11 @@ INFRA-01 desbloqueo CI (Phase 33, ✅ DONE) — sin esto ningún workflow progra
 - [x] **Phase 35: ENT — Resolución de identidades de terceros** - Maestra `entidad_tercero` (ID estable, alias, matcher determinista, pipeline de adjudicación con gate humano, deny-by-default) que extiende el subsistema de identidad a donantes/proveedores y gestores de lobby; conecta los reconciliadores existentes (antes dejaban `contraparte_id`/`contratista` NULL). (completed 2026-06-24)
 - [x] **Phase 36: CRUCE — Capa de cruces parlamentario↔sector (deny-by-default)** - Modelar relaciones parlamentario↔sector cruzando lobby/aportes/votos; materializar señales factuales (conteos de evidencia, sin score); etiquetado de sector por LLM con su propio eval/golden SEPARADO. Construible deny-by-default; expuesto solo tras gate legal. (completed 2026-06-24)
 - [x] **Phase 37: SURF — Superficie de cruces en ficha de parlamentario (gated)** - `CrucesSection` (Server Component) que llama al RPC y renderiza señales factuales con provenance inline, sibling de `#lobby`/`#patrimonio`, detrás de `crucesPublicEnabled()` (default OFF). Construible; visible solo tras gate. (completed 2026-06-24)
-- [ ] **Phase 38: SURF — Superficie de cruces en ficha de proyecto (gated, diferido)** - `cruces_de_proyecto(boletin)` → parlamentarios que votaron a favor con cruces en el sector del proyecto, PII-safe, mismo gate. Hereda la advertencia anti-insinuación de las señales de voto → se DIFIERE si las señales de voto quedan OFF.
-- [ ] **Phase 39: LEGAL — Gate legal transversal F13/F17/cruces (sign-off humano)** - Revisión legal humana (Ley 21.719) que habilita `MONEY_PUBLIC_ENABLED`, `netPublicEnabled` y `crucesPublicEnabled`. Acción exclusivamente humana — un agente NUNCA flipea estos flags. Atraviesa Fases 1–3; controla toda exposición sensible.
+- [ ] **Phase 38: SURF — Superficie de cruces en ficha de proyecto (DESTRABADA 2026-07-07)** - `cruces_de_proyecto(boletin)` → parlamentarios que votaron a favor con cruces en el sector del proyecto, PII-safe, mismo gate. Sign-off de señales de voto FIRMADO 2026-07-07 (Carlos Sánchez Rossi, `docs/legal/SIGNOFF-senales-voto.md`) → construible y publicable bajo caveat anti-causal.
+- [ ] **Phase 39: LEGAL — Gate legal transversal F13/F17/cruces (sign-off humano)** - Revisión legal humana (Ley 21.719) que habilita `MONEY_PUBLIC_ENABLED`, `netPublicEnabled` y `crucesPublicEnabled`. Acción exclusivamente humana — un agente NUNCA flipea estos flags. PARCIALES firmados: cruces (dossier 41, 2026-06-24), señales-voto/SURF-02 (2026-07-07, `docs/legal/SIGNOFF-senales-voto.md`). Pendientes: F13/MONEY y cierre formal F17/NET.
 - [ ] **Phase 40: RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human)** - Cosecha de RUT a la maestra; wire real de ChileCompra (hoy CLI demo) + workflow; workflow manual SERVEL por elección. Bloqueado por RUT-01 (prerrequisito duro) + ticket/URL de operador; exposición pública requiere LEGAL-01.
 - [x] **Phase 41: CRUCEN — Habilitación de cruces (grant gated + dossier + fecha_captura)** - Cierra las 3 deudas del code-review de Phase 37 para dejar la superficie de cruces LISTA para firmar/encender (sin encenderla): fix WR-02 (proyectar `cruce_senal.fecha_captura` en el RPC → frescura honesta, migración aplicable ya), migración de grant del RPC a anon ESCRITA pero NO aplicada (deny-by-default hasta sign-off), y dossier legal de cruces (prep para firma humana, espejo F17). CERO flip de flag. (completed 2026-06-24) — ENCENDIDO 2026-06-24: dossier firmado + 0041/0042 aplicadas a PROD.
-- [ ] **Phase 42: LOCKDOWN — Cierre de la API pública de Supabase (rol `web_reader`)** - Eliminar la superficie de API pública (rol `anon`): el servidor de la página lee como un rol dedicado de mínimo privilegio `web_reader` (NO service_role — preserva RLS/PII), y se revocan TODOS los grants de `anon`/`authenticated`. Tras el cambio la anon key es inútil para extraer datos; todo se sirve solo a través de la página. Motivada por el temor a uso indiscriminado de la API tras el encendido de cruces. (added 2026-06-24) — **WRITE-COMPLETE 2026-06-24 (verifier PASS 4/4, suite 316); cutover a PROD = checkpoint operador pendiente.**
+- [x] **Phase 42: LOCKDOWN — Cierre de la API pública de Supabase (rol `web_reader`)** - Eliminar la superficie de API pública (rol `anon`): el servidor de la página lee como un rol dedicado de mínimo privilegio `web_reader` (NO service_role — preserva RLS/PII), y se revocan TODOS los grants de `anon`/`authenticated`. Tras el cambio la anon key es inútil para extraer datos; todo se sirve solo a través de la página. Motivada por el temor a uso indiscriminado de la API tras el encendido de cruces. (added 2026-06-24) — **WRITE-COMPLETE 2026-06-24 (verifier PASS 4/4, suite 316); cutover EJECUTADO 2026-06-26 (Camino A: anon REST muerta 401/42501, sitio lee service_role, web_reader dropeado — supersede el diseño web_reader; ver memoria camino-a-post-legacy-cutover).**
 - [x] **Phase 43: DEBT — Eliminación de deuda técnica (exhaustiva, premortem swarm + Opus 1-a-1)** - ✅ COMPLETE 2026-06-24: ~71 hallazgos → Opus 1-a-1 → 24 FIX-NOW (21 commits), 11 checkpoints operador, 23 won't-fix/falso-pos. Suite 316→341 verde, tsc limpio, dinero un-darkened (0→97), migración 0045 escrita (apply=operador). Cero regresión. Ledger: `43-DEBT-LEDGER.md`. (added 2026-06-24)
 
 ## Phase Details (v4.0)
@@ -908,31 +913,20 @@ Plans:
 
 **UI hint**: yes
 
-### Phase 38: SURF — Superficie de cruces en ficha de proyecto (gated, diferido)
+### Phase 38: SURF — Superficie de cruces en ficha de proyecto (DESTRABADA 2026-07-07)
 
-**Goal:** Construir (gated/diferido) `cruces_de_proyecto(boletin)` + la `CrucesSection` de la ficha del proyecto, que muestra los parlamentarios que votaron a favor con cruces en el sector del proyecto, PII-safe (proyección vía `parlamentario_publico`, nunca rut/partido), bajo el mismo gate. Hereda la advertencia anti-insinuación de las señales de voto → se DIFIERE si las señales de voto quedan OFF (17-LEGAL-DOSSIER §2).
-**Mode:** capability (UI, gated/diferido)
-**Depends on:** Phase 36 (capa de cruces), Phase 37 (patrón de superficie), sign-off de señales de voto (Phase 39).
+**Goal:** Construir `cruces_de_proyecto(boletin)` + la `CrucesSection` de la ficha del proyecto, que muestra los parlamentarios que votaron a favor con cruces en el sector del proyecto, PII-safe (proyección vía `parlamentario_publico`, nunca rut/partido). El sign-off de señales de voto fue FIRMADO el 2026-07-07 (Carlos Sánchez Rossi, `docs/legal/SIGNOFF-senales-voto.md`) bajo las condiciones anti-insinuación heredadas de 17-LEGAL-DOSSIER §2 y 41-LEGAL-DOSSIER-CRUCES: caveat anti-causal 1×/sección, negative-match de vocabulario causal, conteo neutro, trazabilidad por evidencia. Nota de contexto post-Camino A: el sitio lee con service_role y las RPC nuevas siguen el idiom 0047/0048 (security definer, doble revoke, cero grant, allowlist lockdown-guard); el gate `crucesPublicEnabled()` ya está ON en PROD desde 2026-07-02.
+**Mode:** capability (UI)
+**Depends on:** Phase 36 (capa de cruces), Phase 37 (patrón de superficie), sign-off señales-voto (FIRMADO — `docs/legal/SIGNOFF-senales-voto.md`).
 **Requirements:** SURF-02
-**Autonomy:** needs-legal-signoff (y diferido hasta sign-off de señales de voto).
+**Autonomy:** autónomo para código + RPC escrita (idiom 0047: doble revoke, pgTAP, allowlist); apply DDL a PROD = checkpoint operador (patrón 52-06).
 **Success Criteria** (what must be TRUE):
 
   1. `cruces_de_proyecto(boletin)` + `CrucesSection` en la ficha de proyecto muestra los parlamentarios que votaron a favor con cruces en el sector del proyecto, PII-safe (proyección vía `parlamentario_publico`, nunca rut/partido) — verificado por pgTAP
-  2. La sección está gated por `crucesPublicEnabled()` (mismo gate que Phase 37); con gate OFF no monta
-  3. Cada evidencia es trazable; el copy es factual sin verbo causal (linter). La fase se DIFIERE mientras las señales de voto queden OFF (hereda la advertencia anti-insinuación)
+  2. La sección degrada honesta pre-apply (RPC ausente → null, patrón PGRST202 de 52-03) y monta con el RPC aplicado
+  3. Cada evidencia es trazable; el copy es factual sin verbo causal (negative-match en tests); caveat anti-causal 1×/sección
 
-**Plans:** 3 plans (2 waves)
-
-Plans:
-
-**Wave 1**
-
-- [ ] 37-01-PLAN.md — Gate de presentacion crucesPublicEnabled (Candado B, server-only, fail-closed, espejo de money-gate) + tabla de verdad (SURF-01)
-- [ ] 37-02-PLAN.md — CrucesView (puro) + CrucesSection (Server Component, RPC cruces_de_parlamentario) + tipos del RPC + test RTL (empty-honesto/provenance/identidad/anti-insinuacion negative-match/conteo neutro) (SURF-01)
-
-**Wave 2** *(blocked on Wave 1)*
-
-- [ ] 37-03-PLAN.md — Cablear <section id=cruces> gated (sibling mt-12, envuelta entera por el gate) + CrucesSkeleton en page.tsx + test de seccion-ausente (gate OFF) / presente (gate ON) (SURF-01)
+**Plans:** TBD
 
 **UI hint**: yes
 
@@ -1068,6 +1062,8 @@ Auditoría completa del sitio en vivo (`.planning/DIAGNOSTICO-govmap-2026-07-02.
 - [x] **Phase 50: FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)** — 11 fixes de código acotados (B1, B6, B7, B8, B9, B10, B12, B14, B15, B17 + supresión de honest-state repetido). Sin DDL, sin deploy (checkpoint operador aparte). (completed 2026-07-02)
 - [x] **Phase 51: LEG2 — Legibilidad profunda (P2)** — votos agregados por proyecto, timeline dos niveles + "¿dónde está hoy?", patrimonio tarjeta-resumen sin URIs (B3), comparador cableado (B4), rebeldías honestas (B5), lobby agrupado por contraparte, provenance por sección, footer global. (completed 2026-07-03)
 - [x] **Phase 52: CRUCE2 — Cruces nuevos con datos ya disponibles (P3)** — clasificador sectorial (enciende `cruce_senal` de verdad), lobby×tramitación temporal, proyecto→agenda inverso, módulo de actualidad en home. (Asistencia comparada = Phase 49; chart votos = Phase 47 — ya desbloqueadas.) (completed 2026-07-06)
+- [ ] **Phase 53: UXNAV — Auditoría UX navegada (BrowserOS) + fixes de orientación (P0 demo)** — recorrer los journeys clave del sitio EN VIVO con navegador real (desktop + viewport móvil, screenshots como evidencia), producir informe UX priorizado y corregir los P0 de navegación/orientación en el mismo ciclo. El sitio "está difícil de maniobrar" (operador, 2026-07-07); demo para centro de estudios. (added 2026-07-07)
+- [ ] **Phase 54: UXDEMO — Pulido presentacional para demo (centro de estudios)** — nombres presentables (hoy `nombre_normalizado` minúsculas), home con rutas de entrada guiadas, microcopy "cómo leer esto", P1 del informe F53, QA final navegado + set de screenshots de demo. (added 2026-07-07)
 
 ### Decisión (RESUELTA 2026-06-26): A + B — ambas pistas en paralelo
 
@@ -1209,3 +1205,74 @@ Plans:
 - [x] 52-04-PLAN.md — SC4: modulo de actualidad en el home (3 bloques no-PII, force-dynamic) + RTL
 - [x] 52-05-PLAN.md — SC1: corrida LIVE del clasificador (golden gate -> dry-run -> lotes -> materializar_cruces() -> verificacion psql)
 - [x] 52-06-PLAN.md — SC2/SC5: checkpoint operador — apply 0047+0048 por psql + pgTAP + stamping schema_migrations
+
+### Phase 47: VCHART — Chart de votos/ausencias del parlamentario
+
+**Goal:** Dar a la ficha de parlamentario su visualización de votos: distribución del sentido de voto (sí/no/abstención/ausente/pareo) y su evolución en el tiempo, sobre los datos YA ingestados (133 votaciones / 18.700 votos / 17.378 confirmados / 186 parlamentarios con voto — gate de datos verificado contra PROD 2026-07-02). Patrón F46 (chart patrimonio Recharts): solo hechos contables con fuente, conteo neutro, sin score ni ranking; degrade honesto donde el dato falte. Reusar la infraestructura de lectura existente (RPCs allowlisted / tablas no-PII) — RPC nueva solo si es imprescindible, con idiom 0047 (security definer, doble revoke, cero grant, pgTAP, allowlist) y apply = checkpoint operador.
+**Mode:** producto (UI / visualización)
+**Depends on:** Phase 46 (patrón chart Recharts + build CF validado), datos de votaciones masivas (CUMPLIDO 2026-07-02).
+**Requirements:** VIZ-02 (chart votos), extiende VOTE de v2
+**Autonomy:** autónomo para código+tests; DDL nueva (si la hay) escrita con pgTAP y aplicada en checkpoint operador (patrón 52-06); redeploy Cloudflare al cierre (patrón docker-cf-build.sh + wrangler, autorizado por operador 2026-07-06).
+**Success Criteria** (what must be TRUE):
+
+  1. La ficha de parlamentario muestra un chart de distribución de votos (sí/no/abstención/ausente) con conteos reales y fuente/fecha visibles; parlamentario sin votos ingestados → empty-state honesto (jamás barra en cero fabricada)
+  2. El chart respeta el design system (tokens, Mono para cifras, sin arbitrary values) y la frontera de carril `mt-12`; cero lenguaje causal o de ranking ("el más ausente" PROHIBIDO — negative-match)
+  3. Suite verde + tsc limpio + lockdown-guard verde; SSR intacto (Recharts client wrapper patrón F46)
+
+**Plans:** TBD
+
+**UI hint**: yes
+
+### Phase 49: ACOMP — Comparativo de ausencias vs cámara
+
+**Goal:** Contexto factual para la asistencia: junto a las ausencias del parlamentario, mostrar la referencia de su cámara (p.ej. "ausente en N de M votaciones (X%); mediana de su cámara: Y%") vía RPC `tasa_ausencia_comparada` (security definer, PII-safe, allowlist, idiom 0047) sobre los datos ya ingestados (546 ausencias / 18.700 votos — gate CUMPLIDO 2026-07-02). ESTRICTAMENTE factual-comparativo: números y mediana, sin adjetivos, sin ranking nominal ("top ausentes" PROHIBIDO), sin porcentaje-como-veredicto; caveat de cobertura (el universo es el ingestado, no la historia completa).
+**Mode:** producto (RPC + UI)
+**Depends on:** Phase 47 (superficie de votos donde vive el comparativo), datos masivos (CUMPLIDO).
+**Requirements:** VIZ-03 (comparativo), extiende VOTE de v2
+**Autonomy:** autónomo para código+RPC escrita+pgTAP; apply DDL = checkpoint operador (patrón 52-06); redeploy al cierre (autorizado 2026-07-06).
+**Success Criteria** (what must be TRUE):
+
+  1. RPC `tasa_ausencia_comparada` live-verificable: emite tasa propia + mediana de cámara + universo (N/M), PII-safe, doble revoke, pgTAP, allowlisted
+  2. La ficha muestra el comparativo como hechos con universo explícito y caveat de cobertura; cero adjetivos/ranking (negative-match en tests)
+  3. Suite verde + tsc limpio + lockdown-guard verde
+
+**Plans:** TBD
+
+**UI hint**: yes
+
+### Phase 53: UXNAV — Auditoría UX navegada (BrowserOS) + fixes de orientación (P0 demo)
+
+**Goal:** El operador reporta que el sitio "está difícil de maniobrar" y necesita presentarlo a un centro de estudios: esta fase audita la UX NAVEGANDO el sitio en vivo (https://observatorio-congreso.thevalis.workers.dev) con un navegador real — BrowserOS vía MCP HTTP local (`http://127.0.0.1:9200/mcp`, wrapper `scripts/bros-cli.mjs`; usar `new_hidden_page`/ventanas ocultas para no molestar al operador) — y corrige los P0 de orientación en el mismo ciclo. Journeys mínimos, cada uno en desktop Y viewport móvil, con screenshots archivados (`.planning/phases/<dir>/ux-evidence/`): (1) visitante aterriza en `/` y debe entender qué es el sitio y qué puede hacer; (2) ciudadano busca un proyecto por idea → llega a la ficha → entiende "qué pasó, cuándo, según qué fuente"; (3) periodista investiga un parlamentario 360 (votos→lobby→patrimonio→red); (4) navegación transversal: ficha proyecto ↔ ficha parlamentario ↔ agenda ↔ contraparte ↔ home. Producir `53-UX-AUDIT.md` con hallazgos P0 (desorientación/bloqueo) / P1 (fricción) / P2 (pulido), cada uno con screenshot de evidencia, y ARREGLAR TODOS los P0: navegación global consistente y visible, back-links/breadcrumbs, cross-links entre superficies, estados vacíos que orientan ("no hay X; prueba Y"), affordances confusas. Redeploy + re-walkthrough con screenshots before/after.
+**Mode:** producto (auditoría UX navegada + fixes de orientación)
+**Depends on:** Phase 52 (sitio desplegado con todas las superficies). BrowserOS corriendo en el host (verificado 2026-07-07).
+**Requirements:** UX-01 (navegabilidad), extiende LEG de F45/F51
+**Autonomy:** autónomo (código UI + navegación browser + screenshots); redeploy Cloudflare al cierre autorizado por operador (2026-07-06, patrón docker-cf-build.sh + wrangler local). CERO DDL, CERO flags. Si BrowserOS no responde, fallback documentado: análisis de HTML servido por curl + suite RTL (la evidencia visual queda como deuda).
+**Success Criteria** (what must be TRUE):
+
+  1. `53-UX-AUDIT.md` existe con ≥4 journeys navegados en vivo (desktop + móvil), screenshots archivados, y hallazgos clasificados P0/P1/P2 con evidencia visual y ubicación exacta
+  2. TODOS los P0 corregidos con suite verde y redeploy; re-walkthrough posterior demuestra cada fix con screenshot before/after
+  3. Desde cualquier superficie se puede volver al home y saltar a las demás en ≤2 clicks; toda página muestra dónde estás (título/sección visible); ningún callejón sin salida (página sin links de continuación)
+  4. Cero regresión: anti-insinuación intacta (negative-match), lockdown-guard verde, tsc limpio; frontera de carril `mt-12` y gates existentes intactos
+
+**Plans:** TBD
+
+**UI hint**: yes
+
+### Phase 54: UXDEMO — Pulido presentacional para demo (centro de estudios)
+
+**Goal:** Dejar el sitio presentable para mostrarlo a un centro de estudios. (1) **Nombres presentables:** hoy las superficies muestran `nombre_normalizado` en minúsculas ("gonzalez sofia") — introducir un formatter de display puro en el frontend (Title Case + orden consistente Nombre Apellido, manejo de partículas "de/del/la" y tildes) aplicado en TODAS las superficies ciudadanas, SIN tocar la proyección PII ni la DB. (2) **Home que explica:** bajo el hero, rutas de entrada guiadas (explora proyectos / parlamentarios / agenda — 3 tarjetas con 1 línea de valor cada una) para que un visitante entienda el sitio en <5 segundos. (3) **Microcopy de lectura:** 1 línea "cómo leer esto" en las secciones complejas (cruces, rebeldías, patrimonio, red) — factual, sin promesas. (4) **P1 del informe F53** corregidos o explícitamente diferidos con razón. (5) **QA final navegado** con BrowserOS: re-recorrer los 4 journeys, capturar el set de screenshots de demo en `docs/demo/` (home, búsqueda, ficha proyecto con cruce lobby, ficha parlamentario, agenda, red) y verificar cero errores de consola. Redeploy final.
+**Mode:** producto (pulido presentacional + QA navegado)
+**Depends on:** Phase 53 (informe UX + P0 corregidos).
+**Requirements:** UX-02 (presentabilidad demo)
+**Autonomy:** autónomo; redeploy autorizado (2026-07-06); CERO DDL, CERO flags; el formatter de nombres es frontend-only (la proyección `nombre_normalizado` NO se toca — es contrato PII-safe).
+**Success Criteria** (what must be TRUE):
+
+  1. Ningún nombre en minúscula cruda en superficie ciudadana (formatter puro con tests de partículas/tildes; los datos subyacentes intactos)
+  2. El home comunica qué es el sitio y ofrece ≥3 rutas de entrada guiadas visibles sin scroll en desktop; hero LOCKED intacto
+  3. P1 de `53-UX-AUDIT.md` corregidos o diferidos con razón escrita en el informe
+  4. `docs/demo/` contiene el set de screenshots actuales del sitio desplegado (≥6 superficies) y el QA navegado no registra errores de consola
+  5. Suite verde + tsc limpio + lockdown-guard verde; anti-insinuación intacta
+
+**Plans:** TBD
+
+**UI hint**: yes
