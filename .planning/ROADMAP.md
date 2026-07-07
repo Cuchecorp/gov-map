@@ -489,7 +489,14 @@ OPS-01 apply remoto (Phase 23, PRECONDICIÓN — la data no es visible sin las m
   3. Un probe en vivo de las RPC confirma que `parlamentarios_publico()`, `votos_de_parlamentario(...)` (con titulo/idea_matriz/resultado/totales) y, si aplica, el modelo `net` responden con la firma esperada y sin filtrar PII
   4. Queda registrado que ninguna sección dependiente (lobby/patrimonio/votaciones/provenance) se considera "poblada" hasta que esta compuerta esté verde
 
-**Plans:** TBD
+**Plans:** 5 plans in 3 waves
+
+Plans:
+- [ ] 54-01-PLAN.md — formatNombre() + aplicar a 11 superficies de nombres + tests + línea de tildes en metodología
+- [ ] 54-02-PLAN.md — microcopy "cómo leer esto" (cruces integra, rebeldías reubica, patrimonio agrega)
+- [ ] 54-03-PLAN.md — 3 tarjetas de entrada en el home (server, cero JS, fold 1280×800)
+- [ ] 54-04-PLAN.md — F-04 grafo móvil + botón /buscar petróleo + identity-warn @theme + skeletons anti-CLS + minors + F-05 diferido
+- [ ] 54-05-PLAN.md — gate de fase + redeploy final + smoke + docs/demo (≥6 screenshots)
 
 ### Phase 24: LOBBY — Fuente camara.cl/transparencia + spike de estructura
 
