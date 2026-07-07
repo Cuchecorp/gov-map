@@ -14,8 +14,10 @@ import { netPublicEnabled } from "@/lib/net-gate";
  *
  * Diseño (UI-SPEC §11.0): fondo crema (`bg-background`), borde inferior sutil
  * (`border-border`), altura ~56px, padding `px-4 md:px-8`. A la izquierda el
- * wordmark → home; a la derecha la nav (Buscar · Parlamentarios · Agenda ·
- * Sobre / Metodología). Sin auth/login, sin theme toggle obligatorio.
+ * wordmark → home; a la derecha la nav de 5 ítems en orden por journey
+ * (53-UI-SPEC §a): Buscar · Parlamentarios · Agenda · Red · Sobre — el ítem Red
+ * espeja el Candado B NET (ausente con gate OFF). Sin auth/login, sin theme
+ * toggle obligatorio.
  *
  * Anti-insinuación: cero foto, cero partido — sólo navegación textual.
  */

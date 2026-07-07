@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 
 /**
  * Tests RTL del HeaderNav (53-02, Wave 0 gap de 53-RESEARCH §Validation Architecture).

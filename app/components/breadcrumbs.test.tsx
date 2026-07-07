@@ -73,7 +73,7 @@ describe("Breadcrumbs — estructura de navegación (53-UI-SPEC §(b))", () => {
     links.forEach((a) => expect(a.className).toContain("min-h-11"));
   });
 
-  it("un solo ítem (contraparte: [Inicio, nombre]) dibuja 0 separadores y 1 link", () => {
+  it("dos ítems (contraparte: [Inicio, nombre]) dibujan 1 separador y 1 link", () => {
     const { container } = render(
       <Breadcrumbs items={[{ label: "Inicio", href: "/" }, { label: "Empresa X" }]} />,
     );
