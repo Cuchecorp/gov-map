@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { HeaderNav } from "@/components/header-nav";
+import { netPublicEnabled } from "@/lib/net-gate";
 
 /**
  * GlobalHeader — header global persistente del sitio (UI-SPEC §11.0, LOCKED).
@@ -19,6 +20,12 @@ import { HeaderNav } from "@/components/header-nav";
  * Anti-insinuación: cero foto, cero partido — sólo navegación textual.
  */
 export function GlobalHeader() {
+  // WR-01 (F53): el ítem Red de la nav espeja el Candado B NET. El flag se lee
+  // AQUÍ (Server Component, chokepoint `netPublicEnabled`, nunca el env crudo) y
+  // baja como boolean no-sensible — con gate OFF el nodo Red está AUSENTE del
+  // DOM, igual que toda superficie NET/MONEY/CRUCES gated del repo.
+  const showRed = netPublicEnabled(process.env);
+
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex min-h-14 max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 md:px-8">
@@ -29,7 +36,7 @@ export function GlobalHeader() {
           Observatorio del Congreso 360
         </Link>
 
-        <HeaderNav />
+        <HeaderNav showRed={showRed} />
       </div>
     </header>
   );

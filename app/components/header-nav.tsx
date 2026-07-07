@@ -12,7 +12,9 @@ import { usePathname } from "next/navigation";
  * mismo split que el repo usa (página server + SearchBox island).
  *
  * Anti-insinuación / seguridad (T-21-01-01): islote sin props sensibles — sólo
- * `<Link>`s estáticos y estado de UI local; no recibe env/keys.
+ * `<Link>`s estáticos y estado de UI local; no recibe env/keys. `showRed` es un
+ * boolean NO sensible: sólo espeja lo que la ruta `/red` ya revela (404 con gate
+ * OFF); el flag crudo `NET_PUBLIC_ENABLED` jamás llega a este islote (WR-01 F53).
  *
  * Sin JavaScript la nav igual funciona (links siempre visibles, colapso por CSS):
  * el active-underline es una mejora progresiva, no un requisito de navegación.
@@ -28,6 +30,9 @@ interface NavItem {
 // entra en pos 4 — deja de ser huérfana del header (F-01); label = nombre de ruta
 // factual, NUNCA "Red de influencia"/"Conexiones" (banned-vocab). "Sobre" acortado
 // para que 5 ítems quepan en 1 fila a 390px (Metodología sigue en /sobre + footer).
+// El ítem Red se emite SOLO con `showRed` (Candado B NET espejado server-side en
+// GlobalHeader vía `netPublicEnabled`, WR-01 F53): con el gate OFF el nodo está
+// AUSENTE del DOM — el chrome nunca nombra una superficie que el gate niega.
 const NAV_ITEMS: readonly NavItem[] = [
   { href: "/buscar", label: "Buscar" },
   { href: "/parlamentarios", label: "Parlamentarios" },
@@ -41,13 +46,26 @@ function esActivo(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function HeaderNav() {
+export interface HeaderNavProps {
+  /**
+   * Espejo EXACTO del Candado B NET (`netPublicEnabled`), computado server-side
+   * por `GlobalHeader` y pasado como boolean no-sensible. `true` → 5 ítems (con
+   * Red); `false` → el ítem Red se filtra ENTERO del DOM (mismo patrón que el
+   * enlace B21b de la ficha), nunca un link a un 404.
+   */
+  showRed: boolean;
+}
+
+export function HeaderNav({ showRed }: HeaderNavProps) {
   const pathname = usePathname() ?? "";
+  const items = showRed
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter((item) => item.href !== "/red");
 
   return (
     <nav aria-label="Navegación principal">
       <ul className="flex flex-wrap items-center gap-x-1 gap-y-1 sm:gap-x-2">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const activo = esActivo(pathname, item.href);
           return (
             <li key={item.href}>
