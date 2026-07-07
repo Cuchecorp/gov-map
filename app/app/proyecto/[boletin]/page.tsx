@@ -172,11 +172,11 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
 // ── Rail sticky de la ficha (UXCOG 55-04) ─────────────────────────────────────
 // Server component: lee la cabecera del proyecto (título/boletín/estado) vía la
 // lectura CACHEADA `leerProyecto` (dedup con FichaSection — React.cache) + un
-// conteo de votaciones honesto, y arma las 6 entradas del rail. La isla FichaRail
+// conteo de votaciones honesto, y arma las 7 entradas del rail. La isla FichaRail
 // (client, scrollspy) recibe el `header` como ReactNode server + `navEntries` YA
 // serializadas — NUNCA deriva un dígito ni importa Supabase (contrato no-leak F45).
 // El proyecto no tiene carriles gated (cruces/money viven en /parlamentario), así
-// que las 6 entradas están SIEMPRE presentes. Si el proyecto no existe, retorna
+// que las 7 entradas están SIEMPRE presentes. Si el proyecto no existe, retorna
 // null: FichaSection resuelve el 404 de la ruta.
 export async function ProyectoRail({ boletin }: { boletin: string }) {
   const proyecto = await leerProyecto(boletin);
@@ -207,6 +207,9 @@ export async function ProyectoRail({ boletin }: { boletin: string }) {
     },
     { id: "lobby-tramitacion", label: "Lobby del período" },
     { id: "idea-matriz", label: "Idea matriz" },
+    // IN-02: #cuerpos-legales es una sección del contenido; sin su entrada el
+    // scrollspy nunca la observa y el rail marca "idea-matriz" mientras se lee.
+    { id: "cuerpos-legales", label: "Cuerpos legales" },
     { id: "similares", label: "Similares" },
   ];
 

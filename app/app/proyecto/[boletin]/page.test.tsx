@@ -186,8 +186,8 @@ describe("/proyecto/[boletin] — shell rail + grid (UXCOG 55-04)", () => {
   });
 });
 
-describe("/proyecto/[boletin] — ProyectoRail (6 entradas + caveat 1× + conteo honesto)", () => {
-  it("arma las 6 entradas de nav del rail con sus anclas", async () => {
+describe("/proyecto/[boletin] — ProyectoRail (7 entradas + caveat 1× + conteo honesto)", () => {
+  it("arma las 7 entradas de nav del rail con sus anclas", async () => {
     const html = renderToStaticMarkup(await ProyectoRail({ boletin: "16284-07" }));
     for (const anchor of [
       "#estado",
@@ -195,6 +195,7 @@ describe("/proyecto/[boletin] — ProyectoRail (6 entradas + caveat 1× + conteo
       "#votaciones",
       "#lobby-tramitacion",
       "#idea-matriz",
+      "#cuerpos-legales",
       "#similares",
     ]) {
       expect(html).toContain(`href="${anchor}"`);
