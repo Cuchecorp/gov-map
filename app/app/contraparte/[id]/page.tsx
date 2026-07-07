@@ -164,6 +164,9 @@ export async function HeaderSection({ id }: { id: string }) {
 function HeaderSkeleton() {
   return (
     <div className="space-y-3 mb-12" aria-hidden="true">
+      {/* Fila placeholder del breadcrumb (anti-CLS, IN-03): matchea la caja real
+          del <Breadcrumbs> que hace stream-in encima del header. */}
+      <Skeleton className="h-4 w-40" />
       <Skeleton className="h-6 w-32 rounded-full" />
       <Skeleton className="h-7 w-3/4" />
       <Skeleton className="h-4 w-full mt-2" />

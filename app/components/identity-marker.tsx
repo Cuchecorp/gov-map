@@ -13,8 +13,8 @@ export function IdentityMarker() {
   return (
     <span
       className="inline-flex items-center gap-1 px-1.5 py-0.5 ml-1 rounded
-                 bg-[--identity-warn-bg] text-[--identity-warn-fg]
-                 border border-[--identity-warn-border]
+                 bg-identity-warn-bg text-identity-warn-fg
+                 border border-identity-warn-border
                  text-sm font-normal"
       title="El nombre en la fuente no pudo asociarse de forma confirmada a un parlamentario del registro. Se muestra tal como aparece en la fuente oficial."
       aria-label="identidad no verificada"

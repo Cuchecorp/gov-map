@@ -440,6 +440,9 @@ export async function HeaderSection({ id }: { id: string }) {
 function ParlamentarioHeaderSkeleton() {
   return (
     <div className="space-y-3" aria-hidden="true">
+      {/* Fila placeholder del breadcrumb (anti-CLS, IN-03): matchea la caja real
+          del <Breadcrumbs> que hace stream-in encima del header. */}
+      <Skeleton className="h-4 w-40" />
       <div className="flex gap-2">
         <Skeleton className="h-6 w-24 rounded-full" />
       </div>

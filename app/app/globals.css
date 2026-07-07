@@ -56,6 +56,18 @@
 /* Civic semantic tokens (unique to this project) — UI-SPEC §1.1 */
 @import "./styles/civic-tokens.css";
 
+/* Registro Tailwind v4 de los tokens identity-warn (54-04 Contract 5b).
+ * civic-tokens.css YA define --identity-warn-* como valores hsl() COMPLETOS →
+ * aquí se referencian SIN wrapper hsl() (Pitfall 2: doble hsl = color inválido).
+ * Genera las utilities planas bg-/text-/border-identity-warn-* que reemplazan la
+ * sintaxis arbitrary-var v3 `bg-[--identity-warn-bg]` (que compilaba a CSS
+ * inválido y dejaba el marker SIN ámbar). */
+@theme inline {
+  --color-identity-warn-bg: var(--identity-warn-bg);
+  --color-identity-warn-fg: var(--identity-warn-fg);
+  --color-identity-warn-border: var(--identity-warn-border);
+}
+
 @layer base {
   * {
     border-color: hsl(var(--border));

@@ -259,8 +259,8 @@ function CaveatIdentidad() {
   return (
     <p
       className="text-sm mb-4 px-3 py-2 rounded border
-                 bg-[--identity-warn-bg] text-[--identity-warn-fg]
-                 border-[--identity-warn-border]"
+                 bg-identity-warn-bg text-identity-warn-fg
+                 border-identity-warn-border"
     >
       Las contrapartes se muestran tal como las registra la fuente; su identidad
       no está verificada.
