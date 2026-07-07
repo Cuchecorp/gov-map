@@ -50,6 +50,11 @@ has_function_privilege('anon','public.rebeldias_de_parlamentario(text)','execute
 - app/: 535/535 verde (incluye lockdown-guard Block A sobre la 0048 enmendada: cero grant a anon/public).
 - Ningún flag `*_PUBLIC_ENABLED` tocado. Cero policies nuevas. Cero grants.
 
+## Addendum post-code-review (misma sesión, mismo checkpoint autorizado)
+
+1. **CR-02 (data):** las 17.730 fechas de `lobby_audiencia` (origen camara-transparencia-lobby) estaban ancladas a medianoche UTC → bajo `America/Santiago` retrocedían un día y 1.014 (lunes) caían en la semana ISO anterior. Normalización one-time por psql (una transacción): `fecha := (fecha_UTC::date) at time zone 'America/Santiago'` → 0 filas UTC-midnight restantes. El parser (`parse-camara-lobby.ts`) quedó fijado a la misma convención (commit `308dc88`).
+2. **WR-07 (RPC):** la 0048 se enmendó IN-PLACE (contrato 8 columnas: + `audiencia_id`; drop+recreate por 42P13; doble revoke intacto) y se RE-APLICÓ a PROD: pgTAP **10/10 ok** (incluye caso nuevo: dos audiencias reales mismo día/materia NO colapsan), anon deny `f`, smoke `16743-04` = 5 filas / 5 audiencia_id distintos. El stamp `0048` no cambia.
+
 ## Deuda restante (fuera de este plan)
 
 - Deploy Cloudflare del frontend (carriles 52-03/52-04 + F51 viven solo en el repo hasta el próximo deploy; la RPC ya está viva en PROD para el server actual solo tras deploy).
