@@ -183,7 +183,7 @@ export function TramitacionStepper({
       {(estado.etapaLinea || estado.urgenciaVigente) && (
         <div className="space-y-0.5">
           {estado.etapaLinea && (
-            <p className="text-base font-medium leading-snug">
+            <p className="text-sm font-semibold leading-snug">
               {estado.etapaLinea}
             </p>
           )}
