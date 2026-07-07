@@ -28,10 +28,20 @@ async function rpc(method, params) {
     body: JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method, params }),
   });
   const text = await res.text();
-  const line = text.startsWith("data:")
-    ? text.split("\n").find((l) => l.startsWith("data: "))?.slice(6)
-    : text;
-  const parsed = JSON.parse(line);
+  // WR-03 (53-REVIEW): streamable-HTTP MCP servers may frame SSE as
+  // "event: message\ndata: {...}" — the body does NOT necessarily start with
+  // "data:". Find the data line ANYWHERE; only if none exists, treat the body as
+  // plain JSON. A body that is neither → fail loudly with the real cause.
+  const dataLine = text.split("\n").find((l) => l.startsWith("data: "));
+  const payload = dataLine ? dataLine.slice(6) : text;
+  let parsed;
+  try {
+    parsed = JSON.parse(payload);
+  } catch {
+    throw new Error(
+      `MCP: respuesta no parseable (ni línea "data: " ni JSON plano): ${text.slice(0, 200)}`,
+    );
+  }
   if (parsed.error) throw new Error(`MCP error: ${JSON.stringify(parsed.error)}`);
   return parsed.result;
 }
