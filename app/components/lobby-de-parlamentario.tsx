@@ -299,6 +299,17 @@ export function LobbyView({ data }: { data: LobbyViewData }) {
           no significa que no se haya reunido — los datos de la Ley del Lobby se
           están incorporando.
         </p>
+        <p className="text-sm mt-2">
+          Mientras tanto, puedes{" "}
+          <Link
+            href="/buscar"
+            className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2"
+          >
+            buscar un proyecto de ley por su idea{" "}
+            <span aria-hidden="true">→</span>
+          </Link>
+          .
+        </p>
       </>
     );
   }
@@ -311,6 +322,17 @@ export function LobbyView({ data }: { data: LobbyViewData }) {
         <p className="text-sm text-muted-foreground">
           No se registran reuniones de lobby confirmadas para este parlamentario en
           el periodo consultado, según {fuente}.
+        </p>
+        <p className="text-sm mt-2">
+          Mientras tanto, puedes{" "}
+          <Link
+            href="/buscar"
+            className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2"
+          >
+            buscar un proyecto de ley por su idea{" "}
+            <span aria-hidden="true">→</span>
+          </Link>
+          .
         </p>
       </>
     );

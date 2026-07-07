@@ -292,9 +292,22 @@ async function CitacionesSection({ year, week }: ISOWeek) {
 
   if (citaciones.length === 0) {
     return (
-      <p className="mt-4 text-sm text-muted-foreground">
-        No hay citaciones de comisiones registradas para esta semana.
-      </p>
+      <>
+        <p className="mt-4 text-sm text-muted-foreground">
+          No hay citaciones de comisiones registradas para esta semana.
+        </p>
+        <p className="text-sm mt-2">
+          Puedes{" "}
+          <Link
+            href="/buscar"
+            className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2"
+          >
+            buscar un proyecto de ley por su idea{" "}
+            <span aria-hidden="true">→</span>
+          </Link>
+          .
+        </p>
+      </>
     );
   }
 

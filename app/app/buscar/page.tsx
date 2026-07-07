@@ -85,6 +85,17 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
           No se encontraron proyectos para &ldquo;{q}&rdquo;. Prueba con otras
           palabras, o ingresa un número de boletín.
         </p>
+        <p className="text-sm mt-2">
+          También puedes revisar{" "}
+          <Link
+            href="/agenda"
+            className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2"
+          >
+            la agenda legislativa de la semana{" "}
+            <span aria-hidden="true">→</span>
+          </Link>
+          .
+        </p>
       </div>
     );
   }

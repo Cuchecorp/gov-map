@@ -460,10 +460,23 @@ export function VotosView({
   // consultado todavía" de "consultado, sin votos confirmados".
   if (noIngestado) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Aún no hemos ingerido las votaciones de este parlamentario. Esto no
-        significa que no haya votado — los datos se están incorporando.
-      </p>
+      <>
+        <p className="text-sm text-muted-foreground">
+          Aún no hemos ingerido las votaciones de este parlamentario. Esto no
+          significa que no haya votado — los datos se están incorporando.
+        </p>
+        <p className="text-sm mt-2">
+          Puedes explorar{" "}
+          <Link
+            href="/parlamentarios"
+            className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2"
+          >
+            otros parlamentarios en el directorio{" "}
+            <span aria-hidden="true">→</span>
+          </Link>
+          .
+        </p>
+      </>
     );
   }
 

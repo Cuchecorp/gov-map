@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -164,6 +165,17 @@ export function RedGraph({ subgrafo }: RedGraphProps) {
           existan hechos públicos que vinculen a dos parlamentarios —por
           ejemplo, haber recibido audiencia de la misma contraparte de lobby—
           aparecerán aquí, cada uno con su fuente y su fecha.
+        </p>
+        <p className="text-sm mt-2">
+          Vuelve al{" "}
+          <Link
+            href="/parlamentarios"
+            className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2"
+          >
+            directorio de parlamentarios{" "}
+            <span aria-hidden="true">→</span>
+          </Link>
+          .
         </p>
       </section>
     );
