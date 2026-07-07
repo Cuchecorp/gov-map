@@ -123,6 +123,9 @@ describe("/red — gate a nivel de página (candado B, LOCKED)", () => {
     expect(html).toContain("Ada Aguilar");
     expect(html).toContain("Bruno Bravo");
     expect(html).toContain('value="D1009"');
+    // Nota de uso conservada sin semilla (guía honesta del selector; NUNCA
+    // afirma "mostrando toda la red" — no existe vista global en este gated).
+    expect(html).toContain("Elige un parlamentario para ver");
   });
 
   it("error del RPC parlamentarios_publico en el picker → THROW (#34)", async () => {
@@ -168,6 +171,11 @@ describe("/red — gate a nivel de página (candado B, LOCKED)", () => {
     // honesto — NO inventa un nodo aislado como si fuera un grafo. Eso prueba que
     // la isla consumió el JSON del RPC (firma de props estable) sin lanzar.
     expect(html).toMatch(/aún no hay relaciones/i);
+    // Ego-framing (55-05): nota de uso LOCKED con el nombre del nodo semilla,
+    // derivado del subgrafo ya leído (cero query nueva).
+    expect(html).toContain(
+      "Centrado en Ada Aguilar y su vecindario inmediato.",
+    );
   });
 
   it("gate ON + semilla válida + grafo VACÍO (0 aristas) → estado honesto, NO error", async () => {

@@ -26,6 +26,9 @@ export interface NodoParlamentarioData {
   camara: string | null;
   /** id de respaldo cuando el nombre viene vacío. */
   id: string;
+  /** Nodo de partida del ego-framing (55-05): marca sobria de wayfinding —
+   *  señala DESDE QUÉ parlamentario se centró la vista, NO un orden ni valoración. */
+  esSeed?: boolean;
   [key: string]: unknown;
 }
 
@@ -43,9 +46,16 @@ export function NodoParlamentario({
   // Display-only (F54 Contract 1): re-casea el nombre RENDERIZADO en label + aria.
   // El id de respaldo (D####/S####) trae mayúscula → passthrough.
   const nombreDisplay = formatNombre(nombre);
+  // Ego-framing (55-05): marca sobria del nodo de partida. Es wayfinding (desde
+  // quién se centró la vista), NO un ranking — sin puntaje, sin insignia de valor.
+  const esSeed = data.esSeed === true;
 
   return (
-    <div className="net-nodo" role="group" aria-label={`Parlamentario: ${nombreDisplay}`}>
+    <div
+      className={esSeed ? "net-nodo net-nodo--seed" : "net-nodo"}
+      role="group"
+      aria-label={`Parlamentario: ${nombreDisplay}${esSeed ? " (punto de partida)" : ""}`}
+    >
       {/* Conectores invisibles: el grafo dibuja aristas, no implica jerarquía. */}
       <Handle
         type="target"

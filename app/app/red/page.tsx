@@ -152,6 +152,13 @@ export default async function RedPage({ searchParams }: PageProps) {
 
   const subgrafo = (data as Subgrafo | null) ?? null;
 
+  // Nota de uso del ego-framing (55-05, UI-SPEC): con semilla, la vista se centra
+  // en el vecindario inmediato del parlamentario. `{nombre}` = nombre público del
+  // nodo semilla, tomado del subgrafo YA leído (cero query nueva). Honest-state:
+  // si el nombre no viene, se degrada a un texto neutro sin fabricar el nombre.
+  const seedNodo = subgrafo?.nodos.find((n) => n.id === seed) ?? null;
+  const seedNombre = seedNodo?.nombre ? formatNombre(seedNodo.nombre) : null;
+
   return (
     <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
       <h1 className="text-xl font-semibold">Relaciones entre parlamentarios</h1>
@@ -159,7 +166,12 @@ export default async function RedPage({ searchParams }: PageProps) {
         Hechos públicos que vinculan a este parlamentario con otros. Cada relación
         es un hecho con fuente y fecha; no afirma intención ni causa.
       </p>
-      <RedGraph subgrafo={subgrafo} />
+      <p className="text-sm text-muted-foreground mt-2">
+        {seedNombre
+          ? `Centrado en ${seedNombre} y su vecindario inmediato.`
+          : "Centrado en el parlamentario seleccionado y su vecindario inmediato."}
+      </p>
+      <RedGraph subgrafo={subgrafo} seedId={seed} />
     </main>
   );
 }

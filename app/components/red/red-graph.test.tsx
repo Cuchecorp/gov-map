@@ -42,6 +42,7 @@ vi.mock("@xyflow/react", async () => {
       edges,
       nodeTypes,
       edgeTypes,
+      fitViewOptions,
     }: {
       nodes: {
         id: string;
@@ -52,10 +53,18 @@ vi.mock("@xyflow/react", async () => {
       edges: { id: string; type: string; data: unknown }[];
       nodeTypes: Record<string, React.ComponentType<{ data: unknown }>>;
       edgeTypes: Record<string, React.ComponentType<{ data: unknown }>>;
+      fitViewOptions?: { nodes?: { id: string }[] };
     }) =>
       React.createElement(
         "div",
-        { "data-testid": "rf-canvas" },
+        {
+          "data-testid": "rf-canvas",
+          // Expone el ego-framing (fitViewOptions.nodes) para poder asertar que
+          // con seedId se encuadra el vecindario del seed, no el grafo global.
+          "data-fitview-nodes": JSON.stringify(
+            (fitViewOptions?.nodes ?? []).map((n) => n.id),
+          ),
+        },
         // Cada nodo se envuelve en un div que expone su posición inyectada
         // (data-x/data-y) para poder asertar el layout determinista por carril.
         nodes.map((n) => {
@@ -415,6 +424,48 @@ describe("RedGraph — nodos huérfanos excluidos (B20a) + layout por carril (B2
     // Dos nodos de la misma cámara comparten banda pero difieren de posición
     // (índice-de-carril local): el layout es determinista, no colapsa nodos.
     expect(y("D1")).not.toBe(y("D2"));
+  });
+});
+
+// ── 55-05 (UX-03): framing ego del seed + marca sobria del nodo semilla ──────────
+describe("RedGraph — framing ego del seed (55-05)", () => {
+  it("con seedId encuadra el ego: fitViewOptions.nodes = seed + vecinos 1-hop", () => {
+    const { container } = render(
+      <RedGraph
+        seedId="D1009"
+        subgrafo={{ nodos: dos_nodos, aristas: [arista()] }}
+      />,
+    );
+    const canvas = within(container).getByTestId("rf-canvas");
+    const ego = JSON.parse(canvas.getAttribute("data-fitview-nodes") ?? "[]");
+    // arista() por defecto vincula D1009↔D2011 → el ego es ambos, centrado en el seed.
+    expect(ego).toContain("D1009"); // seed
+    expect(ego).toContain("D2011"); // vecino 1-hop
+  });
+
+  it("sin seedId conserva el fitView global (sin lista de nodos ego)", () => {
+    const { container } = render(
+      <RedGraph subgrafo={{ nodos: dos_nodos, aristas: [arista()] }} />,
+    );
+    const canvas = within(container).getByTestId("rf-canvas");
+    // Sin semilla el encuadre es global → fitViewOptions no filtra nodos.
+    expect(canvas.getAttribute("data-fitview-nodes")).toBe("[]");
+  });
+
+  it("el nodo seed lleva marca sobria (data.esSeed) y los demás no", () => {
+    const { container } = render(
+      <RedGraph
+        seedId="D1009"
+        subgrafo={{ nodos: dos_nodos, aristas: [arista()] }}
+      />,
+    );
+    const seedNode = within(container).getByTestId("rf-node-D1009");
+    const otroNode = within(container).getByTestId("rf-node-D2011");
+    // Marca sobria = clase de wayfinding en el nodo semilla; ausente en el resto.
+    expect(seedNode.querySelector(".net-nodo--seed")).not.toBeNull();
+    expect(otroNode.querySelector(".net-nodo--seed")).toBeNull();
+    // No-ranking: la marca no introduce puntaje/score/orden de personas.
+    expect(seedNode.textContent ?? "").not.toMatch(/puntaje|score|ranking/i);
   });
 });
 

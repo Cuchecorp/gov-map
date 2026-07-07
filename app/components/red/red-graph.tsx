@@ -74,6 +74,14 @@ export interface Subgrafo {
 export interface RedGraphProps {
   /** JSON plano emitido por el RPC `subgrafo_red` (nodos + aristas). */
   subgrafo: Subgrafo | null;
+  /**
+   * Semilla del ego-framing (55-05): id del parlamentario desde el que se abrió
+   * la vista. Con seedId, el grafo se centra en su vecindario inmediato (seed +
+   * nodos 1-hop) vía `fitViewOptions.nodes`, en vez del fitView global de 136
+   * nodos; y el nodo semilla se marca sobrio (no-ranking). Sin seedId, fitView
+   * global (shipped). Solo props de @xyflow/react ya disponibles — cero física.
+   */
+  seedId?: string;
 }
 
 // Etiqueta humana sobria por tipo, para el control de filtro.
@@ -113,7 +121,7 @@ function posicion(
   return { x: col * COL, y: fila * ROW * 3 + row * ROW };
 }
 
-export function RedGraph({ subgrafo }: RedGraphProps) {
+export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
   const nodos = useMemo(() => subgrafo?.nodos ?? [], [subgrafo]);
   const aristas = useMemo(() => subgrafo?.aristas ?? [], [subgrafo]);
 
@@ -211,9 +219,27 @@ export function RedGraph({ subgrafo }: RedGraphProps) {
       id: n.id,
       type: "parlamentario",
       position: posicion(laneIndex, n.camara),
-      data: { nombre: n.nombre, camara: n.camara, id: n.id },
+      data: {
+        nombre: n.nombre,
+        camara: n.camara,
+        id: n.id,
+        // Ego-framing (55-05): marca sobria del nodo de partida (no-ranking).
+        esSeed: seedId != null && n.id === seedId,
+      },
     };
   });
+
+  // Ego-framing (55-05): con seedId, encuadra el vecindario inmediato del seed
+  // (seed + nodos 1-hop de las aristas visibles) vía `fitViewOptions.nodes` (API
+  // instalada, @xyflow/system 0.0.77) — NO el fitView global de 136 nodos. Sin
+  // seedId, se conserva el fitView global shipped. El layout grid determinista por
+  // cámara (`posicion`) NO cambia — jamás una simulación física (anti-insinuación).
+  const egoIds = seedId
+    ? Array.from(new Set([seedId, ...aristasVisibles.flatMap((a) => [a.a, a.b])]))
+    : [];
+  const fitViewOptions = seedId
+    ? { padding: 0.2, nodes: egoIds.map((id) => ({ id })), minZoom: 0.2 }
+    : { padding: 0.05 };
 
   const rfEdges: Edge<AristaHechoData>[] = aristasVisibles.map((a, i) => ({
     id: `${a.tipo}-${a.a}-${a.b}-${i}`,
@@ -298,7 +324,7 @@ export function RedGraph({ subgrafo }: RedGraphProps) {
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 fitView
-                fitViewOptions={{ padding: 0.05 }}
+                fitViewOptions={fitViewOptions}
                 minZoom={0.2}
                 proOptions={{ hideAttribution: true }}
               >

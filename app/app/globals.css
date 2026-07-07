@@ -219,6 +219,15 @@
   box-shadow: 0 1px 2px hsl(0 0% 0% / 0.06);
 }
 
+/* Marca sobria del nodo de partida (ego-framing 55-05): borde neutro reforzado
+   que señala DESDE QUÉ parlamentario se centró la vista. Es wayfinding, NO una
+   valoración ni un orden de personas (anti-insinuación LOCKED): sin petróleo
+   (reservado), sin insignia de puntaje. */
+.net-nodo--seed {
+  border-width: 2px;
+  border-color: hsl(var(--foreground));
+}
+
 .net-nodo__nombre {
   font-weight: 600;
   font-size: 0.9375rem;
