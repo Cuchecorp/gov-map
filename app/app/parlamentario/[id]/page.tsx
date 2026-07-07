@@ -362,9 +362,10 @@ export async function CarrilesSection({
           <CrucesCapa1
             sectores={conteos.crucesSectores}
             total={conteos.cruces.tipo === "dato" ? conteos.cruces.n : 0}
+            detalleHref="#cruces-detalle"
           />
           {conteos.cruces.tipo === "dato" && (
-            <div className="mt-4">
+            <div id="cruces-detalle" className="mt-4 scroll-mt-6">
               <DetalleColapsable n={conteos.cruces.n}>
                 <Suspense fallback={<CrucesSkeleton />}>
                   <CrucesSection id={id} />

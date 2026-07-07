@@ -21,7 +21,7 @@ function fixture(): CruceSector[] {
 }
 
 describe("CrucesCapa1 — resumen petróleo-framed + CTA (55-02)", () => {
-  it("usa petróleo en el marco, el h2 y el botón primario (único acento de la página)", () => {
+  it("usa petróleo en el marco, el h2 y el CTA primario (único acento de la página)", () => {
     const { container } = render(<CrucesCapa1 sectores={fixture()} total={8} />);
     // Marco petróleo.
     const marco = container.querySelector(".border-accent-product");
@@ -29,9 +29,18 @@ describe("CrucesCapa1 — resumen petróleo-framed + CTA (55-02)", () => {
     // h2 en petróleo.
     const h2 = screen.getByRole("heading", { level: 2 });
     expect(h2.className).toContain("text-accent-product");
-    // Botón primario petróleo.
-    const cta = screen.getByRole("button", { name: /Explorar los 8 cruces/ });
+    // CTA primario petróleo: un ANCLA real al detalle (no un botón inerte sin handler).
+    const cta = screen.getByRole("link", { name: /Explorar los 8 cruces/ });
     expect(cta.className).toContain("bg-accent-product");
+    expect(cta.getAttribute("href")).toBe("#cruces-detalle");
+  });
+
+  it("el CTA respeta un detalleHref explícito (ancla al DetalleColapsable de cruces)", () => {
+    render(
+      <CrucesCapa1 sectores={fixture()} total={8} detalleHref="#otro-detalle" />,
+    );
+    const cta = screen.getByRole("link", { name: /Explorar los 8 cruces/ });
+    expect(cta.getAttribute("href")).toBe("#otro-detalle");
   });
 
   it("chips 'sector · N reuniones' neutros; '· M votos' SOLO cuando nVotos>0", () => {

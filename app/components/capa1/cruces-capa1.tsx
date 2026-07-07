@@ -38,9 +38,12 @@ function Chip({ sector }: { sector: CruceSector }) {
 export function CrucesCapa1({
   sectores,
   total,
+  detalleHref = "#cruces-detalle",
 }: {
   sectores: CruceSector[];
   total: number;
+  /** Ancla al DetalleColapsable de cruces (el control real vive en la página server). */
+  detalleHref?: string;
 }) {
   return (
     <div className="rounded-lg border-[1.5px] border-accent-product bg-card p-4 space-y-3">
@@ -60,14 +63,17 @@ export function CrucesCapa1({
         </p>
       )}
 
-      {/* Botón PRIMARIO petróleo — el único énfasis de la página (drill-down). */}
+      {/* CTA PRIMARIO petróleo — el único énfasis de la página. Ancla al
+          DetalleColapsable de cruces (control real en la página server): un anchor
+          NAVEGA de verdad al detalle, no es un botón inerte sin handler (una vista
+          server no puede llevar onClick). */}
       {total > 0 && (
-        <button
-          type="button"
-          className="min-h-11 rounded-lg bg-accent-product px-6 font-semibold text-background hover:bg-accent-product/90"
+        <a
+          href={detalleHref}
+          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-accent-product px-6 font-semibold text-background no-underline hover:bg-accent-product/90"
         >
           Explorar los {total} cruces
-        </button>
+        </a>
       )}
 
       {/* Caveat de cruces (LOCKED, 1×). */}
