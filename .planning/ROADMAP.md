@@ -495,7 +495,7 @@ Plans:
 
 - [x] 54-01-PLAN.md — formatNombre() + aplicar a 11 superficies de nombres + tests + línea de tildes en metodología
 - [ ] 54-02-PLAN.md — microcopy "cómo leer esto" (cruces integra, rebeldías reubica, patrimonio agrega)
-- [ ] 54-03-PLAN.md — 3 tarjetas de entrada en el home (server, cero JS, fold 1280×800)
+- [x] 54-03-PLAN.md — 3 tarjetas de entrada en el home (server, cero JS, fold 1280×800)
 - [ ] 54-04-PLAN.md — F-04 grafo móvil + botón /buscar petróleo + identity-warn @theme + skeletons anti-CLS + minors + F-05 diferido
 - [ ] 54-05-PLAN.md — gate de fase + redeploy final + smoke + docs/demo (≥6 screenshots)
 
@@ -727,7 +727,7 @@ Plans:
 | 51. LEG2 — Legibilidad profunda (P2) | v5.0 | 7/7 | Complete | 2026-07-03 |
 | 52. CRUCE2 — Cruces nuevos (P3) | v5.0 | 6/6 | Complete (deploy ee6b7544) | 2026-07-06 |
 | 53. UXNAV — Auditoría UX navegada (BrowserOS) + fixes P0 | v5.0 | 5/5 | Complete    | 2026-07-07 |
-| 54. UXDEMO — Pulido presentacional demo | v5.0 | 1/5 | In Progress|  |
+| 54. UXDEMO — Pulido presentacional demo | v5.0 | 2/5 | In Progress|  |
 
 ## ✅ v4.0 — De datos a cruces verificables
 
@@ -1287,6 +1287,6 @@ Plans:
   4. `docs/demo/` contiene el set de screenshots actuales del sitio desplegado (≥6 superficies) y el QA navegado no registra errores de consola
   5. Suite verde + tsc limpio + lockdown-guard verde; anti-insinuación intacta
 
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 
 **UI hint**: yes
