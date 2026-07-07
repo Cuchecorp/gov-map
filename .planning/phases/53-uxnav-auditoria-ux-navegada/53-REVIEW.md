@@ -26,10 +26,12 @@ files_reviewed_list:
   - scripts/rewalk-shot.mjs
 findings:
   critical: 0
-  warning: 6
-  info: 5
-  total: 11
-status: issues_found
+  warning: 0
+  info: 4
+  total: 4
+status: clean
+fixed_at: 2026-07-06
+fixes: WR-01..WR-06 + IN-05 resueltos (commits fix(53) c014f86..78710a8; suite 565 verde + tsc -b limpio)
 ---
 
 # Phase 53: Code Review Report
@@ -37,7 +39,7 @@ status: issues_found
 **Reviewed:** 2026-07-07T03:42:16Z
 **Depth:** deep
 **Files Reviewed:** 21 (20 changed in `8c49188..HEAD` scope + `global-header.tsx` traced as direct consumer)
-**Status:** issues_found
+**Status:** clean — WR-01..WR-06 (todas las warnings) + IN-05 RESUELTOS 2026-07-06 (commits `fix(53):`, suite 565 verde + `tsc -b` limpio); quedan 4 info abiertas (IN-01..IN-04)
 
 ## Summary
 
@@ -53,7 +55,9 @@ Deep review of the F53 UX-nav phase: HeaderNav 5-item re-order (+`/red`), new `B
 - **Named exports don't leak into routing:** `CitacionesSection` (agenda), `HeaderSection` (parlamentario/contraparte) are named exports; only the default export defines an App Router page. The repo already shipped this pattern (`Resultados`, `CarrilesSection`) through a successful deploy, so the Next build accepts the extra exports.
 - **Redirect shortcut safety:** `redirect(\`/proyecto/${q}\`)` in /agenda and /buscar is guarded by anchored digits-only `BOLETIN_RE` (`/^\d{3,6}(-\d{1,2})?$/`) — no path injection.
 
-Issues found are below: 6 warnings (one gate-consistency coupling, two defects in the evidence script, one LOCKED-docstring contradiction, one latent client-state bug, one hollow test assertion) and 5 info items. Code is already deployed (7b35b99e); fixes route to F54.
+Issues found are below: 6 warnings (one gate-consistency coupling, two defects in the evidence script, one LOCKED-docstring contradiction, one latent client-state bug, one hollow test assertion) and 5 info items. Code is already deployed (7b35b99e).
+
+**Fix pass (2026-07-06):** las 6 warnings + IN-05 fueron resueltas con commits atómicos `fix(53): WR-0x …` (WR-01 `c014f86`, WR-02 `19795f7`, WR-03 `01f9a5d`, IN-05 `f49f4bf`, WR-04 `e378b71`, WR-05 `82bd432`, WR-06 `78710a8`). Gates: suite completa 565/565 verde + `tsc -b` limpio. Quedan abiertas solo las info IN-01..IN-04.
 
 ## Narrative Findings (AI reviewer)
 
@@ -75,6 +79,7 @@ export function HeaderNav({ showRed }: { showRed: boolean }) {
 }
 ```
 (The boolean prop is not sensitive — it only mirrors what the route already reveals.)
+**RESUELTO** (`c014f86`): `GlobalHeader` computa `showRed` vía `netPublicEnabled(process.env)` y `HeaderNav` filtra el ítem `/red` del DOM con gate OFF; tests cubren ambos estados (5 ítems ON / 4 ítems OFF).
 
 #### WR-02: `rewalk-shot.mjs` reports `SHOT_OK` even when the MCP tool call failed (`result.isError` never checked)
 
@@ -91,6 +96,7 @@ const callTool = async (name, args) => {
   return result;
 };
 ```
+**RESUELTO** (`19795f7`): `callTool` lanza sobre `result.isError` con el texto del tool; el script sale ≠0 en vez de imprimir `SHOT_OK` falso.
 
 #### WR-03: `rewalk-shot.mjs` SSE parsing crashes on standard event-stream framing
 
@@ -102,12 +108,14 @@ const dataLine = text.split("\n").find((l) => l.startsWith("data: "));
 const line = dataLine ? dataLine.slice(6) : text;
 ```
 (Search for the `data:` line unconditionally; fall back to raw text only when none exists.)
+**RESUELTO** (`01f9a5d`): la línea `data: ` se busca en cualquier posición del body; fallback a JSON plano, y si ninguno parsea se lanza un error con snippet del body (fail-loud).
 
 #### WR-04: Lobby empty states now link to `/buscar` while the component's own LOCKED §9.1 rule 1 says the section "NUNCA … enlaza un … proyecto" — contract/code contradiction
 
 **File:** `app/components/lobby-de-parlamentario.tsx:23-24,302-312,326-337`
 **Issue:** The content-gate box at the top of the file (marked LOCKED, "RELEASE GATE DE LA FASE") states: "esta sección NUNCA referencia, compone ni enlaza un voto / boletín / proyecto / declaración". F-03 added, inside this same section, a link to `/buscar` labeled "buscar un proyecto de ley por su idea". The anti-insinuación *intent* is intact — the link lives only in the two empty states, where zero lobby facts exist, so no lobby fact is composed with a legislative fact, and 53-UI-SPEC contracted this exact copy. But the code now literally contradicts its own LOCKED contract. Future agents enforcing the docstring verbatim will either "fix" the contracted link away, or — worse — read the rule as already broken and feel licensed to add project links in state (c), where composition WOULD be an insinuation vector.
 **Fix:** Amend the docstring rule (not the code): add an explicit carve-out, e.g. "1. … Excepción ÚNICA: en los empty states (a)/(b) —cero hechos de lobby presentes— se permite UNA línea de continuación de navegación a /buscar (F-03, 53-UI-SPEC), nunca a un /proyecto/[boletin] concreto." Keep the state-(c) prohibition absolute.
+**RESUELTO** (`e378b71`): carve-out explícito agregado a la regla 1 del gate §9.1 (comment-only) — empty states (a)/(b) pueden enlazar la RUTA /buscar (cero hechos = nada que componer); estado (c) mantiene la prohibición absoluta.
 
 #### WR-05: `RedGraph` filter state goes stale if `subgrafo` prop changes without remount — latent "Ninguna relación coincide" with untouched filters
 
@@ -118,12 +126,14 @@ const line = dataLine ? dataLine.slice(6) : text;
 const [tiposOcultos, setTiposOcultos] = useState<Set<string>>(new Set());
 const visible = (tipo: string) => !tiposOcultos.has(tipo);
 ```
+**RESUELTO** (`82bd432`): el estado ahora es `tiposOcultos` (set vacío = todo visible); tipos nuevos que lleguen por cambio de prop nacen visibles. 18/18 tests RTL del grafo verdes sin cambios.
 
 #### WR-06: Test asserts `>= 1` RPC calls under the name "el breadcrumb NO invoca un RPC extra" — the stated contract is untested
 
 **File:** `app/app/parlamentario/[id]/page.test.tsx:238-246`
 **Issue:** The test's docstring and name promise that the breadcrumb reuses the cached row ("una sola lectura cacheada"), but the assertion is `expect(headerRpc.length).toBeGreaterThanOrEqual(1)` — it passes with 1, 2, or 50 RPC calls. A regression that adds a second `parlamentario_publico` round-trip per header render would sail through. In this scenario (`HeaderSection` invoked directly, single call site) the true count is exactly 1, so the strict assertion is safe today.
 **Fix:** `expect(headerRpc).toHaveLength(1);` — if `React.cache` behavior outside a render pass is the concern, that is precisely what the test must pin, not paper over.
+**RESUELTO** (`78710a8`): aserción fijada a `toHaveLength(1)`; el test pasa (la cabecera hace exactamente 1 round-trip).
 
 ### Info
 
@@ -156,6 +166,7 @@ const visible = (tipo: string) => !tiposOcultos.has(tipo);
 **File:** `scripts/rewalk-shot.mjs:22` (and `20`)
 **Issue:** `Number(waitStr || (width >= 1000 ? 7000 : 7000))` — both ternary branches are `7000`; the conditional is dead code that implies a distinction that doesn't exist. Also `width = Number(widthStr)` is never checked: a non-numeric arg yields `width:NaNpx` in the injected iframe CSS and a silent garbage screenshot instead of a usage error.
 **Fix:** `const waitMs = Number(waitStr || 7000);` and `if (!Number.isFinite(width) || width <= 0) { console.error("width inválido"); process.exit(1); }`.
+**RESUELTO** (`f49f4bf`): width no numérico → usage error + exit 1; ternario muerto reemplazado por el literal `7000` (fix oportunista autorizado junto a WR-02/WR-03).
 
 ---
 
