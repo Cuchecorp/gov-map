@@ -35,7 +35,20 @@ async function rpc(method, params) {
   if (parsed.error) throw new Error(`MCP error: ${JSON.stringify(parsed.error)}`);
   return parsed.result;
 }
-const callTool = (name, args) => rpc("tools/call", { name, arguments: args });
+// WR-02 (53-REVIEW): MCP tool failures come back as a SUCCESSFUL JSON-RPC
+// response with `result.isError: true` (error text in result.content) — they must
+// abort (exit != 0), never print SHOT_OK: this script produces audit evidence.
+const callTool = async (name, args) => {
+  const result = await rpc("tools/call", { name, arguments: args });
+  if (result?.isError) {
+    const msg = (result.content ?? [])
+      .map((c) => c?.text ?? "")
+      .join(" ")
+      .trim();
+    throw new Error(`tool ${name} failed: ${msg.slice(0, 200)}`);
+  }
+  return result;
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const expr = `var f=document.getElementById('vp')||document.createElement('iframe');`
