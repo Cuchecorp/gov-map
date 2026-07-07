@@ -420,7 +420,11 @@ async function FinanciamientoSectionConPeriodo({
 }
 
 // ── Cabecera (RPC parlamentario_publico, deny-by-default → 404 honesto) ────────
-async function HeaderSection({ id }: { id: string }) {
+// Exportada para RTL (53-03): prueba por comportamiento que la cabecera monta el
+// breadcrumb con el nombre real del RPC cacheado (path RPC → ParlamentarioHeader →
+// Breadcrumbs) sin RPC extra. Un named export arbitrario es ignorado por el router
+// (espejo de CarrilesSection ya exportada).
+export async function HeaderSection({ id }: { id: string }) {
   // WR-02: lectura deduplicada (React.cache) — misma fila que Lobby/Financiamiento.
   // #34: un error real de DB/red se lanza dentro del lector (UI de error honesta);
   // `.maybeSingle()` no lanza por 0 filas → data null = "no existe" → 404.

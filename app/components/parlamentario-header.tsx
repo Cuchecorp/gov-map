@@ -1,3 +1,4 @@
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CamaraChip } from "@/components/camara-chip";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { sourceLabel } from "@/lib/types";
@@ -44,6 +45,22 @@ export function ParlamentarioHeader({
 
   return (
     <header>
+      {/*
+        53-03 (UX-01, 53-UI-SPEC §(b)) — Breadcrumb ligero, PRIMER elemento del
+        header (sobre el h1). El nombre viene de `parlamentario.nombre` (columna
+        pública del RPC `parlamentario_publico`, ya deduplicado con React.cache F52)
+        → cero RPC extra (53-RESEARCH Open Question 2). As-shipped: NO se aplica
+        Title Case (eso es F54). Es un <nav>, no re-nivela el h1 ni mueve mt-12;
+        renderiza sólo labels de ruta + el nombre público ya visible en el h1 (sin
+        PII/partido/foto — LEGAL-03 intacto).
+      */}
+      <Breadcrumbs
+        items={[
+          { label: "Inicio", href: "/" },
+          { label: "Parlamentarios", href: "/parlamentarios" },
+          { label: parlamentario.nombre },
+        ]}
+      />
       <div className="flex flex-wrap gap-2">
         <CamaraChip camara={parlamentario.camara} />
       </div>

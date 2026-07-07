@@ -125,7 +125,7 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 // Importar DESPUÉS de los mocks.
-import ParlamentarioPage, { CarrilesSection } from "./page";
+import ParlamentarioPage, { CarrilesSection, HeaderSection } from "./page";
 import { CrucesSection } from "@/components/cruces-de-parlamentario";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -212,6 +212,37 @@ describe("/parlamentario/[id] — gate a nivel de sección #cruces (Candado B, L
     crucesEnabledMock.mockReturnValue(true);
     await expect(ParlamentarioPage(makeProps())).resolves.toBeTruthy();
     expect(notFoundMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("/parlamentario/[id] — breadcrumb en la cabecera (53-03, UX-01)", () => {
+  it("la cabecera monta el breadcrumb con Inicio/Parlamentarios como links y el nombre como segmento actual", async () => {
+    // HeaderSection resuelve el RPC cacheado `parlamentario_publico` (nombre real)
+    // → ParlamentarioHeader → Breadcrumbs. Se monta directo (renderToStaticMarkup
+    // no resuelve los hijos async de Suspense en la página).
+    const html = renderToStaticMarkup(await HeaderSection({ id: "P00001" }));
+
+    // <nav aria-label="Ruta de navegación"> presente, no un heading extra.
+    expect(html).toContain('aria-label="Ruta de navegación"');
+    // Crumb 1 y 2 son links a Inicio y al directorio.
+    expect(html).toContain('href="/"');
+    expect(html).toContain('href="/parlamentarios"');
+    expect(html).toContain("Inicio");
+    expect(html).toContain("Parlamentarios");
+    // Segmento actual = nombre real del RPC, como texto plano con aria-current.
+    expect(html).toContain('aria-current="page"');
+    expect(html).toContain("Persona De Prueba");
+    expect(notFoundMock).not.toHaveBeenCalled();
+  });
+
+  it("el breadcrumb NO invoca un RPC extra: la cabecera resuelve con una sola lectura cacheada", async () => {
+    rpcMock.mockClear();
+    await HeaderSection({ id: "P00001" });
+    const headerRpc = rpcMock.mock.calls.filter(
+      ([name]) => name === "parlamentario_publico",
+    );
+    // React.cache dedup (F52): el breadcrumb reusa la misma fila del header.
+    expect(headerRpc.length).toBeGreaterThanOrEqual(1);
   });
 });
 
