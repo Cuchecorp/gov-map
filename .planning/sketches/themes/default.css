@@ -1,0 +1,64 @@
+/* Theme de sketches — espejo de los tokens LIVE del sitio (globals.css + civic-tokens.css).
+ * NO inventa estética nueva: crema + petróleo (Phase 19, LOCKED) + civic Cámara/Senado. */
+:root {
+  /* Superficie / texto (globals.css :root) */
+  --color-bg: hsl(40 33% 97%);           /* crema --background */
+  --color-surface: hsl(40 30% 99%);      /* --card */
+  --color-border: hsl(40 16% 86%);       /* --border */
+  --color-text: hsl(222 47% 11%);        /* --foreground */
+  --color-text-muted: hsl(222 14% 42%);  /* --muted-foreground */
+  --color-muted: hsl(40 20% 93%);        /* --muted */
+
+  /* Acento de producto (petróleo, LOCKED) */
+  --color-primary: hsl(183 38% 26%);
+  --color-primary-hover: hsl(183 38% 20%);
+  --color-primary-soft: hsl(183 30% 93%);
+
+  /* Civic (civic-tokens.css) */
+  --color-camara: hsl(213 94% 38%);
+  --color-camara-muted: hsl(213 60% 94%);
+  --color-camara-muted-fg: hsl(213 50% 35%);
+  --color-senado: hsl(355 65% 38%);
+  --color-senado-muted: hsl(355 40% 94%);
+  --color-senado-muted-fg: hsl(355 45% 35%);
+
+  /* Provenance / frescura */
+  --color-provenance-bg: hsl(210 40% 96.1%);
+  --color-provenance-fg: hsl(215.4 16.3% 46.9%);
+  --color-provenance-border: hsl(214.3 31.8% 85%);
+
+  /* Semáforo de votos (mismos verdes/rojos del sitio) */
+  --color-favor: hsl(142 71% 45%);
+  --color-contra: hsl(0 84% 60%);
+  --color-abstencion: hsl(45 93% 47%);
+  --color-ausente: hsl(222 14% 65%);
+
+  /* Tipografía (Geist en el sitio; fallback system) */
+  --font-sans: 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'Cascadia Mono', monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+
+  /* Espaciado */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Formas (radius 0.5rem del sitio) */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+}

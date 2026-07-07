@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sketch 001 — Ficha parlamentario cognitiva</title>
+<link rel="stylesheet" href="../themes/default.css">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--color-bg); color:var(--color-text); font-family:var(--font-sans); padding-top:52px; }
+  .mono { font-family:var(--font-mono); }
+  a { color:var(--color-primary); }
+
+  /* ── variant nav ── */
+  #variant-nav { position:fixed; top:0; left:0; right:0; z-index:9998; background:var(--color-surface); border-bottom:1px solid var(--color-border); padding:8px 16px; display:flex; gap:8px; align-items:center; }
+  #variant-nav .lbl { font-size:12px; color:var(--color-text-muted); margin-right:8px; }
+  .variant-tab { border:1px solid var(--color-border); background:var(--color-bg); color:var(--color-text); padding:6px 14px; border-radius:var(--radius-full); font-size:13px; cursor:pointer; transition:all .15s ease; }
+  .variant-tab:hover { border-color:var(--color-primary); }
+  .variant-tab.active { background:var(--color-primary); color:#fff; border-color:var(--color-primary); }
+  .variant { display:none; }
+  .variant.active { display:block; }
+
+  /* ── site chrome mock ── */
+  .site-header { display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid var(--color-border); margin-bottom:var(--space-8); }
+  .site-header b { font-size:15px; }
+  .site-header nav { display:flex; gap:20px; font-size:13.5px; color:var(--color-text-muted); }
+  .wrap { max-width:1120px; margin:0 auto; padding:0 var(--space-6) var(--space-12); }
+  .crumbs { font-size:12.5px; color:var(--color-text-muted); margin-bottom:var(--space-4); }
+
+  /* ── shared atoms ── */
+  .chip { display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:3px 10px; border-radius:var(--radius-full); font-weight:600; }
+  .chip.camara { background:var(--color-camara-muted); color:var(--color-camara-muted-fg); }
+  .provenance { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--color-provenance-fg); background:var(--color-provenance-bg); border:1px solid var(--color-provenance-border); padding:3px 10px; border-radius:var(--radius-sm); }
+  .caveat { font-size:12px; color:var(--color-text-muted); margin-top:var(--space-3); }
+  .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:var(--space-6); box-shadow:var(--shadow-sm); }
+  .kpi-num { font-family:var(--font-mono); font-size:var(--text-3xl); font-weight:700; line-height:1.1; }
+  .kpi-sub { font-size:12.5px; color:var(--color-text-muted); margin-top:4px; }
+  .card h3 { font-size:12.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--color-text-muted); margin-bottom:var(--space-3); }
+  .stackbar { display:flex; height:12px; border-radius:var(--radius-full); overflow:hidden; margin:10px 0 8px; }
+  .stackbar span { transition:all .15s ease; }
+  .legend { display:flex; flex-wrap:wrap; gap:10px 16px; font-size:12px; color:var(--color-text-muted); }
+  .legend .mono { color:var(--color-text); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+  .hbar { display:flex; align-items:center; gap:8px; font-size:12.5px; margin-top:7px; }
+  .hbar .bar { height:8px; border-radius:var(--radius-full); background:var(--color-primary); opacity:.75; }
+  .hbar .n { font-family:var(--font-mono); font-size:11.5px; color:var(--color-text-muted); min-width:24px; }
+  .minicols { display:flex; align-items:flex-end; gap:5px; height:56px; margin-top:10px; }
+  .minicols div { flex:1; background:var(--color-primary); opacity:.7; border-radius:3px 3px 0 0; transition:all .15s ease; }
+  .minicols div:hover { opacity:1; }
+  .btn { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--color-border); background:var(--color-surface); color:var(--color-text); font-size:13px; padding:7px 14px; border-radius:var(--radius-md); cursor:pointer; transition:all .15s ease; }
+  .btn:hover { border-color:var(--color-primary); color:var(--color-primary); }
+  .btn.primary { background:var(--color-primary); border-color:var(--color-primary); color:#fff; }
+  .btn.primary:hover { background:var(--color-primary-hover); }
+  .rowitem { padding:12px 0; border-bottom:1px solid var(--color-border); font-size:13.5px; }
+  .rowitem:last-child { border-bottom:none; }
+  .rowitem .meta { font-size:11.5px; color:var(--color-text-muted); font-family:var(--font-mono); margin-top:3px; }
+  .votepill { font-size:11px; font-weight:700; padding:2px 8px; border-radius:var(--radius-full); }
+  .votepill.favor { background:hsl(142 71% 93%); color:hsl(142 71% 25%); }
+  .votepill.contra { background:hsl(0 84% 95%); color:hsl(0 72% 38%); }
+  .hidden-rows { display:none; }
+  .hidden-rows.open { display:block; }
+
+  /* ═══ VARIANT A: panel de indicadores ═══ */
+  .a-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:var(--space-6); }
+  .a-head h1 { font-size:var(--text-2xl); font-weight:700; }
+  .a-head .sub { display:flex; gap:10px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+  .a-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--space-4); margin-bottom:var(--space-8); }
+  .a-grid .card.cruces { border-color:var(--color-primary); background:var(--color-primary-soft); }
+  .a-grid .card.cruces h3 { color:var(--color-primary); }
+  .sector-chip { display:inline-block; font-size:12px; background:var(--color-surface); border:1px solid var(--color-border); padding:4px 10px; border-radius:var(--radius-full); margin:3px 3px 0 0; transition:all .15s ease; cursor:pointer; }
+  .sector-chip:hover { border-color:var(--color-primary); color:var(--color-primary); }
+  .accordion { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); margin-bottom:var(--space-3); overflow:hidden; }
+  .acc-head { display:flex; align-items:center; gap:14px; padding:16px 20px; cursor:pointer; transition:background .15s ease; }
+  .acc-head:hover { background:var(--color-muted); }
+  .acc-head .t { font-weight:600; font-size:15px; min-width:150px; }
+  .acc-head .resume { flex:1; font-size:12.5px; color:var(--color-text-muted); }
+  .acc-head .count { font-family:var(--font-mono); font-size:12px; color:var(--color-text-muted); }
+  .acc-head .chev { transition:transform .2s ease; color:var(--color-text-muted); }
+  .accordion.open .chev { transform:rotate(90deg); }
+  .acc-body { display:none; padding:4px 20px 16px; border-top:1px solid var(--color-border); }
+  .accordion.open .acc-body { display:block; }
+  .microbar { display:flex; height:8px; width:120px; border-radius:var(--radius-full); overflow:hidden; }
+
+  /* ═══ VARIANT B: informe con rail ═══ */
+  .b-layout { display:grid; grid-template-columns:210px 1fr; gap:var(--space-8); align-items:start; }
+  .b-rail { position:sticky; top:64px; }
+  .b-rail .who { margin-bottom:var(--space-6); }
+  .b-rail .who h1 { font-size:var(--text-lg); font-weight:700; line-height:1.25; margin:8px 0 4px; }
+  .b-rail .who .per { font-size:12px; color:var(--color-text-muted); font-family:var(--font-mono); }
+  .b-rail nav a { display:flex; justify-content:space-between; align-items:center; padding:9px 12px; margin:2px 0; border-radius:var(--radius-md); font-size:13.5px; color:var(--color-text); text-decoration:none; border-left:2px solid transparent; transition:all .15s ease; }
+  .b-rail nav a:hover { background:var(--color-muted); }
+  .b-rail nav a.current { background:var(--color-primary-soft); border-left-color:var(--color-primary); color:var(--color-primary); font-weight:600; }
+  .b-rail nav a .n { font-family:var(--font-mono); font-size:11.5px; color:var(--color-text-muted); }
+  .b-sec { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:var(--space-6); margin-bottom:var(--space-6); scroll-margin-top:64px; }
+  .b-sec h2 { font-size:var(--text-lg); font-weight:700; display:flex; align-items:center; gap:10px; }
+  .b-sec h2 .count { font-family:var(--font-mono); font-size:12.5px; color:var(--color-text-muted); font-weight:400; }
+  .b-facts { display:flex; gap:24px; flex-wrap:wrap; margin:14px 0 4px; }
+  .b-fact .v { font-family:var(--font-mono); font-size:var(--text-xl); font-weight:700; }
+  .b-fact .k { font-size:11.5px; color:var(--color-text-muted); }
+  .b-detail { display:none; margin-top:var(--space-4); border-top:1px dashed var(--color-border); padding-top:var(--space-3); }
+  .b-detail.open { display:block; }
+  .b-sec.cruces { border-color:var(--color-primary); border-width:1.5px; }
+  .b-sec.cruces h2 { color:var(--color-primary); }
+
+  /* ═══ VARIANT C: tabs drill-down ═══ */
+  .c-strip { display:flex; gap:0; background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); margin-bottom:var(--space-6); overflow:hidden; }
+  .c-kpi { flex:1; padding:16px 20px; border-right:1px solid var(--color-border); cursor:pointer; transition:background .15s ease; }
+  .c-kpi:last-child { border-right:none; }
+  .c-kpi:hover { background:var(--color-muted); }
+  .c-kpi.sel { background:var(--color-primary-soft); box-shadow:inset 0 -3px 0 var(--color-primary); }
+  .c-kpi .v { font-family:var(--font-mono); font-size:var(--text-xl); font-weight:700; }
+  .c-kpi .k { font-size:11.5px; color:var(--color-text-muted); margin-top:2px; }
+  .c-kpi.cruces .v { color:var(--color-primary); }
+  .c-panel { display:none; }
+  .c-panel.active { display:block; }
+  .c-filter { width:100%; max-width:340px; border:1px solid var(--color-border); border-radius:var(--radius-md); padding:8px 12px; font-size:13px; background:var(--color-surface); margin:var(--space-4) 0; font-family:var(--font-sans); }
+  .c-filter:focus { outline:2px solid var(--color-primary); outline-offset:1px; }
+</style>
+</head>
+<body>
+
+<div id="variant-nav">
+  <span class="lbl">Sketch 001 · Ficha parlamentario</span>
+  <button class="variant-tab active" onclick="showVariant('a', event)">A: Panel de indicadores</button>
+  <button class="variant-tab" onclick="showVariant('b', event)">B: Informe con rail ★ Selected</button>
+  <button class="variant-tab" onclick="showVariant('c', event)">C: Tabs drill-down</button>
+</div>
+
+<!-- ═══════════════════ VARIANT A ═══════════════════ -->
+<div id="variant-a" class="variant active">
+<div class="wrap">
+  <div class="site-header"><b>Observatorio del Congreso 360</b><nav><span>Buscar</span><span>Parlamentarios</span><span>Agenda</span><span>Red</span><span>Sobre</span></nav></div>
+  <div class="crumbs">Inicio / Parlamentarios / <b>Boris Barrera Moreno</b></div>
+
+  <div class="a-head">
+    <div>
+      <span class="chip camara">Cámara</span>
+      <h1 style="margin-top:8px">Boris Barrera Moreno</h1>
+      <div class="sub">
+        <span class="mono" style="font-size:12.5px;color:var(--color-text-muted)">Período 2026–2030</span>
+        <span class="provenance">Actualizado 20 jun 2026 · Cámara — <a href="#">fuente oficial ↗</a></span>
+      </div>
+    </div>
+    <button class="btn">Ver relaciones con otros parlamentarios →</button>
+  </div>
+
+  <!-- capa 1: dashboard -->
+  <div class="a-grid">
+    <div class="card">
+      <h3>Asistencia</h3>
+      <div class="kpi-num">99,3<span style="font-size:16px">%</span></div>
+      <div class="kpi-sub">presente en <b class="mono">140 de 141</b> votaciones</div>
+      <div class="stackbar" title="140 presente / 1 ausente"><span style="flex:140;background:var(--color-favor)"></span><span style="flex:1;background:var(--color-ausente)"></span></div>
+    </div>
+    <div class="card">
+      <h3>Cómo votó · 141 votaciones</h3>
+      <div class="stackbar" style="height:16px;margin-top:14px">
+        <span style="flex:72;background:var(--color-favor)"></span><span style="flex:66;background:var(--color-contra)"></span><span style="flex:2;background:var(--color-abstencion)"></span><span style="flex:1;background:var(--color-ausente)"></span>
+      </div>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--color-favor)"></i>A favor <b class="mono">72</b></span>
+        <span><i class="dot" style="background:var(--color-contra)"></i>En contra <b class="mono">66</b></span>
+        <span><i class="dot" style="background:var(--color-abstencion)"></i>Abstención <b class="mono">2</b></span>
+        <span><i class="dot" style="background:var(--color-ausente)"></i>Ausente <b class="mono">1</b></span>
+      </div>
+    </div>
+    <div class="card cruces" onclick="openAcc('acc-cruces')" style="cursor:pointer" title="Ir a cruces">
+      <h3>Cruces con sectores → el detalle vive aquí</h3>
+      <div class="kpi-num" style="color:var(--color-primary)">12</div>
+      <div class="kpi-sub">sectores con reuniones de lobby y votos en el mismo período</div>
+      <div>
+        <span class="sector-chip">Educación · 6</span><span class="sector-chip">Salud y farmacéutica · 3</span><span class="sector-chip">Seguridad · 2</span><span class="sector-chip">+9 más</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Reuniones de lobby · 107</h3>
+      <div class="hbar"><span style="width:92px">Salud</span><div class="bar" style="width:38%"></div><span class="n">28</span></div>
+      <div class="hbar"><span style="width:92px">Seguridad</span><div class="bar" style="width:31%"></div><span class="n">23</span></div>
+      <div class="hbar"><span style="width:92px">Trabajo</span><div class="bar" style="width:26%"></div><span class="n">19</span></div>
+      <div class="hbar"><span style="width:92px">Otras</span><div class="bar" style="width:22%;opacity:.35"></div><span class="n">37</span></div>
+    </div>
+    <div class="card">
+      <h3>Patrimonio · 10 declaraciones</h3>
+      <div class="minicols">
+        <div style="height:30%" title="2019"></div><div style="height:34%" title="2020"></div><div style="height:42%" title="2021"></div><div style="height:40%" title="2022"></div><div style="height:52%" title="2023"></div><div style="height:58%" title="2024"></div><div style="height:64%" title="2025"></div><div style="height:70%" title="2026"></div>
+      </div>
+      <div class="kpi-sub" style="display:flex;justify-content:space-between"><span class="mono">2019</span><span class="mono">2026</span></div>
+    </div>
+    <div class="card" style="opacity:.65">
+      <h3>Financiamiento y contratos</h3>
+      <div class="kpi-sub" style="margin-top:14px">Pendiente — esta sección se publicará cuando la fuente esté verificada.</div>
+    </div>
+  </div>
+
+  <p class="caveat" style="margin:0 0 24px">Cada dato lleva su fuente, fecha y enlace al documento oficial. La coincidencia temporal no implica relación entre los hechos.</p>
+
+  <!-- capa 2: secciones colapsadas -->
+  <div class="accordion" id="acc-votaciones">
+    <div class="acc-head" onclick="toggleAcc('acc-votaciones')">
+      <span class="chev">▸</span><span class="t">Votaciones</span>
+      <span class="resume"><span class="microbar" style="display:inline-flex;vertical-align:middle;margin-right:8px"><span style="flex:72;background:var(--color-favor)"></span><span style="flex:66;background:var(--color-contra)"></span><span style="flex:3;background:var(--color-abstencion)"></span></span> 72 a favor · 66 en contra · última: jun 2026</span>
+      <span class="count">141</span>
+    </div>
+    <div class="acc-body">
+      <div class="rowitem"><span class="votepill contra">EN CONTRA</span> &nbsp;<a href="#">Modifica el código penal para tipificar el delito de ocultamiento de identidad en eventos masivos</a><div class="meta">1 ocasión · jun 2026 · fuente oficial ↗</div></div>
+      <div class="rowitem"><span class="votepill favor">A FAVOR</span> &nbsp;<a href="#">Acuerdo sobre privilegios e inmunidades de INTERPOL (Marrakech, 2025)</a><div class="meta">1 ocasión · nov 2025 · fuente oficial ↗</div></div>
+      <div class="rowitem"><span class="votepill favor">A FAVOR</span> &nbsp;<a href="#">Autoriza mayor endeudamiento del gobierno central durante el año 2026</a><div class="meta">3 ocasiones: 2 a favor, 1 en contra · 2025–2026 · fuente oficial ↗</div></div>
+      <div class="rowitem"><span class="votepill favor">A FAVOR</span> &nbsp;<a href="#">Prorroga la regularización e inscripción de derechos de aprovechamiento de aguas</a><div class="meta">1 ocasión · 2025 · fuente oficial ↗</div></div>
+      <div class="rowitem"><span class="votepill favor">A FAVOR</span> &nbsp;<a href="#">Establece un sistema de subvenciones para la modalidad educativa de reingreso</a><div class="meta">6 ocasiones: 2 a favor · 2 en contra · 2 abstención · 2023–2025 · fuente oficial ↗</div></div>
+      <button class="btn" style="margin:12px 0 6px" onclick="fakeMore(this)">Ver las 141 votaciones</button>
+    </div>
+  </div>
+
+  <div class="accordion" id="acc-lobby">
+    <div class="acc-head" onclick="toggleAcc('acc-lobby')">
+      <span class="chev">▸</span><span class="t">Reuniones de lobby</span>
+      <span class="resume">materias más frecuentes: salud, seguridad, trabajo · última: 26 jun 2026</span>
+      <span class="count">107</span>
+    </div>
+    <div class="acc-body">
+      <div class="rowitem"><b>Cristian Mella</b> — problemáticas de comercio ambulante ilegal y seguridad en la comuna de Quillota<div class="meta">26 jun 2026 · semana 2026-W26 · fuente oficial ↗</div></div>
+      <div class="rowitem"><b>Sofía González</b> — preocupación por delitos constantes en la comuna en contra de locatarios<div class="meta">26 jun 2026 · semana 2026-W26 · fuente oficial ↗</div></div>
+      <div class="rowitem"><b>Consuelo Veloso</b> — proceso de construcción de hospital para la comunidad de Linares<div class="meta">22 jun 2026 · semana 2026-W26 · fuente oficial ↗</div></div>
+      <button class="btn" style="margin:12px 0 6px" onclick="fakeMore(this)">Ver las 107 reuniones</button>
+    </div>
+  </div>
+
+  <div class="accordion" id="acc-patrimonio">
+    <div class="acc-head" onclick="toggleAcc('acc-patrimonio')">
+      <span class="chev">▸</span><span class="t">Patrimonio e intereses</span>
+      <span class="resume">10 declaraciones, 2019–2026 · última: PRIMERA POR ASUNCIÓN EN CARGO (2026)</span>
+      <span class="count">10</span>
+    </div>
+    <div class="acc-body">
+      <div class="rowitem"><b>Declaración de actualización periódica</b> (marzo 2026)<div class="meta">presentada el 31 mar 2026 · Infoprobidad ↗</div></div>
+      <div class="rowitem"><b>Primera declaración por asunción en cargo</b> (2026)<div class="meta">presentada el 20 mar 2026 · Infoprobidad ↗</div></div>
+      <button class="btn" style="margin:12px 0 6px" onclick="fakeMore(this)">Ver las 10 declaraciones</button>
+    </div>
+  </div>
+
+  <div class="accordion" id="acc-cruces" style="border-color:var(--color-primary)">
+    <div class="acc-head" onclick="toggleAcc('acc-cruces')">
+      <span class="chev" style="color:var(--color-primary)">▸</span><span class="t" style="color:var(--color-primary)">Cruces con sectores</span>
+      <span class="resume">reuniones de lobby y votos del mismo sector en el mismo período</span>
+      <span class="count">12</span>
+    </div>
+    <div class="acc-body">
+      <div class="rowitem"><b>Educación</b> — 6 reuniones en gastos del sector · <span class="mono" style="font-size:11.5px">votó en 4 proyectos del sector en el período</span><div class="meta">semana 2026-W20 a W26 · cada evidencia con fuente ↗</div></div>
+      <div class="rowitem"><b>Salud y farmacéutica</b> — 3 reuniones · <span class="mono" style="font-size:11.5px">2 proyectos del sector</span><div class="meta">semanas 2026-W22, W26 · fuente ↗</div></div>
+      <button class="btn primary" style="margin:12px 0 6px" onclick="fakeMore(this)">Ver los 12 cruces</button>
+      <p class="caveat">La coincidencia temporal no implica relación entre la reunión y el voto.</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════ VARIANT B ═══════════════════ -->
+<div id="variant-b" class="variant">
+<div class="wrap">
+  <div class="site-header"><b>Observatorio del Congreso 360</b><nav><span>Buscar</span><span>Parlamentarios</span><span>Agenda</span><span>Red</span><span>Sobre</span></nav></div>
+  <div class="crumbs">Inicio / Parlamentarios / <b>Boris Barrera Moreno</b></div>
+
+  <div class="b-layout">
+    <aside class="b-rail">
+      <div class="who">
+        <span class="chip camara">Cámara</span>
+        <h1>Boris Barrera Moreno</h1>
+        <div class="per">Período 2026–2030</div>
+        <div style="margin-top:8px"><span class="provenance" style="font-size:10.5px">Act. 20 jun 2026 ↗</span></div>
+      </div>
+      <nav id="b-nav">
+        <a href="#b-votaciones" class="current">Votaciones <span class="n">141</span></a>
+        <a href="#b-lobby">Lobby <span class="n">107</span></a>
+        <a href="#b-patrimonio">Patrimonio <span class="n">10</span></a>
+        <a href="#b-cruces" style="font-weight:600">Cruces ◆ <span class="n">12</span></a>
+        <a href="#b-financiamiento" style="opacity:.55">Financiamiento <span class="n">—</span></a>
+      </nav>
+      <p class="caveat" style="margin-top:20px;font-size:11px">Cada dato con fuente, fecha y enlace. La coincidencia temporal no implica relación.</p>
+    </aside>
+
+    <main>
+      <section class="b-sec" id="b-votaciones">
+        <h2>Votaciones <span class="count">141 · presente en 140</span></h2>
+        <div class="b-facts">
+          <div class="b-fact"><div class="v" style="color:var(--color-favor)">72</div><div class="k">a favor</div></div>
+          <div class="b-fact"><div class="v" style="color:var(--color-contra)">66</div><div class="k">en contra</div></div>
+          <div class="b-fact"><div class="v">2</div><div class="k">abstención</div></div>
+          <div class="b-fact"><div class="v" style="color:var(--color-text-muted)">1</div><div class="k">ausente</div></div>
+          <div class="b-fact"><div class="v">99,3%</div><div class="k">asistencia</div></div>
+        </div>
+        <div class="stackbar" style="height:14px"><span style="flex:72;background:var(--color-favor)"></span><span style="flex:66;background:var(--color-contra)"></span><span style="flex:2;background:var(--color-abstencion)"></span><span style="flex:1;background:var(--color-ausente)"></span></div>
+        <button class="btn" onclick="toggleDetail('bd-vot', this)">Ver detalle (141)</button>
+        <div class="b-detail" id="bd-vot">
+          <div class="rowitem"><span class="votepill contra">EN CONTRA</span> &nbsp;<a href="#">Código penal: ocultamiento de identidad en eventos masivos</a><div class="meta">jun 2026 · fuente ↗</div></div>
+          <div class="rowitem"><span class="votepill favor">A FAVOR</span> &nbsp;<a href="#">Acuerdo INTERPOL (Marrakech, 2025)</a><div class="meta">nov 2025 · fuente ↗</div></div>
+          <div class="rowitem"><span class="votepill favor">A FAVOR</span> &nbsp;<a href="#">Endeudamiento del gobierno central 2026</a><div class="meta">3 ocasiones · fuente ↗</div></div>
+        </div>
+      </section>
+
+      <section class="b-sec" id="b-lobby">
+        <h2>Reuniones de lobby <span class="count">107 registradas</span></h2>
+        <div class="hbar"><span style="width:92px">Salud</span><div class="bar" style="width:38%"></div><span class="n">28</span></div>
+        <div class="hbar"><span style="width:92px">Seguridad</span><div class="bar" style="width:31%"></div><span class="n">23</span></div>
+        <div class="hbar"><span style="width:92px">Trabajo</span><div class="bar" style="width:26%"></div><span class="n">19</span></div>
+        <button class="btn" style="margin-top:14px" onclick="toggleDetail('bd-lobby', this)">Ver detalle (107)</button>
+        <div class="b-detail" id="bd-lobby">
+          <div class="rowitem"><b>Cristian Mella</b> — comercio ambulante ilegal y seguridad, Quillota<div class="meta">26 jun 2026 · fuente ↗</div></div>
+          <div class="rowitem"><b>Consuelo Veloso</b> — hospital para Linares<div class="meta">22 jun 2026 · fuente ↗</div></div>
+        </div>
+      </section>
+
+      <section class="b-sec" id="b-patrimonio">
+        <h2>Patrimonio e intereses <span class="count">10 declaraciones · 2019–2026</span></h2>
+        <div class="minicols" style="max-width:420px">
+          <div style="height:30%"></div><div style="height:34%"></div><div style="height:42%"></div><div style="height:40%"></div><div style="height:52%"></div><div style="height:58%"></div><div style="height:64%"></div><div style="height:70%"></div>
+        </div>
+        <button class="btn" style="margin-top:14px" onclick="toggleDetail('bd-pat', this)">Ver detalle (10)</button>
+        <div class="b-detail" id="bd-pat">
+          <div class="rowitem"><b>Actualización periódica</b> — marzo 2026<div class="meta">Infoprobidad ↗</div></div>
+        </div>
+      </section>
+
+      <section class="b-sec cruces" id="b-cruces">
+        <h2>Cruces con sectores <span class="count">12</span></h2>
+        <p style="font-size:13px;color:var(--color-text-muted);margin-top:6px">Sectores donde hay reuniones de lobby y votos en el mismo período — el punto de partida para profundizar.</p>
+        <div style="margin-top:10px">
+          <span class="sector-chip">Educación · 6 reuniones · 4 votos</span>
+          <span class="sector-chip">Salud y farmacéutica · 3 · 2</span>
+          <span class="sector-chip">Seguridad y defensa · 2 · 3</span>
+          <span class="sector-chip">+9 sectores</span>
+        </div>
+        <button class="btn primary" style="margin-top:14px" onclick="toggleDetail('bd-cruces', this)">Explorar los 12 cruces</button>
+        <div class="b-detail" id="bd-cruces">
+          <div class="rowitem"><b>Educación</b> — 6 reuniones en gastos del sector; votó en 4 proyectos del sector en el período<div class="meta">2026-W20–W26 · cada evidencia con fuente ↗</div></div>
+        </div>
+        <p class="caveat">La coincidencia temporal no implica relación entre la reunión y el voto.</p>
+      </section>
+
+      <section class="b-sec" id="b-financiamiento" style="opacity:.6">
+        <h2>Financiamiento y contratos <span class="count">pendiente</span></h2>
+        <p style="font-size:13px;color:var(--color-text-muted);margin-top:6px">Se publicará cuando la fuente esté verificada.</p>
+      </section>
+    </main>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════ VARIANT C ═══════════════════ -->
+<div id="variant-c" class="variant">
+<div class="wrap">
+  <div class="site-header"><b>Observatorio del Congreso 360</b><nav><span>Buscar</span><span>Parlamentarios</span><span>Agenda</span><span>Red</span><span>Sobre</span></nav></div>
+  <div class="crumbs">Inicio / Parlamentarios / <b>Boris Barrera Moreno</b></div>
+
+  <div class="a-head">
+    <div>
+      <span class="chip camara">Cámara</span>
+      <h1 style="margin-top:8px">Boris Barrera Moreno</h1>
+      <div class="sub">
+        <span class="mono" style="font-size:12.5px;color:var(--color-text-muted)">Período 2026–2030</span>
+        <span class="provenance">Actualizado 20 jun 2026 · Cámara — <a href="#">fuente oficial ↗</a></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- strip de KPIs = tab bar -->
+  <div class="c-strip">
+    <div class="c-kpi sel" onclick="showPanel('votaciones', this)"><div class="v">141</div><div class="k">Votaciones · 99,3% asistencia</div></div>
+    <div class="c-kpi" onclick="showPanel('lobby', this)"><div class="v">107</div><div class="k">Reuniones de lobby</div></div>
+    <div class="c-kpi" onclick="showPanel('patrimonio', this)"><div class="v">10</div><div class="k">Declaraciones patrimonio</div></div>
+    <div class="c-kpi cruces" onclick="showPanel('cruces', this)"><div class="v">12 ◆</div><div class="k">Cruces con sectores</div></div>
+    <div class="c-kpi" style="opacity:.55"><div class="v">—</div><div class="k">Financiamiento (pendiente)</div></div>
+  </div>
+
+  <div class="c-panel active" id="panel-votaciones">
+    <div class="card">
+      <h3>Cómo votó · 141 votaciones · presente en 140</h3>
+      <div class="stackbar" style="height:16px"><span style="flex:72;background:var(--color-favor)"></span><span style="flex:66;background:var(--color-contra)"></span><span style="flex:2;background:var(--color-abstencion)"></span><span style="flex:1;background:var(--color-ausente)"></span></div>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--color-favor)"></i>A favor <b class="mono">72</b></span>
+        <span><i class="dot" style="background:var(--color-contra)"></i>En contra <b class="mono">66</b></span>
+        <span><i class="dot" style="background:var(--color-abstencion)"></i>Abstención <b class="mono">2</b></span>
+        <span><i class="dot" style="background:var(--color-ausente)"></i>Ausente <b class="mono">1</b></span>
+      </div>
+      <input class="c-filter" placeholder="Filtrar por proyecto o materia… (ej. educación)" oninput="fakeFilter(this, 'panel-votaciones')">
+      <div class="rowitem f-item"><span class="votepill contra">EN CONTRA</span> &nbsp;<a href="#">Código penal: ocultamiento de identidad en eventos masivos</a><div class="meta">jun 2026 · fuente ↗</div></div>
+      <div class="rowitem f-item"><span class="votepill favor">A FAVOR</span> &nbsp;<a href="#">Acuerdo INTERPOL (Marrakech, 2025)</a><div class="meta">nov 2025 · fuente ↗</div></div>
+      <div class="rowitem f-item"><span class="votepill favor">A FAVOR</span> &nbsp;<a href="#">Sistema de subvenciones para la modalidad educativa de reingreso</a><div class="meta">6 ocasiones · 2023–2025 · fuente ↗</div></div>
+      <div class="rowitem f-item"><span class="votepill favor">A FAVOR</span> &nbsp;<a href="#">Prórroga regularización de derechos de aguas</a><div class="meta">2025 · fuente ↗</div></div>
+      <button class="btn" style="margin-top:12px" onclick="fakeMore(this)">Ver las 141</button>
+    </div>
+  </div>
+
+  <div class="c-panel" id="panel-lobby">
+    <div class="card">
+      <h3>107 reuniones registradas · materias más frecuentes</h3>
+      <div class="hbar"><span style="width:92px">Salud</span><div class="bar" style="width:38%"></div><span class="n">28</span></div>
+      <div class="hbar"><span style="width:92px">Seguridad</span><div class="bar" style="width:31%"></div><span class="n">23</span></div>
+      <div class="hbar"><span style="width:92px">Trabajo</span><div class="bar" style="width:26%"></div><span class="n">19</span></div>
+      <input class="c-filter" placeholder="Filtrar por contraparte o materia…" oninput="fakeFilter(this, 'panel-lobby')">
+      <div class="rowitem f-item"><b>Cristian Mella</b> — comercio ambulante ilegal y seguridad, Quillota<div class="meta">26 jun 2026 · fuente ↗</div></div>
+      <div class="rowitem f-item"><b>Sofía González</b> — delitos contra locatarios en la comuna<div class="meta">26 jun 2026 · fuente ↗</div></div>
+      <div class="rowitem f-item"><b>Consuelo Veloso</b> — hospital para la comunidad de Linares<div class="meta">22 jun 2026 · fuente ↗</div></div>
+      <button class="btn" style="margin-top:12px" onclick="fakeMore(this)">Ver las 107</button>
+    </div>
+  </div>
+
+  <div class="c-panel" id="panel-patrimonio">
+    <div class="card">
+      <h3>10 declaraciones · 2019–2026</h3>
+      <div class="minicols" style="max-width:480px">
+        <div style="height:30%"></div><div style="height:34%"></div><div style="height:42%"></div><div style="height:40%"></div><div style="height:52%"></div><div style="height:58%"></div><div style="height:64%"></div><div style="height:70%"></div>
+      </div>
+      <div class="rowitem" style="margin-top:12px"><b>Actualización periódica</b> — marzo 2026<div class="meta">Infoprobidad ↗</div></div>
+      <div class="rowitem"><b>Primera por asunción en cargo</b> — marzo 2026<div class="meta">Infoprobidad ↗</div></div>
+      <button class="btn" style="margin-top:12px" onclick="fakeMore(this)">Ver las 10</button>
+    </div>
+  </div>
+
+  <div class="c-panel" id="panel-cruces">
+    <div class="card" style="border-color:var(--color-primary)">
+      <h3 style="color:var(--color-primary)">12 sectores con lobby y votos en el mismo período</h3>
+      <div class="rowitem"><b>Educación</b> — 6 reuniones en gastos del sector · votó en 4 proyectos del sector<div class="meta">2026-W20–W26 · cada evidencia con fuente ↗</div></div>
+      <div class="rowitem"><b>Salud y farmacéutica</b> — 3 reuniones · 2 proyectos<div class="meta">2026-W22, W26 · fuente ↗</div></div>
+      <div class="rowitem"><b>Seguridad y defensa</b> — 2 reuniones · 3 proyectos<div class="meta">2026-W18–W24 · fuente ↗</div></div>
+      <button class="btn primary" style="margin-top:12px" onclick="fakeMore(this)">Ver los 12 cruces</button>
+      <p class="caveat">La coincidencia temporal no implica relación entre la reunión y el voto.</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- sketch toolbar -->
+<div id="sketch-tools" style="position:fixed;bottom:12px;right:12px;z-index:9999;font-family:system-ui;font-size:12px;background:rgba(0,0,0,0.75);color:#fff;padding:8px 12px;border-radius:8px;opacity:.4;transition:opacity .2s;display:flex;gap:8px;align-items:center" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.4'">
+  <span>viewport</span>
+  <button onclick="setVW('375px')" style="cursor:pointer">📱</button>
+  <button onclick="setVW('768px')" style="cursor:pointer">📄</button>
+  <button onclick="setVW('none')" style="cursor:pointer">🖥️</button>
+</div>
+
+<script>
+function showVariant(id, ev) {
+  document.querySelectorAll('.variant').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.variant-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('variant-' + id).classList.add('active');
+  ev.target.classList.add('active');
+  window.scrollTo(0, 0);
+}
+function toggleAcc(id) { document.getElementById(id).classList.toggle('open'); }
+function openAcc(id) { document.getElementById(id).classList.add('open'); document.getElementById(id).scrollIntoView({behavior:'smooth', block:'center'}); }
+function toggleDetail(id, btn) {
+  const d = document.getElementById(id);
+  d.classList.toggle('open');
+  btn.textContent = d.classList.contains('open') ? btn.textContent.replace('Ver', 'Ocultar').replace('Explorar', 'Ocultar') : btn.textContent.replace('Ocultar', 'Ver');
+}
+function showPanel(name, el) {
+  document.querySelectorAll('.c-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.c-kpi').forEach(k => k.classList.remove('sel'));
+  document.getElementById('panel-' + name).classList.add('active');
+  el.classList.add('sel');
+}
+function fakeMore(btn) {
+  btn.textContent = 'Cargando…';
+  setTimeout(() => { btn.textContent = '(en el sitio real: paginación / lista completa)'; btn.disabled = true; btn.style.opacity = .6; }, 450);
+}
+function fakeFilter(input, panelId) {
+  const q = input.value.toLowerCase();
+  document.querySelectorAll('#' + panelId + ' .f-item').forEach(r => {
+    r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+function setVW(w) {
+  document.querySelectorAll('.wrap').forEach(el => { el.style.maxWidth = (w === 'none') ? '1120px' : w; });
+}
+/* scrollspy simple para variante B */
+window.addEventListener('scroll', () => {
+  const b = document.getElementById('variant-b');
+  if (!b.classList.contains('active')) return;
+  let cur = null;
+  b.querySelectorAll('.b-sec').forEach(s => { if (s.getBoundingClientRect().top < 140) cur = s.id; });
+  b.querySelectorAll('#b-nav a').forEach(a => a.classList.toggle('current', a.getAttribute('href') === '#' + cur));
+});
+</script>
+</body>
+</html>
