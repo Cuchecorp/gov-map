@@ -718,7 +718,7 @@ Plans:
 | 50. FIX — Quick wins diagnóstico (P1) | v5.0 | 4/4 | Complete | 2026-07-02 |
 | 51. LEG2 — Legibilidad profunda (P2) | v5.0 | 7/7 | Complete | 2026-07-03 |
 | 52. CRUCE2 — Cruces nuevos (P3) | v5.0 | 6/6 | Complete (deploy ee6b7544) | 2026-07-06 |
-| 53. UXNAV — Auditoría UX navegada (BrowserOS) + fixes P0 | v5.0 | 5/5 | Complete   | 2026-07-07 |
+| 53. UXNAV — Auditoría UX navegada (BrowserOS) + fixes P0 | v5.0 | 5/5 | Complete    | 2026-07-07 |
 | 54. UXDEMO — Pulido presentacional demo | v5.0 | 0/? | Not Started | - |
 
 ## ✅ v4.0 — De datos a cruces verificables
