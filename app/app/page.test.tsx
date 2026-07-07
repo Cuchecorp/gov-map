@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
 
 /**
  * Tests de la landing `/` (Fase 21 SC1 — paridad con el mockup CERRADO de Fase
@@ -136,5 +136,72 @@ describe("Landing — paridad con el mockup CERRADO (héroe editorial)", () => {
   it("no muestra stats fabricadas (sin 'indexados' ni 'miles')", () => {
     const { container } = render(<Home />);
     expect(container.textContent ?? "").not.toMatch(/indexad|miles de|\bel más completo\b/i);
+  });
+});
+
+// ── Contract 2 (54-UI-SPEC): 3 tarjetas de entrada server-rendered ──────────────
+// Verifican por comportamiento: nav semántico, 3 rutas de entrada con copy LOCKED,
+// sin heading nuevo en el bloque, y banned-vocab negative-match sobre el copy.
+
+// Vocabulario prohibido (banned-vocab §6): virtud fabricada + causal/afinidad/score.
+const BANNED_VOCAB =
+  /limpio|transparente|nada que ocultar|a cambio de|influy|cercano|afinidad|correlaci|af[ií]n|score|ranking|puntaje|porque/i;
+
+describe("Landing — Contract 2: tarjetas de entrada", () => {
+  it("renderiza un <nav aria-label='Secciones del sitio'> entre hero y actualidad", () => {
+    render(<Home />);
+    const nav = screen.getByRole("navigation", { name: "Secciones del sitio" });
+    expect(nav).toBeInTheDocument();
+  });
+
+  it("expone exactamente 3 links de sección con los hrefs y títulos LOCKED", () => {
+    render(<Home />);
+    const nav = screen.getByRole("navigation", { name: "Secciones del sitio" });
+    const links = within(nav).getAllByRole("link");
+    expect(links).toHaveLength(3);
+
+    const proyectos = within(nav).getByRole("link", { name: /Proyectos de ley/ });
+    expect(proyectos).toHaveAttribute("href", "/buscar");
+
+    const parlamentarios = within(nav).getByRole("link", {
+      name: /Parlamentarios 360/,
+    });
+    expect(parlamentarios).toHaveAttribute("href", "/parlamentarios");
+
+    const agenda = within(nav).getByRole("link", { name: /Agenda de la semana/ });
+    expect(agenda).toHaveAttribute("href", "/agenda");
+  });
+
+  it("muestra las 3 líneas de valor prescritas verbatim", () => {
+    render(<Home />);
+    const nav = screen.getByRole("navigation", { name: "Secciones del sitio" });
+
+    expect(
+      within(nav).getByText(
+        "En qué etapa está cada proyecto y cómo se ha votado, con cada fuente enlazada.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(nav).getByText(
+        "Votaciones, lobby y patrimonio de cada parlamentario, según los registros públicos.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(nav).getByText(
+        "Citaciones de comisiones y tabla de sala, enlazadas a cada proyecto.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("el bloque NO introduce un heading (h2/h3) nuevo", () => {
+    render(<Home />);
+    const nav = screen.getByRole("navigation", { name: "Secciones del sitio" });
+    expect(within(nav).queryByRole("heading")).not.toBeInTheDocument();
+  });
+
+  it("el copy de las tarjetas pasa el banned-vocab negative-match", () => {
+    render(<Home />);
+    const nav = screen.getByRole("navigation", { name: "Secciones del sitio" });
+    expect(nav.textContent ?? "").not.toMatch(BANNED_VOCAB);
   });
 });
