@@ -127,3 +127,68 @@ export function fechaCortaSegura(
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? fallback : fechaCorta(d);
 }
+
+/**
+ * Partículas que quedan en minúscula en Title Case (es-CL), EXCEPTO cuando son
+ * el primer token del nombre (el primer token siempre se capitaliza).
+ * Lista LOCKED (54-CONTEXT / UI-SPEC Contract 1).
+ */
+const PARTICULAS_NOMBRE = new Set([
+  "de",
+  "del",
+  "la",
+  "las",
+  "los",
+  "van",
+  "von",
+  "y",
+]);
+
+/**
+ * Formateo DISPLAY-ONLY de un nombre para superficie ciudadana (UI-SPEC Contract 1,
+ * Phase 54). NUNCA toca datos: `nombre_normalizado` sigue siendo la clave de
+ * matching y la proyección PII-safe; React keys, params de RPC, hrefs y
+ * comparaciones SIEMPRE usan el string RAW. Este helper sólo re-casea el string
+ * que se RENDERIZA.
+ *
+ * Reglas LOCKED (no fabricar identidad — invariante HARD §2 del SPEC):
+ * 1. null/undefined/whitespace-only → "" (los callers conservan su null-fallback).
+ * 2. Passthrough guard (load-bearing): si el string contiene CUALQUIER mayúscula
+ *    Unicode (`/\p{Lu}/u`, NO `/[A-Z]/`) → verbatim. El dato ya viene caseado por
+ *    la fuente ("Boris Barrera Moreno", "AFP HABITAT"); re-casearlo fabricaría
+ *    display. El guard Unicode cubre la fila real "fundación mas familia Ñuble"
+ *    (Ñ mayúscula, CERO A-Z) que un guard ASCII re-casearía mal.
+ * 3. Solo transforma strings 100% minúsculas: colapsa runs de whitespace a 1
+ *    espacio y hace split por espacio.
+ * 4. Partícula (de/del/la/las/los/van/von/y) queda minúscula EXCEPTO como primer
+ *    token ("de la maza carlos" → "De la Maza Carlos").
+ * 5. Tokens no-partícula: capitaliza la 1ª letra de cada SUB-token separado por
+ *    `-` o `'` (delimitadores preservados): "o'higgins" → "O'Higgins".
+ * 6. NUNCA agrega tildes ("gonzalez" → "Gonzalez"), NUNCA reordena tokens, NUNCA
+ *    normaliza puntuación interior.
+ *
+ * Idempotencia por construcción: la salida transformada contiene mayúsculas → una
+ * segunda pasada cae en el passthrough guard.
+ */
+export function formatNombre(raw: string | null | undefined): string {
+  const s = (raw ?? "").replace(/\s+/g, " ").trim();
+  if (s === "") return "";
+  // Guard de passthrough — DEBE ser Unicode-aware (\p{Lu}), NO /[A-Z]/.
+  if (/\p{Lu}/u.test(s)) return s; // ya viene caseado por la fuente → verbatim
+  return s
+    .split(" ")
+    .map((token, i) => {
+      // Partícula no-inicial → minúscula (el primer token siempre capitaliza).
+      if (i > 0 && PARTICULAS_NOMBRE.has(token)) return token;
+      // Capitaliza cada sub-token separado por - o ' (delimitadores preservados).
+      return token
+        .split(/([-'])/)
+        .map((part) =>
+          part === "-" || part === "'"
+            ? part
+            : part.charAt(0).toUpperCase() + part.slice(1),
+        )
+        .join("");
+    })
+    .join(" ");
+}
