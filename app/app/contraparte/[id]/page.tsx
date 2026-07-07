@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase";
 import { CONTRAPARTE_ID_RE } from "@/lib/buscar";
 import { moneyPublicEnabled } from "@/lib/money-gate";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ContratosPorContraparteSection } from "@/components/contratos-por-contraparte";
 import { AportesPorContraparteSection } from "@/components/aportes-por-contraparte";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -127,7 +128,19 @@ export async function HeaderSection({ id }: { id: string }) {
   const nombre = fila.contraparte_nombre ?? "Empresa no publicada";
 
   return (
-    <header className="mb-12">
+    <>
+      {/*
+        53-03 (UX-01, 53-UI-SPEC §(b)) — Breadcrumb ligero. Va DESPUÉS del gate
+        `notFound()` MONEY (primera sentencia de la page, LOCKED) y de las defensas
+        en profundidad de esta cabecera (id desconocido / no-jurídica → 404): sólo
+        se sirve con la ruta ya autorizada y una `fila` válida — cero fuga de
+        existencia (T-53-03-02). Se monta AQUÍ (no en el body de la page) porque el
+        `nombre` sólo existe tras el RPC. Crumb 2 OMITIDO: no hay ruta de listado de
+        contrapartes (53-UI-SPEC §(b)). Invisible en PROD de esta fase (gate OFF →
+        404), future-proof. NINGÚN crumb apunta a `/contraparte` desde afuera.
+      */}
+      <Breadcrumbs items={[{ label: "Inicio", href: "/" }, { label: nombre }]} />
+      <header className="mb-12">
       <div className="flex gap-2 mb-3">
         <span className="inline-flex items-center px-2.5 py-1 rounded-full border text-sm text-muted-foreground">
           Persona jurídica
@@ -139,7 +152,8 @@ export async function HeaderSection({ id }: { id: string }) {
         fiscalizable. Se muestran hechos públicos independientes, con su fuente, sin
         juicio.
       </p>
-    </header>
+      </header>
+    </>
   );
 }
 

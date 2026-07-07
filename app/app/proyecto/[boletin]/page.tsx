@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { createServerSupabase } from "@/lib/supabase";
 import { BOLETIN_RE } from "@/lib/buscar";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { FichaHeader } from "@/components/ficha-header";
 import { EstadoActualBlock } from "@/components/estado-actual-block";
 import { LobbyEnTramitacionSection } from "@/components/lobby-en-tramitacion";
@@ -48,6 +49,20 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
 
   return (
     <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
+      {/*
+        53-03 (UX-01, 53-UI-SPEC §(b)) — Breadcrumb ligero: primer hijo del
+        container, ANTES del header (que vive dentro del <Suspense>). El crumb NO
+        necesita datos: el `boletin` es route param ya validado (BOLETIN_RE). No
+        existe ruta `/proyectos` → el crumb de sección apunta a `/buscar` (superficie
+        de hallazgo). Es un <nav> sobre el h1, no re-nivela headings ni mueve mt-12.
+      */}
+      <Breadcrumbs
+        items={[
+          { label: "Inicio", href: "/" },
+          { label: "Proyectos", href: "/buscar" },
+          { label: `Boletín ${boletin}`, mono: true },
+        ]}
+      />
       <Suspense fallback={<FichaHeaderSkeleton />}>
         <FichaSection boletin={boletin} />
       </Suspense>
