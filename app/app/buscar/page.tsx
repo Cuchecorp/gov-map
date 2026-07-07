@@ -92,7 +92,7 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
             className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2"
           >
             la agenda legislativa de la semana{" "}
-            <span aria-hidden="true">→</span>
+            <span aria-hidden="true" className="pl-1">→</span>
           </Link>
           .
         </p>

@@ -74,7 +74,7 @@ export function HeaderNav({ showRed }: HeaderNavProps) {
                 aria-current={activo ? "page" : undefined}
                 className={[
                   // Touch target ≥44px (UI-SPEC §11.0): min-h-11 = 44px.
-                  "inline-flex min-h-11 items-center px-3 text-sm font-medium",
+                  "inline-flex min-h-11 items-center px-2 sm:px-3 text-sm font-medium",
                   "rounded-md transition-colors hover:text-accent-product",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   // Ítem activo subrayado en petróleo (--accent-product).

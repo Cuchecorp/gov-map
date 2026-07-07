@@ -312,7 +312,7 @@ export function LobbyView({ data }: { data: LobbyViewData }) {
             className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2"
           >
             buscar un proyecto de ley por su idea{" "}
-            <span aria-hidden="true">→</span>
+            <span aria-hidden="true" className="pl-1">→</span>
           </Link>
           .
         </p>
@@ -336,7 +336,7 @@ export function LobbyView({ data }: { data: LobbyViewData }) {
             className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2"
           >
             buscar un proyecto de ley por su idea{" "}
-            <span aria-hidden="true">→</span>
+            <span aria-hidden="true" className="pl-1">→</span>
           </Link>
           .
         </p>
