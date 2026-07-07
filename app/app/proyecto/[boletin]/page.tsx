@@ -5,9 +5,15 @@ import { createServerSupabase } from "@/lib/supabase";
 import { BOLETIN_RE } from "@/lib/buscar";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { FichaHeader } from "@/components/ficha-header";
-import { EstadoActualBlock } from "@/components/estado-actual-block";
+import {
+  EstadoActualBlock,
+  derivarEstadoActual,
+} from "@/components/estado-actual-block";
 import { LobbyEnTramitacionSection } from "@/components/lobby-en-tramitacion";
 import { TimelineView } from "@/components/timeline-view";
+import { TramitacionStepper } from "@/components/capa1/tramitacion-stepper";
+import { DetalleColapsable } from "@/components/detalle-colapsable";
+import { FichaRail, type RailEntry } from "@/components/ficha-rail";
 import { VotacionCard } from "@/components/votacion-card";
 import { IdeaMatrizBlock } from "@/components/idea-matriz-block";
 import { CuerposLegalesList } from "@/components/cuerpos-legales-list";
@@ -22,6 +28,11 @@ import type {
   TramitacionEventoRow,
   VotacionRow,
 } from "@/lib/types";
+
+// Caveat anti-causal LOCKED del rail (1× por página; principio rector +
+// anti-insinuación §9.1). El rail lo pasa como prop a FichaRail (genérica).
+const CAVEAT_RAIL =
+  "Cada dato con fuente, fecha y enlace. La coincidencia temporal no implica relación.";
 
 // Boletín válido (T-05-09, path injection): validador ÚNICO importado de lib/buscar (#36).
 
@@ -48,13 +59,13 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
     (Array.isArray(sp.urgencias) ? sp.urgencias[0] : sp.urgencias)?.trim() || null;
 
   return (
-    <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
+    <main className="max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-16">
       {/*
         53-03 (UX-01, 53-UI-SPEC §(b)) — Breadcrumb ligero: primer hijo del
-        container, ANTES del header (que vive dentro del <Suspense>). El crumb NO
-        necesita datos: el `boletin` es route param ya validado (BOLETIN_RE). No
-        existe ruta `/proyectos` → el crumb de sección apunta a `/buscar` (superficie
-        de hallazgo). Es un <nav> sobre el h1, no re-nivela headings ni mueve mt-12.
+        container, ANTES del grid. El crumb NO necesita datos: el `boletin` es route
+        param ya validado (BOLETIN_RE). No existe ruta `/proyectos` → el crumb de
+        sección apunta a `/buscar` (superficie de hallazgo). Es un <nav> sobre el h1,
+        no re-nivela headings ni mueve mt-12.
       */}
       <Breadcrumbs
         items={[
@@ -63,70 +74,157 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
           { label: `Boletín ${boletin}`, mono: true },
         ]}
       />
-      <Suspense fallback={<FichaHeaderSkeleton />}>
-        <FichaSection boletin={boletin} />
-      </Suspense>
 
       {/*
-        SC2 — "¿Dónde está hoy?" (EstadoActualBlock). PRIMER elemento tras el header,
-        ANTES de #idea-matriz: responde el estado actual derivando de datos existentes
-        (etapa/estado + último hito + urgencia vigente), omitiendo cada línea no
-        derivable. Carril propio (superficie --background, no petróleo); no compone
-        con otros dominios.
+        UXCOG 55-04 (variante B "Informe con rail"): grid de 2 columnas en md+ —
+        rail sticky (13rem) + contenido (1fr). En < md el rail colapsa a una barra
+        superior horizontal (lo resuelve FichaRail). `items-start` fija el sticky.
       */}
-      <Suspense fallback={<EstadoActualSkeleton />}>
-        <EstadoActualBlock boletin={boletin} />
-      </Suspense>
-
-      <section id="timeline" className="mt-12">
-        <Suspense fallback={<TimelineSkeleton />}>
-          <TimelineSection boletin={boletin} urgenciaExpandida={urgenciaExpandida} />
+      <div className="md:grid md:grid-cols-[13rem_1fr] md:gap-8 md:items-start">
+        <Suspense fallback={<RailSkeleton />}>
+          <ProyectoRail boletin={boletin} />
         </Suspense>
-      </section>
 
-      <section id="votaciones" className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">Votaciones</h2>
-        <Suspense fallback={<VotacionesSkeleton />}>
-          <VotacionesSection boletin={boletin} />
-        </Suspense>
-      </section>
+        <div>
+          <Suspense fallback={<FichaHeaderSkeleton />}>
+            <FichaSection boletin={boletin} />
+          </Suspense>
 
-      {/*
-        SC2 (Phase 52) — Carril lobby×tramitación: yuxtaposición TEMPORAL de
-        audiencias de lobby con la semana ISO en que una comisión vio el boletín.
-        Carril HERMANO (mt-12), NUNCA anidado ni compuesto con votos. El h2 y el
-        caveat viven DENTRO del componente: en el degrade honesto pre-apply
-        (RPC 0048 ausente → PGRST202) `LobbyEnTramitacionSection` retorna null y
-        NO deja heading huérfano; el wrapper mt-12 preserva la frontera aunque el
-        contenido esté ausente (frontier rule, 52-UI-SPEC §Spacing).
-      */}
-      <section id="lobby-tramitacion" className="mt-12">
-        <Suspense fallback={<LobbyTramitacionSkeleton />}>
-          <LobbyEnTramitacionSection boletin={boletin} />
-        </Suspense>
-      </section>
+          {/*
+            SC2 — "¿Dónde está hoy?" (EstadoActualBlock) como carril propio #estado
+            (entrada "Dónde está" del rail). Responde el estado actual derivando de
+            datos existentes, omitiendo cada línea no derivable. Superficie
+            --background, no petróleo; no compone con otros dominios.
+          */}
+          <section id="estado" className="mt-12 scroll-mt-6">
+            <Suspense fallback={<EstadoActualSkeleton />}>
+              <EstadoActualBlock boletin={boletin} />
+            </Suspense>
+          </section>
 
-      <section id="idea-matriz" className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">Idea matriz</h2>
-        <Suspense fallback={<IdeaMatrizSkeleton />}>
-          <IdeaMatrizSection boletin={boletin} />
-        </Suspense>
-      </section>
+          {/*
+            Tramitación (#timeline): capa-1 = TramitacionStepper SIEMPRE visible
+            (eleva el "¿Dónde está hoy?" a un stepper de hitos clave + urgencia
+            agrupada); capa-2 = tramitación COMPLETA colapsada en DetalleColapsable
+            (TimelineView, con el mecanismo ?urgencias operando dentro). Ningún hito
+            se pierde: sólo se resume en capa-1.
+          */}
+          <section id="timeline" className="mt-12 scroll-mt-6">
+            <Suspense fallback={<TimelineSkeleton />}>
+              <TramitacionSection
+                boletin={boletin}
+                urgenciaExpandida={urgenciaExpandida}
+              />
+            </Suspense>
+          </section>
 
-      <section id="cuerpos-legales" className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">Cuerpos legales afectados</h2>
-        <Suspense fallback={<IdeaMatrizSkeleton />}>
-          <CuerposLegalesSection boletin={boletin} />
-        </Suspense>
-      </section>
+          <section id="votaciones" className="mt-12 scroll-mt-6">
+            <h2 className="text-xl font-semibold mb-4">Votaciones</h2>
+            <Suspense fallback={<VotacionesSkeleton />}>
+              <VotacionesSection boletin={boletin} />
+            </Suspense>
+          </section>
 
-      <section id="similares" className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">Proyectos similares</h2>
-        <Suspense fallback={<SimilaresSkeleton />}>
-          <ProyectosSimilares boletin={boletin} />
-        </Suspense>
-      </section>
+          {/*
+            SC2 (Phase 52) — Carril lobby×tramitación: yuxtaposición TEMPORAL de
+            audiencias de lobby con la semana ISO en que una comisión vio el boletín.
+            Carril HERMANO (mt-12), NUNCA anidado ni compuesto con votos. El nombre de
+            la contraparte sigue en TEXTO PLANO no-enlazado (LOCKED 52-03), dentro del
+            propio LobbyEnTramitacionSection. El h2 y el caveat viven DENTRO del
+            componente: en el degrade honesto pre-apply (RPC 0048 ausente → PGRST202)
+            retorna null y NO deja heading huérfano; el wrapper mt-12 preserva la
+            frontera aunque el contenido esté ausente (frontier rule).
+          */}
+          <section id="lobby-tramitacion" className="mt-12 scroll-mt-6">
+            <Suspense fallback={<LobbyTramitacionSkeleton />}>
+              <LobbyEnTramitacionSection boletin={boletin} />
+            </Suspense>
+          </section>
+
+          <section id="idea-matriz" className="mt-12 scroll-mt-6">
+            <h2 className="text-xl font-semibold mb-4">Idea matriz</h2>
+            <Suspense fallback={<IdeaMatrizSkeleton />}>
+              <IdeaMatrizSection boletin={boletin} />
+            </Suspense>
+          </section>
+
+          <section id="cuerpos-legales" className="mt-12 scroll-mt-6">
+            <h2 className="text-xl font-semibold mb-4">
+              Cuerpos legales afectados
+            </h2>
+            <Suspense fallback={<IdeaMatrizSkeleton />}>
+              <CuerposLegalesSection boletin={boletin} />
+            </Suspense>
+          </section>
+
+          <section id="similares" className="mt-12 scroll-mt-6">
+            <h2 className="text-xl font-semibold mb-4">Proyectos similares</h2>
+            <Suspense fallback={<SimilaresSkeleton />}>
+              <ProyectosSimilares boletin={boletin} />
+            </Suspense>
+          </section>
+        </div>
+      </div>
     </main>
+  );
+}
+
+// ── Rail sticky de la ficha (UXCOG 55-04) ─────────────────────────────────────
+// Server component: lee la cabecera del proyecto (título/boletín/estado) vía la
+// lectura CACHEADA `leerProyecto` (dedup con FichaSection — React.cache) + un
+// conteo de votaciones honesto, y arma las 6 entradas del rail. La isla FichaRail
+// (client, scrollspy) recibe el `header` como ReactNode server + `navEntries` YA
+// serializadas — NUNCA deriva un dígito ni importa Supabase (contrato no-leak F45).
+// El proyecto no tiene carriles gated (cruces/money viven en /parlamentario), así
+// que las 6 entradas están SIEMPRE presentes. Si el proyecto no existe, retorna
+// null: FichaSection resuelve el 404 de la ruta.
+export async function ProyectoRail({ boletin }: { boletin: string }) {
+  const proyecto = await leerProyecto(boletin);
+  if (!proyecto) return null;
+
+  // Conteo de votaciones (3-estado honesto): un fallo real de DB/red se LANZA
+  // (#34), nunca se degrada a un dígito fabricado. `head:true` = sólo el conteo.
+  const sb = createServerSupabase();
+  const { count, error } = await sb
+    .from("votacion")
+    .select("id", { count: "exact", head: true })
+    .eq("boletin", boletin);
+  if (error) {
+    throw new Error(
+      `No se pudo contar las votaciones de ${boletin}: ${error.message}`,
+    );
+  }
+  const nVotaciones = count ?? 0;
+
+  const navEntries: RailEntry[] = [
+    { id: "estado", label: "Dónde está" },
+    { id: "timeline", label: "Tramitación" },
+    {
+      id: "votaciones",
+      label: "Votaciones",
+      // Conteo sólo cuando hay dato (>0); la sección muestra el empty honesto si 0.
+      count: nVotaciones > 0 ? nVotaciones : undefined,
+    },
+    { id: "lobby-tramitacion", label: "Lobby del período" },
+    { id: "idea-matriz", label: "Idea matriz" },
+    { id: "similares", label: "Similares" },
+  ];
+
+  const estadoTexto = proyecto.estado?.trim() || proyecto.etapa?.trim() || null;
+  const header = (
+    <div>
+      <p className="text-sm font-semibold leading-snug">{proyecto.titulo}</p>
+      <p className="mt-1 font-mono text-xs text-muted-foreground">
+        Boletín N°{proyecto.boletin}
+      </p>
+      {estadoTexto && (
+        <p className="mt-1 text-xs text-muted-foreground">{estadoTexto}</p>
+      )}
+    </div>
+  );
+
+  return (
+    <FichaRail header={header} navEntries={navEntries} caveat={CAVEAT_RAIL} />
   );
 }
 
@@ -174,22 +272,34 @@ async function CuerposLegalesSection({ boletin }: { boletin: string }) {
   return <CuerposLegalesList cuerpos={ficha?.cuerpos_legales ?? []} />;
 }
 
+// ── Lectura cacheada del proyecto (cabecera + etapa/estado) ───────────────────
+// #33/WR-02: envuelta en React.cache → UNA sola consulta por render aunque la
+// pidan FichaSection (cabecera), ProyectoRail (título/boletín/estado del rail) y
+// TramitacionSection (etapa/estado para derivar el stepper). #34: un error real de
+// DB/red se LANZA (nunca se degrada); `.maybeSingle()` no lanza por 0 filas → data
+// null = "no existe" (el llamador decide el 404).
+export const leerProyecto = cache(
+  async (boletin: string): Promise<ProyectoRow | null> => {
+    const sb = createServerSupabase();
+    const { data, error } = await sb
+      .from("proyecto")
+      .select("*")
+      .eq("boletin", boletin)
+      .maybeSingle<ProyectoRow>();
+    if (error) {
+      throw new Error(
+        `No se pudo leer el proyecto ${boletin}: ${error.message}`,
+      );
+    }
+    return data ?? null;
+  },
+);
+
 // ── Ficha header (proyecto) ──────────────────────────────────────────────────
 async function FichaSection({ boletin }: { boletin: string }) {
-  const sb = createServerSupabase();
-  const { data, error } = await sb
-    .from("proyecto")
-    .select("*")
-    .eq("boletin", boletin)
-    .maybeSingle<ProyectoRow>();
-
-  // #34: distinguir "no existe" de un fallo de DB/red. `.single()` devolvía data=null en
-  // AMBOS casos y el código lo trataba como 404, enmascarando errores transitorios como
-  // "proyecto no encontrado". `.maybeSingle()` no lanza por 0 filas; un `error` real se
-  // propaga (página de error honesta), y solo data ausente → 404.
-  if (error) {
-    throw new Error(`No se pudo leer el proyecto ${boletin}: ${error.message}`);
-  }
+  // #34: distinguir "no existe" de un fallo de DB/red. `leerProyecto` lanza ante
+  // error real; data ausente (null) → 404. Lectura CACHEADA (dedup con el rail).
+  const data = await leerProyecto(boletin);
   if (!data) {
     notFound();
   }
@@ -197,8 +307,8 @@ async function FichaSection({ boletin }: { boletin: string }) {
   return <FichaHeader proyecto={data} />;
 }
 
-// ── Timeline (tramitacion_evento) ────────────────────────────────────────────
-async function TimelineSection({
+// ── Tramitación: stepper capa-1 + timeline completo colapsado ─────────────────
+export async function TramitacionSection({
   boletin,
   urgenciaExpandida,
 }: {
@@ -206,11 +316,15 @@ async function TimelineSection({
   urgenciaExpandida: string | null;
 }) {
   const sb = createServerSupabase();
-  const { data, error } = await sb
-    .from("tramitacion_evento")
-    .select("*")
-    .eq("boletin", boletin)
-    .order("fecha", { ascending: true });
+  const [{ data, error }, proyecto] = await Promise.all([
+    sb
+      .from("tramitacion_evento")
+      .select("*")
+      .eq("boletin", boletin)
+      .order("fecha", { ascending: true }),
+    // Etapa/estado para elevar el "¿Dónde está hoy?" en el stepper (dedup cache).
+    leerProyecto(boletin),
+  ]);
 
   // #34 honest-error: un fallo real de DB/red ≠ "sin tramitación". Se lanza para la
   // página de error honesta en vez de fabricar un timeline vacío (que se leería como
@@ -222,6 +336,14 @@ async function TimelineSection({
   }
 
   const eventos = (data as TramitacionEventoRow[]) ?? [];
+
+  // Estado derivado para el stepper (reusa `derivarEstadoActual`): etapa/estado +
+  // último hito + urgencia vigente, cada uno omitido si no es derivable. `hoy`
+  // default; citaciones vacías (la citación vive en el bloque #estado completo).
+  const estado = derivarEstadoActual(
+    { etapa: proyecto?.etapa ?? null, estado: proyecto?.estado ?? null },
+    eventos,
+  );
 
   // SC7: UN ProvenanceBadge por sección (aquí, en el heading), en vez de 100+ badges
   // idénticos (uno por evento). Frescura = el `fecha_captura` MÁS RECIENTE del set
@@ -245,11 +367,24 @@ async function TimelineSection({
           />
         )}
       </div>
-      <TimelineView
-        eventos={eventos}
-        boletin={boletin}
-        urgenciaExpandida={urgenciaExpandida}
-      />
+
+      {/* Capa-1: stepper de etapas SIEMPRE visible (hitos clave + urgencia agrupada). */}
+      <TramitacionStepper eventos={eventos} estado={estado} />
+
+      {/* Capa-2: tramitación COMPLETA colapsada (default cerrado). El mecanismo
+          server ?urgencias=<id> sigue operando DENTRO del TimelineView. Ningún
+          hito se pierde: el detalle contiene todos los eventos. */}
+      {eventos.length > 0 && (
+        <div className="mt-4">
+          <DetalleColapsable n={eventos.length}>
+            <TimelineView
+              eventos={eventos}
+              boletin={boletin}
+              urgenciaExpandida={urgenciaExpandida}
+            />
+          </DetalleColapsable>
+        </div>
+      )}
     </>
   );
 }
@@ -314,6 +449,24 @@ async function VotacionesSection({ boletin }: { boletin: string }) {
 }
 
 // ── Skeletons (UI-SPEC §6.2) ─────────────────────────────────────────────────
+// Rail: cabecera compacta (título/boletín/estado) + 6 entradas de nav + caveat.
+// Shape-matched a FichaRail para no producir layout shift al resolver.
+function RailSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden="true">
+      <div className="space-y-1.5">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+      <div className="space-y-1">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-11 w-full rounded-md" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FichaHeaderSkeleton() {
   return (
     <div className="space-y-3" aria-hidden="true">
