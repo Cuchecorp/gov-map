@@ -124,15 +124,19 @@ export function RedGraph({ subgrafo }: RedGraphProps) {
     [aristas],
   );
 
-  // Estado de filtros: tipos activos + ventana temporal.
-  const [tiposActivos, setTiposActivos] = useState<Set<string>>(
-    () => new Set(tiposPresentes),
-  );
+  // Estado de filtros: tipos OCULTOS (deseleccionados) + ventana temporal.
+  // WR-05 (53-REVIEW): se trackean los tipos DESTILDADOS (set vacío = todos
+  // visibles), no los activos. Un set de "activos" inicializado desde
+  // `tiposPresentes` al montar queda OBSOLETO si `subgrafo` cambia sin remount
+  // (p.ej. un futuro <Link> a /red?seed=…): un tipo nuevo llegaría destildado y
+  // sus aristas filtradas → "Ninguna relación coincide" sin tocar nada. Con el
+  // set de ocultos, todo tipo nuevo nace visible por defecto.
+  const [tiposOcultos, setTiposOcultos] = useState<Set<string>>(new Set());
   const [desde, setDesde] = useState<string>("");
   const [hasta, setHasta] = useState<string>("");
 
   const toggleTipo = (tipo: string) => {
-    setTiposActivos((prev) => {
+    setTiposOcultos((prev) => {
       const next = new Set(prev);
       if (next.has(tipo)) next.delete(tipo);
       else next.add(tipo);
@@ -145,7 +149,7 @@ export function RedGraph({ subgrafo }: RedGraphProps) {
     const desdeMs = ms(desde ? `${desde}T00:00:00Z` : null);
     const hastaMs = ms(hasta ? `${hasta}T23:59:59Z` : null);
     return aristas.filter((a) => {
-      if (!tiposActivos.has(a.tipo)) return false;
+      if (tiposOcultos.has(a.tipo)) return false;
       const aDesde = ms(a.desde);
       const aHasta = ms(a.hasta);
       // La arista solapa la ventana seleccionada (extremos abiertos permitidos).
@@ -153,7 +157,7 @@ export function RedGraph({ subgrafo }: RedGraphProps) {
       if (hastaMs !== null && aDesde !== null && aDesde > hastaMs) return false;
       return true;
     });
-  }, [aristas, tiposActivos, desde, hasta]);
+  }, [aristas, tiposOcultos, desde, hasta]);
 
   // Estado honesto: el grafo puede venir genuinamente sin relaciones. NO es un
   // error — se nombra el hecho de que aún no hay aristas, sin inventar nodos.
@@ -238,7 +242,7 @@ export function RedGraph({ subgrafo }: RedGraphProps) {
             <label key={tipo} className="net-filtros__tipo">
               <input
                 type="checkbox"
-                checked={tiposActivos.has(tipo)}
+                checked={!tiposOcultos.has(tipo)}
                 onChange={() => toggleTipo(tipo)}
                 aria-label={`Tipo de relación: ${TIPO_LABEL[tipo] ?? tipo}`}
               />
