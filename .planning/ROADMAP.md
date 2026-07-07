@@ -1306,7 +1306,7 @@ Plans:
   4. Cero regresión: anti-insinuación (negative-match), lockdown-guard, tsc, suite completa verdes; PII-safe intacto; tokens design system
   5. Checkpoint humano de dirección visual (sketch o UI-SPEC) aprobado ANTES de la ejecución masiva; set de demo recapturado al cierre
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 
@@ -1315,6 +1315,6 @@ Plans:
 - [x] 55-03-PLAN.md — Ficha parlamentario wiring: rail + grid + capa-1 visible + detalle colapsado (wave 3)
 - [x] 55-04-PLAN.md — Ficha proyecto: rail + stepper de tramitacion + urgencia agrupada (wave 2)
 - [x] 55-05-PLAN.md — Agenda dia->comision colapsable + /red ego-network del seed (wave 1)
-- [ ] 55-06-PLAN.md — Integracion: gate completo + deploy + recaptura demo + checkpoint operador (wave 4)
+- [x] 55-06-PLAN.md — Integracion: gate completo + deploy + recaptura demo + checkpoint operador (wave 4)
 
 **UI hint**: yes
