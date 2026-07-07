@@ -174,6 +174,22 @@
   color: hsl(var(--foreground));
 }
 
+/* F-04 (Contract 4): compactación móvil de los filtros del grafo. CSS-only,
+ * <768px (bajo el breakpoint md). NINGÚN filtro se remueve ni oculta — solo
+ * apilan vertical y reducen gaps/padding; los inputs de fecha conservan
+ * font-mono y sus labels. */
+@media (max-width: 47.99rem) {
+  .net-filtros {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+  .net-filtros__ventana {
+    gap: 0.5rem;
+  }
+}
+
 /* ── Nodo: identidad pública (nombre + cámara). Sin foto/partido/insignia. ── */
 .net-nodo {
   display: flex;

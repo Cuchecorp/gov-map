@@ -417,3 +417,42 @@ describe("RedGraph — nodos huérfanos excluidos (B20a) + layout por carril (B2
     expect(y("D1")).not.toBe(y("D2"));
   });
 });
+
+// ── F-04 (54-04): grafo usable en móvil — altura por token + nota honesta ────────
+describe("RedGraph — F-04 grafo móvil (canvas adaptativo + nota + filtros intactos)", () => {
+  it("el lienzo usa clases token h-96 md:h-120 (sin inline style ni arbitrary [Npx])", () => {
+    const { container } = render(
+      <RedGraph subgrafo={{ nodos: dos_nodos, aristas: [arista()] }} />,
+    );
+    const lienzo = container.querySelector(".net-lienzo") as HTMLElement | null;
+    expect(lienzo).not.toBeNull();
+    expect(lienzo!.className).toContain("h-96");
+    expect(lienzo!.className).toContain("md:h-120");
+    // Sin inline style de altura (el fix reemplaza style={{ height: 480 }}).
+    expect(lienzo!.getAttribute("style") ?? "").not.toMatch(/height/i);
+  });
+
+  it("muestra UNA nota honesta 'mejor en pantalla ancha' visible solo en móvil (md:hidden)", () => {
+    render(<RedGraph subgrafo={{ nodos: dos_nodos, aristas: [arista()] }} />);
+    const nota = screen.getByText(
+      /El grafo se lee mejor en pantalla ancha/i,
+    );
+    expect(nota).toBeInTheDocument();
+    // Visible <md, oculto ≥md → clase md:hidden (nunca overlay, nunca oculta el grafo).
+    expect(nota.className).toContain("md:hidden");
+  });
+
+  it("la nota NO aparece en el estado vacío (solo cuando hay lienzo)", () => {
+    render(<RedGraph subgrafo={{ nodos: dos_nodos, aristas: [] }} />);
+    expect(
+      screen.queryByText(/El grafo se lee mejor en pantalla ancha/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("los filtros de tipo y ventana temporal siguen intactos con el fix móvil", () => {
+    render(<RedGraph subgrafo={{ nodos: dos_nodos, aristas: [arista()] }} />);
+    expect(screen.getByLabelText(/tipo de relaci/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/desde/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/hasta/i)).toBeInTheDocument();
+  });
+});

@@ -121,7 +121,7 @@ export function SearchBox({
           className={
             isHero
               ? "h-12 whitespace-nowrap bg-accent-product px-6 font-semibold text-background hover:bg-accent-product/90"
-              : "h-12"
+              : "h-12 bg-accent-product text-background hover:bg-accent-product/90"
           }
         >
           {isHero ? "Buscar proyectos" : "Buscar"}

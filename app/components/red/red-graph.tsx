@@ -280,21 +280,34 @@ export function RedGraph({ subgrafo }: RedGraphProps) {
           tipo o el periodo para ver los hechos disponibles.
         </p>
       ) : (
-        <div className="net-lienzo mt-4" style={{ height: 480 }}>
-          <ReactFlowProvider>
-            <ReactFlow
-              nodes={rfNodes}
-              edges={rfEdges}
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              fitView
-              proOptions={{ hideAttribution: true }}
-            >
-              <Background />
-              <Controls showInteractive={false} />
-            </ReactFlow>
-          </ReactFlowProvider>
-        </div>
+        <>
+          {/* Nota honesta SOLO móvil (F-04): el layout grid determinista se
+              comprime en pantallas angostas; visible, no bloqueante, nunca
+              overlay — el grafo sigue debajo, íntegro. */}
+          <p className="mt-4 text-sm text-muted-foreground md:hidden">
+            El grafo se lee mejor en pantalla ancha; en pantallas angostas puede
+            verse comprimido.
+          </p>
+          {/* Altura por token adaptativa: h-96=384px móvil / md:h-120=480px ≥768px
+              (sin inline style, sin arbitrary [Npx]). */}
+          <div className="net-lienzo mt-4 h-96 md:h-120">
+            <ReactFlowProvider>
+              <ReactFlow
+                nodes={rfNodes}
+                edges={rfEdges}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                fitView
+                fitViewOptions={{ padding: 0.05 }}
+                minZoom={0.2}
+                proOptions={{ hideAttribution: true }}
+              >
+                <Background />
+                <Controls showInteractive={false} />
+              </ReactFlow>
+            </ReactFlowProvider>
+          </div>
+        </>
       )}
     </section>
   );
