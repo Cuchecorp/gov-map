@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
-status: Executing Phase 53
+status: Ready to execute
 stopped_at: "F51 COMPLETE (7/7, verifier 9/9, code-review clean 3 iter, UI 19/24+fixes). F52 PLANNED: CONTEXT+UI-SPEC(6/6)+RESEARCH+VALIDATION+PATTERNS+6 planes/2 waves commiteados (1bdd062); PENDIENTE: plan-checker 52 -> execute-phase 52 -> code-review/ui-review. Deuda operador: aplicar 0047 (+0048 cuando exista) por psql + deploy CF. Retomar: /gsd-autonomous --from 52 --to 52 (discuss/ui-spec/planes se saltan solos)"
-last_updated: "2026-07-07T01:57:03.272Z"
-last_activity: 2026-07-07 -- Phase 53 execution started
+last_updated: "2026-07-07T02:49:11.349Z"
+last_activity: 2026-07-07
 progress:
   total_phases: 45
   completed_phases: 24
   total_plans: 101
-  completed_plans: 103
+  completed_plans: 104
   percent: 53
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 ## Current Position
 
 Phase: 53 (uxnav-auditoria-ux-navegada) — EXECUTING
-Plan: 1 of 5
+Plan: 2 of 5
 5/5 planes ejecutados (2 waves secuenciales). Verifier Opus **12/12 passed** contra código. Code-review thorough: 0 critical, 2 warnings **fixed** (WR-01 `esHistorica` guard fecha null — no fabrica "histórica"; WR-02 `getParlamentarioPublico` React.cache dedup 3 RPC), 3 info diferidos (incl. dead code voto-ficha-row → B24/Phase 51). Suite app/ **377→406 verde**, `tsc -b` limpio, lockdown-guard 7/7, Camino A intacto (cero RPC nueva/DDL/flag). Bugs cerrados: B1 pill→14309-04, B6 ámbar 14d, B7 agenda throw #34, B8 chip omitido, B9 error.tsx ×4 (`unstable_retry`), B10 copy lobby por cámara, B12 locale, B14 desenlace null explícito, B15 "Iniciativa del Ejecutivo (Mensaje).", B17 fechaCortaSegura, HS 1×/sección.
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
 Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to 46`, 2026-06-26):
@@ -37,7 +37,7 @@ Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to
 
 **DEPLOY EJECUTADO 2026-07-02** (cubrió F45+F46+F50+B20/B21+flip NET en un deploy, versión `3ade68b8`): build Docker Linux (`docker-cf-build.sh` → `docker cp` → `wrangler deploy` desde host). Verificación curl: home pill 14309-04 ✓, acordeones Radix en ficha ✓, `/red` selector 200 / seed D1012 grafo 305 aristas / seed inválida 404 ✓, link "Ver relaciones" en ficha ✓, agenda/proyecto/parlamentarios 200 ✓. GOTCHA NUEVO load-bearing: ruta con gate `notFound()` ANTES del primer API dinámico queda **estática en build** con el flag horneado → 500 en runtime con flag ON; fix = `export const dynamic = "force-dynamic"` (aplicado a `/red`; `/admin/revisar-entidades` tiene el mismo bug latente). Polish advisory diferido: tokenizar fill ramp del chart, tematizar legend/tooltip Recharts, a11y data-table fallback, verificación visual reduce-motion.
 Diseño LOCKED F45/F46: `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md`.
-Last activity: 2026-07-07 -- Phase 53 execution started
+Last activity: 2026-07-07
 
 ## Performance Metrics
 
@@ -125,6 +125,7 @@ Last activity: 2026-07-07 -- Phase 53 execution started
 | Phase 41 P03 | 12min | 2 tasks | 2 files |
 | Phase 45 P03 | 12min | 2 tasks | 3 files |
 | Phase 46 P01 | 15m | 2 tasks | 6 files |
+| Phase 53 P01 | 95min | 3 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -236,6 +237,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [51-07]: header con Periodo (Mono, solo columnas publicas ParlamentarioPublicoRow, LEGAL-03 intacto, omitido si null); chip Presente en N de M en resumen above-fold derivado de las MISMAS filas de votos_de_parlamentario que contarCarriles ya cachea (cero 2do fetch grep-verificado; presente = seleccion distinta de ausente igual que VotosView; asistencia null sin filas omite el chip, T-51-22). Suite 476 a 486, tsc limpio. Phase 51 COMPLETE 7/7.
 - [Phase ?]: [52-01]: --solo-confirmadas es un case booleano en el parser COMPARTIDO (un solo case cubre lobby+fichas; inerte en fichas). cargarContrapartes gana rama con embed lobby_audiencia!inner (estado_vinculo=confirmado + parlamentario_id no-null) + is(sector_id,null); el is-null hace la corrida incremental/resumible (re-correr AVANZA, no re-paga MiniMax). cargarContrapartes exportado para test de query-shape. RUT-gate intacto (loop sin try/catch). Suite @obs/cruces 29 verde, tsc limpio. NO LIVE, NO DDL (eso es 52-05).
 - [Phase ?]: F52-05: corrida LIVE pobló sector en 2715 contrapartes + 65/74 fichas; cruce_senal 30 a 781 (134 parlamentarios, 13 sectores); residuo 2381+9 abstenciones LLM
+- [Phase ?]: F53-01 auditoría UX navegada: 3 P0 (nav Red+Sobre, breadcrumbs fichas, continuation lines) mapeados al contrato UI-SPEC con file:line; grafo /red móvil = P1→F54; woff2 = P2; /contraparte 404 = GATED (MONEY OFF); cross-link contraparte NOT SHIPPABLE
 
 ### Pending Todos
 
@@ -283,7 +285,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-06T23:15:28.032Z
+Last session: 2026-07-07T02:48:31.980Z
 Stopped at: F51 COMPLETE (7/7, verifier 9/9, code-review clean 3 iter, UI 19/24+fixes). F52 PLANNED: CONTEXT+UI-SPEC(6/6)+RESEARCH+VALIDATION+PATTERNS+6 planes/2 waves commiteados (1bdd062); PENDIENTE: plan-checker 52 -> execute-phase 52 -> code-review/ui-review. Deuda operador: aplicar 0047 (+0048 cuando exista) por psql + deploy CF. Retomar: /gsd-autonomous --from 52 --to 52 (discuss/ui-spec/planes se saltan solos)
 Resume file: None
 
