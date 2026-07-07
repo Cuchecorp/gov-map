@@ -71,16 +71,20 @@ export function PatrimonioCapa1({
             key={c.anio}
             data-anio={c.anio}
             data-conteo={c.conteo}
-            className="flex flex-col items-center gap-1"
+            className="flex h-full flex-col items-center justify-end gap-1"
             title={`${c.anio}: ${c.conteo} ${
               c.conteo === 1 ? "declaración" : "declaraciones"
             } (${c.tipos.join(", ")})`}
           >
-            <span
-              className="block w-6 rounded-t bg-muted-foreground"
-              style={{ height: `${(c.conteo / maxConteo) * 100}%` }}
-              aria-hidden="true"
-            />
+            {/* Track flex-1 con altura RESOLUBLE (la columna es h-full): sin este
+                contexto de altura definido, el `height: N%` de la barra colapsaba a 0
+                y en PROD sólo se veían las etiquetas de año. */}
+            <span className="flex w-6 flex-1 items-end" aria-hidden="true">
+              <span
+                className="block w-full rounded-t bg-muted-foreground"
+                style={{ height: `${(c.conteo / maxConteo) * 100}%` }}
+              />
+            </span>
             <span className="text-xs font-mono tabular-nums text-muted-foreground">
               {c.anio}
             </span>

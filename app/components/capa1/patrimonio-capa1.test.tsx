@@ -32,6 +32,10 @@ describe("PatrimonioCapa1 — tira de declaraciones por año (55-02, F46 sin mon
     // 2019 acumula 2 declaraciones.
     const col2019 = container.querySelector('[data-anio="2019"]');
     expect(col2019?.getAttribute("data-conteo")).toBe("2");
+    // La barra tiene un contexto de altura RESOLUBLE: la columna es h-full y la barra
+    // vive en un track flex-1 (sin esto el height:N% colapsaba a 0 → barras invisibles).
+    expect(col2019?.className).toContain("h-full");
+    expect(col2019?.querySelector(".flex-1")).toBeTruthy();
     // Resumen "4 declaraciones · 2019–2026" (las cifras Mono viven en spans → se
     // asevera sobre el textContent normalizado, no por nodo).
     const texto = (container.textContent ?? "").replace(/\s+/g, " ");
