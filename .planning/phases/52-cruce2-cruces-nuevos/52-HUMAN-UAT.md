@@ -8,7 +8,7 @@ updated: 2026-07-06T20:25:00Z
 
 ## Current Test
 
-[awaiting human testing — requiere deploy Cloudflare previo]
+[awaiting human testing — deploy Cloudflare EJECUTADO 2026-07-06 (versión 0742841e); smoke HTTP verde en las 3 superficies: carril lobby con caveat+filas en /proyecto/16743-04, "Citado en" en /proyecto/18216-05, 3 bloques actualidad en /. Falta solo la validación VISUAL del operador en https://observatorio-congreso.thevalis.workers.dev]
 
 ## Tests
 
