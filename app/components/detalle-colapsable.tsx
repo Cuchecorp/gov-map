@@ -41,7 +41,7 @@ export function DetalleColapsable({
     >
       <AccordionPrimitive.Item value="d">
         <AccordionPrimitive.Header asChild>
-          <AccordionPrimitive.Trigger className="group flex min-h-11 items-center gap-2 text-left text-sm font-semibold text-[color:var(--accent-product)]">
+          <AccordionPrimitive.Trigger className="group flex min-h-11 items-center gap-2 text-left text-sm font-semibold text-accent-product">
             {/* label data-state driven: dos spans, uno por estado (patrón carril-accordion). */}
             <span className="group-data-[state=open]:hidden">
               Ver detalle ({n})

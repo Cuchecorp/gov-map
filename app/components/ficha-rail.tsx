@@ -60,10 +60,10 @@ export function FichaRail({
               aria-current={activa ? "true" : undefined}
               className={cn(
                 "flex min-h-11 shrink-0 items-center gap-2 rounded-md border-l-2 border-transparent px-3 py-1.5 text-sm no-underline",
-                "text-foreground/80 hover:text-[color:var(--accent-product)]",
-                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-product)]",
+                "text-foreground/80 hover:text-accent-product",
+                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-product",
                 activa &&
-                  "bg-accent-product-soft border-[color:var(--accent-product)] font-semibold text-[color:var(--accent-product)]",
+                  "bg-accent-product-soft border-accent-product font-semibold text-accent-product",
               )}
             >
               <span>
