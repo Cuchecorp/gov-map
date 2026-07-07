@@ -4,10 +4,12 @@ import type { CruceSector } from "@/lib/parlamentario-resumen-conteos";
 
 /**
  * Capa-1 de CRUCES (UXCOG 55-02, UI-SPEC §Per-Surface "/parlamentario"). ÚNICA
- * superficie de la página capa-1 que usa petróleo (`--accent-product`): marco 1.5px,
- * `<h2>` en petróleo y el botón PRIMARIO "Explorar los N cruces" (dispara el
- * drill-down; en la página lo conecta 55-03 al DetalleColapsable de cruces). Vista
- * PURA — recibe `crucesSectores` + `total` ya computados por `contarCarrilesSeguro`.
+ * superficie de la página capa-1 que usa petróleo (`--accent-product`): marco 1.5px
+ * y `<h2>` en petróleo. El CTA PRIMARIO "Explorar los N cruces" ya NO vive aquí como
+ * un anchor separado: es el TRIGGER del `DetalleColapsable` de cruces (variante
+ * `primary`), un ÚNICO control que expande el detalle en vez de dos controles (un
+ * anchor que sólo hacía scroll + un disclosure "Ver detalle"). Vista PURA — recibe
+ * `crucesSectores` ya computados por `contarCarrilesSeguro`.
  *
  * ANTI-INSINUACIÓN (§9.1, LOCKED): los chips muestran CONTEOS NEUTROS lado a lado
  * ("sector · N reuniones"), agregando "· M votos" SOLO cuando M>0 (omisión honesta:
@@ -39,14 +41,9 @@ function Chip({ sector }: { sector: CruceSector }) {
 
 export function CrucesCapa1({
   sectores,
-  total,
-  detalleHref = "#cruces-detalle",
   conteo,
 }: {
   sectores: CruceSector[];
-  total: number;
-  /** Ancla al DetalleColapsable de cruces (el control real vive en la página server). */
-  detalleHref?: string;
   /** Conteo 3-estado YA formateado por el server (honesto); SIEMPRE visible junto al h2. */
   conteo?: ReactNode;
 }) {
@@ -73,18 +70,10 @@ export function CrucesCapa1({
         </p>
       )}
 
-      {/* CTA PRIMARIO petróleo — el único énfasis de la página. Ancla al
-          DetalleColapsable de cruces (control real en la página server): un anchor
-          NAVEGA de verdad al detalle, no es un botón inerte sin handler (una vista
-          server no puede llevar onClick). */}
-      {total > 0 && (
-        <a
-          href={detalleHref}
-          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-accent-product px-6 font-semibold text-background no-underline hover:bg-accent-product/90"
-        >
-          Explorar los {total} cruces
-        </a>
-      )}
+      {/* El CTA PRIMARIO petróleo "Explorar los N cruces" NO vive aquí: es el trigger
+          del DetalleColapsable de cruces (variante `primary`) en la página server —
+          UN solo control que expande el detalle, no un anchor extra que sólo hace
+          scroll a un disclosure cerrado. */}
 
       {/* Caveat de cruces (LOCKED, 1×). */}
       <p className="text-xs text-muted-foreground">{CAVEAT_CRUCES}</p>

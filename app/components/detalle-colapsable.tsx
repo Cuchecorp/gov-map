@@ -25,6 +25,8 @@ export function DetalleColapsable({
   n,
   children,
   defaultOpen = false,
+  triggerVariant = "default",
+  triggerLabel,
 }: {
   /** Conteo YA formateado por el server; la isla NO lo deriva. */
   n: number;
@@ -32,7 +34,16 @@ export function DetalleColapsable({
   children: React.ReactNode;
   /** Detalle arranca CERRADO por defecto (disclosure inverso). */
   defaultOpen?: boolean;
+  /**
+   * `"primary"` estiliza el trigger como el CTA petróleo de la página (bg petróleo,
+   * texto sobre fondo) — un ÚNICO control que expande el detalle, sin un anchor
+   * separado que sólo hace scroll. Usado SÓLO en la sección de cruces (55-03).
+   */
+  triggerVariant?: "default" | "primary";
+  /** Sobrescribe la etiqueta de estado CERRADO (p.ej. "Explorar los N cruces"). */
+  triggerLabel?: string;
 }) {
+  const isPrimary = triggerVariant === "primary";
   return (
     <AccordionPrimitive.Root
       type="single"
@@ -41,10 +52,17 @@ export function DetalleColapsable({
     >
       <AccordionPrimitive.Item value="d">
         <AccordionPrimitive.Header asChild>
-          <AccordionPrimitive.Trigger className="group flex min-h-11 items-center gap-2 text-left text-sm font-semibold text-accent-product">
+          <AccordionPrimitive.Trigger
+            className={cn(
+              "group flex min-h-11 items-center gap-2 text-left font-semibold",
+              isPrimary
+                ? "justify-center rounded-lg bg-accent-product px-6 text-background no-underline hover:bg-accent-product/90"
+                : "text-sm text-accent-product",
+            )}
+          >
             {/* label data-state driven: dos spans, uno por estado (patrón carril-accordion). */}
             <span className="group-data-[state=open]:hidden">
-              Ver detalle ({n})
+              {triggerLabel ?? `Ver detalle (${n})`}
             </span>
             <span className="hidden group-data-[state=open]:inline">
               Ocultar detalle

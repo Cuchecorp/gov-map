@@ -20,31 +20,25 @@ function fixture(): CruceSector[] {
   ];
 }
 
-describe("CrucesCapa1 — resumen petróleo-framed + CTA (55-02)", () => {
-  it("usa petróleo en el marco, el h2 y el CTA primario (único acento de la página)", () => {
-    const { container } = render(<CrucesCapa1 sectores={fixture()} total={8} />);
+describe("CrucesCapa1 — resumen petróleo-framed (55-02)", () => {
+  it("usa petróleo en el marco y el h2 (único acento de la página); NO renderiza un CTA anchor propio", () => {
+    const { container } = render(<CrucesCapa1 sectores={fixture()} />);
     // Marco petróleo.
     const marco = container.querySelector(".border-accent-product");
     expect(marco).toBeTruthy();
     // h2 en petróleo.
     const h2 = screen.getByRole("heading", { level: 2 });
     expect(h2.className).toContain("text-accent-product");
-    // CTA primario petróleo: un ANCLA real al detalle (no un botón inerte sin handler).
-    const cta = screen.getByRole("link", { name: /Explorar los 8 cruces/ });
-    expect(cta.className).toContain("bg-accent-product");
-    expect(cta.getAttribute("href")).toBe("#cruces-detalle");
-  });
-
-  it("el CTA respeta un detalleHref explícito (ancla al DetalleColapsable de cruces)", () => {
-    render(
-      <CrucesCapa1 sectores={fixture()} total={8} detalleHref="#otro-detalle" />,
-    );
-    const cta = screen.getByRole("link", { name: /Explorar los 8 cruces/ });
-    expect(cta.getAttribute("href")).toBe("#otro-detalle");
+    // El CTA "Explorar los N cruces" ya NO vive aquí: es el trigger del
+    // DetalleColapsable (variante primary) en la página → sin doble control.
+    expect(
+      screen.queryByRole("link", { name: /Explorar los .* cruces/ }),
+    ).toBeNull();
+    expect(container.querySelector('a[href="#cruces-detalle"]')).toBeNull();
   });
 
   it("chips 'sector · N reuniones' neutros; '· M votos' SOLO cuando nVotos>0", () => {
-    const { container } = render(<CrucesCapa1 sectores={fixture()} total={8} />);
+    const { container } = render(<CrucesCapa1 sectores={fixture()} />);
     const chips = container.querySelectorAll("li");
     expect(chips).toHaveLength(2);
     // El chip usa layout inline-block (NO inline-flex): así el separador " · " conserva
@@ -63,21 +57,19 @@ describe("CrucesCapa1 — resumen petróleo-framed + CTA (55-02)", () => {
   });
 
   it("muestra el conteo 3-estado honesto junto al h2 cuando el server lo pasa (IN-01)", () => {
-    render(
-      <CrucesCapa1 sectores={fixture()} total={8} conteo="sin registros" />,
-    );
+    render(<CrucesCapa1 sectores={fixture()} conteo="sin registros" />);
     const h2 = screen.getByRole("heading", { level: 2 });
     expect(h2.textContent).toContain("Cruces con sectores");
     expect(h2.textContent).toContain("sin registros");
   });
 
   it("muestra el caveat de cruces EXACTAMENTE 1×", () => {
-    render(<CrucesCapa1 sectores={fixture()} total={8} />);
+    render(<CrucesCapa1 sectores={fixture()} />);
     expect(screen.getAllByText(CAVEAT)).toHaveLength(1);
   });
 
   it("CERO vocabulario causal/insinuante (negative-match §9.1)", () => {
-    const { container } = render(<CrucesCapa1 sectores={fixture()} total={8} />);
+    const { container } = render(<CrucesCapa1 sectores={fixture()} />);
     expect(container.textContent ?? "").not.toMatch(PROHIBIDO);
   });
 });

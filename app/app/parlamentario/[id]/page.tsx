@@ -354,20 +354,24 @@ export async function CarrilesSection({
         crucesPublicEnabled es server-only (chokepoint WR-02). Con el gate OFF,
         `crucesSectores` llega `[]` y la sección no se renderiza (no se pinta una
         capa-1 vacía). La capa-1 `CrucesCapa1` es la ÚNICA superficie con petróleo
-        (marco + h2 + botón "Explorar los N cruces" = afordancia de drill-down al
-        DetalleColapsable de cruces). ENCENDER el flag = Phase 39 (firma legal).
+        (marco + h2). El CTA PRIMARIO petróleo "Explorar los N cruces" es el TRIGGER
+        del DetalleColapsable de cruces (variante `primary`) — UN solo control que
+        expande el detalle, no un anchor extra que sólo hacía scroll. ENCENDER el flag
+        = Phase 39 (firma legal).
       */}
       {crucesPublicEnabled(process.env) && (
         <section id="cruces" className="mt-12 scroll-mt-6">
           <CrucesCapa1
             sectores={conteos.crucesSectores}
-            total={conteos.cruces.tipo === "dato" ? conteos.cruces.n : 0}
-            detalleHref="#cruces-detalle"
             conteo={conteoLabel(conteos.cruces)}
           />
           {conteos.cruces.tipo === "dato" && (
             <div id="cruces-detalle" className="mt-4 scroll-mt-6">
-              <DetalleColapsable n={conteos.cruces.n}>
+              <DetalleColapsable
+                n={conteos.cruces.n}
+                triggerVariant="primary"
+                triggerLabel={`Explorar los ${conteos.cruces.n} cruces`}
+              >
                 <Suspense fallback={<CrucesSkeleton />}>
                   <CrucesSection id={id} />
                 </Suspense>

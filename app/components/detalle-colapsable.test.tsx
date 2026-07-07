@@ -51,6 +51,29 @@ describe("DetalleColapsable — disclosure que colapsa SOLO el detalle (UXCOG 55
     expect(trigger).toHaveAttribute("data-state", "open");
     expect(trigger.textContent).toContain("Ocultar detalle");
   });
+
+  it("Test 3b: variante primary + triggerLabel → CTA petróleo que ES el disclosure (un solo control, 55-03 cruces)", () => {
+    render(
+      <DetalleColapsable
+        n={12}
+        triggerVariant="primary"
+        triggerLabel="Explorar los 12 cruces"
+      >
+        <div data-testid="detalle">contenido</div>
+      </DetalleColapsable>,
+    );
+    const trigger = screen.getByRole("button");
+    // El label CERRADO usa el override (no "Ver detalle (12)").
+    expect(trigger.textContent).toContain("Explorar los 12 cruces");
+    expect(trigger.textContent).not.toContain("Ver detalle");
+    // Estilo petróleo primario (bg-accent-product text-background).
+    expect(trigger.className).toContain("bg-accent-product");
+    expect(trigger.className).toContain("text-background");
+    // Sigue siendo el MISMO control-disclosure: al abrir muestra "Ocultar detalle".
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute("data-state", "open");
+    expect(trigger.textContent).toContain("Ocultar detalle");
+  });
 });
 
 // ── T-55-01: no-leak SSR (source-scan, espejo de carril-accordion) ───────────
