@@ -683,6 +683,10 @@ export function VotosView({
           </p>
         ) : (
           <>
+            <p className="text-sm text-muted-foreground mt-2">
+              Se compara el voto del parlamentario con la opción mayoritaria de su
+              bancada en esa misma votación.
+            </p>
             <p className="text-base mt-2">
               Votó distinto a la mayoría de su bancada{" "}
               <span className="font-mono">{rebeldias.length}</span>{" "}
@@ -725,10 +729,6 @@ export function VotosView({
                 </li>
               ))}
             </ul>
-            <p className="text-sm text-muted-foreground mt-2">
-              Se compara el voto del parlamentario con la opción mayoritaria de su
-              bancada en esa misma votación.
-            </p>
           </>
         )}
       </div>
