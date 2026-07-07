@@ -497,7 +497,7 @@ Plans:
 - [x] 54-02-PLAN.md — microcopy "cómo leer esto" (cruces integra, rebeldías reubica, patrimonio agrega)
 - [x] 54-03-PLAN.md — 3 tarjetas de entrada en el home (server, cero JS, fold 1280×800)
 - [x] 54-04-PLAN.md — F-04 grafo móvil + botón /buscar petróleo + identity-warn @theme + skeletons anti-CLS + minors + F-05 diferido
-- [ ] 54-05-PLAN.md — gate de fase + redeploy final + smoke + docs/demo (≥6 screenshots)
+- [x] 54-05-PLAN.md — gate de fase + redeploy final + smoke + docs/demo (≥6 screenshots)
 
 ### Phase 24: LOBBY — Fuente camara.cl/transparencia + spike de estructura
 
@@ -727,7 +727,7 @@ Plans:
 | 51. LEG2 — Legibilidad profunda (P2) | v5.0 | 7/7 | Complete | 2026-07-03 |
 | 52. CRUCE2 — Cruces nuevos (P3) | v5.0 | 6/6 | Complete (deploy ee6b7544) | 2026-07-06 |
 | 53. UXNAV — Auditoría UX navegada (BrowserOS) + fixes P0 | v5.0 | 5/5 | Complete    | 2026-07-07 |
-| 54. UXDEMO — Pulido presentacional demo | v5.0 | 4/5 | In Progress|  |
+| 54. UXDEMO — Pulido presentacional demo | v5.0 | 5/5 | Complete   | 2026-07-07 |
 
 ## ✅ v4.0 — De datos a cruces verificables
 
@@ -1071,7 +1071,7 @@ Auditoría completa del sitio en vivo (`.planning/DIAGNOSTICO-govmap-2026-07-02.
 - [x] **Phase 51: LEG2 — Legibilidad profunda (P2)** — votos agregados por proyecto, timeline dos niveles + "¿dónde está hoy?", patrimonio tarjeta-resumen sin URIs (B3), comparador cableado (B4), rebeldías honestas (B5), lobby agrupado por contraparte, provenance por sección, footer global. (completed 2026-07-03)
 - [x] **Phase 52: CRUCE2 — Cruces nuevos con datos ya disponibles (P3)** — clasificador sectorial (enciende `cruce_senal` de verdad), lobby×tramitación temporal, proyecto→agenda inverso, módulo de actualidad en home. (Asistencia comparada = Phase 49; chart votos = Phase 47 — ya desbloqueadas.) (completed 2026-07-06)
 - [x] **Phase 53: UXNAV — Auditoría UX navegada (BrowserOS) + fixes de orientación (P0 demo)** — recorrer los journeys clave del sitio EN VIVO con navegador real (desktop + viewport móvil, screenshots como evidencia), producir informe UX priorizado y corregir los P0 de navegación/orientación en el mismo ciclo. El sitio "está difícil de maniobrar" (operador, 2026-07-07); demo para centro de estudios. (added 2026-07-07) (completed 2026-07-07)
-- [ ] **Phase 54: UXDEMO — Pulido presentacional para demo (centro de estudios)** — nombres presentables (hoy `nombre_normalizado` minúsculas), home con rutas de entrada guiadas, microcopy "cómo leer esto", P1 del informe F53, QA final navegado + set de screenshots de demo. (added 2026-07-07)
+- [x] **Phase 54: UXDEMO — Pulido presentacional para demo (centro de estudios)** — nombres presentables (hoy `nombre_normalizado` minúsculas), home con rutas de entrada guiadas, microcopy "cómo leer esto", P1 del informe F53, QA final navegado + set de screenshots de demo. (added 2026-07-07) (completed 2026-07-07)
 
 ### Decisión (RESUELTA 2026-06-26): A + B — ambas pistas en paralelo
 
@@ -1287,6 +1287,25 @@ Plans:
   4. `docs/demo/` contiene el set de screenshots actuales del sitio desplegado (≥6 superficies) y el QA navegado no registra errores de consola
   5. Suite verde + tsc limpio + lockdown-guard verde; anti-insinuación intacta
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
+
+**UI hint**: yes
+
+### Phase 55: UXCOG — Rediseño cognitivo: jerarquía visual + detalle progresivo en superficies ciudadanas (corrección de operador post-demo)
+
+**Goal:** El operador revisó el set de demo de F54 y RECHAZÓ el checkpoint T4 con esta corrección textual: "información no organizada, difícil de leer, mucho texto muy genérico; énfasis UI y UX, usa estrategias visuales; la idea es que sea claro y uno pueda ir aumentando el detalle, viendo cruces; no tanta información; piensa de modo cognitivo". Rediseñar las superficies ciudadanas con arquitectura de información en 3 capas: **capa 1 = resumen VISUAL escaneable** (atributos preatentivos —color/tamaño/posición— antes que texto; chunking ≤7 unidades por vista), **capa 2 = detalle bajo demanda** (progressive disclosure, mantra de Shneiderman: overview → zoom/filter → details-on-demand), **capa 3 = fuente/trazabilidad** (el enlace oficial nunca desaparece, pero deja de competir por atención). Evidencia dura del problema (docs/demo/ post-F54): ficha parlamentario = 28.048px lógicos de listas crudas apiladas (141 votaciones + 107 reuniones de lobby listadas completas, todo expandido); ficha proyecto = 10.391px con ~84 hitos de tramitación crudos tipo "Cuenta del Mensaje 384-389 que retira y hace presente la urgencia Suma"; agenda = 11.606px; /red abre con fitView de 136 nodos ilegibles. Dirección por superficie: (a) **ficha parlamentario** → dashboard resumen arriba del fold (asistencia, cómo votó, lobby por materia top-N, mini-chart patrimonio, cruces destacados) + secciones colapsadas por defecto que muestran su resumen visual + listas truncadas "mostrar ~5 / ver los N"; (b) **ficha proyecto** → stepper visual de etapas (¿dónde está hoy? ya existe — elevarlo) + timeline comprimido a hitos CLAVE (cambios de etapa, votaciones con desenlace, informes; los trámites repetitivos de urgencia agrupados en 1 línea con conteo) + tramitación completa colapsada; (c) **cruces = el diferenciador del producto** → elevarlos visualmente y hacerlos el destino natural del drill-down (el usuario "va aumentando el detalle, viendo cruces"); (d) **agenda** → agrupar por día/comisión con jerarquía visual, colapsar; (e) **/red** → vista inicial legible del ego-network del seed (no fitView global de toda la red). Restricciones LOCKED intactas: anti-insinuación/negative-match, PII-safe (nunca rut/partido), tokens del design system (sin arbitrary values), CERO DDL, hero LOCKED, caveat anti-causal 1×/sección, frontera de carril `mt-12`.
+**Mode:** producto (rediseño IA/UX de superficies existentes)
+**Depends on:** Phase 54 (complete). REORDENA LA COLA: 55 va antes de 38/47/49 — F47 (chart votos) y F49 (comparativo ausencias) se montan después SOBRE esta estructura; F38 (cruces en ficha proyecto) hereda el patrón de drill-down.
+**Requirements:** UX-03 (legibilidad cognitiva), extiende UX-01/UX-02
+**Autonomy:** autónomo para código+tests; sketch/UI-SPEC con checkpoint de operador ANTES de ejecutar (la corrección es de gusto/percepción — validar dirección visual primero); redeploy autorizado (2026-07-06); CERO DDL, CERO flags.
+**Success Criteria** (what must be TRUE):
+
+  1. Cada ficha comunica su resumen en el primer viewport (desktop 1280): qué es, números clave y dónde profundizar, SIN scroll; las listas completas existen solo bajo demanda (colapsadas/truncadas por defecto)
+  2. La ficha de parlamentario baja de ~28.000px a un orden de ~5.000px lógicos en su estado por defecto sin perder ningún dato (todo accesible vía disclosure); la de proyecto agrupa los trámites repetitivos y destaca los hitos clave
+  3. Los cruces quedan visualmente elevados como destino del drill-down en ambas fichas; /red abre legible (ego-network del seed)
+  4. Cero regresión: anti-insinuación (negative-match), lockdown-guard, tsc, suite completa verdes; PII-safe intacto; tokens design system
+  5. Checkpoint humano de dirección visual (sketch o UI-SPEC) aprobado ANTES de la ejecución masiva; set de demo recapturado al cierre
+
+**Plans:** TBD
 
 **UI hint**: yes
