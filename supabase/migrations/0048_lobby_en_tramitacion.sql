@@ -35,8 +35,24 @@
 -- (estado honesto, IDENT-12 — no se fabrica identidad por adivinanza).
 --
 -- La última migración en disco es 0047_rebeldias_honestas.sql. Esta es la 0048.
--- Función NUEVA → SIN `drop function` previo (0047 dropeó SOLO por cambiar el returns
--- table de una función ya existente; aquí no hay firma previa que cambiar).
+--
+-- ── ENMIENDA IN-PLACE (WR-07, autorizada — mismo checkpoint de operador 52-06) ──
+-- CONTRATO AHORA = 8 COLUMNAS: se AGREGA `audiencia_id text` (a.identificador) como
+-- ÚLTIMA columna. Razón (WR-07, undercount silencioso): la proyección de 7 campos no
+-- llevaba clave por-audiencia, así que el `select distinct` colapsaba audiencias REALES
+-- distintas de la Cámara — mismas (parlamentario, día, materia) pero DISTINTO lobbista/
+-- lugar (identificadores distintos en DB) — porque en filas Cámara `enlace_detalle` es
+-- SIEMPRE null (columna Detalles comentada en el HTML fuente) y `fecha` es date-only:
+-- dos reuniones reales se volvían UNA fila y el conteo neutro sub-reportaba. Con
+-- `identificador` en la proyección, el distinct dedupe por IDENTIDAD de audiencia:
+-- la multiplicidad por citación (misma audiencia × 2 citaciones/semana) SIGUE
+-- deduplicándose, y las audiencias reales distintas SIGUEN separadas. Se apendiza al
+-- FINAL para minimizar churn del contrato: supabase-js mapea por nombre y el pgTAP
+-- asserta el nuevo arg al final. La migración se enmienda IN-PLACE (no follow-up)
+-- porque 0048 se aplicó HOY dentro de este mismo checkpoint y ningún otro entorno la
+-- consume; el operador re-aplica inmediatamente después.
+-- Cambiar el returns table de una función existente = 42P13 → `drop function` previo
+-- obligatorio (gotcha 0047; re-armar el doble revoke tras el create).
 --
 -- ── ACL determinista (Camino A, espejo VERBATIM de 0047:101-102) ───────────────
 -- Bajo Camino A (0044 APLICADA a PROD: `revoke all on all routines from anon,
@@ -55,6 +71,9 @@
 -- push` (drift schema_migrations). PGCLIENTENCODING=UTF8 en Windows. La UI (52-03)
 -- degrada honesta pre-apply (la RPC aún no existe en PROD).
 
+-- Cambiar el returns table requiere drop previo (firma de parámetro intacta, 42P13).
+drop function if exists public.lobby_en_tramitacion(text);
+
 create or replace function public.lobby_en_tramitacion(p_boletin text)
 returns table (
   parlamentario_nombre text,
@@ -63,13 +82,22 @@ returns table (
   fecha_reunion        timestamptz,
   semana_iso           text,
   comision             text,
-  enlace_detalle       text
+  enlace_detalle       text,
+  -- 8ª columna (enmienda WR-07): clave estable de la audiencia (a.identificador).
+  -- Da identidad por-audiencia al distinct Y al dedupe del cliente; se apendiza al
+  -- FINAL para no mover las 7 posiciones ya consumidas. NO es PII: es el id público
+  -- del registro de audiencia en la fuente (leylobby/Cámara).
+  audiencia_id         text
 )
 language sql stable security definer set search_path = '' as $$
   -- DISTINCT (load-bearing): un boletín citado 2+ veces en la MISMA semana/comisión
   -- (p.ej. sesiones martes y miércoles) multiplicaría cada audiencia por citación e
   -- inflaría el conteo neutro "N audiencias" de la UI. La unidad semántica del cruce
-  -- es (audiencia × semana coincidente), no (audiencia × citación).
+  -- es (audiencia × semana coincidente), no (audiencia × citación). Con a.identificador
+  -- en la proyección (WR-07) el distinct dedupe por IDENTIDAD de audiencia: dos
+  -- audiencias REALES del mismo (parlamentario, día, materia) ya NO colapsan (en filas
+  -- Cámara enlace_detalle es siempre null y la fecha es date-only — la tupla de 7 era
+  -- lossy), mientras la multiplicidad por citación sigue colapsando (mismo identificador).
   select distinct
          p.nombre_normalizado,   -- proyección pública (espejo de parlamentario_publico/0020)
          p.camara,
@@ -77,7 +105,8 @@ language sql stable security definer set search_path = '' as $$
          a.fecha,
          c.semana_iso,
          c.comision,
-         a.enlace_detalle
+         a.enlace_detalle,
+         a.identificador         -- clave estable por-audiencia (WR-07)
   from public.citacion c
   join public.citacion_punto cp on cp.citacion_id = c.id
   -- coincidencia por SEMANA ISO: normaliza la fecha de la audiencia a la convención de

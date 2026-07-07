@@ -6,7 +6,8 @@ import { safeExternalHref } from "@/lib/utils";
  * Sección SC2 de la ficha de proyecto (Phase 52 — CRUCE2). Carril de YUXTAPOSICIÓN
  * TEMPORAL: "Reuniones de lobby registradas en el mismo período" — audiencias de
  * lobby que caen en la MISMA semana ISO en que una comisión vio este boletín.
- * Consume el RPC `lobby_en_tramitacion(p_boletin)` (contrato LOCKED por 52-02).
+ * Consume el RPC `lobby_en_tramitacion(p_boletin)` (contrato 52-02, enmendado a
+ * 8 columnas por WR-07: + `audiencia_id`, interna al dedupe, nunca renderizada).
  *
  * ┌───────────────────────────────────────────────────────────────────────────┐
  * │ GATE DE CONTENIDO (DESIGN-SYSTEM §9.1 / 52-UI-SPEC §Anti-insinuación) —      │
@@ -42,7 +43,12 @@ import { safeExternalHref } from "@/lib/utils";
  *   3. cualquier otro error real de DB/red → throw (#34).
  */
 
-// ── Contrato del RPC (LOCKED por 52-02, 7 campos verbatim) ──────────────────────
+// ── Contrato del RPC (52-02, ENMENDADO a 8 campos por WR-07) ────────────────────
+// `audiencia_id` (a.identificador, 8ª columna apendizada al final en 0048) es la clave
+// ESTABLE por-audiencia: da identidad al dedupe (WR-02/WR-07) sin tocar las 7 posiciones
+// originales. Es interna a la lógica de agrupado — NO se renderiza. Opcional por
+// forward-compat: contra un RPC pre-enmienda el campo llega ausente y el dedupe cae al
+// composite lossy (mejor que romper).
 export interface LobbyEnTramitacionRow {
   parlamentario_nombre: string;
   camara: string;
@@ -51,6 +57,7 @@ export interface LobbyEnTramitacionRow {
   semana_iso: string;
   comision: string;
   enlace_detalle: string | null;
+  audiencia_id?: string | null;
 }
 
 // ── Fecha ISO parseable → Date válida, o null (nunca "Invalid Date") ────────────
@@ -64,9 +71,11 @@ function fechaValida(raw: string | null | undefined): Date | null {
 // UNIDAD SEMÁNTICA (WR-02): (audiencia × semana), NO (audiencia × comisión). El RPC
 // emite una fila por (audiencia × semana × comisión): si DOS comisiones vieron el
 // boletín la misma semana (p.ej. la temática + Hacienda), la MISMA reunión llega
-// duplicada. Aquí se deduplica por audiencia dentro de la semana (mismo
-// parlamentario + fecha + materia + enlace) y las comisiones se AGREGAN al grupo —
-// el conteo neutro {N} cuenta reuniones reales, nunca infladas por el join.
+// duplicada. Aquí se deduplica por audiencia dentro de la semana — clave PRIMARIA =
+// `audiencia_id` (WR-07: identidad estable; el composite persona+fecha+materia+enlace
+// era LOSSY para filas Cámara, donde enlace es siempre null y la fecha date-only, y
+// colapsaba reuniones reales distintas) — y las comisiones se AGREGAN al grupo: el
+// conteo neutro {N} cuenta reuniones reales, ni infladas por el join ni colapsadas.
 interface GrupoSemana {
   semanaIso: string;
   /** Comisiones que vieron el boletín esa semana (distintas, orden de aparición). */
@@ -84,16 +93,20 @@ function agruparPorSemana(rows: LobbyEnTramitacionRow[]): GrupoSemana[] {
       mapa.set(r.semana_iso, g);
     }
     if (!g.comisiones.includes(r.comision)) g.comisiones.push(r.comision);
-    // Clave de la audiencia dentro de la semana (el RPC no expone un id de
-    // audiencia): misma persona + mismo instante + misma materia + mismo enlace
-    // = la misma reunión citada por otra comisión → una sola fila.
-    const claveAudiencia = [
-      r.semana_iso,
-      r.parlamentario_nombre,
-      r.fecha_reunion,
-      r.materia ?? "",
-      r.enlace_detalle ?? "",
-    ].join("∷");
+    // Clave de la audiencia dentro de la semana: `audiencia_id` (WR-07, identidad
+    // estable del RPC de 8 columnas) — la misma reunión citada por otra comisión →
+    // una sola fila; dos reuniones REALES del mismo día/materia → dos filas.
+    // Fallback (solo forward-compat, RPC pre-enmienda sin audiencia_id): el composite
+    // lossy persona+instante+materia+enlace.
+    const claveAudiencia = r.audiencia_id
+      ? `${r.semana_iso}∷id∷${r.audiencia_id}`
+      : [
+          r.semana_iso,
+          r.parlamentario_nombre,
+          r.fecha_reunion,
+          r.materia ?? "",
+          r.enlace_detalle ?? "",
+        ].join("∷");
     if (audienciasVistas.has(claveAudiencia)) continue;
     audienciasVistas.add(claveAudiencia);
     g.rows.push(r);

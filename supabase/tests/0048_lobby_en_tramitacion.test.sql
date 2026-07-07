@@ -7,7 +7,7 @@
 -- texto del resultado de la función está PROHIBIDO por convención. Siembra datos mínimos
 -- en la transacción de test (rollback), NUNCA depende de datos PROD.
 begin;
-select plan(9);
+select plan(10);
 
 -- ── (1) la función existe con la firma de parámetros (text) ────────────────────
 select has_function(
@@ -16,13 +16,14 @@ select has_function(
 
 -- ── (2) el returns table declara las columnas EXACTAS en ORDEN posicional ──────
 -- El cliente (52-03) mapea por posición; reorder/columna faltante = bug silente.
--- El contrato está LOCKED (52-03 lo consume verbatim).
+-- Contrato ENMENDADO a 8 columnas (WR-07): `audiencia_id` (a.identificador) se
+-- APENDIZA al final — las 7 posiciones originales no se mueven.
 select is(
   (select array_to_string(proargnames, ',')
      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname = 'lobby_en_tramitacion'),
-  'p_boletin,parlamentario_nombre,camara,materia,fecha_reunion,semana_iso,comision,enlace_detalle',
-  'lobby_en_tramitacion emite las 7 columnas en el orden pineado del contrato LOCKED');
+  'p_boletin,parlamentario_nombre,camara,materia,fecha_reunion,semana_iso,comision,enlace_detalle,audiencia_id',
+  'lobby_en_tramitacion emite las 8 columnas en el orden pineado del contrato (audiencia_id al final, WR-07)');
 
 -- ── (3) es security definer (lee parlamentario interno, emite solo derivado público) ─
 select is(
@@ -105,20 +106,30 @@ values
    timestamptz '2091-03-06 15:00:00-03', 'Materia de la audiencia', 'http://detalle', 'test', 'http://x'),
   -- audiencia en OTRA semana ISO (un mes después): NO debe aparecer.
   ('ATEST-OTHER', 'INST01', 'PTEST_LOB', 'test lobby', 'confirmado',
-   timestamptz '2091-04-10 15:00:00-03', 'Materia otra semana', 'http://detalle2', 'test', 'http://x');
+   timestamptz '2091-04-10 15:00:00-03', 'Materia otra semana', 'http://detalle2', 'test', 'http://x'),
+  -- WR-07: DOS audiencias REALES DISTINTAS (identificadores distintos) estilo Cámara:
+  -- mismo parlamentario, MISMO instante (date-only → medianoche Santiago), MISMA materia,
+  -- enlace_detalle NULL (la Cámara nunca lo publica). Con la proyección de 7 campos el
+  -- distinct las colapsaba en UNA fila (undercount); con audiencia_id son 2.
+  ('ATEST-DUP1', 'INST01', 'PTEST_LOB', 'test lobby', 'confirmado',
+   timestamptz '2091-03-06 00:00:00-03', 'Materia duplicada', null, 'test', 'http://x'),
+  ('ATEST-DUP2', 'INST01', 'PTEST_LOB', 'test lobby', 'confirmado',
+   timestamptz '2091-03-06 00:00:00-03', 'Materia duplicada', null, 'test', 'http://x');
 
 -- ── (7) COINCIDENCIA POR SEMANA + DEDUPE POR CITACIÓN: la audiencia de la misma
 --        semana ISO aparece UNA vez (count = 1) aunque el boletín tenga DOS
 --        citaciones esa semana; la de otra semana queda EXCLUIDA (no se cuela). ──
 select is(
-  (select count(*)::int from public.lobby_en_tramitacion('BTEST-01')),
+  (select count(*)::int from public.lobby_en_tramitacion('BTEST-01')
+     where audiencia_id = 'ATEST-MATCH'),
   1,
-  'lobby_en_tramitacion devuelve exactamente 1 fila (misma semana ISO, deduplicada por citación; la de otra semana NO)');
+  'lobby_en_tramitacion devuelve la audiencia coincidente UNA vez (deduplicada por citación) pese a DOS citaciones esa semana');
 
 -- ── (8) la fila trae el derivado público esperado (nombre/semana/comisión) ─────
 select is(
   (select parlamentario_nombre || '|' || semana_iso || '|' || comision
-     from public.lobby_en_tramitacion('BTEST-01') limit 1),
+     from public.lobby_en_tramitacion('BTEST-01')
+    where audiencia_id = 'ATEST-MATCH' limit 1),
   'test lobby|' || to_char((timestamptz '2091-03-06 10:00:00-03' at time zone 'America/Santiago'), 'IYYY"-W"IW') || '|Comisión de Prueba',
   'lobby_en_tramitacion emite nombre_normalizado + semana_iso + comisión correctos');
 
@@ -126,9 +137,19 @@ select is(
 --        está en el resultado (la coincidencia es por SEMANA, no por parlamentario). ─
 select is(
   (select count(*)::int from public.lobby_en_tramitacion('BTEST-01')
-     where enlace_detalle = 'http://detalle2'),
+     where audiencia_id = 'ATEST-OTHER'),
   0,
   'lobby_en_tramitacion NO incluye la audiencia de otra semana ISO (yuxtaposición temporal real)');
+
+-- ── (10) WR-07: dos audiencias REALES distintas del mismo (parlamentario, día,
+--         materia) con enlace null (caso Cámara) emiten DOS filas con audiencia_id
+--         distinto — el distinct dedupe por identidad de audiencia, no colapsa
+--         reuniones reales (undercount del conteo neutro). ──────────────────────
+select is(
+  (select count(distinct audiencia_id)::int from public.lobby_en_tramitacion('BTEST-01')
+     where materia = 'Materia duplicada'),
+  2,
+  'lobby_en_tramitacion NO colapsa dos audiencias reales distintas del mismo día/materia (audiencia_id las separa, WR-07)');
 
 select * from finish();
 rollback;
