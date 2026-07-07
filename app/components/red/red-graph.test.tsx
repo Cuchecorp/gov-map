@@ -320,6 +320,22 @@ describe("RedGraph — estado honesto (grafo vacío, NUNCA error/nodo falso)", (
     render(<RedGraph subgrafo={null} />);
     expect(screen.getByText(/aún no hay relaciones/i)).toBeInTheDocument();
   });
+
+  // ── F-03 (53-04): línea de continuación en el grafo vacío ──────────────────────
+  it("F-03: grafo vacío → shipped honesto byte-idéntico + UNA línea de continuación a /parlamentarios", () => {
+    render(<RedGraph subgrafo={{ nodos: dos_nodos, aristas: [] }} />);
+    // (a) el párrafo honesto shipped sigue presente byte-idéntico.
+    expect(
+      screen.getByText(
+        "Aún no hay relaciones para mostrar para este parlamentario. Cuando existan hechos públicos que vinculen a dos parlamentarios —por ejemplo, haber recibido audiencia de la misma contraparte de lobby— aparecerán aquí, cada uno con su fuente y su fecha.",
+      ),
+    ).toBeInTheDocument();
+    // (b) exactamente UN link (no hay lienzo) → la continuación al directorio.
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(1);
+    const cont = screen.getByRole("link", { name: /directorio de parlamentarios/ });
+    expect(cont).toHaveAttribute("href", "/parlamentarios");
+  });
 });
 
 describe("RedGraph — nodos huérfanos excluidos (B20a) + layout por carril (B20b)", () => {

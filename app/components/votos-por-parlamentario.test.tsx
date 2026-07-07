@@ -367,6 +367,32 @@ describe("VotosView — sección VOTE (asistencia, tema, votó distinto, §3.3�
     expect(screen.queryByText(/Aún no hemos ingerido/i)).not.toBeInTheDocument();
   });
 
+  // ── F-03 (53-04): línea de continuación en el estado "no ingestado" ────────────
+  it("F-03: estado no-ingestado → shipped honesto byte-idéntico + UNA línea de continuación a /parlamentarios", () => {
+    render(<VotosView id="P00001" data={makeViewData({ noIngestado: true, votos: [], totalVotos: 0 })} />);
+    // (a) el párrafo honesto shipped sigue presente byte-idéntico.
+    expect(
+      screen.getByText(
+        "Aún no hemos ingerido las votaciones de este parlamentario. Esto no significa que no haya votado — los datos se están incorporando.",
+      ),
+    ).toBeInTheDocument();
+    // (b) exactamente UN link de continuación, con el href y texto prescritos.
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(1);
+    const cont = screen.getByRole("link", {
+      name: /otros parlamentarios en el directorio/,
+    });
+    expect(cont).toHaveAttribute("href", "/parlamentarios");
+  });
+
+  it("F-03: la línea de continuación no fabrica virtud ni reencuadra el hecho (banned-vocab)", () => {
+    const { container } = render(
+      <VotosView id="P00001" data={makeViewData({ noIngestado: true, votos: [], totalVotos: 0 })} />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(/limpio|transparente|nada que ocultar|impecable|sin antecedentes/i);
+  });
+
   it("asistencia: desglose textual con 'Ausente' y conteo (no solo color, a11y §8)", () => {
     render(
       <VotosView

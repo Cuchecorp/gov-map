@@ -271,7 +271,9 @@ async function ResultadosBusqueda({
 }
 
 // ── Citaciones (ambas cámaras, agrupadas por día) ────────────────────────────
-async function CitacionesSection({ year, week }: ISOWeek) {
+// Exportada (named) para poder testear el empty-state con RTL, igual que
+// `Resultados` en /buscar. Next.js solo trata el default export como la página.
+export async function CitacionesSection({ year, week }: ISOWeek) {
   const key = semanaIsoKey(year, week);
   const sb = createServerSupabase();
   const { data, error } = await sb

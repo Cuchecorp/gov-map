@@ -368,6 +368,57 @@ describe("LobbyView (sección lobby) — tres estados honestos (§6.1)", () => {
   });
 });
 
+// ── F-03 (53-04): línea de continuación en ambos empty states del lobby ──────────
+describe("LobbyView (sección lobby) — F-03 línea de continuación a /buscar", () => {
+  it("(a) no ingestado → shipped honesto byte-idéntico + UNA línea de continuación a /buscar", () => {
+    render(
+      <LobbyView data={makeViewData({ noIngestado: true, audiencias: [], totalAudiencias: 0 })} />,
+    );
+    // (a) el párrafo honesto shipped sigue presente byte-idéntico.
+    expect(
+      screen.getByText(
+        "Aún no hemos ingerido las reuniones de lobby de este parlamentario. Esto no significa que no se haya reunido — los datos de la Ley del Lobby se están incorporando.",
+      ),
+    ).toBeInTheDocument();
+    // (b) exactamente UN link (el intro es texto plano) → la continuación a /buscar.
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(1);
+    const cont = screen.getByRole("link", { name: /buscar un proyecto de ley por su idea/ });
+    expect(cont).toHaveAttribute("href", "/buscar");
+  });
+
+  it("(b) ingestado + 0 confirmadas → shipped honesto byte-idéntico + UNA línea de continuación a /buscar", () => {
+    render(
+      <LobbyView
+        data={makeViewData({
+          noIngestado: false,
+          audiencias: [],
+          totalAudiencias: 0,
+          camara: "diputados",
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "No se registran reuniones de lobby confirmadas para este parlamentario en el periodo consultado, según el registro oficial de la Cámara (camara.cl/transparencia).",
+      ),
+    ).toBeInTheDocument();
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(1);
+    const cont = screen.getByRole("link", { name: /buscar un proyecto de ley por su idea/ });
+    expect(cont).toHaveAttribute("href", "/buscar");
+  });
+
+  it("la línea de continuación no fabrica virtud ni reencuadra el hecho (banned-vocab)", () => {
+    const { container } = render(
+      <LobbyView data={makeViewData({ noIngestado: true, audiencias: [], totalAudiencias: 0 })} />,
+    );
+    expect(container.textContent ?? "").not.toMatch(
+      /limpio|transparente|nada que ocultar|impecable|sin compromisos/i,
+    );
+  });
+});
+
 // ── ProvenanceBadge por fila (obligatorio en la vista cronológica, §3.2) ─────────
 describe("LobbyView (sección lobby) — ProvenanceBadge por fila (vista cronológica)", () => {
   it("cada audiencia trae un ProvenanceBadge con enlace a la fuente oficial", () => {

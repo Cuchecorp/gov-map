@@ -47,4 +47,20 @@ describe("Resultados — hidratación honesta (APP-03a)", () => {
     const html = await render("agua");
     expect(html).not.toContain("Ocurrió un error al realizar la búsqueda");
   });
+
+  // ── F-03 (53-04): línea de continuación en el empty-state "sin resultados" ──────
+  it("F-03: sin resultados → shipped honesto byte-idéntico + UNA línea de continuación a /agenda", async () => {
+    buscarProyectosMock.mockResolvedValue([]); // cero vecinos → rama "Sin resultados".
+    const html = await render("xyzzy sin coincidencias");
+    // (a) el copy honesto shipped sigue presente byte-idéntico.
+    expect(html).toContain("Sin resultados");
+    expect(html).toContain("Prueba con otras");
+    expect(html).toContain("o ingresa un número de boletín.");
+    // (b) exactamente UN link de continuación con el href y texto prescritos.
+    expect(html).toContain('href="/agenda"');
+    expect(html).toContain("la agenda legislativa de la semana");
+    expect((html.match(/href="/g) ?? []).length).toBe(1);
+    // No fabrica virtud.
+    expect(html).not.toMatch(/limpio|transparente|nada que ocultar/i);
+  });
 });
