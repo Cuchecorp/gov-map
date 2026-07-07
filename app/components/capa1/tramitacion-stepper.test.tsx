@@ -4,6 +4,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 
 import { TramitacionStepper } from "./tramitacion-stepper";
+import { construirItems } from "@/components/timeline-view";
 import type { EstadoActual } from "@/components/estado-actual-block";
 import type { TramitacionEventoRow } from "@/lib/types";
 
@@ -27,17 +28,33 @@ function makeEvento(
 }
 
 /**
- * Fixture con hitos CLAVE estructurales (votación + informe) + una corrida de
- * urgencia repetitiva del mismo tipo ≥2 (que DEBE agruparse en una línea) + un
- * trámite con fecha inválida (que debe renderizar su descripción SIN fabricar
- * fecha).
+ * Fixture con hitos CLAVE estructurales (votación + informe + cambio de comisión) +
+ * trámites RUTINARIOS (cuenta, oficio, corrección) que capa-1 DEBE omitir (viven en
+ * el detalle completo) + una corrida de urgencia repetitiva del mismo tipo ≥2 (que
+ * DEBE agruparse en una línea) + un trámite con fecha inválida (que debe renderizar
+ * su descripción SIN fabricar fecha).
  */
 function fixture(): TramitacionEventoRow[] {
   return [
     makeEvento({
+      fecha: "2026-01-05T00:00:00Z",
+      tipo: "tramite",
+      descripcion: "Cuenta de proyecto en la Sala",
+    }),
+    makeEvento({
       fecha: "2026-01-10T00:00:00Z",
       tipo: "votacion",
       descripcion: "Votación en general",
+    }),
+    makeEvento({
+      fecha: "2026-01-15T00:00:00Z",
+      tipo: "tramite",
+      descripcion: "Se acuerda oficiar diligencias",
+    }),
+    makeEvento({
+      fecha: "2026-01-20T00:00:00Z",
+      tipo: "tramite",
+      descripcion: "Corrección de referencia",
     }),
     makeEvento({
       fecha: "2026-02-10T00:00:00Z",
@@ -55,6 +72,11 @@ function fixture(): TramitacionEventoRow[] {
       descripcion: "Suma",
     }),
     makeEvento({
+      fecha: "2026-05-01T00:00:00Z",
+      tipo: "tramite",
+      descripcion: "Pasa a comisión de Constitución",
+    }),
+    makeEvento({
       fecha: "no-es-fecha",
       tipo: "tramite",
       descripcion: "Trámite sin fecha válida",
@@ -68,12 +90,39 @@ const ESTADO: EstadoActual = {
 };
 
 describe("TramitacionStepper — stepper capa-1 (hitos clave + urgencia agrupada)", () => {
-  it("(a) los hitos CLAVE (informe, votación) están SIEMPRE visibles", () => {
+  it("(a) los hitos CLAVE (informe, votación, cambio de comisión) están SIEMPRE visibles", () => {
     render(<TramitacionStepper eventos={fixture()} estado={ESTADO} />);
     expect(
       screen.getByText("Informe de comisión de Hacienda"),
     ).toBeInTheDocument();
     expect(screen.getByText("Votación en general")).toBeInTheDocument();
+    expect(
+      screen.getByText("Pasa a comisión de Constitución"),
+    ).toBeInTheDocument();
+  });
+
+  it("(a2) WR-03: los trámites RUTINARIOS NO se muestran en capa-1 (viven en el detalle)", () => {
+    render(<TramitacionStepper eventos={fixture()} estado={ESTADO} />);
+    expect(
+      screen.queryByText("Cuenta de proyecto en la Sala"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Se acuerda oficiar diligencias"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Corrección de referencia"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("(a3) WR-03: el stepper capa-1 renderiza MENOS ítems que el timeline completo", () => {
+    const eventos = fixture();
+    const { container } = render(
+      <TramitacionStepper eventos={eventos} estado={ESTADO} />,
+    );
+    // El detalle (TimelineView) lista construirItems completo; capa-1 lo reduce.
+    const totalTimeline = construirItems(eventos).length;
+    const enStepper = container.querySelectorAll("ol > li").length;
+    expect(enStepper).toBeLessThan(totalTimeline);
   });
 
   it("(b) las corridas de urgencia ≥2 se agrupan en 1 línea con el copy LOCKED neutro", () => {

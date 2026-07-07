@@ -28,6 +28,47 @@ import type { TramitacionEventoRow } from "@/lib/types";
 
 const CONECTOR = "before:absolute before:left-[-25px] before:top-4 before:h-full before:w-px before:bg-border";
 
+/** Tipos de evento estructurales que SIEMPRE son hito clave en capa-1. */
+const TIPOS_HITO_CLAVE = new Set(["votacion", "informe", "oficio"]);
+
+/**
+ * Un evento es HITO CLAVE (capa-1) si su `tipo` es estructural (votación/informe/
+ * oficio) o su descripción marca ingreso / cambio de etapa / cambio de comisión /
+ * promulgación / desenlace. Los trámites RUTINARIOS (cuenta, correcciones, acuses)
+ * quedan FUERA de capa-1 — viven íntegros en el detalle colapsado (TimelineView).
+ */
+function esHitoClave(e: TramitacionEventoRow): boolean {
+  if (TIPOS_HITO_CLAVE.has(e.tipo)) return true;
+  return /\b(ingres|pasa a|comisi[oó]n|primer tr[aá]mite|segundo tr[aá]mite|tercer tr[aá]mite|promulg|publicad|aprobad|rechazad|archivad)\b/i.test(
+    e.descripcion ?? "",
+  );
+}
+
+/** Tope preatentivo de capa-1 (UI-SPEC: resumen ≤7 unidades, no una copia). */
+const CAP_HITOS = 7;
+
+/**
+ * Reduce los ítems del timeline a los HITOS CLAVE de capa-1 (WR-03): los períodos de
+ * urgencia (ya condensados en 1 línea) SIEMPRE; los eventos SOLO si son hito clave o
+ * marcan el ingreso (primer evento) / la posición ACTUAL (último). La tramitación
+ * EXHAUSTIVA vive en el detalle colapsado (TimelineView) — capa-1 es un resumen
+ * preatentivo, NUNCA la lista completa duplicada. Cap defensivo (~7): conserva el
+ * ingreso + los hitos más recientes (la posición actual queda incluida).
+ */
+function hitosClaveStepper(items: TimelineItem[]): TimelineItem[] {
+  const idxEventos = items
+    .map((it, i) => (it.kind === "evento" ? i : -1))
+    .filter((i) => i >= 0);
+  const primero = idxEventos[0];
+  const ultimo = idxEventos[idxEventos.length - 1];
+  const clave = items.filter((it, i) => {
+    if (it.kind === "periodo") return true;
+    return i === primero || i === ultimo || esHitoClave(it.evento);
+  });
+  if (clave.length <= CAP_HITOS) return clave;
+  return [clave[0], ...clave.slice(clave.length - (CAP_HITOS - 1))];
+}
+
 function PasoEvento({
   evento,
   actual,
@@ -104,11 +145,13 @@ export function TramitacionStepper({
 
   // MISMA agrupación que la vista completa: hitos estructurales sueltos + corridas
   // de urgencia repetitivas ≥2 colapsadas en un período (una sola fuente de verdad).
-  const items: TimelineItem[] = construirItems(eventos);
+  // Luego se REDUCE a los hitos clave: capa-1 resume, el detalle (TimelineView) lista
+  // TODO. Así el evento rutinario no se renderiza dos veces (WR-03).
+  const hitos: TimelineItem[] = hitosClaveStepper(construirItems(eventos));
 
   // El último ítem-evento es la posición ACTUAL (marca sobria, no-ranking).
   let ultimoEventoIdx = -1;
-  items.forEach((it, i) => {
+  hitos.forEach((it, i) => {
     if (it.kind === "evento") ultimoEventoIdx = i;
   });
 
@@ -141,7 +184,7 @@ export function TramitacionStepper({
 
       {/* Stepper de etapas: hitos clave siempre visibles + urgencia agrupada. */}
       <ol className="relative ml-1 space-y-2 pl-6">
-        {items.map((item, i) =>
+        {hitos.map((item, i) =>
           item.kind === "periodo" ? (
             <LineaUrgenciaAgrupada
               key={item.periodo.id}
