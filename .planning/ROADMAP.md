@@ -718,7 +718,7 @@ Plans:
 | 50. FIX — Quick wins diagnóstico (P1) | v5.0 | 4/4 | Complete | 2026-07-02 |
 | 51. LEG2 — Legibilidad profunda (P2) | v5.0 | 7/7 | Complete | 2026-07-03 |
 | 52. CRUCE2 — Cruces nuevos (P3) | v5.0 | 6/6 | Complete (deploy ee6b7544) | 2026-07-06 |
-| 53. UXNAV — Auditoría UX navegada (BrowserOS) + fixes P0 | v5.0 | 4/5 | In Progress|  |
+| 53. UXNAV — Auditoría UX navegada (BrowserOS) + fixes P0 | v5.0 | 5/5 | Complete   | 2026-07-07 |
 | 54. UXDEMO — Pulido presentacional demo | v5.0 | 0/? | Not Started | - |
 
 ## ✅ v4.0 — De datos a cruces verificables
@@ -1062,7 +1062,7 @@ Auditoría completa del sitio en vivo (`.planning/DIAGNOSTICO-govmap-2026-07-02.
 - [x] **Phase 50: FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)** — 11 fixes de código acotados (B1, B6, B7, B8, B9, B10, B12, B14, B15, B17 + supresión de honest-state repetido). Sin DDL, sin deploy (checkpoint operador aparte). (completed 2026-07-02)
 - [x] **Phase 51: LEG2 — Legibilidad profunda (P2)** — votos agregados por proyecto, timeline dos niveles + "¿dónde está hoy?", patrimonio tarjeta-resumen sin URIs (B3), comparador cableado (B4), rebeldías honestas (B5), lobby agrupado por contraparte, provenance por sección, footer global. (completed 2026-07-03)
 - [x] **Phase 52: CRUCE2 — Cruces nuevos con datos ya disponibles (P3)** — clasificador sectorial (enciende `cruce_senal` de verdad), lobby×tramitación temporal, proyecto→agenda inverso, módulo de actualidad en home. (Asistencia comparada = Phase 49; chart votos = Phase 47 — ya desbloqueadas.) (completed 2026-07-06)
-- [ ] **Phase 53: UXNAV — Auditoría UX navegada (BrowserOS) + fixes de orientación (P0 demo)** — recorrer los journeys clave del sitio EN VIVO con navegador real (desktop + viewport móvil, screenshots como evidencia), producir informe UX priorizado y corregir los P0 de navegación/orientación en el mismo ciclo. El sitio "está difícil de maniobrar" (operador, 2026-07-07); demo para centro de estudios. (added 2026-07-07)
+- [x] **Phase 53: UXNAV — Auditoría UX navegada (BrowserOS) + fixes de orientación (P0 demo)** — recorrer los journeys clave del sitio EN VIVO con navegador real (desktop + viewport móvil, screenshots como evidencia), producir informe UX priorizado y corregir los P0 de navegación/orientación en el mismo ciclo. El sitio "está difícil de maniobrar" (operador, 2026-07-07); demo para centro de estudios. (added 2026-07-07) (completed 2026-07-07)
 - [ ] **Phase 54: UXDEMO — Pulido presentacional para demo (centro de estudios)** — nombres presentables (hoy `nombre_normalizado` minúsculas), home con rutas de entrada guiadas, microcopy "cómo leer esto", P1 del informe F53, QA final navegado + set de screenshots de demo. (added 2026-07-07)
 
 ### Decisión (RESUELTA 2026-06-26): A + B — ambas pistas en paralelo
@@ -1254,13 +1254,13 @@ Plans:
   3. Desde cualquier superficie se puede volver al home y saltar a las demás en ≤2 clicks; toda página muestra dónde estás (título/sección visible); ningún callejón sin salida (página sin links de continuación)
   4. Cero regresión: anti-insinuación intacta (negative-match), lockdown-guard verde, tsc limpio; frontera de carril `mt-12` y gates existentes intactos
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 - [x] 53-01-PLAN.md — Auditoría navegada BrowserOS (2 pistas) → 53-UX-AUDIT.md + ux-evidence/
 - [x] 53-02-PLAN.md — Nav global: +Red, orden por journey, label "Sobre", active-state
 - [x] 53-03-PLAN.md — Breadcrumbs server puro + montaje en 3 fichas
 - [x] 53-04-PLAN.md — Líneas de continuación en empty states flagged (P0 callejón sin salida)
-- [ ] 53-05-PLAN.md — Gate no-regresión + redeploy PROD + re-walkthrough before/after
+- [x] 53-05-PLAN.md — Gate no-regresión + redeploy PROD + re-walkthrough before/after
 
 **UI hint**: yes
 
