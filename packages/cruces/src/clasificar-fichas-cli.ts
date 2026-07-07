@@ -112,12 +112,13 @@ export function parseArgs(argv: string[]): FichasCliOptions {
         break;
       }
       case "--desde": {
-        // Cursor de reanudación (WR-05, solo lobby). Fail-fast: un valor ausente o que
-        // parece otro flag (--dry-run tragado como valor) sería un cursor basura.
+        // Cursor de reanudación (WR-05/WR-06, solo lobby): el `id` PK surrogate de
+        // lobby_contraparte impreso al final de la corrida anterior. Fail-fast: un valor
+        // ausente o que parece otro flag (--dry-run tragado como valor) sería un cursor basura.
         const raw = argv[++i];
         if (raw == null || raw.trim().length === 0 || raw.startsWith("--")) {
           throw new CrucesCliArgsError(
-            `--desde inválido: ${raw ?? "(vacío)"} (esperado un identificador)`,
+            `--desde inválido: ${raw ?? "(vacío)"} (esperado el id de la última fila procesada)`,
           );
         }
         opts.desde = raw;

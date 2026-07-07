@@ -35,9 +35,9 @@ describe("parseArgs --solo-confirmadas (Task 1)", () => {
     expect(() => parseArgs(["--no-existe"])).toThrow(CrucesCliArgsError);
   });
 
-  // ── WR-05: cursor --desde ──────────────────────────────────────────────────
+  // ── WR-05/WR-06: cursor --desde (valor = id PK surrogate de lobby_contraparte) ─
   it("--desde ID → desde === ID", () => {
-    expect(parseArgs(["--desde", "CAMARA-abc123"]).desde).toBe("CAMARA-abc123");
+    expect(parseArgs(["--desde", "1042"]).desde).toBe("1042");
   });
 
   it("--desde sin valor o tragándose otro flag lanza CrucesCliArgsError (fail-fast)", () => {
@@ -132,39 +132,49 @@ describe("cargarContrapartes — modo --solo-confirmadas (Task 2)", () => {
     expect(spy.table).toBe("lobby_contraparte");
     // embed !inner a lobby_audiencia (join que restringe a contrapartes con audiencia)
     expect(spy.select).toMatch(/lobby_audiencia!inner/);
+    // WR-06: la carga trae el `id` PK surrogate — la ÚNICA clave total-order (el
+    // identificador es el FK de la audiencia, compartido por contrapartes hermanas).
+    expect(spy.select).toMatch(/^id,/);
     // (a) sector_id is null → incremental para lo clasificado (excluye lo ya etiquetado)
     expect(spy.is).toContainEqual(["sector_id", null]);
     // (b) audiencia confirmada + con parlamentario enlazado
     expect(spy.eq).toContainEqual(["lobby_audiencia.estado_vinculo", "confirmado"]);
     expect(spy.not).toContainEqual(["lobby_audiencia.parlamentario_id", "is", null]);
     expect(spy.limit).toBe(25);
-    // WR-05: orden DETERMINISTA (sin .order(), Postgres devolvía una página arbitraria
-    // y una corrida podía quemar `limite` llamadas sin avanzar). Sin --desde, sin .gt.
-    expect(spy.order).toContainEqual(["identificador", { ascending: true }]);
+    // WR-05/WR-06: orden DETERMINISTA por `id` PK (con order-by identificador, filas
+    // que lo comparten quedaban en orden relativo arbitrario → página inestable).
+    // Sin --desde, sin .gt.
+    expect(spy.order).toContainEqual(["id", { ascending: true }]);
     expect(spy.gt).toHaveLength(0);
   });
 
-  it("WR-05: con opts.desde agrega gt(identificador, desde) — cursor de reanudación", async () => {
+  it("WR-06: con opts.desde agrega gt(id, desde) — cursor sobre la PK única, NUNCA el identificador", async () => {
+    // Cursor por identificador (FK de audiencia): un corte de página DENTRO de una
+    // audiencia multi-contraparte dejaba a las hermanas sin clasificar inalcanzables
+    // para siempre (gt estricto sobre una clave compartida). El cursor va por `id`.
     const { client, spy } = makeFakeClient([]);
     await cargarContrapartes(
       client,
-      { soloConfirmadas: true, desde: "CAMARA-00ff" },
+      { soloConfirmadas: true, desde: "1042" },
       25,
       noLog,
     );
-    expect(spy.gt).toContainEqual(["identificador", "CAMARA-00ff"]);
-    expect(spy.order).toContainEqual(["identificador", { ascending: true }]);
+    expect(spy.gt).toContainEqual(["id", "1042"]);
+    expect(spy.gt).not.toContainEqual(["identificador", "1042"]);
+    expect(spy.order).toContainEqual(["id", { ascending: true }]);
   });
 
-  it("mapea las filas preservando identificador/nombre/rol (rol omitido si null)", async () => {
+  it("mapea las filas preservando id/identificador/nombre/rol (rol omitido si null)", async () => {
     const { client } = makeFakeClient([
       {
+        id: 7,
         identificador: "ID1",
         nombre: "Acme",
         rol: "gestor",
         lobby_audiencia: [{ estado_vinculo: "confirmado", parlamentario_id: "P1" }],
       },
       {
+        id: 9,
         identificador: "ID2",
         nombre: "Beta",
         rol: null,
@@ -173,9 +183,38 @@ describe("cargarContrapartes — modo --solo-confirmadas (Task 2)", () => {
     ]);
     const out = await cargarContrapartes(client, { soloConfirmadas: true }, 50, noLog);
     expect(out).toEqual([
-      { identificador: "ID1", nombre: "Acme", rol: "gestor" },
-      { identificador: "ID2", nombre: "Beta" },
+      { id: 7, identificador: "ID1", nombre: "Acme", rol: "gestor" },
+      { id: 9, identificador: "ID2", nombre: "Beta" },
     ]);
+  });
+
+  it("WR-06: dos contrapartes HERMANAS (mismo identificador, ids distintos) conservan cada una su id — cursor reanudable dentro de la audiencia", async () => {
+    // Escenario del bug: la página corta DENTRO de una audiencia multi-contraparte.
+    // Con el cursor por id, la corrida siguiente (--desde <id de la primera>) alcanza
+    // a la hermana; con el cursor por identificador quedaba varada para siempre.
+    const { client } = makeFakeClient([
+      {
+        id: 100,
+        identificador: "AUD-X",
+        nombre: "Lobbista Uno",
+        rol: "lobbista",
+        lobby_audiencia: [{ estado_vinculo: "confirmado", parlamentario_id: "P1" }],
+      },
+      {
+        id: 101,
+        identificador: "AUD-X",
+        nombre: "Lobbista Dos",
+        rol: "gestor",
+        lobby_audiencia: [{ estado_vinculo: "confirmado", parlamentario_id: "P1" }],
+      },
+    ]);
+    const out = await cargarContrapartes(client, { soloConfirmadas: true }, 2, noLog);
+    expect(out).toEqual([
+      { id: 100, identificador: "AUD-X", nombre: "Lobbista Uno", rol: "lobbista" },
+      { id: 101, identificador: "AUD-X", nombre: "Lobbista Dos", rol: "gestor" },
+    ]);
+    // Los ids son distintos aunque el identificador se comparta: hay cursor válido.
+    expect(out[0]!.id).not.toBe(out[1]!.id);
   });
 });
 

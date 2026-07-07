@@ -28,6 +28,14 @@ const MUESTRA_GATE = 10;
 
 /** Fila de lobby_contraparte a clasificar (clave natural identificador+nombre[+rol]). */
 export interface ContrapartePorClasificar {
+  /**
+   * PK surrogate de lobby_contraparte (0021: `bigint generated always as identity`).
+   * Es la ÚNICA clave total-order de la tabla — el cursor --desde va sobre ella (WR-06):
+   * `identificador` es el FK de la AUDIENCIA y lo comparten las contrapartes hermanas,
+   * así que un cursor por identificador saltaría hermanas no procesadas en un corte de
+   * página. Presente solo cuando la fila viene de la carga filtrada (o se inyecta).
+   */
+  id?: number;
   identificador: string;
   nombre: string;
   rol?: string;
@@ -46,11 +54,13 @@ export interface LobbyCliOptions {
    */
   soloConfirmadas?: boolean;
   /**
-   * Cursor de reanudación (WR-05): con soloConfirmadas, carga solo identificadores
-   * estrictamente MAYORES que este valor (la carga va ordenada por identificador). Es el
-   * mecanismo para AVANZAR más allá de filas abstenidas (que siguen con sector_id null)
-   * sin re-pagar sus llamadas MiniMax: el log final imprime el último identificador
-   * procesado para usarlo como `--desde` en la corrida siguiente.
+   * Cursor de reanudación (WR-05/WR-06): con soloConfirmadas, carga solo filas con `id`
+   * (PK surrogate, ÚNICA y total-order) estrictamente MAYOR que este valor. NO va sobre
+   * `identificador` (FK de audiencia, compartido por contrapartes hermanas): un corte de
+   * página dentro de una audiencia multi-contraparte dejaría hermanas sin clasificar
+   * inalcanzables para siempre (WR-06). Es el mecanismo para AVANZAR más allá de filas
+   * abstenidas (que siguen con sector_id null) sin re-pagar sus llamadas MiniMax: el log
+   * final imprime el último `id` procesado para usarlo como `--desde` en la siguiente.
    */
   desde?: string;
   url?: string;
@@ -88,12 +98,14 @@ function inputDeFila(f: ContrapartePorClasificar): ClasificarContraparteInput {
   };
 }
 
-/** Fila cruda de lobby_contraparte (con o sin el embed de audiencia) — mapeo compartido. */
-type ContraparteRow = { identificador: string; nombre: string; rol: string | null };
+/** Fila cruda de lobby_contraparte (con o sin el embed de audiencia) — mapeo compartido.
+ *  `id` (PK surrogate) solo viene en la carga filtrada (cursor WR-06). */
+type ContraparteRow = { id?: number; identificador: string; nombre: string; rol: string | null };
 
 /** Mapea la fila cruda a ContrapartePorClasificar (rol omitido si null) — idéntico en ambas ramas. */
 function mapearFila(r: ContraparteRow): ContrapartePorClasificar {
   return {
+    ...(r.id !== undefined ? { id: r.id } : {}),
     identificador: r.identificador,
     nombre: r.nombre,
     ...(r.rol != null ? { rol: r.rol } : {}),
@@ -109,9 +121,12 @@ function mapearFila(r: ContraparteRow): ContrapartePorClasificar {
  * excluye lo ya CLASIFICADO en corridas previas. OJO (WR-05): una ABSTENCIÓN deja sector_id
  * en null (writer no-op), así que las abstenidas se re-seleccionan; sin orden determinista la
  * página devuelta era arbitraria y una corrida podía quemar `limite` llamadas sin avanzar.
- * La carga va `order by identificador` (determinista) y `opts.desde` filtra
- * `identificador > desde` — el cursor del operador para saltar lo ya visto/abstenido.
- * Sin el flag, conserva la carga plana original como fallback.
+ * La carga va `order by id` (PK surrogate: total-order REAL) y `opts.desde` filtra
+ * `id > desde` — el cursor del operador para saltar lo ya visto/abstenido. NO se ordena/corta
+ * por `identificador` (WR-06): es el FK de la audiencia, compartido por las contrapartes
+ * hermanas — no es total-order (página inestable) y un corte de página DENTRO de una
+ * audiencia multi-contraparte haría que `gt(identificador, desde)` saltara para siempre a
+ * las hermanas aún sin clasificar. Sin el flag, conserva la carga plana original como fallback.
  *
  * Exportada para test directo (spy sobre el builder encadenado). El loop de clasificación
  * (main) sigue corriendo assertNoRutInLlmInput PRIMERO — esta carga no toca esa ruta.
@@ -130,18 +145,19 @@ export async function cargarContrapartes(
   if (opts.soloConfirmadas) {
     // Carga filtrada: embed !inner a lobby_audiencia (restringe a contrapartes con audiencia
     // confirmada + parlamentario enlazado) y sector_id is null (incremental/resumible).
-    // Orden determinista + cursor --desde (WR-05): página estable, reanudable.
+    // Orden determinista + cursor --desde por `id` PK (WR-05/WR-06): página estable Y
+    // reanudable sin varar hermanas de la misma audiencia en el corte de página.
     let query = client
       .from("lobby_contraparte")
-      .select("identificador, nombre, rol, lobby_audiencia!inner(estado_vinculo, parlamentario_id)")
+      .select("id, identificador, nombre, rol, lobby_audiencia!inner(estado_vinculo, parlamentario_id)")
       .is("sector_id", null)
       .eq("lobby_audiencia.estado_vinculo", "confirmado")
       .not("lobby_audiencia.parlamentario_id", "is", null);
     if (opts.desde !== undefined) {
-      query = query.gt("identificador", opts.desde);
+      query = query.gt("id", opts.desde);
     }
     const { data, error } = await query
-      .order("identificador", { ascending: true })
+      .order("id", { ascending: true })
       .limit(limite);
     if (error) throw new Error(`cargarContrapartes falló: ${error.message}`);
     return ((data ?? []) as unknown as ContraparteRow[]).map(mapearFila);
@@ -233,15 +249,19 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
       `(gate CRUCE-02 ≥70%)`,
   );
 
-  // Cursor de reanudación (WR-05): las abstenciones dejan sector_id en null y volverían a
-  // seleccionarse en la corrida siguiente. Se imprime el último identificador procesado
-  // (la carga va ordenada por identificador) para que el operador AVANCE con --desde.
+  // Cursor de reanudación (WR-05/WR-06): las abstenciones dejan sector_id en null y
+  // volverían a seleccionarse en la corrida siguiente. Se imprime el último `id` (PK
+  // surrogate; la carga va ordenada por id) para que el operador AVANCE con --desde.
+  // NUNCA el identificador: es compartido por contrapartes hermanas de la misma
+  // audiencia y un gt() sobre él las dejaría varadas para siempre (WR-06).
   if (opts.soloConfirmadas && filas.length > 0) {
-    const ultimo = filas[filas.length - 1]!.identificador;
-    log(
-      `cruces-lobby: último identificador procesado = ${ultimo} ` +
-        `(para continuar sin re-pagar abstenciones: --desde ${ultimo})`,
-    );
+    const ultimo = filas[filas.length - 1]!;
+    if (ultimo.id !== undefined) {
+      log(
+        `cruces-lobby: último id procesado = ${ultimo.id} ` +
+          `(para continuar sin re-pagar abstenciones: --desde ${ultimo.id})`,
+      );
+    }
   }
 
   return {
@@ -257,8 +277,9 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
 // Entry-point CLI:
 //   `tsx clasificar-lobby-cli.ts --limite 50 [--dry-run] [--service-key K]
 //    [--solo-confirmadas] [--desde ID]`
-// --desde (WR-05): cursor de reanudación sobre el orden por identificador; el log final
-// de cada corrida imprime el valor a pasar en la siguiente (salta abstenciones ya pagadas).
+// --desde (WR-05/WR-06): cursor de reanudación sobre el orden por `id` (PK surrogate de
+// lobby_contraparte, la única clave total-order); el log final de cada corrida imprime el
+// valor a pasar en la siguiente (salta abstenciones ya pagadas sin varar hermanas).
 const isMain =
   typeof process !== "undefined" &&
   process.argv[1] != null &&
