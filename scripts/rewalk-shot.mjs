@@ -18,8 +18,14 @@ if (!outPath || !widthStr || !route) {
   process.exit(1);
 }
 const width = Number(widthStr);
+// IN-05 (53-REVIEW): un width no numérico produciría "width:NaNpx" en el CSS del
+// iframe → screenshot basura silencioso; se corta con un usage error explícito.
+if (!Number.isFinite(width) || width <= 0) {
+  console.error(`width inválido: ${widthStr}`);
+  process.exit(1);
+}
 const height = width >= 1000 ? 3200 : 4000; // generous; fullPage crops via content
-const waitMs = Number(waitStr || (width >= 1000 ? 7000 : 7000));
+const waitMs = Number(waitStr || 7000);
 
 async function rpc(method, params) {
   const res = await fetch(MCP, {
