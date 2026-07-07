@@ -1,7 +1,8 @@
 ---
 phase: 54
 slug: uxdemo-pulido-presentacional
-status: draft
+status: approved
+reviewed_at: 2026-07-07
 shadcn_initialized: true
 preset: "Slate baseline (app/components.json) + Geist + cream/petróleo tokens"
 created: 2026-07-07
