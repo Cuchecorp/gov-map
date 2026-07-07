@@ -35,10 +35,38 @@ const EXAMPLE_CHIPS: readonly ExampleChip[] = [
   { query: "14309-04", mono: true },
 ];
 
+// Tarjetas de entrada (54-UI-SPEC Contract 2). Títulos LOCKED por CONTEXT;
+// líneas de valor prescritas verbatim. Server-rendered, cero JS: cada tarjeta es
+// un <Link> full-card. Copy vetado por banned-vocab (sin virtud/causal/score).
+const ENTRY_CARDS: readonly {
+  title: string;
+  href: string;
+  value: string;
+}[] = [
+  {
+    title: "Proyectos de ley",
+    href: "/buscar",
+    value:
+      "En qué etapa está cada proyecto y cómo se ha votado, con cada fuente enlazada.",
+  },
+  {
+    title: "Parlamentarios 360",
+    href: "/parlamentarios",
+    value:
+      "Votaciones, lobby y patrimonio de cada parlamentario, según los registros públicos.",
+  },
+  {
+    title: "Agenda de la semana",
+    href: "/agenda",
+    value:
+      "Citaciones de comisiones y tabla de sala, enlazadas a cada proyecto.",
+  },
+];
+
 export default function Home() {
   return (
     <main className="flex-1">
-      <section className="mx-auto max-w-3xl px-4 py-16 text-center md:px-8 md:py-24">
+      <section className="mx-auto max-w-3xl px-4 pt-16 pb-8 text-center md:px-8 md:pt-24 md:pb-10">
         {/* Titular display: sobrio + EXACTAMENTE una cláusula cursiva petróleo. */}
         <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
           Qué pasó con cada proyecto de ley y cada parlamentario.
@@ -73,6 +101,35 @@ export default function Home() {
           </Link>
         </p>
       </section>
+
+      {/*
+        Tarjetas de entrada (54-UI-SPEC Contract 2) — ENTRE el hero y actualidad.
+        <nav> con 3 <Link> full-card server-rendered; SIN heading (se ubica entre
+        el h1 del hero y los h2 de actualidad). Cero JS cliente. Los títulos son
+        <span>; el glyph → va con pl-1 (nunca whitespace text node, lección F53).
+      */}
+      <nav
+        aria-label="Secciones del sitio"
+        className="mx-auto max-w-5xl px-4 pb-12 md:px-8 md:pb-16"
+      >
+        <div className="grid gap-4 sm:grid-cols-3">
+          {ENTRY_CARDS.map((card) => (
+            <Link
+              key={card.href}
+              href={card.href}
+              className="block rounded-lg border border-border bg-card p-4 transition-colors hover:border-accent-product/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="text-base font-semibold leading-snug">
+                {card.title}
+                <span aria-hidden="true" className="pl-1">
+                  →
+                </span>
+              </span>
+              <p className="mt-1 text-sm text-muted-foreground">{card.value}</p>
+            </Link>
+          ))}
+        </div>
+      </nav>
 
       {/*
         Módulo de actualidad (SC4, 52-UI-SPEC §SC4) — BAJO el hero, dentro de
