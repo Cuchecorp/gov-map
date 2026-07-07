@@ -517,7 +517,7 @@ node scripts/bros-cli.mjs close $PID
 | A4 | `[ASSUMED]` PROD seguirá sin X-Frame-Options/CSP frame-ancestors durante la fase (medido hoy: framing permitido) | Mechanics | El harness muere; fallback = auditar visual en viewport nativo + curl; y el redeploy de esta fase NO debe añadir esos headers |
 | A5 | `[ASSUMED]` los datos de journeys (14309-04, D1012, agenda semana en curso) siguen poblados el día de la auditoría | Journeys | Elegir otro boletín/ID desde el directorio/home en el momento — no bloquea |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Overlap de copy en `/buscar`:** el shipped ya dice "Prueba con otras palabras, o ingresa un número de boletín." (`buscar/page.tsx:85-86`) y la línea del SPEC empieza "Prueba con otras palabras, o revisa…" — aplicarla verbatim duplicaría la frase.
    - What we know: el SPEC exige shipped VERBATIM + línea nueva; también dice "the executor may vary placeholders, never register or meaning".
