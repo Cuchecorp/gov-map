@@ -54,11 +54,155 @@ export interface Asistencia {
   total: number;
 }
 
+/**
+ * Desglose de votos por selección — la MISMA cifra que `VotosView` computa para
+ * "Cómo votó" (fuente única → chip/capa-1/sección nunca desincronizan). Derivado de
+ * las filas de `votos_de_parlamentario` ya leídas (sin segundo fetch).
+ */
+export interface VotosBreakdown {
+  si: number;
+  no: number;
+  abstencion: number;
+  pareo: number;
+  ausente: number;
+}
+
+/** Un asunto (materia verbatim de la fuente) con su nº de audiencias de lobby. */
+export interface LobbyMateria {
+  materia: string;
+  n: number;
+}
+
+/**
+ * Un sector con sus conteos NEUTROS lado a lado (§9.1: nunca compone reunión+voto).
+ * `nVotos` es 0 hoy (`tipo_senal` solo toma `'lobby_sector'`); la rama queda para
+ * cuando el materializador emita señales de voto.
+ */
+export interface CruceSector {
+  sector: string;
+  nReuniones: number;
+  nVotos: number;
+}
+
+/** Una declaración de patrimonio: año (de `fecha_presentacion`) + tipo verbatim. SIN montos. */
+export interface PatrimonioDeclaracion {
+  anio: number;
+  tipo: string;
+}
+
+/** Rango de años cubierto por las declaraciones presentes. */
+export interface RangoAnios {
+  min: number;
+  max: number;
+}
+
+/**
+ * Desglose PURO de votos por selección (fuente única de "Cómo votó"). Acumula las
+ * MISMAS filas que el conteo de votos ya leyó; una selección desconocida se ignora
+ * (nunca fabrica una categoría). Exportado para test.
+ */
+export function resumirVotos(rows: { seleccion: string }[]): VotosBreakdown {
+  const b: VotosBreakdown = { si: 0, no: 0, abstencion: 0, pareo: 0, ausente: 0 };
+  for (const v of rows) {
+    if (Object.prototype.hasOwnProperty.call(b, v.seleccion)) {
+      b[v.seleccion as keyof VotosBreakdown] += 1;
+    }
+  }
+  return b;
+}
+
+/**
+ * Ranking PURO de asuntos de lobby (top-8 desc). El RPC hace left-join → una fila
+ * por contraparte; se DEDUPLICA por `identificador` (una materia por audiencia),
+ * se agrupa por el string `materia` verbatim y se cuentan audiencias. Omisión
+ * honesta: materia null/vacía se EXCLUYE (nunca se fabrica una categoría). Exportado.
+ */
+export function rankearMaterias(
+  filas: { identificador: string; materia: string | null }[],
+): LobbyMateria[] {
+  // Dedupe por audiencia: la materia se repite por contraparte del left-join.
+  const materiaPorAudiencia = new Map<string, string | null>();
+  for (const f of filas) {
+    if (!materiaPorAudiencia.has(f.identificador)) {
+      materiaPorAudiencia.set(f.identificador, f.materia);
+    }
+  }
+  const conteo = new Map<string, number>();
+  for (const materiaRaw of materiaPorAudiencia.values()) {
+    const materia = (materiaRaw ?? "").trim();
+    if (!materia) continue; // omisión honesta: nunca una categoría fabricada
+    conteo.set(materia, (conteo.get(materia) ?? 0) + 1);
+  }
+  return [...conteo.entries()]
+    .map(([materia, n]) => ({ materia, n }))
+    .sort((a, b) => b.n - a.n || a.materia.localeCompare(b.materia, "es"))
+    .slice(0, 8);
+}
+
+/**
+ * Agrupación PURA de cruces por sector (nReuniones desc). `nReuniones` = suma de
+ * `conteo` de señales `'lobby_sector'`; `nVotos` = suma de `conteo` de señales de
+ * voto (hoy inexistentes → 0; la rama `voto*` queda reservada). Tipos futuros
+ * desconocidos se IGNORAN (omisión honesta, no se inventa una dimensión). Exportado.
+ */
+export function agruparSectores(
+  filas: { sector_etiqueta: string; tipo_senal: string; conteo: number }[],
+): CruceSector[] {
+  const porSector = new Map<string, { nReuniones: number; nVotos: number }>();
+  for (const f of filas) {
+    const acc = porSector.get(f.sector_etiqueta) ?? { nReuniones: 0, nVotos: 0 };
+    if (f.tipo_senal === "lobby_sector") acc.nReuniones += f.conteo;
+    else if (f.tipo_senal.startsWith("voto")) acc.nVotos += f.conteo;
+    // otros tipos futuros: ignorados (no se fabrica una dimensión que la fuente no trae)
+    porSector.set(f.sector_etiqueta, acc);
+  }
+  return [...porSector.entries()]
+    .map(([sector, v]) => ({ sector, ...v }))
+    .sort(
+      (a, b) => b.nReuniones - a.nReuniones || a.sector.localeCompare(b.sector, "es"),
+    );
+}
+
+/**
+ * Mapeo PURO de declaraciones → año/tipo + rango. Deriva `anio` del ISO
+ * `fecha_presentacion.slice(0,4)` con la MISMA guarda de `seriePatrimonio`/
+ * `esHistorica` (`^\d{4}$`; año no parseable se EXCLUYE, nunca se grafica basura).
+ * SIN montos, SIN conteo de ítems (los bienes viven en un RPC aparte no leído).
+ * `rangoAnios` es null si no hay ningún año presente. Exportado.
+ */
+export function mapearPatrimonio(
+  filas: { fecha_presentacion: string; tipo: string }[],
+): { porDeclaracion: PatrimonioDeclaracion[]; rangoAnios: RangoAnios | null } {
+  const porDeclaracion: PatrimonioDeclaracion[] = [];
+  for (const f of filas) {
+    const yyyy = (f.fecha_presentacion ?? "").slice(0, 4);
+    const anio = Number(yyyy);
+    if (!/^\d{4}$/.test(yyyy) || !Number.isFinite(anio)) continue;
+    porDeclaracion.push({ anio, tipo: f.tipo });
+  }
+  if (porDeclaracion.length === 0) return { porDeclaracion, rangoAnios: null };
+  const anios = porDeclaracion.map((d) => d.anio);
+  return {
+    porDeclaracion,
+    rangoAnios: { min: Math.min(...anios), max: Math.max(...anios) },
+  };
+}
+
 export interface ConteoCarriles {
   votos: CarrilEstado;
   lobby: CarrilEstado;
   patrimonio: CarrilEstado;
   cruces: CarrilEstado;
+  /**
+   * Productores capa-1 (55-02), TODOS derivados de las mismas filas ya leídas (sin
+   * RPC nueva, sin montos): desglose de votos (fuente única de "Cómo votó"), ranking
+   * de materias de lobby, sectores de cruces, declaraciones de patrimonio + rango.
+   */
+  votosBreakdown: VotosBreakdown;
+  lobbyTopMaterias: LobbyMateria[];
+  crucesSectores: CruceSector[];
+  patrimonioPorDeclaracion: PatrimonioDeclaracion[];
+  rangoAnios: RangoAnios | null;
   /**
    * Asistencia derivada de las MISMAS filas de `votos_de_parlamentario` que este
    * módulo YA lee para el conteo de votos (una sola lectura, React.cache — sin
@@ -145,6 +289,9 @@ export const contarCarriles = cache(
       (votosData as { seleccion: string }[] | null) ?? [];
     const votosTotal = votosRows.length;
     const votos = derivarEstado({ total: votosTotal, ingestado: true });
+    // Desglose por selección desde las MISMAS filas (fuente única de "Cómo votó";
+    // capa-1/chip/sección nunca desincronizan). Sin segundo fetch.
+    const votosBreakdown = resumirVotos(votosRows);
 
     // Asistencia derivada de las MISMAS filas (no un segundo fetch): presente =
     // seleccion !== 'ausente' (regla idéntica a VotosView). Sin filas → null:
@@ -171,8 +318,13 @@ export const contarCarriles = cache(
         `lobby_de_parlamentario falló para ${id}: ${lobbyError.message}`,
       );
     }
-    const lobbyFilas = (lobbyData as { identificador: string }[] | null) ?? [];
+    // Se lee TAMBIÉN `.materia` (mismo RPC ya invocado, sin fetch nuevo) para el
+    // ranking de asuntos de capa-1 (asunto verbatim de la fuente).
+    const lobbyFilas =
+      (lobbyData as { identificador: string; materia: string | null }[] | null) ??
+      [];
     const lobbyTotal = new Set(lobbyFilas.map((f) => f.identificador)).size;
+    const lobbyTopMaterias = rankearMaterias(lobbyFilas);
     const lobbyIngestado = await ingestaCorrio(sb, "lobby_ingesta_estado", id);
     const lobby = derivarEstado({
       total: lobbyTotal,
@@ -191,7 +343,13 @@ export const contarCarriles = cache(
         `declaraciones_de_parlamentario falló para ${id}: ${patrError.message}`,
       );
     }
-    const patrTotal = (patrData as unknown[] | null)?.length ?? 0;
+    // Se leen los escalares `fecha_presentacion`/`tipo` (mismo RPC, sin fetch
+    // nuevo, SIN tocar `bienes_de_parlamentario` → sin montos ni conteo de ítems).
+    const patrFilas =
+      (patrData as { fecha_presentacion: string; tipo: string }[] | null) ?? [];
+    const patrTotal = patrFilas.length;
+    const { porDeclaracion: patrimonioPorDeclaracion, rangoAnios } =
+      mapearPatrimonio(patrFilas);
     const patrIngestado = await ingestaCorrio(sb, "probidad_ingesta_estado", id);
     const patrimonio = derivarEstado({
       total: patrTotal,
@@ -203,6 +361,8 @@ export const contarCarriles = cache(
     // page.tsx). Con el gate OFF el resumen NO emite el chip de cruces, así que
     // este estado queda inerte (`no_ingerido` como default seguro, jamás leído).
     let cruces: CarrilEstado = { tipo: "no_ingerido" };
+    // Default seguro con el gate OFF: `[]` (igual que `cruces` queda inerte).
+    let crucesSectores: CruceSector[] = [];
     if (crucesPublicEnabled(process.env)) {
       const { data: crucesData, error: crucesError } = await sb.rpc(
         "cruces_de_parlamentario",
@@ -213,7 +373,19 @@ export const contarCarriles = cache(
           `cruces_de_parlamentario falló para ${id}: ${crucesError.message}`,
         );
       }
-      const crucesTotal = (crucesData as unknown[] | null)?.length ?? 0;
+      // Se leen los campos reales (mismo RPC, sin fetch nuevo) para agrupar por
+      // sector. El `total` de la CTA sigue siendo `.length` (byte-parity con el rail).
+      const crucesFilas =
+        (crucesData as
+          | {
+              sector_id: string;
+              sector_etiqueta: string;
+              tipo_senal: string;
+              conteo: number;
+            }[]
+          | null) ?? [];
+      const crucesTotal = crucesFilas.length;
+      crucesSectores = agruparSectores(crucesFilas);
       // Los cruces se materializan por cron global → con el gate ON, 0 señales es
       // "ingestado, sin registros" (`vacio`), nunca "no ingerido".
       cruces = derivarEstado({ total: crucesTotal, ingestado: true });
@@ -260,6 +432,11 @@ export const contarCarriles = cache(
       dineroContratos,
       dineroAportes,
       asistencia,
+      votosBreakdown,
+      lobbyTopMaterias,
+      crucesSectores,
+      patrimonioPorDeclaracion,
+      rangoAnios,
     };
   },
 );
@@ -281,6 +458,12 @@ export function conteosDesconocidos(): ConteoCarriles {
     dineroAportes: { tipo: "no_ingerido" },
     // Sin conteo confiable no se afirma asistencia (jamás un "0 de 0" fabricado).
     asistencia: null,
+    // Productores capa-1 en su forma vacía honesta (nunca fabrica densidad).
+    votosBreakdown: { si: 0, no: 0, abstencion: 0, pareo: 0, ausente: 0 },
+    lobbyTopMaterias: [],
+    crucesSectores: [],
+    patrimonioPorDeclaracion: [],
+    rangoAnios: null,
   };
 }
 

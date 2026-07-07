@@ -249,8 +249,8 @@ describe("agruparSectores — cruces por sector (nReuniones desc, nVotos 0 hoy)"
       { sector_id: "s2", sector_etiqueta: "Salud", tipo_senal: "lobby_sector", conteo: 4 },
     ];
     expect(agruparSectores(filas)).toEqual([
-      { sector: "Salud", nReuniones: 4, nVotos: 0 },
       { sector: "Energía", nReuniones: 5, nVotos: 0 },
+      { sector: "Salud", nReuniones: 4, nVotos: 0 },
     ]);
   });
 
@@ -319,8 +319,10 @@ describe("contarCarriles — productores capa-1 desde las filas ya leídas (sb.r
       },
       lobby_de_parlamentario: {
         data: [
+          // Salud: 2 audiencias (A dup por left-join, C) → rankea primero.
           { identificador: "A", materia: "Salud" },
           { identificador: "A", materia: "Salud" },
+          { identificador: "C", materia: "Salud" },
           { identificador: "B", materia: "Educación" },
         ],
         error: null,
@@ -351,7 +353,7 @@ describe("contarCarriles — productores capa-1 desde las filas ya leídas (sb.r
       ausente: 1,
     });
     expect(c.lobbyTopMaterias).toEqual([
-      { materia: "Salud", n: 1 },
+      { materia: "Salud", n: 2 },
       { materia: "Educación", n: 1 },
     ]);
     expect(c.crucesSectores).toEqual([
