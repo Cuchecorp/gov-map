@@ -23,12 +23,17 @@ interface NavItem {
   label: string;
 }
 
-// LOCKED (UI-SPEC §11.0): Buscar · Parlamentarios · Agenda · Sobre / Metodología.
+// LOCKED (53-UI-SPEC §(a), re-open autorizado de §11.0 por CONTEXT F53): orden por
+// journey Buscar · Parlamentarios · Agenda · Red · Sobre. `/red` (LIVE 2026-07-02)
+// entra en pos 4 — deja de ser huérfana del header (F-01); label = nombre de ruta
+// factual, NUNCA "Red de influencia"/"Conexiones" (banned-vocab). "Sobre" acortado
+// para que 5 ítems quepan en 1 fila a 390px (Metodología sigue en /sobre + footer).
 const NAV_ITEMS: readonly NavItem[] = [
   { href: "/buscar", label: "Buscar" },
   { href: "/parlamentarios", label: "Parlamentarios" },
   { href: "/agenda", label: "Agenda" },
-  { href: "/sobre", label: "Sobre / Metodología" },
+  { href: "/red", label: "Red" },
+  { href: "/sobre", label: "Sobre" },
 ];
 
 function esActivo(pathname: string, href: string): boolean {
