@@ -27,6 +27,9 @@
   --identity-warn-bg: hsl(38 92% 95%);
   --identity-warn-fg: hsl(32 95% 30%);
   --identity-warn-border: hsl(38 80% 75%);
+
+  /* Rail scrollspy-current highlight (petróleo soft) — UXCOG 55-01 */
+  --accent-product-soft: hsl(183 30% 93%);
 }
 
 .dark {
@@ -40,4 +43,5 @@
   --identity-warn-bg: hsl(38 50% 12%);
   --identity-warn-fg: hsl(38 80% 65%);
   --identity-warn-border: hsl(38 60% 30%);
+  --accent-product-soft: hsl(183 30% 18%);
 }

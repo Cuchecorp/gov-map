@@ -66,6 +66,10 @@
   --color-identity-warn-bg: var(--identity-warn-bg);
   --color-identity-warn-fg: var(--identity-warn-fg);
   --color-identity-warn-border: var(--identity-warn-border);
+  /* Rail scrollspy-current (UXCOG 55-01): civic-tokens.css YA define
+   * --accent-product-soft como hsl() COMPLETO → referencia BARE (sin wrapper
+   * hsl(); doble-hsl = color inválido, gotcha 54-04). Genera bg-accent-product-soft. */
+  --color-accent-product-soft: var(--accent-product-soft);
 }
 
 @layer base {
