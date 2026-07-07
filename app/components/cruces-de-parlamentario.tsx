@@ -91,6 +91,8 @@ export function CrucesView({ data }: { data: CrucesViewData }) {
       Cruces de sector construidos a partir de las audiencias registradas bajo la
       Ley del Lobby (Ley 20.730). Cada hecho se muestra tal como lo publica la
       fuente oficial; el enlace de cada evidencia apunta al registro original.
+      Un cruce solo agrupa reuniones registradas por sector; no afirma intención
+      ni causa.
     </p>
   );
 

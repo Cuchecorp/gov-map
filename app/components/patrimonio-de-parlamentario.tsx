@@ -516,7 +516,9 @@ export function PatrimonioView({ data }: { data: PatrimonioViewData }) {
       <p className="text-sm text-muted-foreground">
         Declaraciones de patrimonio e intereses presentadas ante el Consejo para
         la Transparencia (InfoProbidad). Cada versión se muestra tal como la
-        declaró el parlamentario, con su fecha de presentación.
+        declaró el parlamentario, con su fecha de presentación. Un mismo
+        parlamentario puede registrar varias versiones; cada una es una
+        presentación distinta ante la fuente.
       </p>
       <p className="text-sm text-muted-foreground">
         <AtribucionCcBy />
