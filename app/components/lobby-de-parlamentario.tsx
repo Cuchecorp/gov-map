@@ -22,6 +22,12 @@ import {
  * │    compone ni enlaza un voto / boletín / proyecto / declaración. Una        │
  * │    reunión de lobby y un voto JAMÁS comparten un <article>/<Card>/<li>. La  │
  * │    sección vive en su propio `<section id="lobby">` separado por mt-12.     │
+ * │    Excepción ÚNICA (F-03, 53-UI-SPEC, WR-04): en los empty states (a)/(b)   │
+ * │    — cero hechos de lobby presentes — la línea de continuación puede        │
+ * │    enlazar la RUTA /buscar ("buscar un proyecto de ley por su idea"):       │
+ * │    con cero hechos no hay nada que componer. NUNCA un /proyecto/[boletin]   │
+ * │    concreto; las filas con hechos (estado (c)) mantienen la prohibición     │
+ * │    ABSOLUTA.                                                                │
  * │ 2. CERO CAUSALIDAD: prohibido "se reunió para", "a cambio de", "antes de    │
  * │    votar", "que resultó en".                                                │
  * │ 3. CERO AFINIDAD/RELACIÓN sobre la contraparte: "cercano a", "vinculado a", │
