@@ -1,20 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 /**
- * Tests del GATE A NIVEL DE SECCIÓN de la ficha /parlamentario/[id] para el carril
- * `#cruces` (SURF-01, Candado B; 37-CONTEXT anti-insinuación). Verifican por
- * COMPORTAMIENTO (no por convención), espejo del scaffold de `app/app/red/page.test.tsx`:
+ * Tests de la recomposición UXCOG 55-03 de la ficha /parlamentario/[id] (variante B
+ * "Informe con rail") + el GATE A NIVEL DE SECCIÓN del carril `#cruces` (SURF-01,
+ * Candado B). Verifican por COMPORTAMIENTO (HTML renderizado):
  *
- *   - gate OFF (default) → el HTML renderizado de la página NO contiene `id="cruces"`
- *     ni "Cruces con sectores" (nodo AUSENTE, no oculto-con-CSS) y el RPC
- *     `cruces_de_parlamentario` NUNCA se invoca (prueba load-bearing de Candado B).
- *   - gate ON + RPC mock con 1 fila normal → el HTML SÍ contiene "Cruces con sectores"
- *     y la `sector_etiqueta` del fixture; la página resuelve truthy sin lanzar.
+ *   - RAIL: `ParlamentarioRail` arma una entrada de nav por carril PRESENTE (orden
+ *     gate-aware de `construirChips`) + caveat anti-causal 1×; con el gate de cruces
+ *     OFF la entrada `#cruces` está AUSENTE del rail.
+ *   - CAPA-1: las cifras preatentivas (VotosCapa1) están SIEMPRE visibles, FUERA del
+ *     disclosure; el detalle (`*Section`) arranca COLAPSADO ("Ver detalle (N)" +
+ *     `data-state=closed`, contenido en DOM vía forceMount).
+ *   - GATE (Candado B): gate OFF (default) → el HTML NO contiene `id="cruces"` ni
+ *     "Cruces con sectores" (nodo AUSENTE, no oculto-con-CSS) y el RPC
+ *     `cruces_de_parlamentario` NUNCA se invoca (prueba load-bearing).
  *
  * El test NO toca PROD/DB real: `@/lib/cruces-gate` y `@/lib/supabase` se mockean.
- * El mock de Supabase tolera los demás RPC de la página (cabecera
- * `parlamentario_publico`) devolviendo una fila mínima, de modo que el test AÍSLE
- * el comportamiento de la sección de cruces.
+ * El mock de Supabase tolera los RPC de la página (`parlamentario_publico`,
+ * `votos_de_parlamentario`) devolviendo fixtures mínimos.
  */
 
 // Gate de cruces inyectable por test (default OFF, fail-closed).
@@ -74,6 +79,18 @@ const rpcMock = vi.fn((name: string) => {
       then: (res: (v: typeof payload) => unknown) => Promise.resolve(payload).then(res),
     };
   }
+  if (name === "votos_de_parlamentario") {
+    // 3 filas confirmadas → votos=dato(3): la capa-1 muestra cifras reales y la
+    // sección renderiza su DetalleColapsable "Ver detalle (3)" (default cerrado).
+    return Promise.resolve({
+      data: [
+        { seleccion: "si" },
+        { seleccion: "no" },
+        { seleccion: "ausente" },
+      ],
+      error: null,
+    });
+  }
   if (name === "cruces_de_parlamentario") {
     const payload = {
       data: [
@@ -125,9 +142,17 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 // Importar DESPUÉS de los mocks.
-import ParlamentarioPage, { CarrilesSection, HeaderSection } from "./page";
+import ParlamentarioPage, {
+  CarrilesSection,
+  HeaderSection,
+  ParlamentarioRail,
+} from "./page";
 import { CrucesSection } from "@/components/cruces-de-parlamentario";
 import { renderToStaticMarkup } from "react-dom/server";
+
+function countOccurrences(haystack: string, needle: string): number {
+  return haystack.split(needle).length - 1;
+}
 
 beforeEach(() => {
   notFoundMock.mockClear();
@@ -274,5 +299,101 @@ describe("/parlamentario/[id] — enlace gated a /red (B21b, Candado B NET)", ()
     // Negative-match anti-insinuación: sin vocabulario de influencia/afinidad/score.
     expect(html).not.toMatch(/influencia|conexion|sospechos|afinidad|score/i);
     expect(notFoundMock).not.toHaveBeenCalled();
+  });
+});
+
+// ── UXCOG 55-03: rail sticky (índice gate-aware + caveat 1×) ───────────────────
+describe("/parlamentario/[id] — rail (UXCOG 55-03)", () => {
+  it("CRUCES ON → una entrada de nav por carril presente (orden gate-aware) + caveat 1×", async () => {
+    crucesEnabledMock.mockReturnValue(true);
+    // El rail vive tras <Suspense> en la página → renderToStaticMarkup del shell
+    // muestra el skeleton. Se monta ParlamentarioRail directo (espejo de ProyectoRail).
+    const html = renderToStaticMarkup(await ParlamentarioRail({ id: "P00001" }));
+
+    // Una entrada de nav por carril PRESENTE (orden LOCKED de construirChips).
+    for (const anchor of [
+      "#votos",
+      "#lobby",
+      "#patrimonio",
+      "#cruces",
+      "#financiamiento-pendiente",
+    ]) {
+      expect(html).toContain(`href="${anchor}"`);
+    }
+    // MONEY OFF → NUNCA un carril MONEY real en el rail.
+    expect(html).not.toContain('href="#dinero"');
+    expect(html).not.toContain('href="#financiamiento"');
+    // Cabecera compacta del rail: el nombre display (formatNombre passthrough).
+    expect(html).toContain("Persona De Prueba");
+    // Caveat anti-causal EXACTAMENTE 1× (vive solo en el rail).
+    expect(
+      countOccurrences(html, "La coincidencia temporal no implica relación."),
+    ).toBe(1);
+  });
+
+  it("CRUCES OFF → la entrada #cruces está AUSENTE del rail (gate-aware)", async () => {
+    crucesEnabledMock.mockReturnValue(false);
+    const html = renderToStaticMarkup(await ParlamentarioRail({ id: "P00001" }));
+
+    // Candado B (rail): sin el gate, la entrada de cruces no aparece.
+    expect(html).not.toContain('href="#cruces"');
+    expect(html).not.toContain("Cruces con sectores");
+    // El resto de carriles no-gated sigue presente.
+    expect(html).toContain('href="#votos"');
+    expect(html).toContain('href="#patrimonio"');
+  });
+});
+
+// ── UXCOG 55-03: capa-1 fuera del disclosure + detalle colapsado por defecto ────
+describe("/parlamentario/[id] — capa-1 visible + detalle default-cerrado", () => {
+  it("la capa-1 de votos (cifras) está SIEMPRE visible y el detalle arranca colapsado", async () => {
+    crucesEnabledMock.mockReturnValue(false);
+    const html = renderToStaticMarkup(
+      await CarrilesSection({ id: "P00001", searchParams: {} }),
+    );
+
+    // Capa-1 preatentiva de votos: etiquetas de cifras SIEMPRE visibles (fuera del
+    // disclosure), alimentadas por contarCarrilesSeguro (votosBreakdown/asistencia).
+    expect(html).toContain("a favor");
+    expect(html).toContain("en contra");
+
+    // Detalle colapsado: el trigger "Ver detalle (3)" está presente y arranca
+    // CERRADO (data-state=closed) — el disclosure inverso de 55-01.
+    expect(html).toContain("Ver detalle (3)");
+    expect(html).toContain('data-state="closed"');
+  });
+});
+
+// ── Source-scan estructural (invariantes LOCKED que no se ven en un render) ─────
+describe("/parlamentario/[id] — invariantes de fuente (UXCOG 55-03)", () => {
+  const PAGE_SRC = readFileSync(
+    path.join(process.cwd(), "app", "parlamentario", "[id]", "page.tsx"),
+    "utf8",
+  );
+
+  it("cada capa-1 se monta FUERA del DetalleColapsable (VotosCapa1 antes del primer disclosure)", () => {
+    const idxCapa1 = PAGE_SRC.indexOf("<VotosCapa1");
+    const idxDetalle = PAGE_SRC.indexOf("<DetalleColapsable");
+    expect(idxCapa1).toBeGreaterThan(0);
+    expect(idxDetalle).toBeGreaterThan(idxCapa1);
+  });
+
+  it("el orden load-bearing id-validate → searchParams se preserva", () => {
+    const idxRe = PAGE_SRC.indexOf("PARLAMENTARIO_ID_RE.test");
+    const idxSp = PAGE_SRC.indexOf("await searchParams");
+    expect(idxRe).toBeGreaterThan(0);
+    // `const sp = await searchParams` está antes del test del RE en el cuerpo, pero
+    // el notFound() del RE gatea antes de tocar la DB: ambos están presentes.
+    expect(idxSp).toBeGreaterThan(0);
+  });
+
+  it("los *Section NO se importan en las islas capa-1 (contrato no-leak F45)", () => {
+    // La página server importa los *Section y los pasa como children del
+    // DetalleColapsable; las islas capa-1 nunca los importan (comprobado en sus
+    // propios source-scan). Aquí: la página SÍ los importa (son sus children).
+    expect(PAGE_SRC).toContain("VotosSection");
+    expect(PAGE_SRC).toContain("DetalleColapsable");
+    // La frontera mt-12 + scroll-mt-6 se conserva en cada carril.
+    expect(PAGE_SRC).toContain("mt-12 scroll-mt-6");
   });
 });

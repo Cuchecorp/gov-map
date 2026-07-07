@@ -1,16 +1,17 @@
 /**
- * LEG-01/LEG-03 — Test ESTRUCTURAL source-scan de la ficha /parlamentario/[id].
+ * LEG-01/LEG-03 + UXCOG 55-03 — Test ESTRUCTURAL source-scan de la ficha
+ * /parlamentario/[id].
  *
- * Protege los invariantes LOCKED del re-layout (Phase 45) leyendo el TEXTO FUENTE
- * de `page.tsx` (no el DOM: la página es un Server Component async, igual que el
+ * Protege los invariantes LOCKED del re-layout leyendo el TEXTO FUENTE de
+ * `page.tsx` (no el DOM: la página es un Server Component async, igual que el
  * estilo de `lib/lockdown-guard.test.ts`). Strip de comentarios para no contar
  * prosa (mismo helper que el guard). Falla si una regresión:
  *
- *   1. (mt-12)      quita el `mt-12` de un carril o lo mueve fuera de su <section>.
- *   2. (1×dominio)  agrupa dos dominios en un acordeón / desbalancea section↔acordeón.
+ *   1. (mt-12)      quita el `mt-12`/`scroll-mt-6` de un carril o lo mueve fuera de su <section>.
+ *   2. (disclosure) vuelve al CarrilAccordion F45 / agrupa dominios en un Accordion.Root.
  *   3. (gates)      elimina un gate cruces/money que envuelve una <section> entera.
- *   4. (resumen)    quita el resumen above-fold o lo pone tras el primer carril.
- *   5. (no-leak)    hace que `carril-accordion.tsx` importe una sección o Supabase.
+ *   4. (rail+capa-1) quita el rail (FichaRail/construirChips) o mete una capa-1 dentro del disclosure.
+ *   5. (no-leak)    hace que `detalle-colapsable.tsx` importe una sección o Supabase.
  */
 
 import { readFileSync } from "node:fs";
@@ -28,10 +29,10 @@ const PAGE_TSX = path.join(
   "[id]",
   "page.tsx",
 );
-const CARRIL_ACCORDION_TSX = path.join(
+const DETALLE_COLAPSABLE_TSX = path.join(
   APP_ROOT,
   "components",
-  "carril-accordion.tsx",
+  "detalle-colapsable.tsx",
 );
 
 /** Elimina comentarios TS/JS (bloque `/* … *\/` y línea `// …`) para no contar prosa. */
@@ -48,8 +49,8 @@ function stripTsComments(content: string): string {
 }
 
 const PAGE_SRC = stripTsComments(readFileSync(PAGE_TSX, "utf8"));
-const ACCORDION_SRC = stripTsComments(
-  readFileSync(CARRIL_ACCORDION_TSX, "utf8"),
+const DETALLE_SRC = stripTsComments(
+  readFileSync(DETALLE_COLAPSABLE_TSX, "utf8"),
 );
 
 // Carriles de dominio LOCKED (orden). Cada uno = su propia <section mt-12>.
@@ -85,12 +86,18 @@ describe("page-estructura — invariantes LOCKED del re-layout (LEG-01/LEG-03)",
       expect(sectionIds).toContain(id);
     }
 
-    // CADA <section> de carril lleva el mt-12 en SU className (no en un wrapper).
+    // CADA <section> de carril lleva mt-12 (frontera) + scroll-mt-6 (ancla del
+    // rail) en SU className (no en un wrapper).
     for (const s of sections) {
+      const clases = s.className.split(/\s+/);
       expect(
-        s.className.split(/\s+/),
+        clases,
         `la <section id="${s.id}"> debe conservar mt-12`,
       ).toContain("mt-12");
+      expect(
+        clases,
+        `la <section id="${s.id}"> debe llevar scroll-mt-6 (salto del rail)`,
+      ).toContain("scroll-mt-6");
     }
 
     // El número de fronteras mt-12 cubre al menos los carriles renderizados.
@@ -98,18 +105,15 @@ describe("page-estructura — invariantes LOCKED del re-layout (LEG-01/LEG-03)",
     expect(mt12Count).toBeGreaterThanOrEqual(CARRIL_IDS.length);
   });
 
-  // ── Test 2: un acordeón por dominio (jamás dos dominios en una unidad) ─────────
-  it("Test 2 (1×dominio): un CarrilAccordion por <section>; ningún Accordion.Root agrupa dominios", () => {
-    const sections = matchSections(PAGE_SRC);
-    const accordionUses = (PAGE_SRC.match(/<CarrilAccordion[\s>]/g) || [])
-      .length;
-
-    // section ↔ acordeón 1:1 (cada carril su propio acordeón, nunca dos dominios juntos).
-    expect(accordionUses).toBe(sections.length);
-    expect(accordionUses).toBe(CARRIL_IDS.length);
-
-    // La página NO instancia un Accordion.Root crudo (que podría agrupar varios
-    // items/dominios): SOLO usa el wrapper CarrilAccordion (1 item interno).
+  // ── Test 2: disclosure inverso (DetalleColapsable, ya no CarrilAccordion) ──────
+  it("Test 2 (disclosure): el detalle usa DetalleColapsable; la página ya NO usa CarrilAccordion", () => {
+    // UXCOG 55-03 invierte el disclosure: el detalle (*Section) se envuelve en
+    // DetalleColapsable (default cerrado) y la capa-1 vive FUERA. Al menos un
+    // DetalleColapsable se instancia (los carriles con datos).
+    expect(PAGE_SRC).toMatch(/<DetalleColapsable[\s>]/);
+    // El patrón F45 (CarrilAccordion, capa-1 dentro del cuerpo) quedó superado.
+    expect(PAGE_SRC).not.toMatch(/<CarrilAccordion[\s>]/);
+    // La página NO instancia un Accordion.Root crudo (que agruparía dominios).
     expect(PAGE_SRC).not.toMatch(/Accordion\.Root/);
     expect(PAGE_SRC).not.toMatch(/AccordionPrimitive/);
   });
@@ -122,21 +126,34 @@ describe("page-estructura — invariantes LOCKED del re-layout (LEG-01/LEG-03)",
     expect(PAGE_SRC).toContain("!moneyPublicEnabled(process.env)");
   });
 
-  // ── Test 4: resumen above-fold antes del primer carril ────────────────────────
-  it("Test 4 (resumen): <ParlamentarioResumen aparece ANTES de la primera <section mt-12>", () => {
-    const resumenIdx = PAGE_SRC.indexOf("<ParlamentarioResumen");
-    const firstSectionIdx = PAGE_SRC.search(/<section\s+id="/);
-
-    expect(resumenIdx).toBeGreaterThanOrEqual(0);
-    expect(firstSectionIdx).toBeGreaterThanOrEqual(0);
-    expect(resumenIdx).toBeLessThan(firstSectionIdx);
+  // ── Test 4: rail (FichaRail/construirChips) + capa-1 fuera del disclosure ──────
+  it("Test 4 (rail+capa-1): FichaRail arma el índice y las capa-1 se montan FUERA del DetalleColapsable", () => {
+    // El rail reemplaza el resumen above-fold: FichaRail alimentado por construirChips
+    // (orden gate-aware) — el índice vive UNA vez en el rail.
+    expect(PAGE_SRC).toContain("<FichaRail");
+    expect(PAGE_SRC).toContain("construirChips");
+    // Las 4 capa-1 (55-02) se montan como resumen preatentivo por carril.
+    for (const capa1 of [
+      "<VotosCapa1",
+      "<LobbyCapa1",
+      "<PatrimonioCapa1",
+      "<CrucesCapa1",
+    ]) {
+      expect(PAGE_SRC).toContain(capa1);
+    }
+    // La primera capa-1 aparece ANTES del primer DetalleColapsable → capa-1 vive
+    // FUERA del disclosure (solo el detalle colapsa).
+    const idxCapa1 = PAGE_SRC.indexOf("<VotosCapa1");
+    const idxDetalle = PAGE_SRC.indexOf("<DetalleColapsable");
+    expect(idxCapa1).toBeGreaterThanOrEqual(0);
+    expect(idxDetalle).toBeGreaterThan(idxCapa1);
   });
 
-  // ── Test 5: no-leak reforzado (carril-accordion no importa sección/Supabase) ───
-  it("Test 5 (no-leak): carril-accordion.tsx no contiene Section ni @/lib/supabase", () => {
-    expect(ACCORDION_SRC).not.toMatch(/Section/);
-    expect(ACCORDION_SRC).not.toContain("@/lib/supabase");
-    expect(ACCORDION_SRC).not.toContain("createServerSupabase");
+  // ── Test 5: no-leak reforzado (detalle-colapsable no importa sección/Supabase) ─
+  it("Test 5 (no-leak): detalle-colapsable.tsx no contiene Section ni @/lib/supabase", () => {
+    expect(DETALLE_SRC).not.toMatch(/Section/);
+    expect(DETALLE_SRC).not.toContain("@/lib/supabase");
+    expect(DETALLE_SRC).not.toContain("createServerSupabase");
   });
 
   // ── Test 6: WR-02 — conteos tras Suspense vía wrapper seguro (no eager top-level) ─
