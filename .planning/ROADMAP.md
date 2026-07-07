@@ -718,7 +718,7 @@ Plans:
 | 50. FIX — Quick wins diagnóstico (P1) | v5.0 | 4/4 | Complete | 2026-07-02 |
 | 51. LEG2 — Legibilidad profunda (P2) | v5.0 | 7/7 | Complete | 2026-07-03 |
 | 52. CRUCE2 — Cruces nuevos (P3) | v5.0 | 6/6 | Complete (deploy ee6b7544) | 2026-07-06 |
-| 53. UXNAV — Auditoría UX navegada (BrowserOS) + fixes P0 | v5.0 | 1/5 | In Progress|  |
+| 53. UXNAV — Auditoría UX navegada (BrowserOS) + fixes P0 | v5.0 | 2/5 | In Progress|  |
 | 54. UXDEMO — Pulido presentacional demo | v5.0 | 0/? | Not Started | - |
 
 ## ✅ v4.0 — De datos a cruces verificables
@@ -1254,10 +1254,10 @@ Plans:
   3. Desde cualquier superficie se puede volver al home y saltar a las demás en ≤2 clicks; toda página muestra dónde estás (título/sección visible); ningún callejón sin salida (página sin links de continuación)
   4. Cero regresión: anti-insinuación intacta (negative-match), lockdown-guard verde, tsc limpio; frontera de carril `mt-12` y gates existentes intactos
 
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 
 - [x] 53-01-PLAN.md — Auditoría navegada BrowserOS (2 pistas) → 53-UX-AUDIT.md + ux-evidence/
-- [ ] 53-02-PLAN.md — Nav global: +Red, orden por journey, label "Sobre", active-state
+- [x] 53-02-PLAN.md — Nav global: +Red, orden por journey, label "Sobre", active-state
 - [ ] 53-03-PLAN.md — Breadcrumbs server puro + montaje en 3 fichas
 - [ ] 53-04-PLAN.md — Líneas de continuación en empty states flagged (P0 callejón sin salida)
 - [ ] 53-05-PLAN.md — Gate no-regresión + redeploy PROD + re-walkthrough before/after
