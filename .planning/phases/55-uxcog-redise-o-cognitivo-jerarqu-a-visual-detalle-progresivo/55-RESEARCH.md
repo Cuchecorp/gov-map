@@ -361,19 +361,22 @@ Type confirmed at `node_modules/.pnpm/@xyflow+system@0.0.77/.../types/general.d.
 | A3 | `subgrafo_red(depth=1)` already returns only the seed's immediate neighborhood, so /red ego work is mostly client framing/marker (not a query change). | red-graph analysis | LOW — confirmed by reading `red/page.tsx` (p_depth:1, seed required, no seedless graph). |
 | A4 | Agenda día→comisión grouping is a presentational sub-group inside the existing day grouping; no new query. | Agenda analysis | LOW — `CitacionesSection` already groups by day and has comisión on each row. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Rail sticky offset vs. non-sticky header (A2).**
    - What we know: UI-SPEC says `sticky top-16` + `scroll-mt-16`; the real GlobalHeader is non-sticky, 56px.
    - What's unclear: whether the operator wants the header made sticky too.
    - Recommendation: default to a small rail offset that matches the scrolling header; keep `scroll-mt` modest; note in the demo checkpoint. Do NOT make the header sticky (out of scope, hero/header LOCKED).
+   - **RESOLUTION (A2):** Rail `sticky top-6`, secciones `scroll-mt-6` — decision del orquestador que SUPERSEDE el `top-16` del UI-SPEC. El GlobalHeader queda NO-sticky (56px, scrollea; fuera de alcance). Aplicado en 55-01/55-03/55-04.
 
 2. **capa-1 figures source for votos (A1).**
    - What we know: the breakdown is already read in two places (`VotosView`, conteos lib) but only totals/asistencia are returned by the conteos lib.
    - Recommendation: extend the conteos lib (single source) rather than re-reading in the rail/capa-1; keeps chip, capa-1, and section perfectly in sync (the F45 lesson about the p_limit:1000 cap applies — keep byte-for-byte parity).
+   - **RESOLUTION (A1):** `votosBreakdown` (si/no/abstencion/pareo/ausente) se expone desde `contarCarrilesSeguro` en 55-02 Task 1, derivado de las MISMAS filas ya leidas (byte-parity con VotosView "Como voto"), sin RPC nueva. En la misma tarea se exponen tambien `lobbyTopMaterias`/`crucesSectores`/`patrimonioPorDeclaracion`/`rangoAnios` como productores REALES de las otras tres capa-1.
 
 3. **Truncation mechanic (Claude's discretion).**
    - Recommendation: initial detail shows ~8 rows; "Ver las N" reveals the rest **client-side over already-rendered rows** (all rows are already in the DOM via the sections). Since `VotosSection`/`LobbySection` already paginate/gr­oup server-side via URL params, prefer keeping their existing server-driven paging INSIDE the detail and just gate the whole detail behind the disclosure — avoids a second, conflicting client-paginator.
+   - **RESOLUTION (A3):** Conservar la truncacion/paginacion server existente DENTRO del disclosure (votos ?votosPage/?materia, lobby ?lobbyPage, patrimonio ?patrimonioPage). Para votaciones, si el detalle vuelca >~30 filas planas, aplicar "mostrar mas" client-side sobre datos YA renderizados (sin RPC nueva, sin lazy-fetch). Aplicado en 55-03.
 
 ## Environment Availability
 
