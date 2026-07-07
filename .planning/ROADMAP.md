@@ -1306,14 +1306,14 @@ Plans:
   4. Cero regresión: anti-insinuación (negative-match), lockdown-guard, tsc, suite completa verdes; PII-safe intacto; tokens design system
   5. Checkpoint humano de dirección visual (sketch o UI-SPEC) aprobado ANTES de la ejecución masiva; set de demo recapturado al cierre
 
-**Plans:** 3/6 plans executed
+**Plans:** 4/6 plans executed
 
 Plans:
 
 - [x] 55-01-PLAN.md — Primitivas compartidas: token --accent-product-soft + useScrollspy + DetalleColapsable + FichaRail (wave 1)
 - [x] 55-02-PLAN.md — Ficha parlamentario capa-1: conteos extendidos + 4 vistas capa-1 votos/lobby/patrimonio/cruces (wave 2)
 - [ ] 55-03-PLAN.md — Ficha parlamentario wiring: rail + grid + capa-1 visible + detalle colapsado (wave 3)
-- [ ] 55-04-PLAN.md — Ficha proyecto: rail + stepper de tramitacion + urgencia agrupada (wave 2)
+- [x] 55-04-PLAN.md — Ficha proyecto: rail + stepper de tramitacion + urgencia agrupada (wave 2)
 - [x] 55-05-PLAN.md — Agenda dia->comision colapsable + /red ego-network del seed (wave 1)
 - [ ] 55-06-PLAN.md — Integracion: gate completo + deploy + recaptura demo + checkpoint operador (wave 4)
 
