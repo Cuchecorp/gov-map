@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase";
 import { WeekNav } from "@/components/week-nav";
 import { CitacionCard } from "@/components/citacion-card";
+import { CarrilAccordion } from "@/components/carril-accordion";
 import {
   SalaTableSection,
   type SalaTablaItem,
@@ -329,45 +330,79 @@ export async function CitacionesSection({ year, week }: ISOWeek) {
     timeZone: "UTC",
   });
 
+  // Jerarquía cognitiva (UX-03): la semana se lee día → comisión con bloques
+  // COLAPSABLES por día. Cada día es un `CarrilAccordion` (su encabezado es el
+  // trigger; `headingLevel="h3"` cuelga del h2 de la sección). El primer día
+  // arranca abierto (lo más próximo visible); los demás, colapsados, para reducir
+  // el largo del scroll sin ocultar el contexto.
+  const dias = Array.from(grupos.entries());
+
   return (
-    <div className="mt-4">
-      {Array.from(grupos.entries()).map(([dayKey, items]) => (
-        <div key={dayKey}>
-          <div className="mt-6 mb-3">
-            <h3 className="text-base font-semibold">
-              {dayKey === "sin-fecha"
-                ? "Sin fecha asignada"
-                : capitalizarPrimera(
-                    diaFmt.format(new Date(`${dayKey}T00:00:00Z`)),
-                  )}
-            </h3>
-            <Separator className="mt-1" />
-          </div>
-          <div className="space-y-4">
-            {items.map((c) => (
-              <CitacionCard
-                key={c.id}
-                comision={c.comision}
-                fecha={c.fecha ? new Date(c.fecha) : null}
-                horario={c.horario}
-                sala={c.sala}
-                materia={c.materia}
-                camara={c.camara}
-                invitados={(c.citacion_invitado ?? []).map((inv) => ({
-                  nombre: inv.nombre,
-                  calidad: inv.calidad,
-                }))}
-                boletin={primerBoletin(c)}
-                provenance={{
-                  capturedAt: c.fecha_captura ? new Date(c.fecha_captura) : null,
-                  sourceName: sourceLabel(c.origen),
-                  sourceUrl: c.enlace ?? null,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      ))}
+    <div className="mt-4 space-y-4">
+      {dias.map(([dayKey, items], index) => {
+        const dayLabel =
+          dayKey === "sin-fecha"
+            ? "Sin fecha asignada"
+            : capitalizarPrimera(diaFmt.format(new Date(`${dayKey}T00:00:00Z`)));
+
+        // Sub-agrupamiento PRESENTACIONAL por comisión DENTRO del día (Assumption
+        // A4: cero query nueva; se agrupa sobre las filas ya leídas). El Map
+        // preserva el orden de aparición — la consulta ya ordena por cámara y
+        // comisión, de modo que las comisiones salen agrupadas y estables.
+        const porComision = new Map<string, CitacionRow[]>();
+        for (const c of items) {
+          const arr = porComision.get(c.comision) ?? [];
+          arr.push(c);
+          porComision.set(c.comision, arr);
+        }
+
+        return (
+          <CarrilAccordion
+            key={dayKey}
+            titulo={dayLabel}
+            conteo={`${items.length} ${items.length === 1 ? "citación" : "citaciones"}`}
+            defaultOpen={index === 0}
+            headingLevel="h3"
+            headingClassName="text-base font-semibold"
+          >
+            <div className="space-y-6">
+              {Array.from(porComision.entries()).map(([comision, cits]) => (
+                <div key={comision}>
+                  <h4 className="text-sm font-semibold text-muted-foreground">
+                    {comision}
+                  </h4>
+                  <Separator className="mt-1" />
+                  <div className="mt-3 space-y-4">
+                    {cits.map((c) => (
+                      <CitacionCard
+                        key={c.id}
+                        comision={c.comision}
+                        fecha={c.fecha ? new Date(c.fecha) : null}
+                        horario={c.horario}
+                        sala={c.sala}
+                        materia={c.materia}
+                        camara={c.camara}
+                        invitados={(c.citacion_invitado ?? []).map((inv) => ({
+                          nombre: inv.nombre,
+                          calidad: inv.calidad,
+                        }))}
+                        boletin={primerBoletin(c)}
+                        provenance={{
+                          capturedAt: c.fecha_captura
+                            ? new Date(c.fecha_captura)
+                            : null,
+                          sourceName: sourceLabel(c.origen),
+                          sourceUrl: c.enlace ?? null,
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CarrilAccordion>
+        );
+      })}
     </div>
   );
 }
