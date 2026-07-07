@@ -89,7 +89,7 @@ export interface VotadoItem {
 export function VotadoEstaSemanaView({ items }: { items: VotadoItem[] }) {
   return (
     <Panel>
-      <h2 className="text-lg font-semibold mb-4">Votado esta semana</h2>
+      <h2 className="text-xl font-semibold mb-4">Votado esta semana</h2>
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Sin votaciones registradas esta semana en las fuentes consultadas.
@@ -128,14 +128,14 @@ export function VotadoEstaSemanaView({ items }: { items: VotadoItem[] }) {
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1 inline-flex items-center text-sm underline underline-offset-2 text-accent-product"
+                    className="mt-1 inline-flex min-h-11 items-center text-sm underline underline-offset-2 text-accent-product"
                   >
                     Ver fuente oficial ↗
                   </a>
                 ) : (
                   <Link
                     href={`/proyecto/${it.boletin}`}
-                    className="mt-1 inline-flex items-center text-sm underline underline-offset-2 text-accent-product"
+                    className="mt-1 inline-flex min-h-11 items-center text-sm underline underline-offset-2 text-accent-product"
                   >
                     Ver proyecto →
                   </Link>
@@ -210,7 +210,7 @@ export interface UrgenciaItem {
 export function UrgenciasVigentesView({ items }: { items: UrgenciaItem[] }) {
   return (
     <Panel>
-      <h2 className="text-lg font-semibold mb-4">Urgencias vigentes</h2>
+      <h2 className="text-xl font-semibold mb-4">Urgencias vigentes</h2>
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No hay urgencias vigentes registradas esta semana.
@@ -229,12 +229,12 @@ export function UrgenciasVigentesView({ items }: { items: UrgenciaItem[] }) {
                 — urgencia {it.tipo} vigente desde el{" "}
                 <span className="font-mono">{fechaCorta(it.desde)}</span>.
               </p>
-              <p className="mt-1 font-mono text-xs text-muted-foreground">
+              <p className="mt-1 font-mono text-sm text-muted-foreground">
                 {it.boletin}
               </p>
               <Link
                 href={`/proyecto/${it.boletin}`}
-                className="mt-1 inline-flex items-center text-sm underline underline-offset-2 text-accent-product"
+                className="mt-1 inline-flex min-h-11 items-center text-sm underline underline-offset-2 text-accent-product"
               >
                 Ver proyecto →
               </Link>
@@ -313,7 +313,7 @@ export interface FrescuraItem {
 export function UltimaActualizacionView({ items }: { items: FrescuraItem[] }) {
   return (
     <Panel>
-      <h2 className="text-lg font-semibold mb-4">Última actualización de datos</h2>
+      <h2 className="text-xl font-semibold mb-4">Última actualización de datos</h2>
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Aún no hay registros de actualización disponibles.

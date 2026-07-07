@@ -105,7 +105,11 @@ language sql stable security definer set search_path = '' as $$
          a.fecha,
          c.semana_iso,
          c.comision,
-         a.enlace_detalle,
+         -- FND-08 (trazabilidad, UI-REVIEW 52 BLOCKER): en filas Cámara `enlace_detalle`
+         -- es SIEMPRE null (la fuente no publica detalle por audiencia) pero `enlace`
+         -- (provenance del registro: la página oficial del listado) está poblado al 100%.
+         -- coalesce garantiza que NINGUNA fila salga sin link a fuente oficial.
+         coalesce(a.enlace_detalle, a.enlace),
          a.identificador         -- clave estable por-audiencia (WR-07)
   from public.citacion c
   join public.citacion_punto cp on cp.citacion_id = c.id

@@ -35,7 +35,7 @@ export default function HomeError({
       <p className="mt-8 text-sm">
         <button
           onClick={() => unstable_retry()}
-          className="text-primary underline underline-offset-2"
+          className="text-accent-product underline underline-offset-2"
         >
           Reintentar
         </button>
