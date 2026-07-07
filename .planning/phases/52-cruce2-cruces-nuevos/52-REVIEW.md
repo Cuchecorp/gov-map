@@ -1,9 +1,12 @@
 ---
 phase: 52-cruce2-cruces-nuevos
 reviewed: 2026-07-06T00:00:00Z
-depth: deep
-files_reviewed: 16
+re_reviewed: 2026-07-06T23:00:00Z
+iteration: 2
+depth: standard
+files_reviewed: 19
 files_reviewed_list:
+  - app/app/error.tsx
   - app/app/page.test.tsx
   - app/app/page.tsx
   - app/app/proyecto/[boletin]/page.tsx
@@ -17,123 +20,142 @@ files_reviewed_list:
   - packages/cruces/src/clasificar-fichas-cli.ts
   - packages/cruces/src/clasificar-lobby-cli.test.ts
   - packages/cruces/src/clasificar-lobby-cli.ts
+  - packages/lobby/src/parse-camara-lobby.test.ts
+  - packages/lobby/src/parse-camara-lobby.ts
   - supabase/migrations/0048_lobby_en_tramitacion.sql
   - supabase/tests/0047_rebeldias_honestas.test.sql
   - supabase/tests/0048_lobby_en_tramitacion.test.sql
 findings:
-  critical: 2
-  warning: 5
-  info: 5
-  total: 12
+  critical: 0
+  warning: 0
+  info: 7
+  total: 7
 status: issues_found
+fixed_iteration_3: WR-06 (7374ff0) + WR-07 (48db0d0) — 2026-07-06
 ---
 
 # Phase 52: Code Review Report
 
-**Reviewed:** 2026-07-06
-**Depth:** deep
-**Files Reviewed:** 16
-**Status:** issues_found
+**Reviewed:** 2026-07-06 (iteration 1) · **Re-reviewed:** 2026-07-06 (iteration 2, post-fixer 93d5a24..46f7bfa) · **Fix pass 3:** 2026-07-06 (7374ff0 + 48db0d0)
+**Depth:** deep (iter 1) / standard regression re-review (iter 2)
+**Files Reviewed:** 19 (cumulative)
+**Status:** issues_found (0 Critical, 0 Warning open — 7 Info open, no bloqueantes)
 
 ## Summary
 
-Phase 52 (CRUCE2) adds: the `lobby_en_tramitacion` RPC (0048, ALREADY APPLIED to PROD per checkpoint 52-06) + its pgTAP; the lobby×tramitación juxtaposition rail and SC3 citación line on the ficha; the 3-block ActualidadModule on the home (now `force-dynamic`); the `--solo-confirmadas` incremental load for the lobby classifier CLI; and the `lobby_en_tramitacion` allowlist entry in the lockdown guard.
+**Iteration 2 (re-review of the 7 fixes).** All 7 fixes from iteration 1 are verified correct and complete: CR-01 (root `error.tsx` present, matches the repo's `unstable_retry` boundary pattern), CR-02 (parser anchors Cámara dates to Santiago midnight via tzdb-derived offset; verified DST spring-forward/fall-back edge handling in `instanteMedianocheChile`; exhaustive 365-day 2026 test; PROD data re-anchored per context, so RPC `at time zone 'America/Santiago'` is now consistent end-to-end — and UTC-day derivations elsewhere remain correct because Santiago midnight is 03:00/04:00Z of the *same* calendar day), WR-01 (camino 1 gated on exactly `error?.code === "PGRST202"`, regex removed, source-scan test pins it), WR-02 (component dedupes audiencia×semana across comisiones, aggregates comisiones, count uses deduped rows; RTL test covers the two-comisiones case), WR-03 (all four `text-[--accent-product]` occurrences replaced with the `text-accent-product` token; zero occurrences remain repo-wide), WR-04 (`citacionVigente` anchors "hoy" to the Chile calendar day via `Intl` en-CA; evening-Chile test present; robust whether `citacion.fecha` stays UTC-midnight or moves to Santiago-midnight), WR-05 (deterministic `.order("identificador")` + `--desde` cursor with fail-fast parsing).
 
-Load-bearing invariants verified as HELD: migration 0048 has zero grants and the idiomatic double revoke (Camino A); the RPC returns-table exposes no partido/rut/email and only `nombre_normalizado`+`camara` from the maestra; the RPC is in `PUBLIC_RPC_ALLOWLIST`; the parlamentario name is plain text (not linked) in the juxtaposition rail; the caveat is rendered exactly once; counts are neutral Mono facts; no `.from()` on PII tables anywhere in the new code; keys come from env only.
+Targeted suites pass: app components 35/35, packages 22/22.
 
-Two Critical findings: (1) the home page now throws on any transient DB error from 6 per-request reads with NO error boundary anywhere above it — a routine transient failure replaces the entire landing (hero + search) with Next's default 500; (2) the RPC's `at time zone 'America/Santiago'` week derivation is provably inconsistent with the Cámara-lobby connector, which stores audiencia dates as UTC-midnight timestamps — every Monday-dated Cámara audiencia lands in the WRONG ISO week (lost real coincidences, fabricated false ones). The pgTAP fixture derives both sides with the RPC's own expression, so it structurally cannot catch this.
+**Two new/residual Warnings found during regression review:** (1) the WR-05 cursor is keyed on `lobby_contraparte.identificador`, which is **not unique** (it is the audiencia FK; the natural key is `(identificador, nombre, rol)`) — a page boundary that cuts inside a multi-contraparte audiencia strands the remaining siblings forever under the documented `--desde` workflow (WR-06); (2) the RPC's `select distinct` over the 7 projected columns collapses genuinely distinct Cámara audiencias that share (parlamentario, day, materia) — Cámara rows always have `enlace_detalle = null` and date-only fechas, so two real same-day meetings with different lobbistas become one row: a silent undercount in the "conteo neutro" surface (WR-07, pre-existing in the applied 0048, surfaced by the WR-02 analysis).
+
+Invariants re-verified as HELD after the fixes: zero grants / double revoke intact in 0048; no PII fields projected; parlamentario name still plain text; caveat rendered once; anti-insinuación vocab tests pass; keys env-only; no `.from()` on PII tables in changed files.
+
+**Fix pass 3 (2026-07-06, post-iteration-2):** both open Warnings fixed. WR-06 (`7374ff0`): `--desde` cursor re-keyed on the surrogate PK `lobby_contraparte.id` (0021: `bigint generated always as identity primary key`) — `.order("id")` + `.gt("id", desde)`, run-end log prints the last `id`, tests cover sibling contrapartes sharing an `identificador`. WR-07 (`48db0d0`): 0048 amended in-place (authorized: applied today within the same operator checkpoint, operator re-applies right after) — `drop function` + recreate appending `audiencia_id text` (`a.identificador`) as 8th column so `select distinct` keys on audiencia identity; double revoke / security definer / `search_path=''` / zero grants intact; pgTAP updated to plan(10) with the two-distinct-audiencias Cámara case; component dedupes on `audiencia_id` (composite only as pre-amendment fallback, never rendered). Gates green: `tsc -b`, app 541/541, @obs/cruces 33/33.
 
 ## Critical Issues
 
-### CR-01: Home `/` has no error boundary — any transient DB error now 500s the entire landing, hero included
+None open.
 
-**File:** `app/app/page.tsx:82`, `app/components/actualidad-module.tsx:164-166,263-267,360-364,390-392` (and `app/app/` — missing `error.tsx`)
-**Issue:** This phase converts the home from a static hero into a `force-dynamic` page that performs 6+ Supabase reads per request (`votacion`, `tramitacion_evento`, `proyecto`, `citacion`, `lobby_audiencia`, `proyecto_ficha`). Each block correctly throws on a real read error (#34, rule D). But unlike EVERY other data-driven route in the app (`proyecto/[boletin]/error.tsx`, `parlamentario/[id]/error.tsx`, `buscar/error.tsx`, `agenda/error.tsx`, `parlamentarios/error.tsx`, `contraparte/[id]/error.tsx`), the root segment has no `error.tsx`. A `<Suspense>` boundary does NOT catch errors — a thrown RSC error propagates to the nearest error boundary, and there is none above `/`. Result: one transient DB/network hiccup in a below-the-fold freshness block replaces the ENTIRE landing — including the LOCKED hero and search box, the product's primary entry surface — with Next's generic "Application error" page. This also contradicts the module's own contract A ("el módulo NUNCA se oculta entero... cada bloque degrada... independiente", T-52-15): blocks are independent for the 0-rows path but a single-block ERROR takes down all three blocks plus the hero.
-**Fix:** Add `app/app/error.tsx` mirroring the existing route-level honest-error pages (e.g., copy the pattern from `app/app/agenda/error.tsx`). This preserves the #34 throw-on-real-error convention while containing the blast radius to an honest error UI instead of a raw 500. (Optionally, follow-up: per-block error containment so the hero survives, but the boundary is the minimum ship-blocker.)
+### CR-01: Home `/` has no error boundary — RESOLVED (iteration 2, commit 93d5a24)
 
-### CR-02: RPC week derivation is inconsistent with the Cámara-lobby connector — Monday audiencias shift to the previous ISO week
+**File:** `app/app/error.tsx` (new)
+**Resolution verified:** Root-segment `error.tsx` added, mirroring the six existing route boundaries (client component, `unstable_retry` prop consistent with this Next version's convention across the repo, honest Spanish copy distinguishing failure from absence, no technical detail leaked). A thrown RSC error from any of the home's 6 reads now renders the honest boundary instead of Next's generic 500. See IN-06 for a minor copy side-effect on other uncovered routes.
 
-**File:** `supabase/migrations/0048_lobby_en_tramitacion.sql:86` (cross-file: `packages/lobby/src/parse-camara-lobby.ts:60-77`, `packages/lobby/src/parse-leylobby.ts:39-50`, `packages/agenda/src/parse-senado-citaciones.ts:33-39`)
-**Issue:** The RPC computes the audiencia's week as `to_char((a.fecha at time zone 'America/Santiago'), 'IYYY"-W"IW')` — assumption A1: `lobby_audiencia.fecha` is a true instant. That holds for the leylobby path (`parseFechaLeylobby` preserves the `-04` offset: `2024-06-24 12:30:00-04`). It does NOT hold for the Cámara path: `parseFechaCamara("26 jun. 2026")` produces `Date.UTC(anio, mes, dia)` → `2026-06-26T00:00:00Z`, i.e., the Chile calendar date stored as UTC MIDNIGHT. `'2026-06-26T00:00:00Z' at time zone 'America/Santiago'` = `2026-06-25 20:00` — the calendar day shifts back one day. For Tuesday–Sunday dates the shifted day stays inside the same Mon–Sun ISO week, but every MONDAY-dated Cámara audiencia lands in the PREVIOUS ISO week: a real same-week coincidence is silently lost, and a false coincidence with the prior week's citaciones is fabricated — the exact wrong-fact class the anti-insinuación rules exist to prevent. Meanwhile `citacion.semana_iso` is derived from the printed Chile date via UTC-neutral `isoWeekOf` (`semanaIsoDeFechaIso`), so the citación side is calendar-day-faithful — the mismatch is entirely on the audiencia side. Note the pgTAP fixture (`0048_lobby_en_tramitacion.test.sql:79-108`) seeds fechas WITH real `-03` offsets and derives `semana_iso` using the RPC's own expression, so the suite structurally cannot detect this divergence.
-**Note on apply status:** 0048 is ALREADY APPLIED to PROD (checkpoint 52-06 done, pgTAP 9/9). If PROD `lobby_audiencia` currently contains only leylobby-sourced rows (offset-bearing timestamps), no live data is wrong today — but the Cámara ingestion path exists in the codebase and will corrupt the cross on first use.
-**Fix:** Two options (pick one, then verify in PROD with `select count(*) from lobby_audiencia where fecha = date_trunc('day', fecha at time zone 'utc') at time zone 'utc' and fecha::time = '00:00:00'`):
-1. Normalize the connector: `parseFechaCamara` should emit the date anchored to Chile (e.g., `${iso}T12:00:00-04:00` noon-anchoring, or store with explicit `-04`/`-03` offset), plus a one-off UPDATE for any already-ingested Cámara rows.
-2. Make the RPC robust to date-only UTC-midnight values, e.g. join on `to_char((a.fecha at time zone 'America/Santiago') + interval '0', ...)` replaced by a CASE on `a.fecha::time = '00:00:00+00'` → use `a.fecha at time zone 'utc'` for those rows (requires a follow-up migration `create or replace`, same returns table → no drop needed).
+### CR-02: RPC week derivation inconsistent with Cámara-lobby connector — RESOLVED (iteration 2, commit 308dc88 + PROD data normalization)
+
+**Files:** `packages/lobby/src/parse-camara-lobby.ts:56-125`, `packages/lobby/src/parse-camara-lobby.test.ts:89-126`
+**Resolution verified:** `parseFechaCamara` now anchors the printed Chile calendar date to `America/Santiago` midnight with the real tzdb offset (`instanteMedianocheChile`: two-pass offset correction + bounded guard for the nonexistent-midnight DST day — traced the 2026 spring-forward case, converges to the first existing instant of the day). Golden tests pin winter (`-04` → `T04:00:00Z`), summer (`-03` → `T03:00:00Z`), and an exhaustive all-of-2026 property (wall-clock day in Santiago == printed day). Per iteration-2 context, all 17,730 PROD `lobby_audiencia.fecha` values were re-anchored to Santiago midnight, so the applied RPC's `at time zone 'America/Santiago'` derivation is now correct for both leylobby (offset-bearing) and Cámara rows. Cross-checked consumers: no other code derives day/week from `lobby_audiencia.fecha` in TS; UTC-day derivations (`slice(0,10)`, `::date` in UTC sessions) still yield the printed day because Santiago midnight is 03/04:00Z of the same calendar day. No regression.
 
 ## Warnings
 
-### WR-01: Message-regex fallback in the degrade path swallows REAL DB errors as "function absent"
+### WR-01: Message-regex fallback swallows real DB errors — RESOLVED (iteration 2, commit 0bd5960)
 
-**File:** `app/components/lobby-en-tramitacion.tsx:214-218`
-**Issue:** Camino 1 returns `null` when `error.code === "PGRST202"` **or** when `/does not exist|schema cache/i` matches the message. The message fallback is far broader than function-not-found: any genuine schema regression inside the security-definer body (e.g., a renamed/dropped column → `column a.enlace_detalle does not exist`, or a dropped underlying table → `relation ... does not exist`) matches the regex and silently removes the section instead of throwing — violating the project's own degrade-honesto rule ("error real → throw", camino 3) that this very file documents. Now that 0048 is applied to PROD, the pre-apply rationale for the broad fallback is gone: the only legitimate trigger left is PGRST202 itself.
-**Fix:** Restrict camino 1 to the precise signal:
-```ts
-if (error?.code === "PGRST202") return null;
-```
-If cache-staleness variants must be tolerated, gate the message regex on the code being a PostgREST routing code (`error?.code?.startsWith("PGRST")`), never on bare Postgres errors.
+**File:** `app/components/lobby-en-tramitacion.tsx:245-256`
+**Resolution verified:** Camino 1 is now exactly `error?.code === "PGRST202"`; any other error throws (camino 3). Source-scan test (`lobby-en-tramitacion.test.tsx:210-216`) asserts the regex fallback is absent and the exact code gate is present.
 
-### WR-02: The same audiencia is duplicated across comisiones — RPC unit is (audiencia × semana × comisión), not the documented (audiencia × semana)
+### WR-02: Same audiencia duplicated across comisiones — RESOLVED (iteration 2, commit ce182f1; see WR-07 for the residual flip side)
 
-**File:** `supabase/migrations/0048_lobby_en_tramitacion.sql:73-92`; `app/components/lobby-en-tramitacion.tsx:161-198`
-**Issue:** The migration comment states the semantic unit is "(audiencia × semana coincidente), no (audiencia × citación)" and adds `select distinct` for that. But `comision` (and `semana_iso`) are projected columns, so when TWO different comisiones cite the same boletín in the same ISO week (e.g., the topical comisión plus Hacienda — a common tramitación pattern), the same audiencia survives DISTINCT twice, once per comisión. The UI then renders the identical reunión (same parlamentario, fecha, materia, enlace) in two week-groups, and the per-group neutral counts sum to more reuniones than actually occurred — a mild count inflation in the exact surface where "conteo neutro" is a hard rule. The pgTAP dedupe test (assert 7) only covers two citaciones of the SAME comisión, so this case is untested.
-**Note on apply status:** 0048 is applied; a fix is a follow-up `create or replace` (same returns table, no drop needed).
-**Fix:** Decide and pin the unit. If the unit is truly audiencia×semana, aggregate comisiones (e.g., `string_agg(distinct c.comision, ', ')` grouped by audiencia+semana) or pick one row per audiencia via `distinct on (a.identificador, c.semana_iso)`. Alternatively, if audiencia×semana×comisión is the intended unit, fix the migration comment and make the UI summary language per-comisión unambiguous, and add a pgTAP case with two comisiones in the same week.
+**File:** `app/components/lobby-en-tramitacion.tsx:63-102,186-227`
+**Resolution verified:** `agruparPorSemana` pins the presentation unit to (audiencia × semana): comisiones are aggregated per week group, the same audiencia (keyed on semana+nombre+fecha+materia+enlace) renders once, and `{N}` counts deduped rows. RTL test covers two comisiones citing the same week (1 row, count 1, comisiones joined). Residual: the dedupe key is lossy for Cámara rows — escalated as WR-07 below.
 
-### WR-03: `text-[--accent-product]` is a Tailwind v3-only shorthand — under Tailwind v4 (and with this token's raw-HSL channels) it produces no styling
+### WR-03: `text-[--accent-product]` dead under Tailwind v4 — RESOLVED (iteration 2, commit de4e1a8)
 
-**File:** `app/components/lobby-en-tramitacion.tsx:113`; `app/components/actualidad-module.tsx:131,138,237`
-**Issue:** The app is on `tailwindcss ^4.3.1`. The v3 arbitrary-value CSS-variable shorthand `text-[--accent-product]` was removed in v4 (v4 syntax is `text-(--var)`), so these classes emit nothing. Even under the v4 syntax it would still be broken: `--accent-product` is defined as raw HSL channels (`app/app/globals.css:24` → `183 38% 26%`), valid only inside `hsl(var(...))` — which is exactly what the configured token `text-accent-product` does (`app/tailwind.config.ts:46`). Every other component in the repo uses `text-accent-product`. Net effect: the "Ver fuente oficial ↗" / "Ver proyecto →" links in the new lobby rail and all three home blocks render WITHOUT the petróleo accent (inherit body color), silently violating the LOCKED design-system color reservation. The `hover:text-[--accent-product]` on line 113 is equally dead.
-**Fix:** Replace all four occurrences with the repo token:
-```tsx
-className="... text-accent-product"
-```
+**Files:** `app/components/lobby-en-tramitacion.tsx:138`, `app/components/actualidad-module.tsx:131,138,237`
+**Resolution verified:** All four occurrences replaced with the configured token `text-accent-product`. Grep confirms zero `[--accent-product]` arbitrary values remain in `app/`.
 
-### WR-04: `citacionVigente` "hoy" boundary uses server-local (UTC on Workers) midnight — a citación de HOY expires ~4 hours early Chile time
+### WR-04: `citacionVigente` "hoy" boundary at server-UTC midnight — RESOLVED (iteration 2, commit 96049e9)
 
-**File:** `app/components/estado-actual-block.tsx:83-104`
-**Issue:** `inicioHoy` is midnight in the SERVER's timezone (`setHours(0,0,0,0)`), which on Cloudflare Workers is UTC. `citacion.fecha` is populated from the printed Chile date at UTC midnight (connector convention). During a Chile evening (≥20:00/21:00 CLT, i.e., after 00:00 UTC of the next day), `inicioHoy` advances to the next UTC day and today's citación (stored at today 00:00Z) fails `>= inicioHoy` — the "Citado en {comisión} el {hoy}" line vanishes while the session may still be ongoing in Chile. This directly contradicts the code's own comment ("una citación de HOY sigue vigente — no expira al pasar la medianoche del propio día"). Migration 0048 documents this exact pitfall (Pitfall 2 timezone / America/Santiago) for the SQL side; the TS helper ignores it.
-**Fix:** Anchor "hoy" to the Chile calendar day, e.g. compute today's `YYYY-MM-DD` via `Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" })` and compare against `c.fecha.slice(0, 10)` (string date compare), avoiding server-tz arithmetic entirely.
+**File:** `app/components/estado-actual-block.tsx:76-118`
+**Resolution verified:** "Hoy" is now the Chile calendar day via cached `Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" })`, compared as string against the citación's UTC calendar day — correct for the connector's UTC-midnight convention and still correct if `citacion.fecha` is ever re-anchored to Santiago midnight (03/04:00Z is the same UTC day). Test covers 21:00 Chile / 01:00Z-next-day: today's citación stays vigente, yesterday's does not.
 
-### WR-05: `--solo-confirmadas` incremental load never converges on abstained rows and has no deterministic ordering
+### WR-05: `--solo-confirmadas` never converges, no deterministic order — RESOLVED (iteration 2, commit 46f7bfa; residual defect in the cursor key → WR-06)
 
-**File:** `packages/cruces/src/clasificar-lobby-cli.ts:117-129,186-205` (cross-file: `packages/cruces/src/writer-supabase.ts:105-121`)
-**Issue:** The incremental property relies on `sector_id is null` shrinking each run. But when the classifier abstains (`sector_codigo === null`), the writer updates `sector_id = null` — a no-op — so abstained rows remain in the candidate set FOREVER: every subsequent run re-selects and re-pays the MiniMax call for the same perpetual abstainers. Worse, the query has `.limit(limite)` with NO `.order()`, so Postgres returns an arbitrary subset; if abstainers accumulate to ≥ `limite` and happen to fill the returned page, a run performs `limite` LLM calls and advances zero rows, with no signal to the operator. The doc comment's claim "re-correr AVANZA en vez de re-pagar las mismas llamadas" only holds when most rows classify successfully.
-**Fix:** (a) Add a deterministic `.order("id")` to the filtered load; (b) persist the abstención as a sentinel instead of `null` (e.g., a `sector_revisado_at` timestamp column, or a reserved `sin_sector` codigo) so processed-but-abstained rows exit the `is null` set; at minimum, log the count of rows that were re-processed without change so a stuck run is visible.
+**Files:** `packages/cruces/src/clasificar-lobby-cli.ts:119-155,236-245`, `packages/cruces/src/clasificar-fichas-cli.ts:114-125`
+**Resolution verified:** Filtered load now has `.order("identificador", { ascending: true })`; `--desde` cursor parsed fail-fast (rejects empty and `--`-prefixed values, tested); end-of-run log prints the last processed identificador for resumption. The abstention-loop problem is addressed via the operator cursor rather than a persisted sentinel — acceptable, but the cursor key choice introduces WR-06.
+
+### WR-06: `--desde` cursor keyed on non-unique `identificador` strands unclassified contrapartes at page boundaries — RESOLVED (fix pass 3, commit 7374ff0)
+
+**Resolution:** Cursor re-keyed on the surrogate PK `id` (the only total-order key): the filtered load selects `id`, orders by `id`, and `--desde` filters `gt("id", desde)`; the run-end log prints the last processed `id`. Tests updated (`gt` on `id`, never `identificador`) plus a sibling-contrapartes case (same `identificador`, distinct `id`s) proving the cursor stays valid inside a multi-contraparte audiencia. Shared parser docs/error updated. Original finding below.
+
+**File:** `packages/cruces/src/clasificar-lobby-cli.ts:140-145,239-245` (cross-file: `supabase/migrations/0021_lobby.sql:64-82`, `packages/cruces/src/writer-supabase.ts:31-41`)
+**Issue:** `lobby_contraparte.identificador` is the **audiencia** FK, not a row key — the natural key is `(identificador, nombre, rol)` (0021: `unique (identificador, nombre, rol)`; one audiencia commonly has multiple contrapartes). Two consequences: (a) `.order("identificador")` alone is not a total order — rows sharing an identificador are returned in arbitrary relative order, so the `limit(limite)` page boundary is unstable across runs; (b) worse, when the page boundary cuts **inside** a multi-contraparte audiencia, the printed cursor is that audiencia's identificador, and the next run's `gt("identificador", desde)` **strictly skips the unprocessed sibling contrapartes of that same audiencia forever**. They keep `sector_id = null` but are unreachable via the documented resume workflow — silent, permanent coverage loss in the exact CRUCE-02 flow whose gate is coverage ≥70%. The test suite only exercises single-row-per-identificador fixtures, so it cannot catch this.
+**Fix:** Cursor on the surrogate unique PK instead: select `id` too, `.order("id", { ascending: true })`, cursor `gt("id", desde)`, and print the last `id`. (Alternative if the identificador cursor must stay operator-legible: use `.gte(...)` instead of `.gt(...)` — the `sector_id is null` filter already excludes classified boundary rows, so at most one audiencia's worth of abstained rows is re-paid — and add `.order("id")` as tiebreaker.) Add a test with two contrapartes sharing one identificador cut by `limit`.
+
+### WR-07: RPC `select distinct` collapses genuinely distinct Cámara audiencias — silent undercount in the conteo neutro — RESOLVED (fix pass 3, commit 48db0d0)
+
+**Resolution:** 0048 amended IN-PLACE (authorized — first applied today within the same operator checkpoint; operator re-applies immediately): `drop function if exists` (42P13 gotcha) + recreate appending `audiencia_id text` (`a.identificador`) as the LAST (8th) column, so `select distinct` keys on audiencia identity — real same-day meetings stay separate while citación-multiplicity still dedupes. ACL unchanged (security definer, `search_path=''`, stable, double revoke, zero grants). pgTAP: plan(10), proargnames assert appends `audiencia_id`, new fixture with two distinct Cámara-style audiencias (same parlamentario/day/materia, `enlace_detalle` null) → 2 rows. Component: `audiencia_id` in the row interface, dedupe key = `audiencia_id` within week (composite tuple only as pre-amendment fallback), never rendered; RTL covers the 2-distinct-audiencias and fallback cases. Original finding below.
+
+**File:** `supabase/migrations/0048_lobby_en_tramitacion.sql:73-80` (cross-file: `packages/lobby/src/parse-camara-lobby.ts:189-199`, `app/components/lobby-en-tramitacion.tsx:87-99`)
+**Issue:** The 7-field projection has no per-audiencia key, so `select distinct` dedupes on (nombre, camara, materia, fecha, semana, comision, enlace). For Cámara-sourced rows this key degenerates: `enlace_detalle` is **always null** (the Detalles column is HTML-commented out) and `fecha` is date-only (Santiago midnight). Two *real, distinct* audiencias — same diputado, same day, same materia text, **different lobbista/lugar** (distinct `identificador`s in the DB; the parser only collapses rows where all 5 source cells match) — therefore collapse into ONE output row, and the UI's neutral count under-reports actual meetings. This is the mirror image of the WR-02 overcount, in the same surface where "conteo neutro" is a hard rule; the component-level dedupe key inherits the same collision (documented at `lobby-en-tramitacion.tsx:87-89`: "el RPC no expone un id de audiencia"). Pre-existing in the applied 0048 (not introduced by the fixes), but load-bearing once Cámara rows flow through the cross — which is now, post-normalization of the 17,730 rows.
+**Fix:** Follow-up migration projecting a stable audiencia key (`a.identificador`) and deduping on it — note this changes the returns table, so it requires the known `drop function` + recreate + double-revoke dance (42P13 gotcha) and a contract amendment to the LOCKED 7-field shape (8th field can be internal-only if the UI omits it from render). The component dedupe key then becomes the identificador instead of the lossy tuple. Add a pgTAP case: two audiencias same diputado/day/materia with different lobbistas → 2 rows.
 
 ## Info
 
-### IN-01: `semana_iso` fetched in the citación embed but never used
+### IN-01: `semana_iso` fetched in the citación embed but never used — OPEN
 
-**File:** `app/components/estado-actual-block.tsx:237-278`
-**Issue:** The embed selects `citacion:citacion(comision, fecha, semana_iso)` while the adjacent comment claims "Sólo comisión + fecha: lo mínimo", the `PuntoEmbed` type omits `semana_iso`, and the flatten discards it. Dead projection contradicting its own comment.
-**Fix:** Drop `semana_iso` from the select (or use it and type it).
+**File:** `app/components/estado-actual-block.tsx:253`
+**Issue:** Unchanged in iteration 2: the embed still selects `citacion:citacion(comision, fecha, semana_iso)` while the adjacent comment claims "Sólo comisión + fecha: lo mínimo", `PuntoEmbed` omits it, and the flatten discards it.
+**Fix:** Drop `semana_iso` from the select.
 
-### IN-02: `cargarFichas` types the `proyecto` embed as object-only, unlike the sibling normalizer
+### IN-02: `cargarFichas` types the `proyecto` embed as object-only — OPEN
 
-**File:** `packages/cruces/src/clasificar-fichas-cli.ts:145-160`
-**Issue:** `estado-actual-block.tsx:264-278` normalizes the same class of Supabase to-one embed as `object | array` because PostgREST's shape depends on relationship detection; `cargarFichas` assumes object-only (`r.proyecto?.titulo`). If the relationship were ever reported to-many, `titulo`/`materia` silently become `null` and classification quality degrades without any error.
-**Fix:** Reuse the array|object normalization (`Array.isArray(c) ? c[0] : c`) or assert the shape and throw on mismatch.
+**File:** `packages/cruces/src/clasificar-fichas-cli.ts:164-179`
+**Issue:** Unchanged: `r.proyecto?.titulo` assumes object-shape; an array-shaped embed silently degrades titulo/materia to null.
+**Fix:** Normalize `Array.isArray(c) ? c[0] : c` as in `estado-actual-block.tsx`.
 
-### IN-03: `--service-key` can swallow the next flag as its value
+### IN-03: `--service-key` can swallow the next flag as its value — OPEN
 
-**File:** `packages/cruces/src/clasificar-fichas-cli.ts:97-105`
-**Issue:** `parseArgs(["--service-key", "--dry-run"])` accepts `"--dry-run"` as the key (non-empty string passes the guard), so the operator loses dry-run AND runs LIVE with a garbage key — the opposite of the fail-fast intent documented on the case.
-**Fix:** Reject values starting with `--`: `if (raw == null || raw.trim().length === 0 || raw.startsWith("--")) throw ...`.
+**File:** `packages/cruces/src/clasificar-fichas-cli.ts:104-113`
+**Issue:** Unchanged — and now inconsistent: the fixer added exactly this `startsWith("--")` guard to `--desde` (line 118) but not to `--service-key`, so `parseArgs(["--service-key", "--dry-run"])` still eats `--dry-run` as the key and runs LIVE with a garbage key.
+**Fix:** Mirror the `--desde` guard: reject `raw.startsWith("--")`.
 
-### IN-04: `inicioSemanaIso` computes the ISO week in server-local time (UTC on Workers), not Chile
+### IN-04: `inicioSemanaIso` computes the ISO week in server-local (UTC) time — OPEN
 
 **File:** `app/components/actualidad-module.tsx:49-56,159`
-**Issue:** "Votado esta semana" filters by `>= Monday 00:00` in the server's timezone. On UTC infra, votes cast Sunday 20:00–24:00 Chile time belong to the next UTC ISO week, so late-Sunday votaciones drop out of "esta semana" 3–4 hours early (and the boundary label drifts symmetrically). Hours-wide skew, same family as WR-04.
-**Fix:** Derive the Monday from the Chile calendar day (see WR-04 fix) if precision at the boundary matters; otherwise document the UTC anchoring.
+**Issue:** Unchanged: "Votado esta semana" boundary drifts 3–4 h at the Sunday/Monday transition on UTC infra. Same family as the fixed WR-04; the Chile-calendar anchoring pattern now exists in `estado-actual-block.tsx` and could be reused.
+**Fix:** Derive Monday from the Chile calendar day, or document the UTC anchoring.
 
-### IN-05: `urgenciaVigente` misses the noun phrasing "retiro de (la) urgencia" — now exposed on the home
+### IN-05: `urgenciaVigente` misses the noun phrasing "retiro de (la) urgencia" — OPEN
 
-**File:** `app/components/estado-actual-block.tsx:51-74` (pre-existing helper, F51); newly consumed by `app/components/actualidad-module.tsx:249-302`
-**Issue:** The clearing regex is `/retira/i` (verb form only). A tramitación event worded "Retiro de la urgencia" contains "urgencia" but matches neither `retira` nor `hace presente`, so it is skipped and the prior urgencia stays "vigente" — the home's "Urgencias vigentes" block would then publish a withdrawn urgencia as current. Pre-existing logic, but Phase 52 promotes it from one ficha line to the portada.
-**Fix:** Broaden to `/retir[ao]/i` (covers retira/retiro) and add a fixture for the noun phrasing.
+**File:** `app/components/estado-actual-block.tsx:63`
+**Issue:** Unchanged: clearing regex is `/retira/i` only; a "Retiro de la urgencia" event neither clears nor sets, leaving a withdrawn urgencia published as vigente on the home.
+**Fix:** Broaden to `/retir[ao]/i` + fixture.
+
+### IN-06 (NEW): Root `error.tsx` copy says "No pudimos cargar la portada" but now serves every route without its own boundary
+
+**File:** `app/app/error.tsx:30`
+**Issue:** The new root boundary is the nearest error boundary for `/red`, `/sobre`, `/metodologia` and `/admin/revisar-entidades` (none has a segment `error.tsx`). A data error on `/red` now renders "No pudimos cargar la portada" — an honest error page, but factually the wrong surface name. Minor copy mismatch, not a degrade violation.
+**Fix:** Neutralize the heading (e.g., "No pudimos cargar esta página") or add per-segment boundaries for the uncovered data routes (`/red` reads live data).
+
+### IN-07 (NEW): `fechaCorta` formats in the server timezone (UTC on Workers) — evening leylobby audiencias display the next calendar day
+
+**File:** `app/lib/format.ts:12-23` (consumed by `app/components/lobby-en-tramitacion.tsx:127-131`)
+**Issue:** `fechaCortaFormatter` has no `timeZone`, so on Workers it formats in UTC. Cámara rows (Santiago midnight = 03/04:00Z same day) are safe, but a leylobby audiencia at ≥20:00/21:00 Chile (e.g., `2026-05-14T21:30:00-03` = `2026-05-15T00:30Z`) renders "Reunión registrada el 15 may" while the Chile date — and the RPC's Santiago-derived `semana` shown on the same line — say the 14th; on a Sunday evening the printed date and printed week can even disagree. Pre-existing helper, but Phase 52 is the first surface pairing this date with a Santiago-derived week label.
+**Fix:** Add `timeZone: "America/Santiago"` to `fechaCortaFormatter` (audit other `fechaCorta` call sites for UTC-midnight inputs first: Santiago rendering of a UTC-midnight instant shifts a day back — those inputs would need the `fechaCortaSegura`-style string-day path instead).
 
 ---
 
-_Reviewed: 2026-07-06_
+_Reviewed: 2026-07-06 (iteration 1, deep) · Re-reviewed: 2026-07-06 (iteration 2, standard)_
 _Reviewer: Claude (gsd-code-reviewer)_
-_Depth: deep_
+_Fixer range verified: 93d5a24..46f7bfa (7 commits, 11 files) · Targeted suites: app 35/35, packages 22/22_
