@@ -1,7 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { IdentityMarker } from "@/components/identity-marker";
-import { fechaCorta } from "@/lib/format";
+import { fechaCorta, formatNombre } from "@/lib/format";
 import {
   sourceLabel,
   type CruceSenalRpcRow,
@@ -52,8 +52,9 @@ export interface CrucesViewData {
 function ContraparteCruda({ nombre }: { nombre: string }) {
   return (
     <span className="inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
-      {/* Nombre CRUDO (D-10) verbatim de la fuente. */}
-      <span className="text-base">{nombre}</span>
+      {/* Nombre CRUDO (D-10) de la fuente; formatNombre solo re-casea el string
+          RENDERIZADO (passthrough si ya trae mayúscula). IdentityMarker intacto. */}
+      <span className="text-base">{formatNombre(nombre)}</span>
       {/*
         La contraparte NUNCA está confirmada (el RPC no emite contraparte_id ni
         estado_vinculo) → siempre texto crudo + IdentityMarker, JAMÁS un enlace.

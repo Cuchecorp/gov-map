@@ -2,6 +2,8 @@
 
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 
+import { formatNombre } from "@/lib/format";
+
 /**
  * <NodoParlamentario> — nodo custom de la isla NET (NET-02).
  *
@@ -38,9 +40,12 @@ export function NodoParlamentario({
   const nombre = data.nombre?.trim() || data.id;
   const camara = data.camara?.trim() ?? null;
   const camaraLabel = camara ? (CAMARA_LABEL[camara] ?? camara) : null;
+  // Display-only (F54 Contract 1): re-casea el nombre RENDERIZADO en label + aria.
+  // El id de respaldo (D####/S####) trae mayúscula → passthrough.
+  const nombreDisplay = formatNombre(nombre);
 
   return (
-    <div className="net-nodo" role="group" aria-label={`Parlamentario: ${nombre}`}>
+    <div className="net-nodo" role="group" aria-label={`Parlamentario: ${nombreDisplay}`}>
       {/* Conectores invisibles: el grafo dibuja aristas, no implica jerarquía. */}
       <Handle
         type="target"
@@ -48,7 +53,7 @@ export function NodoParlamentario({
         className="net-nodo__handle"
         isConnectable={false}
       />
-      <span className="net-nodo__nombre">{nombre}</span>
+      <span className="net-nodo__nombre">{nombreDisplay}</span>
       {camaraLabel ? (
         <span className="net-nodo__camara">{camaraLabel}</span>
       ) : null}

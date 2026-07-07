@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 
 import { createServerSupabase } from "@/lib/supabase";
+import { formatNombre } from "@/lib/format";
 import { CONTRAPARTE_ID_RE } from "@/lib/buscar";
 import { moneyPublicEnabled } from "@/lib/money-gate";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -126,6 +127,8 @@ export async function HeaderSection({ id }: { id: string }) {
   }
 
   const nombre = fila.contraparte_nombre ?? "Empresa no publicada";
+  // Display-only (F54 Contract 1): mismo string formateado en breadcrumb y h1.
+  const nombreDisplay = formatNombre(nombre);
 
   return (
     <>
@@ -139,14 +142,14 @@ export async function HeaderSection({ id }: { id: string }) {
         contrapartes (53-UI-SPEC §(b)). Invisible en PROD de esta fase (gate OFF →
         404), future-proof. NINGÚN crumb apunta a `/contraparte` desde afuera.
       */}
-      <Breadcrumbs items={[{ label: "Inicio", href: "/" }, { label: nombre }]} />
+      <Breadcrumbs items={[{ label: "Inicio", href: "/" }, { label: nombreDisplay }]} />
       <header className="mb-12">
       <div className="flex gap-2 mb-3">
         <span className="inline-flex items-center px-2.5 py-1 rounded-full border text-sm text-muted-foreground">
           Persona jurídica
         </span>
       </div>
-      <h1 className="text-xl font-semibold">{nombre}</h1>
+      <h1 className="text-xl font-semibold">{nombreDisplay}</h1>
       <p className="text-sm text-muted-foreground mt-2">
         Entidad que contrata con el Estado o financia campañas — actividad pública
         fiscalizable. Se muestran hechos públicos independientes, con su fuente, sin

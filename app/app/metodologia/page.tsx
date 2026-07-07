@@ -76,6 +76,11 @@ export default function MetodologiaPage() {
             </span>
           </li>
         </ul>
+        <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          Los nombres de personas se muestran tal como los entrega la fuente. Cuando el
+          registro original no trae tildes, el sitio tampoco las agrega: nunca añade
+          acentos que la fuente no incluye.
+        </p>
       </section>
 
       <section className="mt-10">

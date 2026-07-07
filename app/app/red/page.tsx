@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { createServerSupabase } from "@/lib/supabase";
+import { formatNombre } from "@/lib/format";
 import { PARLAMENTARIO_ID_RE } from "@/lib/buscar";
 import { netPublicEnabled } from "@/lib/net-gate";
 import { RedGraph, type Subgrafo } from "@/components/red/red-graph";
@@ -105,14 +106,14 @@ export default async function RedPage({ searchParams }: PageProps) {
               <optgroup label="Cámara">
                 {diputados.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.nombre}
+                    {formatNombre(r.nombre)}
                   </option>
                 ))}
               </optgroup>
               <optgroup label="Senado">
                 {senadores.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.nombre}
+                    {formatNombre(r.nombre)}
                   </option>
                 ))}
               </optgroup>

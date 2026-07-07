@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CamaraChip } from "@/components/camara-chip";
+import { formatNombre } from "@/lib/format";
 import {
   ProvenanceBadge,
   type ProvenanceBadgeProps,
@@ -94,7 +95,7 @@ export function CitacionCard({
             <span className="font-semibold">Invitados: </span>
             {invitados.map((inv, i) => (
               <span key={i}>
-                {inv.nombre}
+                {formatNombre(inv.nombre)}
                 {inv.calidad && (
                   <span className="ml-1 text-muted-foreground">
                     ({inv.calidad})
