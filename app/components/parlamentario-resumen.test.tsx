@@ -240,6 +240,13 @@ const CONTEOS_BASE: ConteoCarriles = {
   dineroContratos: { tipo: "dato", n: 3 },
   dineroAportes: { tipo: "dato", n: 7 },
   asistencia: { presentes: 40, total: 52 },
+  // Productores capa-1 (55-02): `construirChips` no los consume, pero el TIPO
+  // `ConteoCarriles` los exige — formas vacías honestas para el fixture.
+  votosBreakdown: { si: 0, no: 0, abstencion: 0, pareo: 0, ausente: 0 },
+  lobbyTopMaterias: [],
+  crucesSectores: [],
+  patrimonioPorDeclaracion: [],
+  rangoAnios: null,
 };
 
 describe("construirChips — gates + índice por carril presente (LEG-02)", () => {
