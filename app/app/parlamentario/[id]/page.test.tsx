@@ -242,7 +242,10 @@ describe("/parlamentario/[id] — breadcrumb en la cabecera (53-03, UX-01)", () 
       ([name]) => name === "parlamentario_publico",
     );
     // React.cache dedup (F52): el breadcrumb reusa la misma fila del header.
-    expect(headerRpc.length).toBeGreaterThanOrEqual(1);
+    // WR-06 (53-REVIEW): EXACTAMENTE 1 — un segundo round-trip a
+    // `parlamentario_publico` por render de cabecera sería la regresión que este
+    // test existe para pillar; `>= 1` la dejaba pasar.
+    expect(headerRpc).toHaveLength(1);
   });
 });
 
