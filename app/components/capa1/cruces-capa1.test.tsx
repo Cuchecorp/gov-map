@@ -56,6 +56,15 @@ describe("CrucesCapa1 — resumen petróleo-framed + CTA (55-02)", () => {
     expect(chips[1].textContent).toContain("2 votos");
   });
 
+  it("muestra el conteo 3-estado honesto junto al h2 cuando el server lo pasa (IN-01)", () => {
+    render(
+      <CrucesCapa1 sectores={fixture()} total={8} conteo="sin registros" />,
+    );
+    const h2 = screen.getByRole("heading", { level: 2 });
+    expect(h2.textContent).toContain("Cruces con sectores");
+    expect(h2.textContent).toContain("sin registros");
+  });
+
   it("muestra el caveat de cruces EXACTAMENTE 1×", () => {
     render(<CrucesCapa1 sectores={fixture()} total={8} />);
     expect(screen.getAllByText(CAVEAT)).toHaveLength(1);

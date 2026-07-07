@@ -363,6 +363,7 @@ export async function CarrilesSection({
             sectores={conteos.crucesSectores}
             total={conteos.cruces.tipo === "dato" ? conteos.cruces.n : 0}
             detalleHref="#cruces-detalle"
+            conteo={conteoLabel(conteos.cruces)}
           />
           {conteos.cruces.tipo === "dato" && (
             <div id="cruces-detalle" className="mt-4 scroll-mt-6">

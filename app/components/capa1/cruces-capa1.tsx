@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { CruceSector } from "@/lib/parlamentario-resumen-conteos";
 
 /**
@@ -39,16 +41,24 @@ export function CrucesCapa1({
   sectores,
   total,
   detalleHref = "#cruces-detalle",
+  conteo,
 }: {
   sectores: CruceSector[];
   total: number;
   /** Ancla al DetalleColapsable de cruces (el control real vive en la página server). */
   detalleHref?: string;
+  /** Conteo 3-estado YA formateado por el server (honesto); SIEMPRE visible junto al h2. */
+  conteo?: ReactNode;
 }) {
   return (
     <div className="rounded-lg border-[1.5px] border-accent-product bg-card p-4 space-y-3">
-      <h2 className="text-lg font-semibold text-accent-product">
-        Cruces con sectores
+      <h2 className="flex items-center gap-2 text-lg font-semibold text-accent-product">
+        <span>Cruces con sectores</span>
+        {conteo != null && (
+          <span className="ml-auto text-sm font-normal text-muted-foreground">
+            {conteo}
+          </span>
+        )}
       </h2>
 
       {sectores.length > 0 ? (
