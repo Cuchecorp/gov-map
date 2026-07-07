@@ -4,14 +4,14 @@ milestone: v5.0
 milestone_name: — De datos a comprensión
 status: Ready to execute
 stopped_at: Completed 53-02-PLAN.md
-last_updated: "2026-07-07T05:30:41.260Z"
+last_updated: "2026-07-07T13:38:10.344Z"
 last_activity: 2026-07-07
 progress:
-  total_phases: 45
-  completed_phases: 25
-  total_plans: 106
-  completed_plans: 112
-  percent: 56
+  total_phases: 46
+  completed_phases: 26
+  total_plans: 112
+  completed_plans: 114
+  percent: 57
 ---
 
 # Project State
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 54 — uxdemo-pulido-presentacional
+**Current focus:** Phase 55 — uxcog-redise-o-cognitivo-jerarqu-a-visual-detalle-progresivo
 
 ## Current Position
 
-Phase: 54 (uxdemo-pulido-presentacional) — EXECUTING
-Plan: 5 of 5
+Phase: 55 (uxcog-redise-o-cognitivo-jerarqu-a-visual-detalle-progresivo) — EXECUTING
+Plan: 2 of 6
 5/5 planes ejecutados (2 waves secuenciales). Verifier Opus **12/12 passed** contra código. Code-review thorough: 0 critical, 2 warnings **fixed** (WR-01 `esHistorica` guard fecha null — no fabrica "histórica"; WR-02 `getParlamentarioPublico` React.cache dedup 3 RPC), 3 info diferidos (incl. dead code voto-ficha-row → B24/Phase 51). Suite app/ **377→406 verde**, `tsc -b` limpio, lockdown-guard 7/7, Camino A intacto (cero RPC nueva/DDL/flag). Bugs cerrados: B1 pill→14309-04, B6 ámbar 14d, B7 agenda throw #34, B8 chip omitido, B9 error.tsx ×4 (`unstable_retry`), B10 copy lobby por cámara, B12 locale, B14 desenlace null explícito, B15 "Iniciativa del Ejecutivo (Mensaje).", B17 fechaCortaSegura, HS 1×/sección.
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
 Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to 46`, 2026-06-26):
@@ -293,7 +293,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-07T05:22:41.452Z
+Last session: 2026-07-07T13:38:10.329Z
 Stopped at: Completed 53-02-PLAN.md
 Resume file: None
 
