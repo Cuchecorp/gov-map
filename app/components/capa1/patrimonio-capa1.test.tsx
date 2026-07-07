@@ -32,9 +32,11 @@ describe("PatrimonioCapa1 — tira de declaraciones por año (55-02, F46 sin mon
     // 2019 acumula 2 declaraciones.
     const col2019 = container.querySelector('[data-anio="2019"]');
     expect(col2019?.getAttribute("data-conteo")).toBe("2");
-    // Resumen "4 declaraciones · 2019–2026".
-    expect(screen.getByText(/4 declaraciones/)).toBeInTheDocument();
-    expect(screen.getByText(/2019.*2026/)).toBeInTheDocument();
+    // Resumen "4 declaraciones · 2019–2026" (las cifras Mono viven en spans → se
+    // asevera sobre el textContent normalizado, no por nodo).
+    const texto = (container.textContent ?? "").replace(/\s+/g, " ");
+    expect(texto).toMatch(/4 declaraciones/);
+    expect(texto).toMatch(/2019.*2026/);
   });
 
   it("NUNCA renderiza un monto (F46) ni un conteo de ítems", () => {
