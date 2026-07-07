@@ -1,6 +1,6 @@
 # 53-UX-AUDIT — Auditoría UX navegada (PROD, 2026-07-06)
 
-**Sitio:** https://observatorio-congreso.thevalis.workers.dev (versión desplegada: **ee6b7544**)
+**Sitio:** https://observatorio-congreso.thevalis.workers.dev (versión auditada: **ee6b7544** · **re-desplegado con los fixes P0: `7b35b99e` — 2026-07-06**, ver §Re-walkthrough)
 **Mecánica:** BrowserOS MCP (`scripts/bros-cli.mjs`), páginas OCULTAS, **2 pistas**:
 - **Pista A — funcional directa** (viewport nativo ~772px): console logs por ruta, inventario de links (`get_page_links` + `search_dom`), snapshots a11y, headings, interacción real puntual. Log crudo → `ux-evidence/pista-a-log.md`.
 - **Pista B — visual harness iframe** (390×844 móvil / 1280×800 desktop, anchos exactos): screenshots `fullPage` jpeg q70 → `ux-evidence/j{n}-*.jpg`.
@@ -13,7 +13,7 @@
 
 ## Resumen ejecutivo
 
-- **Hallazgos: 3 P0 · 2 P1 · 1 P2 · 1 GATED** | P0 a corregir en esta fase: **3/3** (todos mapean a contrato UI-SPEC).
+- **Hallazgos: 3 P0 · 2 P1 · 1 P2 · 1 GATED** | P0 corregidos en esta fase: **3/3 RESUELTOS** (verificados before/after contra el redeploy `7b35b99e`, ver §Re-walkthrough / §Cierre).
 - **Veredicto por journey:**
   - **J1 (landing `/`):** Sólido. Afordancias claras (buscador + chips + actualidad), no dead-end. Único gap: el header nav no incluye `/red`.
   - **J2 (proyecto por idea → ficha):** Búsqueda semántica y por boletín **funcionan**; ficha rica con trazabilidad ("qué pasó, cuándo, según qué fuente"). Gap: la ficha no anuncia en qué sección estás (sin breadcrumb, sin nav activo).
@@ -135,12 +135,33 @@
 
 ---
 
-## Re-walkthrough (post-redeploy `<nueva versión>`)
+## Re-walkthrough (post-redeploy `7b35b99e`)
 
-_Vacío — lo llena la Wave 3 tras el redeploy. Por cada P0: before (el screenshot de auditoría citado arriba) → after (mismo viewport/ruta contra el PROD re-desplegado)._
+**Ejecutado 2026-07-06 contra el PROD RE-DESPLEGADO** (versión wrangler `7b35b99e-7347-4d46-8231-8bb0a78b0429`). Gate de no-regresión ANTES del deploy: suite **563/563 verde** (52 files, incluye `lockdown-guard` 8/8 + banned-vocab), `tsc -b` limpio, diff de la fase SIN DDL / SIN flip de flags `*_PUBLIC_ENABLED` / SIN `X-Frame-Options`·CSP frame-ancestors / SIN mover fronteras `mt-12`. Smoke curl post-deploy: `/`, `/buscar`, `/proyecto/14309-04`, `/parlamentario/D1012`, `/red?seed=D1012`, `/agenda` → **200**; `/red` sirve con `force-dynamic` (no 500 con el flag ON).
+
+Por cada P0: before = screenshot de auditoría (versión `ee6b7544`) → after = mismo viewport/ruta contra `7b35b99e`. Screenshots capturados con el harness iframe (Pista B). **Nota de mecánica:** el harness envuelve PROD en un iframe dentro de una página oculta de 772px CSS; en desktop 1280 el `fullPage` recorta el ancho al viewport del padre (≈965px de imagen) — el **móvil 390 es la evidencia canónica** (cabe completo) y muestra los tres fixes sin ambigüedad; los shots 1280 confirman el mismo layout desktop (breadcrumb/nav a la izquierda, visibles pese al recorte derecho).
 
 | Fix | Ruta | Viewport | Before | After | Estado |
 |-----|------|----------|--------|-------|--------|
-| F-01 nav Red + Sobre | `/` , `/red` | 390 / 1280 | `j1-01-home-390.jpg` | `fix-F01-after.jpg` | pendiente |
-| F-02 breadcrumbs | `/proyecto/14309-04`, `/parlamentario/D1012` | 390 / 1280 | `j2-03-proyecto-1280.jpg`, `j3-02-parlamentario-390.jpg` | `fix-F02-after.jpg` | pendiente |
-| F-03 continuation | `/buscar?q=<sin-match>` (+ superficies marcadas) | 390 / 1280 | `fix-F03-before.jpg` | `fix-F03-after.jpg` | pendiente |
+| F-01 nav Red + "Sobre" | `/` | 390 / 1280 | `j1-01-home-390.jpg` (nav sin "Red", 4 ítems) | `fix-F01-after-390.jpg` (nav = **Buscar · Parlamentarios · Agenda · Red** + **Sobre**), `fix-F01-after-1280.jpg` | **resuelto** |
+| F-02 breadcrumbs | `/proyecto/14309-04` | 390 / 1280 | `j2-03-proyecto-1280.jpg` (sin breadcrumb) | `fix-F02-after-proyecto-390.jpg` / `fix-F02-after-proyecto-1280.jpg` (**`Inicio / Proyectos / Boletín 14309-04`** sobre el h1) | **resuelto** |
+| F-02 breadcrumbs | `/parlamentario/D1012` | 390 | `j3-02-parlamentario-390.jpg` (sin breadcrumb) | `fix-F02-after-parlamentario-390.jpg` (**`Inicio / Parlamentarios / Boris Barrera Moreno`** sobre el h1) | **resuelto** |
+| F-03 continuation | `/buscar?q=protección de datos&page=50` (empty state determinista: slice de página vacío → rama "Sin resultados") | 390 | *(el estado defectuoso no se archivó como shot dedicado en Plan 01 — el empty-state de `/buscar` no era reproducible en vivo, doc. §F-03; before = ausencia de línea de continuación verificada por código `buscar/page.tsx:80-90` + test `resultados-error.test.tsx`)* | `fix-F03-after-390.jpg` (**"Sin resultados" + "También puedes revisar `la agenda legislativa de la semana →`"** — 1 link petróleo, sin reencuadrar el hecho) | **resuelto** |
+
+**Pista A (consola directa, no-harness) sobre las rutas fixeadas** (`/red`, `/proyecto/14309-04`, `/buscar?...&page=50`, `/`): consola limpia salvo los 2 warnings woff2 baseline ya clasificados **F-05 · P2** (preload de fuentes; cero errores de app, cero excepciones). **Ningún link nuevo renderiza 404:** las salidas introducidas apuntan a rutas 200 verificadas por curl — nav "Red" → `/red` (200, force-dynamic), breadcrumbs → `/` · `/buscar` · `/parlamentarios` (200), continuation → `/agenda` (200). Ningún callejón sin salida nuevo.
+
+### Veredicto de orientación (3 criterios, desktop + móvil)
+
+| Criterio | Antes | Después (`7b35b99e`) |
+|----------|-------|----------------------|
+| **≤2 clicks a home / a otras secciones** | CUMPLE en 6/7 superficies; `/red` requería ≥2 clicks vía ficha (no evidente) | **CUMPLE en 7/7** — `/red` ahora es 1 click desde el header en toda superficie |
+| **Toda página anuncia dónde estás** | Fichas `/proyecto/*` y `/parlamentario/*` sin breadcrumb ni nav activo (`no-sé-dónde-estoy`) | **CUMPLE** — breadcrumb `Inicio / Sección / {entidad}` sobre el h1 en ambas fichas (+ contraparte future-proof); nav activo por prefijo |
+| **Ningún callejón sin salida** | Empty-state honesto sin salida dentro del contenido (`callejón-sin-salida` suave) | **CUMPLE** — 1 línea de continuación en las superficies marcadas; el header nav (con "Red") sigue presente en todas |
+
+**Anti-insinuación / gates / `mt-12` intactos:** la línea de continuación solo agrega 1 ruta (nunca reencuadra el hecho ni fabrica virtud); breadcrumbs son `<nav>` server puros que no re-nivelan headings ni mueven `mt-12`; cero DDL, cero flips de flag, cero grants en el deploy. F-04 (grafo móvil) y F-05 (woff2) siguen **diferidos a F54** por diseño; F-06 sigue **GATED** (MONEY OFF).
+
+---
+
+## Cierre
+
+**P0 corregidos: 3/3.** Los tres hallazgos de orientación (F-01 nav `/red`, F-02 breadcrumbs, F-03 líneas de continuación) están **resueltos y verificados before/after** contra el PROD re-desplegado `7b35b99e`, con suite verde y cero regresión. Informe **CERRADO**. Backlog a Phase 54: F-04 (grafo `/red` móvil, P1), F-05 (warnings woff2, P2). Gated pendiente de sign-off: F-06 (cross-link contraparte, MONEY gate).
