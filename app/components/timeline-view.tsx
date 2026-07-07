@@ -27,8 +27,12 @@ function mesAnio(d: Date): string {
   return mesAnioFormatter.format(d);
 }
 
-/** Fecha ISO parseable → Date válida, o null. */
-function fechaValida(raw: string | null | undefined): Date | null {
+/**
+ * Fecha ISO parseable → Date válida, o null. Exportada (55-04): el
+ * `TramitacionStepper` (capa-1) reusa ESTE helper para la omisión honesta de
+ * fechas (T-55-11), sin re-derivar la heurística.
+ */
+export function fechaValida(raw: string | null | undefined): Date | null {
   if (!raw) return null;
   const d = new Date(raw);
   return Number.isNaN(d.getTime()) ? null : d;
@@ -92,7 +96,12 @@ export interface PeriodoUrgencia {
   hasta: Date | null;
 }
 
-type TimelineItem =
+/**
+ * Ítem del timeline: un hito estructural suelto o un período de urgencia
+ * colapsado. Exportado (55-04) para que el `TramitacionStepper` (capa-1) consuma
+ * la MISMA agrupación que la vista completa — no re-implementa la heurística.
+ */
+export type TimelineItem =
   | { kind: "evento"; evento: TramitacionEventoRow; key: string }
   | { kind: "periodo"; periodo: PeriodoUrgencia };
 
@@ -101,8 +110,12 @@ type TimelineItem =
  * de urgencia colapsados. Sólo colapsa runs CONTIGUOS de eventos-urgencia del mismo
  * tipo con longitud ≥ 2 (un evento-urgencia aislado se renderiza normal — no es un
  * "par" repetitivo). PURO. El orden de entrada se preserva por fecha ASC.
+ *
+ * Exportado (55-04): el `TramitacionStepper` (capa-1) construye SUS hitos con
+ * ESTE mismo constructor — la agrupación de urgencia repetitiva ≥2 en una línea
+ * es idéntica a la de la vista completa (una sola fuente de verdad).
  */
-function construirItems(eventos: TramitacionEventoRow[]): TimelineItem[] {
+export function construirItems(eventos: TramitacionEventoRow[]): TimelineItem[] {
   const ordenados = [...eventos].sort((a, b) => {
     const da = fechaValida(a.fecha)?.getTime() ?? 0;
     const db = fechaValida(b.fecha)?.getTime() ?? 0;
