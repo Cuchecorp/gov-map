@@ -6,7 +6,7 @@ import { ProvenanceBadge } from "@/components/provenance-badge";
 import { SELECCION_STYLE } from "@/components/voto-row";
 import { cn } from "@/lib/utils";
 import { sourceLabel } from "@/lib/types";
-import { extractoIdea, conteoVotacion } from "@/lib/format";
+import { extractoIdea, conteoVotacion, formatNombre } from "@/lib/format";
 import type {
   Seleccion,
   VotoFichaRow as VotoFichaRowData,
@@ -210,7 +210,7 @@ export function VotoFichaMencionRow({ voto }: { voto: VotoFichaMencion }) {
         </Link>
       )}
       <span className="flex items-center">
-        <span>{voto.mencion_nombre}</span>
+        <span>{formatNombre(voto.mencion_nombre)}</span>
         <IdentityMarker />
       </span>
       <span className="ml-auto">

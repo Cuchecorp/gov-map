@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { createServerSupabase } from "@/lib/supabase";
 import { ProvenanceBadge } from "@/components/provenance-badge";
-import { fechaCorta } from "@/lib/format";
+import { fechaCorta, formatNombre } from "@/lib/format";
 import {
   sourceLabel,
   type LobbyAudienciaRow,
@@ -232,8 +232,8 @@ function VistaToggle({
 function ContraparteCruda({ c }: { c: LobbyContraparteRow }) {
   return (
     <span className="inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
-      {/* Nombre VERBATIM de la fuente. */}
-      <span className="text-base">{c.contraparte_nombre}</span>
+      {/* Nombre de la fuente; formatNombre solo re-casea si viene 100% minúscula (F54 Contract 1, passthrough si ya trae mayúscula). */}
+      <span className="text-base">{formatNombre(c.contraparte_nombre)}</span>
       {/* Rol/tipo crudo (si la fuente lo publica), como metadata, sin editorializar. */}
       {c.contraparte_tipo && (
         <span className="text-sm text-muted-foreground">({c.contraparte_tipo})</span>

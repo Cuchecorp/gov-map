@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { IdentityMarker } from "@/components/identity-marker";
+import { formatNombre } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { VotoRow as VotoRowData, Seleccion } from "@/lib/types";
 
@@ -42,11 +43,11 @@ export function VotoRow({ voto }: { voto: VotoRowData }) {
             href={`/parlamentario/${voto.parlamentario_id}`}
             className="text-primary underline underline-offset-2"
           >
-            {voto.mencion_nombre}
+            {formatNombre(voto.mencion_nombre)}
           </Link>
         ) : (
           <>
-            <span>{voto.mencion_nombre}</span>
+            <span>{formatNombre(voto.mencion_nombre)}</span>
             <IdentityMarker />
           </>
         )}

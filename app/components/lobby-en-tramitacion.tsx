@@ -1,5 +1,5 @@
 import { createServerSupabase } from "@/lib/supabase";
-import { fechaCorta } from "@/lib/format";
+import { fechaCorta, formatNombre } from "@/lib/format";
 import { safeExternalHref } from "@/lib/utils";
 
 /**
@@ -126,8 +126,10 @@ function FilaAudiencia({ row }: { row: LobbyEnTramitacionRow }) {
     <li className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 py-3 border-t first:border-t-0">
       <div className="flex flex-col gap-1 min-w-0 flex-1">
         <p className="text-base leading-relaxed">
-          {/* Nombre del parlamentario: TEXTO PLANO, NUNCA enlazado en este carril. */}
-          <span className="text-base font-semibold">{row.parlamentario_nombre}</span>
+          {/* Nombre del parlamentario: TEXTO PLANO, NUNCA enlazado en este carril
+              (LOCKED 52-03). formatNombre solo re-casea el string RENDERIZADO; la
+              React key en :237 conserva el nombre RAW. */}
+          <span className="text-base font-semibold">{formatNombre(row.parlamentario_nombre)}</span>
           {row.materia && (
             <span className="text-sm text-muted-foreground"> — {row.materia}</span>
           )}

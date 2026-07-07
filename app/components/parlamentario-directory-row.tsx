@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { CamaraChip } from "@/components/camara-chip";
+import { formatNombre } from "@/lib/format";
 import type { ParlamentarioListadoRow } from "@/lib/types";
 
 /**
@@ -34,7 +35,7 @@ export function ParlamentarioDirectoryRow({
     >
       <div className="flex flex-wrap items-center gap-2">
         <CamaraChip camara={p.camara} />
-        <span className="text-base font-semibold">{p.nombre}</span>
+        <span className="text-base font-semibold">{formatNombre(p.nombre)}</span>
       </div>
       {cargoPartes.length > 0 && (
         <p className="mt-1 text-sm font-normal text-muted-foreground">

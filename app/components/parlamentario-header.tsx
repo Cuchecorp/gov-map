@@ -1,6 +1,7 @@
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CamaraChip } from "@/components/camara-chip";
 import { ProvenanceBadge } from "@/components/provenance-badge";
+import { formatNombre } from "@/lib/format";
 import { sourceLabel } from "@/lib/types";
 import type { ParlamentarioPublicoRow } from "@/lib/types";
 
@@ -43,6 +44,10 @@ export function ParlamentarioHeader({
 
   const periodo = parlamentario.periodo;
 
+  // Display-only (F54 Contract 1): mismo string formateado en breadcrumb y h1.
+  // El dato crudo `parlamentario.nombre` sigue intacto como clave/param/href.
+  const nombreDisplay = formatNombre(parlamentario.nombre);
+
   return (
     <header>
       {/*
@@ -58,7 +63,7 @@ export function ParlamentarioHeader({
         items={[
           { label: "Inicio", href: "/" },
           { label: "Parlamentarios", href: "/parlamentarios" },
-          { label: parlamentario.nombre },
+          { label: nombreDisplay },
         ]}
       />
       <div className="flex flex-wrap gap-2">
@@ -66,7 +71,7 @@ export function ParlamentarioHeader({
       </div>
 
       <h1 className="text-3xl font-semibold leading-tight mt-4">
-        {parlamentario.nombre}
+        {nombreDisplay}
       </h1>
 
       {(cargoPartes.length > 0 || periodo) && (
