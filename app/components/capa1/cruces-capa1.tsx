@@ -20,7 +20,7 @@ const CAVEAT_CRUCES =
 
 function Chip({ sector }: { sector: CruceSector }) {
   return (
-    <li className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-sm">
+    <li className="inline-block rounded-full border border-border bg-card px-3 py-1 text-sm">
       <span className="text-foreground/90">{sector.sector}</span>
       {" · "}
       <span className="font-mono tabular-nums">{sector.nReuniones}</span>{" "}

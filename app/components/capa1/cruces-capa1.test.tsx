@@ -47,9 +47,15 @@ describe("CrucesCapa1 — resumen petróleo-framed + CTA (55-02)", () => {
     const { container } = render(<CrucesCapa1 sectores={fixture()} total={8} />);
     const chips = container.querySelectorAll("li");
     expect(chips).toHaveLength(2);
+    // El chip usa layout inline-block (NO inline-flex): así el separador " · " conserva
+    // sus espacios y no se colapsa a "sector·Nreuniones".
+    expect(chips[0].className).toContain("inline-block");
+    expect(chips[0].className).not.toContain("inline-flex");
     // Energía: nVotos 0 → sin la dimensión de votos (omisión honesta).
     expect(chips[0].textContent).toContain("Energía");
     expect(chips[0].textContent).toContain("5 reuniones");
+    // El " · N reuniones" conserva los espacios alrededor del separador.
+    expect(chips[0].textContent ?? "").toMatch(/·\s+5\s+reuniones/);
     expect(chips[0].textContent).not.toContain("votos");
     // Salud: nVotos 2 → conteos lado a lado, NUNCA en una frase causal.
     expect(chips[1].textContent).toContain("3 reuniones");
