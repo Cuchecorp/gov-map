@@ -720,7 +720,7 @@ Plans:
 | 44. LEG — Auditoría UX + inventario + plan (v5) | v5.0 | 3/3 | Complete (UI-SPEC + auditoría + inventario) | 2026-06-26 |
 | 45. LEG — Navegación: acordeones por carril + resumen above-fold | v5.0 | 3/3 | Complete   | 2026-06-26 |
 | 46. VIZ — Chart patrimonio (conteo de ítems/año) | v5.0 | 2/2 | Complete (deploy 2026-07-02) | 2026-07-02 |
-| 47. VIZ — Chart votos/ausencias | v5.0 | 1/2 | In Progress|  |
+| 47. VIZ — Chart votos/ausencias | v5.0 | 2/2 | Complete   | 2026-07-08 |
 | 48. VIZ — Autoría + similares-del-parlamentario | v5.0 | 0/? | Blocked — gated por ingesta autores + identidad | - |
 | 49. VIZ — Comparativo vs cámara (ausencias/actividad) | v5.0 | 0/? | Not Started (desbloqueada 2026-07-02; depende F47) | - |
 | 50. FIX — Quick wins diagnóstico (P1) | v5.0 | 4/4 | Complete | 2026-07-02 |
@@ -1070,7 +1070,7 @@ Auditoría completa del sitio en vivo (`.planning/DIAGNOSTICO-govmap-2026-07-02.
 - [x] **Phase 44: Auditoría UX + Inventario de datos + Plan** — ✅ COMPLETE 2026-06-26 (browseros sobre PROD + psql + lectura `app/`). Entregables: `UI-SPEC.md`, `44-AUDIT-UX.md`, `44-DATA-INVENTORY.md`. Hallazgo: navegación ROI-alto data-independiente; charts mayormente data-gated.
 - [x] **Phase 45: Navegación — acordeones por carril + resumen/índice above-fold.** Construible hoy. Dep: `@radix-ui/react-accordion`. Preserva frontera de carril `mt-12` (un acordeón por dominio, header siempre visible). **Mayor ROI del milestone.** (completed 2026-06-26)
 - [x] **Phase 46: Chart patrimonio (conteo de bienes/pasivos por año).** Recharts (instalar + validar build CF Docker). Único chart con cobertura densa hoy (135 parlamentarios ≥2 años); solo conteos (montos=URI → degrade). Dep: F45. (completed 2026-07-02 — 46-02 deploy ejecutado: F45+F46+F50 EN VIVO)
-- [ ] **Phase 47: Chart votos/ausencias** — **DESBLOQUEADA 2026-07-02**: gate de datos CUMPLIDO verificado contra PROD (133 votaciones / 18.700 votos / 17.378 confirmados / 186 parlamentarios con voto). La ingesta masiva ya corrió; construible.
+- [x] **Phase 47: Chart votos/ausencias** — **DESBLOQUEADA 2026-07-02**: gate de datos CUMPLIDO verificado contra PROD (133 votaciones / 18.700 votos / 17.378 confirmados / 186 parlamentarios con voto). La ingesta masiva ya corrió; construible. (completed 2026-07-08)
 - [ ] **Phase 48: Autoría + similares-del-parlamentario** — GATED (re-verificado 2026-07-02: `proyecto.autores` vacío 136/136). Pre-req: ingesta `proyecto.autores` + resolución nombre→`parlamentario_id` + RPC `proyectos_de_parlamentario`.
 - [ ] **Phase 49: Comparativo vs cámara (ausencias/actividad)** — **gate de datos CUMPLIDO 2026-07-02** (546 ausencias / 18.700 votos en PROD; F47 desbloqueada). Falta solo: RPC `tasa_ausencia_comparada` (security definer, PII-safe, allowlist).
 - [x] **Phase 50: FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)** — 11 fixes de código acotados (B1, B6, B7, B8, B9, B10, B12, B14, B15, B17 + supresión de honest-state repetido). Sin DDL, sin deploy (checkpoint operador aparte). (completed 2026-07-02)
@@ -1233,12 +1233,12 @@ Plans:
   2. El chart respeta el design system (tokens, Mono para cifras, sin arbitrary values) y la frontera de carril `mt-12`; cero lenguaje causal o de ranking ("el más ausente" PROHIBIDO — negative-match)
   3. Suite verde + tsc limpio + lockdown-guard verde; SSR intacto (Recharts client wrapper patrón F46)
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 
 - [x] 47-01-PLAN.md — agregador VotoPeriodo[] por trimestre + isla votos-chart.tsx + sub-bloque "Cuándo votó" en el detalle + RTL
-- [ ] 47-02-PLAN.md — gate completo + redeploy caliente (arrastra fixes F38) + smoke + evidencia visual
+- [x] 47-02-PLAN.md — gate completo + redeploy caliente (arrastra fixes F38) + smoke + evidencia visual
 
 **UI hint**: yes
 
