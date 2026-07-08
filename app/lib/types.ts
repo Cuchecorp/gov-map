@@ -410,7 +410,11 @@ export interface AusenciaContextoRow {
   m_votaciones: number;
   /** `n_ausencias / m_votaciones` en `[0,1]`. El % 1-decimal es-CL se formatea en el componente. */
   tasa_propia: number;
-  /** Mediana de la tasa de ausencia en la cámara del sujeto, en `[0,1]`. `null` → el Plan 02 omite la comparación. */
+  /**
+   * Mediana de la tasa de ausencia en la cámara del sujeto, en `[0,1]`. `null` → el Plan 02
+   * omite la comparación. IN-03: es la mediana de las TASAS individuales (n/m por
+   * parlamentario), NO la tasa agregada/pooled (Σn/Σm) — la tasa del colega mediano.
+   */
   mediana_camara: number | null;
   /** Tamaño de la cohorte: parlamentarios de la misma cámara con ≥1 voto confirmado. */
   k_parlamentarios: number;

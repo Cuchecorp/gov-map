@@ -103,6 +103,10 @@ language sql stable security definer set search_path = '' as $$
     where parlamentario_id = p_parlamentario_id
   ),
   -- Referencia de la cámara: mediana de la tasa (ratio [0,1]) y tamaño de la cohorte.
+  -- IMPORTANTE (IN-03): `mediana_camara` es la mediana de las TASAS INDIVIDUALES
+  -- (n/m por parlamentario), NO la tasa agregada/pooled (Σn/Σm). Es la tasa del
+  -- colega mediano — lo que un lector intuye por "mediana de su cámara". NO cambiar a
+  -- pooled: alteraría silenciosamente toda mediana publicada cuando los m difieren.
   cohorte as (
     select
       percentile_cont(0.5) within group (order by n::numeric / m) as mediana,
