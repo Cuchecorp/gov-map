@@ -150,6 +150,71 @@ export interface VotosViewData {
    * `null` si todos están colapsados (SC1). Server-driven, sin estado cliente.
    */
   votosVer: string | null;
+  /**
+   * Serie del chart "Cuándo votó" (VIZ-02): conteo de votos por trimestre sobre TODO
+   * el arco confirmado (global, independiente de la faceta de tema). Vacía si ninguna
+   * fila tiene fecha parseable → la vista muestra el empty-state honesto (nunca barra
+   * en cero).
+   */
+  periodos: VotoPeriodo[];
+}
+
+/**
+ * Un periodo (trimestre calendario) del chart "Cuándo votó" (VIZ-02): la etiqueta
+ * "AAAA · Tn" y el conteo de votos por sentido. JSON PLANO (solo number|string) —
+ * cruza la frontera al cliente como prop de la isla `VotosChart` sin arrastrar nada
+ * de runtime server.
+ */
+export interface VotoPeriodo {
+  periodo: string;
+  si: number;
+  no: number;
+  abstencion: number;
+  pareo: number;
+  ausente: number;
+}
+
+/**
+ * Agrega las filas confirmadas en trimestres calendario (VIZ-02), contando votos por
+ * sentido. PURA, sin fetch. Espejo del agregador F46 `seriePatrimonio`.
+ *
+ * HONESTIDAD (47-UI-SPEC, anti-insinuación LOCKED):
+ * - El chart consumidor es un stacked BarChart DISCRETO por trimestre, JAMÁS una
+ *   serie continua: una línea entre trimestres insinuaría una "trayectoria" de
+ *   comportamiento — por eso el agregado es discreto (un bucket = un hecho), no una
+ *   curva. Esta función NO fabrica trimestres vacíos entre el primero y el último:
+ *   un hueco es un hecho, no un cero.
+ * - Guard de fecha espejo de `fechaCortaSegura` (slice ISO + regex ANTES de new Date):
+ *   una fila sin fecha parseable se EXCLUYE (omisión honesta) — nunca una barra en
+ *   cero fabricada. Si eso vacía la serie, el llamador muestra copy honesto.
+ * - El orden es ascendente por año y trimestre (numérico estable, no lexical).
+ */
+export function agruparVotosPorTrimestre(
+  votos: VotoFichaConMateria[],
+): VotoPeriodo[] {
+  const porPeriodo = new Map<string, VotoPeriodo>();
+  for (const v of votos) {
+    const iso = (v.fecha ?? "").slice(0, 10);
+    // Guard anti-fecha-basura (espejo fechaCortaSegura): excluir sin lanzar.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) continue;
+    const anio = Number.parseInt(iso.slice(0, 4), 10);
+    const mes0 = Number.parseInt(iso.slice(5, 7), 10) - 1; // mes 0-indexado
+    const trimestre = Math.floor(mes0 / 3) + 1;
+    const periodo = `${anio} · T${trimestre}`;
+    let bucket = porPeriodo.get(periodo);
+    if (!bucket) {
+      bucket = { periodo, si: 0, no: 0, abstencion: 0, pareo: 0, ausente: 0 };
+      porPeriodo.set(periodo, bucket);
+    }
+    bucket[v.seleccion] += 1;
+  }
+  // Orden numérico estable por año luego trimestre (parseado de la etiqueta, no
+  // lexical: "2024 · T10" jamás precedería a "2024 · T2" — aquí sólo hay T1..T4).
+  const claveOrden = (p: VotoPeriodo): number => {
+    const m = /^(\d{4}) · T(\d+)$/.exec(p.periodo);
+    return m ? Number.parseInt(m[1], 10) * 10 + Number.parseInt(m[2], 10) : 0;
+  };
+  return [...porPeriodo.values()].sort((a, b) => claveOrden(a) - claveOrden(b));
 }
 
 /** Construye los hrefs del facet/paginación preservando los otros params. */
@@ -823,6 +888,11 @@ export function derivarVotosViewData({
   // conjunto, no la página) — alimenta la nota honesta. Cero exhaustividad fingida.
   const totalProyectos = new Set(todasConMateria.map((v) => v.boletin)).size;
 
+  // Serie del chart "Cuándo votó" (VIZ-02): sobre TODO el conjunto confirmado (global),
+  // NO sobre la página ni el subconjunto filtrado por tema — el chart es el arco
+  // completo del registro, no la faceta activa.
+  const periodos = agruparVotosPorTrimestre(todasConMateria);
+
   return {
     votos,
     totalVotos,
@@ -835,6 +905,7 @@ export function derivarVotosViewData({
     noIngestado: false,
     votosVer,
     totalProyectos,
+    periodos,
   };
 }
 
