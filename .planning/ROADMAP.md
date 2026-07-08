@@ -722,7 +722,7 @@ Plans:
 | 46. VIZ — Chart patrimonio (conteo de ítems/año) | v5.0 | 2/2 | Complete (deploy 2026-07-02) | 2026-07-02 |
 | 47. VIZ — Chart votos/ausencias | v5.0 | 2/2 | Complete   | 2026-07-08 |
 | 48. VIZ — Autoría + similares-del-parlamentario | v5.0 | 0/? | Blocked — gated por ingesta autores + identidad | - |
-| 49. VIZ — Comparativo vs cámara (ausencias/actividad) | v5.0 | 1/3 | In Progress|  |
+| 49. VIZ — Comparativo vs cámara (ausencias/actividad) | v5.0 | 2/3 | In Progress|  |
 | 50. FIX — Quick wins diagnóstico (P1) | v5.0 | 4/4 | Complete | 2026-07-02 |
 | 51. LEG2 — Legibilidad profunda (P2) | v5.0 | 7/7 | Complete | 2026-07-03 |
 | 52. CRUCE2 — Cruces nuevos (P3) | v5.0 | 6/6 | Complete (deploy ee6b7544) | 2026-07-06 |
@@ -1255,10 +1255,10 @@ Plans:
   2. La ficha muestra el comparativo como hechos con universo explícito y caveat de cobertura; cero adjetivos/ranking (negative-match en tests)
   3. Suite verde + tsc limpio + lockdown-guard verde
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 - [x] 49-01-PLAN.md — RPC tasa_ausencia_comparada (escrita+pgTAP, espejo 0049) + tipo + allowlist; research psql PROD del shape/números D1012
-- [ ] 49-02-PLAN.md — Sub-bloque AusenciasContexto tras "Cómo votó" + fetch/degrade PGRST202 + RTL negative-match extendido
+- [x] 49-02-PLAN.md — Sub-bloque AusenciasContexto tras "Cómo votó" + fetch/degrade PGRST202 + RTL negative-match extendido
 - [ ] 49-03-PLAN.md — Gate + redeploy caliente + smoke degrade + checkpoint operador consolidado (apply 0049+0050 + pgTAP + veredicto visual)
 
 **UI hint**: yes
