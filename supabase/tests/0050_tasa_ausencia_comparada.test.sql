@@ -30,7 +30,7 @@ select is(
      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname = 'tasa_ausencia_comparada'),
   'p_parlamentario_id,n_ausencias,m_votaciones,tasa_propia,mediana_camara,k_parlamentarios,camara',
-  'tasa_ausencia_comparada emite las 6 columnas en el orden pineado del contrato');
+  'tasa_ausencia_comparada declara p_parlamentario_id + las 6 columnas del returns table en el orden pineado del contrato');
 
 -- ── (3) es security definer (lee parlamentario/voto interno, emite derivado público) ─
 select is(
@@ -68,10 +68,15 @@ select is(
 
 -- ── Fixture mínimo para los asserts de DATOS (7)(8)(9)(10) ─────────────────────
 -- Aísla la cohorte: borra los votos PROD (rollback los restaura) y siembra una cohorte
--- determinista de 3 diputados con ratios conocidos {0.25, 0.50, 0.75} → mediana = 0.50,
--- K = 3. `partido` NOT null para probar que el returns table NO lo filtra. Un 4º diputado
--- (PTEST_D) SIN votos ejercita el caso M=0 (empty honesto). fuente_voter_id explícito:
--- es NOT NULL sin default (0009) y unique (votacion_id, fuente_voter_id).
+-- determinista de 4 diputados con ratios conocidos {0.10, 0.20, 0.60, 0.90}. Esta cohorte
+-- es PAR y con GAP en el centro a propósito (WR-01): percentile_cont(0.5) INTERPOLA →
+-- 0.40, mientras percentile_disc(0.5) daría 0.20 y avg daría 0.45. Así el assert (8)
+-- distingue de verdad la mediana interpolada del contrato — una regresión a _disc o a
+-- avg FALLARÍA (con la vieja cohorte simétrica {0.25,0.50,0.75}, _cont y _disc coincidían
+-- en 0.50 y el test no discriminaba). `partido` NOT null para probar que el returns table
+-- NO lo filtra. Un 5º diputado (PTEST_E) SIN votos ejercita el caso M=0 (empty honesto).
+-- m=10 por parlamentario para poder expresar 0.10/0.20/0.60/0.90 con ausencias enteras.
+-- fuente_voter_id explícito: es NOT NULL sin default (0009) y unique (votacion_id, fuente_voter_id).
 delete from public.voto;
 
 insert into public.parlamentario (id, nombre_normalizado, camara, periodo, partido, origen, enlace)
@@ -79,63 +84,65 @@ values
   ('PTEST_A', 'test a', 'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x'),
   ('PTEST_B', 'test b', 'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x'),
   ('PTEST_C', 'test c', 'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x'),
-  ('PTEST_D', 'test d', 'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x');
+  ('PTEST_D', 'test d', 'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x'),
+  ('PTEST_E', 'test e', 'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x');
 
--- 4 votaciones de diputados. total_* default 0, fecha_captura default now().
+-- 10 votaciones de diputados (m=10 por parlamentario). total_* default 0, fecha_captura default now().
 insert into public.votacion (id, boletin, camara, origen, enlace)
-values
-  ('vtest:1', 'BTEST-1', 'diputados', 'test', 'http://x'),
-  ('vtest:2', 'BTEST-1', 'diputados', 'test', 'http://x'),
-  ('vtest:3', 'BTEST-1', 'diputados', 'test', 'http://x'),
-  ('vtest:4', 'BTEST-1', 'diputados', 'test', 'http://x');
+select 'vtest:' || g, 'BTEST-1', 'diputados', 'test', 'http://x'
+from generate_series(1, 10) g;
 
--- Votos confirmados con ratios de ausencia deterministas (m=4 c/u):
---   PTEST_A: 1 ausente / 4  → 0.25
---   PTEST_B: 2 ausente / 4  → 0.50  (SUJETO del smoke)
---   PTEST_C: 3 ausente / 4  → 0.75
+-- Votos confirmados con ratios de ausencia deterministas (m=10 c/u):
+--   PTEST_A: 1 ausente / 10 → 0.10
+--   PTEST_B: 2 ausente / 10 → 0.20  (SUJETO del smoke)
+--   PTEST_C: 6 ausente / 10 → 0.60
+--   PTEST_D: 9 ausente / 10 → 0.90
+-- Cohorte PAR con gap central → cont(0.5)=0.40 ≠ disc(0.5)=0.20 ≠ avg=0.45.
 -- fuente_voter_id = id del parlamentario (único por votacion).
+-- Las primeras `k` votaciones (por número de ausencias) son 'ausente'; el resto 'si'.
 insert into public.voto (votacion_id, mencion_nombre, parlamentario_id, seleccion, metodo, estado_vinculo, fuente_voter_id)
-values
-  -- PTEST_A → ausente en v1; si en v2,v3,v4
-  ('vtest:1', 'test a', 'PTEST_A', 'ausente', 'determinista', 'confirmado', 'PTEST_A'),
-  ('vtest:2', 'test a', 'PTEST_A', 'si',      'determinista', 'confirmado', 'PTEST_A'),
-  ('vtest:3', 'test a', 'PTEST_A', 'si',      'determinista', 'confirmado', 'PTEST_A'),
-  ('vtest:4', 'test a', 'PTEST_A', 'si',      'determinista', 'confirmado', 'PTEST_A'),
-  -- PTEST_B → ausente en v1,v2; si en v3,v4
-  ('vtest:1', 'test b', 'PTEST_B', 'ausente', 'determinista', 'confirmado', 'PTEST_B'),
-  ('vtest:2', 'test b', 'PTEST_B', 'ausente', 'determinista', 'confirmado', 'PTEST_B'),
-  ('vtest:3', 'test b', 'PTEST_B', 'si',      'determinista', 'confirmado', 'PTEST_B'),
-  ('vtest:4', 'test b', 'PTEST_B', 'si',      'determinista', 'confirmado', 'PTEST_B'),
-  -- PTEST_C → ausente en v1,v2,v3; si en v4
-  ('vtest:1', 'test c', 'PTEST_C', 'ausente', 'determinista', 'confirmado', 'PTEST_C'),
-  ('vtest:2', 'test c', 'PTEST_C', 'ausente', 'determinista', 'confirmado', 'PTEST_C'),
-  ('vtest:3', 'test c', 'PTEST_C', 'ausente', 'determinista', 'confirmado', 'PTEST_C'),
-  ('vtest:4', 'test c', 'PTEST_C', 'si',      'determinista', 'confirmado', 'PTEST_C');
--- PTEST_D: SIN votos → caso M=0 (empty honesto).
+select
+  'vtest:' || g,
+  c.nombre,
+  c.pid,
+  case when g <= c.ausencias then 'ausente' else 'si' end,
+  'determinista',
+  'confirmado',
+  c.pid
+from (values
+  ('PTEST_A', 'test a', 1),
+  ('PTEST_B', 'test b', 2),
+  ('PTEST_C', 'test c', 6),
+  ('PTEST_D', 'test d', 9)
+) as c(pid, nombre, ausencias)
+cross join generate_series(1, 10) g;
+-- PTEST_E: SIN votos → caso M=0 (empty honesto).
 
--- ── (7) tasa_propia del SUJETO (PTEST_B) = 2/4 = 0.50 (ratio [0,1]) ────────────
+-- ── (7) tasa_propia del SUJETO (PTEST_B) = 2/10 = 0.20 (ratio [0,1]) ───────────
 select is(
   (select round(tasa_propia, 4) from public.tasa_ausencia_comparada('PTEST_B')),
-  0.5000::numeric,
-  'tasa_propia del sujeto = n/m = 2/4 = 0.50 (ratio, sin div/0)');
+  0.2000::numeric,
+  'tasa_propia del sujeto = n/m = 2/10 = 0.20 (ratio, sin div/0)');
 
--- ── (8) mediana_camara de la cohorte {0.25, 0.50, 0.75} = 0.50 ────────────────
+-- ── (8) mediana_camara de la cohorte {0.10, 0.20, 0.60, 0.90} = 0.40 ──────────
+-- percentile_cont(0.5) INTERPOLA entre 0.20 y 0.60 → 0.40. Esto DISTINGUE _cont de
+-- _disc (daría 0.20) y de avg (daría 0.45): una regresión a cualquiera fallaría aquí.
 select is(
   (select round(mediana_camara, 4) from public.tasa_ausencia_comparada('PTEST_B')),
-  0.5000::numeric,
-  'mediana_camara = percentile_cont(0.5) de {0.25,0.50,0.75} = 0.50');
+  0.4000::numeric,
+  'mediana_camara = percentile_cont(0.5) INTERPOLADO de {0.10,0.20,0.60,0.90} = 0.40 (≠ _disc=0.20, ≠ avg=0.45)');
 
--- ── (9) k_parlamentarios = 3 (A,B,C con >=1 voto; D excluido por M=0) + n/m/camara ─
+-- ── (9) k_parlamentarios = 4 (A,B,C,D con >=1 voto; E excluido por M=0) + n/m/camara ─
 select is(
   (select k_parlamentarios || '|' || n_ausencias || '|' || m_votaciones || '|' || camara
      from public.tasa_ausencia_comparada('PTEST_B')),
-  '3|2|4|diputados',
-  'k_parlamentarios=3 (D sin votos excluido); n=2, m=4, camara=diputados del sujeto');
+  '4|2|10|diputados',
+  'k_parlamentarios=4 (E sin votos excluido); n=2, m=10, camara=diputados del sujeto');
 
--- ── (10) CASO M=0: PTEST_D no tiene votos confirmados → 0 filas (empty honesto,
+-- ── (10) CASO M=0: PTEST_E no tiene votos confirmados → 0 filas (empty honesto,
 --         nunca NaN/Inf ni fila fabricada). ──────────────────────────────────────
 select is(
-  (select count(*)::int from public.tasa_ausencia_comparada('PTEST_D')),
+  (select count(*)::int from public.tasa_ausencia_comparada('PTEST_E')),
   0,
   'tasa_ausencia_comparada devuelve 0 filas para un parlamentario sin votos (M=0, empty honesto)');
 
