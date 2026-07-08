@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
-status: Phase 55 complete
+status: Ready to execute
 stopped_at: Completed 53-02-PLAN.md
-last_updated: "2026-07-08T01:26:34.182Z"
-last_activity: 2026-07-08 -- Phase 55 marked complete
+last_updated: "2026-07-08T02:01:10.701Z"
+last_activity: 2026-07-08
 progress:
   total_phases: 46
   completed_phases: 27
-  total_plans: 112
-  completed_plans: 119
+  total_plans: 115
+  completed_plans: 120
   percent: 59
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-18)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 55 — uxcog-redise-o-cognitivo-jerarqu-a-visual-detalle-progresivo
+**Current focus:** Phase 38 — surf-superficie-de-cruces-en-ficha-de-proyecto
 
 ## Current Position
 
-Phase: 55 — COMPLETE
-Plan: 6 of 6
+Phase: 38 (surf-superficie-de-cruces-en-ficha-de-proyecto) — EXECUTING
+Plan: 2 of 3
 5/5 planes ejecutados (2 waves secuenciales). Verifier Opus **12/12 passed** contra código. Code-review thorough: 0 critical, 2 warnings **fixed** (WR-01 `esHistorica` guard fecha null — no fabrica "histórica"; WR-02 `getParlamentarioPublico` React.cache dedup 3 RPC), 3 info diferidos (incl. dead code voto-ficha-row → B24/Phase 51). Suite app/ **377→406 verde**, `tsc -b` limpio, lockdown-guard 7/7, Camino A intacto (cero RPC nueva/DDL/flag). Bugs cerrados: B1 pill→14309-04, B6 ámbar 14d, B7 agenda throw #34, B8 chip omitido, B9 error.tsx ×4 (`unstable_retry`), B10 copy lobby por cámara, B12 locale, B14 desenlace null explícito, B15 "Iniciativa del Ejecutivo (Mensaje).", B17 fechaCortaSegura, HS 1×/sección.
 Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
 Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to 46`, 2026-06-26):
@@ -37,7 +37,7 @@ Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to
 
 **DEPLOY EJECUTADO 2026-07-02** (cubrió F45+F46+F50+B20/B21+flip NET en un deploy, versión `3ade68b8`): build Docker Linux (`docker-cf-build.sh` → `docker cp` → `wrangler deploy` desde host). Verificación curl: home pill 14309-04 ✓, acordeones Radix en ficha ✓, `/red` selector 200 / seed D1012 grafo 305 aristas / seed inválida 404 ✓, link "Ver relaciones" en ficha ✓, agenda/proyecto/parlamentarios 200 ✓. GOTCHA NUEVO load-bearing: ruta con gate `notFound()` ANTES del primer API dinámico queda **estática en build** con el flag horneado → 500 en runtime con flag ON; fix = `export const dynamic = "force-dynamic"` (aplicado a `/red`; `/admin/revisar-entidades` tiene el mismo bug latente). Polish advisory diferido: tokenizar fill ramp del chart, tematizar legend/tooltip Recharts, a11y data-table fallback, verificación visual reduce-motion.
 Diseño LOCKED F45/F46: `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md`.
-Last activity: 2026-07-08 -- Phase 55 marked complete
+Last activity: 2026-07-08
 
 ## Performance Metrics
 
@@ -294,7 +294,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-07T15:03:59.306Z
+Last session: 2026-07-08T02:01:10.678Z
 Stopped at: Completed 53-02-PLAN.md
 Resume file: None
 
