@@ -1103,6 +1103,33 @@ describe("agruparVotosPorTrimestre — bucketing puro por trimestre (VIZ-02)", (
     }
   });
 
+  // WR-01: el bucketing usa el slice ISO UTC (`YYYY-MM-DD`), determinista
+  // server/client. Un timestamp UTC de borde de trimestre cae en el trimestre
+  // de su fecha-calendario UTC, sin depender de la TZ del runtime. `resumenDeArco`
+  // comparte EXACTAMENTE la misma base (mismo mes/año que el bucket).
+  it("WR-01: voto de borde 2026-03-31T23:30:00Z bucketea en T1 (UTC-calendar), consistente con resumenDeArco", () => {
+    const borde = makeVoto({
+      votacion_id: "wr01:1",
+      boletin: "9-07",
+      fecha: "2026-03-31T23:30:00Z",
+      seleccion: "si",
+    });
+    const [p] = agruparVotosPorTrimestre([borde]);
+    expect(p.periodo).toBe("2026 · T1");
+
+    const arco = {
+      boletin: "9-07",
+      titulo: null,
+      idea_matriz: null,
+      etapas: [borde],
+    };
+    const r = resumenDeArco(arco);
+    // Misma base UTC → el rango cae en marzo 2026, NO en abril (T2).
+    expect(r.mesInicio).toMatch(/mar/i);
+    expect(r.mesInicio).toMatch(/2026/);
+    expect(r.mesFin).toMatch(/mar/i);
+  });
+
   it("derivarVotosViewData computa `periodos` sobre TODO el conjunto (global, sin faceta)", () => {
     const votos = [
       makeVoto({ votacion_id: "g:1", boletin: "1-07", materia: "Salud", fecha: "2024-02-01T00:00:00Z", seleccion: "si" }),

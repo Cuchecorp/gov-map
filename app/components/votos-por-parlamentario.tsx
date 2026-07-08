@@ -7,8 +7,12 @@ import { VotosChart } from "@/components/votos-chart";
 import { AusenciasContexto } from "@/components/ausencias-contexto";
 import { SELECCION_STYLE } from "@/components/voto-row";
 import { cn } from "@/lib/utils";
-import { fechaCorta, extractoIdea, conteoVotacion } from "@/lib/format";
+import { fechaCortaSegura, extractoIdea, conteoVotacion } from "@/lib/format";
 import { sourceLabel } from "@/lib/types";
+import {
+  VOTO_PRESENTACION,
+  SELECCION_ORDEN,
+} from "@/lib/voto-presentacion";
 import type {
   Seleccion,
   VotoFichaRow as VotoFichaRowData,
@@ -37,29 +41,16 @@ import type {
 
 const PAGE_SIZE = 20;
 
-const OPCION_LABEL: Record<Seleccion, string> = {
-  si: "A favor",
-  no: "En contra",
-  abstencion: "Abstención",
-  pareo: "Pareo",
-  ausente: "Ausente",
-};
+// Presentación de voto (label NOUN + clase bg-*) derivada del mapa único
+// `VOTO_PRESENTACION` (47 IN-01/IN-02) — ya no se duplican literales aquí. Se
+// mantienen los nombres locales (OPCION_LABEL/BAR_SEGMENT) para los consumidores.
+const OPCION_LABEL: Record<Seleccion, string> = Object.fromEntries(
+  SELECCION_ORDEN.map((k) => [k, VOTO_PRESENTACION[k].label]),
+) as Record<Seleccion, string>;
 
-const BAR_SEGMENT: Record<Seleccion, string> = {
-  si: "bg-green-500",
-  no: "bg-red-500",
-  abstencion: "bg-amber-400",
-  pareo: "bg-slate-400",
-  ausente: "bg-slate-300",
-};
-
-const SELECCION_ORDEN: Seleccion[] = [
-  "si",
-  "no",
-  "abstencion",
-  "pareo",
-  "ausente",
-];
+const BAR_SEGMENT: Record<Seleccion, string> = Object.fromEntries(
+  SELECCION_ORDEN.map((k) => [k, VOTO_PRESENTACION[k].bgClass]),
+) as Record<Seleccion, string>;
 
 function slugTema(materia: string): string {
   return materia
@@ -199,18 +190,49 @@ export interface VotoPeriodo {
  *   cero fabricada. Si eso vacía la serie, el llamador muestra copy honesto.
  * - El orden es ascendente por año y trimestre (numérico estable, no lexical).
  */
+/** Meses por trimestre calendario (IN-04: constante nombrada, no `/ 3` mágico). */
+const MESES_POR_TRIMESTRE = 3;
+/**
+ * Factor para la clave de orden `anio * FACTOR + trimestre`. Es 10 y NO colisiona
+ * SOLO porque trimestre ∈ [1,4] (un dígito): "2024·T4" → 20244 < "2025·T1" → 20251.
+ * Un hipotético "T10+" rompería la unicidad — imposible con trimestres calendario.
+ */
+const FACTOR_ORDEN_TRIMESTRE = 10;
+/** Regex ISO `YYYY-MM-DD` compartida por todos los parseos de fecha de voto. */
+const RE_ISO_FECHA = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Deriva `{anio, mes0}` de una fecha de voto usando SIEMPRE el slice ISO UTC
+ * (`YYYY-MM-DD`, los primeros 10 chars del `timestamptz` serializado): determinista
+ * server/client, sin depender de la TZ del runtime. Devuelve `null` si la fecha no
+ * es ISO parseable (omisión honesta, espejo de `fechaCortaSegura`).
+ *
+ * WR-01: TODOS los agregados de período (trimestre en el chart y rango mmm-AAAA en el
+ * resumen de arco) derivan de ESTA base UTC — nunca se mezcla `slice(0,10)` (UTC) con
+ * `new Date()` (TZ del runtime), que podía bucketar un voto de borde de trimestre en
+ * períodos distintos entre las dos superficies de la misma página.
+ */
+function parseFechaVotoSegura(
+  fecha: string | null | undefined,
+): { anio: number; mes0: number } | null {
+  const iso = (fecha ?? "").slice(0, 10);
+  if (!RE_ISO_FECHA.test(iso)) return null;
+  return {
+    anio: Number.parseInt(iso.slice(0, 4), 10),
+    mes0: Number.parseInt(iso.slice(5, 7), 10) - 1, // mes 0-indexado
+  };
+}
+
 export function agruparVotosPorTrimestre(
   votos: VotoFichaConMateria[],
 ): VotoPeriodo[] {
   const porPeriodo = new Map<string, VotoPeriodo>();
   for (const v of votos) {
-    const iso = (v.fecha ?? "").slice(0, 10);
+    const parsed = parseFechaVotoSegura(v.fecha);
     // Guard anti-fecha-basura (espejo fechaCortaSegura): excluir sin lanzar.
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) continue;
-    const anio = Number.parseInt(iso.slice(0, 4), 10);
-    const mes0 = Number.parseInt(iso.slice(5, 7), 10) - 1; // mes 0-indexado
-    const trimestre = Math.floor(mes0 / 3) + 1;
-    const periodo = `${anio} · T${trimestre}`;
+    if (!parsed) continue;
+    const trimestre = Math.floor(parsed.mes0 / MESES_POR_TRIMESTRE) + 1;
+    const periodo = `${parsed.anio} · T${trimestre}`;
     let bucket = porPeriodo.get(periodo);
     if (!bucket) {
       bucket = { periodo, si: 0, no: 0, abstencion: 0, pareo: 0, ausente: 0 };
@@ -222,7 +244,10 @@ export function agruparVotosPorTrimestre(
   // lexical: "2024 · T10" jamás precedería a "2024 · T2" — aquí sólo hay T1..T4).
   const claveOrden = (p: VotoPeriodo): number => {
     const m = /^(\d{4}) · T(\d+)$/.exec(p.periodo);
-    return m ? Number.parseInt(m[1], 10) * 10 + Number.parseInt(m[2], 10) : 0;
+    return m
+      ? Number.parseInt(m[1], 10) * FACTOR_ORDEN_TRIMESTRE +
+          Number.parseInt(m[2], 10)
+      : 0;
   };
   return [...porPeriodo.values()].sort((a, b) => claveOrden(a) - claveOrden(b));
 }
@@ -256,17 +281,26 @@ interface ProyectoArco {
 const mesAnioFormatter = new Intl.DateTimeFormat("es-CL", {
   month: "short",
   year: "numeric",
+  timeZone: "UTC", // WR-01: etiqueta derivada del calendario UTC, no de la TZ local.
 });
-function mesAnio(d: Date): string {
-  return mesAnioFormatter.format(d);
+/**
+ * Formatea "mmm AAAA" a partir de `{anio, mes0}` UTC (WR-01): construye la fecha con
+ * `Date.UTC` y formatea en TZ UTC, así la etiqueta coincide exactamente con el bucket
+ * de trimestre (misma base UTC) — sin `new Date(string)` sensible a la TZ del runtime.
+ */
+function mesAnio(anio: number, mes0: number): string {
+  return mesAnioFormatter.format(new Date(Date.UTC(anio, mes0, 1)));
 }
+
+/** Índice ordinal de mes (`anio*12+mes0`) para comparar min/max sin `Date`. */
+const MESES_POR_ANIO = 12;
 
 /**
  * Resumen agregado de un arco de proyecto (SC1): nº de votaciones, conteo por
  * sentido y rango de meses en que votó. PURO y exportado para test. CERO
  * fabricación: `n` = etapas del arco; los conteos salen de `e.seleccion`;
- * `mesInicio`/`mesFin` = min/max de `e.fecha` formateado "mmm AAAA" (cadena vacía
- * si no hay fechas válidas → el llamador omite el rango).
+ * `mesInicio`/`mesFin` = min/max de `e.fecha` (base UTC ISO, IN-03/WR-01) formateado
+ * "mmm AAAA" (cadena vacía si no hay fechas válidas → el llamador omite el rango).
  */
 export interface ResumenArco {
   n: number;
@@ -287,14 +321,25 @@ export function resumenDeArco(arco: ProyectoArco): ResumenArco {
     pareo: 0,
     ausente: 0,
   };
-  let min = Number.POSITIVE_INFINITY;
-  let max = Number.NEGATIVE_INFINITY;
+  // IN-03/WR-01: mismo guard ISO + misma base UTC que el agregador de trimestre. Se
+  // compara por índice ordinal de mes; una fecha no-ISO se excluye (no la acepta
+  // `new Date` laxamente como antes) → rango y buckets nunca discrepan.
+  let minMes: { anio: number; mes0: number } | null = null;
+  let maxMes: { anio: number; mes0: number } | null = null;
+  let minOrd = Number.POSITIVE_INFINITY;
+  let maxOrd = Number.NEGATIVE_INFINITY;
   for (const e of arco.etapas) {
     conteo[e.seleccion] += 1;
-    const t = new Date(e.fecha).getTime();
-    if (!Number.isNaN(t)) {
-      if (t < min) min = t;
-      if (t > max) max = t;
+    const parsed = parseFechaVotoSegura(e.fecha);
+    if (!parsed) continue;
+    const ord = parsed.anio * MESES_POR_ANIO + parsed.mes0;
+    if (ord < minOrd) {
+      minOrd = ord;
+      minMes = parsed;
+    }
+    if (ord > maxOrd) {
+      maxOrd = ord;
+      maxMes = parsed;
     }
   }
   return {
@@ -304,8 +349,8 @@ export function resumenDeArco(arco: ProyectoArco): ResumenArco {
     abstencion: conteo.abstencion,
     pareo: conteo.pareo,
     ausente: conteo.ausente,
-    mesInicio: Number.isFinite(min) ? mesAnio(new Date(min)) : "",
-    mesFin: Number.isFinite(max) ? mesAnio(new Date(max)) : "",
+    mesInicio: minMes ? mesAnio(minMes.anio, minMes.mes0) : "",
+    mesFin: maxMes ? mesAnio(maxMes.anio, maxMes.mes0) : "",
   };
 }
 
@@ -474,7 +519,7 @@ function ProyectoGrupo({
                   <span className="text-muted-foreground">{e.etapa}</span>
                 )}
                 <span className="font-mono text-muted-foreground">
-                  {fechaCorta(new Date(e.fecha))}
+                  {fechaCortaSegura(e.fecha)}
                 </span>
                 {e.resultado && (
                   <span className="text-muted-foreground">
@@ -823,7 +868,7 @@ export function VotosView({
                     <span className="text-muted-foreground">{r.etapa}</span>
                   )}
                   <span className="font-mono text-muted-foreground">
-                    {fechaCorta(new Date(r.fecha))}
+                    {fechaCortaSegura(r.fecha)}
                   </span>
                   <span className="text-muted-foreground">
                     Su voto: {OPCION_LABEL[r.seleccion_propia]} · Mayoría de su
