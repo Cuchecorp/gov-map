@@ -1,8 +1,8 @@
 ---
 phase: 55-uxcog-redise-o-cognitivo-jerarqu-a-visual-detalle-progresivo
 verified: 2026-07-07T00:00:00Z
-status: human_needed
-score: 4/5 must-haves verified (SC5 pending final operator visual-direction checkpoint)
+status: passed
+score: 5/5 must-haves verified (SC5 APPROVED por el operador 2026-07-07: 'approved' — dirección visual variante B confirmada contra deploy 13ad07c3)
 overrides_applied: 0
 human_verification:
   - test: "Abrir docs/demo/ (o el sitio en vivo redeploy) a 1280px y recorrer ficha parlamentario, ficha proyecto, agenda, /red"
