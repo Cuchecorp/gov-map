@@ -195,11 +195,12 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
 // ── Rail sticky de la ficha (UXCOG 55-04) ─────────────────────────────────────
 // Server component: lee la cabecera del proyecto (título/boletín/estado) vía la
 // lectura CACHEADA `leerProyecto` (dedup con FichaSection — React.cache) + un
-// conteo de votaciones honesto, y arma las 7 entradas del rail. La isla FichaRail
+// conteo de votaciones honesto, y arma las 7–8 entradas del rail (según el gate de
+// cruces). La isla FichaRail
 // (client, scrollspy) recibe el `header` como ReactNode server + `navEntries` YA
 // serializadas — NUNCA deriva un dígito ni importa Supabase (contrato no-leak F45).
-// El proyecto no tiene carriles gated (cruces/money viven en /parlamentario), así
-// que las 7 entradas están SIEMPRE presentes. Si el proyecto no existe, retorna
+// La entrada de cruces está gated por el Candado B (crucesPublicEnabled): 7 entradas
+// con el gate OFF, 8 con ON. Si el proyecto no existe, retorna
 // null: FichaSection resuelve el 404 de la ruta.
 export async function ProyectoRail({ boletin }: { boletin: string }) {
   const proyecto = await leerProyecto(boletin);
@@ -487,9 +488,12 @@ async function VotacionesSection({ boletin }: { boletin: string }) {
 }
 
 // ── Skeletons (UI-SPEC §6.2) ─────────────────────────────────────────────────
-// Rail: cabecera compacta (título/boletín/estado) + 6 entradas de nav + caveat.
-// Shape-matched a FichaRail para no producir layout shift al resolver.
+// Rail: cabecera compacta (título/boletín/estado) + 7–8 entradas de nav + caveat.
+// Shape-matched a FichaRail para no producir layout shift al resolver: el conteo
+// DEBE igualar a `ProyectoRail.navEntries` — 7 con el gate de cruces OFF, 8 con ON
+// (WR-02). Un 6→8 producía un salto CLS visible al resolver el rail.
 function RailSkeleton() {
+  const nEntries = crucesPublicEnabled(process.env) ? 8 : 7;
   return (
     <div className="space-y-4" aria-hidden="true">
       <div className="space-y-1.5">
@@ -497,7 +501,7 @@ function RailSkeleton() {
         <Skeleton className="h-3 w-24" />
       </div>
       <div className="space-y-1">
-        {Array.from({ length: 6 }).map((_, i) => (
+        {Array.from({ length: nEntries }).map((_, i) => (
           <Skeleton key={i} className="h-11 w-full rounded-md" />
         ))}
       </div>
