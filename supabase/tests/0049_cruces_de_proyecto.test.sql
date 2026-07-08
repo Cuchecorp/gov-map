@@ -93,14 +93,16 @@ values
 
 -- votos: PTEST_SURF 'si' confirmado (entra en afavor de ambos boletines);
 --        PTEST_NO 'no' confirmado en BTEST-38 (queda EXCLUIDO de afavor).
-insert into public.voto (votacion_id, mencion_nombre, parlamentario_id, seleccion, metodo, estado_vinculo)
+-- fuente_voter_id explícito: NOT NULL sin default desde 0009, unique (votacion_id, fuente_voter_id)
+-- (bug latente detectado en 49-01: sin él, este INSERT falla en el apply del operador).
+insert into public.voto (votacion_id, mencion_nombre, parlamentario_id, seleccion, metodo, estado_vinculo, fuente_voter_id)
 values
-  ('vtest:38',    'test surf', 'PTEST_SURF', 'si', 'determinista', 'confirmado'),
-  ('vtest:38',    'test no',   'PTEST_NO',   'no', 'determinista', 'confirmado'),
+  ('vtest:38',    'test surf', 'PTEST_SURF', 'si', 'determinista', 'confirmado', 'ftest:surf'),
+  ('vtest:38',    'test no',   'PTEST_NO',   'no', 'determinista', 'confirmado', 'ftest:no'),
   -- PTEST_SURF vota 'si' confirmado en BTEST-NOSEC: el set "a favor" NO está vacío, así
   -- que el 0 del assert (10) proviene ÚNICAMENTE del CTE `sec` vacío (sin ficha/sector),
   -- aislando la ruta de sector (NUNCA se fabrica el sector).
-  ('vtest:nosec', 'test surf', 'PTEST_SURF', 'si', 'determinista', 'confirmado');
+  ('vtest:nosec', 'test surf', 'PTEST_SURF', 'si', 'determinista', 'confirmado', 'ftest:surf');
 
 -- cruces de lobby en el sector de prueba para AMBOS parlamentarios (conteo neutro).
 -- PTEST_NO tiene cruce en el sector pero votó 'no' → el join afavor lo excluye igual.
