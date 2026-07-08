@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: — Confiabilidad y comprensión
-status: completed
+status: executing
 stopped_at: Roadmap v6.0 creado — Phases 56-61, REQUIREMENTS.md traceability actualizado, STATE.md inicializado.
-last_updated: "2026-07-08T23:25:50.319Z"
-last_activity: 2026-07-08 -- Phase 56 marked complete
+last_updated: "2026-07-08T23:47:35.311Z"
+last_activity: 2026-07-08 -- Phase 57 execution started
 progress:
   total_phases: 52
   completed_phases: 1
-  total_plans: 1
+  total_plans: 5
   completed_plans: 1
   percent: 2
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 56 — CRON-AUDIT — Auditoría E2E de los 9 workflows de ingesta
+**Current focus:** Phase 57 — CRON-FIX — Hardening dos-etapas + hash-check + crons verdes
 
 ## Current Position
 
-Phase: 56 — COMPLETE
-Plan: 1 of 1
-Status: Phase 56 complete
-Last activity: 2026-07-08 -- Phase 56 marked complete
+Phase: 57 (CRON-FIX — Hardening dos-etapas + hash-check + crons verdes) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 57
+Last activity: 2026-07-08 -- Phase 57 execution started
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases complete)
 
