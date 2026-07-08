@@ -47,7 +47,18 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| (se llena al aprobar el roadmap) | | |
+| CRON-01 | Phase 56 | Pending |
+| CRON-02 | Phase 57 | Pending |
+| CRON-03 | Phase 57 | Pending |
+| CRON-04 | Phase 57 | Pending |
+| CRON-05 | Phase 58 | Pending |
+| AUTOR-01 | Phase 59 | Pending |
+| AUTOR-02 | Phase 59 | Pending |
+| BRAND-01 | Phase 60 | Pending |
+| BRAND-02 | Phase 60 | Pending |
+| COMP-01 | Phase 61 | Pending |
+| COMP-02 | Phase 61 | Pending |
+| COMP-03 | Phase 61 | Pending |
 
 ---
-*Modo de trabajo v6: Fable (main loop) planifica/dirime/controla; ejecución delegada a agentes Sonnet o menores. Autónomo y ordenado.*
+*Modo de trabajo v6: Fable (main loop) planifica/dirige/controla; ejecución delegada a agentes Sonnet o menores. Autónomo y ordenado.*
