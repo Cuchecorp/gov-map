@@ -711,7 +711,7 @@ Plans:
 | 35. ENT — Resolución de identidades de terceros | v4.0 | 7/7 | Complete (gaps 35-05/06/07 cerrados; pgTAP 0034/35/36/37 verdes en PROD; ENT-01..05 SATISFIED) | 2026-06-24 |
 | 36. CRUCE — Capa de cruces parlamentario↔sector (deny-by-default) | v4.0 | 4/4 | Complete   | 2026-06-24 |
 | 37. SURF — Cruces en ficha de parlamentario (gated) | v4.0 | 3/3 | Complete    | 2026-06-24 |
-| 38. SURF — Cruces en ficha de proyecto (DESTRABADA: sign-off señales-voto 2026-07-07) | v4.0 | 2/3 | In Progress|  |
+| 38. SURF — Cruces en ficha de proyecto (DESTRABADA: sign-off señales-voto 2026-07-07) | v4.0 | 3/3 | Complete   | 2026-07-08 |
 | 39. LEGAL — Gate legal F13/F17/cruces (sign-off humano) | v4.0 | 0/? | Not started | - |
 | 40. RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human) | v4.0 | 0/? | Not started | - |
 | 41. CRUCEN — Habilitación de cruces (grant gated + dossier) | v4.0 | 3/3 | Complete (encendido 2026-06-24) | 2026-06-24 |
@@ -790,7 +790,7 @@ INFRA-01 desbloqueo CI (Phase 33, ✅ DONE) — sin esto ningún workflow progra
 - [x] **Phase 35: ENT — Resolución de identidades de terceros** - Maestra `entidad_tercero` (ID estable, alias, matcher determinista, pipeline de adjudicación con gate humano, deny-by-default) que extiende el subsistema de identidad a donantes/proveedores y gestores de lobby; conecta los reconciliadores existentes (antes dejaban `contraparte_id`/`contratista` NULL). (completed 2026-06-24)
 - [x] **Phase 36: CRUCE — Capa de cruces parlamentario↔sector (deny-by-default)** - Modelar relaciones parlamentario↔sector cruzando lobby/aportes/votos; materializar señales factuales (conteos de evidencia, sin score); etiquetado de sector por LLM con su propio eval/golden SEPARADO. Construible deny-by-default; expuesto solo tras gate legal. (completed 2026-06-24)
 - [x] **Phase 37: SURF — Superficie de cruces en ficha de parlamentario (gated)** - `CrucesSection` (Server Component) que llama al RPC y renderiza señales factuales con provenance inline, sibling de `#lobby`/`#patrimonio`, detrás de `crucesPublicEnabled()` (default OFF). Construible; visible solo tras gate. (completed 2026-06-24)
-- [ ] **Phase 38: SURF — Superficie de cruces en ficha de proyecto (DESTRABADA 2026-07-07)** - `cruces_de_proyecto(boletin)` → parlamentarios que votaron a favor con cruces en el sector del proyecto, PII-safe, mismo gate. Sign-off de señales de voto FIRMADO 2026-07-07 (Carlos Sánchez Rossi, `docs/legal/SIGNOFF-senales-voto.md`) → construible y publicable bajo caveat anti-causal.
+- [x] **Phase 38: SURF — Superficie de cruces en ficha de proyecto (DESTRABADA 2026-07-07)** - `cruces_de_proyecto(boletin)` → parlamentarios que votaron a favor con cruces en el sector del proyecto, PII-safe, mismo gate. Sign-off de señales de voto FIRMADO 2026-07-07 (Carlos Sánchez Rossi, `docs/legal/SIGNOFF-senales-voto.md`) → construible y publicable bajo caveat anti-causal. (completed 2026-07-08)
 - [ ] **Phase 39: LEGAL — Gate legal transversal F13/F17/cruces (sign-off humano)** - Revisión legal humana (Ley 21.719) que habilita `MONEY_PUBLIC_ENABLED`, `netPublicEnabled` y `crucesPublicEnabled`. Acción exclusivamente humana — un agente NUNCA flipea estos flags. PARCIALES firmados: cruces (dossier 41, 2026-06-24), señales-voto/SURF-02 (2026-07-07, `docs/legal/SIGNOFF-senales-voto.md`). Pendientes: F13/MONEY y cierre formal F17/NET.
 - [ ] **Phase 40: RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human)** - Cosecha de RUT a la maestra; wire real de ChileCompra (hoy CLI demo) + workflow; workflow manual SERVEL por elección. Bloqueado por RUT-01 (prerrequisito duro) + ticket/URL de operador; exposición pública requiere LEGAL-01.
 - [x] **Phase 41: CRUCEN — Habilitación de cruces (grant gated + dossier + fecha_captura)** - Cierra las 3 deudas del code-review de Phase 37 para dejar la superficie de cruces LISTA para firmar/encender (sin encenderla): fix WR-02 (proyectar `cruce_senal.fecha_captura` en el RPC → frescura honesta, migración aplicable ya), migración de grant del RPC a anon ESCRITA pero NO aplicada (deny-by-default hasta sign-off), y dossier legal de cruces (prep para firma humana, espejo F17). CERO flip de flag. (completed 2026-06-24) — ENCENDIDO 2026-06-24: dossier firmado + 0041/0042 aplicadas a PROD.
@@ -934,13 +934,13 @@ Plans:
   2. La sección degrada honesta pre-apply (RPC ausente → null, patrón PGRST202 de 52-03) y monta con el RPC aplicado
   3. Cada evidencia es trazable; el copy es factual sin verbo causal (negative-match en tests); caveat anti-causal 1×/sección
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 
 - [x] 38-01-PLAN.md — RPC cruces_de_proyecto (security definer, doble revoke, cero grant) + pgTAP + allowlist + tipo CruceProyectoRow (escrita, NO aplicada)
 - [x] 38-02-PLAN.md — CrucesSection/CrucesView (degrade PGRST202) + carril #cruces + rail "Cruces ◆" + RTL (nombre como link, caveat 1×, negative-match)
-- [ ] 38-03-PLAN.md — gate + redeploy caliente + smoke + evidencia demo (14309-04) + checkpoint operador (apply DDL + pgTAP + veredicto visual)
+- [x] 38-03-PLAN.md — gate + redeploy caliente + smoke + evidencia demo (14309-04) + checkpoint operador (apply DDL + pgTAP + veredicto visual)
 
 **UI hint**: yes
 
