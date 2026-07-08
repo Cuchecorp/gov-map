@@ -4,6 +4,7 @@ import { createServerSupabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { VotosChart } from "@/components/votos-chart";
+import { AusenciasContexto } from "@/components/ausencias-contexto";
 import { SELECCION_STYLE } from "@/components/voto-row";
 import { cn } from "@/lib/utils";
 import { fechaCorta, extractoIdea, conteoVotacion } from "@/lib/format";
@@ -12,6 +13,7 @@ import type {
   Seleccion,
   VotoFichaRow as VotoFichaRowData,
   RebeldiaRow,
+  AusenciaContextoRow,
 } from "@/lib/types";
 
 /**
@@ -158,6 +160,13 @@ export interface VotosViewData {
    * en cero).
    */
   periodos: VotoPeriodo[];
+  /**
+   * Comparativo de ausencia (VIZ-03): shape plano de la RPC `tasa_ausencia_comparada`
+   * resuelto server-side, o `null` si la RPC no está aplicada (PGRST202, degrade
+   * honesto) → el sub-bloque "Ausencias en contexto" se OMITE. Opcional/nullable:
+   * la vista pasa `data.ausenciaContexto ?? null` al sub-bloque puro.
+   */
+  ausenciaContexto?: AusenciaContextoRow | null;
 }
 
 /**
@@ -644,6 +653,12 @@ export function VotosView({
         )}
       </div>
 
+      {/* ── Ausencias en contexto (VIZ-03) — comparativo factual DENTRO del
+          detalle, JUSTO tras "Cómo votó" y antes de "Por tema" (placement LOCKED,
+          49-UI-SPEC). Sub-bloque de presentación puro: si el server pasó `null`
+          (RPC no aplicada / degrade PGRST202) no renderiza nada; capa-1 intacta. */}
+      <AusenciasContexto data={data.ausenciaContexto ?? null} />
+
       {/* ── Voto × tema (§3.4) — faceta, sin score ────────────────────────── */}
       {materias.length > 0 && (
         <div>
@@ -1018,6 +1033,27 @@ export async function VotosSection({
   }
   const rebeldias = (rebData as RebeldiaRow[] | null) ?? [];
 
+  // Comparativo de ausencia (VIZ-03): fetch SECUNDARIO a `tasa_ausencia_comparada`.
+  // Degrade espejo de cruces-de-proyecto (3 caminos): PGRST202 (función no aplicada,
+  // pre-apply) → null → el sub-bloque se OMITE; CUALQUIER otro error → throw (#34),
+  // nunca blanket-catch que oculte un error real como "sin ausencias" (falsa
+  // exoneración). Con data → primera fila (o null si vino vacía).
+  const { data: acData, error: acError } = await sb.rpc(
+    "tasa_ausencia_comparada",
+    { p_parlamentario_id: id },
+  );
+  let ausenciaContexto: AusenciaContextoRow | null = null;
+  if (acError?.code === "PGRST202") {
+    // Pre-apply: la RPC aún no existe → sub-bloque ausente, capa-1 intacta.
+    ausenciaContexto = null;
+  } else if (acError) {
+    throw new Error(
+      `tasa_ausencia_comparada falló para ${id}: ${acError.message}`,
+    );
+  } else {
+    ausenciaContexto = (acData as AusenciaContextoRow[] | null)?.[0] ?? null;
+  }
+
   const data = derivarVotosViewData({
     todasConMateria,
     materiaActiva,
@@ -1029,7 +1065,7 @@ export async function VotosSection({
   return (
     <VotosView
       id={id}
-      data={data}
+      data={{ ...data, ausenciaContexto }}
     />
   );
 }
