@@ -1255,7 +1255,11 @@ Plans:
   2. La ficha muestra el comparativo como hechos con universo explícito y caveat de cobertura; cero adjetivos/ranking (negative-match en tests)
   3. Suite verde + tsc limpio + lockdown-guard verde
 
-**Plans:** TBD
+**Plans:** 3 plans
+
+- [ ] 49-01-PLAN.md — RPC tasa_ausencia_comparada (escrita+pgTAP, espejo 0049) + tipo + allowlist; research psql PROD del shape/números D1012
+- [ ] 49-02-PLAN.md — Sub-bloque AusenciasContexto tras "Cómo votó" + fetch/degrade PGRST202 + RTL negative-match extendido
+- [ ] 49-03-PLAN.md — Gate + redeploy caliente + smoke degrade + checkpoint operador consolidado (apply 0049+0050 + pgTAP + veredicto visual)
 
 **UI hint**: yes
 
