@@ -104,3 +104,11 @@ None — cero superficie nueva. El agente no aplicó DDL (T-38-09 mitigado: appl
 - Files: 4/4 FOUND (Temp/reshot2.mjs, Temp/cruces-14309-preapply.png, Temp/cruces-14782-preapply.png, SUMMARY).
 - Commits: 1/1 FOUND (9030c9f).
 - Deploy: e660715f al 100% confirmado.
+
+
+## Checkpoint RESUELTO (2026-07-08)
+
+Operador autorizó la aplicación directa ("aplica tu todo"). Ejecutado por el agente con esa autorización:
+- 0049 y 0050 APLICADAS a PROD (psql --single-transaction, ON_ERROR_STOP; registradas en schema_migrations).
+- pgTAP 0049: **10/10 ok**. pgTAP 0050: **10/10 ok** (primer run destapó FK faltante en el fixture — proyecto padre BTEST-1 — parcheado y committeado; PROD intacto, todo en tx con rollback).
+- Superficies MONTADAS en vivo sin re-deploy: /proyecto/14309-04 → "Explorar los 47 cruces"; /proyecto/14782-13 → empty honesto; /parlamentario/D1012 → "Ausente en 1 de 141 votaciones (0,7%). Mediana de su cámara: 0,7% (155 parlamentarios)." + caveat de cobertura. Copy verbatim al contrato.
