@@ -74,3 +74,41 @@ describe("AusenciasContexto — sub-bloque factual del comparativo (VIZ-03)", ()
     expect(texto).not.toMatch(PATRON_RUT);
   });
 });
+
+// ── Task 2: anti-insinuación (LOCKED 49-UI-SPEC §Anti-Insinuación) ──────────────
+// El % es un HECHO entre hechos, jamás un veredicto: cero superlativo, cero ranking,
+// cero comparativo-entre-parlamentarios, cero causalidad. El negative-match se
+// EXTIENDE (NEW LOCKED) más allá del vocabulario causal heredado.
+describe("AusenciasContexto — negative-match extendido + causal (anti-insinuación)", () => {
+  // NEW LOCKED (49): superlativo/ranking nominal/comparativo-entre-parlamentarios.
+  const PROHIBIDO_EXTENDIDO =
+    /top|más ausente|mas ausente|peor|mejor asistencia|récord|record/i;
+  // Heredado F55/F47/SIGNOFF: causalidad, score/ranking, tendencia afirmada.
+  const PROHIBIDO_CAUSAL =
+    /afinidad|influencia|conexión|presión|a cambio de|gracias a|porque|score|ranking|índice de|tendencia/i;
+
+  it("render completo con mediana → sin negative-match extendido ni causal ni RUT", () => {
+    const { container } = render(<AusenciasContexto data={makeRow()} />);
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(PROHIBIDO_EXTENDIDO);
+    expect(texto).not.toMatch(PROHIBIDO_CAUSAL);
+    expect(texto).not.toMatch(PATRON_RUT);
+  });
+
+  it("render sin mediana → tampoco introduce vocabulario prohibido", () => {
+    const { container } = render(
+      <AusenciasContexto data={makeRow({ mediana_camara: null })} />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(PROHIBIDO_EXTENDIDO);
+    expect(texto).not.toMatch(PROHIBIDO_CAUSAL);
+  });
+
+  it("el heading es neutro, NO superlativo ('Ausencias en contexto')", () => {
+    const { container } = render(<AusenciasContexto data={makeRow()} />);
+    const h3 = container.querySelector("h3");
+    expect(h3?.textContent).toBe("Ausencias en contexto");
+    expect(h3?.textContent ?? "").not.toMatch(PROHIBIDO_EXTENDIDO);
+    expect(h3?.textContent ?? "").not.toMatch(PROHIBIDO_CAUSAL);
+  });
+});
