@@ -10,6 +10,8 @@ import {
   derivarEstadoActual,
 } from "@/components/estado-actual-block";
 import { LobbyEnTramitacionSection } from "@/components/lobby-en-tramitacion";
+import { CrucesSection } from "@/components/cruces-de-proyecto";
+import { crucesPublicEnabled } from "@/lib/cruces-gate";
 import { TimelineView } from "@/components/timeline-view";
 import { TramitacionStepper } from "@/components/capa1/tramitacion-stepper";
 import { DetalleColapsable } from "@/components/detalle-colapsable";
@@ -141,6 +143,27 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
             </Suspense>
           </section>
 
+          {/*
+            Phase 38 (SURF-02) — Carril CRUCES: yuxtapone parlamentarios que votaron
+            A FAVOR del boletín con sus reuniones de lobby EN EL SECTOR del proyecto.
+            Carril HERMANO (mt-12), NUNCA anidado ni compuesto con votos/lobby. GATE
+            LOCKED (Candado B): toda la sección se envuelve en
+            crucesPublicEnabled(process.env) (ON en PROD desde 2026-07-02 — NO se toca
+            ningún flag). El h2, el caveat y el disclosure primary de cruces viven
+            DENTRO de CrucesSection/CrucesView: en el degrade honesto pre-apply
+            (RPC 0049 ausente → PGRST202) retorna null sin heading huérfano; el
+            wrapper mt-12 preserva la frontera (frontier rule). El nombre del
+            parlamentario público se ENLAZA (DEPARTURE LOCKED); la contraparte de
+            lobby sigue texto plano (52-03), dentro del propio componente.
+          */}
+          {crucesPublicEnabled(process.env) && (
+            <section id="cruces" className="mt-12 scroll-mt-6">
+              <Suspense fallback={<CrucesSkeleton />}>
+                <CrucesSection boletin={boletin} />
+              </Suspense>
+            </section>
+          )}
+
           <section id="idea-matriz" className="mt-12 scroll-mt-6">
             <h2 className="text-xl font-semibold mb-4">Idea matriz</h2>
             <Suspense fallback={<IdeaMatrizSkeleton />}>
@@ -206,6 +229,13 @@ export async function ProyectoRail({ boletin }: { boletin: string }) {
       count: nVotaciones > 0 ? nVotaciones : undefined,
     },
     { id: "lobby-tramitacion", label: "Lobby del período" },
+    // Phase 38 (SURF-02): entrada de cruces con marcador diamante ◆, GATED por el
+    // mismo Candado B que la <section id="cruces"> — sin el gate, ni el ancla ni el
+    // target de scrollspy existen (sin ancla muerta). Petróleo NO se filtra a otras
+    // entradas (el marker/highlight lo maneja FichaRail por-entrada).
+    ...(crucesPublicEnabled(process.env)
+      ? [{ id: "cruces", label: "Cruces", marker: "diamante" as const }]
+      : []),
     { id: "idea-matriz", label: "Idea matriz" },
     // IN-02: #cuerpos-legales es una sección del contenido; sin su entrada el
     // scrollspy nunca la observa y el rail marca "idea-matriz" mientras se lee.
@@ -540,6 +570,22 @@ function LobbyTramitacionSkeleton() {
       <Skeleton className="h-6 w-2/3" />
       <Skeleton className="h-16 w-full rounded-md" />
       <Skeleton className="h-4 w-1/2" />
+    </div>
+  );
+}
+
+// Cruces (Phase 38): marco petróleo capa-1 (h2 + intro + caveat) + trigger primary.
+// Shape-matched al render de CrucesView para no producir layout shift al resolver.
+function CrucesSkeleton() {
+  return (
+    <div
+      className="rounded-lg border-[1.5px] border-accent-product bg-card p-4 space-y-3"
+      aria-hidden="true"
+    >
+      <Skeleton className="h-6 w-2/3" />
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-4 w-1/2" />
+      <Skeleton className="h-11 w-48 rounded-lg" />
     </div>
   );
 }
