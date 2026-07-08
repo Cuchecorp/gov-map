@@ -386,6 +386,39 @@ export interface CruceProyectoRow {
 }
 
 /**
+ * Fila ÚNICA del RPC `tasa_ausencia_comparada(p_parlamentario_id)` (migración 0050,
+ * `security definer`). VIZ-03: el contexto factual de asistencia — la tasa de ausencia
+ * PROPIA del parlamentario junto a la MEDIANA de su cámara, para que un "0,7%" no se lea
+ * en el vacío. El RPC lee `parlamentario`/`voto` (deny-by-default) INTERNAMENTE y emite
+ * SOLO derivado público: conteos, ratios neutros y `camara`. NUNCA `partido`/`rut`/
+ * `email`/`nombre` (LEGAL-03).
+ *
+ * `tasa_propia` y `mediana_camara` son RATIO en `[0,1]` — el % con 1 decimal es-CL lo
+ * formatea el componente (Plan 02, `pctFormatter.format(ratio * 100)`); esta fila NUNCA
+ * trae el porcentaje ya formateado. El RPC devuelve 0 filas (no una fila con ceros) cuando
+ * el sujeto no tiene votos confirmados (`M=0`) o no existe → el Server Component omite el
+ * bloque (empty honesto, sin fabricar un número).
+ *
+ * `mediana_camara` es `number | null` por contrato de honestidad: si es `null` el Plan 02
+ * OMITE la línea de comparación (nunca inventa una referencia). En la práctica, cuando el
+ * RPC devuelve una fila la cohorte tiene ≥1 miembro, así que la mediana viene poblada.
+ */
+export interface AusenciaContextoRow {
+  /** Ausencias del sujeto (`voto.seleccion='ausente'` confirmadas). Conteo neutro. */
+  n_ausencias: number;
+  /** Total de votos confirmados del sujeto (siempre ≥1 cuando hay fila → sin división por cero). */
+  m_votaciones: number;
+  /** `n_ausencias / m_votaciones` en `[0,1]`. El % 1-decimal es-CL se formatea en el componente. */
+  tasa_propia: number;
+  /** Mediana de la tasa de ausencia en la cámara del sujeto, en `[0,1]`. `null` → el Plan 02 omite la comparación. */
+  mediana_camara: number | null;
+  /** Tamaño de la cohorte: parlamentarios de la misma cámara con ≥1 voto confirmado. */
+  k_parlamentarios: number;
+  /** Cámara del sujeto (catálogo público). NUNCA partido/rut/email. */
+  camara: "diputados" | "senado";
+}
+
+/**
  * Fila CRUDA del RPC `declaraciones_de_parlamentario` (migración 0022, security
  * definer). El RPC proyecta SOLO los campos escalares publicados de la versión —
  * NUNCA `parlamentario_id` interno, NUNCA un familiar, NUNCA un RUT de persona

@@ -179,6 +179,7 @@ const PUBLIC_RPC_ALLOWLIST = new Set([
   "parlamentarios_publico",
   "rebeldias_de_parlamentario",
   "subgrafo_red",
+  "tasa_ausencia_comparada",
   "votos_de_parlamentario",
 ]);
 
