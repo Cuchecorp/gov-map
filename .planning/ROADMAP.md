@@ -711,7 +711,7 @@ Plans:
 | 35. ENT — Resolución de identidades de terceros | v4.0 | 7/7 | Complete (gaps 35-05/06/07 cerrados; pgTAP 0034/35/36/37 verdes en PROD; ENT-01..05 SATISFIED) | 2026-06-24 |
 | 36. CRUCE — Capa de cruces parlamentario↔sector (deny-by-default) | v4.0 | 4/4 | Complete   | 2026-06-24 |
 | 37. SURF — Cruces en ficha de parlamentario (gated) | v4.0 | 3/3 | Complete    | 2026-06-24 |
-| 38. SURF — Cruces en ficha de proyecto (DESTRABADA: sign-off señales-voto 2026-07-07) | v4.0 | 1/3 | In Progress|  |
+| 38. SURF — Cruces en ficha de proyecto (DESTRABADA: sign-off señales-voto 2026-07-07) | v4.0 | 2/3 | In Progress|  |
 | 39. LEGAL — Gate legal F13/F17/cruces (sign-off humano) | v4.0 | 0/? | Not started | - |
 | 40. RUTM — RUT-01 + ChileCompra/SERVEL (diferido, needs-human) | v4.0 | 0/? | Not started | - |
 | 41. CRUCEN — Habilitación de cruces (grant gated + dossier) | v4.0 | 3/3 | Complete (encendido 2026-06-24) | 2026-06-24 |
@@ -934,12 +934,12 @@ Plans:
   2. La sección degrada honesta pre-apply (RPC ausente → null, patrón PGRST202 de 52-03) y monta con el RPC aplicado
   3. Cada evidencia es trazable; el copy es factual sin verbo causal (negative-match en tests); caveat anti-causal 1×/sección
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 
 - [x] 38-01-PLAN.md — RPC cruces_de_proyecto (security definer, doble revoke, cero grant) + pgTAP + allowlist + tipo CruceProyectoRow (escrita, NO aplicada)
-- [ ] 38-02-PLAN.md — CrucesSection/CrucesView (degrade PGRST202) + carril #cruces + rail "Cruces ◆" + RTL (nombre como link, caveat 1×, negative-match)
+- [x] 38-02-PLAN.md — CrucesSection/CrucesView (degrade PGRST202) + carril #cruces + rail "Cruces ◆" + RTL (nombre como link, caveat 1×, negative-match)
 - [ ] 38-03-PLAN.md — gate + redeploy caliente + smoke + evidencia demo (14309-04) + checkpoint operador (apply DDL + pgTAP + veredicto visual)
 
 **UI hint**: yes
