@@ -1,5 +1,39 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, beforeAll, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
+
+// ── Mock de Recharts en jsdom (VotosView monta la isla VotosChart) ──────────────
+// Espejo del doble de votos-chart.test.tsx: Recharts mide el DOM (ResizeObserver → 0
+// en jsdom); no probamos el lienzo SVG sino "isla montada" (rc-barchart) vs empty.
+beforeAll(() => {
+  if (!globalThis.ResizeObserver) {
+    globalThis.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+  }
+});
+
+vi.mock("recharts", async () => {
+  const React = await import("react");
+  const passthrough =
+    (testid?: string) =>
+    ({ children }: { children?: React.ReactNode }) =>
+      React.createElement(
+        "div",
+        testid ? { "data-testid": testid } : {},
+        children,
+      );
+  return {
+    ResponsiveContainer: passthrough("rc-responsive"),
+    BarChart: passthrough("rc-barchart"),
+    Bar: () => null,
+    XAxis: () => null,
+    YAxis: () => null,
+    Tooltip: () => null,
+    Legend: () => null,
+  };
+});
 
 import { VotoFichaRow, VotoFichaMencionRow } from "./voto-ficha-row";
 import {
@@ -1084,5 +1118,111 @@ describe("agruparVotosPorTrimestre — bucketing puro por trimestre (VIZ-02)", (
     expect(data.periodos.map((p) => p.periodo)).toEqual(["2024 · T1", "2024 · T2"]);
     expect(data.periodos[0].si).toBe(1);
     expect(data.periodos[1].no).toBe(1);
+  });
+});
+
+// ── VIZ-02: sub-bloque "Cuándo votó" al tope del detalle (Task 3, F47) ──────────
+describe('VotosView — sub-bloque "Cuándo votó" (chart/empty/orden, VIZ-02)', () => {
+  const CAPTION =
+    "Cada barra agrupa las votaciones de un trimestre por sentido del voto. No representa una tendencia.";
+  const EMPTY =
+    "Las fechas de estas votaciones aún no permiten agruparlas por período.";
+
+  it("con periodos no vacío → heading 'Cuándo votó' + isla rc-barchart + caption exacta", () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          periodos: [
+            { periodo: "2024 · T1", si: 3, no: 1, abstencion: 0, pareo: 0, ausente: 0 },
+          ],
+        })}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Cuándo votó" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("rc-barchart")).toBeInTheDocument();
+    expect(screen.getByText(CAPTION)).toBeInTheDocument();
+    // El empty-state jamás aparece cuando hay serie.
+    expect(screen.queryByText(EMPTY)).not.toBeInTheDocument();
+  });
+
+  it("totalVotos>0 pero periodos=[] → empty exacto y NO monta rc-barchart (jamás barra en cero)", () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: [makeVoto()],
+          totalVotos: 1,
+          periodos: [],
+        })}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Cuándo votó" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(EMPTY)).toBeInTheDocument();
+    expect(screen.queryByTestId("rc-barchart")).not.toBeInTheDocument();
+    expect(screen.queryByText(CAPTION)).not.toBeInTheDocument();
+  });
+
+  it("noIngestado + totalVotos===0 → early return gana; el chart NUNCA se renderiza", () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({ noIngestado: true, votos: [], totalVotos: 0, periodos: [] })}
+      />,
+    );
+    expect(screen.queryByRole("heading", { name: "Cuándo votó" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("rc-barchart")).not.toBeInTheDocument();
+  });
+
+  it("totalVotos===0 (ingestado, cero confirmados) → el chart NUNCA se renderiza", () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({ votos: [], totalVotos: 0, periodos: [] })}
+      />,
+    );
+    expect(screen.queryByRole("heading", { name: "Cuándo votó" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("rc-barchart")).not.toBeInTheDocument();
+  });
+
+  it("negative-match: el render con chart no insinúa tendencia/ranking/causal (salvo la caption que la NIEGA)", () => {
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          periodos: [
+            { periodo: "2024 · T1", si: 3, no: 1, abstencion: 0, pareo: 0, ausente: 0 },
+            { periodo: "2024 · T2", si: 2, no: 2, abstencion: 1, pareo: 0, ausente: 1 },
+          ],
+        })}
+      />,
+    );
+    // La caption con "tendencia" (que la NIEGA) está presente…
+    expect(screen.getByText(CAPTION)).toBeInTheDocument();
+    // …y fuera de ella, el textContent no matchea vocabulario de insinuación.
+    const texto = (container.textContent ?? "").replace(CAPTION, "");
+    const PROHIBIDO =
+      /el más|la más|el que más|ranking|score|índice de|tendencia|porque|a cambio de|gracias a|influenc|presi[oó]n/i;
+    expect(texto).not.toMatch(PROHIBIDO);
+  });
+
+  it("el sub-bloque 'Cuándo votó' aparece ANTES que 'Cómo votó' en el orden del DOM", () => {
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          periodos: [
+            { periodo: "2024 · T1", si: 3, no: 1, abstencion: 0, pareo: 0, ausente: 0 },
+          ],
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto.indexOf("Cuándo votó")).toBeGreaterThanOrEqual(0);
+    expect(texto.indexOf("Cuándo votó")).toBeLessThan(texto.indexOf("Cómo votó"));
   });
 });
