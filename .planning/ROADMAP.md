@@ -722,7 +722,7 @@ Plans:
 | 46. VIZ — Chart patrimonio (conteo de ítems/año) | v5.0 | 2/2 | Complete (deploy 2026-07-02) | 2026-07-02 |
 | 47. VIZ — Chart votos/ausencias | v5.0 | 2/2 | Complete   | 2026-07-08 |
 | 48. VIZ — Autoría + similares-del-parlamentario | v5.0 | 0/? | Blocked — gated por ingesta autores + identidad | - |
-| 49. VIZ — Comparativo vs cámara (ausencias/actividad) | v5.0 | 2/3 | In Progress|  |
+| 49. VIZ — Comparativo vs cámara (ausencias/actividad) | v5.0 | 3/3 | Complete   | 2026-07-08 |
 | 50. FIX — Quick wins diagnóstico (P1) | v5.0 | 4/4 | Complete | 2026-07-02 |
 | 51. LEG2 — Legibilidad profunda (P2) | v5.0 | 7/7 | Complete | 2026-07-03 |
 | 52. CRUCE2 — Cruces nuevos (P3) | v5.0 | 6/6 | Complete (deploy ee6b7544) | 2026-07-06 |
@@ -1072,7 +1072,7 @@ Auditoría completa del sitio en vivo (`.planning/DIAGNOSTICO-govmap-2026-07-02.
 - [x] **Phase 46: Chart patrimonio (conteo de bienes/pasivos por año).** Recharts (instalar + validar build CF Docker). Único chart con cobertura densa hoy (135 parlamentarios ≥2 años); solo conteos (montos=URI → degrade). Dep: F45. (completed 2026-07-02 — 46-02 deploy ejecutado: F45+F46+F50 EN VIVO)
 - [x] **Phase 47: Chart votos/ausencias** — **DESBLOQUEADA 2026-07-02**: gate de datos CUMPLIDO verificado contra PROD (133 votaciones / 18.700 votos / 17.378 confirmados / 186 parlamentarios con voto). La ingesta masiva ya corrió; construible. (completed 2026-07-08)
 - [ ] **Phase 48: Autoría + similares-del-parlamentario** — GATED (re-verificado 2026-07-02: `proyecto.autores` vacío 136/136). Pre-req: ingesta `proyecto.autores` + resolución nombre→`parlamentario_id` + RPC `proyectos_de_parlamentario`.
-- [ ] **Phase 49: Comparativo vs cámara (ausencias/actividad)** — **gate de datos CUMPLIDO 2026-07-02** (546 ausencias / 18.700 votos en PROD; F47 desbloqueada). Falta solo: RPC `tasa_ausencia_comparada` (security definer, PII-safe, allowlist).
+- [x] **Phase 49: Comparativo vs cámara (ausencias/actividad)** — **gate de datos CUMPLIDO 2026-07-02** (546 ausencias / 18.700 votos en PROD; F47 desbloqueada). Falta solo: RPC `tasa_ausencia_comparada` (security definer, PII-safe, allowlist). (completed 2026-07-08)
 - [x] **Phase 50: FIX — Quick wins de bugs del diagnóstico 2026-07-02 (P1)** — 11 fixes de código acotados (B1, B6, B7, B8, B9, B10, B12, B14, B15, B17 + supresión de honest-state repetido). Sin DDL, sin deploy (checkpoint operador aparte). (completed 2026-07-02)
 - [x] **Phase 51: LEG2 — Legibilidad profunda (P2)** — votos agregados por proyecto, timeline dos niveles + "¿dónde está hoy?", patrimonio tarjeta-resumen sin URIs (B3), comparador cableado (B4), rebeldías honestas (B5), lobby agrupado por contraparte, provenance por sección, footer global. (completed 2026-07-03)
 - [x] **Phase 52: CRUCE2 — Cruces nuevos con datos ya disponibles (P3)** — clasificador sectorial (enciende `cruce_senal` de verdad), lobby×tramitación temporal, proyecto→agenda inverso, módulo de actualidad en home. (Asistencia comparada = Phase 49; chart votos = Phase 47 — ya desbloqueadas.) (completed 2026-07-06)
@@ -1255,11 +1255,11 @@ Plans:
   2. La ficha muestra el comparativo como hechos con universo explícito y caveat de cobertura; cero adjetivos/ranking (negative-match en tests)
   3. Suite verde + tsc limpio + lockdown-guard verde
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 - [x] 49-01-PLAN.md — RPC tasa_ausencia_comparada (escrita+pgTAP, espejo 0049) + tipo + allowlist; research psql PROD del shape/números D1012
 - [x] 49-02-PLAN.md — Sub-bloque AusenciasContexto tras "Cómo votó" + fetch/degrade PGRST202 + RTL negative-match extendido
-- [ ] 49-03-PLAN.md — Gate + redeploy caliente + smoke degrade + checkpoint operador consolidado (apply 0049+0050 + pgTAP + veredicto visual)
+- [x] 49-03-PLAN.md — Gate + redeploy caliente + smoke degrade + checkpoint operador consolidado (apply 0049+0050 + pgTAP + veredicto visual)
 
 **UI hint**: yes
 
