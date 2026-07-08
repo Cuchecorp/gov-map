@@ -353,6 +353,39 @@ export interface CruceEvidenciaItem {
 }
 
 /**
+ * Fila del RPC `cruces_de_proyecto` (migración 0049, security definer — Phase 38,
+ * SURF-02). Proyección PÚBLICA PII-safe: yuxtapone, en la ficha de un proyecto, un
+ * parlamentario que votó A FAVOR del boletín (`voto.seleccion='si'` confirmado) con sus
+ * reuniones de lobby EN EL SECTOR del proyecto (`cruce_senal.sector_id` =
+ * `proyecto_ficha.sector_id`). El RPC lee `parlamentario`/`cruce_senal` (deny-by-default)
+ * INTERNAMENTE y emite SOLO el derivado público: NUNCA `rut`, `partido` ni `email`.
+ * A diferencia de `CruceSenalRpcRow` (perfil del parlamentario), esta fila incluye
+ * `parlamentario_id` + `nombre_normalizado` porque el SUJETO se enlaza a
+ * `/parlamentario/[id]` (52-03 aplica texto-plano a CONTRAPARTES, no a parlamentarios).
+ * Reutiliza `CruceEvidencia` (misma forma jsonb de 0039).
+ */
+export interface CruceProyectoRow {
+  /** `p.id` (ej. `D1133`) → link `/parlamentario/[id]`. Nunca un RUT. */
+  parlamentario_id: string;
+  /** Proyección pública del nombre; se renderiza con `formatNombre` (F54). NUNCA partido/rut/email. */
+  nombre_normalizado: string;
+  sector_id: string;
+  /** Rótulo público del catálogo `sector.etiqueta`. */
+  sector_etiqueta: string;
+  /** Hoy SOLO `'lobby_sector'`; degradar honesto a cualquier otro valor futuro. */
+  tipo_senal: string;
+  /** Conteo NEUTRO de reuniones (único agregado permitido §9.1) — sin score/ranking/afinidad. */
+  conteo: number;
+  evidencia: CruceEvidencia;
+  /**
+   * Fecha de materialización del cruce (rebuild diario cron `23 3 * * *`). Nivel SEÑAL:
+   * todos los items comparten esta fecha. ISO string del timestamptz →
+   * `ProvenanceBadge.capturedAt` (frescura del rebuild, NO de la reunión — WR-02/F41).
+   */
+  fecha_captura: string;
+}
+
+/**
  * Fila CRUDA del RPC `declaraciones_de_parlamentario` (migración 0022, security
  * definer). El RPC proyecta SOLO los campos escalares publicados de la versión —
  * NUNCA `parlamentario_id` interno, NUNCA un familiar, NUNCA un RUT de persona

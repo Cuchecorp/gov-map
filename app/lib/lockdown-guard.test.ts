@@ -170,6 +170,7 @@ const PUBLIC_RPC_ALLOWLIST = new Set([
   "comparar_declaraciones",
   "contratos_de_parlamentario",
   "cruces_de_parlamentario",
+  "cruces_de_proyecto",
   "declaraciones_de_parlamentario",
   "lobby_de_parlamentario",
   "lobby_en_tramitacion",
