@@ -37,11 +37,47 @@ Frente "proyectos" completo end-to-end + fundaciones de identidad: framework de 
 - Sessions: trabajo concentrado; la sesión de cierre incluyó un cutover a nube no planificado.
 - Notable: el patrón slice-E2E-en-RED + reuso de política mantuvo bajo el rework entre fases; el mayor costo evitable fue el descubrimiento tardío del plano de despliegue.
 
+## Milestone: v5.0 — De datos a comprensión (legibilidad + análisis)
+
+**Shipped:** 2026-07-08
+**Phases:** 11 (44-55; F48 diferida) | **Plans:** 44
+
+### What Was Built
+Ficha de parlamentario de muro plano → navegable: acordeones por carril + resumen/índice above-fold (F45), gráficos descriptivos nunca causales (patrimonio F46, votos por trimestre F47, comparativo de ausencias F49), cruces ampliados + lobby×tramitación (F52, `cruce_senal` 30→781), quick-wins + legibilidad profunda (F50/F51), UX navegada + pulido (F53/F54), y rediseño cognitivo de 3 capas (F55, ficha 28k→~2.1k px). Todo EN VIVO (`74e3ad0f`).
+
+### What Worked
+- **Isla-cliente alimentada por transform puro server-side** (patrón F46 reusado verbatim en F47): los charts Recharts cruzan la frontera RSC→cliente sin arrastrar el cliente Supabase; `import type` + agregador puro serializable. Cero fricción de build.
+- **Degrade honesto de 3 caminos** (PGRST202→null / error→throw #34 / 0 filas→empty) como patrón compartido: permitió DEPLOY-antes-de-APPLY (código en vivo degradando honesto mientras la RPC no existía), desacoplando el deploy del checkpoint de DDL.
+- **pgTAP como única prueba válida del DDL**: los tests vitest/tsc verdes NO prueban que Postgres ejecutó la migración; el pgTAP post-apply atrapó bugs latentes de fixture (`fuente_voter_id` NOT NULL, FK de proyecto padre) que ningún test de app habría visto.
+- **Auditoría UX navegada real (BrowserOS)** en F53: journeys × viewports con screenshots destaparon P0 de navegación invisibles a los tests unitarios.
+
+### What Was Inefficient
+- **Colisión de IDs de requisito** (VIZ-02/VIZ-03 reusados por F47/F49 para superficies distintas al chart de patrimonio de F46) — deriva de trazabilidad que hubo que reconciliar en el audit. Lección: asignar IDs propios al planear cada superficie nueva.
+- **Artefactos de verificación desincronizados**: 4 fases quedaron sin VERIFICATION.md formal y 4 con VALIDATION en estado estrategia — todo el trabajo de test existía y estaba verde, pero los artefactos no se cerraron durante la ejecución. Requirió una pasada retroactiva de `/gsd:validate-phase` ×8 en el cierre.
+- **Checkpoints human_needed sin re-marcar**: operador resolvió (deploys, sign-off F55, apply DDL) pero los VERIFICATION.md quedaron en `human_needed`, inflando el audit-open al cierre.
+- **Screenshots de evidencia**: dos gotchas recurrentes (harness file:// clipping OOPIF → iframe same-origin; `save_screenshot` escribe al perfil BrowserOS no al repo) costaron reintentos en F54/F55.
+
+### Patterns Established
+- Deploy-before-apply con degrade honesto (código en vivo tolera la ausencia de la RPC).
+- Isla-cliente-viz + transform puro server-side (F46→F47).
+- Screenshot iframe same-origin in-process (rasteriza fullPage completo; evita clipping OOPIF).
+- `formatNombre` display-only: passthrough Unicode `\p{Lu}`, keys/hrefs/params SIEMPRE RAW.
+
+### Key Lessons
+- Asignar IDs de requisito únicos por superficie al planear; nunca reusar un ID para algo distinto.
+- Cerrar VERIFICATION/VALIDATION en la misma fase que el código; el retroactivo es barato pero infla el audit y esconde el estado real.
+- El gap del producto ya no es UI sino DATOS (autoría 0/136) + firmas humanas — el próximo milestone es de ingesta/gates, no de features.
+
+### Cost Observations
+- Model mix: Opus (planner/executor/verifier/integration-checker) + Sonnet (swarms/checkers).
+- Sessions: múltiples; varias corridas autónomas (`/gsd-autonomous`) + cierres de continuación tras session-limit.
+- Notable: session-limit mató subagentes en vuelo repetidamente → disciplina de spot-check (commits/archivos) + relanzar con estado explícito.
+
 ## Cross-Milestone Trends
 
-| Métrica | v1.0 |
-|---------|------|
-| Fases | 7 |
-| Planes | 25 |
-| Tareas | ~70 |
-| Deuda técnica al cierre | 6 items (2 código + 4 operacionales), 0 blockers |
+| Métrica | v1.0 | v5.0 |
+|---------|------|------|
+| Fases | 7 | 11 (F48 diferida) |
+| Planes | 25 | 44 |
+| Tareas | ~70 | ~66 |
+| Deuda técnica al cierre | 6 items (2 código + 4 operacionales), 0 blockers | tech_debt no-bloqueante (VERIFICATION formales, checkpoints sin re-marcar, cleanup menor) + 16 deferred; 0 blockers funcionales |
