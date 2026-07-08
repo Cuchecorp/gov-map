@@ -2,7 +2,7 @@ import { createServerSupabase } from "@/lib/supabase";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { IdentityMarker } from "@/components/identity-marker";
 import { DetalleColapsable } from "@/components/detalle-colapsable";
-import { fechaCorta, formatNombre } from "@/lib/format";
+import { fechaCortaSegura, formatNombre } from "@/lib/format";
 import {
   sourceLabel,
   type CruceProyectoRow,
@@ -137,7 +137,7 @@ function GrupoParlamentario({ row }: { row: CruceProyectoRow }) {
                   fuente no publica la fecha, se omite la línea (honest-state). */}
               {item.fecha && (
                 <span className="font-mono text-xs text-muted-foreground">
-                  Reunión registrada el {fechaCorta(new Date(item.fecha))}
+                  Reunión registrada el {fechaCortaSegura(item.fecha)}
                 </span>
               )}
             </div>
@@ -165,7 +165,8 @@ export function CrucesView({ rows }: { rows: CruceProyectoRow[] }) {
   // Conteo 3-estado honesto (Mono, tabular-nums): "{N} parlamentarios" cuando N>0,
   // "sin registros" cuando 0. El estado "—" (sin ingesta) NUNCA llega aquí: es el
   // degrade→null del Server Component (RPC ausente).
-  const conteoLabel = n > 0 ? `${n} parlamentarios` : "sin registros";
+  const conteoLabel =
+    n > 0 ? `${n} ${n === 1 ? "parlamentario" : "parlamentarios"}` : "sin registros";
 
   // El h2 vive DENTRO del componente (no en la page) para que el degrade honesto
   // path-1 (Section → null) NO deje un heading huérfano sin marco: nodo ausente.

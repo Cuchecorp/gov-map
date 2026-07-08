@@ -102,6 +102,12 @@ describe("CrucesView — capa-1 + capa-2 (rows>0)", () => {
     expect(screen.getByText("2 parlamentarios")).toBeInTheDocument();
   });
 
+  it("conteo singular: '1 parlamentario' con N=1 (no '1 parlamentarios')", () => {
+    render(<CrucesView rows={[makeRow()]} />);
+    expect(screen.getByText("1 parlamentario")).toBeInTheDocument();
+    expect(screen.queryByText("1 parlamentarios")).not.toBeInTheDocument();
+  });
+
   it("singular: 1 reunión (no '1 reuniones')", () => {
     const { container } = render(
       <CrucesView
