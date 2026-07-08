@@ -101,7 +101,11 @@ language sql stable security definer set search_path = '' as $$
   join afavor a on a.parlamentario_id = cs.parlamentario_id
   join public.sector s on s.codigo = cs.sector_id
   join public.parlamentario p on p.id = cs.parlamentario_id
-  order by cs.conteo desc, p.nombre_normalizado asc;
+  -- Orden NEUTRO alfabético (sign-off cond. 3 / UI-SPEC anti-insinuación inv. 5):
+  -- NO ordenar por conteo — rankear parlamentarios distintos por volumen de lobby
+  -- ("los más reunidos") es la insinuación que el sign-off prohíbe. El conteo se
+  -- muestra por-fila como hecho neutro, jamás como criterio de ranking entre sujetos.
+  order by p.nombre_normalizado asc;
 $$;
 
 -- ── ACL determinista: lock-down sin grants (Camino A, espejo de 0047/0048) ──
