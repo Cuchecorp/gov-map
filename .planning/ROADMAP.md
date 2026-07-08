@@ -934,7 +934,12 @@ Plans:
   2. La sección degrada honesta pre-apply (RPC ausente → null, patrón PGRST202 de 52-03) y monta con el RPC aplicado
   3. Cada evidencia es trazable; el copy es factual sin verbo causal (negative-match en tests); caveat anti-causal 1×/sección
 
-**Plans:** TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 38-01-PLAN.md — RPC cruces_de_proyecto (security definer, doble revoke, cero grant) + pgTAP + allowlist + tipo CruceProyectoRow (escrita, NO aplicada)
+- [ ] 38-02-PLAN.md — CrucesSection/CrucesView (degrade PGRST202) + carril #cruces + rail "Cruces ◆" + RTL (nombre como link, caveat 1×, negative-match)
+- [ ] 38-03-PLAN.md — gate + redeploy caliente + smoke + evidencia demo (14309-04) + checkpoint operador (apply DDL + pgTAP + veredicto visual)
 
 **UI hint**: yes
 
