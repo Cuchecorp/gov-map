@@ -104,6 +104,43 @@
 - [x] **VIZ-02**: **Recharts** instalado en `app/` (única dep de charts; visx reservado para timeline a medida fuera de v5). El chart es una **isla cliente** (`"use client"`); el resto de la ficha sigue SSR. El build OpenNext/Cloudflare **no se rompe** (validado en Docker Linux, no build Windows). `pnpm test` + `tsc -b` verdes.
 - [x] **VIZ-03**: El gráfico es **descriptivo, nunca causal**: ejes/leyendas neutros ("N.º de bienes declarados por año"), sin verbo causal (negative-match del vocabulario prohibido verde), con **fuente + fecha + enlace** (CC BY 4.0 CPLT) al pie igual que las tablas. NO introduce RPC nueva ni `.from('parlamentario')`; guard `lockdown-guard.test.ts` verde.
 
+> **⚠ Colisión de IDs (documentada 2026-07-08):** Las fases posteriores F47 y F49 **reusaron** los IDs `VIZ-02`/`VIZ-03` en su frontmatter para superficies DISTINTAS del chart de patrimonio (ver VIZ-VOTOS / VIZ-COMP abajo). Los `VIZ-01/02/03` de esta sección son y siguen siendo el **chart de patrimonio (Phase 46)**. La deriva se saldó definiendo IDs propios para las superficies nuevas.
+
+### VIZ-VOTOS — Chart de votos/ausencias por trimestre (Phase 47)
+
+> Superficie destrabada tras la ingesta masiva de votaciones. Vive en capa-2 del detalle de Votaciones.
+
+- [x] **VIZ-VOTOS-01** (frontmatter F47: `VIZ-02`): Sub-bloque "Cuándo votó" = stacked `BarChart` discreto por trimestre calendario (`agruparVotosPorTrimestre` puro + isla cliente `votos-chart.tsx`), colores de voto semánticos (jamás petróleo), stacked-NO-line, degrade honesto (serie vacía → empty-state, nunca barra en cero). Sin RPC/DDL/dep nueva. Descriptivo, negative-match verde.
+
+### VIZ-COMP — Comparativo de ausencias vs cámara (Phase 49)
+
+> Contexto factual neutro: tasa de ausencia propia + mediana de la cámara.
+
+- [x] **VIZ-COMP-01** (frontmatter F49: `VIZ-03`): RPC `tasa_ausencia_comparada(text)` PII-safe (security definer, `search_path=''`, doble revoke, CERO grant, en `PUBLIC_RPC_ALLOWLIST`) + sub-bloque `AusenciasContexto` tras "Cómo votó", `%` SIN color-veredicto, degrade honesto (PGRST202→null / error→throw #34), omisión honesta de la mediana null. RPC aplicada a PROD, pgTAP 0050 10/10.
+
+### CRUCE2 — Cruces nuevos / lobby×tramitación (Phase 52)
+
+- [x] **CRUCE2-01**: Señales de cruce ampliadas (`cruce_senal` 30→781) vía 0047+0048 (aplicadas, pgTAP 11/11+10/10) + carril lobby×tramitación en la ficha de proyecto (texto plano no-enlazado, LOCKED), sin verbo causal.
+
+### UX — Legibilidad cognitiva y navegación (Phases 51, 53, 54, 55)
+
+> Pista de comprensión: navegación global, jerarquía visual, disclosure progresivo. IDs ad-hoc usados por las fases en su frontmatter.
+
+- [x] **LEG2** (Phase 51): Legibilidad profunda — "¿Dónde está hoy?" en proyecto, jerarquía de secciones, subrequisitos SC1/SC8/SC9. Suite verde, VERIFICATION passed 9/9.
+- [x] **UX-01** (Phase 53): Navegación global de 5 destinos (`HeaderNav`) + breadcrumbs en fichas + líneas de continuación con 1 link; auditoría navegada BrowserOS (≥4 journeys × 2 viewports) + 3 fixes P0. VERIFICATION passed 4/4.
+- [x] **UX-02** (Phase 54): Pulido presentacional — `formatNombre` display-only en 11+ superficies (keys/hrefs/params RAW), 3 tarjetas de entrada en home, microcopy anti-causal, grafo móvil, identity-warn restaurado. VALIDATION nyquist-compliant (202 tests).
+- [x] **UX-03** (Phase 55): Rediseño cognitivo de 3 capas (resumen preatentivo → disclosure progresivo `DetalleColapsable` → fuente); ficha parlamentario 28k→~2.1k px default, layout informe-con-rail. VERIFICATION passed 5/5 + sign-off operador 2026-07-07.
+
+### SURF-02 — Cruces en ficha de proyecto (Phase 38, destrabada en la ventana v5)
+
+- [x] **SURF-02** (ya definido en §SURF v4): RPC `cruces_de_proyecto(text)` PII-safe + `CrucesSection` en la ficha de proyecto, degrade honesto, gate `crucesPublicEnabled`. Aplicada a PROD, pgTAP 0049 10/10. Ver §SURF arriba.
+
+### Fuera de la pista de requisitos formales v5
+
+- **Phase 44** (LEG auditoría+plan): artefactos-only (UI-SPEC/AUDIT/INVENTORY), sin requisito verificable propio.
+- **Phase 50** (FIX quick wins P1): 11 fixes de bug (B1..B17, HS-rep), rastreados por bug-ID, no por REQ formal. VALIDATION nyquist-compliant (173 tests).
+- **Phase 48** (VIZ autoría/similares): **BLOCKED por datos** (autores 0/136). NO ejecutada; diferida al milestone de ingesta.
+
 ## Out of Scope
 
 Explicitly excluded. Documented to prevent scope creep.
@@ -154,6 +191,28 @@ Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la 
 | DEBT-03 | Phase 43 | Complete (24 FIX-NOW, 21 commits, suite 341 verde) |
 | DEBT-04 | Phase 43 | Complete (ledger + 11 checkpoints operador + memoria) |
 
+### v5.0 — Legibilidad + análisis (Phases 44-55)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| (audit+plan) | Phase 44 | Complete (artefactos: UI-SPEC + AUDIT-UX + DATA-INVENTORY) |
+| LEG-01 | Phase 45 | Complete (nyquist-compliant 2026-07-08) |
+| LEG-02 | Phase 45 | Complete (intent vía construirChips→FichaRail; componente original huérfano — cleanup) |
+| LEG-03 | Phase 45 | Complete |
+| VIZ-01 | Phase 46 | Complete (chart patrimonio) |
+| VIZ-02 | Phase 46 | Complete (Recharts + isla cliente; deploy 3ade68b8) |
+| VIZ-03 | Phase 46 | Complete (descriptivo no-causal + CC BY) |
+| VIZ-VOTOS-01 | Phase 47 | Complete (chart "Cuándo votó"; frontmatter reusó `VIZ-02`) |
+| VIZ-COMP-01 | Phase 49 | Complete (RPC 0050 aplicada, pgTAP 10/10; frontmatter reusó `VIZ-03`) |
+| SURF-02 | Phase 38 | Complete (RPC 0049 aplicada, pgTAP 10/10; destrabada en ventana v5) |
+| CRUCE2-01 | Phase 52 | Complete (0047+0048 aplicadas, pgTAP 11/11+10/10) |
+| LEG2 (SC1/SC8/SC9) | Phase 51 | Complete |
+| UX-01 | Phase 53 | Complete (nav + breadcrumbs + auditoría navegada) |
+| UX-02 | Phase 54 | Complete (formatNombre + tarjetas home + pulido) |
+| UX-03 | Phase 55 | Complete (rediseño cognitivo 3 capas + sign-off operador) |
+| (11 fixes B*) | Phase 50 | Complete (quick wins P1; rastreados por bug-ID) |
+| (VIZ autoría) | Phase 48 | **BLOCKED por datos (autores 0/136) — DIFERIDA a milestone de ingesta** |
+
 ### DEBT (Phase 43 — eliminación de deuda técnica, exhaustiva)
 
 - **DEBT-01 — Inventario exhaustivo con evidencia.** Swarm premortem Sonnet (≥6 dimensiones: código app/, código packages/, DB+migraciones+pgTAP, tests+cobertura+CI, deps+config+build, planning+docs+scratch) produce `43-DEBT-LEDGER.md` con cada hallazgo (archivo:línea, repro, severidad, blast radius). Nada por sentado: sin evidencia verificable no entra.
@@ -171,4 +230,4 @@ Mapeo a fases del ROADMAP (numeración continúa desde v3.0 — Phase 32 fue la 
 
 ---
 *Requirements defined: 2026-06-24*
-*Last updated: 2026-06-24 after initial definition (transcribed from .planning/MILESTONE-v4-cruces.md)*
+*Last updated: 2026-07-08 — añadida la trazabilidad v5.0 (Phases 44-55): LEG/VIZ formales + IDs ad-hoc (VIZ-VOTOS/VIZ-COMP/UX-01..03/CRUCE2/LEG2) con nota de colisión VIZ-02/03, y F48 diferida por datos.*
