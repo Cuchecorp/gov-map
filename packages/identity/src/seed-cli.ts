@@ -198,7 +198,8 @@ export function buildR2Target(): R2BackupTarget | null {
       const body = new TextEncoder().encode(content);
       const sha = await sha256Hex(body);
       const date = new Date().toISOString().slice(0, 10);
-      return store.putImmutable("identity", "parlamentario-seed", date, sha, "json", body);
+      const { r2Path } = await store.putImmutable("identity", "parlamentario-seed", date, sha, "json", body);
+      return r2Path;
     },
   };
 }

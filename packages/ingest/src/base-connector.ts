@@ -66,7 +66,7 @@ export interface ConnectorDeps {
       sha: string,
       ext: string,
       body: Uint8Array,
-    ): Promise<string>;
+    ): Promise<{ r2Path: string; existed: boolean }>;
   };
   snapshot: {
     write(input: {
@@ -159,7 +159,7 @@ export abstract class BaseConnector<Raw> {
       const sha = await sha256Hex(body);
       const date = dateBucket(now);
       const ext = spec.ext ?? "json";
-      const r2Path = await this.deps.r2.putImmutable(
+      const { r2Path } = await this.deps.r2.putImmutable(
         this.sourceId,
         spec.resource,
         date,

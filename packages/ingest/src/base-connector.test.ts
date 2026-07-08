@@ -48,7 +48,7 @@ function makeDeps(overrides: Partial<{
     r2: {
       putImmutable: vi.fn(async (source: string, resource: string, date: string, sha: string) => {
         order.push("r2.putImmutable");
-        return `${source}/${resource}/${date}/${sha}.json`;
+        return { r2Path: `${source}/${resource}/${date}/${sha}.json`, existed: false };
       }),
     },
     snapshot: {

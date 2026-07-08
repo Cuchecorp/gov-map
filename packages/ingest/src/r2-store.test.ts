@@ -17,7 +17,7 @@ describe("R2Store.putImmutable", () => {
     const mock = makeMockFetch({ [url]: { status: 200 } });
     const store = new R2Store(CFG, { fetchFn: mock.fn });
 
-    const r2path = await store.putImmutable(
+    const { r2Path } = await store.putImmutable(
       "camara",
       "proyectos",
       "2026-06-17",
@@ -25,7 +25,7 @@ describe("R2Store.putImmutable", () => {
       "json",
       body,
     );
-    expect(r2path).toBe(`camara/proyectos/2026-06-17/${sha}.json`);
+    expect(r2Path).toBe(`camara/proyectos/2026-06-17/${sha}.json`);
   });
 
   it("Test 1b: sha256 del mismo body es estable", async () => {
@@ -55,8 +55,8 @@ describe("R2Store.putImmutable", () => {
     const mock = makeMockFetch({ [url]: { status: 412 } });
     const store = new R2Store(CFG, { fetchFn: mock.fn });
 
-    const r2path = await store.putImmutable("s", "r", "2026-06-17", sha, "json", body);
-    expect(r2path).toBe(`s/r/2026-06-17/${sha}.json`);
+    const { r2Path } = await store.putImmutable("s", "r", "2026-06-17", sha, "json", body);
+    expect(r2Path).toBe(`s/r/2026-06-17/${sha}.json`);
   });
 
   it("no expone credenciales en el error de un PUT fallido (T-01-06)", async () => {
@@ -71,5 +71,58 @@ describe("R2Store.putImmutable", () => {
     await expect(
       store.putImmutable("s", "r", "2026-06-17", sha, "json", body),
     ).rejects.not.toThrow(/secret_test/);
+  });
+
+  it("PUT 200 => existed=false", async () => {
+    const body = new TextEncoder().encode("nuevo");
+    const sha = await sha256Hex(body);
+    const url = `${CFG.endpoint}/${CFG.bucket}/s/r/2026-06-17/${sha}.json`;
+    const mock = makeMockFetch({ [url]: { status: 200 } });
+    const store = new R2Store(CFG, { fetchFn: mock.fn });
+
+    const { existed } = await store.putImmutable("s", "r", "2026-06-17", sha, "json", body);
+    expect(existed).toBe(false);
+  });
+
+  it("PUT 412 => existed=true (objeto ya existia)", async () => {
+    const body = new TextEncoder().encode("dup");
+    const sha = await sha256Hex(body);
+    const url = `${CFG.endpoint}/${CFG.bucket}/s/r/2026-06-17/${sha}.json`;
+    const mock = makeMockFetch({ [url]: { status: 412 } });
+    const store = new R2Store(CFG, { fetchFn: mock.fn });
+
+    const { r2Path, existed } = await store.putImmutable("s", "r", "2026-06-17", sha, "json", body);
+    expect(existed).toBe(true);
+    expect(r2Path).toBe(`s/r/2026-06-17/${sha}.json`);
+  });
+});
+
+describe("R2Store.getObject", () => {
+  it("GET 200 devuelve Uint8Array del body", async () => {
+    const expected = new TextEncoder().encode("crudo-leido");
+    const r2Path = "tramitacion/boletin/2026-01-10/abc123.json";
+    const url = `${CFG.endpoint}/${CFG.bucket}/${r2Path}`;
+    const mock = makeMockFetch({ [url]: { status: 200, body: expected } });
+    const store = new R2Store(CFG, { fetchFn: mock.fn });
+    const result = await store.getObject(r2Path);
+    expect(result).toEqual(expected);
+  });
+
+  it("GET 404 lanza error sin exponer credenciales (T-01-06)", async () => {
+    const r2Path = "no/existe/path.json";
+    const url = `${CFG.endpoint}/${CFG.bucket}/${r2Path}`;
+    const mock = makeMockFetch({ [url]: { status: 404 } });
+    const store = new R2Store(CFG, { fetchFn: mock.fn });
+    await expect(store.getObject(r2Path)).rejects.toThrow(/404/);
+    await expect(store.getObject(r2Path)).rejects.not.toThrow(/secret_test/);
+  });
+
+  it("GET 500 lanza error sin exponer credenciales (T-01-06)", async () => {
+    const r2Path = "tramitacion/boletin/2026-01-10/abc123.json";
+    const url = `${CFG.endpoint}/${CFG.bucket}/${r2Path}`;
+    const mock = makeMockFetch({ [url]: { status: 500 } });
+    const store = new R2Store(CFG, { fetchFn: mock.fn });
+    await expect(store.getObject(r2Path)).rejects.toThrow(/500/);
+    await expect(store.getObject(r2Path)).rejects.not.toThrow(/secret_test/);
   });
 });

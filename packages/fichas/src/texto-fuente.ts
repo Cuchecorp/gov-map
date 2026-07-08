@@ -33,7 +33,7 @@ export interface TextoRobots {
   isAllowed(url: string): Promise<boolean>;
 }
 
-/** Target R2 mínimo (envuelve `R2Store.putImmutable`). Devuelve la key escrita. */
+/** Target R2 mínimo (envuelve `R2Store.putImmutable`). Devuelve el r2Path y si ya existía. */
 export interface TextoR2Target {
   putImmutable(
     source: string,
@@ -42,7 +42,7 @@ export interface TextoR2Target {
     sha: string,
     ext: string,
     body: Uint8Array,
-  ): Promise<string>;
+  ): Promise<{ r2Path: string; existed: boolean }>;
 }
 
 export interface ObtenerTextoFuenteOpts {
@@ -200,14 +200,14 @@ export async function obtenerTextoFuente(
       const body = new TextEncoder().encode(texto);
       const sha = await sha256Hex(body);
       const date = new Date().toISOString().slice(0, 10);
-      r2Path = await opts.r2.putImmutable(
+      ({ r2Path } = await opts.r2.putImmutable(
         "fichas",
         "texto-fuente",
         date,
         sha,
         "txt",
         body,
-      );
+      ));
     } catch (err) {
       // Credencial 401 / fallo de red: el texto ya está en memoria; R2 se omite.
       log(

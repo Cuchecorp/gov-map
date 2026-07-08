@@ -89,14 +89,14 @@ export async function runCamaraLobby(opts: RunCamaraLobbyOpts): Promise<RunCamar
     try {
       const bytes = new TextEncoder().encode(html);
       const sha = await sha256Hex(bytes);
-      r2Path = await opts.r2Store.putImmutable(
+      ({ r2Path } = await opts.r2Store.putImmutable(
         "camara-lobby",
         "listadodeaudiencias",
         date,
         sha,
         "html",
         bytes,
-      );
+      ));
       log(`camara-lobby: crudo en R2 → ${r2Path}`);
     } catch (err) {
       r2Path = null;

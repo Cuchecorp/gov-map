@@ -42,7 +42,7 @@ describe("texto-fuente: obtenerTextoFuente — descarga + R2 gate", () => {
 
   it("1. link presente + r2Enabled → fetch + putImmutable; devuelve texto y r2Path", async () => {
     const { fetcher, robots, rateLimiter } = fakeDeps();
-    const r2 = { putImmutable: vi.fn(async () => "fichas/texto/2026-06-18/abc.txt") };
+    const r2 = { putImmutable: vi.fn(async () => ({ r2Path: "fichas/texto/2026-06-18/abc.txt", existed: false })) };
 
     const res = await obtenerTextoFuente(URL_OK, {
       r2Enabled: true,
@@ -63,7 +63,7 @@ describe("texto-fuente: obtenerTextoFuente — descarga + R2 gate", () => {
 
   it("2. r2Enabled=false (default, R2 401) → NO toca R2; devuelve el texto en memoria", async () => {
     const { fetcher, robots, rateLimiter } = fakeDeps();
-    const r2 = { putImmutable: vi.fn(async () => "no-deberia-llamarse") };
+    const r2 = { putImmutable: vi.fn(async () => ({ r2Path: "no-deberia-llamarse", existed: false })) };
 
     const res = await obtenerTextoFuente(URL_OK, {
       r2: r2 as never,

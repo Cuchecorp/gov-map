@@ -144,14 +144,14 @@ export async function runProbidadTodos(opts: RunProbidadTodosOpts): Promise<RunP
     try {
       const bytes = new TextEncoder().encode(JSON.stringify(crudos));
       const sha = await sha256Hex(bytes);
-      r2Path = await opts.r2Store.putImmutable(
+      ({ r2Path } = await opts.r2Store.putImmutable(
         "infoprobidad",
         "declaraciones",
         hasta,
         sha,
         "json",
         bytes,
-      );
+      ));
       log(`probidad-todos: crudo agregado en R2 → ${r2Path}`);
       if (opts.snapshotWriter) {
         await opts.snapshotWriter.write({

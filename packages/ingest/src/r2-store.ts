@@ -48,8 +48,9 @@ export class R2Store {
   }
 
   /**
-   * Escribe el crudo de forma idempotente. Devuelve el r2Path (key).
-   * 412 (ya existia) se trata como exito. Otros !ok lanzan (sin exponer
+   * Escribe el crudo de forma idempotente.
+   * Devuelve { r2Path, existed } donde existed=true cuando R2 responde 412
+   * (el objeto ya existia — idempotente). Otros !ok lanzan (sin exponer
    * credenciales en el mensaje — T-01-06).
    */
   async putImmutable(
@@ -59,7 +60,7 @@ export class R2Store {
     sha: string,
     ext: string,
     body: Uint8Array,
-  ): Promise<string> {
+  ): Promise<{ r2Path: string; existed: boolean }> {
     const key = `${source}/${resource}/${date}/${sha}.${ext}`;
     const url = `${this.endpoint}/${this.bucket}/${key}`;
 
@@ -75,6 +76,22 @@ export class R2Store {
     if (!res.ok && res.status !== 412) {
       throw new Error(`R2 PUT ${res.status} para ${key}`);
     }
-    return key;
+    const existed = res.status === 412;
+    return { r2Path: key, existed };
+  }
+
+  /**
+   * Lee un objeto desde R2 por su clave content-addressed.
+   * Firma con SigV4 via AwsClient (NUNCA hand-roll — T-01-05).
+   * Lanza Error con status y path (sin credenciales — T-01-06) ante !ok.
+   */
+  async getObject(r2Path: string): Promise<Uint8Array> {
+    const url = `${this.endpoint}/${this.bucket}/${r2Path}`;
+    const signed = await this.client.sign(url, { method: "GET" });
+    const res = await this.fetchFn(signed);
+    if (!res.ok) {
+      throw new Error(`R2 GET ${res.status} para ${r2Path}`);
+    }
+    return new Uint8Array(await res.arrayBuffer());
   }
 }

@@ -30,7 +30,7 @@ import { extraerTextoTablaPdf, parseCamaraTabla } from "./parse-camara-tabla";
 import { sha256Hex } from "@obs/ingest";
 import type { LLMProvider } from "@obs/llm";
 
-/** Target R2 mínimo (envuelve `R2Store.putImmutable`). Devuelve la key escrita. */
+/** Target R2 mínimo (envuelve `R2Store.putImmutable`). Devuelve el r2Path y si ya existía. */
 export interface TablaR2Target {
   putImmutable(
     source: string,
@@ -39,7 +39,7 @@ export interface TablaR2Target {
     sha: string,
     ext: string,
     body: Uint8Array,
-  ): Promise<string>;
+  ): Promise<{ r2Path: string; existed: boolean }>;
 }
 
 export interface RunIngestOpts {
@@ -234,7 +234,7 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
           try {
             const sha = await sha256Hex(pdfBytes);
             const date = new Date().toISOString().slice(0, 10);
-            const key = await opts.r2.putImmutable(
+            const { r2Path: key } = await opts.r2.putImmutable(
               "camara",
               "tabla-sala",
               date,
