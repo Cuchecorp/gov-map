@@ -729,7 +729,7 @@ Plans:
 | 53. UXNAV — Auditoría UX navegada (BrowserOS) + fixes P0 | v5.0 | 5/5 | Complete    | 2026-07-07 |
 | 54. UXDEMO — Pulido presentacional demo | v5.0 | 5/5 | Complete   | 2026-07-07 |
 | 55. UXCOG — Rediseño cognitivo: jerarquía visual + detalle progresivo | v5.0 | 6/6 | Complete (`74e3ad0f`) | 2026-07-08 |
-| 56. CRON-AUDIT — Auditoría E2E de los 9 workflows de ingesta | v6.0 | 0/TBD | Not started | - |
+| 56. CRON-AUDIT — Auditoría E2E de los 9 workflows de ingesta | v6.0 | 1/1 | Complete   | 2026-07-08 |
 | 57. CRON-FIX — Hardening dos-etapas + hash-check + crons verdes | v6.0 | 0/TBD | Not started | - |
 | 58. CRON-FRESH — Monitoreo de frescura por fuente | v6.0 | 0/TBD | Not started | - |
 | 59. AUTOR — Autoría ingest + ficha de proyecto (F48) | v6.0 | 0/TBD | Not started | - |
@@ -1343,7 +1343,6 @@ Plans:
 
 **UI hint**: yes
 
-
 ---
 
 ## 🚧 v6.0 — Confiabilidad y comprensión (In Progress)
@@ -1360,7 +1359,7 @@ Plans:
 
 ### Phases (v6.0)
 
-- [ ] **Phase 56: CRON-AUDIT — Auditoría E2E de los 9 workflows de ingesta** - Inventario auditado de cada cron (veredicto + gap-list accionable); producto es el diagnóstico que alimenta la fase de hardening.
+- [x] **Phase 56: CRON-AUDIT — Auditoría E2E de los 9 workflows de ingesta** - Inventario auditado de cada cron (veredicto + gap-list accionable); producto es el diagnóstico que alimenta la fase de hardening. (completed 2026-07-08)
 - [ ] **Phase 57: CRON-FIX — Hardening dos-etapas + hash-check + crons verdes** - Cada conector cumple DOS ETAPAS re-ejecutables + hash-check antes de descargar; crons corren verdes L–V (secrets cargados o fallback local documentado).
 - [ ] **Phase 58: CRON-FRESH — Monitoreo de frescura por fuente** - El operador puede consultar la frescura (última corrida, último snapshot R2, último upsert) y detectar staleness sin bucear logs.
 - [ ] **Phase 59: AUTOR — Autoría ingest + ficha de proyecto (F48)** - Autores de cada proyecto poblados via R2→Supabase con reconciliación fail-closed; ficha de proyecto muestra autoría con guarda de identidad.
@@ -1382,7 +1381,7 @@ Plans:
   3. Se identifica el estado de billing GH Actions (bloqueado o desbloqueado) y se documenta cuáles workflows pueden correr hoy vs cuáles necesitan fallback local.
   4. El inventario es re-ejecutable como comprobación: el operador puede correr cada workflow en dispatch manual y confirmar el veredicto con logs reales.
 
-**Plans:** TBD
+**Plans:** 1/1 plans complete
 
 ### Phase 57: CRON-FIX — Hardening dos-etapas + hash-check + crons verdes
 
