@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { ProvenanceBadge } from "@/components/provenance-badge";
+import { VotosChart } from "@/components/votos-chart";
 import { SELECCION_STYLE } from "@/components/voto-row";
 import { cn } from "@/lib/utils";
 import { fechaCorta, extractoIdea, conteoVotacion } from "@/lib/format";
@@ -570,6 +571,28 @@ export function VotosView({
 
   return (
     <div className="space-y-10">
+      {/* ── Cuándo votó — chart de evolución por trimestre (VIZ-02) ────────────
+          PRIMER hijo del detalle, ENCIMA de "Cómo votó". El chart es un stacked
+          BarChart DISCRETO (isla cliente): jamás una línea/área — no insinúa
+          tendencia. Si ninguna fila tiene fecha parseable, `periodos` viene vacío y
+          se muestra copy honesto en vez de una barra en cero (degrade honesto). */}
+      <div>
+        <h3 className="text-sm font-semibold">Cuándo votó</h3>
+        {data.periodos.length > 0 ? (
+          <>
+            <VotosChart periodos={data.periodos} />
+            <p className="text-sm text-muted-foreground mt-4">
+              Cada barra agrupa las votaciones de un trimestre por sentido del
+              voto. No representa una tendencia.
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground mt-2">
+            Las fechas de estas votaciones aún no permiten agruparlas por período.
+          </p>
+        )}
+      </div>
+
       {/* ── Cómo votó — desglose del SENTIDO del voto (NO asistencia) ──────── */}
       <div>
         <h3 className="text-sm font-semibold">Cómo votó</h3>
