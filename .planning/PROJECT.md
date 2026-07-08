@@ -12,7 +12,19 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 **Shipped v5.0 — De datos a comprensión (legibilidad + análisis).** La ficha de parlamentario pasó de muro plano (~900 KB, 1 columna) a superficie navegable y comprensible: acordeones por carril + resumen/índice above-fold, gráficos descriptivos (patrimonio, votos por trimestre, comparativo de ausencias — nunca causales), cruces nuevos, y un rediseño cognitivo de 3 capas (resumen preatentivo → disclosure progresivo → fuente). Todo EN VIVO en Cloudflare (`74e3ad0f`), principio rector intacto (fuente+fecha+enlace). 11 fases (44-55), integración E2E 3/3 wired, nyquist 11/11. **F48 (autoría/similares) DIFERIDA** al próximo milestone por gap de datos (autores 0/136). Detalle: `milestones/v5.0-*.md`.
 
-**Próximo milestone (a planificar): INGESTA + gates.** Lo que resta del producto NO es UI sino DATOS + firmas humanas: (1) ingesta de autores/autoría de proyectos (desbloquea F48), (2) RUT-01 backfill + ChileCompra/SERVEL (Phase 40), (3) sign-offs legales F13/MONEY y cierre F17/NET (Phase 39), (4) rotar DB password (B26). Arrancar con `/gsd:new-milestone`.
+## Current Milestone: v6.0 Confiabilidad y comprensión
+
+**Goal:** Que el dato llegue solo y se entienda solo: (1) toda la ingesta programada corre PERFECTA end-to-end (fuentes→R2 crudo content-addressed, R2→Supabase, hash-check, idempotencia, monitoreo de frescura), (2) gov-map estrena identidad visual propia (ícono serio, public-policy, no estilo-IA), y (3) cada visualización se entiende sin explicación externa (cruces entre parlamentarios primero), validada por iteración fina con BrowserOS.
+
+**Target features:**
+- **CRON/INGESTA perfecta** — auditoría E2E de los 9 workflows existentes (agenda, leyes, lobby×2, probidad, fichas-backfill, backup, backfill, deploy); cada conector cumple las DOS ETAPAS LOCKED (fuente→R2, R2→Supabase) re-ejecutables; hash-check antes de descargar; crons de novedades L–V verdes con secrets cargados (o fallback local documentado si billing GH sigue bloqueado); monitoreo de frescura por fuente + alerta de staleness.
+- **AUTORÍA de proyectos** — ingesta de autores (hoy 0/136) vía R2→Supabase con reconciliación fail-closed → desbloquea F48 (autoría/similares) diferida de v5.
+- **IDENTIDAD VISUAL** — ícono/logo de gov-map: simple, serio, interesante, public-policy oriented; explícitamente NO el estilo típico hecho-con-IA (wordmark con fuentes mezcladas). Integración completa: favicon, OG, header, manifest.
+- **VISUALIZACIÓN COMPRENSIBLE** — los cruces entre parlamentarios (y demás superficies: ficha, proyecto, /red, charts) se entienden a la primera; loop BrowserOS captura→corrección→re-captura como gate de cada superficie; leyenda "cómo leer esto" donde falte.
+
+**Modo de trabajo (directiva del operador):** Fable (main loop) planifica/dirime/controla; la ejecución se delega a agentes Sonnet o menores. Todo autónomo y ordenado; los gates humanos/legales NUNCA los flipea un agente.
+
+**Fuera de este milestone:** sign-offs legales F13/MONEY + F17/NET + 0042/cruces-flag (firma humana, Phase 39), RUT-01 + ChileCompra/SERVEL (Phase 40), rotar DB password (B26, acción operador).
 
 <!-- v4.0 shipped (De datos a cruces verificables, Phases 33-43): cruces ENCENDIDOS, lockdown API vía Camino A. Detalle abajo (history) y en milestones/. -->
 
@@ -74,9 +86,8 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 ### Active
 
-<!-- Milestone activo cerrado (v5.0 shipped 2026-07-08). Próximo = INGESTA + gates (a planificar con /gsd:new-milestone). REQUIREMENTS.md se regenera para el próximo milestone. -->
-
-- [ ] **Próximo — INGESTA + gates humanos/legales:** ingesta de autoría de proyectos (desbloquea F48 autoría/similares) · RUT-01 backfill + ChileCompra/SERVEL (Phase 40) · sign-offs F13/MONEY + cierre F17/NET (Phase 39) · rotar DB password (B26).
+- [ ] **v6.0 — confiabilidad y comprensión (activo):** crons/ingesta E2E perfecta (R2 dos-etapas, hash-check, monitoreo de frescura) · autoría de proyectos (desbloquea F48) · ícono/identidad visual gov-map · visualización comprensible con loop BrowserOS. Ver REQUIREMENTS.md.
+- [ ] **Pendiente de operador (fuera de v6):** RUT-01 backfill + ChileCompra/SERVEL (Phase 40) · sign-offs F13/MONEY + cierre F17/NET (Phase 39) · rotar DB password (B26).
 - [x] **v5.0 — de datos a comprensión** (shipped 2026-07-08): legibilidad + gráficos descriptivos + rediseño cognitivo; F48 diferida por datos.
 - [x] **v4.0 — de datos a cruces verificables** (shipped): cruces encendidos, lockdown API vía Camino A.
 
@@ -156,4 +167,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-08 after v5.0 milestone (De datos a comprensión) — legibilidad + gráficos descriptivos + rediseño cognitivo shipped; F48 diferida por datos; próximo = INGESTA + gates humanos/legales*
+*Last updated: 2026-07-08 — milestone v6.0 (Confiabilidad y comprensión) iniciado: ingesta/crons E2E perfecta + autoría (F48) + ícono gov-map + visualización comprensible vía BrowserOS; gates humanos/legales quedan como deuda de operador fuera de v6*
