@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { VOTO_PRESENTACION } from "@/lib/voto-presentacion";
 import type {
   VotosBreakdown,
   Asistencia,
@@ -17,21 +18,23 @@ import type {
  * Sin `font-bold`/700: el énfasis es SIZE + Mono + color semántico.
  */
 
-// Colores SEMÁNTICOS de la barra (espejo del mapa de "Cómo votó" de VotosView).
+// Colores SEMÁNTICOS de la barra + labels, derivados del mapa único
+// `VOTO_PRESENTACION` (47 IN-01/IN-02): misma fuente que el chart y voto-row → no
+// pueden desincronizar. `keyof VotosBreakdown` es estructuralmente `Seleccion`.
 const SEGMENTO: Record<keyof VotosBreakdown, string> = {
-  si: "bg-green-500",
-  no: "bg-red-500",
-  abstencion: "bg-amber-400",
-  pareo: "bg-slate-400",
-  ausente: "bg-slate-300",
+  si: VOTO_PRESENTACION.si.bgClass,
+  no: VOTO_PRESENTACION.no.bgClass,
+  abstencion: VOTO_PRESENTACION.abstencion.bgClass,
+  pareo: VOTO_PRESENTACION.pareo.bgClass,
+  ausente: VOTO_PRESENTACION.ausente.bgClass,
 };
 
 const OPCION_LABEL: Record<keyof VotosBreakdown, string> = {
-  si: "A favor",
-  no: "En contra",
-  abstencion: "Abstención",
-  pareo: "Pareo",
-  ausente: "Ausente",
+  si: VOTO_PRESENTACION.si.label,
+  no: VOTO_PRESENTACION.no.label,
+  abstencion: VOTO_PRESENTACION.abstencion.label,
+  pareo: VOTO_PRESENTACION.pareo.label,
+  ausente: VOTO_PRESENTACION.ausente.label,
 };
 
 // Orden de segmentos de la barra (mismo que VotosView "Cómo votó").

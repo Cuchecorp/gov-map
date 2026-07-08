@@ -11,6 +11,10 @@ import {
 } from "recharts";
 
 import type { VotoPeriodo } from "./votos-por-parlamentario";
+import {
+  VOTO_PRESENTACION,
+  SELECCION_ORDEN,
+} from "@/lib/voto-presentacion";
 
 /**
  * <VotosChart> — isla cliente Recharts (VIZ-02, "Cuándo votó"). Recibe SOLO
@@ -27,25 +31,26 @@ import type { VotoPeriodo } from "./votos-por-parlamentario";
  * - Cada barra es un trimestre; los segmentos se apilan en el orden LOCKED de sentidos
  *   (si → no → abstención → pareo → ausente), `stackId="votos"`.
  * - `YAxis allowDecimals={false}` — sólo conteos, jamás una fracción fabricada.
- * - Fills = colores SEMÁNTICOS de voto, single-source con `VotosCapa1` SEGMENTO
- *   (verde=a favor, rojo=en contra, ámbar=abstención, slate=pareo/ausente): CODIFICAN
- *   el dato. El acento petróleo de producto está PROHIBIDO aquí (se reserva a
- *   cruces/drill-down). Leyendas = labels NOUN (espejo de OPCION_LABEL).
+ * - Fills = colores SEMÁNTICOS de voto, SINGLE-SOURCE real vía `VOTO_PRESENTACION`
+ *   (lib/voto-presentacion.ts): el MISMO objeto alimenta este chart, los segmentos
+ *   capa-1 y los badges de voto-row — no hay literales duplicados que puedan
+ *   desincronizar (47 IN-01/IN-02). Verde=a favor, rojo=en contra, ámbar=abstención,
+ *   slate=pareo/ausente: CODIFICAN el dato. El acento petróleo de producto está
+ *   PROHIBIDO aquí (se reserva a cruces/drill-down). Leyendas = labels NOUN.
  */
 
-// Orden LOCKED + label NOUN + fill por sentido (single-source con VotosCapa1 SEGMENTO,
-// votos-capa1.tsx). Recharts necesita fills explícitos; mapean 1:1 a los `bg-*`.
+// Series del stacked BarChart, derivadas del orden LOCKED + el mapa único de
+// presentación. Recharts necesita `fill` como literal → se lee de VOTO_PRESENTACION,
+// donde el hsl vive JUNTO a su clase `bg-*` (imposible desincronizar).
 const SERIES: ReadonlyArray<{
   dataKey: keyof VotoPeriodo;
   label: string;
   fill: string;
-}> = [
-  { dataKey: "si", label: "A favor", fill: "hsl(142 71% 45%)" }, // bg-green-500
-  { dataKey: "no", label: "En contra", fill: "hsl(0 84% 60%)" }, // bg-red-500
-  { dataKey: "abstencion", label: "Abstención", fill: "hsl(43 96% 56%)" }, // bg-amber-400
-  { dataKey: "pareo", label: "Pareo", fill: "hsl(215 20% 65%)" }, // bg-slate-400
-  { dataKey: "ausente", label: "Ausente", fill: "hsl(213 27% 84%)" }, // bg-slate-300
-];
+}> = SELECCION_ORDEN.map((sel) => ({
+  dataKey: sel,
+  label: VOTO_PRESENTACION[sel].label,
+  fill: VOTO_PRESENTACION[sel].fill,
+}));
 
 export function VotosChart({ periodos }: { periodos: VotoPeriodo[] }) {
   return (
