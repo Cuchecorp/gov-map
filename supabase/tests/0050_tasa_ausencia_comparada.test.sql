@@ -87,6 +87,11 @@ values
   ('PTEST_D', 'test d', 'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x'),
   ('PTEST_E', 'test e', 'diputados', '2022-2026', 'PART_TEST', 'test', 'http://x');
 
+-- proyecto padre del boletín de prueba: votacion.boletin tiene FK a proyecto (fix post-apply:
+-- el primer run en PROD falló con votacion_boletin_fkey — el fixture no creaba el proyecto).
+insert into public.proyecto (boletin, boletin_num, titulo, origen, enlace)
+values ('BTEST-1', 'BTEST-1', 'proyecto de prueba pgTAP 0050', 'test', 'http://x');
+
 -- 10 votaciones de diputados (m=10 por parlamentario). total_* default 0, fecha_captura default now().
 insert into public.votacion (id, boletin, camara, origen, enlace)
 select 'vtest:' || g, 'BTEST-1', 'diputados', 'test', 'http://x'
