@@ -7,8 +7,10 @@ import {
   derivarVotosViewData,
   normalizarPagina,
   resumenDeArco,
+  agruparVotosPorTrimestre,
   type VotosViewData,
   type VotoFichaConMateria,
+  type VotoPeriodo,
 } from "./votos-por-parlamentario";
 import { extractoIdea, conteoVotacion } from "@/lib/format";
 import type { VotoFichaMencion, RebeldiaRow } from "@/lib/types";
@@ -74,6 +76,7 @@ function makeViewData(overrides: Partial<VotosViewData> = {}): VotosViewData {
     totalPages: 1,
     noIngestado: false,
     votosVer: null,
+    periodos: [],
     ...overrides,
   };
 }
@@ -964,5 +967,122 @@ describe("derivarVotosViewData — invariantes de filtro/paginación (WR-01, WR-
     expect(data.totalPages).toBe(1);
     expect(data.page).toBe(1); // clamp: 99999 → 1
     expect(data.votos.length).toBe(5);
+  });
+});
+
+// ── VIZ-02: agregador puro agruparVotosPorTrimestre (F47, chart "Cuándo votó") ──
+describe("agruparVotosPorTrimestre — bucketing puro por trimestre (VIZ-02)", () => {
+  it("agruparVotosPorTrimestre([]) → []", () => {
+    expect(agruparVotosPorTrimestre([])).toEqual([]);
+  });
+
+  it("filas de 2024-02/05/08/11 → 4 periodos T1..T4 con el sentido correcto", () => {
+    const votos = [
+      makeVoto({ votacion_id: "a:1", fecha: "2024-02-10T00:00:00Z", seleccion: "si" }),
+      makeVoto({ votacion_id: "a:2", fecha: "2024-05-10T00:00:00Z", seleccion: "no" }),
+      makeVoto({ votacion_id: "a:3", fecha: "2024-08-10T00:00:00Z", seleccion: "abstencion" }),
+      makeVoto({ votacion_id: "a:4", fecha: "2024-11-10T00:00:00Z", seleccion: "ausente" }),
+    ];
+    const out = agruparVotosPorTrimestre(votos);
+    expect(out.map((p) => p.periodo)).toEqual([
+      "2024 · T1",
+      "2024 · T2",
+      "2024 · T3",
+      "2024 · T4",
+    ]);
+    expect(out[0].si).toBe(1);
+    expect(out[1].no).toBe(1);
+    expect(out[2].abstencion).toBe(1);
+    expect(out[3].ausente).toBe(1);
+  });
+
+  it("dos filas del MISMO trimestre (2024-04 y 2024-06, 'si') → un periodo T2 con si=2", () => {
+    const votos = [
+      makeVoto({ votacion_id: "b:1", fecha: "2024-04-01T00:00:00Z", seleccion: "si" }),
+      makeVoto({ votacion_id: "b:2", fecha: "2024-06-30T00:00:00Z", seleccion: "si" }),
+    ];
+    const out = agruparVotosPorTrimestre(votos);
+    expect(out).toHaveLength(1);
+    expect(out[0].periodo).toBe("2024 · T2");
+    expect(out[0].si).toBe(2);
+  });
+
+  it("fila con fecha ''/null/'no-iso' se EXCLUYE (no lanza, no crea barra)", () => {
+    const votos = [
+      makeVoto({ votacion_id: "c:1", fecha: "2024-04-01T00:00:00Z", seleccion: "si" }),
+      makeVoto({ votacion_id: "c:2", fecha: "" }),
+      makeVoto({ votacion_id: "c:3", fecha: null as unknown as string }),
+      makeVoto({ votacion_id: "c:4", fecha: "no-iso" }),
+    ];
+    let out: VotoPeriodo[] = [];
+    expect(() => {
+      out = agruparVotosPorTrimestre(votos);
+    }).not.toThrow();
+    expect(out).toHaveLength(1);
+    expect(out[0].periodo).toBe("2024 · T2");
+    expect(out[0].si).toBe(1);
+  });
+
+  it("si TODAS las filas carecen de fecha parseable → []", () => {
+    const votos = [
+      makeVoto({ votacion_id: "d:1", fecha: "" }),
+      makeVoto({ votacion_id: "d:2", fecha: "sin-fecha" }),
+    ];
+    expect(agruparVotosPorTrimestre(votos)).toEqual([]);
+  });
+
+  it("un solo trimestre con datos → length 1 (no rellena trimestres vacíos entre medio)", () => {
+    const votos = [
+      makeVoto({ votacion_id: "e:1", fecha: "2023-01-10T00:00:00Z", seleccion: "si" }),
+      makeVoto({ votacion_id: "e:2", fecha: "2024-10-10T00:00:00Z", seleccion: "no" }),
+    ];
+    const out = agruparVotosPorTrimestre(votos);
+    // Sólo T1-2023 y T4-2024; los trimestres intermedios NO se fabrican.
+    expect(out).toHaveLength(2);
+    expect(out.map((p) => p.periodo)).toEqual(["2023 · T1", "2024 · T4"]);
+  });
+
+  it("orden ascendente por año y trimestre (numérico, no lexical)", () => {
+    const votos = [
+      makeVoto({ votacion_id: "f:1", fecha: "2024-11-01T00:00:00Z", seleccion: "si" }),
+      makeVoto({ votacion_id: "f:2", fecha: "2024-01-01T00:00:00Z", seleccion: "si" }),
+      makeVoto({ votacion_id: "f:3", fecha: "2023-07-01T00:00:00Z", seleccion: "si" }),
+    ];
+    const out = agruparVotosPorTrimestre(votos);
+    expect(out.map((p) => p.periodo)).toEqual([
+      "2023 · T3",
+      "2024 · T1",
+      "2024 · T4",
+    ]);
+  });
+
+  it("la salida es JSON plano: solo number|string por campo (cruza la frontera al cliente)", () => {
+    const [p] = agruparVotosPorTrimestre([
+      makeVoto({ fecha: "2024-05-10T00:00:00Z", seleccion: "pareo" }),
+    ]);
+    for (const [clave, valor] of Object.entries(p)) {
+      const tipo = typeof valor;
+      expect(
+        tipo === "number" || tipo === "string",
+        `campo ${clave} debe ser number|string, es ${tipo}`,
+      ).toBe(true);
+    }
+  });
+
+  it("derivarVotosViewData computa `periodos` sobre TODO el conjunto (global, sin faceta)", () => {
+    const votos = [
+      makeVoto({ votacion_id: "g:1", boletin: "1-07", materia: "Salud", fecha: "2024-02-01T00:00:00Z", seleccion: "si" }),
+      makeVoto({ votacion_id: "g:2", boletin: "2-07", materia: "Educación", fecha: "2024-05-01T00:00:00Z", seleccion: "no" }),
+    ];
+    // Con tema activo, la lista se filtra PERO el chart es el arco completo.
+    const data = derivarVotosViewData({
+      todasConMateria: votos,
+      materiaActiva: "salud",
+      page: 1,
+      rebeldias: [],
+    });
+    expect(data.periodos.map((p) => p.periodo)).toEqual(["2024 · T1", "2024 · T2"]);
+    expect(data.periodos[0].si).toBe(1);
+    expect(data.periodos[1].no).toBe(1);
   });
 });
