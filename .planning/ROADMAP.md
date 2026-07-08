@@ -1233,7 +1233,11 @@ Plans:
   2. El chart respeta el design system (tokens, Mono para cifras, sin arbitrary values) y la frontera de carril `mt-12`; cero lenguaje causal o de ranking ("el más ausente" PROHIBIDO — negative-match)
   3. Suite verde + tsc limpio + lockdown-guard verde; SSR intacto (Recharts client wrapper patrón F46)
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 47-01-PLAN.md — agregador VotoPeriodo[] por trimestre + isla votos-chart.tsx + sub-bloque "Cuándo votó" en el detalle + RTL
+- [ ] 47-02-PLAN.md — gate completo + redeploy caliente (arrastra fixes F38) + smoke + evidencia visual
 
 **UI hint**: yes
 
