@@ -40,8 +40,15 @@ export function AusenciasContexto({
     data.m_votaciones > 0 &&
     typeof data.tasa_propia === "number";
 
-  // Mediana: SOLO si viene poblada (null → se omite la línea, nunca se fabrica).
-  const hayMediana = typeof data.mediana_camara === "number";
+  // Mediana: SOLO si viene poblada (null → se omite la línea, nunca se fabrica). El
+  // guard incluye K (IN-01): el contrato garantiza K>=1 cuando hay fila, pero la línea
+  // imprime `k_parlamentarios` — se exige que sea un número >=1 para no imprimir
+  // "(null parlamentarios)" si el contrato llegara a derivar (misma disciplina anti-
+  // fabricación que la línea propia).
+  const hayMediana =
+    typeof data.mediana_camara === "number" &&
+    typeof data.k_parlamentarios === "number" &&
+    data.k_parlamentarios >= 1;
 
   // Si no hay ninguna cifra que mostrar, no se renderiza un bloque vacío.
   if (!hayPropia && !hayMediana) return null;
