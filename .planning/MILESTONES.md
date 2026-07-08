@@ -1,5 +1,26 @@
 # Milestones
 
+## v5.0 De datos a comprensión (Shipped: 2026-07-08)
+
+**Delivered:** La ficha de parlamentario pasó de muro plano (~900 KB, 1 columna) a superficie navegable y comprensible — acordeones por carril + resumen/índice above-fold, gráficos descriptivos (nunca causales), y un rediseño cognitivo de 3 capas — todo EN VIVO en PROD (Cloudflare `74e3ad0f`), principio rector intacto (fuente+fecha+enlace).
+
+**Phases:** 11 del milestone (44-55); 10 con planes ejecutables (F44 = auditoría/plan sin código); **F48 (autoría) DIFERIDA** al milestone de ingesta por gap de datos (autores 0/136). 44 planes, ~66 tareas. Timeline 2026-06-26 → 2026-07-08.
+
+**Key accomplishments:**
+
+- **F45 navegación (LEG-01/02/03):** cada carril de dominio en su propio acordeón Radix (h2 siempre visible, frontera `mt-12` nunca colapsada) + resumen/índice above-fold con chips de 3 estados (dato / vacío-honesto / no-ingerido) que anclan a cada carril, sin romper SSR ni el guard de lockdown.
+- **F46/F47/F49 gráficos descriptivos:** chart de patrimonio (conteo de ítems/año, Recharts isla cliente, NO montos), chart "Cuándo votó" (stacked BarChart por trimestre), y comparativo de ausencias vs mediana de la cámara (RPC `tasa_ausencia_comparada` PII-safe) — todos con ejes/copy neutros, negative-match anti-causal verde, fuente+fecha+enlace.
+- **F38/F52 cruces:** RPC `cruces_de_proyecto` en la ficha de proyecto + carril lobby×tramitación; `cruce_senal` 30→781; RPCs 0047/0048/0049/0050 aplicadas a PROD con pgTAP verde (10/10 ×3, 11/11).
+- **F50/F51 legibilidad + fixes:** 11 quick-wins P1 (fechas NaN-safe, locale, honest-states, error boundaries es-CL) + legibilidad profunda ("¿Dónde está hoy?", agrupación de lobby por contraparte, footer CC BY con scope-caveat).
+- **F53/F54 UX navegada + pulido:** auditoría BrowserOS (4 journeys × 2 viewports) → nav global de 5 destinos + breadcrumbs + líneas de continuación honestas; `formatNombre` display-only en 11+ superficies (keys/hrefs RAW), 3 tarjetas de entrada en home, microcopy anti-causal.
+- **F55 rediseño cognitivo (UX-03):** 3 capas (resumen preatentivo → disclosure progresivo `DetalleColapsable` → fuente); ficha de parlamentario 28k→~2.1k px por defecto, layout informe-con-rail; aprobado por el operador.
+
+**Cierre:** integración E2E 3/3 flujos wired (checker Opus), nyquist 11/11 compliant, audit `tech_debt` (sin blockers funcionales). Ver `milestones/v5.0-MILESTONE-AUDIT.md`.
+
+**Known deferred items at close:** 16 (F48 diferida por datos + 15 del audit-open: verificaciones human_needed legacy/operador, 1 UAT parcial, 2 quick-tasks ya hechas pero sin marcar). Ver STATE.md § Deferred Items.
+
+---
+
 ## v1.0 MVP — Proyectos de Ley + Fundaciones de Identidad (Shipped: 2026-06-18)
 
 **Phases completed:** 7 phases, 25 plans, 70 tasks

@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — De datos a comprensión
-status: Phase 38 complete
+status: Awaiting next milestone
 stopped_at: Completed 53-02-PLAN.md
-last_updated: "2026-07-08T04:23:06.107Z"
-last_activity: 2026-07-08 -- Phase 38 marked complete
+last_updated: "2026-07-08T22:31:41.879Z"
+last_activity: 2026-07-08 — Milestone v5.0 completed and archived
 progress:
   total_phases: 46
   completed_phases: 30
@@ -25,19 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-18)
 
 ## Current Position
 
-Phase: 38 — COMPLETE
-Plan: 3 of 3
-5/5 planes ejecutados (2 waves secuenciales). Verifier Opus **12/12 passed** contra código. Code-review thorough: 0 critical, 2 warnings **fixed** (WR-01 `esHistorica` guard fecha null — no fabrica "histórica"; WR-02 `getParlamentarioPublico` React.cache dedup 3 RPC), 3 info diferidos (incl. dead code voto-ficha-row → B24/Phase 51). Suite app/ **377→406 verde**, `tsc -b` limpio, lockdown-guard 7/7, Camino A intacto (cero RPC nueva/DDL/flag). Bugs cerrados: B1 pill→14309-04, B6 ámbar 14d, B7 agenda throw #34, B8 chip omitido, B9 error.tsx ×4 (`unstable_retry`), B10 copy lobby por cámara, B12 locale, B14 desenlace null explícito, B15 "Iniciativa del Ejecutivo (Mensaje).", B17 fechaCortaSegura, HS 1×/sección.
-Milestone: v5.0 — De datos a comprensión (legibilidad + análisis). v4.0 cerrado (cutover Camino A aplicado a PROD 2026-06-26 — ver memoria `camino-a-post-legacy-cutover`).
-Pista de legibilidad AUTÓNOMA COMPLETA (corrida `/gsd-autonomous --from 45 --to 46`, 2026-06-26):
-
-- **Phase 45 (LEG navegación)** COMPLETE (disk=complete): acordeones Radix por carril + resumen/índice above-fold con conteo 3-estado honesto. 3 planes, suite app/ 365 verde, guard verde, tsc limpio. Code-review (0 blockers/3 warnings→fixed) + verifier 8/8 + UI-review 23/24. `@radix-ui/react-accordion@1.2.14` instalado. Frontera mt-12 intacta, SSR no-leak verificado.
-- **Phase 46 (VIZ chart patrimonio)** code-complete (disk=partial; 46-01 done, 46-02=checkpoint operador): chart Recharts (stacked BarChart, NO line/area → no insinúa tendencia), conteo de ítems por declaración (composite key anio·tipo·version_id → versiones mismo-año NO se fusionan), SIN montos (caveat URIs), degrade <2, footer CC BY. `recharts@3.9.0`. Suite app/ 377 verde, guard verde. Code-review 6 findings→todos fixed + verifier 9/9 + UI-review 21/24.
-- Charts data-hambrientos (votos/autoría/comparativos) siguen GATED → F47/F48/F49 tras ingesta (NO autónomas).
-
-**DEPLOY EJECUTADO 2026-07-02** (cubrió F45+F46+F50+B20/B21+flip NET en un deploy, versión `3ade68b8`): build Docker Linux (`docker-cf-build.sh` → `docker cp` → `wrangler deploy` desde host). Verificación curl: home pill 14309-04 ✓, acordeones Radix en ficha ✓, `/red` selector 200 / seed D1012 grafo 305 aristas / seed inválida 404 ✓, link "Ver relaciones" en ficha ✓, agenda/proyecto/parlamentarios 200 ✓. GOTCHA NUEVO load-bearing: ruta con gate `notFound()` ANTES del primer API dinámico queda **estática en build** con el flag horneado → 500 en runtime con flag ON; fix = `export const dynamic = "force-dynamic"` (aplicado a `/red`; `/admin/revisar-entidades` tiene el mismo bug latente). Polish advisory diferido: tokenizar fill ramp del chart, tematizar legend/tooltip Recharts, a11y data-table fallback, verificación visual reduce-motion.
-Diseño LOCKED F45/F46: `.planning/phases/44-legibilidad-auditoria-plan/UI-SPEC.md`.
-Last activity: 2026-07-08 -- Phase 38 marked complete
+Phase: Milestone v5.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-08 — Milestone v5.0 completed and archived
 
 ## Performance Metrics
 
@@ -293,6 +284,17 @@ Items acknowledged and carried forward from previous milestone close:
 | Infra | Cargar corpus a la nube + wiring app→nube + aplicar 0011 LOCAL + rotar DB password | Pending | v1.0 close |
 | v2.1+ | NET-D (contraparte compartida) + cruces inter-bloque — diferidos por riesgo "máquina de sospechas" | Deferred | v2.0 roadmap |
 
+### Acknowledged at v5.0 close (2026-07-08) — 15 items, ninguno blocker funcional de v5
+
+| Category | Item | Status | Deferred At |
+|----------|------|--------|-------------|
+| roadmap | Phase 48 (VIZ autoría/similares) — gated por datos (autores 0/136) | Deferred a milestone de ingesta | v5.0 close |
+| verification (legacy v2-v4) | Phases 09/10/11/12/13/14/15/16/34 VERIFICATION human_needed — checkpoints legales/operador (MONEY, lobby, patrimonio, ingesta) de milestones previos | human_needed | v5.0 close |
+| verification (v5) | Phases 45/46/52 VERIFICATION human_needed — checkpoints de operador RESUELTOS (deploys live, F55 approved, DDL aplicada) pero no re-marcados a passed | resolved-unmarked | v5.0 close |
+| uat | Phase 52 HUMAN-UAT parcial (3 escenarios pendientes; sitio ya deployado) | partial | v5.0 close |
+| quick_task | 260623-rtl-loadenv-ci-safe-clis — INFRA-01 (loadEnv CI-safe); completada (commit 399e3e2) pero marcada unknown | done-unmarked | v5.0 close |
+| quick_task | 260702-rbb-fix-b20-b21-pre-flip-net-red-graph — B20/B21 NET flip; completada (2c958e5..4ce0d3a) pero marcada unknown | done-unmarked | v5.0 close |
+
 ## Session Continuity
 
 Last session: 2026-07-08T03:55:52.913Z
@@ -301,7 +303,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- **v3.0 listo para planificar.** Roadmap creado (Phases 23–32). Empezar por `/gsd:plan-phase 23` (OPS — aplicar 0026/0028/0030 al remoto por psql --db-url + pgTAP verde) — precondición de toda la data. Luego LOBBY (24→25), PAT (26), VOT (27), PROV (28), RUT (29), SIGNOFFs (30/31) y cierre OPS-02 (32).
-- Phase 8 CONFIRMÓ: planificar Phase 10 (`@obs/votos` producción) con `/gsd:plan-phase 10` — conector + modelo de voto + reconciliación + ficha, reusando los símbolos v1.0 validados.
-- Phase 9 (Identidad) puede planificarse/correr en paralelo (VOTE Cámara usa DIPID, no RUT).
-- El paquete `packages/votos` es throwaway (spike); Phase 10 lo reemplaza con `src/` de producción.
+- Start the next milestone with /gsd:new-milestone

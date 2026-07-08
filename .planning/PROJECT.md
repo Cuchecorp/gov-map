@@ -8,7 +8,15 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato mostrado lleva fuente, fecha y enlace original, sin afirmar nunca intención ni causalidad.
 
-## Current Milestone: v4.0 De datos a cruces verificables
+## Current State: v5.0 shipped (2026-07-08)
+
+**Shipped v5.0 — De datos a comprensión (legibilidad + análisis).** La ficha de parlamentario pasó de muro plano (~900 KB, 1 columna) a superficie navegable y comprensible: acordeones por carril + resumen/índice above-fold, gráficos descriptivos (patrimonio, votos por trimestre, comparativo de ausencias — nunca causales), cruces nuevos, y un rediseño cognitivo de 3 capas (resumen preatentivo → disclosure progresivo → fuente). Todo EN VIVO en Cloudflare (`74e3ad0f`), principio rector intacto (fuente+fecha+enlace). 11 fases (44-55), integración E2E 3/3 wired, nyquist 11/11. **F48 (autoría/similares) DIFERIDA** al próximo milestone por gap de datos (autores 0/136). Detalle: `milestones/v5.0-*.md`.
+
+**Próximo milestone (a planificar): INGESTA + gates.** Lo que resta del producto NO es UI sino DATOS + firmas humanas: (1) ingesta de autores/autoría de proyectos (desbloquea F48), (2) RUT-01 backfill + ChileCompra/SERVEL (Phase 40), (3) sign-offs legales F13/MONEY y cierre F17/NET (Phase 39), (4) rotar DB password (B26). Arrancar con `/gsd:new-milestone`.
+
+<!-- v4.0 shipped (De datos a cruces verificables, Phases 33-43): cruces ENCENDIDOS, lockdown API vía Camino A. Detalle abajo (history) y en milestones/. -->
+
+## Current Milestone (history): v4.0 De datos a cruces verificables
 
 **Goal:** Convertir gov-map de un cascarón pulido con datos por carril en una plataforma que **cruza** lobby, financiamiento y votos por parlamentario y sector, manteniendo trazabilidad a la fuente y sin afirmar causalidad. Construye los cimientos de datos e identidad (ingesta programada + resolución de entidades de terceros), luego la capa de cruces (señales factuales, nunca scores de correlación), luego las superficies de ficha — todo **deny-by-default**, sin encender nada sensible sin firma humana. El frontend/shell sigue cerrado; v4 agrega datos, identidad de terceros y la capa derivada de cruces.
 
@@ -58,11 +66,19 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 - ✓ Embeddings asimétricos (Gemini RETRIEVAL_DOCUMENT/QUERY) + pgvector HNSW + RPC `match_proyectos`; búsqueda NL y "proyectos similares" kNN — v1.0
   - ⚠️ Follow-up: persistir `link_mensaje_mocion` end-to-end (idea matriz queda dormida hasta cablearlo) + cargar corpus a la nube. Ver `.planning/v1.0-MILESTONE-AUDIT.md`.
 
+**Legibilidad + análisis (v5.0) — shipped 2026-07-08**
+- ✓ Navegación de la ficha: acordeones por carril (LEG-01) + resumen/índice above-fold con chips de 3 estados (LEG-02), comportamiento-preservante (LEG-03) — v5.0
+- ✓ Gráficos descriptivos (nunca causales): patrimonio conteo/año (VIZ-01/02/03), "Cuándo votó" por trimestre (VIZ-VOTOS), comparativo de ausencias vs mediana de cámara (VIZ-COMP, RPC PII-safe) — v5.0
+- ✓ Cruces en ficha de proyecto (SURF-02) + carril lobby×tramitación + cruces ampliados (CRUCE2, `cruce_senal` 30→781) — v5.0
+- ✓ UX: nav global de 5 destinos + breadcrumbs (UX-01), pulido presentacional / `formatNombre` / tarjetas home (UX-02), rediseño cognitivo de 3 capas (UX-03) — v5.0
+
 ### Active
 
-<!-- Milestone activo = v4.0 "de datos a cruces verificables". Requisitos detallados en .planning/REQUIREMENTS.md, fases en .planning/ROADMAP.md (Phases 33+). Diseño locked en .planning/MILESTONE-v4-cruces.md. -->
+<!-- Milestone activo cerrado (v5.0 shipped 2026-07-08). Próximo = INGESTA + gates (a planificar con /gsd:new-milestone). REQUIREMENTS.md se regenera para el próximo milestone. -->
 
-- [ ] **v4.0 — de datos a cruces verificables** (en curso): ingesta programada lobby+probidad + resolución de entidades de terceros (cimientos) → capa de cruces parlamentario↔sector (señales factuales deny-by-default) → superficies de ficha gated → gate legal transversal (F13/F17/cruces) → RUT-01 + ChileCompra/SERVEL (diferido).
+- [ ] **Próximo — INGESTA + gates humanos/legales:** ingesta de autoría de proyectos (desbloquea F48 autoría/similares) · RUT-01 backfill + ChileCompra/SERVEL (Phase 40) · sign-offs F13/MONEY + cierre F17/NET (Phase 39) · rotar DB password (B26).
+- [x] **v5.0 — de datos a comprensión** (shipped 2026-07-08): legibilidad + gráficos descriptivos + rediseño cognitivo; F48 diferida por datos.
+- [x] **v4.0 — de datos a cruces verificables** (shipped): cruces encendidos, lockdown API vía Camino A.
 
 <!-- v3.0 "cobertura de datos": frente automatable cerrado y desplegado (Phases 23–32). Gates humanos 29/30/31 subsumidos en v4. -->
 - [x] **v3.0 — cobertura de datos** (frente automatable completo, gates humanos → v4.0): lobby con identidad adjudicada + fuente camara.cl/transparencia, patrimonio LIVE, votaciones masivas, provenance de la maestra; migraciones remotas aplicadas hasta 0033.
@@ -140,4 +156,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-24 — started milestone v4.0 (De datos a cruces verificables); v3.0 frente automatable cerrado, gates humanos subsumidos*
+*Last updated: 2026-07-08 after v5.0 milestone (De datos a comprensión) — legibilidad + gráficos descriptivos + rediseño cognitivo shipped; F48 diferida por datos; próximo = INGESTA + gates humanos/legales*
