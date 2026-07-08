@@ -720,7 +720,7 @@ Plans:
 | 44. LEG — Auditoría UX + inventario + plan (v5) | v5.0 | 3/3 | Complete (UI-SPEC + auditoría + inventario) | 2026-06-26 |
 | 45. LEG — Navegación: acordeones por carril + resumen above-fold | v5.0 | 3/3 | Complete   | 2026-06-26 |
 | 46. VIZ — Chart patrimonio (conteo de ítems/año) | v5.0 | 2/2 | Complete (deploy 2026-07-02) | 2026-07-02 |
-| 47. VIZ — Chart votos/ausencias | v5.0 | 0/? | Not Started (desbloqueada 2026-07-02) | - |
+| 47. VIZ — Chart votos/ausencias | v5.0 | 1/2 | In Progress|  |
 | 48. VIZ — Autoría + similares-del-parlamentario | v5.0 | 0/? | Blocked — gated por ingesta autores + identidad | - |
 | 49. VIZ — Comparativo vs cámara (ausencias/actividad) | v5.0 | 0/? | Not Started (desbloqueada 2026-07-02; depende F47) | - |
 | 50. FIX — Quick wins diagnóstico (P1) | v5.0 | 4/4 | Complete | 2026-07-02 |
@@ -1233,10 +1233,11 @@ Plans:
   2. El chart respeta el design system (tokens, Mono para cifras, sin arbitrary values) y la frontera de carril `mt-12`; cero lenguaje causal o de ranking ("el más ausente" PROHIBIDO — negative-match)
   3. Suite verde + tsc limpio + lockdown-guard verde; SSR intacto (Recharts client wrapper patrón F46)
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 47-01-PLAN.md — agregador VotoPeriodo[] por trimestre + isla votos-chart.tsx + sub-bloque "Cuándo votó" en el detalle + RTL
+
+- [x] 47-01-PLAN.md — agregador VotoPeriodo[] por trimestre + isla votos-chart.tsx + sub-bloque "Cuándo votó" en el detalle + RTL
 - [ ] 47-02-PLAN.md — gate completo + redeploy caliente (arrastra fixes F38) + smoke + evidencia visual
 
 **UI hint**: yes
