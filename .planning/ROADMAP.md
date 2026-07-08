@@ -721,7 +721,7 @@ Plans:
 | 45. LEG — Navegación: acordeones por carril + resumen above-fold | v5.0 | 3/3 | Complete   | 2026-06-26 |
 | 46. VIZ — Chart patrimonio (conteo de ítems/año) | v5.0 | 2/2 | Complete (deploy 2026-07-02) | 2026-07-02 |
 | 47. VIZ — Chart votos/ausencias | v5.0 | 2/2 | Complete   | 2026-07-08 |
-| 48. VIZ — Autoría + similares-del-parlamentario | v5.0 | 0/? | Blocked — gated por ingesta autores + identidad | - |
+| 48. VIZ — Autoría + similares-del-parlamentario | v5.0 | 0/? | **DIFERIDA a milestone de ingesta** (decisión operador 2026-07-08; gated por autores 0/136, gap de DATOS no de UI) | 2026-07-08 |
 | 49. VIZ — Comparativo vs cámara (ausencias/actividad) | v5.0 | 3/3 | Complete   | 2026-07-08 |
 | 50. FIX — Quick wins diagnóstico (P1) | v5.0 | 4/4 | Complete | 2026-07-02 |
 | 51. LEG2 — Legibilidad profunda (P2) | v5.0 | 7/7 | Complete | 2026-07-03 |
