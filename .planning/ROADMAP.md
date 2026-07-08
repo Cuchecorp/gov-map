@@ -1359,7 +1359,8 @@ Plans:
 
 ### Phases (v6.0)
 
-- [x] **Phase 56: CRON-AUDIT — Auditoría E2E de los 9 workflows de ingesta** - Inventario auditado de cada cron (veredicto + gap-list accionable); producto es el diagnóstico que alimenta la fase de hardening. (completed 2026-07-08)
+- [x] **Phase 56: CRON-AUDIT — Auditoría E2E de los 9 workflows de ingesta** - Inventario auditado de cada cron (veredicto + gap-list accionable); producto es el diagnóstico que alimenta la fase de hardening.
+ (completed 2026-07-08)
 - [ ] **Phase 57: CRON-FIX — Hardening dos-etapas + hash-check + crons verdes** - Cada conector cumple DOS ETAPAS re-ejecutables + hash-check antes de descargar; crons corren verdes L–V (secrets cargados o fallback local documentado).
 - [ ] **Phase 58: CRON-FRESH — Monitoreo de frescura por fuente** - El operador puede consultar la frescura (última corrida, último snapshot R2, último upsert) y detectar staleness sin bucear logs.
 - [ ] **Phase 59: AUTOR — Autoría ingest + ficha de proyecto (F48)** - Autores de cada proyecto poblados via R2→Supabase con reconciliación fail-closed; ficha de proyecto muestra autoría con guarda de identidad.
