@@ -370,7 +370,7 @@ export async function CarrilesSection({
               <DetalleColapsable
                 n={conteos.cruces.n}
                 triggerVariant="primary"
-                triggerLabel={`Explorar los ${conteos.cruces.n} cruces`}
+                triggerLabel={`Ver las ${conteos.cruces.n} señales de lobby por sector`}
               >
                 <Suspense fallback={<CrucesSkeleton />}>
                   <CrucesSection id={id} />

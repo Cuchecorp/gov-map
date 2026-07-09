@@ -190,13 +190,13 @@ async function renderPage(props: ReturnType<typeof makeProps>): Promise<string> 
 }
 
 describe("/parlamentario/[id] — gate a nivel de sección #cruces (Candado B, LOCKED)", () => {
-  it("gate OFF (default) → el HTML NO contiene id=cruces ni 'Cruces con sectores'; CERO RPC de cruces", async () => {
+  it("gate OFF (default) → el HTML NO contiene id=cruces ni 'Lobby por sector'; CERO RPC de cruces", async () => {
     crucesEnabledMock.mockReturnValue(false);
     const html = await renderPage(makeProps());
 
     // Candado B: el nodo entero está AUSENTE del HTML (no oculto-con-CSS).
     expect(html).not.toContain('id="cruces"');
-    expect(html).not.toContain("Cruces con sectores");
+    expect(html).not.toContain("sectores tuvo reuniones de lobby");
 
     // La sección de cruces NUNCA fuerza su RPC con el gate OFF.
     const cruceCalls = rpcMock.mock.calls.filter(
@@ -206,13 +206,14 @@ describe("/parlamentario/[id] — gate a nivel de sección #cruces (Candado B, L
     expect(notFoundMock).not.toHaveBeenCalled();
   });
 
-  it("gate ON → el HTML de la página contiene id=cruces y 'Cruces con sectores' (carril presente)", async () => {
+  it("gate ON → el HTML de la página contiene id=cruces y la sección de lobby por sector (carril presente)", async () => {
     crucesEnabledMock.mockReturnValue(true);
     const html = await renderPage(makeProps());
 
     // El carril gated está PRESENTE en el HTML cuando el gate está ON.
     expect(html).toContain('id="cruces"');
-    expect(html).toContain("Cruces con sectores");
+    // COMP-03: el h2 de CrucesCapa1 es ahora una pregunta orientada
+    expect(html).toContain("sectores tuvo reuniones de lobby");
     expect(notFoundMock).not.toHaveBeenCalled();
   });
 
@@ -337,7 +338,7 @@ describe("/parlamentario/[id] — rail (UXCOG 55-03)", () => {
 
     // Candado B (rail): sin el gate, la entrada de cruces no aparece.
     expect(html).not.toContain('href="#cruces"');
-    expect(html).not.toContain("Cruces con sectores");
+    expect(html).not.toContain("Lobby por sector");
     // El resto de carriles no-gated sigue presente.
     expect(html).toContain('href="#votos"');
     expect(html).toContain('href="#patrimonio"');
