@@ -89,14 +89,19 @@ export async function runCamaraLobby(opts: RunCamaraLobbyOpts): Promise<RunCamar
     try {
       const bytes = new TextEncoder().encode(html);
       const sha = await sha256Hex(bytes);
-      ({ r2Path } = await opts.r2Store.putImmutable(
+      const { r2Path: newPath, existed } = await opts.r2Store.putImmutable(
         "camara-lobby",
         "listadodeaudiencias",
         date,
         sha,
         "html",
         bytes,
-      ));
+      );
+      r2Path = newPath;
+      if (existed) {
+        log("[skip] sin novedades — camara-lobby listadodeaudiencias");
+        return { audiencias: 0, contrapartes: 0, parlamentariosMarcados: 0, confirmados: 0, r2Path };
+      }
       log(`camara-lobby: crudo en R2 → ${r2Path}`);
     } catch (err) {
       r2Path = null;
