@@ -1,5 +1,24 @@
 # Milestones
 
+## v6.0 Confiabilidad y comprensión (Shipped: 2026-07-09)
+
+**Delivered:** El dato llega solo y se entiende solo. La ingesta programada quedó confiable end-to-end (dos etapas fuente→R2→Supabase, hash-check, crons verdes, monitoreo de frescura), la autoría de proyectos se pobló y desbloqueó F48, gov-map estrenó ícono propio, y la comprensión de las visualizaciones se validó con un loop BrowserOS de lectura fría. PROD: deploys `cd7deb4b` + `051a6cf0`.
+
+**Phases:** 6 (56–61), 15 planes. Timeline 2026-07-08 → 2026-07-09 (corrida autónoma: Fable orquestador + ejecutores Sonnet). Audit: `milestones/v6.0-MILESTONE-AUDIT.md` (tech_debt, 0 gaps, 12/12 reqs, 5/5 flows WIRED).
+
+**Key accomplishments:**
+
+- **F56 CRON-AUDIT:** auditoría E2E de los 9 workflows (probes live gh/psql/R2) → 9 veredictos + 23 gaps con archivo:línea; billing GH confirmado ACTIVO (gotcha 2026-06-23 resuelto); solo 2/11 secrets presentes.
+- **F57 CRON-FIX:** primitivas R2 (`getObject`, `putImmutable {existed}`), fix G4 (dedupe `tramitacion_evento` que tenía a leyes-weekly caído desde 2026-06-26), dos etapas + `[skip] sin novedades` + `--from-r2` en los conectores, 5 secrets cargados, lobby-camara a fallback local (WAF, sin evasión), runbook `cron-local-fallback.md`, y **leyes-weekly VERDE E2E en GH Actions** (×2 corridas). Gap 57-05 (el cron usaba otro entrypoint sin R2) cazado por la verificación de F59 y cerrado LIVE: 80 snapshots registrados.
+- **F58 CRON-FRESH:** CLI `pnpm freshness` (6 fuentes, 3 señales, umbral por fuente, `--json`, exit 1 si stale) — en su primera corrida real detectó lobby-leylobby STALE 17d.
+- **F59 AUTOR (F48 desbloqueada):** bug de parser de meses (autores del XML Senado parseados como `[]`) corregido; tabla `proyecto_autor` (0051, pgTAP 5/5) con reconciliación determinista fail-closed → **763 autores en PROD (75,9% confirmados)**; sección "¿Quién presentó este proyecto?" en la ficha con guarda de identidad.
+- **F60 BRAND:** 3 propuestas SVG diseñadas por el orquestador; el operador eligió **C "Capas que se cruzan"** (la intersección sólida = el cruce verificable); favicon/apple/OG/manifest/lockup integrados, flat petróleo/crema, cero estética-IA.
+- **F61 COMP:** leyenda "Cómo leer esto" anti-causal siempre visible en cruces (parlamentario y proyecto), triple requisito título-pregunta/leyenda/fuente en los 4 charts, y loop BrowserOS captura→lectura fría→corrección→re-captura: 2 P0 + 4 P1 encontrados y **6/6 corregidos** (la queja original "los cruces no se entienden" cerrada con evidencia before/after).
+
+**Tech debt registrada (backlog):** source_snapshot solo en leyes; lobby `--from-r2` sin cuerpo; lobby-leylobby cursor stale; `CLOUDFLARE_API_TOKEN` ausente en CI; probidad failure 2026-07-09 por re-observar; 3 vulns Dependabot; P2 COMP-07/08/09.
+
+---
+
 ## v5.0 De datos a comprensión (Shipped: 2026-07-08)
 
 **Delivered:** La ficha de parlamentario pasó de muro plano (~900 KB, 1 columna) a superficie navegable y comprensible — acordeones por carril + resumen/índice above-fold, gráficos descriptivos (nunca causales), y un rediseño cognitivo de 3 capas — todo EN VIVO en PROD (Cloudflare `74e3ad0f`), principio rector intacto (fuente+fecha+enlace).

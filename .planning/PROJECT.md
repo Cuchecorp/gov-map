@@ -8,11 +8,18 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato mostrado lleva fuente, fecha y enlace original, sin afirmar nunca intención ni causalidad.
 
-## Current State: v5.0 shipped (2026-07-08)
+## Current State: v6.0 shipped (2026-07-09)
+
+**Shipped v6.0 — Confiabilidad y comprensión.** Ingesta programada confiable end-to-end: dos etapas fuente→R2→Supabase con hash-check y `--from-r2`, leyes-weekly VERDE en GH Actions (billing activo, secrets cargados), fallback local documentado para lo WAF-bloqueado, y CLI `pnpm freshness` de monitoreo por fuente. Autoría de proyectos poblada (763 autores, 75,9% confirmados fail-closed) → **F48 LIVE** en la ficha. Identidad visual propia (ícono "Capas que se cruzan", selección del operador) integrada en favicon/OG/header/manifest. Comprensión validada por loop BrowserOS: leyenda "Cómo leer esto" anti-causal en cruces + triple requisito en charts; 6/6 hallazgos P0/P1 corregidos con evidencia before/after. Deploys `cd7deb4b` + `051a6cf0`. Audit: tech_debt (0 gaps; backlog: source_snapshot multi-fuente, lobby --from-r2, cursor leylobby, token CI Cloudflare). Detalle: `milestones/v6.0-*.md`.
+
+**Próximo milestone (a planificar):** gates humanos/legales pendientes (F13/MONEY + F17/NET + 0042/cruces sign-offs, RUT-01 + ChileCompra/SERVEL Phase 40, rotar DB password B26) + backlog v6 (source_snapshot en los 5 conectores restantes, lobby replay R2, cursor leylobby). Arrancar con `/gsd:new-milestone`.
+
+<!-- v5.0 shipped (2026-07-08): -->
+## Previous State: v5.0 shipped (2026-07-08)
 
 **Shipped v5.0 — De datos a comprensión (legibilidad + análisis).** La ficha de parlamentario pasó de muro plano (~900 KB, 1 columna) a superficie navegable y comprensible: acordeones por carril + resumen/índice above-fold, gráficos descriptivos (patrimonio, votos por trimestre, comparativo de ausencias — nunca causales), cruces nuevos, y un rediseño cognitivo de 3 capas (resumen preatentivo → disclosure progresivo → fuente). Todo EN VIVO en Cloudflare (`74e3ad0f`), principio rector intacto (fuente+fecha+enlace). 11 fases (44-55), integración E2E 3/3 wired, nyquist 11/11. **F48 (autoría/similares) DIFERIDA** al próximo milestone por gap de datos (autores 0/136). Detalle: `milestones/v5.0-*.md`.
 
-## Current Milestone: v6.0 Confiabilidad y comprensión
+## Current Milestone (history): v6.0 Confiabilidad y comprensión (shipped 2026-07-09)
 
 **Goal:** Que el dato llegue solo y se entienda solo: (1) toda la ingesta programada corre PERFECTA end-to-end (fuentes→R2 crudo content-addressed, R2→Supabase, hash-check, idempotencia, monitoreo de frescura), (2) gov-map estrena identidad visual propia (ícono serio, public-policy, no estilo-IA), y (3) cada visualización se entiende sin explicación externa (cruces entre parlamentarios primero), validada por iteración fina con BrowserOS.
 
@@ -86,7 +93,7 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 ### Active
 
-- [ ] **v6.0 — confiabilidad y comprensión (activo):** crons/ingesta E2E perfecta (R2 dos-etapas, hash-check, monitoreo de frescura) · autoría de proyectos (desbloquea F48) · ícono/identidad visual gov-map · visualización comprensible con loop BrowserOS. Ver REQUIREMENTS.md.
+- [x] **v6.0 — confiabilidad y comprensión** (shipped 2026-07-09): crons/ingesta E2E perfecta (R2 dos-etapas, hash-check, monitoreo de frescura) · autoría de proyectos (desbloquea F48) · ícono/identidad visual gov-map · visualización comprensible con loop BrowserOS. Ver REQUIREMENTS.md.
 - [ ] **Pendiente de operador (fuera de v6):** RUT-01 backfill + ChileCompra/SERVEL (Phase 40) · sign-offs F13/MONEY + cierre F17/NET (Phase 39) · rotar DB password (B26).
 - [x] **v5.0 — de datos a comprensión** (shipped 2026-07-08): legibilidad + gráficos descriptivos + rediseño cognitivo; F48 diferida por datos.
 - [x] **v4.0 — de datos a cruces verificables** (shipped): cruces encendidos, lockdown API vía Camino A.
@@ -167,4 +174,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-08 — milestone v6.0 (Confiabilidad y comprensión) iniciado: ingesta/crons E2E perfecta + autoría (F48) + ícono gov-map + visualización comprensible vía BrowserOS; gates humanos/legales quedan como deuda de operador fuera de v6*
+*Last updated: 2026-07-09 — v6.0 shipped (Confiabilidad y comprensión); próximo = gates humanos/legales + backlog v6: ingesta/crons E2E perfecta + autoría (F48) + ícono gov-map + visualización comprensible vía BrowserOS; gates humanos/legales quedan como deuda de operador fuera de v6*

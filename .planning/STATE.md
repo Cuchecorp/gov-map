@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v6.0
-milestone_name: — Confiabilidad y comprensión
-status: completed
+milestone: v2.0
+milestone_name: — Parlamentarios 360
+status: Awaiting next milestone
 stopped_at: Roadmap v6.0 creado — Phases 56-61, REQUIREMENTS.md traceability actualizado, STATE.md inicializado.
-last_updated: "2026-07-09T17:40:32.490Z"
-last_activity: 2026-07-09 -- Phase 61 marked complete
+last_updated: "2026-07-09T17:46:36.429Z"
+last_activity: 2026-07-09 — Milestone v6.0 completed and archived
 progress:
-  total_phases: 52
-  completed_phases: 6
-  total_plans: 15
-  completed_plans: 15
-  percent: 12
+  total_phases: 46
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,12 +25,10 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Phase: 61 — COMPLETE
-Plan: 3 of 3
-Status: Phase 61 complete
-Last activity: 2026-07-09 -- Phase 61 marked complete
-
-Progress: [░░░░░░░░░░] 0% (0/6 phases complete)
+Phase: Milestone v6.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-09 — Milestone v6.0 completed and archived
 
 ## Performance Metrics
 
@@ -86,3 +84,7 @@ None yet.
 Last session: 2026-07-09T17:05:45.856Z
 Stopped at: Roadmap v6.0 creado — Phases 56-61, REQUIREMENTS.md traceability actualizado, STATE.md inicializado.
 Resume file: None
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd:new-milestone
