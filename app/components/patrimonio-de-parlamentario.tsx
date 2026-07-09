@@ -170,6 +170,9 @@ export function seriePatrimonio(
 function PatrimonioChartShell({ serie }: { serie: SeriePunto[] }) {
   return (
     <section aria-label="Bienes declarados por año" className="my-6">
+      <h3 className="text-sm font-semibold mb-2">
+        ¿Cuántos bienes declaró por año?
+      </h3>
       {serie.length < 2 ? (
         <p className="text-sm text-muted-foreground">
           Datos insuficientes para mostrar el conteo de ítems por año: se

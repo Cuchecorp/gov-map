@@ -1167,7 +1167,7 @@ describe('VotosView — sub-bloque "Cuándo votó" (chart/empty/orden, VIZ-02)',
       />,
     );
     expect(
-      screen.getByRole("heading", { name: "Cuándo votó" }),
+      screen.getByRole("heading", { name: "¿Cuándo votó?" }),
     ).toBeInTheDocument();
     expect(screen.getByTestId("rc-barchart")).toBeInTheDocument();
     expect(screen.getByText(CAPTION)).toBeInTheDocument();
@@ -1187,7 +1187,7 @@ describe('VotosView — sub-bloque "Cuándo votó" (chart/empty/orden, VIZ-02)',
       />,
     );
     expect(
-      screen.getByRole("heading", { name: "Cuándo votó" }),
+      screen.getByRole("heading", { name: "¿Cuándo votó?" }),
     ).toBeInTheDocument();
     expect(screen.getByText(EMPTY)).toBeInTheDocument();
     expect(screen.queryByTestId("rc-barchart")).not.toBeInTheDocument();
@@ -1249,7 +1249,7 @@ describe('VotosView — sub-bloque "Cuándo votó" (chart/empty/orden, VIZ-02)',
       />,
     );
     const texto = container.textContent ?? "";
-    expect(texto.indexOf("Cuándo votó")).toBeGreaterThanOrEqual(0);
-    expect(texto.indexOf("Cuándo votó")).toBeLessThan(texto.indexOf("Cómo votó"));
+    expect(texto.indexOf("¿Cuándo votó?")).toBeGreaterThanOrEqual(0);
+    expect(texto.indexOf("¿Cuándo votó?")).toBeLessThan(texto.indexOf("Cómo votó"));
   });
 });

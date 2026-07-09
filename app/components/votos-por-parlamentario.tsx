@@ -631,13 +631,17 @@ export function VotosView({
           tendencia. Si ninguna fila tiene fecha parseable, `periodos` viene vacío y
           se muestra copy honesto en vez de una barra en cero (degrade honesto). */}
       <div>
-        <h3 className="text-sm font-semibold">Cuándo votó</h3>
+        <h3 className="text-sm font-semibold">¿Cuándo votó?</h3>
         {data.periodos.length > 0 ? (
           <>
             <VotosChart periodos={data.periodos} />
             <p className="text-sm text-muted-foreground mt-4">
               Cada barra agrupa las votaciones de un trimestre por sentido del
               voto. No representa una tendencia.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Fuente: Cámara de Diputadas y Diputados / Senado de Chile ·
+              datos ingestados por este observatorio.
             </p>
           </>
         ) : (

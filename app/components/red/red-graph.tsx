@@ -260,6 +260,30 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
 
   return (
     <section aria-label="Grafo de relaciones" className="mt-8">
+      {/* Leyenda de lectura: qué es un nodo, qué es una arista (COMP-03). */}
+      <div className="mb-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground space-y-1">
+        <p className="font-medium text-foreground">Cómo leer este grafo</p>
+        <ul className="list-disc list-inside space-y-1">
+          <li>
+            <strong className="font-medium text-foreground">Nodo</strong>: un
+            parlamentario con identidad confirmada (nombre y cámara).
+          </li>
+          <li>
+            <strong className="font-medium text-foreground">Línea</strong>: un
+            hecho público que vincula a dos parlamentarios, por ejemplo haber
+            recibido audiencia de la misma contraparte de lobby. Cada línea
+            lleva su fuente, ventana temporal y enlace al registro original.
+          </li>
+          <li>
+            La proximidad visual no indica cercanía entre personas: el layout es
+            una rejilla por cámara, no un mapa de afinidad.
+          </li>
+        </ul>
+        <p className="text-xs mt-1">
+          Fuente: Ley del Lobby (Ley 20.730) · datos ingestados por este
+          observatorio.
+        </p>
+      </div>
       {/* Controles de filtro: por tipo de relación y por ventana temporal. */}
       <div className="net-filtros" role="group" aria-label="Filtros del grafo">
         <fieldset className="net-filtros__tipos">

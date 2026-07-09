@@ -104,10 +104,10 @@ describe("AusenciasContexto — negative-match extendido + causal (anti-insinuac
     expect(texto).not.toMatch(PROHIBIDO_CAUSAL);
   });
 
-  it("el heading es neutro, NO superlativo ('Ausencias en contexto')", () => {
+  it("el heading es neutro, NO superlativo (pregunta factual, COMP-03)", () => {
     const { container } = render(<AusenciasContexto data={makeRow()} />);
     const h3 = container.querySelector("h3");
-    expect(h3?.textContent).toBe("Ausencias en contexto");
+    expect(h3?.textContent).toMatch(/falta más o menos/i);
     expect(h3?.textContent ?? "").not.toMatch(PROHIBIDO_EXTENDIDO);
     expect(h3?.textContent ?? "").not.toMatch(PROHIBIDO_CAUSAL);
   });

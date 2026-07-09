@@ -62,7 +62,7 @@ export function AusenciasContexto({
 
   return (
     <div>
-      <h3 className="text-sm font-semibold">Ausencias en contexto</h3>
+      <h3 className="text-sm font-semibold">¿Falta más o menos que la mediana de su cámara?</h3>
 
       {hayPropia && (
         <p className="text-sm text-muted-foreground mt-2">
@@ -91,6 +91,10 @@ export function AusenciasContexto({
       <p className="text-sm text-muted-foreground mt-2">
         Sobre las votaciones ingestadas por este observatorio, no la historia
         completa.
+      </p>
+      <p className="text-xs text-muted-foreground mt-1">
+        Fuente: Cámara de Diputadas y Diputados / Senado de Chile ·
+        datos ingestados por este observatorio.
       </p>
     </div>
   );
