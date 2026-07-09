@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: — Confiabilidad y comprensión
-status: completed
+status: verifying
 stopped_at: Roadmap v6.0 creado — Phases 56-61, REQUIREMENTS.md traceability actualizado, STATE.md inicializado.
-last_updated: "2026-07-09T00:46:59.734Z"
-last_activity: 2026-07-09 -- Phase 57 marked complete
+last_updated: "2026-07-09T01:01:14.970Z"
+last_activity: 2026-07-09
 progress:
   total_phases: 52
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
-  percent: 4
+  completed_phases: 3
+  total_plans: 6
+  completed_plans: 6
+  percent: 6
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 57 — CRON-FIX — Hardening dos-etapas + hash-check + crons verdes
+**Current focus:** Phase 58 — CRON-FRESH — Monitoreo de frescura por fuente
 
 ## Current Position
 
-Phase: 57 — COMPLETE
-Plan: 4 of 4
-Status: Phase 57 complete
-Last activity: 2026-07-09 -- Phase 57 marked complete
+Phase: 58 (CRON-FRESH — Monitoreo de frescura por fuente) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-07-09
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases complete)
 
@@ -83,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-09T00:34:49.920Z
+Last session: 2026-07-09T01:01:14.958Z
 Stopped at: Roadmap v6.0 creado — Phases 56-61, REQUIREMENTS.md traceability actualizado, STATE.md inicializado.
 Resume file: None

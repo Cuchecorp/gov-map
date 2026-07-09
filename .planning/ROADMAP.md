@@ -731,7 +731,7 @@ Plans:
 | 55. UXCOG — Rediseño cognitivo: jerarquía visual + detalle progresivo | v5.0 | 6/6 | Complete (`74e3ad0f`) | 2026-07-08 |
 | 56. CRON-AUDIT — Auditoría E2E de los 9 workflows de ingesta | v6.0 | 1/1 | Complete   | 2026-07-08 |
 | 57. CRON-FIX — Hardening dos-etapas + hash-check + crons verdes | v6.0 | 4/4 | Complete   | 2026-07-09 |
-| 58. CRON-FRESH — Monitoreo de frescura por fuente | v6.0 | 0/TBD | Not started | - |
+| 58. CRON-FRESH — Monitoreo de frescura por fuente | v6.0 | 1/1 | Complete   | 2026-07-09 |
 | 59. AUTOR — Autoría ingest + ficha de proyecto (F48) | v6.0 | 0/TBD | Not started | - |
 | 60. BRAND — Ícono/identidad visual gov-map | v6.0 | 0/TBD | Not started | - |
 | 61. COMP — Comprensión de visualizaciones (loop BrowserOS) | v6.0 | 0/TBD | Not started | - |
@@ -1363,7 +1363,7 @@ Plans:
  (completed 2026-07-08)
 
 - [x] **Phase 57: CRON-FIX — Hardening dos-etapas + hash-check + crons verdes** - Cada conector cumple DOS ETAPAS re-ejecutables + hash-check antes de descargar; crons corren verdes L–V (secrets cargados o fallback local documentado). (completed 2026-07-09)
-- [ ] **Phase 58: CRON-FRESH — Monitoreo de frescura por fuente** - El operador puede consultar la frescura (última corrida, último snapshot R2, último upsert) y detectar staleness sin bucear logs.
+- [x] **Phase 58: CRON-FRESH — Monitoreo de frescura por fuente** - El operador puede consultar la frescura (última corrida, último snapshot R2, último upsert) y detectar staleness sin bucear logs. (completed 2026-07-09)
 - [ ] **Phase 59: AUTOR — Autoría ingest + ficha de proyecto (F48)** - Autores de cada proyecto poblados via R2→Supabase con reconciliación fail-closed; ficha de proyecto muestra autoría con guarda de identidad.
 - [ ] **Phase 60: BRAND — Ícono/identidad visual gov-map** - Ícono SVG propio (≥3 propuestas, selección operador) + integración completa en favicon/OG/header/manifest.
 - [ ] **Phase 61: COMP — Comprensión de visualizaciones (loop BrowserOS)** - Sección cruces comprensible a lectura fría; barrido BrowserOS de superficies clave con loop captura→corrección→re-captura; todas las visualizaciones llevan título orientado a la pregunta.
@@ -1412,10 +1412,11 @@ Plans:
   2. Cada fuente tiene un umbral de alerta configurable (p.ej. lobby ≤7 días, probidad ≤30 días); el reporte marca en rojo las fuentes que superan su umbral — el operador detecta staleness de un vistazo.
   3. El reporte es idempotente y se puede correr en cualquier momento sin efectos secundarios; no dispara ingestas ni escribe a la DB.
 
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 58-01-PLAN.md — freshness core module + CLI + runbook section + PROD validation
+
+- [x] 58-01-PLAN.md — freshness core module + CLI + runbook section + PROD validation
 
 ### Phase 59: AUTOR — Autoría ingest + ficha de proyecto (F48 desbloqueada)
 
