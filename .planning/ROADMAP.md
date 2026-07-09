@@ -1412,7 +1412,10 @@ Plans:
   2. Cada fuente tiene un umbral de alerta configurable (p.ej. lobby ≤7 días, probidad ≤30 días); el reporte marca en rojo las fuentes que superan su umbral — el operador detecta staleness de un vistazo.
   3. El reporte es idempotente y se puede correr en cualquier momento sin efectos secundarios; no dispara ingestas ni escribe a la DB.
 
-**Plans:** TBD
+**Plans:** 1 plan
+
+Plans:
+- [ ] 58-01-PLAN.md — freshness core module + CLI + runbook section + PROD validation
 
 ### Phase 59: AUTOR — Autoría ingest + ficha de proyecto (F48 desbloqueada)
 
