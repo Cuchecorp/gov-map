@@ -130,6 +130,36 @@ describe("CrucesView — contraparte como TEXTO CRUDO", () => {
   });
 });
 
+// ── COMP-01: bloque "Cómo leer esto" siempre visible ────────────────────────────
+describe("CrucesView — bloque 'Cómo leer esto' (COMP-01)", () => {
+  it("renderiza el bloque 'Cómo leer esto' con cruces presentes", () => {
+    render(<CrucesView data={makeViewData()} />);
+    expect(screen.getByLabelText("Cómo leer esto")).toBeInTheDocument();
+    expect(screen.getByText("Cómo leer esto")).toBeInTheDocument();
+  });
+
+  it("renderiza el bloque 'Cómo leer esto' incluso con cero cruces (siempre visible)", () => {
+    render(<CrucesView data={makeViewData({ cruces: [] })} />);
+    expect(screen.getByLabelText("Cómo leer esto")).toBeInTheDocument();
+  });
+
+  it("el bloque menciona los 3 elementos: qué es la señal, cómo leer el conteo, qué no establece", () => {
+    const { container } = render(<CrucesView data={makeViewData()} />);
+    const bloque = container.querySelector('[aria-label="Cómo leer esto"]');
+    const texto = bloque?.textContent ?? "";
+    expect(texto).toMatch(/reuniones de lobby registradas/i);
+    expect(texto).toMatch(/más registros/i);
+    expect(texto).toMatch(/no establece relación/i);
+  });
+
+  it("el bloque no contiene vocabulario prohibido (§9.1)", () => {
+    const { container } = render(<CrucesView data={makeViewData()} />);
+    const bloque = container.querySelector('[aria-label="Cómo leer esto"]');
+    const texto = bloque?.textContent ?? "";
+    expect(texto).not.toMatch(PROHIBIDO);
+  });
+});
+
 // ── Empty honesto: cero cruces (§9.1 regla 9) ───────────────────────────────────
 describe("CrucesView — empty honesto", () => {
   it("cero cruces → copy factual; NUNCA se lee como limpio/transparente", () => {

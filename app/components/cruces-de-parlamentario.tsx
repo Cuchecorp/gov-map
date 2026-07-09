@@ -81,6 +81,34 @@ function encabezadoSenal(s: CruceSenalRpcRow): string {
   } en el sector ${s.sector_etiqueta}`;
 }
 
+// ── Bloque "Cómo leer esto" (COMP-01) — SIEMPRE visible, nunca colapsado ─────────
+function ComoLeerCruces() {
+  return (
+    <div
+      className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground space-y-1"
+      aria-label="Cómo leer esto"
+    >
+      <p className="font-medium text-foreground">Cómo leer esto</p>
+      <ul className="list-disc list-inside space-y-1">
+        <li>
+          Cada señal es un conteo de hechos públicos fechados: reuniones de
+          lobby registradas bajo la Ley 20.730, agrupadas por sector de la
+          contraparte.
+        </li>
+        <li>
+          El número indica cuántas reuniones aparecen registradas en ese sector.
+          Más registros = más actividad documentada, nada más.
+        </li>
+        <li>
+          Esta sección solo muestra hechos públicos coincidentes en un sector,
+          cada uno con su fuente. No establece relación entre la reunión y
+          ninguna otra actuación del parlamentario.
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 // ── Vista pura (RTL la testea con fixtures) ────────────────────────────────────
 export function CrucesView({ data }: { data: CrucesViewData }) {
   const { cruces } = data;
@@ -100,6 +128,7 @@ export function CrucesView({ data }: { data: CrucesViewData }) {
   if (cruces.length === 0) {
     return (
       <>
+        <ComoLeerCruces />
         {intro}
         <p className="text-sm text-muted-foreground">
           No se registran cruces de sector para este parlamentario con los datos
@@ -111,6 +140,7 @@ export function CrucesView({ data }: { data: CrucesViewData }) {
 
   return (
     <div className="space-y-8">
+      <ComoLeerCruces />
       {intro}
 
       {cruces.map((s) => (
