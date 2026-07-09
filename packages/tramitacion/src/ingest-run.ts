@@ -35,6 +35,7 @@ import {
   reconciliarVotosSenado,
   type ReconciliarSenadoOpts,
 } from "./reconciliar-senado";
+import { reconciliarAutores } from "./reconciliar-autor";
 import { fusionarTimeline, eventoDesdeVotacion } from "./timeline";
 
 /** Provider LLM (derivado de la firma de reconciliarVotosSenado para no atar @obs/llm directo). */
@@ -97,6 +98,8 @@ export interface RunIngestResult {
   votaciones: number;
   votos: number;
   eventos: number;
+  /** Autores reconciliados y persistidos en proyecto_autor (AUTOR-01). */
+  autores: number;
   /** Boletines que fallaron al fetchear/parsear (no abortan la corrida; se reportan). */
   errores: { boletin: string; etapa: string; mensaje: string }[];
 }
@@ -138,6 +141,7 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
   let nVotaciones = 0;
   let nVotos = 0;
   let nEventos = 0;
+  let nAutores = 0;
 
   // Provider para la reconciliación del Senado: el real (MiniMax) si se inyectó; si no, el de
   // degradación fail-closed (un homónimo NO aborta el boletín — degrada a no_confirmado).
@@ -300,6 +304,15 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
     //    re-correr recupera el boletín fallido.
     try {
       await opts.writer.upsertProyecto(proyecto);
+      // AUTOR-01: reconciliar autores después de upsertProyecto (FK requires proyecto to exist).
+      const autoresReconciliados = reconciliarAutores(
+        proyecto.autores,
+        opts.maestra,
+        boletinKey,
+        { origen: proyecto.origen, fecha_captura: proyecto.fecha_captura, enlace: proyecto.enlace },
+      );
+      await opts.writer.upsertAutores(autoresReconciliados);
+      nAutores += autoresReconciliados.length;
       await opts.writer.upsertVotacion(votacionesBoletin);
       await opts.writer.upsertVotos(votosBoletin);
       await opts.writer.upsertEventos(eventos);
@@ -330,6 +343,7 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
     votaciones: nVotaciones,
     votos: nVotos,
     eventos: nEventos,
+    autores: nAutores,
     errores,
   };
 }

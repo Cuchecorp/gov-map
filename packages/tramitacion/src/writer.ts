@@ -12,7 +12,15 @@
 // in-memory (Map por clave natural) para los tests sin red ni DB.
 
 import type { EnlaceConfirmado } from "@obs/identity";
-import type { Proyecto, Votacion, Voto, TramitacionEvento } from "./model";
+import type {
+  Proyecto,
+  Votacion,
+  Voto,
+  TramitacionEvento,
+  ProyectoAutor,
+  AutorParaEscribir,
+} from "./model";
+import { aplanarAutor } from "./model";
 
 /**
  * Entrada del writer del voto (IDENT-12). Espeja `Voto` EXCEPTO el FK: en lugar de un
@@ -63,6 +71,12 @@ export interface TramitacionWriter {
    */
   upsertVotos(votos: VotoParaEscribir[]): Promise<void>;
   upsertEventos(eventos: TramitacionEvento[]): Promise<void>;
+  /**
+   * Upsert idempotente de autores de proyecto (AUTOR-01). El FK `parlamentario_id` se tipa
+   * como `EnlaceConfirmado | null` dentro de `AutorParaEscribir` — idéntica guarda LOCKED
+   * que votos. Un string crudo NO compila en esa posición.
+   */
+  upsertAutores(autores: AutorParaEscribir[]): Promise<void>;
 }
 
 /** Clave natural del voto (CR-02: votacion + discriminador NO colisionante del votante). */
@@ -84,6 +98,7 @@ export class InMemoryTramitacionWriter implements TramitacionWriter {
   readonly votaciones = new Map<string, Votacion>();
   readonly votos = new Map<string, Voto>();
   readonly eventos = new Map<string, TramitacionEvento>();
+  readonly autores = new Map<string, Omit<ProyectoAutor, "id">>();
 
   async upsertProyecto(proyecto: Proyecto): Promise<void> {
     this.proyectos.set(proyecto.boletin, proyecto);
@@ -102,5 +117,12 @@ export class InMemoryTramitacionWriter implements TramitacionWriter {
 
   async upsertEventos(eventos: TramitacionEvento[]): Promise<void> {
     for (const e of eventos) this.eventos.set(eventoKey(e), e);
+  }
+
+  async upsertAutores(autores: AutorParaEscribir[]): Promise<void> {
+    for (const row of autores) {
+      const plano = aplanarAutor(row);
+      this.autores.set(`${plano.boletin}\x00${plano.autor_crudo_norm}`, plano);
+    }
   }
 }

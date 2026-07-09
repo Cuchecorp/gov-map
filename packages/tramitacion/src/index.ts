@@ -16,12 +16,16 @@ export type {
   Votacion,
   Voto,
   TramitacionEvento,
+  ProyectoAutor,
+  AutorParaEscribir,
 } from "./model";
 export {
   ProyectoSchema,
   VotacionSchema,
   VotoSchema,
   TramitacionEventoSchema,
+  ProyectoAutorSchema,
+  aplanarAutor,
 } from "./model";
 
 // ── Ola 2: parseo de fechas + parsers de Cámara ──────────────────────────────
@@ -52,6 +56,9 @@ export {
   reconciliarVotosSenado,
   type ReconciliarSenadoOpts,
 } from "./reconciliar-senado";
+// Autores de proyecto: cruce DETERMINISTA por nombre (AUTOR-01); guarda LOCKED —
+// solo determinista/confirmado puebla parlamentario_id. CERO LLM.
+export { reconciliarAutores } from "./reconciliar-autor";
 
 // ── Ola 4: conectores (reusan @obs/ingest, NO BaseConnector.run) ──────────────
 export {

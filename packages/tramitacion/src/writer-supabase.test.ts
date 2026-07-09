@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { SupabaseTramitacionWriter } from "./writer-supabase";
-import type { TramitacionEvento } from "./model";
+import type { TramitacionEvento, AutorParaEscribir } from "./model";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -61,6 +61,61 @@ describe("SupabaseTramitacionWriter.upsertEventos", () => {
   it("lote vacío no llama a upsert", async () => {
     const { writer, capturedUpserts } = makeMockWriter();
     await writer.upsertEventos([]);
+    expect(capturedUpserts).toHaveLength(0);
+  });
+});
+
+// ── AUTOR-01: upsertAutores ──────────────────────────────────────────────────
+
+describe("SupabaseTramitacionWriter.upsertAutores", () => {
+  it("AUTOR-01: dedup previene ON CONFLICT en batch con mismo autor_crudo_norm", async () => {
+    const { writer, capturedUpserts } = makeMockWriter();
+
+    const autor: AutorParaEscribir = {
+      boletin: "16588-07",
+      autor_crudo: "Karim Bianchi Retamales",
+      autor_crudo_norm: "karim bianchi retamales",
+      enlace_confirmado: null,
+      metodo: null,
+      estado_vinculo: "no_confirmado",
+      origen: "senado-wspublico",
+      fecha_captura: "2026-07-08T00:00:00Z",
+      enlace_provenance: "https://tramitacion.senado.cl/wspublico/tramitacion.php",
+    };
+
+    // Dos entradas con la misma clave → deben deduparse a 1 fila
+    await writer.upsertAutores([autor, autor]);
+    expect(capturedUpserts).toHaveLength(1);
+    expect(capturedUpserts[0]).toHaveLength(1);
+  });
+
+  it("AUTOR-01: autores distintos (claves distintas) no se deducan entre sí", async () => {
+    const { writer, capturedUpserts } = makeMockWriter();
+
+    const a1: AutorParaEscribir = {
+      boletin: "16588-07",
+      autor_crudo: "Karim Bianchi Retamales",
+      autor_crudo_norm: "karim bianchi retamales",
+      enlace_confirmado: null,
+      metodo: null,
+      estado_vinculo: "no_confirmado",
+      origen: "senado-wspublico",
+      fecha_captura: "2026-07-08T00:00:00Z",
+      enlace_provenance: "https://tramitacion.senado.cl/wspublico/tramitacion.php",
+    };
+    const a2: AutorParaEscribir = {
+      ...a1,
+      autor_crudo: "Cristina Girardi Lavín",
+      autor_crudo_norm: "cristina girardi lavin",
+    };
+
+    await writer.upsertAutores([a1, a2]);
+    expect(capturedUpserts[0]).toHaveLength(2);
+  });
+
+  it("AUTOR-01: lista vacía no llama a upsert", async () => {
+    const { writer, capturedUpserts } = makeMockWriter();
+    await writer.upsertAutores([]);
     expect(capturedUpserts).toHaveLength(0);
   });
 });
