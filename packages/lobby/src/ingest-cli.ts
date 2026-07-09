@@ -124,10 +124,16 @@ export function parseArgs(argv: string[]): LobbyCliOptions {
  */
 export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> {
   const log = opts.log ?? ((m: string) => console.log(m));
-  const url = opts.url ?? process.env.SUPABASE_DB_URL ?? process.env.SUPABASE_URL ?? "";
+  const url =
+    opts.url ??
+    process.env.SUPABASE_DB_URL ??
+    process.env.SUPABASE_URL ??
+    process.env.SUPABASE_API_URL ?? // fallback: nombre inyectado por los workflows de CI
+    "";
   const serviceKey =
     opts.serviceKey ??
     process.env.SUPABASE_SERVICE_KEY ??
+    process.env.SUPABASE_SECRET_KEY ?? // fallback: nombre inyectado por los workflows de CI
     process.env.SUPABASE_LOCAL_SERVICE_KEY ??
     "";
 
@@ -139,7 +145,15 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
 
   const dryRun = opts.dryRun === true || serviceKey.length === 0 || url.length === 0;
   if (opts.dryRun !== true && (serviceKey.length === 0 || url.length === 0)) {
-    log("ingest-lobby: sin SUPABASE_DB_URL/SERVICE_KEY → corrida DRY-RUN (no carga DB)");
+    // En CI (GITHUB_ACTIONS=true) credenciales faltantes son un error duro — nunca degradar
+    // silenciosamente a dry-run porque el workflow exitaría 0 sin escribir datos.
+    if (process.env.GITHUB_ACTIONS === "true") {
+      throw new Error(
+        "ingest-lobby: GITHUB_ACTIONS=true pero faltan credenciales Supabase " +
+          "(SUPABASE_API_URL / SUPABASE_SECRET_KEY). Verifica los secrets del workflow.",
+      );
+    }
+    log("ingest-lobby: sin credenciales Supabase → corrida DRY-RUN (no carga DB)");
   }
 
   // R2 Store (Etapa 1 G10, hash-check, --from-r2): construir desde env si no se inyectó.
