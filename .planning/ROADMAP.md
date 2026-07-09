@@ -1345,6 +1345,60 @@ Plans:
 
 ---
 
+## 🚧 v6.1 — Entendible y completo (In Progress)
+
+**Milestone Goal:** Dos quejas directas del operador (2026-07-09): `/red` se ve muy confuso → el grafo debe ser ENTENDIBLE (ego-network real + layout legible sin implicar afinidad); la búsqueda de proyectos no cubre históricos ni todas las ideas matrices/leyes → la búsqueda debe ser COMPLETA (fichas+embeddings 100% del corpus, corpus histórico ampliado, cobertura declarada honestamente).
+**Granularity:** fine
+**Numbering:** continúa — v6.0 terminó en Phase 61; v6.1 arranca en **Phase 62**.
+
+### Coverage
+
+- v6.1 requirements: 6 (RED 3, BUSQ 3) — mapped 6/6, orphaned 0
+
+### Phases
+
+- [ ] **Phase 62: RED — Grafo de relaciones entendible** - Ego-network real + layout radial determinista sin afinidad + gate BrowserOS.
+- [ ] **Phase 63: BUSQ — Búsqueda de proyectos completa** - Fichas/embeddings 100% del corpus, corpus histórico ampliado, ideas matrices al máximo + cobertura declarada.
+
+---
+
+### Phase 62: RED — Grafo de relaciones entendible
+
+**Goal:** `/red` deja de ser una franja apiñada de ~136 nodos: con seed muestra el ego-network real (seed + vecinos directos y sus aristas) en un layout radial determinista que no implica afinidad (LOCKED F18: nunca force-simulation), etiquetas legibles sin zoom, tope de vecinos honesto, usable en móvil; sin seed, un estado inicial que orienta. Validado por lectura fría BrowserOS con evidencia before/after.
+**Depends on:** Phase 61 (patrón de loop BrowserOS + deploy procedure documentados)
+**Requirements:** RED-01, RED-02, RED-03
+**Autonomy:** autónomo (componente cliente + RPC/derivación existente; cero DDL sensible); deploy con el runbook de 61-02.
+**Success Criteria** (what must be TRUE):
+
+  1. Con `?seed=<id>`, el grafo renderiza SOLO el seed + vecinos directos + aristas entre ellos; el conteo de nodos visibles ≤ vecinos+1 (verificable en DOM); "ver más" honesto si se trunca.
+  2. Layout radial/orbital determinista con orden neutro (alfabético) — cero simulación de fuerzas; la leyenda explica el layout nuevo y reitera que la posición no indica cercanía.
+  3. Sin seed, `/red` muestra explicación + selector prominente (nunca el grafo completo); en 390px todo lo anterior sigue usable.
+  4. Lectura fría BrowserOS (desktop+390px, con y sin seed) → veredicto "comprensible"; hallazgos P0/P1 corregidos con re-captura; evidencia en el phase dir.
+
+**Plans:** TBD
+
+**UI hint**: yes
+
+---
+
+### Phase 63: BUSQ — Búsqueda de proyectos completa
+
+**Goal:** La búsqueda opera sobre un corpus completo y lo declara: 100% de los proyectos en DB con ficha+embedding (hoy 74/156), extracción de ideas matrices re-corrida al máximo alcanzable con techo honesto por boletín, corpus histórico ampliado con alcance definido e ingerido como backfill LOCAL conforme a convención (R2 primero, rate-limit 2-3s, idempotente, reanudable), y cobertura real visible al operador y declarada en /buscar.
+**Depends on:** Phase 62 (independiente en código; secuencial por orden de corrida)
+**Requirements:** BUSQ-01, BUSQ-02, BUSQ-03
+**Autonomy:** autónomo para código y backfill LOCAL acotado con checkpoints de progreso; corridas largas reanudables; deploy con runbook 61-02.
+**Success Criteria** (what must be TRUE):
+
+  1. `SELECT count(*) FROM proyecto` == `count(*) FROM proyecto_ficha` == `count(*) FROM proyecto_embedding` (o la diferencia exacta está en un reporte de techo honesto con causa por boletín).
+  2. El alcance histórico elegido (p.ej. legislatura actual completa / últimos N años) está documentado con su porqué, ingerido vía R2→Supabase, y los proyectos nuevos son buscables (ficha+embedding+idea donde la fuente lo dé).
+  3. Ideas matrices: cobertura sube desde 60/74 al máximo alcanzable del corpus ampliado; los imposibles tienen estado honesto y causa registrada.
+  4. /buscar declara la cobertura ("busca sobre N proyectos de ley [alcance]"); el operador puede ver N/M por señal (fichas, ideas, embeddings) sin bucear (freshness CLI o reporte).
+  5. Cron leyes-weekly mantiene el corpus nuevo fresco (los boletines ampliados entran al set incremental) sin exceder los límites del cron (novedades acotadas, no re-backfill).
+
+**Plans:** TBD
+
+---
+
 ## ✅ v6.0 — Confiabilidad y comprensión (Shipped: 2026-07-09)
 
 - **6 fases (56-61), 15 planes, 12/12 reqs** — ingesta E2E confiable (dos etapas R2 + hash-check + crons verdes + freshness CLI), 763 autores poblados (F48 LIVE), ícono propio "Capas que se cruzan", comprensión validada por loop BrowserOS (6/6 P0+P1). Detalle: [milestones/v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) · Audit: tech_debt (backlog acotado).

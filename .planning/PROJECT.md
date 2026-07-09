@@ -12,7 +12,15 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 **Shipped v6.0 — Confiabilidad y comprensión.** Ingesta programada confiable end-to-end: dos etapas fuente→R2→Supabase con hash-check y `--from-r2`, leyes-weekly VERDE en GH Actions (billing activo, secrets cargados), fallback local documentado para lo WAF-bloqueado, y CLI `pnpm freshness` de monitoreo por fuente. Autoría de proyectos poblada (763 autores, 75,9% confirmados fail-closed) → **F48 LIVE** en la ficha. Identidad visual propia (ícono "Capas que se cruzan", selección del operador) integrada en favicon/OG/header/manifest. Comprensión validada por loop BrowserOS: leyenda "Cómo leer esto" anti-causal en cruces + triple requisito en charts; 6/6 hallazgos P0/P1 corregidos con evidencia before/after. Deploys `cd7deb4b` + `051a6cf0`. Audit: tech_debt (0 gaps; backlog: source_snapshot multi-fuente, lobby --from-r2, cursor leylobby, token CI Cloudflare). Detalle: `milestones/v6.0-*.md`.
 
-**Próximo milestone (a planificar):** gates humanos/legales pendientes (F13/MONEY + F17/NET + 0042/cruces sign-offs, RUT-01 + ChileCompra/SERVEL Phase 40, rotar DB password B26) + backlog v6 (source_snapshot en los 5 conectores restantes, lobby replay R2, cursor leylobby). Arrancar con `/gsd:new-milestone`.
+## Current Milestone: v6.1 Entendible y completo
+
+**Goal:** Dos quejas directas del operador (2026-07-09): (1) `/red` "se ve muy confuso" → grafo ENTENDIBLE: ego-network real del seed + layout radial determinista que no implica afinidad (LOCKED F18: nunca force-simulation) + gate BrowserOS; (2) la búsqueda "no funciona con todos los históricos, muchas veces no tiene todas las ideas matrices o las leyes" → búsqueda COMPLETA: fichas+embeddings 100% del corpus (hoy 74/156), corpus histórico ampliado (backfill LOCAL, R2 primero), ideas matrices al máximo con techo honesto, y cobertura DECLARADA en /buscar.
+
+**Fases:** 62 (RED) + 63 (BUSQ). Preparado para corrida autónoma con contexto limpio: ver `.planning/PROMPT-v6.1-build-autonomo.md`.
+
+**Modo de trabajo:** Fable planifica/dirime/controla; ejecutores Sonnet o menores; BrowserOS como gate de comprensión; gates humanos jamás los flipea un agente.
+
+**Después de v6.1 (a planificar):** gates humanos/legales (F13/MONEY + F17/NET + 0042 sign-offs, RUT-01 + ChileCompra/SERVEL Phase 40, rotar DB password B26) + backlog v6.0 (source_snapshot en los 5 conectores restantes, lobby replay R2, cursor leylobby, CLOUDFLARE_API_TOKEN CI).
 
 <!-- v5.0 shipped (2026-07-08): -->
 ## Previous State: v5.0 shipped (2026-07-08)

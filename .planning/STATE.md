@@ -1,13 +1,12 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: — Parlamentarios 360
-status: Awaiting next milestone
-stopped_at: Roadmap v6.0 creado — Phases 56-61, REQUIREMENTS.md traceability actualizado, STATE.md inicializado.
-last_updated: "2026-07-09T17:46:36.429Z"
-last_activity: 2026-07-09 — Milestone v6.0 completed and archived
+milestone: v6.1
+milestone_name: Entendible y completo
+status: planning
+last_updated: "2026-07-09T18:19:47.633Z"
+last_activity: 2026-07-09
 progress:
-  total_phases: 46
+  total_phases: 0
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Phase: Milestone v6.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-09 — Milestone v6.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-07-09 — Milestone v6.1 started
 
 ## Performance Metrics
 
