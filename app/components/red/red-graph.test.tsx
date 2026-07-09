@@ -154,6 +154,58 @@ describe("RedGraph — nodo sobrio (T-18-08: nombre + cámara, sin partido/foto/
     expect(txt).not.toMatch(/partido/i);
     expect(txt).not.toMatch(/puntaje|score|ranking/i);
   });
+
+  // ── 62-02 (RED-02): borde institucional por cámara (no posición, no partido) ──
+  it("un nodo de diputados lleva la clase net-nodo--camara y uno de senado net-nodo--senado", () => {
+    const nodos: Subgrafo["nodos"] = [
+      { id: "D1", nombre: "Diputada Uno", camara: "diputados" },
+      { id: "S1", nombre: "Senador Uno", camara: "senado" },
+    ];
+    const { container } = render(
+      <RedGraph
+        subgrafo={{ nodos, aristas: [arista({ a: "D1", b: "S1" })] }}
+      />,
+    );
+    const dip = within(container).getByTestId("rf-node-D1");
+    const sen = within(container).getByTestId("rf-node-S1");
+    expect(dip.querySelector(".net-nodo--camara")).not.toBeNull();
+    expect(dip.querySelector(".net-nodo--senado")).toBeNull();
+    expect(sen.querySelector(".net-nodo--senado")).not.toBeNull();
+    expect(sen.querySelector(".net-nodo--camara")).toBeNull();
+  });
+
+  it("un nodo con cámara null no lleva ninguna clase de borde de cámara", () => {
+    const nodos: Subgrafo["nodos"] = [
+      { id: "X1", nombre: "Sin Cámara", camara: null },
+      { id: "D2", nombre: "Diputado Dos", camara: "diputados" },
+    ];
+    const { container } = render(
+      <RedGraph
+        subgrafo={{ nodos, aristas: [arista({ a: "X1", b: "D2" })] }}
+      />,
+    );
+    const sinCamara = within(container).getByTestId("rf-node-X1");
+    expect(sinCamara.querySelector(".net-nodo--camara")).toBeNull();
+    expect(sinCamara.querySelector(".net-nodo--senado")).toBeNull();
+  });
+
+  it("ningún nodo pinta color de partido ni accent-product inline", () => {
+    const nodos: Subgrafo["nodos"] = [
+      { id: "D1", nombre: "Diputada Uno", camara: "diputados" },
+      { id: "S1", nombre: "Senador Uno", camara: "senado" },
+    ];
+    const { container } = render(
+      <RedGraph
+        subgrafo={{ nodos, aristas: [arista({ a: "D1", b: "S1" })] }}
+      />,
+    );
+    container.querySelectorAll(".net-nodo").forEach((n) => {
+      const style = n.getAttribute("style") ?? "";
+      expect(style).not.toMatch(/accent-product/i);
+      expect(style).not.toMatch(/background/i);
+    });
+    expect((container.textContent ?? "").toLowerCase()).not.toMatch(/partido/i);
+  });
 });
 
 describe("RedGraph — arista = hecho tipado (T-18-09: copy del hecho, sin afinidad/causal)", () => {
