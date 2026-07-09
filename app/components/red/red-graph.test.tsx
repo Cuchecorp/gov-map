@@ -544,9 +544,16 @@ describe("RedGraph — cap de vecinos ≤24 + 'N vecinos más' honesto (RED-01)"
       <RedGraph seedId="D0000" subgrafo={seedCon30Vecinos()} />,
     );
     expect(screen.getByText(/Ver\s+6\s+vecinos más/i)).toBeInTheDocument();
-    // Los overflow son Links a /red?seed=<id>.
+    // Los overflow son Links a /red?seed=<id>. Se cuentan DENTRO del bloque de
+    // overflow (.net-vecinos-mas): la lista móvil de vecinos (.net-vecinos) también
+    // enlaza a /red?seed= por cada vecino renderizado, así que el conteo se acota al
+    // control de truncación, no a todo el DOM.
+    const overflowBlock = container.querySelector(
+      ".net-vecinos-mas",
+    ) as HTMLElement | null;
+    expect(overflowBlock).not.toBeNull();
     const overflowLinks = Array.from(
-      container.querySelectorAll("a"),
+      overflowBlock!.querySelectorAll("a"),
     ).filter((a) => /\/red\?seed=/.test(a.getAttribute("href") ?? ""));
     expect(overflowLinks.length).toBe(6);
   });

@@ -16,8 +16,14 @@ import {
   NodoParlamentario,
   type NodoParlamentarioData,
 } from "./nodo-parlamentario";
-import { AristaHecho, type AristaHechoData } from "./arista-hecho";
+import {
+  AristaHecho,
+  type AristaHechoData,
+  etiquetaHecho,
+  ventanaTexto,
+} from "./arista-hecho";
 import { formatNombre } from "@/lib/format";
+import { safeExternalHref } from "@/lib/utils";
 
 /**
  * <RedGraph> — isla cliente del grafo de relaciones NET (NET-02).
@@ -335,6 +341,25 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
       },
     }));
 
+  // Lista de vecinos para el fallback móvil <768px (RED-02): a 390px un anillo de
+  // 24 nodos es ilegible; la forma honesta y usable es una LISTA de vecinos con su
+  // hecho + procedencia. Cada fila = un vecino renderizado + las aristas seed↔vecino
+  // (el hecho compartido). Solo se arma cuando hay seed y al menos un vecino
+  // renderizado; el estado vacío (0 aristas) ya retornó antes.
+  const seedNombreDisplay = seedNodo
+    ? formatNombre(seedNodo.nombre ?? seedNodo.id)
+    : null;
+  const vecinosLista = seedNodo
+    ? rendered.map((vecino) => {
+        const hechos = aristasVisibles.filter(
+          (a) =>
+            (a.a === seedNodo.id && a.b === vecino.id) ||
+            (a.b === seedNodo.id && a.a === vecino.id),
+        );
+        return { vecino, hechos };
+      })
+    : [];
+
   return (
     <section aria-label="Grafo de relaciones" className="mt-8">
       {/* Leyenda de lectura: qué es un nodo, qué es una arista (COMP-03). */}
@@ -410,32 +435,105 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
         </p>
       ) : (
         <>
-          {/* Nota honesta SOLO móvil (F-04): el layout grid determinista se
-              comprime en pantallas angostas; visible, no bloqueante, nunca
-              overlay — el grafo sigue debajo, íntegro. */}
-          <p className="mt-4 text-sm text-muted-foreground md:hidden">
-            El grafo se lee mejor en pantalla ancha; en pantallas angostas puede
-            verse comprimido.
-          </p>
-          {/* Altura por token adaptativa: h-96=384px móvil / md:h-120=480px ≥768px
-              (sin inline style, sin arbitrary [Npx]). */}
-          <div className="net-lienzo mt-4 h-96 md:h-120">
-            <ReactFlowProvider>
-              <ReactFlow
-                nodes={rfNodes}
-                edges={rfEdges}
-                nodeTypes={nodeTypes}
-                edgeTypes={edgeTypes}
-                fitView
-                fitViewOptions={fitViewOptions}
-                minZoom={0.2}
-                proOptions={{ hideAttribution: true }}
-              >
-                <Background />
-                <Controls showInteractive={false} />
-              </ReactFlow>
-            </ReactFlowProvider>
+          {/* Canvas radial SOLO ≥768px (RED-02): a 390px el anillo es ilegible,
+              así que el canvas se oculta en móvil y en su lugar va la lista de
+              vecinos (abajo). El wrapper hidden md:block mantiene el lienzo con sus
+              clases token h-96 md:h-120 byte-idénticas. */}
+          <div className="hidden md:block">
+            {/* Altura por token adaptativa: h-96=384px móvil / md:h-120=480px ≥768px
+                (sin inline style, sin arbitrary [Npx]). */}
+            <div className="net-lienzo mt-4 h-96 md:h-120">
+              <ReactFlowProvider>
+                <ReactFlow
+                  nodes={rfNodes}
+                  edges={rfEdges}
+                  nodeTypes={nodeTypes}
+                  edgeTypes={edgeTypes}
+                  fitView
+                  fitViewOptions={fitViewOptions}
+                  minZoom={0.2}
+                  proOptions={{ hideAttribution: true }}
+                >
+                  <Background />
+                  <Controls showInteractive={false} />
+                </ReactFlow>
+              </ReactFlowProvider>
+            </div>
           </div>
+
+          {/* Fallback móvil <768px (RED-02): lista honesta de vecinos con enlaces.
+              Cada fila lleva el nombre + cámara del vecino, el/los hecho(s)
+              compartido(s) con su ventana temporal, y el enlace a la fuente oficial
+              (procedencia SIEMPRE en el DOM, trazabilidad rector). Cada fila es un
+              Link a /red?seed=<id> para saltar a su propio ego-network. Solo con
+              seed y ≥1 vecino renderizado. */}
+          {vecinosLista.length > 0 && (
+            <ul className="net-vecinos md:hidden mt-4" aria-label="Vecinos">
+              <li className="net-vecinos__heading">
+                Vecinos de {seedNombreDisplay ?? "este parlamentario"}
+              </li>
+              {vecinosLista.map(({ vecino, hechos }) => {
+                const camaraLabel =
+                  vecino.camara === "senado"
+                    ? "Senado"
+                    : vecino.camara === "diputados"
+                      ? "Cámara de Diputadas y Diputados"
+                      : null;
+                return (
+                  <li key={vecino.id} className="net-vecinos__item">
+                    <Link
+                      href={`/red?seed=${vecino.id}`}
+                      className="net-vecinos__fila"
+                    >
+                      <span className="net-vecinos__nombre">
+                        {formatNombre(vecino.nombre ?? vecino.id)}
+                      </span>
+                      {camaraLabel ? (
+                        <span className="net-vecinos__camara">
+                          {camaraLabel}
+                        </span>
+                      ) : null}
+                    </Link>
+                    <ul className="net-vecinos__hechos">
+                      {hechos.map((h, i) => {
+                        const ventana = ventanaTexto(h.desde, h.hasta);
+                        const enlaceSeguro = safeExternalHref(h.enlace);
+                        return (
+                          <li
+                            key={`${h.tipo}-${i}`}
+                            className="net-vecinos__hecho"
+                          >
+                            <span>{etiquetaHecho(h.tipo, h.contexto)}</span>
+                            {ventana ? (
+                              <span className="net-vecinos__ventana font-mono">
+                                {ventana}
+                              </span>
+                            ) : null}
+                            <span className="net-vecinos__prov">
+                              Fuente: {h.origen}
+                              {enlaceSeguro ? (
+                                <>
+                                  {" · "}
+                                  <a
+                                    href={enlaceSeguro}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="net-vecinos__enlace"
+                                  >
+                                    Ver fuente oficial ↗
+                                  </a>
+                                </>
+                              ) : null}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
           {/* Truncación honesta (RED-01): si el seed tiene más de 24 vecinos
               directos, se muestran los primeros 24 alfabéticos en el anillo y el
               resto se lista aquí — cada nombre un Link a su propio ego-network.
