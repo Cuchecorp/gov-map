@@ -3,7 +3,13 @@
 -- Tabla relacional separada (NOT jsonb en proyecto): trazabilidad por fila,
 -- reconciliación fail-closed nullable (espejo de voto.parlamentario_id).
 -- Clave natural (boletin, autor_crudo_norm) para upsert idempotente.
--- RLS public-read (espejo exacto de 0008 tramitacion_evento).
+--
+-- LOCKDOWN (Camino A, migración > 0044):
+--   Sin GRANT a anon ni CREATE POLICY to anon (guard CI LOCKDOWN-04).
+--   El sitio lee con service_role (bypassa RLS); anon tiene cero grants sobre
+--   esta tabla (deny-by-default). La RLS habilitada sin policy = deny total para anon.
+--   Lectura pública vía la app: service_role la expone segura por la capa de UI.
+--
 -- APPLY vía psql --db-url --single-transaction (NUNCA db push).
 
 create table proyecto_autor (
@@ -24,6 +30,6 @@ create index proyecto_autor_boletin_idx on proyecto_autor (boletin);
 create index proyecto_autor_parlamentario_idx on proyecto_autor (parlamentario_id)
   where parlamentario_id is not null;
 
+-- RLS enabled, deny-by-default for anon (Camino A: reads via service_role).
+-- CERO GRANT a anon, CERO CREATE POLICY to anon (LOCKDOWN-04 guard).
 alter table proyecto_autor enable row level security;
-create policy proyecto_autor_public_read on proyecto_autor for select to anon using (true);
-grant select on proyecto_autor to anon;
