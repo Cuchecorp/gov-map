@@ -733,7 +733,7 @@ Plans:
 | 57. CRON-FIX — Hardening dos-etapas + hash-check + crons verdes | v6.0 | 4/4 | Complete   | 2026-07-09 |
 | 58. CRON-FRESH — Monitoreo de frescura por fuente | v6.0 | 1/1 | Complete   | 2026-07-09 |
 | 59. AUTOR — Autoría ingest + ficha de proyecto (F48) | v6.0 | 3/3 | Complete   | 2026-07-09 |
-| 60. BRAND — Ícono/identidad visual gov-map | v6.0 | 0/TBD | Not started | - |
+| 60. BRAND — Ícono/identidad visual gov-map | v6.0 | 1/1 | Complete   | 2026-07-09 |
 | 61. COMP — Comprensión de visualizaciones (loop BrowserOS) | v6.0 | 0/TBD | Not started | - |
 
 ## ✅ v4.0 — De datos a cruces verificables
@@ -1365,7 +1365,7 @@ Plans:
 - [x] **Phase 57: CRON-FIX — Hardening dos-etapas + hash-check + crons verdes** - Cada conector cumple DOS ETAPAS re-ejecutables + hash-check antes de descargar; crons corren verdes L–V (secrets cargados o fallback local documentado). (completed 2026-07-09)
 - [x] **Phase 58: CRON-FRESH — Monitoreo de frescura por fuente** - El operador puede consultar la frescura (última corrida, último snapshot R2, último upsert) y detectar staleness sin bucear logs. (completed 2026-07-09)
 - [x] **Phase 59: AUTOR — Autoría ingest + ficha de proyecto (F48)** - Autores de cada proyecto poblados via R2→Supabase con reconciliación fail-closed; ficha de proyecto muestra autoría con guarda de identidad. (completed 2026-07-09)
-- [ ] **Phase 60: BRAND — Ícono/identidad visual gov-map** - Ícono SVG propio (≥3 propuestas, selección operador) + integración completa en favicon/OG/header/manifest.
+- [x] **Phase 60: BRAND — Ícono/identidad visual gov-map** - Ícono SVG propio (≥3 propuestas, selección operador) + integración completa en favicon/OG/header/manifest. (completed 2026-07-09)
 - [ ] **Phase 61: COMP — Comprensión de visualizaciones (loop BrowserOS)** - Sección cruces comprensible a lectura fría; barrido BrowserOS de superficies clave con loop captura→corrección→re-captura; todas las visualizaciones llevan título orientado a la pregunta.
 
 ## Phase Details (v6.0)
@@ -1454,7 +1454,7 @@ Plans:
   3. El ícono está integrado en PROD y verificado en BrowserOS: favicon multi-resolución (`/favicon.ico` + `apple-touch-icon`), imagen OG/social (`og:image`), header del sitio, `manifest.json` (PWA icons).
   4. El ícono es coherente con el design system crema/petróleo (tokens existentes) y no incorpora gradientes sintéticos, tipografías mezcladas ni elementos típicamente generados-por-IA.
 
-**Plans:** TBD
+**Plans:** 1/1 plans complete
 
 **UI hint**: yes
 
