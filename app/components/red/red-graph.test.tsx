@@ -623,8 +623,8 @@ describe("RedGraph — framing ego del seed (55-05)", () => {
   });
 });
 
-// ── F-04 (54-04): grafo usable en móvil — altura por token + nota honesta ────────
-describe("RedGraph — F-04 grafo móvil (canvas adaptativo + nota + filtros intactos)", () => {
+// ── F-04 / 62-02 (RED-02): grafo usable en móvil — canvas ≥md + lista de vecinos <md ─
+describe("RedGraph — grafo móvil (canvas hidden md:block + lista de vecinos + filtros intactos)", () => {
   it("el lienzo usa clases token h-96 md:h-120 (sin inline style ni arbitrary [Npx])", () => {
     const { container } = render(
       <RedGraph subgrafo={{ nodos: dos_nodos, aristas: [arista()] }} />,
@@ -637,21 +637,79 @@ describe("RedGraph — F-04 grafo móvil (canvas adaptativo + nota + filtros int
     expect(lienzo!.getAttribute("style") ?? "").not.toMatch(/height/i);
   });
 
-  it("muestra UNA nota honesta 'mejor en pantalla ancha' visible solo en móvil (md:hidden)", () => {
-    render(<RedGraph subgrafo={{ nodos: dos_nodos, aristas: [arista()] }} />);
-    const nota = screen.getByText(
-      /El grafo se lee mejor en pantalla ancha/i,
+  it("la nota band-aid 'mejor en pantalla ancha' YA NO existe (reemplazada por la lista)", () => {
+    const { container } = render(
+      <RedGraph seedId="D1009" subgrafo={{ nodos: dos_nodos, aristas: [arista()] }} />,
     );
-    expect(nota).toBeInTheDocument();
-    // Visible <md, oculto ≥md → clase md:hidden (nunca overlay, nunca oculta el grafo).
-    expect(nota.className).toContain("md:hidden");
+    expect(container.textContent ?? "").not.toMatch(
+      /se lee mejor en pantalla ancha/i,
+    );
   });
 
-  it("la nota NO aparece en el estado vacío (solo cuando hay lienzo)", () => {
-    render(<RedGraph subgrafo={{ nodos: dos_nodos, aristas: [] }} />);
+  it("el canvas radial vive dentro de un wrapper hidden md:block", () => {
+    const { container } = render(
+      <RedGraph seedId="D1009" subgrafo={{ nodos: dos_nodos, aristas: [arista()] }} />,
+    );
+    const lienzo = container.querySelector(".net-lienzo") as HTMLElement | null;
+    expect(lienzo).not.toBeNull();
+    // Algún ancestro del lienzo tiene hidden + md:block (canvas SOLO ≥768px).
+    let anc: HTMLElement | null = lienzo!.parentElement;
+    let wrapped = false;
+    while (anc) {
+      const cn = anc.className ?? "";
+      if (typeof cn === "string" && cn.includes("hidden") && cn.includes("md:block")) {
+        wrapped = true;
+        break;
+      }
+      anc = anc.parentElement;
+    }
+    expect(wrapped).toBe(true);
+  });
+
+  it("lista de vecinos móvil: heading 'Vecinos de' + filas Link a /red?seed= con hecho + fuente", () => {
+    const nodos: Subgrafo["nodos"] = [
+      { id: "D0001", nombre: "Ana Alvarado", camara: "diputados" }, // seed
+      { id: "V1", nombre: "Bruno Barros", camara: "diputados" },
+      { id: "V2", nombre: "Carla Cortés", camara: "senado" },
+    ];
+    const { container } = render(
+      <RedGraph
+        seedId="D0001"
+        subgrafo={{
+          nodos,
+          aristas: [
+            arista({ a: "D0001", b: "V1", contexto: "Empresa Equis SpA" }),
+            arista({ a: "D0001", b: "V2", contexto: "Empresa Equis SpA" }),
+          ],
+        }}
+      />,
+    );
+    // El contenedor md:hidden con la lista de vecinos.
+    const lista = container.querySelector(".net-vecinos") as HTMLElement | null;
+    expect(lista).not.toBeNull();
+    expect(lista!.className).toContain("md:hidden");
+    // Heading "Vecinos de {nombre}".
+    expect(within(lista!).getByText(/Vecinos de/i)).toBeInTheDocument();
+    // Cada vecino es un Link a /red?seed=<id>.
+    const filas = Array.from(lista!.querySelectorAll("a")).filter((a) =>
+      /\/red\?seed=/.test(a.getAttribute("href") ?? ""),
+    );
+    expect(filas.length).toBeGreaterThanOrEqual(2);
+    // El hecho compartido aparece en la lista (etiquetaHecho).
     expect(
-      screen.queryByText(/El grafo se lee mejor en pantalla ancha/i),
-    ).not.toBeInTheDocument();
+      within(lista!).getAllByText(/Ambos recibieron audiencia/i).length,
+    ).toBeGreaterThan(0);
+    // Un enlace "Ver fuente oficial" por fila (procedencia en el DOM).
+    expect(
+      within(lista!).getAllByText(/Ver fuente oficial/i).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("la lista de vecinos NO aparece en el estado vacío (0 aristas)", () => {
+    const { container } = render(
+      <RedGraph seedId="D0001" subgrafo={{ nodos: dos_nodos, aristas: [] }} />,
+    );
+    expect(container.querySelector(".net-vecinos")).toBeNull();
   });
 
   it("los filtros de tipo y ventana temporal siguen intactos con el fix móvil", () => {
