@@ -51,6 +51,36 @@ function makeRow(overrides: Partial<CruceProyectoRow> = {}): CruceProyectoRow {
 // CrucesView (pura)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ── COMP-01: bloque "Cómo leer esto" siempre visible ────────────────────────────
+describe("CrucesView — bloque 'Cómo leer esto' (COMP-01)", () => {
+  it("renderiza el bloque 'Cómo leer esto' con filas presentes", () => {
+    render(<CrucesView rows={[makeRow()]} />);
+    expect(screen.getByLabelText("Cómo leer esto")).toBeInTheDocument();
+    expect(screen.getByText("Cómo leer esto")).toBeInTheDocument();
+  });
+
+  it("renderiza el bloque 'Cómo leer esto' con cero filas (siempre visible)", () => {
+    render(<CrucesView rows={[]} />);
+    expect(screen.getByLabelText("Cómo leer esto")).toBeInTheDocument();
+  });
+
+  it("el bloque menciona los 3 elementos: qué es la señal, cómo leer el conteo, qué no establece", () => {
+    const { container } = render(<CrucesView rows={[makeRow()]} />);
+    const bloque = container.querySelector('[aria-label="Cómo leer esto"]');
+    const texto = bloque?.textContent ?? "";
+    expect(texto).toMatch(/reuniones de lobby registradas/i);
+    expect(texto).toMatch(/más registros/i);
+    expect(texto).toMatch(/no establece relación/i);
+  });
+
+  it("el bloque no contiene vocabulario prohibido (§9.1)", () => {
+    const { container } = render(<CrucesView rows={[makeRow()]} />);
+    const bloque = container.querySelector('[aria-label="Cómo leer esto"]');
+    const texto = bloque?.textContent ?? "";
+    expect(texto).not.toMatch(PROHIBIDO);
+  });
+});
+
 describe("CrucesView — capa-1 + capa-2 (rows>0)", () => {
   it("renderiza h2, caveat 1×, el nombre como LINK a /parlamentario/[id], voto y conteo de reuniones", () => {
     const { container } = render(

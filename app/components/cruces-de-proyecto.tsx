@@ -76,6 +76,34 @@ function encabezadoReuniones(row: CruceProyectoRow): string {
   } en el sector ${row.sector_etiqueta}`;
 }
 
+// ── Bloque "Cómo leer esto" (COMP-01) — SIEMPRE visible, nunca colapsado ─────────
+function ComoLeerCruces() {
+  return (
+    <div
+      className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground space-y-1"
+      aria-label="Cómo leer esto"
+    >
+      <p className="font-medium text-foreground">Cómo leer esto</p>
+      <ul className="list-disc list-inside space-y-1">
+        <li>
+          Cada señal es un conteo de hechos públicos fechados: reuniones de
+          lobby registradas bajo la Ley 20.730, agrupadas por sector de la
+          contraparte.
+        </li>
+        <li>
+          El número indica cuántas reuniones aparecen registradas en ese sector.
+          Más registros = más actividad documentada, nada más.
+        </li>
+        <li>
+          Esta sección solo muestra hechos públicos coincidentes en un sector,
+          cada uno con su fuente. No establece relación entre la reunión y el
+          voto del parlamentario.
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 // ── Una contraparte cruda (tercero privado): TEXTO PLANO + IdentityMarker, NUNCA
 //    enlace, NUNCA RUT. La regla 52-03 gobierna las CONTRAPARTES; el parlamentario
 //    sujeto sí se enlaza (DEPARTURE LOCKED). ────────────────────────────────────
@@ -200,6 +228,7 @@ export function CrucesView({ rows }: { rows: CruceProyectoRow[] }) {
     return (
       <div className="rounded-lg border-[1.5px] border-accent-product bg-card p-4 space-y-3">
         {heading}
+        <ComoLeerCruces />
         {intro}
         <p className="text-sm text-muted-foreground">
           Aún no se registran parlamentarios con cruces en el sector de este
@@ -217,6 +246,7 @@ export function CrucesView({ rows }: { rows: CruceProyectoRow[] }) {
   return (
     <div className="rounded-lg border-[1.5px] border-accent-product bg-card p-4 space-y-3">
       {heading}
+      <ComoLeerCruces />
       {intro}
       {caveat}
       <DetalleColapsable
