@@ -17,9 +17,6 @@ import type { CruceSector } from "@/lib/parlamentario-resumen-conteos";
  * reunión+voto en una frase causal. El caveat de cruces aparece 1× (texto LOCKED).
  */
 
-const CAVEAT_CRUCES =
-  "La coincidencia temporal no implica relación entre la reunión y el voto.";
-
 function Chip({ sector }: { sector: CruceSector }) {
   return (
     <li className="inline-block rounded-full border border-border bg-card px-3 py-1 text-sm">
@@ -49,14 +46,23 @@ export function CrucesCapa1({
 }) {
   return (
     <div className="rounded-lg border-[1.5px] border-accent-product bg-card p-4 space-y-3">
+      {/* COMP-01/03: título orientado a pregunta (no "Cruces con sectores" sin contexto) */}
       <h2 className="flex items-center gap-2 text-lg font-semibold text-accent-product">
-        <span>Cruces con sectores</span>
+        <span>¿Con qué sectores tuvo reuniones de lobby?</span>
         {conteo != null && (
           <span className="ml-auto text-sm font-normal text-muted-foreground">
             {conteo}
           </span>
         )}
       </h2>
+
+      {/* COMP-02/04: definición visible ANTES de los chips — reemplaza el caveat técnico */}
+      <p className="text-xs text-muted-foreground">
+        Sectores de las contrapartes registradas bajo la Ley del Lobby (Ley
+        20.730). El número indica cuántas reuniones aparecen en el registro
+        oficial; solo muestra hechos públicos, no establece relación entre una
+        reunión y ninguna otra actuación del parlamentario.
+      </p>
 
       {sectores.length > 0 ? (
         <ul className="flex flex-wrap gap-2">
@@ -66,17 +72,12 @@ export function CrucesCapa1({
         </ul>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Aún no se registran cruces con sectores en las fuentes consultadas.
+          Aún no se registran reuniones de lobby en las fuentes consultadas.
         </p>
       )}
 
-      {/* El CTA PRIMARIO petróleo "Explorar los N cruces" NO vive aquí: es el trigger
-          del DetalleColapsable de cruces (variante `primary`) en la página server —
-          UN solo control que expande el detalle, no un anchor extra que sólo hace
-          scroll a un disclosure cerrado. */}
-
-      {/* Caveat de cruces (LOCKED, 1×). */}
-      <p className="text-xs text-muted-foreground">{CAVEAT_CRUCES}</p>
+      {/* El CTA PRIMARIO petróleo NO vive aquí: es el trigger del DetalleColapsable
+          (variante `primary`) en la página server. */}
     </div>
   );
 }

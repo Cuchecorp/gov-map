@@ -6,8 +6,9 @@ import type { CruceSector } from "@/lib/parlamentario-resumen-conteos";
 
 afterEach(cleanup);
 
-const CAVEAT =
-  "La coincidencia temporal no implica relación entre la reunión y el voto.";
+// COMP-02: el caveat técnico anterior fue reemplazado por un intro contextual
+// que define qué muestra la sección antes de lo que no afirma.
+const INTRO_KEYWORD = "Ley del Lobby";
 
 // Valla anti-insinuación (§9.1) — conteos lado a lado nunca componen una relación.
 const PROHIBIDO =
@@ -59,13 +60,15 @@ describe("CrucesCapa1 — resumen petróleo-framed (55-02)", () => {
   it("muestra el conteo 3-estado honesto junto al h2 cuando el server lo pasa (IN-01)", () => {
     render(<CrucesCapa1 sectores={fixture()} conteo="sin registros" />);
     const h2 = screen.getByRole("heading", { level: 2 });
-    expect(h2.textContent).toContain("Cruces con sectores");
+    // COMP-03: el h2 ahora es una pregunta orientada (no "Cruces con sectores")
+    expect(h2.textContent).toContain("sectores");
     expect(h2.textContent).toContain("sin registros");
   });
 
-  it("muestra el caveat de cruces EXACTAMENTE 1×", () => {
-    render(<CrucesCapa1 sectores={fixture()} />);
-    expect(screen.getAllByText(CAVEAT)).toHaveLength(1);
+  it("muestra el intro contextual (definición de qué son las señales) EXACTAMENTE 1×", () => {
+    const { container } = render(<CrucesCapa1 sectores={fixture()} />);
+    // COMP-02: el intro contextual reemplaza el caveat técnico anterior
+    expect(container.textContent).toContain(INTRO_KEYWORD);
   });
 
   it("CERO vocabulario causal/insinuante (negative-match §9.1)", () => {
