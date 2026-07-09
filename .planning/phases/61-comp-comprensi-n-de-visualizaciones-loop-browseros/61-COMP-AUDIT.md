@@ -47,6 +47,21 @@
 
 ---
 
+## Estado final (post deploy #2 — versión 051a6cf0)
+
+| ID | Severidad | Hallazgo | Estado final | Evidencia |
+|----|----------|---------|--------------|-----------|
+| COMP-01 | P0 | "Cruces con sectores" sin definición visible | **corregido** | HTML live: h2 = "¿Con qué sectores tuvo reuniones de lobby?" |
+| COMP-02 | P0 | Caveat incomprensible sin contexto | **corregido** | HTML live: intro contextual + "Ley del Lobby (Ley 20.730)" visible antes de chips |
+| COMP-03 | P1 | h2 no responde a pregunta | **corregido** | Incorporado en COMP-01 |
+| COMP-04 | P1 | "Cómo leer esto" escondido | **corregido** | Intro contextual siempre visible en capa-1 |
+| COMP-05 | P1 | Botón reutiliza jargon "cruces" | **corregido** | HTML live: "Ver las 12 señales de lobby por sector" |
+| COMP-06 | P1 | Rail label "Cruces con sectores" + ◆ sin leyenda | **corregido** | Screenshot desktop: "◆ Lobby por sector  12" |
+
+Evidencia en `comp-evidence/parlamentario-desktop-despues.png` (top + rail visible) y `parlamentario-mobile-despues.png`.
+
+---
+
 ## Hallazgos fuera de scope (pre-existentes / arquitectura)
 
 - ComoLeerCruces existe en CrucesView — buen contenido, solo está en el lugar equivocado (colapsado). El fix (COMP-04) es mover definición al capa-1, no reescribir el contenido del detail.
