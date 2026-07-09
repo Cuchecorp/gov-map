@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: — Confiabilidad y comprensión
-status: completed
+status: executing
 stopped_at: Roadmap v6.0 creado — Phases 56-61, REQUIREMENTS.md traceability actualizado, STATE.md inicializado.
-last_updated: "2026-07-09T01:05:49.251Z"
-last_activity: 2026-07-09 -- Phase 58 marked complete
+last_updated: "2026-07-09T01:06:59.836Z"
+last_activity: 2026-07-09 -- Phase 59 execution started
 progress:
   total_phases: 52
   completed_phases: 3
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 58 — CRON-FRESH — Monitoreo de frescura por fuente
+**Current focus:** Phase 59 — AUTOR — Autoría ingest + ficha de proyecto (F48)
 
 ## Current Position
 
-Phase: 58 — COMPLETE
-Plan: 1 of 1
-Status: Phase 58 complete
-Last activity: 2026-07-09 -- Phase 58 marked complete
+Phase: 59 (AUTOR — Autoría ingest + ficha de proyecto (F48)) — EXECUTING
+Plan: 1 of ?
+Status: Executing Phase 59
+Last activity: 2026-07-09 -- Phase 59 execution started
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases complete)
 
