@@ -66,16 +66,18 @@ Declared values (Tailwind default 4px base — multiples of 4 only; the shipped 
 
 ## Typography
 
-Ramp = Geist Sans. Exactly the sizes already shipped on `/red` (no new sizes introduced). 2 weights.
+Ramp = Geist Sans. **Exactly 4 sizes, exactly 2 weights.** The previous 12–13px micro band collapses to a single 12px step, and the 15px node name folds into the 14px label step — keeping the ramp within limits without losing the RED-02 legibility bar.
 
 | Role | Size | Weight | Line Height | Where |
 |------|------|--------|-------------|-------|
 | Heading (h1) | 20px (`text-xl`) | 600 (semibold) | 1.2 | "Relaciones entre parlamentarios" |
 | Body | 16px (`text-base`) | 400 (regular) | 1.5 (`leading-relaxed`) | Intro paragraph, empty-state body |
-| Label / secondary | 14px (`text-sm`) | 400, 500 for emphasis | 1.4 | Legend, filter labels, seed subline, "ver más", móvil note |
-| Micro / provenance | 12px–13px (`text-xs` / 13px in `.net-*`) | 400 | 1.3 | Edge label, ventana temporal, node cámara, provenance dl |
+| Label / secondary | 14px (`text-sm`) | 400, **600** for emphasis | 1.4 | Legend, filter labels, seed subline, "ver más", móvil note, **node name** |
+| Micro / provenance | 12px (`text-xs`) | 400 | 1.3 | Edge label, ventana temporal, node cámara, provenance dl |
 
-**Node label typography (the legibility fix — RED-02):** node name = **15px / weight 600** (`.net-nodo__nombre`, unchanged), cámara = **13px / weight 400 muted** (`.net-nodo__camara`, unchanged). These MUST remain legible **without zoom** at the default fitView — that is the acceptance bar. If the ring is too tight to keep 15px legible, reduce the neighbor cap or add a second ring; never shrink the font below 13px.
+**The 4 sizes:** 20 / 16 / 14 / 12. **The 2 weights:** 400 (regular) and 600 (semibold). Emphasis is rendered via weight 600 or via color/size — never a third weight (500 is dropped).
+
+**Node label typography (the legibility fix — RED-02):** node name = **14px / weight 600** (`.net-nodo__nombre` — set to the 14px label step and semibold), cámara = **12px / weight 400 muted** (`.net-nodo__camara`). These MUST remain legible **without zoom** at the default fitView — that is the acceptance bar. If the ring is too tight to keep the 14px name legible, reduce the neighbor cap or add a second ring; never shrink either font below its step (14px name, 12px cámara are the floors).
 
 **Numeric/date fields** use `font-mono` (dates, ventana temporal) — already shipped convention.
 
