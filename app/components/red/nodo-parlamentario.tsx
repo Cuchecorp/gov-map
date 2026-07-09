@@ -50,9 +50,27 @@ export function NodoParlamentario({
   // quién se centró la vista), NO un ranking — sin puntaje, sin insignia de valor.
   const esSeed = data.esSeed === true;
 
+  // Borde institucional por cámara (RED-02, F18): distingue Cámara vs Senado por
+  // el borde del nodo, NUNCA por posición radial (que es orden alfabético) ni por
+  // color de marca política. Consume los tokens cívicos institucionales
+  // (civic-tokens.css) vía la clase; sin petróleo (reservado a aristas/enlaces).
+  const camaraClase =
+    camara === "diputados"
+      ? "net-nodo--camara"
+      : camara === "senado"
+        ? "net-nodo--senado"
+        : null;
+  const clase = [
+    "net-nodo",
+    esSeed ? "net-nodo--seed" : null,
+    camaraClase,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div
-      className={esSeed ? "net-nodo net-nodo--seed" : "net-nodo"}
+      className={clase}
       role="group"
       aria-label={`Parlamentario: ${nombreDisplay}${esSeed ? " (punto de partida)" : ""}`}
     >

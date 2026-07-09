@@ -228,6 +228,22 @@
   border-color: hsl(var(--foreground));
 }
 
+/* Borde institucional por cámara (RED-02, F18): wayfinding sobrio de identidad
+   institucional (cuál de las dos cámaras), NUNCA color de marca política ni
+   valoración. Consume los tokens cívicos de civic-tokens.css, que YA vienen
+   wrapped en hsl(...) → se usan DIRECTO, sin doble-wrap. Nunca petróleo
+   (--accent-product, reservado a aristas/enlaces). El cuerpo del nodo se
+   mantiene crema/card; el borde de seed (2px --foreground) tiene prioridad. */
+.net-nodo--camara {
+  border-left-width: 3px;
+  border-left-color: var(--camara-muted);
+}
+
+.net-nodo--senado {
+  border-left-width: 3px;
+  border-left-color: var(--senado-muted);
+}
+
 .net-nodo__nombre {
   font-weight: 600;
   font-size: 0.9375rem;
