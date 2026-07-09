@@ -15,12 +15,11 @@
 // no_confirmado sin fabricar). NOTA CONGRESO (Open Question 2): la Cámara/Senado NO están en
 // leylobby; la corrida LIVE de congreso usa el portal propio de la Cámara (verificación de operador).
 
-import { Fetcher, HostRateLimiter, RobotsGuard } from "@obs/ingest";
+import { Fetcher, HostRateLimiter, RobotsGuard, R2Store } from "@obs/ingest";
 import type { Parlamentario } from "@obs/core";
 import { LeylobbyConnector } from "./connector-leylobby";
 import { SupabaseLobbyWriter } from "./writer-supabase";
-import { InMemoryLobbyWriter } from "./writer";
-import type { LobbyWriter } from "./writer";
+import { InMemoryLobbyWriter, type LobbyWriter } from "./writer";
 import {
   runIngestLobby,
   type RunIngestLobbyResult,
@@ -45,6 +44,18 @@ export interface LobbyCliOptions {
   log?: (msg: string) => void;
   /** Conector inyectable (tests, sin red). Si se omite, `main` construye el REAL de @obs/ingest. */
   conector?: LeylobbyConnector;
+  /**
+   * Modo re-ingesta desde R2 (CRON-02/G23): r2Path del envelope crudo de audiencias.
+   * CERO fetches a leylobby.gob.cl cuando presente.
+   */
+  fromR2?: string;
+  /**
+   * Store R2 inyectable. Si undefined, se construye desde env R2_*; si null, se omite Etapa 1
+   * (con WARN si !dryRun).
+   */
+  r2Store?: R2Store | null;
+  /** Writer inyectable para tests sin DB. */
+  writer?: LobbyWriter;
 }
 
 export interface LobbyCliResult extends RunIngestLobbyResult {
@@ -92,6 +103,12 @@ export function parseArgs(argv: string[]): LobbyCliOptions {
         opts.paginas = n;
         break;
       }
+      case "--from-r2": {
+        const path = argv[++i];
+        if (!path) throw new LobbyCliArgsError("--from-r2 requiere un r2Path");
+        opts.fromR2 = path;
+        break;
+      }
       default:
         if (a != null && a.startsWith("--")) {
           throw new LobbyCliArgsError(`flag desconocido: ${a}`);
@@ -125,6 +142,23 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
     log("ingest-lobby: sin SUPABASE_DB_URL/SERVICE_KEY → corrida DRY-RUN (no carga DB)");
   }
 
+  // R2 Store (Etapa 1 G10, hash-check, --from-r2): construir desde env si no se inyectó.
+  let r2Store: R2Store | null;
+  if (opts.r2Store !== undefined) {
+    r2Store = opts.r2Store;
+  } else {
+    const ak = process.env.R2_ACCESS_KEY_ID;
+    const sk = process.env.R2_SECRET_ACCESS_KEY ?? "";
+    const ep = process.env.R2_ENDPOINT_URL ?? "";
+    const bk = process.env.R2_BUCKET ?? "";
+    r2Store = ak && ep
+      ? new R2Store({ accessKeyId: ak, secretAccessKey: sk, endpoint: ep, bucket: bk })
+      : null;
+  }
+  if (!r2Store && !dryRun) {
+    log("[WARN] R2 no configurado — Etapa 1 omitida (sin crudo versionado)");
+  }
+
   // Conector REAL de @obs/ingest (rate-limit 2-3s + robots + UA + SSRF), salvo inyección (tests).
   const conector =
     opts.conector ??
@@ -137,11 +171,11 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
   let writer: LobbyWriter;
   let dbLoaded = false;
   if (dryRun) {
-    writer = new InMemoryLobbyWriter();
+    writer = opts.writer ?? new InMemoryLobbyWriter();
   } else {
-    writer = new SupabaseLobbyWriter({ url, serviceKey });
+    writer = opts.writer ?? new SupabaseLobbyWriter({ url, serviceKey });
     dbLoaded = true;
-    log(`ingest-lobby: writer Supabase (${url}) — upsert idempotente`);
+    if (!opts.writer) log(`ingest-lobby: writer Supabase (${url}) — upsert idempotente`);
   }
 
   const res = await runIngestLobby({
@@ -151,6 +185,7 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
     tareas,
     ...(opts.reconciliar !== undefined ? { reconciliar: opts.reconciliar } : {}),
     ...(opts.driftStore !== undefined ? { driftStore: opts.driftStore } : {}),
+    ...(r2Store ? { r2Store } : {}),
     log,
   });
 

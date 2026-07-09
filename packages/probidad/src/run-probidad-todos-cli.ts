@@ -146,6 +146,10 @@ async function main(): Promise<void> {
     log,
   });
 
+  log(
+    `[ok] probidad consultados=${res.parlamentariosConsultados} declaraciones=${res.declaraciones} ` +
+      `errores=${res.errores.length}`,
+  );
   console.log(
     `\nprobidad-todos ${dryRun ? "DRY-RUN" : "LIVE"}: consultados=${res.parlamentariosConsultados} ` +
       `declaraciones=${res.declaraciones} bienes=${res.bienes} familiares=${res.familiares} ` +

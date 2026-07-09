@@ -53,7 +53,10 @@ describe("runProbidadTodos — Etapa 1 R2 + SnapshotWriter (INGEST-04)", () => {
     const writer = new InMemoryProbidadWriter();
     const conector = mockConector();
 
-    const putImmutable = vi.fn(async () => "infoprobidad/declaraciones/2026-06-24/abc123.json");
+    const putImmutable = vi.fn(async () => ({
+      r2Path: "infoprobidad/declaraciones/2026-06-24/abc123.json",
+      existed: false,
+    }));
     const r2Store = { putImmutable } as unknown as R2Store;
     const write = vi.fn(async () => ({
       snapshotId: 1,

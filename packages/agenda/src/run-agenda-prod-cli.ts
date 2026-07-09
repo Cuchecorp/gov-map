@@ -141,6 +141,9 @@ async function main(): Promise<void> {
         bucket: env.R2_BUCKET!,
       })
     : undefined;
+  if (!r2Creds && !dryRun) {
+    log("[WARN] R2 no configurado — Etapa 1 omitida (sin crudo versionado)");
+  }
 
   const res = await runIngest({
     conectorCamara,

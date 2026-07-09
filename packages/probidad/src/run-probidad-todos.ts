@@ -118,6 +118,8 @@ export async function runProbidadTodos(opts: RunProbidadTodosOpts): Promise<RunP
 
     try {
       const json = await opts.conector.fetchSparql(queryDeclaracionesPorNombre(frag));
+      const rawBindings = (json as { results?: { bindings?: unknown[] } })?.results?.bindings ?? [];
+      log(`probidad-todos: ${p.id} (${frag}) → SPARQL devolvió ${rawBindings.length} bindings`);
       crudos.push(json); // acumula el crudo SPARQL para el snapshot agregado por run (Etapa 1).
       const decls = parseDeclaraciones(json, { enlace: opts.conector.urlSparql(frag) });
       const filas = reconciliarDeclaracionesObjetivo(decls, p);

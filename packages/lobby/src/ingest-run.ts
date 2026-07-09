@@ -19,7 +19,7 @@ import { LeylobbyBloqueadaError } from "./connector-leylobby";
 import type { LobbyWriter } from "./writer";
 import { parseLobbyAudiencias, parseListadoRowIds } from "./parse-leylobby";
 import { reconciliarSujeto, type ReconciliarSujetoOpts } from "./reconciliar-sujeto";
-import { fingerprint, structuralPaths, type DriftStore } from "@obs/ingest";
+import { fingerprint, structuralPaths, sha256Hex, type DriftStore, type R2Store } from "@obs/ingest";
 import type { Parlamentario } from "@obs/core";
 
 /** Una tarea acotada: una institución + un año + un rango de páginas (1-based, inclusive). */
@@ -60,6 +60,12 @@ export interface RunIngestLobbyOpts {
    * cada uno con su página de detalle (la que trae el `Identificador`).
    */
   maxDetallesPorPagina?: number;
+  /**
+   * Store R2 para Etapa 1 (crudo HTML por tarea, content-addressed). Best-effort, no fatal.
+   * Si putImmutable devuelve existed=true → log `[skip] sin novedades — leylobby <clave>` y
+   * salta Etapa 2 (Supabase) para esa tarea.
+   */
+  r2Store?: R2Store;
   log?: (msg: string) => void;
 }
 
@@ -120,6 +126,31 @@ export async function runIngestLobby(opts: RunIngestLobbyOpts): Promise<RunInges
           });
         }
         continue;
+      }
+
+      // Etapa 1 R2 (best-effort): persiste el HTML crudo de audiencias content-addressed.
+      // Si existed=true → el contenido no cambió → skip Etapa 2 para esta tarea.
+      if (opts.r2Store) {
+        try {
+          const bytes = new TextEncoder().encode(html);
+          const sha = await sha256Hex(bytes);
+          const date = hasta.slice(0, 10);
+          const { r2Path, existed } = await opts.r2Store.putImmutable(
+            "leylobby",
+            clave,
+            date,
+            sha,
+            "html",
+            bytes,
+          );
+          if (existed) {
+            log(`[skip] sin novedades — leylobby ${clave}`);
+            continue;
+          }
+          log(`leylobby: crudo en R2 → ${r2Path}`);
+        } catch (err) {
+          log(`leylobby: Etapa 1 R2 falló (no fatal): ${(err as Error).message}`);
+        }
       }
 
       // CRAWL LOCKED DE DOS PASOS: el LISTADO lista sujetos pasivos (sin `Identificador`), cada uno
