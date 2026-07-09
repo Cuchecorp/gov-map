@@ -8,7 +8,8 @@
   "scripts": {
     "test": "pnpm -r --filter \"./packages/*\" test && pnpm --filter ./app test",
     "typecheck": "tsc -b",
-    "lint": "echo \"(lint placeholder — configurar en fase posterior)\""
+    "lint": "echo \"(lint placeholder — configurar en fase posterior)\"",
+    "freshness": "tsx packages/freshness/src/cli.ts"
   },
   "devDependencies": {
     "typescript": "^5.8.3",

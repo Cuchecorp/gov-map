@@ -172,3 +172,19 @@ psql "$DATABASE_URL" -c "SELECT fuente, MAX(fecha_captura) FROM source_snapshot 
 # Para el run más reciente de leyes-weekly:
 gh run view --log --repo Cuchecorp/gov-map $(gh run list --workflow leyes-weekly.yml --repo Cuchecorp/gov-map --limit 1 --json databaseId -q '.[0].databaseId') 2>/dev/null | grep -E '\[skip\]|upsertEventos|Etapa 1'
 ```
+
+---
+
+## 6. Verificar frescura de fuentes
+
+El CLI `pnpm freshness` consulta en modo read-only la última fecha de upsert por fuente
+(tabla representativa en Supabase) y la compara contra el umbral configurado por fuente.
+Requiere `SUPABASE_DB_URL` en `.env`. No escribe nada, no dispara ingestas.
+
+```bash
+pnpm freshness          # tabla ANSI en terminal; exit 1 si alguna fuente está stale
+pnpm freshness --json   # JSON a stdout (tabla a stderr)
+```
+
+Umbrales por defecto: leyes 7d, agenda 7d, lobby-camara 14d, lobby-leylobby 7d,
+probidad 30d, fichas 30d. Override: `FRESHNESS_UMBRAL_LEYES=3 pnpm freshness`.
