@@ -48,15 +48,16 @@ describe("R2Store.putImmutable", () => {
     expect(put!.headers["if-none-match"]).toBe("*");
   });
 
-  it("Test 1d: status 412 (ya existia) se trata como exito idempotente", async () => {
+  it("Test 1d: status 412 (ya existia) devuelve r2Path correcto y existed=true", async () => {
     const body = new TextEncoder().encode("dup");
     const sha = await sha256Hex(body);
     const url = `${CFG.endpoint}/${CFG.bucket}/s/r/2026-06-17/${sha}.json`;
     const mock = makeMockFetch({ [url]: { status: 412 } });
     const store = new R2Store(CFG, { fetchFn: mock.fn });
 
-    const { r2Path } = await store.putImmutable("s", "r", "2026-06-17", sha, "json", body);
+    const { r2Path, existed } = await store.putImmutable("s", "r", "2026-06-17", sha, "json", body);
     expect(r2Path).toBe(`s/r/2026-06-17/${sha}.json`);
+    expect(existed).toBe(true); // 412 = contenido sin cambios → hash-check early-exit
   });
 
   it("no expone credenciales en el error de un PUT fallido (T-01-06)", async () => {
