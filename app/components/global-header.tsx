@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandIcon } from "@/components/brand-icon";
 import { HeaderNav } from "@/components/header-nav";
 import { netPublicEnabled } from "@/lib/net-gate";
 
@@ -33,9 +34,10 @@ export function GlobalHeader() {
       <div className="mx-auto flex min-h-14 max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 md:px-8">
         <Link
           href="/"
-          className="inline-flex min-h-11 items-center text-base font-semibold leading-tight tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+          className="inline-flex min-h-11 items-center gap-2 text-base font-semibold leading-tight tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
         >
-          Observatorio del Congreso 360
+          <BrandIcon size={26} color="#2A5859" aria-hidden="true" />
+          gov-map
         </Link>
 
         <HeaderNav showRed={showRed} />
