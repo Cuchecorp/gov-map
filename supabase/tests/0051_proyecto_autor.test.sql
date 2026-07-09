@@ -9,7 +9,7 @@ SELECT plan(5);
 
 SELECT has_table('public', 'proyecto_autor', 'tabla proyecto_autor existe');
 
-SELECT col_is_nullable('public', 'proyecto_autor', 'parlamentario_id', 'parlamentario_id nullable');
+SELECT col_is_null('public', 'proyecto_autor', 'parlamentario_id', 'parlamentario_id nullable');
 
 SELECT col_not_null('public', 'proyecto_autor', 'autor_crudo', 'autor_crudo not null');
 
