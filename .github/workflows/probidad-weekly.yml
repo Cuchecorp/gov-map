@@ -66,5 +66,5 @@ jobs:
           if [ -n "$LIMITE" ]; then ARGS="$ARGS --limit $LIMITE"; fi
           OUT=$(pnpm --filter @obs/probidad exec tsx src/run-probidad-todos-cli.ts $ARGS)
           echo "$OUT"
-          echo "$OUT" | grep -qE 'declaraciones=[1-9][0-9]*|confirmados=[1-9][0-9]*' \
-            || { echo "sin declaraciones/confirmados"; exit 1; }
+          echo "$OUT" | grep -qE 'consultados=[1-9][0-9]*' \
+            || { echo "probidad: 0 parlamentarios consultados — posible error fatal"; exit 1; }

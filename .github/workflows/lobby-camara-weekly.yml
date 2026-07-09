@@ -11,9 +11,11 @@ name: lobby-camara-weekly
 #
 # Schedule: martes 11:00 UTC (~07:00 CL) — distinto de agenda(lun)/leyes(vie). También manual.
 
+# WAF de camara.cl bloquea IPs de GH Actions desde al menos 2026-06-30 (G7 audit Phase 56).
+# curl devuelve <10KB (WAF intercept) → el paso de descarga falla antes del CLI.
+# Schedule DESHABILITADO: usar dispatch manual solo cuando el operador confirme que el WAF
+# permite GH Actions. Fallback local: docs/runbooks/cron-local-fallback.md
 on:
-  schedule:
-    - cron: "0 11 * * 2" # martes 11:00 UTC
   workflow_dispatch:
 
 permissions:
