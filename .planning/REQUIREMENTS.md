@@ -15,7 +15,7 @@
 
 ### AUTOR — Autoría de proyectos (desbloquea F48)
 
-- [ ] **AUTOR-01**: Los autores de cada proyecto del corpus quedan poblados (`proyecto.autores` hoy 0/136) vía pipeline R2→Supabase, con reconciliación de identidad fail-closed: solo un match determinista/confirmado enlaza a la maestra; lo demás queda como mención cruda.
+- [x] **AUTOR-01**: Los autores de cada proyecto del corpus quedan poblados (`proyecto.autores` hoy 0/136) vía pipeline R2→Supabase, con reconciliación de identidad fail-closed: solo un match determinista/confirmado enlaza a la maestra; lo demás queda como mención cruda.
 - [ ] **AUTOR-02**: La ficha de proyecto muestra autoría (F48 diferida de v5): autores con guarda de identidad (link solo si confirmado, IdentityMarker si no) + fuente/fecha/enlace, montada sobre el patrón drill-down de F55.
 
 ### BRAND — Identidad visual de gov-map
@@ -52,7 +52,7 @@
 | CRON-03 | Phase 57 | Complete |
 | CRON-04 | Phase 57 | Complete |
 | CRON-05 | Phase 58 | Complete |
-| AUTOR-01 | Phase 59 | Pending |
+| AUTOR-01 | Phase 59 | Complete |
 | AUTOR-02 | Phase 59 | Pending |
 | BRAND-01 | Phase 60 | Pending |
 | BRAND-02 | Phase 60 | Pending |
