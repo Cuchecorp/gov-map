@@ -7,6 +7,9 @@ import { parseSenadoTramitacion } from "./parse-senado-tramitacion";
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "../test/fixtures");
 const xml = readFileSync(join(FIXTURES, "senado-tramitacion.xml"), "utf8");
 
+const FIXTURES_SRC = join(dirname(fileURLToPath(import.meta.url)), "__fixtures__");
+const xmlMocion = readFileSync(join(FIXTURES_SRC, "mocion-16588-autores.xml"), "utf8");
+
 describe("parseSenadoTramitacion — Proyecto (descripcion)", () => {
   const { proyecto } = parseSenadoTramitacion(xml);
 
@@ -76,5 +79,44 @@ describe("parseSenadoTramitacion — TramitacionEvento[]", () => {
 
   it("cada evento referencia el boletín completo del proyecto", () => {
     for (const e of eventos) expect(e.boletin).toBe("18296-05");
+  });
+});
+
+// ── AUTOR-01: parser fix para <autor><PARLAMENTARIO> ──────────────────────────
+describe("parseSenadoTramitacion — autores (AUTOR-01 parser fix)", () => {
+  it("moción con 5 autores: retorna 5 strings no vacíos", () => {
+    const { proyecto } = parseSenadoTramitacion(xmlMocion);
+    expect(proyecto.autores).toHaveLength(5);
+    for (const a of proyecto.autores) {
+      expect(typeof a).toBe("string");
+      expect(a.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("moción: autores contienen los nombres reales del fixture", () => {
+    const { proyecto } = parseSenadoTramitacion(xmlMocion);
+    expect(proyecto.autores).toContain("Karim Bianchi Retamales");
+    expect(proyecto.autores).toContain("Cristina Girardi Lavín");
+    expect(proyecto.autores).toContain("Pamela Jiles Moreno");
+  });
+
+  it("moción: iniciativa es 'Moción'", () => {
+    const { proyecto } = parseSenadoTramitacion(xmlMocion);
+    expect(proyecto.iniciativa).toBe("Moción");
+  });
+
+  it("mensaje (fixture existente): autores es [] (sin bug, comportamiento correcto)", () => {
+    // El fixture senado-tramitacion.xml es un Mensaje — no debe tener autores
+    const { proyecto } = parseSenadoTramitacion(xml);
+    expect(proyecto.iniciativa).toBe("Mensaje");
+    expect(proyecto.autores).toEqual([]);
+  });
+
+  it("XML sin nodo <autores>: retorna autores = []", () => {
+    const sinAutores = `<?xml version="1.0"?><proyectos><proyecto><descripcion>` +
+      `<boletin>99999-99</boletin><titulo>Sin autores</titulo>` +
+      `<iniciativa>Moción</iniciativa></descripcion></proyecto></proyectos>`;
+    const { proyecto } = parseSenadoTramitacion(sinAutores);
+    expect(proyecto.autores).toEqual([]);
   });
 });

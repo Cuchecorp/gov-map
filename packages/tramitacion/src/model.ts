@@ -163,3 +163,81 @@ export const TramitacionEventoSchema = z
     origen: z.string(),
     fecha_captura: z.string(),
   });
+
+// ── ProyectoAutor (AUTOR-01) ─────────────────────────────────────────────────
+//
+// Tabla relacional separada (NO jsonb en proyecto): trazabilidad por fila,
+// reconciliación fail-closed nullable (espejo de voto.parlamentario_id).
+// Clave natural (boletin, autor_crudo_norm) para upsert idempotente.
+
+/**
+ * Forma persistida en la DB `proyecto_autor` (espejo plano del DDL 0051).
+ * `parlamentario_id` es nullable: SOLO un match determinista/confirmado lo puebla
+ * (EnlaceConfirmado → aplanarAutor; sin match → null).
+ */
+export interface ProyectoAutor {
+  id?: number;
+  boletin: string;
+  autor_crudo: string;
+  autor_crudo_norm: string;
+  parlamentario_id: string | null;
+  metodo: MetodoVinculo | null;
+  estado_vinculo: EstadoVinculo | null;
+  origen: string;
+  fecha_captura: string;
+  enlace: string;
+}
+
+/**
+ * Entrada del writer de autores (IDENT-12 espejo). En lugar de `parlamentario_id: string | null`
+ * crudo, lleva `enlace_confirmado: EnlaceConfirmado | null`, branded type que SOLO la
+ * reconciliación puede mintear (vía `confirmar()` de @obs/identity).
+ *
+ * El writer materializa `parlamentario_id = enlace_confirmado?.parlamentarioId ?? null`
+ * en `aplanarAutor()` — único sitio de conversión.
+ */
+export interface AutorParaEscribir {
+  boletin: string;
+  autor_crudo: string;
+  /** Normalización simple (lower+trim+spaces) para la clave de upsert. */
+  autor_crudo_norm: string;
+  /** Branded: solo `confirmar()` lo crea; null = no_confirmado. */
+  enlace_confirmado: import("@obs/identity").EnlaceConfirmado | null;
+  metodo: MetodoVinculo | null;
+  estado_vinculo: EstadoVinculo | null;
+  origen: string;
+  fecha_captura: string;
+  /** URL de provenance (enlace a la fuente de donde se extrajeron los autores). */
+  enlace_provenance: string;
+}
+
+export const ProyectoAutorSchema = z.object({
+  boletin: z.string(),
+  autor_crudo: z.string(),
+  autor_crudo_norm: z.string(),
+  parlamentario_id: z.string().nullable(),
+  metodo: z.enum(["determinista", "humano"]).nullable(),
+  estado_vinculo: z.enum(["confirmado", "no_confirmado"]).nullable(),
+  origen: z.string(),
+  fecha_captura: z.string(),
+  enlace: z.string(),
+});
+
+/**
+ * Aplana una entrada branded `AutorParaEscribir` a la fila DB plana `ProyectoAutor`.
+ * El FK `parlamentario_id` se fija SOLO si hay `EnlaceConfirmado`; en otro caso `null`.
+ * Único sitio donde el branded type se convierte en el `string | null` de la DB.
+ */
+export function aplanarAutor(row: AutorParaEscribir): Omit<ProyectoAutor, "id"> {
+  return {
+    boletin: row.boletin,
+    autor_crudo: row.autor_crudo,
+    autor_crudo_norm: row.autor_crudo_norm,
+    parlamentario_id: row.enlace_confirmado?.parlamentarioId ?? null,
+    metodo: row.metodo,
+    estado_vinculo: row.estado_vinculo,
+    origen: row.origen,
+    fecha_captura: row.fecha_captura,
+    enlace: row.enlace_provenance,
+  };
+}

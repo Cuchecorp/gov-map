@@ -35,6 +35,39 @@ function txt(v: unknown): string | null {
   return s.length === 0 ? null : s;
 }
 
+/**
+ * Lee el nombre de un nodo `<autor>` del XML del Senado.
+ *
+ * fast-xml-parser 5.x parsea `<autor><PARLAMENTARIO>Name</PARLAMENTARIO></autor>`
+ * como `{ PARLAMENTARIO: "Name" }` (NOT `{ "#text": "Name" }`). Esta función lee
+ * primero la clave `PARLAMENTARIO` (forma nested real en la fuente) y cae en `#text`
+ * solo como fallback defensivo.  La función `txt()` genérica NO se modifica — sigue
+ * sirviendo a todos los demás nodos escalares del XML.
+ */
+function txtAutor(a: unknown): string | null {
+  if (a == null) return null;
+  if (typeof a === "string") {
+    const s = a.trim();
+    return s.length === 0 ? null : s;
+  }
+  if (typeof a === "object") {
+    const rec = a as Record<string, unknown>;
+    // Forma nested: <autor><PARLAMENTARIO>Name</PARLAMENTARIO></autor>
+    const parlamentario = rec["PARLAMENTARIO"];
+    if (parlamentario != null) {
+      const s = String(parlamentario).trim();
+      return s.length === 0 ? null : s;
+    }
+    // Fallback: #text (defensivo, no observado en datos reales)
+    const t = rec["#text"];
+    if (t != null) {
+      const s = String(t).trim();
+      return s.length === 0 ? null : s;
+    }
+  }
+  return null;
+}
+
 function asArray<T>(v: T | T[] | undefined | null): T[] {
   if (v == null) return [];
   return ([] as T[]).concat(v as T | T[]);
@@ -96,7 +129,7 @@ export function parseSenadoTramitacion(
     unknown
   >;
   const autores = asArray<unknown>(autoresRaw?.autor)
-    .map((a) => txt(a))
+    .map(txtAutor)
     .filter((a): a is string => a != null);
 
   const proyecto: Proyecto = ProyectoSchema.parse({

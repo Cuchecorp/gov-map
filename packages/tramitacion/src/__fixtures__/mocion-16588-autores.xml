@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<proyectos>
+  <proyecto>
+    <descripcion>
+      <boletin>16588-07</boletin>
+      <titulo>Proyecto de ley que modifica el Código del Trabajo en materia de jornada laboral</titulo>
+      <iniciativa>Moción</iniciativa>
+      <camara_origen>C.Diputados</camara_origen>
+      <estado>En tramitación</estado>
+      <etapa>Primer trámite constitucional (C.Diputados)</etapa>
+      <subetapa>Primer informe de comisión de Trabajo</subetapa>
+      <materia>Trabajo y Previsión Social</materia>
+      <link_mensaje_mocion>https://www.camara.cl/pley/pley_detalle.aspx?prmID=16588&amp;prmBoletin=16588-07</link_mensaje_mocion>
+      <autores>
+        <autor><PARLAMENTARIO>Karim Bianchi Retamales</PARLAMENTARIO></autor>
+        <autor><PARLAMENTARIO>Cristina Girardi Lavín</PARLAMENTARIO></autor>
+        <autor><PARLAMENTARIO>Pamela Jiles Moreno</PARLAMENTARIO></autor>
+        <autor><PARLAMENTARIO>Camila Vallejo Dowling</PARLAMENTARIO></autor>
+        <autor><PARLAMENTARIO>Giorgio Jackson Drago</PARLAMENTARIO></autor>
+      </autores>
+    </descripcion>
+    <tramitacion>
+      <tramite>
+        <FECHA>15/03/2023</FECHA>
+        <CAMARATRAMITE>C.Diputados</CAMARATRAMITE>
+        <DESCRIPCIONTRAMITE>Ingresa al Congreso el proyecto</DESCRIPCIONTRAMITE>
+      </tramite>
+    </tramitacion>
+    <urgencias/>
+    <informes/>
+    <oficios/>
+  </proyecto>
+</proyectos>
