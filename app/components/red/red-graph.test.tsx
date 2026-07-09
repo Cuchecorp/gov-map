@@ -510,8 +510,16 @@ describe("RedGraph — leyenda anti-insinuación (banned-vocab + 'orden alfabét
       />,
     );
     const txt = container.textContent ?? "";
-    // Banned-vocab extendido a la leyenda (UI-SPEC §Banned vocabulary).
-    expect(txt).not.toMatch(/afinidad|cercan[íi]a|aliado|red de poder/i);
+    // La copy LOCKED (UI-SPEC §Copywriting, leyenda layout) declara "no cercanía"
+    // y "no indican afinidad" — negaciones explícitas que SON el anti-insinuación.
+    // El scan de banned-vocab busca esas palabras usadas como AFIRMACIÓN, así que
+    // primero removemos las negaciones LOCKED y luego escaneamos el resto.
+    const sinNegaciones = txt
+      .replace(/orden alfabético, no cercanía/gi, "")
+      .replace(/no indican afinidad ni relación/gi, "");
+    // Banned-vocab extendido a la leyenda (UI-SPEC §Banned vocabulary): ninguna
+    // afirmación de afinidad/cercanía/alianza/red de poder.
+    expect(sinNegaciones).not.toMatch(/afinidad|cercan[íi]a|aliado|red de poder/i);
     // Ya existentes: sin afiliación ni valoración.
     expect(txt).not.toMatch(/partido/i);
     expect(txt).not.toMatch(/puntaje|score|ranking/i);

@@ -17,6 +17,7 @@ import {
   type NodoParlamentarioData,
 } from "./nodo-parlamentario";
 import { AristaHecho, type AristaHechoData } from "./arista-hecho";
+import { formatNombre } from "@/lib/format";
 
 /**
  * <RedGraph> — isla cliente del grafo de relaciones NET (NET-02).
@@ -37,9 +38,10 @@ import { AristaHecho, type AristaHechoData } from "./arista-hecho";
  *   personas;
  * - la arista es un hecho tipado con fuente y ventana; el copy describe el hecho,
  *   jamás una valoración, una medida de proximidad, ni una explicación de motivo;
- * - el layout es una rejilla determinista agrupada por cámara — NUNCA una
- *   simulación física que junte nodos "próximos" (esa proximidad visual se leería
- *   como una relación entre las personas);
+ * - el layout es radial ego-céntrico determinista: el parlamentario elegido va al
+ *   centro y sus vecinos se ordenan por orden alfabético en el anillo — la posición
+ *   en el anillo es orden alfabético, no cercanía; jamás una simulación física
+ *   (esa proximidad visual se leería como una relación entre las personas);
  * - sin medida agregada de co-ocurrencia, sin orden de personas, sin camino
  *   presentado como hallazgo;
  * - grafo VACÍO (0 aristas) = estado honesto ("aún no hay relaciones para
@@ -100,25 +102,34 @@ function ms(iso: string | null): number | null {
   return Number.isNaN(t) ? null : t;
 }
 
+// Geometría radial (píxeles DENTRO del canvas SVG, NO el scale de 4px de página).
+const RING1_R = 260; // primer anillo de vecinos directos
+const RING2_R = 460; // anillo de desborde cuando pasan de 12 vecinos
+const CAP = 24; // tope duro de vecinos renderizados (RED-01)
+
 /**
- * Layout determinista por CARRIL de cámara (rejilla pura); jamás una simulación
- * física. `laneIndex` es el índice LOCAL del nodo DENTRO de su carril de cámara
- * (contador separado por cámara), NO el índice global — así las columnas avanzan
- * por-carril y cada cámara ocupa su propia banda horizontal (senado = banda 1,
- * resto = banda 0). La proximidad visual NO codifica relación (anti-insinuación
- * LOCKED): es una rejilla fija por posición de llegada al carril, no una medida de
- * cercanía entre personas.
+ * Layout RADIAL ego-céntrico determinista (trig pura); jamás una simulación
+ * física. `index` es el índice ALFABÉTICO del vecino en el anillo (0-based) y
+ * `total` la cantidad de vecinos renderizados. El seed va en {x:0,y:0}; cada
+ * vecino cae en el ángulo `theta = -π/2 + 2π·inRing/countInRing` (12 en punto,
+ * horario). La POSICIÓN EN EL ANILLO ES ORDEN ALFABÉTICO, NO CERCANÍA
+ * (anti-insinuación LOCKED): es función pura de (índice alfabético, cantidad de
+ * vecinos), byte-idéntica en cada render, no una medida de afinidad entre
+ * personas.
  */
-function posicion(
-  laneIndex: number,
-  camara: string | null,
-): { x: number; y: number } {
-  const COL = 220;
-  const ROW = 140;
-  const fila = camara === "senado" ? 1 : 0; // banda por cámara
-  const col = Math.floor(laneIndex / 3);
-  const row = laneIndex % 3;
-  return { x: col * COL, y: fila * ROW * 3 + row * ROW };
+function radialPos(index: number, total: number): { x: number; y: number } {
+  const perRing = 12; // capacidad del anillo 1 antes de desbordar al anillo 2
+  const ring = index < perRing ? 0 : 1;
+  const R = ring === 0 ? RING1_R : RING2_R;
+  const inRing = ring === 0 ? index : index - perRing;
+  const countInRing =
+    ring === 0 ? Math.min(total, perRing) : total - perRing;
+  const theta =
+    -Math.PI / 2 + (2 * Math.PI * inRing) / Math.max(countInRing, 1);
+  return {
+    x: Math.round(R * Math.cos(theta)),
+    y: Math.round(R * Math.sin(theta)),
+  };
 }
 
 export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
@@ -167,6 +178,28 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
     });
   }, [aristas, tiposOcultos, desde, hasta]);
 
+  // Vecinos del seed = el OTRO extremo de cada arista VISIBLE que toca el seed.
+  // (El subgrafo también trae aristas vecino↔vecino; ésas NO son vecinos nuevos
+  // del seed.) Orden ALFABÉTICO por nombre de display — criterio neutral y
+  // declarado (RED-02); JAMÁS por peso/co-ocurrencia. Debe vivir ANTES del
+  // early-return (`aristas.length === 0`) para no violar las reglas de hooks.
+  const seedNeighbors = useMemo(() => {
+    if (!seedId) return [];
+    const ids = new Set<string>();
+    for (const a of aristasVisibles) {
+      if (a.a === seedId) ids.add(a.b);
+      else if (a.b === seedId) ids.add(a.a);
+    }
+    return nodos
+      .filter((n) => ids.has(n.id))
+      .sort((x, y) =>
+        formatNombre(x.nombre ?? x.id).localeCompare(
+          formatNombre(y.nombre ?? y.id),
+          "es",
+        ),
+      );
+  }, [aristasVisibles, nodos, seedId]);
+
   // Estado honesto: el grafo puede venir genuinamente sin relaciones. NO es un
   // error — se nombra el hecho de que aún no hay aristas, sin inventar nodos.
   if (aristas.length === 0) {
@@ -207,56 +240,100 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
   // nodos sin arista visible.
   const nodosVisibles = nodos.filter((n) => nodosVisiblesIds.has(n.id));
 
-  // B20b — Contador por carril: el índice que alimenta `posicion` es LOCAL a la
-  // cámara del nodo, no global, de modo que los carriles existan de verdad (las
-  // columnas avanzan DENTRO de cada banda de cámara, no a través de ambas).
-  const laneCounters: Record<string, number> = {};
-  const rfNodes: Node<NodoParlamentarioData>[] = nodosVisibles.map((n) => {
-    const lane = n.camara === "senado" ? "senado" : "diputados";
-    const laneIndex = laneCounters[lane] ?? 0;
-    laneCounters[lane] = laneIndex + 1;
-    return {
+  // Cap duro (RED-01): renderizamos como máximo 24 vecinos alfabéticos; el resto
+  // va al control honesto "N vecinos más" (cada uno un Link a /red?seed=<id>).
+  const rendered = seedNeighbors.slice(0, CAP);
+  const overflow = seedNeighbors.slice(CAP);
+
+  // El set renderizado con seed = [seed, ...rendered]. Sin él construimos el
+  // conjunto de nodos que llegan al lienzo.
+  const seedNodo = seedId
+    ? (nodos.find((n) => n.id === seedId) ?? null)
+    : null;
+
+  let rfNodes: Node<NodoParlamentarioData>[];
+  // IDs de los nodos efectivamente montados en el lienzo (para filtrar aristas).
+  let renderedIds: Set<string>;
+
+  if (seedNodo) {
+    // Path CON seed (foco de la fase): seed al centro + vecinos alfabéticos en
+    // el anillo radial. DOM invariant (RED-01): |rfNodes| === rendered.length + 1.
+    rfNodes = [
+      {
+        id: seedNodo.id,
+        type: "parlamentario",
+        position: { x: 0, y: 0 },
+        data: {
+          nombre: seedNodo.nombre,
+          camara: seedNodo.camara,
+          id: seedNodo.id,
+          esSeed: true,
+        },
+      },
+      ...rendered.map((n, i) => ({
+        id: n.id,
+        type: "parlamentario",
+        position: radialPos(i, rendered.length),
+        data: {
+          nombre: n.nombre,
+          camara: n.camara,
+          id: n.id,
+          esSeed: false,
+        },
+      })),
+    ];
+    renderedIds = new Set([seedNodo.id, ...rendered.map((n) => n.id)]);
+  } else {
+    // Rama fallback legacy SIN seed (o seed ausente de toda arista visible): no
+    // hay centro ego, así que conservamos el render mínimo de todos los nodos con
+    // arista visible, posicionados radialmente por índice de llegada (determinista,
+    // sin física). El foco de la fase es el path CON seed; esta rama sólo evita
+    // romper el render sin-seed.
+    rfNodes = nodosVisibles.map((n, i) => ({
       id: n.id,
       type: "parlamentario",
-      position: posicion(laneIndex, n.camara),
+      position: radialPos(i, nodosVisibles.length),
       data: {
         nombre: n.nombre,
         camara: n.camara,
         id: n.id,
-        // Ego-framing (55-05): marca sobria del nodo de partida (no-ranking).
-        esSeed: seedId != null && n.id === seedId,
+        esSeed: false,
       },
-    };
-  });
+    }));
+    renderedIds = new Set(nodosVisibles.map((n) => n.id));
+  }
 
   // Ego-framing (55-05): con seedId, encuadra el vecindario inmediato del seed
-  // (seed + nodos 1-hop de las aristas visibles) vía `fitViewOptions.nodes` (API
-  // instalada, @xyflow/system 0.0.77) — NO el fitView global de 136 nodos. Sin
-  // seedId, se conserva el fitView global shipped. El layout grid determinista por
-  // cámara (`posicion`) NO cambia — jamás una simulación física (anti-insinuación).
-  const egoIds = seedId
-    ? Array.from(new Set([seedId, ...aristasVisibles.flatMap((a) => [a.a, a.b])]))
-    : [];
+  // (los nodos efectivamente montados) vía `fitViewOptions.nodes`. Sin seedId, se
+  // conserva el fitView global shipped.
   const fitViewOptions = seedId
-    ? { padding: 0.2, nodes: egoIds.map((id) => ({ id })), minZoom: 0.2 }
+    ? {
+        padding: 0.2,
+        nodes: Array.from(renderedIds).map((id) => ({ id })),
+        minZoom: 0.2,
+      }
     : { padding: 0.05 };
 
-  const rfEdges: Edge<AristaHechoData>[] = aristasVisibles.map((a, i) => ({
-    id: `${a.tipo}-${a.a}-${a.b}-${i}`,
-    type: "hecho",
-    source: a.a,
-    target: a.b,
-    data: {
-      tipo: a.tipo,
-      contexto: a.contexto,
-      desde: a.desde,
-      hasta: a.hasta,
-      dataset: a.dataset,
-      origen: a.origen,
-      enlace: a.enlace,
-      licencia: a.licencia,
-    },
-  }));
+  // Sólo dibujamos aristas cuyos DOS extremos estén en el set renderizado — así no
+  // trazamos líneas a vecinos capados.
+  const rfEdges: Edge<AristaHechoData>[] = aristasVisibles
+    .filter((a) => renderedIds.has(a.a) && renderedIds.has(a.b))
+    .map((a, i) => ({
+      id: `${a.tipo}-${a.a}-${a.b}-${i}`,
+      type: "hecho",
+      source: a.a,
+      target: a.b,
+      data: {
+        tipo: a.tipo,
+        contexto: a.contexto,
+        desde: a.desde,
+        hasta: a.hasta,
+        dataset: a.dataset,
+        origen: a.origen,
+        enlace: a.enlace,
+        licencia: a.licencia,
+      },
+    }));
 
   return (
     <section aria-label="Grafo de relaciones" className="mt-8">
@@ -275,8 +352,10 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
             lleva su fuente, ventana temporal y enlace al registro original.
           </li>
           <li>
-            La proximidad visual no indica cercanía entre personas: el layout es
-            una rejilla por cámara, no un mapa de afinidad.
+            La posición en el anillo es orden alfabético, no cercanía: el
+            parlamentario elegido va al centro y sus vecinos se ordenan
+            alfabéticamente alrededor. La distancia o el ángulo no indican
+            afinidad ni relación entre las personas.
           </li>
         </ul>
         <p className="text-xs mt-1">
@@ -357,6 +436,33 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
               </ReactFlow>
             </ReactFlowProvider>
           </div>
+          {/* Truncación honesta (RED-01): si el seed tiene más de 24 vecinos
+              directos, se muestran los primeros 24 alfabéticos en el anillo y el
+              resto se lista aquí — cada nombre un Link a su propio ego-network.
+              NUNCA se descartan vecinos en silencio; el conteo es verdadero
+              (total − 24). Sin force-simulation, sin orden por peso. */}
+          {overflow.length > 0 && (
+            <div className="net-vecinos-mas mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+              <p>
+                Se muestran los primeros {CAP} vecinos en orden alfabético.
+              </p>
+              <p className="mt-1 font-medium text-foreground">
+                Ver {overflow.length} vecinos más
+              </p>
+              <ul className="mt-2 space-y-1">
+                {overflow.map((n) => (
+                  <li key={n.id}>
+                    <Link
+                      href={`/red?seed=${n.id}`}
+                      className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2"
+                    >
+                      {formatNombre(n.nombre ?? n.id)}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </>
       )}
     </section>
