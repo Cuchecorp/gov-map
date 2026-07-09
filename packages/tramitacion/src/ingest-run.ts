@@ -18,6 +18,7 @@
 
 import type { Parlamentario } from "@obs/core";
 import type { PipelineWriter } from "@obs/adjudication";
+import { sha256Hex, type R2Store } from "@obs/ingest";
 import type { CamaraConnector } from "./connector-camara";
 import type { SenadoConnector } from "./connector-senado";
 import type { TramitacionWriter, VotoParaEscribir } from "./writer";
@@ -80,6 +81,13 @@ export interface RunIngestOpts {
   provider?: LLMProvider;
   /** Writer del pipeline de identidad (cola de revisión). Opcional. */
   pipelineWriter?: PipelineWriter;
+  /**
+   * Store R2 para Etapa 1 (crudo por boletín, content-addressed). Si se omite no se persiste
+   * crudo — best-effort, NOT fatal (espejo de run-camara-lobby.ts L85–105). Si putImmutable
+   * devuelve existed=true se emite `[skip] sin novedades — tramitacion <boletin>` y se salta
+   * la Etapa 2 para ese boletín.
+   */
+  r2Store?: R2Store;
   /** Sink de logs (inyectable para tests). Default: noop. */
   log?: (msg: string) => void;
 }
@@ -146,10 +154,15 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
     const votosBoletin: VotoParaEscribir[] = [];
     let proyecto: Proyecto | null = null;
     let eventosSenado: TramitacionEvento[] = [];
+    // Acumula los XML crudos para el envelope R2 (Etapa 1).
+    let tramXmlCrudo: string | null = null;
+    let votXmlCrudo: string | null = null;
+    const detallesCrudos: string[] = [];
 
     // 2. Senado tramitación → Proyecto + eventos (la ficha lee el descripcion de aquí).
     try {
       const tramXml = await opts.senado.fetchTramitacion(base);
+      tramXmlCrudo = tramXml;
       const parsed = parseSenadoTramitacion(tramXml);
       if (parsed.proyecto.boletin.length > 0) {
         proyecto = parsed.proyecto;
@@ -169,6 +182,7 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
     // 3. Cámara votaciones + detalle voto-a-voto (determinista por Diputado/Id).
     try {
       const votXml = await opts.camara.fetchVotacionesBoletin(base);
+      votXmlCrudo = votXml;
       const votacionesCam = parseCamaraVotacion(votXml).map((v) => ({
         ...v,
         boletin: boletinKey,
@@ -179,6 +193,7 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
         const wsId = v.id.replace(/^camara:/, "");
         try {
           const detXml = await opts.camara.fetchVotacionDetalle(wsId);
+          detallesCrudos.push(detXml);
           const crudos = parseCamaraVotoDetalle(detXml);
           const votos = reconciliarVotosCamara(crudos, v.id, opts.maestra);
           votosBoletin.push(...votos);
@@ -243,6 +258,32 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
     if (proyecto == null) {
       log(`ingest: boletín ${boletinFull} sin datos (Senado+Cámara vacíos) → omitido`);
       continue;
+    }
+
+    // Etapa 1 R2 (best-effort): persiste el crudo del boletín content-addressed.
+    // Si existed=true → el contenido no cambió → skip Etapa 2 para este boletín.
+    if (opts.r2Store) {
+      try {
+        const envelope = { boletin: boletinFull, tramXml: tramXmlCrudo, votXml: votXmlCrudo, detalles: detallesCrudos };
+        const bytes = new TextEncoder().encode(JSON.stringify(envelope));
+        const sha = await sha256Hex(bytes);
+        const today = new Date().toISOString().slice(0, 10);
+        const { r2Path, existed } = await opts.r2Store.putImmutable(
+          "tramitacion",
+          boletinFull,
+          today,
+          sha,
+          "json",
+          bytes,
+        );
+        if (existed) {
+          log(`[skip] sin novedades — tramitacion ${boletinFull}`);
+          continue;
+        }
+        log(`tramitacion: crudo en R2 → ${r2Path}`);
+      } catch (err) {
+        log(`tramitacion: Etapa 1 R2 falló (no fatal): ${(err as Error).message}`);
+      }
     }
 
     // 5. Timeline materializado: eventos del Senado + cada Votacion como evento, fusionados.

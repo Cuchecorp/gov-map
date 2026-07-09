@@ -13,7 +13,7 @@ import type { Parlamentario } from "@obs/core";
 import { MockMiniMaxProvider } from "@obs/adjudication";
 import { runIngest } from "./ingest-run";
 import { InMemoryTramitacionWriter } from "./writer";
-import { parseArgs, IngestCliArgsError } from "./ingest-cli";
+import { main, parseArgs, IngestCliArgsError } from "./ingest-cli";
 import type { CamaraConnector } from "./connector-camara";
 import type { SenadoConnector } from "./connector-senado";
 
@@ -204,5 +204,71 @@ describe("parseArgs — validación de flags ANTES de red/DB", () => {
   it("rechaza --boletines vacío y flags desconocidos", () => {
     expect(() => parseArgs(["--boletines", ""])).toThrow(IngestCliArgsError);
     expect(() => parseArgs(["--frobnicate"])).toThrow(IngestCliArgsError);
+  });
+
+  it("acepta --from-r2 con un r2Path", () => {
+    const o = parseArgs(["--from-r2", "tramitacion/boletin/2026-07-08/abc.json"]);
+    expect(o.fromR2).toBe("tramitacion/boletin/2026-07-08/abc.json");
+  });
+
+  it("rechaza --from-r2 sin valor", () => {
+    expect(() => parseArgs(["--from-r2"])).toThrow(IngestCliArgsError);
+  });
+});
+
+describe("main() — R2 gate + hash-check (inyección directa por IngestCliOptions)", () => {
+  it("emite [WARN] R2 no configurado cuando no hay r2Store y dryRun=false (con serviceKey)", async () => {
+    const warns: string[] = [];
+    const { camara, senado } = fakeConnectors();
+    const writer = new InMemoryTramitacionWriter();
+    // dryRun=false + serviceKey + sin r2Store (r2Store: null) → WARN
+    await main({
+      dryRun: false,
+      serviceKey: "fake-key-for-test",
+      localUrl: "http://127.0.0.1:0",
+      boletines: [], // 0 boletines → no toca red
+      r2Store: null, // sin R2
+      camara,
+      senado,
+      writer, // inyectar writer para no conectar a Supabase real
+      log: (m) => {
+        if (m.includes("[WARN] R2 no configurado")) warns.push(m);
+      },
+    });
+    expect(warns.length).toBeGreaterThan(0);
+  });
+
+  it("emite [skip] sin novedades cuando R2 putImmutable devuelve existed=true para el boletín", async () => {
+    const skips: string[] = [];
+
+    // Mock R2Store que siempre devuelve existed=true.
+    const mockR2 = {
+      async putImmutable() {
+        return { r2Path: "tramitacion/boletin/2026/abc.json", existed: true };
+      },
+      async getObject(): Promise<Uint8Array> {
+        throw new Error("no debería llamarse en hash-check");
+      },
+    };
+
+    const { camara, senado } = fakeConnectors();
+    const writer = new InMemoryTramitacionWriter();
+
+    await main({
+      boletines: ["14309-04"],
+      dryRun: false,
+      serviceKey: "fake-key",
+      localUrl: "http://127.0.0.1:0",
+      r2Store: mockR2 as never,
+      camara,
+      senado,
+      writer,
+      log: (m) => {
+        if (m.includes("[skip] sin novedades")) skips.push(m);
+      },
+    });
+
+    expect(skips.length).toBeGreaterThan(0);
+    expect(skips[0]).toMatch(/\[skip\] sin novedades — tramitacion 14309-04/);
   });
 });
