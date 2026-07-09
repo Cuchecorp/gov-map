@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: — Confiabilidad y comprensión
-status: executing
+status: completed
 stopped_at: Roadmap v6.0 creado — Phases 56-61, REQUIREMENTS.md traceability actualizado, STATE.md inicializado.
-last_updated: "2026-07-09T00:34:49.928Z"
-last_activity: 2026-07-09
+last_updated: "2026-07-09T00:46:59.734Z"
+last_activity: 2026-07-09 -- Phase 57 marked complete
 progress:
   total_phases: 52
   completed_phases: 2
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Phase: 57 (CRON-FIX — Hardening dos-etapas + hash-check + crons verdes) — EXECUTING
+Phase: 57 — COMPLETE
 Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-07-09
+Status: Phase 57 complete
+Last activity: 2026-07-09 -- Phase 57 marked complete
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases complete)
 
