@@ -734,7 +734,7 @@ Plans:
 | 58. CRON-FRESH — Monitoreo de frescura por fuente | v6.0 | 1/1 | Complete   | 2026-07-09 |
 | 59. AUTOR — Autoría ingest + ficha de proyecto (F48) | v6.0 | 3/3 | Complete   | 2026-07-09 |
 | 60. BRAND — Ícono/identidad visual gov-map | v6.0 | 1/1 | Complete   | 2026-07-09 |
-| 61. COMP — Comprensión de visualizaciones (loop BrowserOS) | v6.0 | 2/2 | Complete   | 2026-07-09 |
+| 61. COMP — Comprensión de visualizaciones (loop BrowserOS) | v6.0 | 3/3 | Complete   | 2026-07-09 |
 
 ## ✅ v4.0 — De datos a cruces verificables
 
@@ -1471,6 +1471,6 @@ Plans:
   3. Toda visualización en PROD (charts de patrimonio, votos, comparativo, cruces) lleva: (a) título orientado a la pregunta que responde; (b) leyenda con unidades y definición de cada serie; (c) fuente/fecha visible al pie.
   4. Cero regresión: anti-insinuación (linter negative-match verde), PII-safe, tsc, suite completa verdes; los textos modificados no introducen vocabulario causal.
 
-**Plans:** 2/2 plans complete
+**Plans:** 3/3 plans complete
 
 **UI hint**: yes
