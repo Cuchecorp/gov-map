@@ -333,8 +333,14 @@
 /* ── Lista de vecinos móvil (RED-02): fallback honesto <768px en vez del anillo
    ilegible. Cada fila = un vecino + su(s) hecho(s) + procedencia (fuente + ventana
    + enlace) SIEMPRE en el DOM (trazabilidad rector). Petróleo solo en el enlace de
-   fuente, nunca en la fila entera. La visibilidad la controla la clase de utilidad
-   md:hidden (Tailwind) en el marcado. ── */
+   fuente, nunca en la fila entera.
+
+   Visibilidad: el marcado lleva `md:hidden` (Tailwind), pero `.net-vecinos`
+   define `display: flex` con la MISMA especificidad (0,1,0) que `.md:hidden`; por
+   orden de cascada el `flex` ganaba y la lista se filtraba al desktop (≥768px)
+   DUPLICANDO el anillo. Fix (RED-03 cold-read P1): forzar `display:none` a ≥768px
+   con un media-query explícito, de modo que la lista sea SÓLO móvil (<768px) como
+   contrata el UI-SPEC. ── */
 .net-vecinos {
   list-style: none;
   margin: 0;
@@ -342,6 +348,14 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+/* Desktop (≥768px): la lista móvil NO se muestra — el anillo radial es la vista.
+   Gana sobre `.net-vecinos{display:flex}` por venir después Y por el media-query. */
+@media (min-width: 768px) {
+  .net-vecinos {
+    display: none;
+  }
 }
 
 .net-vecinos__heading {
