@@ -62,9 +62,16 @@ jobs:
           # que lleva SUPABASE_SECRET_KEY/R2_*.
           LIMITE: ${{ github.event.inputs.limite }}
         run: |
-          ARGS=""
-          if [ -n "$LIMITE" ]; then ARGS="$ARGS --limit $LIMITE"; fi
-          OUT=$(pnpm --filter @obs/probidad exec tsx src/run-probidad-todos-cli.ts $ARGS)
+          ARGS=()
+          if [ -n "$LIMITE" ]; then
+            # Validar: debe ser entero positivo — rechaza cualquier inyección de comandos.
+            if ! echo "$LIMITE" | grep -qE '^[0-9]+$'; then
+              echo "LIMITE inválido: debe ser entero positivo (recibido: '$LIMITE')"
+              exit 1
+            fi
+            ARGS+=(--limit "$LIMITE")
+          fi
+          OUT=$(pnpm --filter @obs/probidad exec tsx src/run-probidad-todos-cli.ts "${ARGS[@]}")
           echo "$OUT"
           echo "$OUT" | grep -qE 'consultados=[1-9][0-9]*' \
             || { echo "probidad: 0 parlamentarios consultados — posible error fatal"; exit 1; }
