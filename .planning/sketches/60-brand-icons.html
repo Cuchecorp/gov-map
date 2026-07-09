@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>gov-map — propuestas de ícono (Phase 60)</title>
+<style>
+  :root { --petrol: #2A5859; --cream: #FAF8F3; --ink: #1c2a2b; }
+  body { font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif; background: var(--cream); color: var(--ink); margin: 0; padding: 48px; }
+  h1 { font-weight: 600; letter-spacing: -0.02em; }
+  .prop { background: #fff; border: 1px solid #e5e0d5; border-radius: 12px; padding: 32px; margin: 28px 0; }
+  .prop h2 { margin-top: 0; font-size: 20px; }
+  .prop p { max-width: 62ch; color: #4b5a5b; }
+  .row { display: flex; align-items: center; gap: 36px; flex-wrap: wrap; margin-top: 20px; }
+  .cell { text-align: center; }
+  .cell small { display: block; margin-top: 8px; color: #8a9494; font-variant-numeric: tabular-nums; }
+  .dark { background: var(--petrol); border-radius: 10px; padding: 18px; }
+  .lockup { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 22px; letter-spacing: -0.01em; }
+  .lockup .mono { color: var(--petrol); }
+  .favrow { display: flex; gap: 6px; align-items: flex-end; }
+</style>
+</head>
+<body>
+<h1>gov-map — 3 propuestas de ícono</h1>
+<p>Petróleo plano <code>#2A5859</code> sobre crema. Sin gradientes, sin texto dentro del símbolo, geometría 24×24.</p>
+
+<!-- ============ A: HEMICICLO ============ -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <g id="iconA">
+      <circle cx="4" cy="16" r="2.1"/>
+      <circle cx="6.34" cy="10.34" r="2.1"/>
+      <circle cx="12" cy="8" r="2.1"/>
+      <circle cx="17.66" cy="10.34" r="2.1"/>
+      <circle cx="20" cy="16" r="2.1"/>
+      <rect x="7" y="16.6" width="10" height="3" rx="1.5"/>
+    </g>
+    <g id="iconB">
+      <path d="M12 1.5 C7.3 1.5 3.5 5.3 3.5 10 C3.5 15.6 12 22.5 12 22.5 S20.5 15.6 20.5 10 C20.5 5.3 16.7 1.5 12 1.5 Z" />
+    </g>
+    <g id="iconBknock" fill="none" stroke-linecap="round">
+      <line x1="9.4" y1="7.6" x2="14.6" y2="12.2"/>
+      <circle cx="9.4" cy="7.6" r="2" stroke="none"/>
+      <circle cx="14.6" cy="12.2" r="2" stroke="none"/>
+    </g>
+    <g id="iconC">
+      <path d="M8.8 4.5 L15 12 L8.8 19.5 L2.6 12 Z" fill="none" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M15.2 4.5 L21.4 12 L15.2 19.5 L9 12 Z" fill="none" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M12 8.35 L15 12 L12 15.65 L9 12 Z" stroke="none"/>
+    </g>
+  </defs>
+</svg>
+
+<div class="prop">
+  <h2>A — Hemiciclo</h2>
+  <p>El Congreso visto desde arriba: cinco escaños en arco sobre la testera. Cada punto es a la vez un escaño y un <em>dato observable</em>. Sobrio, institucional sin ser un frontón cliché.</p>
+  <div class="row">
+    <div class="cell"><svg width="128" height="128" viewBox="0 0 24 24" fill="#2A5859"><use href="#iconA"/></svg><small>128</small></div>
+    <div class="cell"><svg width="64" height="64" viewBox="0 0 24 24" fill="#2A5859"><use href="#iconA"/></svg><small>64</small></div>
+    <div class="cell"><svg width="32" height="32" viewBox="0 0 24 24" fill="#2A5859"><use href="#iconA"/></svg><small>32</small></div>
+    <div class="cell favrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="#2A5859"><use href="#iconA"/></svg><small>16</small></div>
+    <div class="cell dark"><svg width="64" height="64" viewBox="0 0 24 24" fill="#FAF8F3"><use href="#iconA"/></svg><small style="color:#cfe0e0">invertido</small></div>
+    <div class="cell"><div class="lockup"><svg width="30" height="30" viewBox="0 0 24 24" fill="#2A5859"><use href="#iconA"/></svg><span class="mono">gov-map</span></div><small>header</small></div>
+  </div>
+</div>
+
+<div class="prop">
+  <h2>B — Pin-grafo</h2>
+  <p>Un pin de mapa cuyo interior es un mini-grafo: dos nodos y una arista. Lectura literal del nombre — el mapa de las relaciones del gobierno. El más "producto tech", sigue siendo plano y serio.</p>
+  <div class="row">
+    <div class="cell"><svg width="128" height="128" viewBox="0 0 24 24"><g fill="#2A5859"><use href="#iconB"/></g><g stroke="#FAF8F3" fill="#FAF8F3" stroke-width="1.7"><use href="#iconBknock"/></g></svg><small>128</small></div>
+    <div class="cell"><svg width="64" height="64" viewBox="0 0 24 24"><g fill="#2A5859"><use href="#iconB"/></g><g stroke="#FAF8F3" fill="#FAF8F3" stroke-width="1.7"><use href="#iconBknock"/></g></svg><small>64</small></div>
+    <div class="cell"><svg width="32" height="32" viewBox="0 0 24 24"><g fill="#2A5859"><use href="#iconB"/></g><g stroke="#FAF8F3" fill="#FAF8F3" stroke-width="1.7"><use href="#iconBknock"/></g></svg><small>32</small></div>
+    <div class="cell favrow"><svg width="16" height="16" viewBox="0 0 24 24"><g fill="#2A5859"><use href="#iconB"/></g><g stroke="#FAF8F3" fill="#FAF8F3" stroke-width="1.9"><use href="#iconBknock"/></g></svg><small>16</small></div>
+    <div class="cell dark"><svg width="64" height="64" viewBox="0 0 24 24"><g fill="#FAF8F3"><use href="#iconB"/></g><g stroke="#2A5859" fill="#2A5859" stroke-width="1.7"><use href="#iconBknock"/></g></svg><small style="color:#cfe0e0">invertido</small></div>
+    <div class="cell"><div class="lockup"><svg width="30" height="30" viewBox="0 0 24 24"><g fill="#2A5859"><use href="#iconB"/></g><g stroke="#FAF8F3" fill="#FAF8F3" stroke-width="1.7"><use href="#iconBknock"/></g></svg><span class="mono">gov-map</span></div><small>header</small></div>
+  </div>
+</div>
+
+<div class="prop">
+  <h2>C — Capas que se cruzan</h2>
+  <p>Dos planos de datos superpuestos; la intersección —sólida— es lo que gov-map ilumina: el cruce verificable entre lobby, votos y dinero. El más conceptual y el más distintivo de los tres.</p>
+  <div class="row">
+    <div class="cell"><svg width="128" height="128" viewBox="0 0 24 24" fill="#2A5859" stroke="#2A5859"><use href="#iconC"/></svg><small>128</small></div>
+    <div class="cell"><svg width="64" height="64" viewBox="0 0 24 24" fill="#2A5859" stroke="#2A5859"><use href="#iconC"/></svg><small>64</small></div>
+    <div class="cell"><svg width="32" height="32" viewBox="0 0 24 24" fill="#2A5859" stroke="#2A5859"><use href="#iconC"/></svg><small>32</small></div>
+    <div class="cell favrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="#2A5859" stroke="#2A5859"><use href="#iconC"/></svg><small>16</small></div>
+    <div class="cell dark"><svg width="64" height="64" viewBox="0 0 24 24" fill="#FAF8F3" stroke="#FAF8F3"><use href="#iconC"/></svg><small style="color:#cfe0e0">invertido</small></div>
+    <div class="cell"><div class="lockup"><svg width="30" height="30" viewBox="0 0 24 24" fill="#2A5859" stroke="#2A5859"><use href="#iconC"/></svg><span class="mono">gov-map</span></div><small>header</small></div>
+  </div>
+</div>
+
+<p style="color:#8a9494">Phase 60 · BRAND-01 · throwaway sketch — el SVG maestro definitivo se genera tras la selección.</p>
+</body>
+</html>
