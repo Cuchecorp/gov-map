@@ -8,9 +8,9 @@
 ### CRON — Ingesta programada confiable
 
 - [ ] **CRON-01**: El operador puede ver un inventario auditado de los 9 workflows de GitHub Actions (agenda, leyes, lobby×2, probidad, fichas-backfill, backup-parlamentario, backfill, deploy) con veredicto por cron: corre / no corre / por qué (secrets faltantes, billing, triggers), y una gap-list accionable.
-- [ ] **CRON-02**: Cada conector recurrente cumple las DOS ETAPAS LOCKED re-ejecutables por separado: (a) fuente→R2 crudo content-addressed (`fuente/recurso/fecha/sha256.ext`, If-None-Match), (b) R2→Supabase leyendo SOLO del crudo — re-ingestar a Supabase nunca vuelve a tocar la fuente.
-- [ ] **CRON-03**: Todos los conectores del cron hacen hash-check/ETag ANTES de descargar: una corrida sin novedades sale temprano sin re-descarga ni escritura (verificable en logs).
-- [ ] **CRON-04**: Los crons de novedades corren VERDES de punta a punta en su scheduler — GitHub Actions con secrets cargados (DEEPSEEK, R2, SUPABASE), L–V acotados e incrementales; si billing GH sigue bloqueado, existe fallback local documentado y probado (runbook + CLI idempotente).
+- [x] **CRON-02**: Cada conector recurrente cumple las DOS ETAPAS LOCKED re-ejecutables por separado: (a) fuente→R2 crudo content-addressed (`fuente/recurso/fecha/sha256.ext`, If-None-Match), (b) R2→Supabase leyendo SOLO del crudo — re-ingestar a Supabase nunca vuelve a tocar la fuente.
+- [x] **CRON-03**: Todos los conectores del cron hacen hash-check/ETag ANTES de descargar: una corrida sin novedades sale temprano sin re-descarga ni escritura (verificable en logs).
+- [x] **CRON-04**: Los crons de novedades corren VERDES de punta a punta en su scheduler — GitHub Actions con secrets cargados (DEEPSEEK, R2, SUPABASE), L–V acotados e incrementales; si billing GH sigue bloqueado, existe fallback local documentado y probado (runbook + CLI idempotente).
 - [ ] **CRON-05**: El operador puede consultar la frescura por fuente (última corrida, último snapshot R2, último upsert a Supabase) y detectar staleness sin bucear logs — reporte CLI o superficie admin, con umbral de alerta por fuente.
 
 ### AUTOR — Autoría de proyectos (desbloquea F48)
@@ -48,9 +48,9 @@
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
 | CRON-01 | Phase 56 | Pending |
-| CRON-02 | Phase 57 | Pending |
-| CRON-03 | Phase 57 | Pending |
-| CRON-04 | Phase 57 | Pending |
+| CRON-02 | Phase 57 | Complete |
+| CRON-03 | Phase 57 | Complete |
+| CRON-04 | Phase 57 | Complete |
 | CRON-05 | Phase 58 | Pending |
 | AUTOR-01 | Phase 59 | Pending |
 | AUTOR-02 | Phase 59 | Pending |
