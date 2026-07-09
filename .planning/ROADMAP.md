@@ -1431,7 +1431,12 @@ Plans:
   3. La ficha de proyecto (`/proyecto/[boletin]`) muestra la sección de autoría (F48): autores con enlace solo si `confirmado` (guarda de identidad con `IdentityMarker` si no), fuente/fecha/enlace de la autoría, montada sobre el patrón drill-down de F55 (acordeón colapsado por defecto, conteo visible).
   4. La sección de autoría no aparece si el proyecto no tiene autores ingestados (estado honesto — nunca "vacío silencioso"); el link al parlamentario no aparece si no está confirmado.
 
-**Plans:** TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 59-01-PLAN.md — Parser fix + modelo ProyectoAutor + migración 0051 + reconciliar-autor + writer + ingest-run hook (AUTOR-01 código)
+- [ ] 59-02-PLAN.md — Aplicar 0051 a PROD + pgTAP verify + backfill from-r2 + idempotencia (AUTOR-01 LIVE)
+- [ ] 59-03-PLAN.md — AutorRow + AutoresSection 3 estados + rail entry en ficha de proyecto (AUTOR-02)
 
 **UI hint**: yes
 
