@@ -20,6 +20,7 @@ import { VotacionCard } from "@/components/votacion-card";
 import { IdeaMatrizBlock } from "@/components/idea-matriz-block";
 import { CuerposLegalesList } from "@/components/cuerpos-legales-list";
 import { ProyectosSimilares } from "@/components/proyectos-similares";
+import { AutorRow, type ProyectoAutorRow } from "@/components/autor-row";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sourceLabel } from "@/lib/types";
@@ -128,6 +129,23 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
           </section>
 
           {/*
+            AUTOR-02 (Phase 59) — Carril autoría: "¿Quién presentó este proyecto?"
+            Guarda de identidad LOCKED: link SOLO si confirmado; IdentityMarker si no.
+            Carril HERMANO (mt-12), NUNCA anidado ni compuesto con votos/lobby/dinero.
+            3 estados honestos: N autores (DetalleColapsable colapsado), Mensaje del
+            Ejecutivo (línea honesta), o null (ausente del DOM — moción sin datos).
+            El wrapper mt-12 preserva la frontera aunque AutoresSection retorne null.
+          */}
+          <section id="autores" className="mt-12 scroll-mt-6">
+            <h2 className="text-xl font-semibold mb-4">
+              ¿Quién presentó este proyecto?
+            </h2>
+            <Suspense fallback={<AutoresSkeleton />}>
+              <AutoresSection boletin={boletin} />
+            </Suspense>
+          </section>
+
+          {/*
             SC2 (Phase 52) — Carril lobby×tramitación: yuxtaposición TEMPORAL de
             audiencias de lobby con la semana ISO en que una comisión vio el boletín.
             Carril HERMANO (mt-12), NUNCA anidado ni compuesto con votos. El nombre de
@@ -209,16 +227,20 @@ export async function ProyectoRail({ boletin }: { boletin: string }) {
   // Conteo de votaciones (3-estado honesto): un fallo real de DB/red se LANZA
   // (#34), nunca se degrada a un dígito fabricado. `head:true` = sólo el conteo.
   const sb = createServerSupabase();
-  const { count, error } = await sb
-    .from("votacion")
-    .select("id", { count: "exact", head: true })
-    .eq("boletin", boletin);
+  const [{ count, error }, autores] = await Promise.all([
+    sb
+      .from("votacion")
+      .select("id", { count: "exact", head: true })
+      .eq("boletin", boletin),
+    leerAutores(boletin),
+  ]);
   if (error) {
     throw new Error(
       `No se pudo contar las votaciones de ${boletin}: ${error.message}`,
     );
   }
   const nVotaciones = count ?? 0;
+  const nAutores = autores.length;
 
   const navEntries: RailEntry[] = [
     { id: "estado", label: "Dónde está" },
@@ -229,6 +251,13 @@ export async function ProyectoRail({ boletin }: { boletin: string }) {
       // Conteo sólo cuando hay dato (>0); la sección muestra el empty honesto si 0.
       count: nVotaciones > 0 ? nVotaciones : undefined,
     },
+    // AUTOR-02: entrada condicional — solo si hay autores confirmados o no (> 0 filas).
+    // Si 0 filas, la sección puede mostrar "Mensaje del Ejecutivo" o null; en ambos
+    // casos el anchor #autores existe en el DOM (la section siempre se monta), pero
+    // la entrada del rail sólo tiene sentido cuando hay autores que navegar.
+    ...(nAutores > 0
+      ? [{ id: "autores", label: "Autores", count: nAutores }]
+      : []),
     { id: "lobby-tramitacion", label: "Lobby del período" },
     // Phase 38 (SURF-02): entrada de cruces con marcador diamante ◆, GATED por el
     // mismo Candado B que la <section id="cruces"> — sin el gate, ni el ancla ni el
@@ -487,6 +516,62 @@ async function VotacionesSection({ boletin }: { boletin: string }) {
   );
 }
 
+// ── Autores de proyecto (AUTOR-02) ─────────────────────────────────────────────
+// React.cache → una sola consulta por render aunque ProyectoRail (conteo) y
+// AutoresSection (render de filas) la soliciten por separado.
+export const leerAutores = cache(
+  async (boletin: string): Promise<ProyectoAutorRow[]> => {
+    const sb = createServerSupabase();
+    const { data, error } = await sb
+      .from("proyecto_autor")
+      .select("*")
+      .eq("boletin", boletin)
+      .order("id", { ascending: true });
+    // #34: un error real de DB/red NO es "sin autores". Se lanza en vez de
+    // fabricar una sección vacía a partir de un fallo.
+    if (error) {
+      throw new Error(
+        `No se pudieron leer los autores de ${boletin}: ${error.message}`,
+      );
+    }
+    return (data as ProyectoAutorRow[]) ?? [];
+  },
+);
+
+// ── AutoresSection — 3 estados honestos ──────────────────────────────────────
+// Estado 1: N autores → DetalleColapsable (colapsado, conteo visible).
+// Estado 2: 0 autores + iniciativa Mensaje → línea "Iniciativa del Ejecutivo".
+// Estado 3: 0 autores + otro tipo → null (sección ausente del DOM).
+async function AutoresSection({ boletin }: { boletin: string }) {
+  const [autores, proyecto] = await Promise.all([
+    leerAutores(boletin),
+    leerProyecto(boletin),
+  ]);
+
+  const iniciativa = proyecto?.iniciativa ?? null;
+
+  if (autores.length === 0) {
+    if (iniciativa === "Mensaje") {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Iniciativa del Ejecutivo (Mensaje presidencial).
+        </p>
+      );
+    }
+    return null;
+  }
+
+  return (
+    <DetalleColapsable n={autores.length} defaultOpen={false}>
+      <ul className="divide-y divide-border">
+        {autores.map((a) => (
+          <AutorRow key={a.id ?? a.autor_crudo_norm} autor={a} />
+        ))}
+      </ul>
+    </DetalleColapsable>
+  );
+}
+
 // ── Skeletons (UI-SPEC §6.2) ─────────────────────────────────────────────────
 // Rail: cabecera compacta (título/boletín/estado) + 7–8 entradas de nav + caveat.
 // Shape-matched a FichaRail para no producir layout shift al resolver: el conteo
@@ -574,6 +659,16 @@ function LobbyTramitacionSkeleton() {
       <Skeleton className="h-6 w-2/3" />
       <Skeleton className="h-16 w-full rounded-md" />
       <Skeleton className="h-4 w-1/2" />
+    </div>
+  );
+}
+
+function AutoresSkeleton() {
+  return (
+    <div className="space-y-2" aria-hidden="true">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Skeleton key={i} className="h-8 w-full rounded-md" />
+      ))}
     </div>
   );
 }
