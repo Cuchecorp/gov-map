@@ -347,7 +347,7 @@ describe("RedGraph — estado honesto (grafo vacío, NUNCA error/nodo falso)", (
   });
 });
 
-describe("RedGraph — nodos huérfanos excluidos (B20a) + layout por carril (B20b)", () => {
+describe("RedGraph — nodos huérfanos excluidos (B20a)", () => {
   const tres_nodos: Subgrafo["nodos"] = [
     { id: "D1", nombre: "Diputada Uno", camara: "diputados" },
     { id: "D2", nombre: "Diputado Dos", camara: "diputados" },
@@ -390,40 +390,134 @@ describe("RedGraph — nodos huérfanos excluidos (B20a) + layout por carril (B2
     ).not.toBeInTheDocument();
   });
 
-  it("layout por carril es determinista y separa cámaras", () => {
+});
+
+// ── 62-01 (RED-02): layout radial ego-céntrico determinista + orden alfabético ────
+describe("RedGraph — layout radial determinista y alfabético (RED-02)", () => {
+  // Seed D0001 + 3 vecinos cuyos nombres llegan DESORDENADOS en el array.
+  const seedYVecinos = (): Subgrafo => ({
+    nodos: [
+      { id: "D0001", nombre: "Zulema Zamora", camara: "diputados" }, // seed
+      { id: "V_C", nombre: "Carlos Carrasco", camara: "diputados" },
+      { id: "V_A", nombre: "Ana Alvarado", camara: "diputados" },
+      { id: "V_B", nombre: "Bruno Barros", camara: "diputados" },
+    ],
+    aristas: [
+      arista({ a: "D0001", b: "V_C" }),
+      arista({ a: "D0001", b: "V_A" }),
+      arista({ a: "D0001", b: "V_B" }),
+    ],
+  });
+
+  const pos = (container: HTMLElement, id: string) => {
+    const el = within(container).getByTestId(`rf-node-${id}`);
+    return {
+      x: Number(el.getAttribute("data-x")),
+      y: Number(el.getAttribute("data-y")),
+    };
+  };
+
+  it("el seed va al centro (0,0) y el vecino alfabético 0 cae a las 12 en punto", () => {
+    const { container } = render(
+      <RedGraph seedId="D0001" subgrafo={seedYVecinos()} />,
+    );
+    // Seed centrado.
+    const seed = pos(container, "D0001");
+    expect(seed.x).toBe(0);
+    expect(seed.y).toBe(0);
+    // Orden alfabético de vecinos: Ana (V_A) < Bruno (V_B) < Carlos (V_C).
+    // El vecino alfabético 0 (Ana) cae a las 12 en punto: x≈0, y negativo.
+    const ana = pos(container, "V_A");
+    expect(Math.abs(ana.x)).toBeLessThan(2); // ≈0
+    expect(ana.y).toBeLessThan(0); // arriba del centro (12 en punto)
+  });
+
+  it("la posición es función pura del índice alfabético, invariante al orden del array de entrada", () => {
+    const base = seedYVecinos();
+    const { container: c1 } = render(
+      <RedGraph seedId="D0001" subgrafo={base} />,
+    );
+    const snap1 = {
+      V_A: pos(c1, "V_A"),
+      V_B: pos(c1, "V_B"),
+      V_C: pos(c1, "V_C"),
+    };
+    cleanup();
+
+    // Reordenar el array de nodos de entrada (mismo set) NO debe cambiar posiciones.
+    const reordenado: Subgrafo = {
+      nodos: [base.nodos[2], base.nodos[0], base.nodos[3], base.nodos[1]],
+      aristas: [base.aristas[2], base.aristas[0], base.aristas[1]],
+    };
+    const { container: c2 } = render(
+      <RedGraph seedId="D0001" subgrafo={reordenado} />,
+    );
+    expect(pos(c2, "V_A")).toEqual(snap1.V_A);
+    expect(pos(c2, "V_B")).toEqual(snap1.V_B);
+    expect(pos(c2, "V_C")).toEqual(snap1.V_C);
+  });
+});
+
+// ── 62-01 (RED-01): conteo de nodos ≤ cap+1 + "N vecinos más" honesto ─────────────
+describe("RedGraph — cap de vecinos ≤24 + 'N vecinos más' honesto (RED-01)", () => {
+  const seedCon30Vecinos = (): Subgrafo => {
+    const nodos: Subgrafo["nodos"] = [
+      { id: "D0000", nombre: "Zzz Semilla", camara: "diputados" },
+    ];
+    const aristas: Subgrafo["aristas"] = [];
+    for (let i = 0; i < 30; i++) {
+      const id = `V${String(i).padStart(2, "0")}`;
+      // Nombres alfabéticos deterministas: "Aaa 00" … con prefijo por índice.
+      const letra = String.fromCharCode(65 + (i % 26));
+      nodos.push({
+        id,
+        nombre: `${letra}${String(i).padStart(2, "0")} Vecino`,
+        camara: "diputados",
+      });
+      aristas.push(arista({ a: "D0000", b: id }));
+    }
+    return { nodos, aristas };
+  };
+
+  it("con 30 vecinos, el DOM tiene exactamente 25 nodos (24 vecinos + seed)", () => {
+    const { container } = render(
+      <RedGraph seedId="D0000" subgrafo={seedCon30Vecinos()} />,
+    );
+    const nodos = container.querySelectorAll('[data-testid^="rf-node-"]');
+    expect(nodos.length).toBe(25);
+  });
+
+  it("aparece 'Ver 6 vecinos más' (30 − 24) con cada nombre un Link a /red?seed=", () => {
+    const { container } = render(
+      <RedGraph seedId="D0000" subgrafo={seedCon30Vecinos()} />,
+    );
+    expect(screen.getByText(/Ver\s+6\s+vecinos más/i)).toBeInTheDocument();
+    // Los overflow son Links a /red?seed=<id>.
+    const overflowLinks = Array.from(
+      container.querySelectorAll("a"),
+    ).filter((a) => /\/red\?seed=/.test(a.getAttribute("href") ?? ""));
+    expect(overflowLinks.length).toBe(6);
+  });
+});
+
+// ── 62-01 (RED-02): banned-vocab en la leyenda + copy alfabética requerida ────────
+describe("RedGraph — leyenda anti-insinuación (banned-vocab + 'orden alfabético')", () => {
+  it("la leyenda NO contiene vocabulario de afinidad y SÍ declara 'orden alfabético'/'no cercanía'", () => {
     const { container } = render(
       <RedGraph
-        subgrafo={{
-          nodos: [
-            { id: "D1", nombre: "Diputada Uno", camara: "diputados" },
-            { id: "D2", nombre: "Diputado Dos", camara: "diputados" },
-            { id: "S1", nombre: "Senadora Tres", camara: "senado" },
-          ],
-          // D1↔D2 y D2↔S1 → los tres participan de aristas visibles.
-          aristas: [
-            arista({ a: "D1", b: "D2" }),
-            arista({ a: "D2", b: "S1" }),
-          ],
-        }}
+        seedId="D1009"
+        subgrafo={{ nodos: dos_nodos, aristas: [arista()] }}
       />,
     );
-
-    const y = (id: string) =>
-      Number(
-        within(container)
-          .getByTestId(`rf-node-${id}`)
-          .getAttribute("data-y"),
-      );
-
-    // La banda de senado empieza en ROW*3 = 420; los diputados caen bajo esa cota.
-    const BANDA_SENADO = 420;
-    expect(y("D1")).toBeLessThan(BANDA_SENADO);
-    expect(y("D2")).toBeLessThan(BANDA_SENADO);
-    // El senador cae en una banda DISTINTA (>= 420) — separación por cámara.
-    expect(y("S1")).toBeGreaterThanOrEqual(BANDA_SENADO);
-    // Dos nodos de la misma cámara comparten banda pero difieren de posición
-    // (índice-de-carril local): el layout es determinista, no colapsa nodos.
-    expect(y("D1")).not.toBe(y("D2"));
+    const txt = container.textContent ?? "";
+    // Banned-vocab extendido a la leyenda (UI-SPEC §Banned vocabulary).
+    expect(txt).not.toMatch(/afinidad|cercan[íi]a|aliado|red de poder/i);
+    // Ya existentes: sin afiliación ni valoración.
+    expect(txt).not.toMatch(/partido/i);
+    expect(txt).not.toMatch(/puntaje|score|ranking/i);
+    // La copy LOCKED debe aparecer literal.
+    expect(txt).toMatch(/orden alfabético/i);
+    expect(txt).toMatch(/no cercanía/i);
   });
 });
 
