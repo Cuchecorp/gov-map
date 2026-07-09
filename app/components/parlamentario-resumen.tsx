@@ -133,7 +133,8 @@ export function construirChips(
       ? [
           {
             href: "#cruces",
-            label: "Cruces con sectores",
+            // COMP-06: "Lobby por sector" es más legible que "Cruces con sectores"
+            label: "Lobby por sector",
             estado: c.cruces,
           },
         ]

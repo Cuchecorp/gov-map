@@ -22,7 +22,7 @@ function fixtureEntries(): RailEntry[] {
     { id: "patrimonio", label: "Declaraciones", count: "—" },
     {
       id: "cruces",
-      label: "Cruces con sectores",
+      label: "Lobby por sector",
       count: "3",
       marker: "diamante",
     },
@@ -48,7 +48,7 @@ describe("FichaRail — rail sticky con nav gate-aware + scrollspy + caveat (UXC
       "href",
       "#votos",
     );
-    expect(screen.getByRole("link", { name: /Cruces/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Lobby por sector/ })).toHaveAttribute(
       "href",
       "#cruces",
     );
@@ -63,7 +63,7 @@ describe("FichaRail — rail sticky con nav gate-aware + scrollspy + caveat (UXC
 
   it("Test 3: la entrada de cruces muestra el marcador diamante ◆", () => {
     renderRail();
-    const cruces = screen.getByRole("link", { name: /Cruces/ });
+    const cruces = screen.getByRole("link", { name: /Lobby por sector/ });
     expect(cruces.textContent).toContain("◆");
   });
 

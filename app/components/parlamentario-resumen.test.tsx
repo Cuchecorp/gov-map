@@ -31,7 +31,7 @@ const CARRILES_BASE: ResumenChip[] = [
   },
   {
     href: "#cruces",
-    label: "Cruces con sectores",
+    label: "Lobby por sector",
     estado: { tipo: "no_ingerido" },
   },
   {
