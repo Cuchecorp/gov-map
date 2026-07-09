@@ -25,9 +25,9 @@
 
 ### COMP — Comprensión de visualizaciones
 
-- [ ] **COMP-01**: La sección de cruces entre parlamentarios se entiende sin conocimiento previo: qué es una señal, cómo leer los conteos, qué NO afirma (anti-causal explícito), con leyenda "cómo leer esto" — validado por lectura fría vía BrowserOS.
+- [x] **COMP-01**: La sección de cruces entre parlamentarios se entiende sin conocimiento previo: qué es una señal, cómo leer los conteos, qué NO afirma (anti-causal explícito), con leyenda "cómo leer esto" — validado por lectura fría vía BrowserOS.
 - [ ] **COMP-02**: Barrido BrowserOS de las superficies clave (ficha parlamentario, ficha proyecto, /red, charts de v5) con loop captura→corrección→re-captura; todo hallazgo de comprensión P0/P1 corregido y re-verificado con nueva captura.
-- [ ] **COMP-03**: Toda visualización lleva título orientado a la pregunta que responde + leyenda + fuente/fecha visible (extiende el patrón v5 a las superficies donde falte).
+- [x] **COMP-03**: Toda visualización lleva título orientado a la pregunta que responde + leyenda + fuente/fecha visible (extiende el patrón v5 a las superficies donde falte).
 
 ## Future Requirements (deferred)
 
@@ -56,9 +56,9 @@
 | AUTOR-02 | Phase 59 | Complete |
 | BRAND-01 | Phase 60 | Pending |
 | BRAND-02 | Phase 60 | Pending |
-| COMP-01 | Phase 61 | Pending |
+| COMP-01 | Phase 61 | Complete |
 | COMP-02 | Phase 61 | Pending |
-| COMP-03 | Phase 61 | Pending |
+| COMP-03 | Phase 61 | Complete |
 
 ---
 *Modo de trabajo v6: Fable (main loop) planifica/dirige/controla; ejecución delegada a agentes Sonnet o menores. Autónomo y ordenado.*

@@ -734,7 +734,7 @@ Plans:
 | 58. CRON-FRESH — Monitoreo de frescura por fuente | v6.0 | 1/1 | Complete   | 2026-07-09 |
 | 59. AUTOR — Autoría ingest + ficha de proyecto (F48) | v6.0 | 3/3 | Complete   | 2026-07-09 |
 | 60. BRAND — Ícono/identidad visual gov-map | v6.0 | 1/1 | Complete   | 2026-07-09 |
-| 61. COMP — Comprensión de visualizaciones (loop BrowserOS) | v6.0 | 0/TBD | Not started | - |
+| 61. COMP — Comprensión de visualizaciones (loop BrowserOS) | v6.0 | 1/1 | Complete   | 2026-07-09 |
 
 ## ✅ v4.0 — De datos a cruces verificables
 
@@ -1366,7 +1366,7 @@ Plans:
 - [x] **Phase 58: CRON-FRESH — Monitoreo de frescura por fuente** - El operador puede consultar la frescura (última corrida, último snapshot R2, último upsert) y detectar staleness sin bucear logs. (completed 2026-07-09)
 - [x] **Phase 59: AUTOR — Autoría ingest + ficha de proyecto (F48)** - Autores de cada proyecto poblados via R2→Supabase con reconciliación fail-closed; ficha de proyecto muestra autoría con guarda de identidad. (completed 2026-07-09)
 - [x] **Phase 60: BRAND — Ícono/identidad visual gov-map** - Ícono SVG propio (≥3 propuestas, selección operador) + integración completa en favicon/OG/header/manifest. (completed 2026-07-09)
-- [ ] **Phase 61: COMP — Comprensión de visualizaciones (loop BrowserOS)** - Sección cruces comprensible a lectura fría; barrido BrowserOS de superficies clave con loop captura→corrección→re-captura; todas las visualizaciones llevan título orientado a la pregunta.
+- [x] **Phase 61: COMP — Comprensión de visualizaciones (loop BrowserOS)** - Sección cruces comprensible a lectura fría; barrido BrowserOS de superficies clave con loop captura→corrección→re-captura; todas las visualizaciones llevan título orientado a la pregunta. (completed 2026-07-09)
 
 ## Phase Details (v6.0)
 
@@ -1471,6 +1471,6 @@ Plans:
   3. Toda visualización en PROD (charts de patrimonio, votos, comparativo, cruces) lleva: (a) título orientado a la pregunta que responde; (b) leyenda con unidades y definición de cada serie; (c) fuente/fecha visible al pie.
   4. Cero regresión: anti-insinuación (linter negative-match verde), PII-safe, tsc, suite completa verdes; los textos modificados no introducen vocabulario causal.
 
-**Plans:** TBD
+**Plans:** 1/1 plans complete
 
 **UI hint**: yes
