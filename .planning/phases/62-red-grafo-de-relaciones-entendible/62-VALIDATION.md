@@ -38,7 +38,12 @@ created: 2026-07-09
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| (filled by planner) | | | RED-01/02/03 | — | N/A | unit | `pnpm --dir app test -- red` | ✅ | ⬜ pending |
+| 62-01-T1 | 01 | 1 | RED-01/02 | T-62-02 | banned-vocab leyenda | unit | `pnpm --dir app test -- red-graph` | ✅ | ⬜ pending |
+| 62-01-T2 | 01 | 1 | RED-01/02 | T-62-01 | cap ≤25 + radial determinista | unit | `pnpm --dir app test -- red-graph` | ✅ | ⬜ pending |
+| 62-02-T1 | 02 | 2 | RED-02 | T-62-04 | borde cámara sin partido/petróleo | unit | `pnpm --dir app test -- red-graph` | ✅ | ⬜ pending |
+| 62-02-T2 | 02 | 2 | RED-02 | T-62-03 | lista móvil safeExternalHref | unit | `pnpm --dir app test -- red-graph` | ✅ | ⬜ pending |
+| 62-03-T1 | 03 | 3 | RED-03 | T-62-05 | deploy sin flipear flag | manual+build | `pnpm --dir app test` + deploy 61-02 | ✅ | ⬜ pending |
+| 62-03-T2 | 03 | 3 | RED-03 | — | cold-read veredicto comprensible | manual (BrowserOS) | `node scripts/bros-cli.mjs …` → red-evidence/ | manual | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

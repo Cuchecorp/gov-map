@@ -512,7 +512,12 @@ Plans:
   3. El drift de esta fuente es BLOQUEANTE (cuarentena, nunca filas silenciosas); una corrida acotada de prueba demuestra el camino fuente→R2 sin escribir aún a Supabase
   4. Queda registrada la cobertura esperada (qué parlamentarios/periodos cubre la fuente) y cualquier desviación frente a `leylobby.gob.cl`
 
-**Plans:** TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 62-01-PLAN.md — Layout radial ego-céntrico + cap 24 alfabético + "N vecinos más" + leyenda reescrita (RED-01, RED-02)
+- [ ] 62-02-PLAN.md — Fallback móvil lista de vecinos <768px + borde institucional por cámara + CSS (RED-02)
+- [ ] 62-03-PLAN.md — Loop BrowserOS: captura antes/después seed+no-seed × desktop+390px, deploy 61-02, veredicto "comprensible" (RED-03)
 
 ### Phase 25: LOBBY — Corrida LIVE + adjudicación de identidad + ficha poblada
 
