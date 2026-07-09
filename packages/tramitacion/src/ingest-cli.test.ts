@@ -271,4 +271,69 @@ describe("main() — R2 gate + hash-check (inyección directa por IngestCliOptio
     expect(skips.length).toBeGreaterThan(0);
     expect(skips[0]).toMatch(/\[skip\] sin novedades — tramitacion 14309-04/);
   });
+
+  it("llama putImmutable exactamente 1 vez por boletín cuando r2Store está configurado", async () => {
+    const putCalls: string[] = [];
+    const mockR2 = {
+      async putImmutable(_fuente: string, boletin: string, _date: string, _sha: string, _ext: string, _bytes: Uint8Array) {
+        putCalls.push(boletin);
+        return { r2Path: `tramitacion/${boletin}/2026/abc.json`, existed: false };
+      },
+      async getObject(): Promise<Uint8Array> { throw new Error("no debería llamarse"); },
+    };
+
+    const { camara, senado } = fakeConnectors();
+    const writer = new InMemoryTramitacionWriter();
+
+    await main({
+      boletines: ["14309-04"],
+      dryRun: false,
+      serviceKey: "fake-key",
+      localUrl: "http://127.0.0.1:0",
+      r2Store: mockR2 as never,
+      camara,
+      senado,
+      writer,
+      log: () => {},
+    });
+
+    expect(putCalls).toHaveLength(1);
+    expect(putCalls[0]).toBe("14309-04");
+  });
+
+  it("llama snapshotWriter.write con source='leyes' cuando putImmutable tiene éxito", async () => {
+    const writeCalls: Array<{ source: string; resource: string }> = [];
+    const mockR2 = {
+      async putImmutable(_fuente: string, boletin: string, _date: string, _sha: string, _ext: string, _bytes: Uint8Array) {
+        return { r2Path: `tramitacion/${boletin}/2026/abc.json`, existed: false };
+      },
+      async getObject(): Promise<Uint8Array> { throw new Error("no debería llamarse"); },
+    };
+    const mockSnapshotWriter = {
+      async write(input: { source: string; resource: string }) {
+        writeCalls.push({ source: input.source, resource: input.resource });
+        return { r2Path: "x", contentHash: "y" };
+      },
+    };
+
+    const { camara, senado } = fakeConnectors();
+    const writer = new InMemoryTramitacionWriter();
+
+    await main({
+      boletines: ["14309-04"],
+      dryRun: false,
+      serviceKey: "fake-key",
+      localUrl: "http://127.0.0.1:0",
+      r2Store: mockR2 as never,
+      snapshotWriter: mockSnapshotWriter as never,
+      camara,
+      senado,
+      writer,
+      log: () => {},
+    });
+
+    expect(writeCalls).toHaveLength(1);
+    expect(writeCalls[0]!.source).toBe("leyes");
+    expect(writeCalls[0]!.resource).toBe("14309-04");
+  });
 });

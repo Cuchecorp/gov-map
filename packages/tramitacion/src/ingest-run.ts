@@ -18,7 +18,7 @@
 
 import type { Parlamentario } from "@obs/core";
 import type { PipelineWriter } from "@obs/adjudication";
-import { sha256Hex, type R2Store } from "@obs/ingest";
+import { sha256Hex, type R2Store, type SnapshotWriter } from "@obs/ingest";
 import type { CamaraConnector } from "./connector-camara";
 import type { SenadoConnector } from "./connector-senado";
 import type { TramitacionWriter, VotoParaEscribir } from "./writer";
@@ -89,6 +89,12 @@ export interface RunIngestOpts {
    * la Etapa 2 para ese boletín.
    */
   r2Store?: R2Store;
+  /**
+   * Writer de source_snapshot para registrar la provenance del snapshot R2 (FND-08/CRON-02).
+   * Solo se usa cuando r2Store está configurado y putImmutable tiene éxito. Best-effort, no fatal.
+   * El source registrado es "leyes" (coincide con catalog.ts + query-runner.ts WHERE source='leyes').
+   */
+  snapshotWriter?: SnapshotWriter;
   /** Sink de logs (inyectable para tests). Default: noop. */
   log?: (msg: string) => void;
 }
@@ -285,6 +291,27 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
           continue;
         }
         log(`tramitacion: crudo en R2 → ${r2Path}`);
+        // Registro source_snapshot (FND-08/CRON-02): best-effort, no fatal.
+        if (opts.snapshotWriter) {
+          try {
+            await opts.snapshotWriter.write({
+              source: "leyes",
+              resource: boletinFull,
+              cacheKey: sha,
+              r2Path,
+              contentHash: sha,
+              fingerprint: sha.slice(0, 8),
+              dateBucket: today,
+              provenance: {
+                source: "leyes",
+                sourceUrl: "https://tramitacion.senado.cl/",
+                fetchedAt: new Date().toISOString(),
+              },
+            });
+          } catch (snErr) {
+            log(`tramitacion: source_snapshot falló (no fatal): ${(snErr as Error).message}`);
+          }
+        }
       } catch (err) {
         log(`tramitacion: Etapa 1 R2 falló (no fatal): ${(err as Error).message}`);
       }

@@ -28,7 +28,21 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import {
+  SnapshotWriter,
+  SupabaseSnapshotStore,
+  type CreateSupabaseClient,
+} from "@obs/ingest";
 import { main as ingestMain, findWorkspaceRoot } from "./ingest-cli";
+
+/**
+ * Adapta el `createClient` de supabase-js a la factory estructural que `SupabaseSnapshotStore`
+ * espera (espejo exacto del patrón en run-probidad-todos-cli.ts L32-34). El cast aísla el
+ * mismatch entre el tipo genérico-profundo de supabase-js y el subconjunto estructural
+ * `SupabaseClientLike` de @obs/ingest. @obs/tramitacion ya declara `@supabase/supabase-js`.
+ */
+const createSupabaseClient: CreateSupabaseClient = (url, serviceKey) =>
+  createClient(url, serviceKey) as unknown as ReturnType<CreateSupabaseClient>;
 
 /** Recorte por defecto del conjunto de boletines a refrescar (acotado por WAF + tiempo). */
 const DEFAULT_LIMITE = 80;
@@ -53,7 +67,15 @@ function loadEnv(root: string): Record<string, string> {
   } catch {
     // Sin `.env` (CI): los secrets vienen de process.env (abajo).
   }
-  for (const k of ["SUPABASE_API_URL", "SUPABASE_SECRET_KEY", "SUPABASE_URL"]) {
+  for (const k of [
+    "SUPABASE_API_URL",
+    "SUPABASE_SECRET_KEY",
+    "SUPABASE_URL",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_ENDPOINT_URL",
+    "R2_BUCKET",
+  ]) {
     if (process.env[k]) out[k] = process.env[k]!;
   }
   return out;
@@ -135,6 +157,29 @@ async function run(): Promise<void> {
     log("tramitacion-prod: sin SUPABASE_API_URL/SECRET_KEY → DRY-RUN (no carga DB)");
   }
 
+  // Propagar env vars R2_* a process.env para que ingest-cli.main() construya el R2Store.
+  // (ingest-cli lee process.env.R2_ACCESS_KEY_ID directamente; run-tramitacion-prod-cli
+  //  carga el .env en `env` pero no lo exporta — esta línea cierra ese gap: CRON-02/G23).
+  for (const k of ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_ENDPOINT_URL", "R2_BUCKET"] as const) {
+    if (env[k] && !process.env[k]) process.env[k] = env[k];
+  }
+  if (!env.R2_ACCESS_KEY_ID && !dryRun) {
+    log("[WARN] R2 no configurado — Etapa 1 omitida (sin crudo versionado); configura R2_ACCESS_KEY_ID");
+  }
+
+  // SnapshotWriter (source_snapshot / FND-08 / CRON-02): solo LIVE con creds Supabase.
+  // Espeja el patrón de run-probidad-todos-cli.ts L126-137.
+  const snapshotWriter =
+    !efectivoDryRun && url && serviceKey
+      ? new SnapshotWriter(
+          new SupabaseSnapshotStore({
+            url,
+            serviceKey,
+            createClient: createSupabaseClient,
+          }),
+        )
+      : undefined;
+
   // Conjunto de boletines: explícito (override) o derivado de la DB remota. Se deriva siempre
   // que HAYA credenciales (también en --dry-run: así el dry-run ejercita el gather + el fetch a
   // las fuentes, solo se salta la escritura).
@@ -162,6 +207,7 @@ async function run(): Promise<void> {
     serviceKey: serviceKey || undefined,
     cwd: root,
     log,
+    ...(snapshotWriter ? { snapshotWriter } : {}),
   });
 
   console.log(

@@ -25,6 +25,7 @@ import {
   RobotsGuard,
   R2Store,
   sha256Hex,
+  type SnapshotWriter,
 } from "@obs/ingest";
 import type { Parlamentario } from "@obs/core";
 import { CamaraConnector } from "./connector-camara";
@@ -62,6 +63,11 @@ export interface IngestCliOptions {
   senado?: SenadoConnector;
   /** Writer inyectable para tests sin DB. */
   writer?: TramitacionWriter;
+  /**
+   * Writer de source_snapshot (FND-08/CRON-02). Si se omite, no se registra provenance.
+   * Solo efectivo cuando r2Store está configurado y putImmutable tiene éxito.
+   */
+  snapshotWriter?: SnapshotWriter;
   log?: (msg: string) => void;
 }
 
@@ -290,6 +296,7 @@ export async function main(opts: IngestCliOptions = {}): Promise<IngestCliResult
     writer,
     log,
     ...(r2Store ? { r2Store } : {}),
+    ...(opts.snapshotWriter ? { snapshotWriter: opts.snapshotWriter } : {}),
   });
 
   log(
