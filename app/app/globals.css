@@ -370,9 +370,17 @@
   gap: 0.5rem;
 }
 
-/* Desktop (≥768px): la lista móvil NO se muestra — el anillo radial es la vista.
-   Gana sobre `.net-vecinos{display:flex}` por venir después Y por el media-query. */
-@media (min-width: 768px) {
+/* Desktop (≥md): la lista móvil NO se muestra — el anillo radial es la vista.
+   Gana sobre `.net-vecinos{display:flex}` por venir después Y por el media-query.
+
+   WR-03 (62-REVIEW): el breakpoint DEBE ser rem-based (48rem), no `768px`. En
+   Tailwind v4 `md` compila a `min-width: 48rem`; el wrapper del canvas usa
+   `hidden md:block` (48rem) y esta lista `md:hidden`. Con un tamaño de fuente raíz
+   mayor a 16px (p.ej. 20px → md dispara a 960px), un query en `768px` abría una
+   zona muerta entre 768px y 960px donde el canvas seguía oculto (bajo 48rem) Y la
+   lista quedaba `display:none` (sobre 768px) → sin contenido de grafo. El query de
+   filtros vecino (47.99rem) ya era rem-based; éste era el único px-based. */
+@media (min-width: 48rem) {
   .net-vecinos {
     display: none;
   }
