@@ -233,15 +233,35 @@
    valoración. Consume los tokens cívicos de civic-tokens.css, que YA vienen
    wrapped en hsl(...) → se usan DIRECTO, sin doble-wrap. Nunca petróleo
    (--accent-product, reservado a aristas/enlaces). El cuerpo del nodo se
-   mantiene crema/card; el borde de seed (2px --foreground) tiene prioridad. */
+   mantiene crema/card; el borde de seed (2px --foreground) tiene prioridad.
+
+   WR-01 (62-REVIEW): usar los tokens `-muted-foreground` (35% de luz en claro,
+   70% en oscuro), no los `-muted` (94% de luz = tokens de FONDO de chip): contra
+   el cuerpo del nodo (card, 99% de luz) los `-muted` daban ~1.1:1 de contraste y
+   el borde institucional de 3px — el distintivo RED-02 — era imperceptible
+   (fallaba WCAG 1.4.11, 3:1 para gráficos). Los `-muted-foreground` existen justo
+   para este rol de contraste. */
 .net-nodo--camara {
   border-left-width: 3px;
-  border-left-color: var(--camara-muted);
+  border-left-color: var(--camara-muted-foreground);
 }
 
 .net-nodo--senado {
   border-left-width: 3px;
-  border-left-color: var(--senado-muted);
+  border-left-color: var(--senado-muted-foreground);
+}
+
+/* WR-02 (62-REVIEW): `.net-nodo--camara/--senado` se declaraban DESPUÉS de
+   `.net-nodo--seed` con igual especificidad (0,1,0) → el borde institucional (3px
+   en el color de cámara) pisaba el borde neutro de seed (2px --foreground) en el
+   lado izquierdo. Un nodo seed SIEMPRE lleva también su clase de cámara, así que
+   sin esta regla el marcador de partida se veía roto por la izquierda. Aquí se
+   hace REAL la prioridad declarada arriba: en el seed, el borde neutro de
+   wayfinding gana también en el lado izquierdo. */
+.net-nodo--seed.net-nodo--camara,
+.net-nodo--seed.net-nodo--senado {
+  border-left-width: 2px;
+  border-left-color: hsl(var(--foreground));
 }
 
 .net-nodo__nombre {
