@@ -1,0 +1,112 @@
+import { describe, it, expect } from "vitest";
+import { parseCamaraLegislativo } from "./parse-camara-legislativo";
+
+// Fixture inline capturado LIVE de WSLegislativo.asmx/retornarMocionesXAnno?prmAnno=2024
+// (2026-07-10, UA identificatorio, rate-limit respetado — UNA sola llamada). El shape confirmado:
+//   root wrapper <ProyectosLeyColeccion>, items <ProyectoLey>, boletín en <NumeroBoletin>,
+//   namespace default `http://opendata.camara.cl/camaradiputados/v1` (fast-xml-parser lo ignora).
+const XML_MULTIPLE = `<?xml version="1.0" encoding="utf-8"?>
+<ProyectosLeyColeccion xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://opendata.camara.cl/camaradiputados/v1">
+  <ProyectoLey>
+    <Id>17140</Id>
+    <NumeroBoletin>16572-06</NumeroBoletin>
+    <Nombre>Modifica cuerpos legales que indica para fortalecer el rol de las juntas de vecinos</Nombre>
+    <FechaIngreso>2024-01-10T00:00:00</FechaIngreso>
+    <TipoIniciativa Valor="2">Moción</TipoIniciativa>
+    <CamaraOrigen Valor="1">Cámara de Diputados</CamaraOrigen>
+    <Admisible>true</Admisible>
+  </ProyectoLey>
+  <ProyectoLey>
+    <Id>17424</Id>
+    <NumeroBoletin>16818-07</NumeroBoletin>
+    <Nombre>Modifica diversos cuerpos legales</Nombre>
+    <FechaIngreso>2024-05-06T00:00:00</FechaIngreso>
+    <TipoIniciativa Valor="2">Moción</TipoIniciativa>
+    <CamaraOrigen Valor="1">Cámara de Diputados</CamaraOrigen>
+    <Admisible>true</Admisible>
+  </ProyectoLey>
+  <ProyectoLey>
+    <Id>17498</Id>
+    <NumeroBoletin>16879-15</NumeroBoletin>
+    <Nombre>Modifica la ley N° 18.290, de Tránsito</Nombre>
+    <FechaIngreso>2024-05-27T00:00:00</FechaIngreso>
+    <TipoIniciativa Valor="2">Moción</TipoIniciativa>
+    <CamaraOrigen Valor="2">Senado</CamaraOrigen>
+    <Admisible>true</Admisible>
+  </ProyectoLey>
+</ProyectosLeyColeccion>`;
+
+// Colección con UN SOLO ProyectoLey → fast-xml-parser lo colapsa a objeto (no array).
+const XML_SINGLE = `<?xml version="1.0" encoding="utf-8"?>
+<ProyectosLeyColeccion xmlns="http://opendata.camara.cl/camaradiputados/v1">
+  <ProyectoLey>
+    <Id>17667</Id>
+    <NumeroBoletin>17053-15</NumeroBoletin>
+    <Nombre>Modifica la ley N° 18.290, de Tránsito</Nombre>
+    <FechaIngreso>2024-08-12T00:00:00</FechaIngreso>
+    <TipoIniciativa Valor="2">Moción</TipoIniciativa>
+    <CamaraOrigen Valor="1">Cámara de Diputados</CamaraOrigen>
+  </ProyectoLey>
+</ProyectosLeyColeccion>`;
+
+// Colección con boletines inválidos entremezclados (basura del WS o mal formados).
+const XML_INVALIDOS = `<?xml version="1.0" encoding="utf-8"?>
+<ProyectosLeyColeccion xmlns="http://opendata.camara.cl/camaradiputados/v1">
+  <ProyectoLey>
+    <Id>1</Id>
+    <NumeroBoletin>12345-06</NumeroBoletin>
+    <Nombre>Válido</Nombre>
+  </ProyectoLey>
+  <ProyectoLey>
+    <Id>2</Id>
+    <NumeroBoletin>no-es-un-boletin</NumeroBoletin>
+    <Nombre>Boletín ilegible</Nombre>
+  </ProyectoLey>
+  <ProyectoLey>
+    <Id>3</Id>
+    <NumeroBoletin></NumeroBoletin>
+    <Nombre>Boletín vacío</Nombre>
+  </ProyectoLey>
+  <ProyectoLey>
+    <Id>4</Id>
+    <NumeroBoletin>16572-06</NumeroBoletin>
+    <Nombre>Duplicado válido — se dedup</Nombre>
+  </ProyectoLey>
+  <ProyectoLey>
+    <Id>5</Id>
+    <NumeroBoletin>16572-06</NumeroBoletin>
+    <Nombre>Repetido — mismo boletín</Nombre>
+  </ProyectoLey>
+</ProyectosLeyColeccion>`;
+
+describe("parseCamaraLegislativo (WSLegislativo → NumeroBoletin[])", () => {
+  it("Test 1: parsea múltiples ProyectoLey → array de NumeroBoletin", () => {
+    const boletines = parseCamaraLegislativo(XML_MULTIPLE);
+    expect(boletines).toEqual(["16572-06", "16818-07", "16879-15"]);
+  });
+
+  it("Test 2: colapsa un nodo único (objeto, no array) a lista de 1", () => {
+    const boletines = parseCamaraLegislativo(XML_SINGLE);
+    expect(boletines).toEqual(["17053-15"]);
+  });
+
+  it("Test 3: descarta boletines que no matchean /^\\d{3,6}-\\d{1,3}$/ (no lanza) y dedup", () => {
+    const boletines = parseCamaraLegislativo(XML_INVALIDOS);
+    // "no-es-un-boletin" y "" descartados; "16572-06" deduplicado → una sola vez.
+    expect(boletines).toEqual(["12345-06", "16572-06"]);
+    expect(boletines).not.toContain("no-es-un-boletin");
+    expect(boletines).not.toContain("");
+  });
+
+  it("Test 4: XML sin colección (shape inválido) → [] (zod rechaza, no lanza)", () => {
+    const boletines = parseCamaraLegislativo(
+      `<?xml version="1.0"?><Otro><Cosa>x</Cosa></Otro>`,
+    );
+    expect(boletines).toEqual([]);
+  });
+
+  it("XML vacío/basura → [] sin lanzar", () => {
+    expect(parseCamaraLegislativo("")).toEqual([]);
+    expect(parseCamaraLegislativo("<root/>")).toEqual([]);
+  });
+});
