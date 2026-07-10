@@ -4,13 +4,13 @@ milestone: v6.1
 milestone_name: — Entendible y completo
 status: executing
 stopped_at: Roadmap v6.0 creado — Phases 56-61, REQUIREMENTS.md traceability actualizado, STATE.md inicializado.
-last_updated: "2026-07-10T05:53:47.442Z"
-last_activity: 2026-07-10 -- Phase 63 planning complete
+last_updated: "2026-07-10T05:58:39.083Z"
+last_activity: 2026-07-10
 progress:
   total_phases: 48
   completed_phases: 1
   total_plans: 7
-  completed_plans: 3
+  completed_plans: 4
   percent: 2
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 62 — RED — Grafo de relaciones entendible
+**Current focus:** Phase 63 — BUSQ — Búsqueda de proyectos completa
 
 ## Current Position
 
-Phase: 63
-Plan: Not started
+Phase: 63 (BUSQ — Búsqueda de proyectos completa) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-10 -- Phase 63 planning complete
+Last activity: 2026-07-10
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Last activity: 2026-07-10 -- Phase 63 planning complete
 *Updated after each plan completion*
 | Phase 62 P01 | 7 min | 2 tasks | 2 files |
 | Phase 62 P62-03 | 90 | 3 tasks | 15 files |
+| Phase 63 P01 | 8 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,7 @@ Last activity: 2026-07-10 -- Phase 63 planning complete
 - Gates humanos/legales (F13/F17/0042) fuera de v6.0 — ningún agente flipea flags `*_PUBLIC_ENABLED`.
 - [Phase ?]: 62-01: cap de vecinos client-side (24 alfabetico) + layout radial ego-centrico determinista (radialPos, cero force-simulation); RPC/DDL intactos.
 - [Phase ?]: 62-02: borde institucional por camara + fallback movil lista de vecinos honesta; RED-02 cerrado, falta RED-03 ops.
+- 63-01: seed idempotente como paso dedicado (`seedFichasPendientes()` con `ignoreDuplicates:true` / DO NOTHING) cierra el gap BUSQ-01 (82 proyectos sin fila `proyecto_ficha`) sin re-abrir estado terminal; `scripts/verify-cobertura.sql` = fuente única de 7 conteos compartida por P03 y freshness. Entrega CÓDIGO+tests; el backfill real es P03 (LOCAL, operador).
 
 ### Pending Todos
 
@@ -86,7 +88,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-10T00:31:02.460Z
+Last session: 2026-07-10T05:58:39.073Z
 Stopped at: Roadmap v6.0 creado — Phases 56-61, REQUIREMENTS.md traceability actualizado, STATE.md inicializado.
 Resume file: None
 
