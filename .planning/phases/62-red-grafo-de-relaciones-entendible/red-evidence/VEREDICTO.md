@@ -67,3 +67,20 @@ Un hallazgo **P1** se detectó en la lectura fría (la lista de vecinos móvil s
 ### Nota de método — captura 390px
 
 BrowserOS (MCP local) **no expone tool de viewport/resize ni emulación de dispositivo**; las páginas ocultas heredan el tamaño de la ventana del host (~772px). Las capturas "390px" se produjeron **simulando el estado móvil vía CSS inyectado** (`evaluate_script`: `body{width:390px}` + forzar la rama `<md`). El **contenido** de la lista móvil se verificó además programáticamente (24 filas, heading "Vecinos de …", 61 enlaces de fuente, Links alfabéticos a `/red?seed=`) — evidencia autoritativa del comportamiento móvil independiente del render visual. La captura "antes" 390px es best-effort por la misma limitación.
+
+---
+
+## Redeploy post-review-fixes — 2026-07-09
+
+- **Version ID:** `820ecba4-cbfd-4484-a402-278d4e0de091` (reemplaza `61d8fe13-8d0c-4ed9-af1a-eb3aaf412f0c`).
+- **Qué cambió:** commits `b32f41e..27f26d4` en master — fixes del code review de Phase 62:
+  - **CR-01** — estado honesto cuando los filtros dejan al seed sin vecinos visibles.
+  - **WR-01/WR-02** — borde de cámara visible usa el token `-foreground`; el borde del seed gana la cascada.
+  - **WR-03** — media query de vecinos móvil usa `48rem` (no `768px`).
+  - **WR-04** — guard de self-loop.
+  - **WR-05** — fallback de nombre vacío vía `displayNombre`.
+- **Build:** Docker `node:22-slim` (OpenNext bundle) + wrangler 4.109.0 local OAuth. 3 assets nuevos (CSS/JS chunks) / 55 en caché. Worker startup 25 ms.
+- **Sanity LIVE (sin flip de flags):**
+  - `/red?seed=D1009` → HTTP 200, contiene "Ver" + "vecinos más".
+  - `/red` (sin seed) → HTTP 200, selector "Elige un parlamentario…" con opciones.
+- **Suite pre-deploy:** 750/750 verde; working tree limpio en master.
