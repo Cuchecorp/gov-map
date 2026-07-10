@@ -444,6 +444,62 @@ describe("RedGraph — nodos huérfanos excluidos (B20a)", () => {
 
 });
 
+// ── WR-04 (62-REVIEW): self-loop del seed no lo mete en su propio anillo ──────────
+describe("RedGraph — self-loop del seed excluido (WR-04)", () => {
+  it("un self-loop (a===b===seed) NO duplica el seed en el lienzo", () => {
+    const nodos: Subgrafo["nodos"] = [
+      { id: "D0001", nombre: "Ana Alvarado", camara: "diputados" }, // seed
+      { id: "V1", nombre: "Bruno Barros", camara: "diputados" },
+    ];
+    const { container } = render(
+      <RedGraph
+        seedId="D0001"
+        subgrafo={{
+          nodos,
+          aristas: [
+            // Arista malformada: self-loop del propio seed.
+            arista({ a: "D0001", b: "D0001" }),
+            // Arista legítima seed↔vecino.
+            arista({ a: "D0001", b: "V1" }),
+          ],
+        }}
+      />,
+    );
+    // El seed aparece EXACTAMENTE una vez (centro), nunca también en el anillo.
+    const seedNodos = container.querySelectorAll(
+      '[data-testid="rf-node-D0001"]',
+    );
+    expect(seedNodos.length).toBe(1);
+    // El vecino legítimo sí está.
+    expect(
+      container.querySelector('[data-testid="rf-node-V1"]'),
+    ).not.toBeNull();
+  });
+});
+
+// ── WR-05 (62-REVIEW): nombre "" cae al id (no nombre accesible vacío) ────────────
+describe("RedGraph — fallback de nombre vacío al id (WR-05)", () => {
+  it("un vecino con nombre='' usa su id como texto (móvil + overflow)", () => {
+    const nodos: Subgrafo["nodos"] = [
+      { id: "D0001", nombre: "Ana Alvarado", camara: "diputados" }, // seed
+      { id: "V_SIN", nombre: "", camara: "diputados" }, // nombre vacío
+    ];
+    const { container } = render(
+      <RedGraph
+        seedId="D0001"
+        subgrafo={{
+          nodos,
+          aristas: [arista({ a: "D0001", b: "V_SIN" })],
+        }}
+      />,
+    );
+    // El vecino sin nombre cae a su id en la lista móvil (nombre accesible no vacío).
+    const lista = container.querySelector(".net-vecinos") as HTMLElement | null;
+    expect(lista).not.toBeNull();
+    expect(within(lista!).getByText("V_SIN")).toBeInTheDocument();
+  });
+});
+
 // ── 62-01 (RED-02): layout radial ego-céntrico determinista + orden alfabético ────
 describe("RedGraph — layout radial determinista y alfabético (RED-02)", () => {
   // Seed D0001 + 3 vecinos cuyos nombres llegan DESORDENADOS en el array.

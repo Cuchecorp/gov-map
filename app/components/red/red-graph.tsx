@@ -138,6 +138,20 @@ function radialPos(index: number, total: number): { x: number; y: number } {
   };
 }
 
+/**
+ * Nombre de display de un nodo, con el MISMO fallback que <NodoParlamentario>
+ * (nodo-parlamentario.tsx:43): `nombre?.trim() || id`. WR-05 (62-REVIEW): el
+ * patrón previo `nombre ?? id` NO atrapaba `""` ni cadenas de solo-espacios (la
+ * columna es text nullable; el string vacío es representable) → una fila con
+ * `nombre: ""` producía un <Link> con nombre accesible vacío en la lista móvil y
+ * en el control de overflow, y ordenaba antes que todo. Un solo helper mantiene la
+ * misma semántica de fallback en los 4 sitios (sort, seedNombre, lista móvil,
+ * overflow).
+ */
+function displayNombre(n: { nombre: string | null; id: string }): string {
+  return formatNombre(n.nombre?.trim() || n.id);
+}
+
 export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
   const nodos = useMemo(() => subgrafo?.nodos ?? [], [subgrafo]);
   const aristas = useMemo(() => subgrafo?.aristas ?? [], [subgrafo]);
@@ -193,17 +207,17 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
     if (!seedId) return [];
     const ids = new Set<string>();
     for (const a of aristasVisibles) {
-      if (a.a === seedId) ids.add(a.b);
-      else if (a.b === seedId) ids.add(a.a);
+      // WR-04 (62-REVIEW): excluir explícitamente el propio seed. Un self-loop
+      // malformado del RPC (a.a === a.b === seedId) metería al seed en su propio
+      // anillo de vecinos → el seed aparecería DOS veces en rfNodes (centro +
+      // anillo) con el mismo id, colisión de keys de React / ids duplicados en
+      // xyflow. El componente ya se defiende de datos que "nunca debería recibir".
+      if (a.a === seedId && a.b !== seedId) ids.add(a.b);
+      else if (a.b === seedId && a.a !== seedId) ids.add(a.a);
     }
     return nodos
       .filter((n) => ids.has(n.id))
-      .sort((x, y) =>
-        formatNombre(x.nombre ?? x.id).localeCompare(
-          formatNombre(y.nombre ?? y.id),
-          "es",
-        ),
-      );
+      .sort((x, y) => displayNombre(x).localeCompare(displayNombre(y), "es"));
   }, [aristasVisibles, nodos, seedId]);
 
   // Estado honesto: el grafo puede venir genuinamente sin relaciones. NO es un
@@ -346,9 +360,7 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
   // hecho + procedencia. Cada fila = un vecino renderizado + las aristas seed↔vecino
   // (el hecho compartido). Solo se arma cuando hay seed y al menos un vecino
   // renderizado; el estado vacío (0 aristas) ya retornó antes.
-  const seedNombreDisplay = seedNodo
-    ? formatNombre(seedNodo.nombre ?? seedNodo.id)
-    : null;
+  const seedNombreDisplay = seedNodo ? displayNombre(seedNodo) : null;
   const vecinosLista = seedNodo
     ? rendered.map((vecino) => {
         const hechos = aristasVisibles.filter(
@@ -486,7 +498,7 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
                       className="net-vecinos__fila"
                     >
                       <span className="net-vecinos__nombre">
-                        {formatNombre(vecino.nombre ?? vecino.id)}
+                        {displayNombre(vecino)}
                       </span>
                       {camaraLabel ? (
                         <span className="net-vecinos__camara">
@@ -554,7 +566,7 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
                       href={`/red?seed=${n.id}`}
                       className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2"
                     >
-                      {formatNombre(n.nombre ?? n.id)}
+                      {displayNombre(n)}
                     </Link>
                   </li>
                 ))}
