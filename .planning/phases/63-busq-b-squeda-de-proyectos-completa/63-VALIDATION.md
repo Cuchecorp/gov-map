@@ -1,8 +1,8 @@
 ---
 phase: 63
 slug: busq-b-squeda-de-proyectos-completa
-status: draft
-nyquist_compliant: false
+status: planned
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-07-10
 ---
@@ -38,7 +38,17 @@ created: 2026-07-10
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| (filled by planner) | | | BUSQ-01/02/03 | — | RUT nunca a LLM (assertNoRutInLlmInput) | unit | per-package vitest | mixed | ⬜ pending |
+| 63-01 T1 | 01 | 1 | BUSQ-01 | T-63-02 | seed no re-abre estado terminal | unit | pnpm --filter @obs/fichas exec vitest run src/seed-fichas.test.ts | ❌ Wave 0 | ⬜ pending |
+| 63-01 T2 | 01 | 1 | BUSQ-01 | T-63-01/02 | seedFichasPendientes idempotente | unit | pnpm --filter @obs/fichas exec vitest run src/seed-fichas.test.ts | ✅ (Task 2) | ⬜ pending |
+| 63-01 T3 | 01 | 1 | BUSQ-01 | T-63-03 | CLI dry-run gateado por service key | unit | pnpm --filter @obs/fichas test | ❌ Wave 0 | ⬜ pending |
+| 63-02 T1 | 02 | 1 | BUSQ-02 | T-63-07 | shape live + fixture parser | unit | pnpm --filter @obs/tramitacion exec vitest run src/parse-camara-legislativo.test.ts | ❌ Wave 0 | ⬜ pending |
+| 63-02 T2 | 02 | 1 | BUSQ-02 | T-63-07 | parser valida con zod | unit | pnpm --filter @obs/tramitacion exec vitest run src/parse-camara-legislativo.test.ts | ✅ (Task 2) | ⬜ pending |
+| 63-02 T3 | 02 | 1 | BUSQ-02 | T-63-04/05/06 | enumeración reusa política @obs/ingest | unit | pnpm --filter @obs/tramitacion test | ✅ (ampliar) | ⬜ pending |
+| 63-03 T2 | 03 | 2 | BUSQ-01/02 | T-63-09/10 | ingesta R2 primero + seed cierra gap | integration(DB) | psql verify count(proyecto)==count(ficha) | ❌ manual | ⬜ pending |
+| 63-03 T4 | 03 | 2 | BUSQ-01 | T-63-08/11 | pipeline degrada honesto; RUT nunca al LLM | integration(DB) | psql embedding_version group | ❌ manual | ⬜ pending |
+| 63-03 T5 | 03 | 2 | BUSQ-02 | — | cron acotado sin re-backfill | static | grep YAML entrypoints | ✅ | ⬜ pending |
+| 63-04 T1 | 04 | 3 | BUSQ-03 | T-63-12/13/14 | coverage server-only, N no hardcodeado | unit(RTL) | pnpm --filter ./app exec vitest run app/buscar/coverage.test.tsx | ❌ Wave 0 | ⬜ pending |
+| 63-04 T2 | 04 | 3 | BUSQ-03 | — | banner N real + señal freshness N/M | unit | pnpm --filter @obs/freshness exec vitest run | ✅ (ampliar) | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

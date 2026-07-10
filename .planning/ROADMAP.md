@@ -1401,7 +1401,13 @@ Plans:
   4. /buscar declara la cobertura ("busca sobre N proyectos de ley [alcance]"); el operador puede ver N/M por señal (fichas, ideas, embeddings) sin bucear (freshness CLI o reporte).
   5. Cron leyes-weekly mantiene el corpus nuevo fresco (los boletines ampliados entran al set incremental) sin exceder los límites del cron (novedades acotadas, no re-backfill).
 
-**Plans:** TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 63-01-PLAN.md — Seed idempotente de proyecto_ficha (cierra gap-82) + CLI + SQL de cobertura (BUSQ-01)
+- [ ] 63-02-PLAN.md — Enumeración histórica WSLegislativo (parser+zod, connector, CLI LOCAL) (BUSQ-02)
+- [ ] 63-03-PLAN.md — Backfill LOCAL end-to-end: alcance→ingesta R2→seed→pipeline→reembed→cron (BUSQ-01/02)
+- [ ] 63-04-PLAN.md — Honestidad de cobertura: banner /buscar + señal freshness + deploy 61-02 (BUSQ-03)
 
 ---
 
