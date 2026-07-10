@@ -119,19 +119,27 @@ export class SupabaseFichasWriter {
    * T-07-06: solo error.message de PostgREST (nunca la service key).
    */
   async seedFichasPendientes(): Promise<{ creados: number }> {
-    const { data: proyectos, error: errP } = await this.client
-      .from("proyecto")
-      .select("boletin");
-    if (errP) throw new Error(`seedFichasPendientes (proyecto) falló: ${errP.message}`);
-    const { data: fichas, error: errF } = await this.client
-      .from("proyecto_ficha")
-      .select("boletin");
-    if (errF) throw new Error(`seedFichasPendientes (proyecto_ficha) falló: ${errF.message}`);
+    // PostgREST recorta cada select a ~1000 filas: sin paginar, el Set-diff compara páginas
+    // desalineadas y el seed re-inserta "faltantes" que ya tienen ficha (loop sin avance a >1k).
+    const leerTodosBoletines = async (tabla: "proyecto" | "proyecto_ficha"): Promise<string[]> => {
+      const PAGE = 1000;
+      const todos: string[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await this.client
+          .from(tabla)
+          .select("boletin")
+          .range(from, from + PAGE - 1);
+        if (error) throw new Error(`seedFichasPendientes (${tabla}) falló: ${error.message}`);
+        const filas = (data ?? []) as Array<{ boletin: string }>;
+        todos.push(...filas.map((f) => f.boletin));
+        if (filas.length < PAGE) break;
+      }
+      return todos;
+    };
 
-    const conFicha = new Set(((fichas ?? []) as Array<{ boletin: string }>).map((f) => f.boletin));
-    const faltantes = ((proyectos ?? []) as Array<{ boletin: string }>)
-      .map((p) => p.boletin)
-      .filter((b) => !conFicha.has(b));
+    const proyectos = await leerTodosBoletines("proyecto");
+    const conFicha = new Set(await leerTodosBoletines("proyecto_ficha"));
+    const faltantes = proyectos.filter((b) => !conFicha.has(b));
     if (faltantes.length === 0) return { creados: 0 };
 
     const filas: FichaRow[] = faltantes.map((boletin) => ({

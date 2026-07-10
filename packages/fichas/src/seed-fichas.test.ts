@@ -27,22 +27,22 @@ function fakeClient(opts: {
   fichas: string[];
 }) {
   const upsertCalls: Array<{ lote: unknown[]; options: unknown }> = [];
+  // select().range(from,to) pagina como PostgREST (writer lee TODAS las páginas — fix >1k filas).
+  const selectPaginado = (boletines: string[]) =>
+    vi.fn(() => ({
+      range: vi.fn(async (from: number, to: number) => ({
+        data: boletines.slice(from, to + 1).map((boletin) => ({ boletin })),
+        error: null,
+      })),
+    }));
   const client = {
     from(table: string) {
       if (table === "proyecto") {
-        return {
-          select: vi.fn(async () => ({
-            data: opts.proyectos.map((boletin) => ({ boletin })),
-            error: null,
-          })),
-        };
+        return { select: selectPaginado(opts.proyectos) };
       }
       // proyecto_ficha: select devuelve los boletines con ficha; upsert captura.
       return {
-        select: vi.fn(async () => ({
-          data: opts.fichas.map((boletin) => ({ boletin })),
-          error: null,
-        })),
+        select: selectPaginado(opts.fichas),
         upsert: vi.fn(async (lote: unknown[], options: unknown) => {
           upsertCalls.push({ lote, options });
           return { error: null };
