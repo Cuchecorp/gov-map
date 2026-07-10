@@ -106,6 +106,53 @@ export class SupabaseFichasWriter {
     }
   }
 
+  /**
+   * Seed idempotente: crea una fila proyecto_ficha estado='pendiente' para cada `proyecto`
+   * SIN fila de ficha (causa raíz BUSQ-01 — sin esto los proyectos son invisibles al pipeline,
+   * que lee proyecto_ficha vía leerPendientes). NO corre el backfill; solo abre las filas.
+   *
+   * Dos pasos: (1) SELECT boletines de `proyecto` y de `proyecto_ficha`, computar `faltantes`
+   * (proyectos sin ficha) vía Set; (2) upsert de las filas faltantes con
+   * `ignoreDuplicates: true` (ON CONFLICT DO NOTHING) — CRÍTICO: jamás re-abre un estado
+   * terminal ('embebido'/'error') a 'pendiente' (T-63-02). Si no hay faltantes, no toca la DB.
+   *
+   * T-07-06: solo error.message de PostgREST (nunca la service key).
+   */
+  async seedFichasPendientes(): Promise<{ creados: number }> {
+    const { data: proyectos, error: errP } = await this.client
+      .from("proyecto")
+      .select("boletin");
+    if (errP) throw new Error(`seedFichasPendientes (proyecto) falló: ${errP.message}`);
+    const { data: fichas, error: errF } = await this.client
+      .from("proyecto_ficha")
+      .select("boletin");
+    if (errF) throw new Error(`seedFichasPendientes (proyecto_ficha) falló: ${errF.message}`);
+
+    const conFicha = new Set(((fichas ?? []) as Array<{ boletin: string }>).map((f) => f.boletin));
+    const faltantes = ((proyectos ?? []) as Array<{ boletin: string }>)
+      .map((p) => p.boletin)
+      .filter((b) => !conFicha.has(b));
+    if (faltantes.length === 0) return { creados: 0 };
+
+    const filas: FichaRow[] = faltantes.map((boletin) => ({
+      boletin,
+      idea_matriz: null,
+      cuerpos_legales: [],
+      texto_r2_path: null,
+      estado: "pendiente",
+      origen: "fichas-seed",
+      fecha_captura: new Date().toISOString(),
+    }));
+    for (const lote of chunk(dedupePorClave(filas, (f) => f.boletin), CHUNK)) {
+      const { error } = await this.client
+        .from("proyecto_ficha")
+        // ignoreDuplicates: true → ON CONFLICT DO NOTHING: nunca re-abre estado terminal.
+        .upsert(lote, { onConflict: "boletin", ignoreDuplicates: true });
+      if (error) throw new Error(`seedFichasPendientes falló: ${error.message}`);
+    }
+    return { creados: faltantes.length };
+  }
+
   async upsertEmbedding(filas: EmbeddingRow[]): Promise<void> {
     if (filas.length === 0) return;
     const deduped = dedupePorClave(filas, (e) => e.boletin);
