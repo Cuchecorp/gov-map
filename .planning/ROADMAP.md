@@ -1404,9 +1404,17 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 63-01-PLAN.md — Seed idempotente de proyecto_ficha (cierra gap-82) + CLI + SQL de cobertura (BUSQ-01)
 - [ ] 63-02-PLAN.md — Enumeración histórica WSLegislativo (parser+zod, connector, CLI LOCAL) (BUSQ-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 63-03-PLAN.md — Backfill LOCAL end-to-end: alcance→ingesta R2→seed→pipeline→reembed→cron (BUSQ-01/02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 63-04-PLAN.md — Honestidad de cobertura: banner /buscar + señal freshness + deploy 61-02 (BUSQ-03)
 
 ---
