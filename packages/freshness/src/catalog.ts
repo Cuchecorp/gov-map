@@ -33,6 +33,55 @@ export interface FuenteConfig {
   workflowYml: string;
 }
 
+/**
+ * Cobertura del corpus de búsqueda (BUSQ-03) — señal N/M por etapa del pipeline.
+ *
+ * A diferencia de CATALOG (orientado a STALENESS: ¿hace cuánto no ingiere?), la
+ * cobertura responde ¿de M proyectos, cuántos llegaron a esta etapa? El denominador
+ * M es `count(proyecto)` (universo total); cada señal es un numerador N.
+ *
+ * Las SQL son las MISMAS de `scripts/verify-cobertura.sql` (fuente única de verdad):
+ * la verificación manual del backfill y esta señal comparten los conteos. El
+ * `embedding` (proyecto_embedding) es el N que ve el usuario en el banner de /buscar.
+ */
+export interface CoberturaSenalConfig {
+  /** id estable de la señal (proyecto/ficha/idea/embedding). */
+  senal: string;
+  /** etiqueta legible para la tabla del operador. */
+  etiqueta: string;
+  /** SQL read-only que retorna un único count (mismo que verify-cobertura.sql). */
+  sql: string;
+  /** true = esta señal es el denominador M (universo total). */
+  esDenominador: boolean;
+}
+
+export const COBERTURA_SENALES: CoberturaSenalConfig[] = [
+  {
+    senal: "proyecto",
+    etiqueta: "proyectos (universo)",
+    sql: "SELECT count(*) FROM proyecto;",
+    esDenominador: true,
+  },
+  {
+    senal: "ficha",
+    etiqueta: "con ficha",
+    sql: "SELECT count(*) FROM proyecto_ficha;",
+    esDenominador: false,
+  },
+  {
+    senal: "idea",
+    etiqueta: "con idea matriz",
+    sql: "SELECT count(*) FROM proyecto_ficha WHERE idea_matriz IS NOT NULL AND idea_matriz <> '';",
+    esDenominador: false,
+  },
+  {
+    senal: "embedding",
+    etiqueta: "indexados (/buscar)",
+    sql: "SELECT count(*) FROM proyecto_embedding;",
+    esDenominador: false,
+  },
+];
+
 export const CATALOG: FuenteConfig[] = [
   {
     fuente: "leyes",

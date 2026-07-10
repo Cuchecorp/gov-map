@@ -3,8 +3,8 @@
  * Sin I/O, sin red, sin llamadas a DB. Testeable en aislamiento.
  */
 
-import type { FuenteConfig } from "./catalog.js";
-import type { QueryRow } from "./query-runner.js";
+import type { CoberturaSenalConfig, FuenteConfig } from "./catalog.js";
+import type { CoberturaCount, QueryRow } from "./query-runner.js";
 
 export interface FuenteResult {
   fuente: string;
@@ -66,5 +66,45 @@ export function evaluate(
       ghRun: row?.ghRun ?? "n/d",
       r2Snapshot: row?.r2Snapshot ?? "n/d (sin snapshots)",
     };
+  });
+}
+
+export interface CoberturaResult {
+  senal: string;
+  etiqueta: string;
+  /** numerador N (count de la señal); null si el count no se pudo leer. */
+  n: number | null;
+  /** denominador M (universo total = count(proyecto)); null si no se pudo leer. */
+  m: number | null;
+  /** porcentaje N/M redondeado a entero; null si N o M desconocidos, o M=0. */
+  pct: number | null;
+  esDenominador: boolean;
+}
+
+/**
+ * Evalúa la cobertura N/M por señal a partir de los counts leídos (pura, sin I/O).
+ *
+ * M (denominador) = el count de la señal marcada `esDenominador` (proyecto). Cada
+ * señal reporta su N y el porcentaje N/M. Degrada honestamente: un count faltante
+ * (null) NO se reporta como 0% — se marca null (desconocido). M=0 → pct null (no
+ * dividir por cero; corpus vacío no es "0% cubierto" sino "sin universo").
+ */
+export function evaluateCobertura(
+  counts: CoberturaCount[],
+  senales: CoberturaSenalConfig[],
+): CoberturaResult[] {
+  const denomCfg = senales.find((s) => s.esDenominador);
+  const mRaw = denomCfg
+    ? counts.find((c) => c.senal === denomCfg.senal)?.count ?? null
+    : null;
+
+  return senales.map((cfg) => {
+    const n = counts.find((c) => c.senal === cfg.senal)?.count ?? null;
+    const m = mRaw;
+    let pct: number | null = null;
+    if (n !== null && m !== null && m > 0) {
+      pct = Math.round((n / m) * 100);
+    }
+    return { senal: cfg.senal, etiqueta: cfg.etiqueta, n, m, pct, esDenominador: cfg.esDenominador };
   });
 }

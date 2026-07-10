@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { evaluate } from "./evaluate.js";
-import { CATALOG } from "./catalog.js";
-import type { QueryRow } from "./query-runner.js";
+import { evaluate, evaluateCobertura } from "./evaluate.js";
+import { CATALOG, COBERTURA_SENALES } from "./catalog.js";
+import type { CoberturaCount, QueryRow } from "./query-runner.js";
 
 const NOW = new Date("2026-07-09T12:00:00Z");
 
@@ -96,5 +96,63 @@ describe("evaluate", () => {
     const results = evaluate(rows, catalog, NOW);
     expect(results[0]!.ghRun).toBe("success @ 2026-07-07");
     expect(results[0]!.r2Snapshot).toBe("2026-07-07T10:00:00Z");
+  });
+});
+
+describe("evaluateCobertura (BUSQ-03)", () => {
+  function counts(map: Record<string, number | null>): CoberturaCount[] {
+    return COBERTURA_SENALES.map((c) => ({ senal: c.senal, count: c.senal in map ? map[c.senal]! : null }));
+  }
+
+  it("calcula N/M y pct por señal con M = count(proyecto)", () => {
+    const results = evaluateCobertura(
+      counts({ proyecto: 200, ficha: 200, idea: 150, embedding: 180 }),
+      COBERTURA_SENALES,
+    );
+    const byId = Object.fromEntries(results.map((r) => [r.senal, r]));
+    expect(byId["proyecto"]!.n).toBe(200);
+    expect(byId["proyecto"]!.m).toBe(200);
+    expect(byId["proyecto"]!.pct).toBe(100);
+    expect(byId["embedding"]!.n).toBe(180);
+    expect(byId["embedding"]!.m).toBe(200);
+    expect(byId["embedding"]!.pct).toBe(90); // 180/200
+    expect(byId["idea"]!.pct).toBe(75); // 150/200
+  });
+
+  it("count faltante (null) → N y pct null, NUNCA 0 (degradación honesta)", () => {
+    const results = evaluateCobertura(
+      counts({ proyecto: 100, embedding: null }),
+      COBERTURA_SENALES,
+    );
+    const emb = results.find((r) => r.senal === "embedding")!;
+    expect(emb.n).toBeNull();
+    expect(emb.pct).toBeNull();
+  });
+
+  it("M = 0 → pct null (no divide por cero; corpus vacío no es 0% cubierto)", () => {
+    const results = evaluateCobertura(
+      counts({ proyecto: 0, ficha: 0, idea: 0, embedding: 0 }),
+      COBERTURA_SENALES,
+    );
+    for (const r of results) {
+      expect(r.m).toBe(0);
+      expect(r.pct).toBeNull();
+    }
+  });
+
+  it("marca la señal denominador (proyecto) con esDenominador=true", () => {
+    const results = evaluateCobertura(counts({ proyecto: 10 }), COBERTURA_SENALES);
+    const denom = results.filter((r) => r.esDenominador);
+    expect(denom).toHaveLength(1);
+    expect(denom[0]!.senal).toBe("proyecto");
+  });
+
+  it("evalúa las 4 señales de cobertura", () => {
+    const results = evaluateCobertura(
+      counts({ proyecto: 50, ficha: 40, idea: 30, embedding: 35 }),
+      COBERTURA_SENALES,
+    );
+    expect(results).toHaveLength(4);
+    expect(results.map((r) => r.senal)).toEqual(["proyecto", "ficha", "idea", "embedding"]);
   });
 });

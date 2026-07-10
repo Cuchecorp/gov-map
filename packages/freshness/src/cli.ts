@@ -12,9 +12,14 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { queryFreshness } from "./query-runner.js";
-import { evaluate, type FuenteResult } from "./evaluate.js";
-import { CATALOG } from "./catalog.js";
+import { queryCobertura, queryFreshness } from "./query-runner.js";
+import {
+  evaluate,
+  evaluateCobertura,
+  type CoberturaResult,
+  type FuenteResult,
+} from "./evaluate.js";
+import { CATALOG, COBERTURA_SENALES } from "./catalog.js";
 
 // ─── loadEnv (BOM-safe, process.env tiene precedencia sobre .env) ─────────────
 
@@ -107,6 +112,36 @@ function renderTable(results: FuenteResult[]): string {
   return [header, sep, ...rows].join("\n");
 }
 
+// ─── Cobertura del corpus de búsqueda (BUSQ-03) ───────────────────────────────
+
+function renderCobertura(results: CoberturaResult[]): string {
+  const cols = { senal: 22, n: 8, m: 8, pct: 6 };
+  const header =
+    pad("Señal", cols.senal) +
+    " | " +
+    pad("N", cols.n) +
+    " | " +
+    pad("M (total)", cols.m) +
+    " | " +
+    "N/M";
+  const sep = "-".repeat(header.length);
+  const rows = results.map((r) => {
+    const nStr = r.n !== null ? String(r.n) : "?";
+    const mStr = r.m !== null ? String(r.m) : "?";
+    const pctStr = r.pct !== null ? `${r.pct}%` : "n/d";
+    return (
+      pad(r.etiqueta, cols.senal) +
+      " | " +
+      pad(nStr, cols.n) +
+      " | " +
+      pad(mStr, cols.m) +
+      " | " +
+      pctStr
+    );
+  });
+  return ["Cobertura del corpus de búsqueda (BUSQ-03):", "", header, sep, ...rows].join("\n");
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
@@ -167,14 +202,21 @@ async function main(): Promise<void> {
   const rows = await queryFreshness(env["SUPABASE_DB_URL"]!);
   const results = evaluate(rows, CATALOG, new Date(), envOverrides);
 
+  // Cobertura N/M del corpus de búsqueda (BUSQ-03): el operador la ve sin bucear SQL.
+  const coberturaCounts = queryCobertura(env["SUPABASE_DB_URL"]!);
+  const cobertura = evaluateCobertura(coberturaCounts, COBERTURA_SENALES);
+
   const table = renderTable(results);
+  const coberturaTable = renderCobertura(cobertura);
   const anyStale = results.some((r) => r.stale);
 
   if (jsonMode) {
-    process.stderr.write(table + "\n");
-    process.stdout.write(JSON.stringify(results, null, 2) + "\n");
+    process.stderr.write(table + "\n\n" + coberturaTable + "\n");
+    process.stdout.write(
+      JSON.stringify({ frescura: results, cobertura }, null, 2) + "\n",
+    );
   } else {
-    process.stdout.write(table + "\n");
+    process.stdout.write(table + "\n\n" + coberturaTable + "\n");
   }
 
   process.exit(anyStale ? 1 : 0);

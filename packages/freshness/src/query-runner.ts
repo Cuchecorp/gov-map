@@ -27,13 +27,19 @@
  */
 
 import { execSync } from "node:child_process";
-import { CATALOG } from "./catalog.js";
+import { CATALOG, COBERTURA_SENALES } from "./catalog.js";
 
 export interface QueryRow {
   fuente: string;
   ultimoUpsert: string | null;
   ghRun: string;
   r2Snapshot: string;
+}
+
+export interface CoberturaCount {
+  senal: string;
+  /** count leído; null si la query degradó (psql falló / valor no numérico). */
+  count: number | null;
 }
 
 function psql(dbUrl: string, sql: string): string {
@@ -94,5 +100,21 @@ export async function queryFreshness(dbUrl: string): Promise<QueryRow[]> {
     const r2Snapshot = r2SnapshotSignal(dbUrl, cfg.fuente);
 
     return { fuente: cfg.fuente, ultimoUpsert, ghRun, r2Snapshot };
+  });
+}
+
+/**
+ * Lee los counts de cobertura del corpus de búsqueda (BUSQ-03).
+ *
+ * Corre las MISMAS SQL de scripts/verify-cobertura.sql (definidas en COBERTURA_SENALES)
+ * vía el mismo `psql` read-only con PGCLIENTENCODING=UTF8. Degrada honestamente: un
+ * count que no se pudo leer (psql falló / valor no numérico) → null, NO 0.
+ */
+export function queryCobertura(dbUrl: string): CoberturaCount[] {
+  return COBERTURA_SENALES.map((cfg) => {
+    const raw = psql(dbUrl, cfg.sql);
+    const parsed = Number.parseInt(raw, 10);
+    const count = raw === "" || Number.isNaN(parsed) ? null : parsed;
+    return { senal: cfg.senal, count };
   });
 }
