@@ -19,6 +19,7 @@ import {
   assertAllowedUrl,
   type AllowlistOptions,
 } from "@obs/ingest";
+import { parseCamaraLegislativo } from "./parse-camara-legislativo";
 
 /** Error de robots.txt que prohíbe el fetch (no se reintenta acá; el caller decide). */
 export class RobotsDisallowError extends Error {
@@ -38,6 +39,15 @@ export interface CamaraConnectorDeps {
 }
 
 const BASE = "https://opendata.camara.cl/wscamaradiputados.asmx";
+
+/**
+ * WS de LEGISLATIVO (enumeración histórica de proyectos por año). Verificado LIVE 2026-07-10:
+ * `retornarMocionesXAnno?prmAnno={año}` + `retornarMensajesXAnno?prmAnno={año}` devuelven
+ * `<ProyectosLeyColeccion><ProyectoLey><NumeroBoletin>`. NOTA: el WS de VOTACIONES devuelve [] al
+ * enumerar por año (anti-patrón conocido) — WSLegislativo es la fuente correcta para el histórico.
+ */
+const BASE_LEG =
+  "https://opendata.camara.cl/camaradiputados/WServices/WSLegislativo.asmx";
 
 /** Regex del boletín en texto libre (`Boletín N° 14309-04`). */
 const RE_BOLETIN = /Bolet[íi]n N°\s*(\d+-\d+)/g;
@@ -115,6 +125,37 @@ export class CamaraConnector {
       }
     }
     return out;
+  }
+
+  /**
+   * Enumera los `NumeroBoletin` (mociones + mensajes) INGRESADOS en un año vía WSLegislativo.asmx.
+   * Reusa la política LOCKED de @obs/ingest (`this.fetch`: SSRF allowlist → robots → rate-limit
+   * 2-3s → fetcher) — NO hand-roll. El año se valida (V5, no basura al WS gob) y se
+   * `encodeURIComponent`. Best-effort por op: un fallo de una op NO aborta la otra (se loguea).
+   * El XML se pasa a `parseCamaraLegislativo` (zod-validado). Devuelve los boletines deduplicados.
+   *
+   * La lista resultante alimenta el camino existente `run-tramitacion-prod-cli --boletines`
+   * (P03). Este método NO ingiere: solo enumera.
+   */
+  async enumerarProyectosXAnno(anno: number): Promise<string[]> {
+    if (!Number.isInteger(anno) || anno < 1990 || anno > 2100) {
+      throw new Error(`anno inválido: ${anno} (esperado entero 1990..2100)`); // V5 / T-63-06
+    }
+    const out = new Set<string>();
+    for (const op of ["retornarMocionesXAnno", "retornarMensajesXAnno"] as const) {
+      const url = `${BASE_LEG}/${op}?prmAnno=${encodeURIComponent(String(anno))}`;
+      try {
+        const xml = await this.fetch(url); // política LOCKED (T-63-04/T-63-05)
+        for (const b of parseCamaraLegislativo(xml)) out.add(b); // zod-validado (T-63-07)
+      } catch (e) {
+        // Best-effort: la otra op sigue. Se LOGUEA (nunca catch mudo → observable).
+        console.warn(
+          `[connector-camara] enumerarProyectosXAnno ${op} ${anno} omitido:`,
+          e instanceof Error ? e.message : e,
+        );
+      }
+    }
+    return [...out];
   }
 
   /** Fetch del XML de votaciones por boletín base (`getVotaciones_Boletin`). */
