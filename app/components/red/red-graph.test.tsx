@@ -444,6 +444,58 @@ describe("RedGraph — nodos huérfanos excluidos (B20a)", () => {
 
 });
 
+// ── CR-01 (62-REVIEW): filtros que dejan al seed sin vecino → estado honesto ──────
+describe("RedGraph — seed sin vecino visible = estado honesto, no seed suelto (CR-01)", () => {
+  it("filtro de fecha que mata las aristas seed↔vecino (sobrevive vecino↔vecino) NO deja al seed solo y muestra el mensaje honesto", () => {
+    const nodos: Subgrafo["nodos"] = [
+      { id: "D0001", nombre: "Ana Alvarado", camara: "diputados" }, // seed
+      { id: "V1", nombre: "Bruno Barros", camara: "diputados" },
+      { id: "V2", nombre: "Carla Cortés", camara: "diputados" },
+    ];
+    const { container } = render(
+      <RedGraph
+        seedId="D0001"
+        subgrafo={{
+          nodos,
+          aristas: [
+            // Única arista seed↔vecino, en enero.
+            arista({
+              a: "D0001",
+              b: "V1",
+              desde: "2024-01-01T00:00:00Z",
+              hasta: "2024-01-31T00:00:00Z",
+            }),
+            // Arista vecino↔vecino en marzo (sobrevive un filtro desde feb).
+            arista({
+              a: "V1",
+              b: "V2",
+              desde: "2024-03-01T00:00:00Z",
+              hasta: "2024-03-31T00:00:00Z",
+            }),
+          ],
+        }}
+      />,
+    );
+    // Filtrar desde 2024-02-01: la arista de enero (seed↔vecino) sale de rango,
+    // la de marzo (vecino↔vecino) sobrevive → aristasVisibles > 0 pero el seed
+    // queda sin vecino.
+    fireEvent.change(screen.getByLabelText(/desde/i), {
+      target: { value: "2024-02-01" },
+    });
+    // NO se monta el lienzo con el seed suelto.
+    expect(
+      within(container).queryByTestId("rf-canvas"),
+    ).not.toBeInTheDocument();
+    expect(
+      container.querySelector('[data-testid="rf-node-D0001"]'),
+    ).toBeNull();
+    // Se muestra el mensaje honesto en vez del seed flotando.
+    expect(
+      screen.getByText(/Ninguna relación coincide con los filtros/i),
+    ).toBeInTheDocument();
+  });
+});
+
 // ── WR-04 (62-REVIEW): self-loop del seed no lo mete en su propio anillo ──────────
 describe("RedGraph — self-loop del seed excluido (WR-04)", () => {
   it("un self-loop (a===b===seed) NO duplica el seed en el lienzo", () => {

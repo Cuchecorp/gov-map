@@ -372,6 +372,24 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
       })
     : [];
 
+  // CR-01 (62-REVIEW, B20a LOCKED): "el seed no tiene ningún vecino visible" es su
+  // PROPIO estado honesto, no el lienzo. `aristasVisibles` puede ser > 0 y aun así
+  // dejar al seed sin vecinos: el subgrafo también trae aristas vecino↔vecino, y las
+  // ventanas temporales se evalúan por-arista de forma independiente, así que un
+  // filtro de fecha puede matar TODAS las aristas seed↔vecino mientras sobrevive una
+  // arista vecino↔vecino. Sin este flag: (a) desktop pintaba el seed SOLO, flotando
+  // sin arista (la "persona suelta" que B20a prohíbe); (b) móvil quedaba en blanco
+  // (canvas hidden + vecinosLista vacía = ni contenido ni mensaje). Con seedNodo y
+  // 0 vecinos renderizados → se muestra el mensaje honesto en vez del canvas/lista.
+  const sinVecinosVisibles = Boolean(seedNodo) && rendered.length === 0;
+
+  // CR-01 (móvil de la rama fallback): con seedId pero sin seedNodo (el seed no está
+  // en ningún nodo del subgrafo visible), la rama fallback pinta `nodosVisibles` en
+  // el canvas ≥md, pero <md no hay lista → móvil quedaba mudo mientras el desktop sí
+  // mostraba grafo. Un aviso SOLO-móvil evita el callejón sin salida sin tocar el
+  // canvas de desktop.
+  const avisoMovilFallback = Boolean(seedId) && !seedNodo && !sinVecinosVisibles;
+
   return (
     <section aria-label="Grafo de relaciones" className="mt-8">
       {/* Leyenda de lectura: qué es un nodo, qué es una arista (COMP-03). */}
@@ -440,13 +458,25 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
         </div>
       </div>
 
-      {aristasVisibles.length === 0 ? (
+      {aristasVisibles.length === 0 || sinVecinosVisibles ? (
+        // CR-01 (62-REVIEW): mensaje honesto también cuando el seed quedó sin
+        // vecinos visibles (filtros que matan todas las aristas seed↔vecino aunque
+        // sobreviva alguna vecino↔vecino) — nunca el seed suelto ni el móvil mudo.
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
           Ninguna relación coincide con los filtros seleccionados. Ajusta el
           tipo o el periodo para ver los hechos disponibles.
         </p>
       ) : (
         <>
+          {/* CR-01 (móvil rama fallback): con seedId pero sin seedNodo, el canvas
+              ≥md muestra el grafo pero <md no hay lista → este aviso solo-móvil
+              impide el callejón sin salida silencioso. */}
+          {avisoMovilFallback && (
+            <p className="md:hidden mt-4 text-sm leading-relaxed text-muted-foreground">
+              El grafo con las relaciones disponibles se muestra en pantallas de
+              mayor tamaño.
+            </p>
+          )}
           {/* Canvas radial SOLO ≥768px (RED-02): a 390px el anillo es ilegible,
               así que el canvas se oculta en móvil y en su lugar va la lista de
               vecinos (abajo). El wrapper hidden md:block mantiene el lienzo con sus
