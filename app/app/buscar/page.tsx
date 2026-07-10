@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createServerSupabase } from "@/lib/supabase";
+import { contarCoberturaBusqueda, ALCANCE_COBERTURA } from "@/lib/coverage";
 import { buscarProyectos, BOLETIN_RE, MAX_QUERY_CHARS } from "@/lib/buscar";
 import { sourceLabel, type ProyectoRow } from "@/lib/types";
 import { SearchBox } from "@/components/search-box";
@@ -38,10 +39,17 @@ export default async function BuscarPage({ searchParams }: PageProps) {
     redirect(`/proyecto/${q}`);
   }
 
+  // Cobertura HONESTA (BUSQ-03): N real desde count(proyecto_embedding), NUNCA
+  // hardcodeado. server-only; la key jamás llega al cliente (T-63-12/13/14).
+  const cobertura = await contarCoberturaBusqueda();
+
   return (
     <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
       <h1 className="sr-only">Buscar proyectos de ley</h1>
       <SearchBox initialQuery={q} />
+      <p className="text-sm text-muted-foreground mt-2">
+        Busca sobre {cobertura} proyectos de ley ({ALCANCE_COBERTURA}).
+      </p>
 
       {q.length === 0 ? (
         // Query vacía: prompt estilo landing, sin lista ni error (UI-SPEC §8.1).
