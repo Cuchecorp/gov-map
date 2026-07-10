@@ -14,7 +14,7 @@
 ### BUSQ — Búsqueda de proyectos completa
 
 - [x] **BUSQ-01**: Todo proyecto presente en la DB tiene ficha + embedding (hoy: 156 proyectos, 74 fichas, 74 embeddings, 60 ideas matrices): backfill LOCAL completa el gap, reintenta fallidos y registra causa por boletín; techo honesto documentado (PDF escaneado, fuente caída, etc. — nunca fabricar).
-- [ ] **BUSQ-02**: Cobertura histórica ampliada más allá del set agenda∪votación∪tabla: enumerar e ingerir proyectos de un alcance definido y declarado (p.ej. legislatura actual completa y/o últimos N años vía la fuente que la investigación confirme), como backfill masivo LOCAL conforme a convención (R2 primero, rate-limit, idempotente, reanudable). El alcance elegido queda documentado con su porqué.
+- [x] **BUSQ-02**: Cobertura histórica ampliada más allá del set agenda∪votación∪tabla: enumerar e ingerir proyectos de un alcance definido y declarado (p.ej. legislatura actual completa y/o últimos N años vía la fuente que la investigación confirme), como backfill masivo LOCAL conforme a convención (R2 primero, rate-limit, idempotente, reanudable). El alcance elegido queda documentado con su porqué.
 - [ ] **BUSQ-03**: Ideas matrices y cuerpos legales al máximo alcanzable del corpus: pipeline re-corre extracción para fichas sin idea; los casos imposibles quedan con estado honesto Y la cobertura real (N/M fichas, N/M ideas) es visible para el operador (freshness CLI o /metodologia) — el usuario nunca cree que buscó sobre todo si no fue así: si la búsqueda opera sobre un subconjunto, la UI de /buscar lo declara.
 
 ## Future Requirements (deferred)
@@ -36,7 +36,7 @@
 | RED-02 | Phase 62 | Complete |
 | RED-03 | Phase 62 | Complete |
 | BUSQ-01 | Phase 63 | Complete |
-| BUSQ-02 | Phase 63 | Pending |
+| BUSQ-02 | Phase 63 | Complete |
 | BUSQ-03 | Phase 63 | Pending |
 
 ---
