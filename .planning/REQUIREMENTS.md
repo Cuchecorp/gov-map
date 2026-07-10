@@ -9,7 +9,7 @@
 
 - [x] **RED-01**: `/red` con seed muestra SOLO el ego-network real (el seed + sus vecinos directos, aristas entre ellos), NUNCA los ~136 nodos apiñados. Sin seed: estado inicial que orienta (explicación + selector prominente), jamás el grafo completo.
 - [x] **RED-02**: Layout legible y determinista que NO implique afinidad (decisión LOCKED de F18: nunca force-simulation): p.ej. radial ego-céntrico con vecinos en anillo en orden neutro (alfabético), etiquetas legibles sin zoom, tope de vecinos con "ver más" honesto, usable en móvil 390px. La leyenda "cómo leer este grafo" se actualiza al layout nuevo.
-- [ ] **RED-03**: Lectura fría BrowserOS (patrón F61: captura→corrección→re-captura, desktop+390px) da veredicto "comprensible" en `/red` con seed y sin seed; evidencia before/after archivada.
+- [x] **RED-03**: Lectura fría BrowserOS (patrón F61: captura→corrección→re-captura, desktop+390px) da veredicto "comprensible" en `/red` con seed y sin seed; evidencia before/after archivada.
 
 ### BUSQ — Búsqueda de proyectos completa
 
@@ -34,7 +34,7 @@
 |--------|-------|--------|
 | RED-01 | Phase 62 | Complete |
 | RED-02 | Phase 62 | Complete |
-| RED-03 | Phase 62 | Pending |
+| RED-03 | Phase 62 | Complete |
 | BUSQ-01 | Phase 63 | Pending |
 | BUSQ-02 | Phase 63 | Pending |
 | BUSQ-03 | Phase 63 | Pending |
