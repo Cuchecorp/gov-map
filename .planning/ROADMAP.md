@@ -1364,7 +1364,7 @@ Plans:
 ### Phases
 
 - [x] **Phase 62: RED — Grafo de relaciones entendible** - Ego-network real + layout radial determinista sin afinidad + gate BrowserOS. (completed 2026-07-10)
-- [ ] **Phase 63: BUSQ — Búsqueda de proyectos completa** - Fichas/embeddings 100% del corpus, corpus histórico ampliado, ideas matrices al máximo + cobertura declarada.
+- [x] **Phase 63: BUSQ — Búsqueda de proyectos completa** - Fichas/embeddings 100% del corpus, corpus histórico ampliado, ideas matrices al máximo + cobertura declarada. (completed 2026-07-11)
 
 ---
 
@@ -1401,7 +1401,7 @@ Plans:
   4. /buscar declara la cobertura ("busca sobre N proyectos de ley [alcance]"); el operador puede ver N/M por señal (fichas, ideas, embeddings) sin bucear (freshness CLI o reporte).
   5. Cron leyes-weekly mantiene el corpus nuevo fresco (los boletines ampliados entran al set incremental) sin exceder los límites del cron (novedades acotadas, no re-backfill).
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -1415,7 +1415,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 63-04-PLAN.md — Honestidad de cobertura: banner /buscar + señal freshness + deploy 61-02 (BUSQ-03)
+- [x] 63-04-PLAN.md — Honestidad de cobertura: banner /buscar + señal freshness + deploy 61-02 (BUSQ-03)
 
 ---
 

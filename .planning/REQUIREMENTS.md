@@ -15,7 +15,7 @@
 
 - [x] **BUSQ-01**: Todo proyecto presente en la DB tiene ficha + embedding (hoy: 156 proyectos, 74 fichas, 74 embeddings, 60 ideas matrices): backfill LOCAL completa el gap, reintenta fallidos y registra causa por boletín; techo honesto documentado (PDF escaneado, fuente caída, etc. — nunca fabricar).
 - [x] **BUSQ-02**: Cobertura histórica ampliada más allá del set agenda∪votación∪tabla: enumerar e ingerir proyectos de un alcance definido y declarado (p.ej. legislatura actual completa y/o últimos N años vía la fuente que la investigación confirme), como backfill masivo LOCAL conforme a convención (R2 primero, rate-limit, idempotente, reanudable). El alcance elegido queda documentado con su porqué.
-- [ ] **BUSQ-03**: Ideas matrices y cuerpos legales al máximo alcanzable del corpus: pipeline re-corre extracción para fichas sin idea; los casos imposibles quedan con estado honesto Y la cobertura real (N/M fichas, N/M ideas) es visible para el operador (freshness CLI o /metodologia) — el usuario nunca cree que buscó sobre todo si no fue así: si la búsqueda opera sobre un subconjunto, la UI de /buscar lo declara.
+- [x] **BUSQ-03**: Ideas matrices y cuerpos legales al máximo alcanzable del corpus: pipeline re-corre extracción para fichas sin idea; los casos imposibles quedan con estado honesto Y la cobertura real (N/M fichas, N/M ideas) es visible para el operador (freshness CLI o /metodologia) — el usuario nunca cree que buscó sobre todo si no fue así: si la búsqueda opera sobre un subconjunto, la UI de /buscar lo declara.
 
 ## Future Requirements (deferred)
 
@@ -37,7 +37,7 @@
 | RED-03 | Phase 62 | Complete |
 | BUSQ-01 | Phase 63 | Complete |
 | BUSQ-02 | Phase 63 | Complete |
-| BUSQ-03 | Phase 63 | Pending |
+| BUSQ-03 | Phase 63 | Complete |
 
 ---
 *Modo de trabajo v6.1 (directiva del operador, igual que v6.0): Fable planifica/dirime/controla; ejecutores Sonnet o menores; autónomo y ordenado; BrowserOS como gate de comprensión; gates humanos jamás los flipea un agente.*
