@@ -57,6 +57,18 @@ describe("evaluate", () => {
     expect(results[0]!.diasDesdeUpsert).toBeNull();
   });
 
+  it("WR-07: timestamp INPARSEABLE → stale: true (fail-CLOSED, no fail-open)", () => {
+    // Un valor que V8 no puede parsear (Invalid Date). ANTES: NaN > umbral = false → OK
+    // (fail-open silencioso). AHORA: diasDesdeUpsert=null → stale=true (desconocido=stale).
+    const rows: QueryRow[] = [
+      { fuente: "leyes", ultimoUpsert: "no-es-una-fecha", ghRun: "n/d", r2Snapshot: "n/d" },
+    ];
+    const catalog = CATALOG.filter((c) => c.fuente === "leyes");
+    const results = evaluate(rows, catalog, NOW);
+    expect(results[0]!.diasDesdeUpsert).toBeNull();
+    expect(results[0]!.stale).toBe(true);
+  });
+
   it("env override FRESHNESS_UMBRAL_LEYES=3 changes umbral for leyes", () => {
     // With override umbral=3; 5 days → stale (5 > 3)
     const rows: QueryRow[] = [makeRow("leyes", 5)];

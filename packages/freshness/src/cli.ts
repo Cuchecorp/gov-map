@@ -115,7 +115,9 @@ function renderTable(results: FuenteResult[]): string {
 // ─── Cobertura del corpus de búsqueda (BUSQ-03) ───────────────────────────────
 
 function renderCobertura(results: CoberturaResult[]): string {
-  const cols = { senal: 22, n: 8, m: 8, pct: 6 };
+  // IN-04: cols.m=9 (no 8): "M (total)" tiene 9 chars; con 8 `pad` recortaba el ")" final
+  // ("M (total") en cada render.
+  const cols = { senal: 22, n: 8, m: 9, pct: 6 };
   const header =
     pad("Señal", cols.senal) +
     " | " +

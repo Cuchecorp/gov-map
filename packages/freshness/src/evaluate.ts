@@ -49,11 +49,17 @@ export function evaluate(
     let diasDesdeUpsert: number | null = null;
 
     if (ultimoUpsert !== null) {
-      const ms = now.getTime() - new Date(ultimoUpsert).getTime();
-      diasDesdeUpsert = Math.floor(ms / (1000 * 60 * 60 * 24));
+      // WR-07: un timestamp que V8 no puede parsear → Invalid Date → getTime() NaN →
+      // diasDesdeUpsert NaN, y `NaN > umbral` es false ⇒ ANTES la fuente se reportaba OK
+      // (FAIL-OPEN: "monitor" mudo). Guardamos con Number.isNaN → null (= desconocido =
+      // stale, MISMA regla que ultimoUpsert null). Fail-CLOSED en la señal central.
+      const t = new Date(ultimoUpsert).getTime();
+      diasDesdeUpsert = Number.isNaN(t)
+        ? null // fecha ilegible = desconocido = stale
+        : Math.floor((now.getTime() - t) / (1000 * 60 * 60 * 24));
     }
 
-    // Staleness: null (desconocido) o días > umbral → stale
+    // Staleness: null (desconocido, incl. fecha ilegible) o días > umbral → stale
     const stale = diasDesdeUpsert === null || diasDesdeUpsert > umbralDias;
 
     return {
