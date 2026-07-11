@@ -217,3 +217,39 @@ sobre novedades; el histórico no se re-backfilla en cada corrida semanal.
 
 _Reporte CERRADO 2026-07-11: sección 3 completa (counts finales + techo honesto por causa) tras
 `=== pipeline-chunks DONE 2026-07-11T13:23:16Z ===`. Ver `63-03-SUMMARY.md` para el cierre del plan._
+
+---
+
+## 5. Redeploy post-review-fixes fase 63 — ✅ EN VIVO (2026-07-11)
+
+Redeploy a producción para incluir los fixes post-review de la fase 63 que estaban en master pero
+no en el worker desplegado (deploy previo: `13e2a09e-f3c5-493f-9702-1b2e40c7526c`).
+
+| Campo | Valor |
+|-------|-------|
+| Worker | observatorio-congreso |
+| URL | https://observatorio-congreso.thevalis.workers.dev |
+| **Version ID** | **af1cfcaf-814d-4fc1-b107-332245ad69b3** |
+| Version previa | 13e2a09e-f3c5-493f-9702-1b2e40c7526c |
+| Método | Docker node:22-slim + OpenNext + wrangler 4.109.0 OAuth local (runbook 61-02) |
+| Assets | 1 nuevo (BUILD_ID) / 57 cacheados |
+| Worker startup | 23 ms |
+| Fecha | 2026-07-11 |
+
+**Qué cambió (commits `a3c27dd..8295618` en master):**
+
+- **WR-01** (`a3c27dd`): `ORDER BY boletin` en las lecturas paginadas del seed (paginación estable).
+- **WR-02** (`dba0596`): el conteo de cobertura devuelve `null` en fallo y **oculta el banner** en vez de mostrar "0 proyectos".
+- **WR-03** (`69e46cf`): **clamp de `?page=`** a `1..MAX_PAGE` (query param fuera de rango ya no rompe).
+- **WR-04** (`42aed5e`): lanza error cuando ambas operaciones de enumeración fallan (fallo total audible).
+- **WR-05/06/07** (`0aa8161`/`0e8180f`/`2557e2a`): endurecimiento de la CLI de enumeración (validación de flags, `execFileSync`, fail-closed en timestamp no parseable) — no afecta al frontend desplegado.
+
+**Sanity post-deploy (sin flags):**
+
+| Superficie | URL | HTTP | Evidencia |
+|------------|-----|------|-----------|
+| /buscar | `/buscar` | 200 | Banner LIVE: "Busca sobre 3100 proyectos de ley (período legislativo 2022–2026)" (WR-02 renderiza el conteo, no lo oculta) |
+| clamp `?page=` | `/buscar?q=pensiones&page=99999` | 200 | Página fuera de rango clampeada, sin error (WR-03) |
+| /red | `/red?seed=D1009` | 200 | Grafo renderiza |
+
+_Pre-deploy: suite `pnpm test` 757/757 verde, working tree limpio en master._
