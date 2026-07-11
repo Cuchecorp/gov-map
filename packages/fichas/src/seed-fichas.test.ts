@@ -27,13 +27,21 @@ function fakeClient(opts: {
   fichas: string[];
 }) {
   const upsertCalls: Array<{ lote: unknown[]; options: unknown }> = [];
-  // select().range(from,to) pagina como PostgREST (writer lee TODAS las páginas — fix >1k filas).
+  // select().order().range(from,to) pagina como PostgREST (writer lee TODAS las páginas
+  // — fix >1k filas). WR-01: el writer ahora encadena .order("boletin") ANTES de .range();
+  // el fake ordena por boletín (idéntico a ORDER BY) y expone .order() → { range }.
+  const paginar = (boletines: string[]) => ({
+    range: vi.fn(async (from: number, to: number) => ({
+      data: [...boletines]
+        .sort()
+        .slice(from, to + 1)
+        .map((boletin) => ({ boletin })),
+      error: null,
+    })),
+  });
   const selectPaginado = (boletines: string[]) =>
     vi.fn(() => ({
-      range: vi.fn(async (from: number, to: number) => ({
-        data: boletines.slice(from, to + 1).map((boletin) => ({ boletin })),
-        error: null,
-      })),
+      order: vi.fn(() => paginar(boletines)),
     }));
   const client = {
     from(table: string) {

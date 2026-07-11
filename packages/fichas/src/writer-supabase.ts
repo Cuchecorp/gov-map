@@ -128,6 +128,11 @@ export class SupabaseFichasWriter {
         const { data, error } = await this.client
           .from(tabla)
           .select("boletin")
+          // WR-01: orden estable → páginas deterministas. Sin ORDER BY, PostgREST no
+          // garantiza orden entre requests (cada página es un HTTP independiente): filas
+          // duplicadas/saltadas ante writes concurrentes (cron, autovacuum). Con orden por
+          // la clave natural 'boletin' el Set-diff a >1k filas es correcto y reproducible.
+          .order("boletin", { ascending: true })
           .range(from, from + PAGE - 1);
         if (error) throw new Error(`seedFichasPendientes (${tabla}) falló: ${error.message}`);
         const filas = (data ?? []) as Array<{ boletin: string }>;
