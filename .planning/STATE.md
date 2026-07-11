@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.1
 milestone_name: — Entendible y completo
-status: verifying
+status: Awaiting next milestone
 stopped_at: Roadmap v6.0 creado — Phases 56-61, REQUIREMENTS.md traceability actualizado, STATE.md inicializado.
-last_updated: "2026-07-11T14:28:18.178Z"
-last_activity: 2026-07-11
+last_updated: "2026-07-11T17:18:43.787Z"
+last_activity: 2026-07-11 — Milestone v6.1 completed and archived
 progress:
   total_phases: 48
   completed_phases: 2
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Phase: 63
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-11
+Phase: Milestone v6.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-11 — Milestone v6.1 completed and archived
 
 ## Performance Metrics
 
@@ -88,6 +88,11 @@ None yet.
 | Data | RUT-01 backfill + ChileCompra/SERVEL | Needs-human (Phase 40) | v4.0 |
 | Ops | Rotar DB password (B26) | Acción de operador en dashboard | v5.0 |
 | UI | Rediseño /red móvil (P1 de F53) | Diferido | v5.0 |
+| uat_gap | Phase 62: 62-HUMAN-UAT.md (rotate móvil→desktop, WR-06) | partial (1 escenario pendiente) | v6.1 close 2026-07-11 |
+| verification_gap | Phase 62: 62-VERIFICATION.md | human_needed (mismo ítem UAT) | v6.1 close 2026-07-11 |
+| quick_task | 260623-rtl-loadenv-ci-safe-clis | unknown (pre-v6.1) | v6.1 close 2026-07-11 |
+| quick_task | 260702-rbb-fix-b20-b21-pre-flip-net-red-graph-nodos | unknown (pre-v6.1; B20/B21 ya shipped en v5) | v6.1 close 2026-07-11 |
+| Data | Cron leyes-weekly 80/sem sobre corpus 3657 — dilución de frescura (rotación round-robin candidata) | Deuda de datos (audit v6.1) | v6.1 |
 
 ## Session Continuity
 

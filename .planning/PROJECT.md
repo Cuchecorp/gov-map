@@ -8,11 +8,17 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato mostrado lleva fuente, fecha y enlace original, sin afirmar nunca intención ni causalidad.
 
-## Current State: v6.0 shipped (2026-07-09)
+## Current State: v6.1 shipped (2026-07-11)
+
+**Shipped v6.1 — Entendible y completo.** Las dos quejas del operador (2026-07-09) quedaron resueltas y en PROD (deploy `af1cfcaf`): (1) `/red` es ENTENDIBLE — ego-network radial determinista (seed + ≤24 vecinos alfabéticos, "Ver N más" honesto, lista móvil <48rem, borde institucional por cámara, leyenda "posición = orden alfabético, no cercanía"; F18 LOCKED intacto), validado por lectura fría BrowserOS ("comprensible") y aprobado por el operador; (2) la búsqueda es COMPLETA — corpus 156→3.657 proyectos (legislatura 2022-2026, enumeración WSLegislativo + backfill LOCAL R2-first reanudable), 3.100 embeddings (84,6% cobertura semántica), ideas matrices 60→1.504, techo honesto 565 por causa (478 RUT-guard LOCKED + 87 schema-fail), y la cobertura DECLARADA en /buscar ("Busca sobre 3100 proyectos…") + señal N/M en `pnpm freshness`. Audit: tech_debt (0 gaps, 6/6 reqs). Detalle: `milestones/v6.1-*.md`.
+
+**Próximo (a planificar con /gsd:new-milestone):** gates humanos/legales (F13/MONEY + F17/NET + 0042 sign-offs, RUT-01 + ChileCompra/SERVEL Phase 40, rotar DB password B26) + backlog v6.0/v6.1 (source_snapshot multi-fuente, lobby --from-r2, cursor leylobby, token CI Cloudflare, UAT rotate /red, rotación round-robin del cron leyes-weekly sobre corpus 3657, typography island .net-*).
+
+## Previous State: v6.0 shipped (2026-07-09)
 
 **Shipped v6.0 — Confiabilidad y comprensión.** Ingesta programada confiable end-to-end: dos etapas fuente→R2→Supabase con hash-check y `--from-r2`, leyes-weekly VERDE en GH Actions (billing activo, secrets cargados), fallback local documentado para lo WAF-bloqueado, y CLI `pnpm freshness` de monitoreo por fuente. Autoría de proyectos poblada (763 autores, 75,9% confirmados fail-closed) → **F48 LIVE** en la ficha. Identidad visual propia (ícono "Capas que se cruzan", selección del operador) integrada en favicon/OG/header/manifest. Comprensión validada por loop BrowserOS: leyenda "Cómo leer esto" anti-causal en cruces + triple requisito en charts; 6/6 hallazgos P0/P1 corregidos con evidencia before/after. Deploys `cd7deb4b` + `051a6cf0`. Audit: tech_debt (0 gaps; backlog: source_snapshot multi-fuente, lobby --from-r2, cursor leylobby, token CI Cloudflare). Detalle: `milestones/v6.0-*.md`.
 
-## Current Milestone: v6.1 Entendible y completo
+## Current Milestone (history): v6.1 Entendible y completo (shipped 2026-07-11)
 
 **Goal:** Dos quejas directas del operador (2026-07-09): (1) `/red` "se ve muy confuso" → grafo ENTENDIBLE: ego-network real del seed + layout radial determinista que no implica afinidad (LOCKED F18: nunca force-simulation) + gate BrowserOS; (2) la búsqueda "no funciona con todos los históricos, muchas veces no tiene todas las ideas matrices o las leyes" → búsqueda COMPLETA: fichas+embeddings 100% del corpus (hoy 74/156), corpus histórico ampliado (backfill LOCAL, R2 primero), ideas matrices al máximo con techo honesto, y cobertura DECLARADA en /buscar.
 
@@ -93,6 +99,10 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 - ✓ Embeddings asimétricos (Gemini RETRIEVAL_DOCUMENT/QUERY) + pgvector HNSW + RPC `match_proyectos`; búsqueda NL y "proyectos similares" kNN — v1.0
   - ⚠️ Follow-up: persistir `link_mensaje_mocion` end-to-end (idea matriz queda dormida hasta cablearlo) + cargar corpus a la nube. Ver `.planning/v1.0-MILESTONE-AUDIT.md`.
 
+**Entendible y completo (v6.1) — shipped 2026-07-11**
+- ✓ `/red` ego-network radial determinista (RED-01/02/03): seed + ≤24 vecinos alfabéticos, cero force-simulation (F18), lista móvil, leyenda honesta; gate BrowserOS "comprensible" — v6.1
+- ✓ Búsqueda sobre corpus completo declarado (BUSQ-01/02/03): 3.657 proyectos (2022-2026), 3.100 embeddings, ideas 1.504, techo honesto por causa, banner de cobertura en /buscar + freshness N/M — v6.1
+
 **Legibilidad + análisis (v5.0) — shipped 2026-07-08**
 - ✓ Navegación de la ficha: acordeones por carril (LEG-01) + resumen/índice above-fold con chips de 3 estados (LEG-02), comportamiento-preservante (LEG-03) — v5.0
 - ✓ Gráficos descriptivos (nunca causales): patrimonio conteo/año (VIZ-01/02/03), "Cuándo votó" por trimestre (VIZ-VOTOS), comparativo de ausencias vs mediana de cámara (VIZ-COMP, RPC PII-safe) — v5.0
@@ -101,7 +111,8 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 ### Active
 
-- [x] **v6.0 — confiabilidad y comprensión** (shipped 2026-07-09): crons/ingesta E2E perfecta (R2 dos-etapas, hash-check, monitoreo de frescura) · autoría de proyectos (desbloquea F48) · ícono/identidad visual gov-map · visualización comprensible con loop BrowserOS. Ver REQUIREMENTS.md.
+- [x] **v6.1 — entendible y completo** (shipped 2026-07-11): /red ego-network radial legible + búsqueda sobre corpus completo declarado (3.657 proyectos, techo honesto).
+- [x] **v6.0 — confiabilidad y comprensión** (shipped 2026-07-09): crons/ingesta E2E perfecta (R2 dos-etapas, hash-check, monitoreo de frescura) · autoría de proyectos (desbloquea F48) · ícono/identidad visual gov-map · visualización comprensible con loop BrowserOS.
 - [ ] **Pendiente de operador (fuera de v6):** RUT-01 backfill + ChileCompra/SERVEL (Phase 40) · sign-offs F13/MONEY + cierre F17/NET (Phase 39) · rotar DB password (B26).
 - [x] **v5.0 — de datos a comprensión** (shipped 2026-07-08): legibilidad + gráficos descriptivos + rediseño cognitivo; F48 diferida por datos.
 - [x] **v4.0 — de datos a cruces verificables** (shipped): cruces encendidos, lockdown API vía Camino A.
@@ -163,6 +174,10 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 | v4.0 = de datos por carril a CRUCES verificables (lobby × dinero × votos por sector) | El diferenciador del producto es conectar los carriles; pero es el dato de mayor impacto reputacional → se construye deny-by-default, se publica solo tras firma humana | En curso (v4.0) |
 | Identidad de terceros (`entidad_tercero`) como prerrequisito de los cruces | `lobby_contraparte.contraparte_id`/`contratista` quedan NULL sin maestra de terceros → los cruces contarían entidades duplicadas/incorrectas; jurídicas solo por RUT exacto (sin LLM) | En curso (v4.0 Fase 1.2) |
 | Señales de cruce = conteos factuales, nunca scores de correlación; señales de voto OFF hasta sign-off | Anti-insinuación (riesgo existencial #2); 17-LEGAL-DOSSIER §2 excluye co_votacion del MVP | En curso (v4.0 Fase 2.1) |
+| /red = ego-network por seed con layout radial determinista (nunca grafo completo, nunca force-simulation) | La franja de ~136 nodos era ilegible; la posición jamás debe insinuar afinidad (F18 LOCKED) — orden alfabético como orden neutro | ✓ v6.1 (veredicto BrowserOS "comprensible") |
+| Alcance histórico de búsqueda = legislatura vigente completa (2022-2026), no "todo el archivo" | Valor de búsqueda decae con antigüedad; ~20h ingesta + ~12h pipeline es el costo real; alcance declarado honesto en la UI | ✓ v6.1 (3.657 proyectos, cobertura declarada) |
+| Techo honesto en vez de fabricar: 565 fichas en `estado='error'` con causa (478 RUT-guard, 87 schema-fail) | El guard RUT es LOCKED (nunca PII a LLM) y el gate zod no acepta salidas malformadas; mejor cobertura declarada 84,6% que 100% inventado | ✓ v6.1 |
+| Seed de fichas como paso propio (`seedFichasPendientes` ON CONFLICT DO NOTHING) | Root cause BUSQ-01: `runIngest` escribe `proyecto` pero el pipeline solo ve `proyecto_ficha` — sin seed, 82→1.643 proyectos invisibles; paginar lecturas PostgREST (cap 1k) fue imprescindible a escala | ✓ v6.1 |
 
 ## Evolution
 
@@ -182,4 +197,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-09 — v6.0 shipped (Confiabilidad y comprensión); próximo = gates humanos/legales + backlog v6: ingesta/crons E2E perfecta + autoría (F48) + ícono gov-map + visualización comprensible vía BrowserOS; gates humanos/legales quedan como deuda de operador fuera de v6*
+*Last updated: 2026-07-11 after v6.1 milestone — Entendible y completo shipped; próximo = gates humanos/legales (F13/F17/0042, RUT-01, B26) + backlog v6.x (source_snapshot multi-fuente, rotación cron sobre corpus 3657, UAT rotate /red, typography .net-*)*

@@ -1,5 +1,23 @@
 # Milestones
 
+## v6.1 Entendible y completo (Shipped: 2026-07-11)
+
+**Delivered:** Las dos superficies menos entendibles quedaron entendibles y completas: `/red` renació como ego-network radial legible (nunca más la franja apiñada) y la búsqueda pasó de operar sobre 74 fichas a un corpus declarado de 3.657 proyectos (legislatura 2022-2026) con cobertura honesta visible. PROD: deploy final `af1cfcaf`. Timeline 2026-07-09 → 2026-07-11 (corrida autónoma `--from 62 --to 63`). Audit: `milestones/v6.1-MILESTONE-AUDIT.md` (tech_debt, 0 gaps, 6/6 reqs, 8/8 integration).
+
+**Known deferred items at close:** 5 (see STATE.md Deferred Items — UAT rotate F62, 2 quick tasks pre-v6.1, dilución de frescura del cron)
+
+**Phases completed:** 2 phases, 7 plans, 17 tasks
+
+**Key accomplishments:**
+
+- El grafo /red pasó de franja apiñada de ~93 nodos a ego-network radial (seed + ≤24 vecinos alfabéticos + "Ver N vecinos más" honesto) desplegado live, validado por lectura fría BrowserOS con veredicto "COMPRENSIBLE" en las 4 combinaciones y aprobado por el operador.
+- `seedFichasPendientes()` cierra la causa raíz BUSQ-01 (los 82 proyectos sin fila `proyecto_ficha` invisibles al pipeline) abriendo una fila `estado='pendiente'` idempotente por boletín, más un CLI LOCAL dry-run-gateado y un SQL de 7 conteos de cobertura.
+- `enumerarProyectosXAnno` + `parseCamaraLegislativo` + un CLI LOCAL cierran BUSQ-02: enumeran los `NumeroBoletin` de mociones y mensajes de cualquier año vía `WSLegislativo.asmx` (fuente verificada LIVE), reusando la política LOCKED de @obs/ingest y validando el shape con zod, para que la lista entre por el camino existente `run-tramitacion-prod-cli --boletines`.
+- Corpus de búsqueda poblado de 156 → 3.657 proyectos (2022-2026) con 3.092 fichas embebidas (84,6% cobertura semántica) y un techo honesto de 565 error documentado por causa — 478 RUT-bloqueados (guard LOCKED) + 87 schema-fail — sin fabricar un solo dato.
+- `/buscar` declara "Busca sobre 3100 proyectos de ley (período legislativo 2022–2026)" con N real desde `count(proyecto_embedding)` (server-only, cacheado 1h), más señal de cobertura N/M por etapa en `pnpm freshness` — desplegado a PROD (Version 13e2a09e).
+
+---
+
 ## v6.0 Confiabilidad y comprensión (Shipped: 2026-07-09)
 
 **Delivered:** El dato llega solo y se entiende solo. La ingesta programada quedó confiable end-to-end (dos etapas fuente→R2→Supabase, hash-check, crons verdes, monitoreo de frescura), la autoría de proyectos se pobló y desbloqueó F48, gov-map estrenó ícono propio, y la comprensión de las visualizaciones se validó con un loop BrowserOS de lectura fría. PROD: deploys `cd7deb4b` + `051a6cf0`.

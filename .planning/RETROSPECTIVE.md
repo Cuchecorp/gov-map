@@ -73,11 +73,47 @@ Ficha de parlamentario de muro plano → navegable: acordeones por carril + resu
 - Sessions: múltiples; varias corridas autónomas (`/gsd-autonomous`) + cierres de continuación tras session-limit.
 - Notable: session-limit mató subagentes en vuelo repetidamente → disciplina de spot-check (commits/archivos) + relanzar con estado explícito.
 
+## Milestone: v6.1 — Entendible y completo
+
+**Shipped:** 2026-07-11
+**Phases:** 2 (62-63) | **Plans:** 7
+
+### What Was Built
+`/red` reconstruido como ego-network radial determinista (seed + ≤24 vecinos alfabéticos, "Ver N más" honesto, lista móvil <48rem, borde por cámara, leyenda anti-afinidad; F18 LOCKED) validado por lectura fría BrowserOS. Búsqueda completa: corpus 156→3.657 proyectos (legislatura 2022-2026 vía WSLegislativo + backfill LOCAL R2-first), 3.100 embeddings, ideas 60→1.504, techo honesto 565 por causa, cobertura declarada en /buscar + `pnpm freshness`. Deploy final `af1cfcaf`.
+
+### What Worked
+- **Backfill como driver por chunks en background + monitor del orquestador**: corridas de horas (ingesta ~15h, pipeline ~18h) corrieron desatendidas con marcadores DONE/STALLED y checkpoints reanudables (R2 hash-check); el orquestador durmió sobre un Monitor en vez de poll.
+- **Review→fix→redeploy como ciclo estándar post-ejecución**: 1 CR + 13 WR cazados y corregidos en las dos fases (incl. CR-01 orphan-seed y WR-02 "Busca sobre 0" cacheado 1h) ANTES de la verificación final; el deploy siempre re-corrió tras los fixes para que PROD == master.
+- **Lectura fría BrowserOS con getComputedStyle sobre el deploy real** cazó el P1 de cascada CSS (lista móvil filtrada a desktop) que 747 tests jsdom verdes no podían ver.
+- **Adelantar trabajo seguro durante esperas**: cron-check, seed y el código de 63-04 avanzaron mientras la ingesta corría — sin tocar el presupuesto rate-limit del host en uso.
+
+### What Was Inefficient
+- **PostgREST cap de 1.000 filas mordió DOS veces** (seed Set-diff sin paginar → loop sin avance; ya conocido en otros contextos). Lección aplicada: paginar con `.order().range()` SIEMPRE que se lea una tabla completa.
+- **Tope de línea de comandos de Windows (~32KB)** rompió `--boletines` por año completo → driver por chunks de 250 (deviation Rule 3).
+- **`state.record-metric`/`add-decision` siguen rotos** (conocido) — fallback manual a STATE.md; ruido menor repetido en cada plan.
+- Accomplishments auto-extraídos de MILESTONES.md trajeron headings de deviations como logros — requirió limpieza manual.
+
+### Patterns Established
+- Driver bash por chunks reanudable (`run-*-chunks.sh` + logs + marcador DONE/STALLED) para toda corrida LOCAL larga.
+- Monitor persistente del orquestador (grep de marcador + detección de log estancado) en vez de esperar dentro del subagente.
+- Enumeración histórica: `WSLegislativo.asmx` `retornarMocionesXAnno`/`retornarMensajesXAnno` (el WS de votaciones enumera []).
+- Cobertura honesta de 3 piezas: SQL único (`verify-cobertura.sql`) → banner server-only en UI → señal N/M en freshness.
+
+### Key Lessons
+- El techo honesto es un feature: 84,6% declarado con causa por boletín vale más que 100% fabricado; los guards LOCKED (RUT, zod) son el mecanismo, no un obstáculo.
+- A escala >1k filas, TODO lector de tabla completa vía PostgREST necesita paginación explícita — auditar los existentes antes del próximo backfill.
+- La dilución de frescura del cron (80/sem sobre 3.657) es la nueva deuda estructural de datos: planificar rotación round-robin.
+
+### Cost Observations
+- Model mix: Opus (researcher/planner/checker/executors/verifier/reviewers) orquestado por Fable en el main loop.
+- Sessions: 1 corrida autónoma `--from 62 --to 63` (~3 días de reloj, dominados por las corridas LOCAL de ingesta/pipeline, no por tokens).
+- Notable: 2 checkpoints humanos reales (aprobación /red, espera del backfill) — el resto corrió solo.
+
 ## Cross-Milestone Trends
 
-| Métrica | v1.0 | v5.0 |
-|---------|------|------|
-| Fases | 7 | 11 (F48 diferida) |
-| Planes | 25 | 44 |
-| Tareas | ~70 | ~66 |
-| Deuda técnica al cierre | 6 items (2 código + 4 operacionales), 0 blockers | tech_debt no-bloqueante (VERIFICATION formales, checkpoints sin re-marcar, cleanup menor) + 16 deferred; 0 blockers funcionales |
+| Métrica | v1.0 | v5.0 | v6.1 |
+|---------|------|------|------|
+| Fases | 7 | 11 (F48 diferida) | 2 |
+| Planes | 25 | 44 | 7 |
+| Tareas | ~70 | ~66 | 17 |
+| Deuda técnica al cierre | 6 items (2 código + 4 operacionales), 0 blockers | tech_debt no-bloqueante + 16 deferred; 0 blockers funcionales | tech_debt 7 items (UAT rotate, typography island, dilución cron, techo honesto documentado); 0 blockers |

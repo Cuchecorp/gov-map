@@ -9,6 +9,8 @@
 - ✅ **v3.0 — Cobertura de datos** — Phases 23-32 (lobby con identidad adjudicada + fuente camara.cl, patrimonio LIVE, votaciones masivas, provenance, RUT operador, gates OPS/LEGAL) — shipped
 - ✅ **v4.0 — De datos a cruces verificables** — Phases 33-43 (desbloqueo CI, ingesta lobby+probidad programada, entity-resolution de terceros, capa de cruces parlamentario↔sector deny-by-default, superficies de ficha gated, gate legal F13/F17/cruces, lockdown API, deuda técnica; RUT+ChileCompra/SERVEL diferido) — cruces ENCENDIDOS; **lockdown API resuelto vía Camino A** (sitio en service_role, anon muerta, legacy revocado, web_reader dropeado — cutover aplicado a PROD 2026-06-26)
 - ✅ **v5.0 — De datos a comprensión (legibilidad + análisis)** — Phases 44-55 (acordeones/navegación, gráficos descriptivos patrimonio/votos/ausencias, cruces nuevos, rediseño cognitivo 3 capas) — shipped 2026-07-08 (`74e3ad0f`); **F48 (autoría) DIFERIDA a milestone de ingesta** por gap de datos (autores 0/136). Audit `tech_debt`: milestones/v5.0-MILESTONE-AUDIT.md
+- ✅ **v6.0 — Confiabilidad y comprensión** — Phases 56-61 (ingesta E2E confiable, autores F48, ícono, comprensión BrowserOS) — shipped 2026-07-09
+- ✅ **v6.1 — Entendible y completo** — Phases 62-63 (/red ego-network radial + búsqueda corpus completo declarado) — shipped 2026-07-11
 
 ## Phases
 
@@ -1351,73 +1353,9 @@ Plans:
 
 ---
 
-## 🚧 v6.1 — Entendible y completo (In Progress)
+## ✅ v6.1 — Entendible y completo (Shipped: 2026-07-11)
 
-**Milestone Goal:** Dos quejas directas del operador (2026-07-09): `/red` se ve muy confuso → el grafo debe ser ENTENDIBLE (ego-network real + layout legible sin implicar afinidad); la búsqueda de proyectos no cubre históricos ni todas las ideas matrices/leyes → la búsqueda debe ser COMPLETA (fichas+embeddings 100% del corpus, corpus histórico ampliado, cobertura declarada honestamente).
-**Granularity:** fine
-**Numbering:** continúa — v6.0 terminó en Phase 61; v6.1 arranca en **Phase 62**.
-
-### Coverage
-
-- v6.1 requirements: 6 (RED 3, BUSQ 3) — mapped 6/6, orphaned 0
-
-### Phases
-
-- [x] **Phase 62: RED — Grafo de relaciones entendible** - Ego-network real + layout radial determinista sin afinidad + gate BrowserOS. (completed 2026-07-10)
-- [x] **Phase 63: BUSQ — Búsqueda de proyectos completa** - Fichas/embeddings 100% del corpus, corpus histórico ampliado, ideas matrices al máximo + cobertura declarada. (completed 2026-07-11)
-
----
-
-### Phase 62: RED — Grafo de relaciones entendible
-
-**Goal:** `/red` deja de ser una franja apiñada de ~136 nodos: con seed muestra el ego-network real (seed + vecinos directos y sus aristas) en un layout radial determinista que no implica afinidad (LOCKED F18: nunca force-simulation), etiquetas legibles sin zoom, tope de vecinos honesto, usable en móvil; sin seed, un estado inicial que orienta. Validado por lectura fría BrowserOS con evidencia before/after.
-**Depends on:** Phase 61 (patrón de loop BrowserOS + deploy procedure documentados)
-**Requirements:** RED-01, RED-02, RED-03
-**Autonomy:** autónomo (componente cliente + RPC/derivación existente; cero DDL sensible); deploy con el runbook de 61-02.
-**Success Criteria** (what must be TRUE):
-
-  1. Con `?seed=<id>`, el grafo renderiza SOLO el seed + vecinos directos + aristas entre ellos; el conteo de nodos visibles ≤ vecinos+1 (verificable en DOM); "ver más" honesto si se trunca.
-  2. Layout radial/orbital determinista con orden neutro (alfabético) — cero simulación de fuerzas; la leyenda explica el layout nuevo y reitera que la posición no indica cercanía.
-  3. Sin seed, `/red` muestra explicación + selector prominente (nunca el grafo completo); en 390px todo lo anterior sigue usable.
-  4. Lectura fría BrowserOS (desktop+390px, con y sin seed) → veredicto "comprensible"; hallazgos P0/P1 corregidos con re-captura; evidencia en el phase dir.
-
-**Plans:** 3/3 plans complete
-
-**UI hint**: yes
-
----
-
-### Phase 63: BUSQ — Búsqueda de proyectos completa
-
-**Goal:** La búsqueda opera sobre un corpus completo y lo declara: 100% de los proyectos en DB con ficha+embedding (hoy 74/156), extracción de ideas matrices re-corrida al máximo alcanzable con techo honesto por boletín, corpus histórico ampliado con alcance definido e ingerido como backfill LOCAL conforme a convención (R2 primero, rate-limit 2-3s, idempotente, reanudable), y cobertura real visible al operador y declarada en /buscar.
-**Depends on:** Phase 62 (independiente en código; secuencial por orden de corrida)
-**Requirements:** BUSQ-01, BUSQ-02, BUSQ-03
-**Autonomy:** autónomo para código y backfill LOCAL acotado con checkpoints de progreso; corridas largas reanudables; deploy con runbook 61-02.
-**Success Criteria** (what must be TRUE):
-
-  1. `SELECT count(*) FROM proyecto` == `count(*) FROM proyecto_ficha` == `count(*) FROM proyecto_embedding` (o la diferencia exacta está en un reporte de techo honesto con causa por boletín).
-  2. El alcance histórico elegido (p.ej. legislatura actual completa / últimos N años) está documentado con su porqué, ingerido vía R2→Supabase, y los proyectos nuevos son buscables (ficha+embedding+idea donde la fuente lo dé).
-  3. Ideas matrices: cobertura sube desde 60/74 al máximo alcanzable del corpus ampliado; los imposibles tienen estado honesto y causa registrada.
-  4. /buscar declara la cobertura ("busca sobre N proyectos de ley [alcance]"); el operador puede ver N/M por señal (fichas, ideas, embeddings) sin bucear (freshness CLI o reporte).
-  5. Cron leyes-weekly mantiene el corpus nuevo fresco (los boletines ampliados entran al set incremental) sin exceder los límites del cron (novedades acotadas, no re-backfill).
-
-**Plans:** 4/4 plans complete
-
-Plans:
-**Wave 1**
-
-- [x] 63-01-PLAN.md — Seed idempotente de proyecto_ficha (cierra gap-82) + CLI + SQL de cobertura (BUSQ-01)
-- [x] 63-02-PLAN.md — Enumeración histórica WSLegislativo (parser+zod, connector, CLI LOCAL) (BUSQ-02)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 63-03-PLAN.md — Backfill LOCAL end-to-end: alcance→ingesta R2→seed→pipeline→reembed→cron (BUSQ-01/02)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 63-04-PLAN.md — Honestidad de cobertura: banner /buscar + señal freshness + deploy 61-02 (BUSQ-03)
-
----
+- **2 fases (62-63), 7 planes, 6/6 reqs** — `/red` ego-network radial determinista (cap 24, móvil lista, leyenda honesta, veredicto BrowserOS "comprensible") + búsqueda completa: corpus 156→3.657 proyectos (legislatura 2022-2026, backfill LOCAL R2-first), 3.100 embeddings, ideas 60→1.504, techo honesto 565 por causa, cobertura declarada en /buscar y `pnpm freshness`. Detalle: [milestones/v6.1-ROADMAP.md](milestones/v6.1-ROADMAP.md) · Audit: tech_debt (0 gaps). Deploy `af1cfcaf`.
 
 ## ✅ v6.0 — Confiabilidad y comprensión (Shipped: 2026-07-09)
 
