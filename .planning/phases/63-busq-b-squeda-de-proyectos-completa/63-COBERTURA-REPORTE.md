@@ -1,6 +1,6 @@
 # 63 — Reporte de cobertura del corpus de búsqueda (BUSQ-01/02/03)
 
-**Fecha:** 2026-07-10 (INGESTA COMPLETA + SEED CERRADO — pipeline de fichas corriendo en background)
+**Fecha:** 2026-07-11 (BACKFILL LOCAL E2E COMPLETO — corpus 3.657, techo honesto 565)
 **Fuente de conteos:** `scripts/verify-cobertura.sql` (`psql "$SUPABASE_DB_URL"`, PGCLIENTENCODING=UTF8).
 **Alcance:** ver `63-ALCANCE-HISTORICO.md` — período vigente 2022→2026 (3.648 únicos; 3.506 net-new), lotes por año.
 
@@ -78,9 +78,86 @@ Los 3.583 `pendiente` son la cola que consume el pipeline (Task 4).
 
 ---
 
-## 3. Pipeline fichas+embeddings + reembed — EN CURSO (Task 4)
+## 3. Pipeline fichas+embeddings + reembed — ✅ COMPLETO (Task 4)
 
-El pipeline corre en background con `run-pipeline-chunks.sh` (driver LOCAL reanudable).
+El pipeline corrió en background con `run-pipeline-chunks.sh` (driver LOCAL reanudable).
+**Marcador de cierre:** `logs/pipeline.log` → `=== pipeline-chunks DONE 2026-07-11T13:23:16Z ===`
+(36 iteraciones de 100 boletines + pasada `--reembed`; cola agotada `pendientes=0` en ITER 37).
+
+### Counts finales (2026-07-11, `verify-cobertura.sql` sobre PROD)
+
+| Conteo | Valor |
+|--------|------:|
+| proyecto | 3.657 |
+| proyecto_ficha | 3.657 |
+| proyecto_embedding | 3.100 |
+| sin_ficha (gap BUSQ-01) | **0** ✅ |
+| estado=embebido | **3.092** |
+| estado=error (techo honesto) | **565** |
+| estado=pendiente | **0** ✅ (cola agotada) |
+| con_idea_matriz | 1.504 |
+| embedding_version=v1 | 3.034 |
+| embedding_version=v1-reembed | 66 |
+
+### Ecuación de identidad (techo honesto exacto)
+
+```
+3.657 proyecto
+− 3.092 embebido
+= 565 error   ← techo honesto (imposibles de embeber, con causa)
+
+3.100 embeddings
+= 3.092 embebidos (embeddings vigentes)
++     8 stale v1 title-only (adheridos a filas hoy en 'error')
+```
+
+Los 8 embeddings "de más" (3.100 vs 3.092) son vectores **v1 antiguos title-only** que quedaron
+adheridos a filas que HOY están en `estado='error'`: se generaron en una corrida previa (baseline v1),
+pero el texto íntegro posterior disparó una causa de techo honesto (schema-fail), dejando la fila en
+`error` mientras su embedding stale persiste. NO se reintentaron al LLM (política LOCKED); tampoco se
+borraron (son vectores válidos title-only, solo desactualizados). La pasada `--reembed` procesó 0 porque
+solo re-embebe filas `embebido`, no filas `error` (correcto: no se re-embebe un techo honesto).
+
+### Breakdown del techo honesto (565 error) — por causa
+
+Agrupando `proyecto_ficha.error_msg` de las 565 filas `error`:
+
+| Causa | Filas | % del techo | Reintentable | Boletines de muestra |
+|-------|------:|------------:|--------------|----------------------|
+| **RUT en input** (`assertNoRutInLlmInput` LOCKED — "input contains a RUT; RUT must never be sent to an LLM") | **478** | 84,6 % | ❌ NUNCA (guard de seguridad permanente) | 12712-24, 14775-10, 14795-07, 14796-08, 14797-06, 14805-12, 14808-19, 14810-04 |
+| **LLM output schema-fail** (`LLM output failed schema validation` — salida del LLM no valida contra el zod schema) | **87** | 15,4 % | ⚠️ reintento único ya agotado (36 iters) | 14824-06, 14842-09, 14931-25, 14955-03, 14961-07, 14962-07, 15011-08, 15023-25 |
+| PDF escaneado / ilegible | 0 | — | — | (absorbido en schema-fail: sin texto extraíble → LLM devuelve JSON inválido) |
+| fetch 404 / timeout | 0 | — | — | (los fallos de fuente viva quedaron como ~22 errores de INGESTA, sección 2, no llegan a ficha) |
+| otros / null | 0 | — | — | — |
+| **TOTAL** | **565** | 100 % | | |
+
+**Lectura honesta:** el techo NO es un fallo del pipeline — es el resultado esperado de dos compuertas:
+(1) el guard de seguridad RUT LOCKED (T-63-08) que **prohíbe** enviar RUTs a un LLM (478 filas, 84,6 %),
+y (2) la validación de contrato zod que rechaza salidas LLM inválidas en vez de fabricar (87 filas, 15,4 %).
+Ambas son deliberadas: preferimos `estado='error'` honesto sobre un dato inventado. El corpus embebido
+útil es 3.092/3.657 = **84,6 %** de cobertura semántica real.
+
+### 8 embeddings v1 stale adheridos a filas 'error' (title-only, no re-embebidos)
+
+| Boletín | embedding_version | Estado de la ficha |
+|---------|-------------------|--------------------|
+| 18308-11 | v1 | error |
+| 18318-19 | v1 | error |
+| 18320-18 | v1 | error |
+| 18324-07 | v1 | error |
+| 18326-18 | v1 | error |
+| 18327-07 | v1 | error |
+| 18354-07 | v1 | error |
+| 18358-03 | v1 | error |
+
+Estos 8 explican la diferencia `3.100 − 3.092 = 8`. Son buscables (vector title-only vigente) pero su
+ficha no tiene idea_matriz por el techo honesto. No se tocan.
+
+---
+
+## Anexo — Pipeline fichas+embeddings (diseño del driver, referencia histórica)
+
+El pipeline corrió en background con `run-pipeline-chunks.sh` (driver LOCAL reanudable).
 
 ### Driver `run-pipeline-chunks.sh` — diseño
 
@@ -113,7 +190,9 @@ a link-resolve + texto-fetch (2 fetches por boletín). RUT-bloqueado NO se reint
 1 PDF escaneado, ~3-5 sin idea literal / schema-fail (reintento único). La lista definitiva por boletín/causa
 va en la sección final tras que el pipeline termine (SUMMARY).
 
-_Estado al 2026-07-10T18:55Z: driver lanzado, `pendientes iniciales: 3580`, ITER 1/45 en curso._
+_Corrida real: 36 iteraciones (2026-07-10T18:55Z → 2026-07-11T13:23Z, ~18h de pacing 2-3s/host + LLM),
+cola agotada `pendientes=0` en ITER 37, pasada `--reembed` (0 procesados, correcto). Marcador final:
+`=== pipeline-chunks DONE 2026-07-11T13:23:16Z ===`._
 
 ---
 
@@ -136,5 +215,5 @@ sobre novedades; el histórico no se re-backfilla en cada corrida semanal.
 
 ---
 
-_Sección 3 (counts finales de embeddings + techo honesto por boletín/causa) se completa en el SUMMARY cuando
-`=== pipeline-chunks DONE ===` aparezca en `logs/pipeline.log`._
+_Reporte CERRADO 2026-07-11: sección 3 completa (counts finales + techo honesto por causa) tras
+`=== pipeline-chunks DONE 2026-07-11T13:23:16Z ===`. Ver `63-03-SUMMARY.md` para el cierre del plan._
