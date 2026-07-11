@@ -28,7 +28,7 @@ vi.mock("@/components/search-box", () => ({
   SearchBox: () => null,
 }));
 
-import BuscarPage from "./page";
+import BuscarPage, { clampPage, MAX_PAGE } from "./page";
 
 async function render(n: number | null): Promise<string> {
   contarCoberturaBusquedaMock.mockResolvedValue(n);
@@ -69,5 +69,25 @@ describe("BuscarPage — banner de cobertura (BUSQ-03)", () => {
     const html = await render(0);
     expect(html).not.toContain("Busca sobre 0 proyectos de ley");
     expect(html).not.toContain("Busca sobre");
+  });
+});
+
+describe("clampPage (WR-03: `page` acotada 1..MAX_PAGE)", () => {
+  it("clampa por ARRIBA: page gigantesco → MAX_PAGE (no un matchCount monstruoso al RPC)", () => {
+    expect(clampPage("999999999999")).toBe(MAX_PAGE);
+    expect(clampPage(String(MAX_PAGE + 1))).toBe(MAX_PAGE);
+  });
+
+  it("clampa por ABAJO: 0/negativo/basura → 1", () => {
+    expect(clampPage("0")).toBe(1);
+    expect(clampPage("-5")).toBe(1);
+    expect(clampPage("abc")).toBe(1);
+    expect(clampPage("")).toBe(1);
+  });
+
+  it("pasa valores válidos dentro de rango", () => {
+    expect(clampPage("1")).toBe(1);
+    expect(clampPage("7")).toBe(7);
+    expect(clampPage(String(MAX_PAGE))).toBe(MAX_PAGE);
   });
 });

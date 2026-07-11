@@ -23,6 +23,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const PAGE_SIZE = 20;
 
+// WR-03: `page` acotada SUPERIOR e inferiormente. Sin tope, `?page=999999999999` haría
+// matchCount ≈ 2×10^13 hacia el RPC kNN: cast int4 revienta (error banner en URL válida)
+// o LIMIT gigante saca al planner del índice HNSW → full-scan + un embed Gemini quemado.
+// MAX_PAGE=50 (1000 resultados) es más que suficiente para un kNN de 20/página.
+export const MAX_PAGE = 50;
+
+/** Parsea+clampa el query param `page` a 1..MAX_PAGE (defensa como los otros inputs V5). */
+export function clampPage(raw: string): number {
+  return Math.min(MAX_PAGE, Math.max(1, Number.parseInt(raw, 10) || 1));
+}
+
 interface PageProps {
   searchParams: Promise<{ q?: string | string[]; page?: string | string[] }>;
 }
@@ -32,7 +43,7 @@ export default async function BuscarPage({ searchParams }: PageProps) {
   const qRaw = typeof sp.q === "string" ? sp.q : "";
   const q = qRaw.trim().slice(0, MAX_QUERY_CHARS);
   const pageParam = typeof sp.page === "string" ? sp.page : "1";
-  const page = Math.max(1, Number.parseInt(pageParam, 10) || 1);
+  const page = clampPage(pageParam);
 
   // Atajo de boletín ANTES de embeber (mismo validador que /proyecto/[boletin]).
   if (q.length > 0 && BOLETIN_RE.test(q)) {
