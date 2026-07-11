@@ -26,7 +26,7 @@
  *   Degrada honestamente si no hay filas.
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { CATALOG, COBERTURA_SENALES } from "./catalog.js";
 
 export interface QueryRow {
@@ -42,23 +42,58 @@ export interface CoberturaCount {
   count: number | null;
 }
 
+// WR-06: se loguea a stderr la CLASE de fallo de psql UNA sola vez por proceso (psql fuera
+// de PATH / auth fallida / DNS caído). Sin esto, cada fallo se ve idéntico a "sin datos" y el
+// operador no tiene pista de la causa. NUNCA se imprime `dbUrl` ni el mensaje crudo (embeben la
+// password): solo `err.code` / un rótulo acotado.
+let psqlFalloLogueado = false;
+
 function psql(dbUrl: string, sql: string): string {
   try {
-    const out = execSync(`psql "${dbUrl}" -tAc "${sql}"`, {
+    // WR-06: execFileSync (NO execSync): argv separado, sin shell → la `dbUrl` con la
+    // password NO se re-cita por un shell (un `"`, `$`, backtick o `%`/`&` la rompería o
+    // ejecutaría algo indebido) ni queda expuesta en la línea de comando visible en `ps`.
+    const out = execFileSync("psql", [dbUrl, "-tAc", sql], {
       env: { ...process.env, PGCLIENTENCODING: "UTF8" },
       encoding: "utf8",
       timeout: 15_000,
     });
     return out.trim();
-  } catch {
+  } catch (err) {
+    if (!psqlFalloLogueado) {
+      psqlFalloLogueado = true;
+      // Solo la clase de error, jamás la URL/password ni el stderr crudo de psql.
+      const code =
+        err && typeof err === "object" && "code" in err
+          ? String((err as { code: unknown }).code)
+          : "desconocido";
+      process.stderr.write(
+        `freshness: psql falló (code=${code}) — psql no está en PATH, auth/DNS/conexión falló, ` +
+          `o timeout. Las señales que no se pudieron leer degradan a "n/d". (URL/credenciales omitidas)\n`,
+      );
+    }
     return "";
   }
 }
 
 function ghRunSignal(workflowYml: string): string {
   try {
-    const out = execSync(
-      `gh run list --repo Cuchecorp/gov-map --workflow ${workflowYml} --limit 1 --json conclusion,startedAt`,
+    // execFileSync (sin shell) por consistencia con `psql` (WR-06): argv separado, sin
+    // riesgo de interpolación por shell del nombre del workflow.
+    const out = execFileSync(
+      "gh",
+      [
+        "run",
+        "list",
+        "--repo",
+        "Cuchecorp/gov-map",
+        "--workflow",
+        workflowYml,
+        "--limit",
+        "1",
+        "--json",
+        "conclusion,startedAt",
+      ],
       { encoding: "utf8", timeout: 5_000 },
     );
     const parsed = JSON.parse(out.trim()) as Array<{
