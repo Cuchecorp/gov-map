@@ -48,9 +48,14 @@ export function parseArgs(argv: string[]): SeedCliOptions {
       case "--service-key": {
         // Fail-fast: sin valor, `decidirDryRun` degradaría SILENCIOSAMENTE a dry-run
         // y el operador creería estar escribiendo sin persistir nada (WR-05). Error explícito.
+        // WR-05: además rechazar un valor que EMPIEZA con "--" — `--service-key --dry-run`
+        // (operador olvidó la key) tomaría "--dry-run" como key, dejaría `dryRun` sin setear,
+        // e iría LIVE con una key basura (inversión de modo). Un flag NUNCA es una key válida.
         const raw = argv[++i];
-        if (raw == null || raw.trim().length === 0) {
-          throw new SeedCliArgsError("--service-key vacío (esperado una key)");
+        if (raw == null || raw.trim().length === 0 || raw.startsWith("--")) {
+          throw new SeedCliArgsError(
+            "--service-key vacío o consumió un flag (esperado una key, no un --flag)",
+          );
         }
         opts.serviceKey = raw;
         break;
