@@ -30,7 +30,7 @@ vi.mock("@/components/search-box", () => ({
 
 import BuscarPage from "./page";
 
-async function render(n: number): Promise<string> {
+async function render(n: number | null): Promise<string> {
   contarCoberturaBusquedaMock.mockResolvedValue(n);
   // Query vacía → sin lista ni Supabase; solo se ejercita el banner de cobertura.
   const el = await BuscarPage({ searchParams: Promise.resolve({}) });
@@ -56,5 +56,18 @@ describe("BuscarPage — banner de cobertura (BUSQ-03)", () => {
     expect(html).not.toContain("3506");
     // Y el contador fue efectivamente consultado (no un literal en el JSX).
     expect(contarCoberturaBusquedaMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("Test 3: count desconocido (null) → NO renderiza el banner (WR-02: no miente '0')", async () => {
+    // Fallo del count → contarCoberturaBusqueda devuelve null → banner oculto.
+    const html = await render(null);
+    expect(html).not.toContain("Busca sobre");
+    expect(html).not.toContain("proyectos de ley (período");
+  });
+
+  it("Test 4: count = 0 (sin corpus) → NO renderiza el banner (no afirma 'sobre 0')", async () => {
+    const html = await render(0);
+    expect(html).not.toContain("Busca sobre 0 proyectos de ley");
+    expect(html).not.toContain("Busca sobre");
   });
 });

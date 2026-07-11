@@ -41,15 +41,19 @@ export default async function BuscarPage({ searchParams }: PageProps) {
 
   // Cobertura HONESTA (BUSQ-03): N real desde count(proyecto_embedding), NUNCA
   // hardcodeado. server-only; la key jamás llega al cliente (T-63-12/13/14).
+  // `null` = count desconocido (fallo de DB); 0 = sin corpus. En ambos casos NO se
+  // afirma "Busca sobre 0 proyectos" (WR-02): mejor ocultar el banner que mentir.
   const cobertura = await contarCoberturaBusqueda();
 
   return (
     <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
       <h1 className="sr-only">Buscar proyectos de ley</h1>
       <SearchBox initialQuery={q} />
-      <p className="text-sm text-muted-foreground mt-2">
-        Busca sobre {cobertura} proyectos de ley ({ALCANCE_COBERTURA}).
-      </p>
+      {cobertura !== null && cobertura > 0 && (
+        <p className="text-sm text-muted-foreground mt-2">
+          Busca sobre {cobertura} proyectos de ley ({ALCANCE_COBERTURA}).
+        </p>
+      )}
 
       {q.length === 0 ? (
         // Query vacía: prompt estilo landing, sin lista ni error (UI-SPEC §8.1).

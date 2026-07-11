@@ -37,11 +37,14 @@ async function contarEmbeddings(): Promise<number> {
   const { count, error } = await sb
     .from("proyecto_embedding")
     .select("*", { count: "exact", head: true });
-  // Degradación honesta: un fallo del count NO debe romper /buscar. El banner
-  // simplemente muestra 0 (o se puede ocultar aguas arriba) en vez de tirar 500.
+  // WR-02: un fallo del count NO debe fingir "0". Para una feature cuyo propósito es
+  // cobertura HONESTA (BUSQ-03), "Busca sobre 0 proyectos" es la afirmación FALSA que la
+  // fase busca eliminar. Además, devolver 0 aquí (dentro del wrapper de unstable_cache)
+  // CACHEARÍA el fallo por ~1h. Lanzamos: unstable_cache NO cachea rechazos y el caller
+  // traduce el throw a `null` (desconocido) → el banner se oculta upstream en vez de mentir.
   if (error) {
     console.error("contarCoberturaBusqueda: count(proyecto_embedding) falló:", error);
-    return 0;
+    throw new Error("count(proyecto_embedding) falló");
   }
   return count ?? 0;
 }
@@ -54,8 +57,15 @@ const contarEmbeddingsCacheado = unstable_cache(
 
 /**
  * Retorna el N real de proyectos indexados en /buscar (count de proyecto_embedding),
- * cacheado ~1h. Este es el número que declara el banner de cobertura.
+ * cacheado ~1h. Este es el número que declara el banner de cobertura. Ante un fallo del
+ * count → `null` (desconocido, NO 0): el banner se oculta upstream (WR-02). El throw de
+ * `contarEmbeddings` NO llega a poblar el cache (unstable_cache no cachea rechazos), así
+ * que un hipo transitorio de la DB no envenena el banner por una hora.
  */
-export async function contarCoberturaBusqueda(): Promise<number> {
-  return contarEmbeddingsCacheado();
+export async function contarCoberturaBusqueda(): Promise<number | null> {
+  try {
+    return await contarEmbeddingsCacheado();
+  } catch {
+    return null;
+  }
 }
