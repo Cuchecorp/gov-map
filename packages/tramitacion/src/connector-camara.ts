@@ -142,18 +142,29 @@ export class CamaraConnector {
       throw new Error(`anno inválido: ${anno} (esperado entero 1990..2100)`); // V5 / T-63-06
     }
     const out = new Set<string>();
-    for (const op of ["retornarMocionesXAnno", "retornarMensajesXAnno"] as const) {
+    const ops = ["retornarMocionesXAnno", "retornarMensajesXAnno"] as const;
+    let fallos = 0;
+    for (const op of ops) {
       const url = `${BASE_LEG}/${op}?prmAnno=${encodeURIComponent(String(anno))}`;
       try {
         const xml = await this.fetch(url); // política LOCKED (T-63-04/T-63-05)
         for (const b of parseCamaraLegislativo(xml)) out.add(b); // zod-validado (T-63-07)
       } catch (e) {
-        // Best-effort: la otra op sigue. Se LOGUEA (nunca catch mudo → observable).
+        // Best-effort POR OP: la otra op sigue. Se LOGUEA (nunca catch mudo → observable).
+        fallos++;
         console.warn(
           `[connector-camara] enumerarProyectosXAnno ${op} ${anno} omitido:`,
           e instanceof Error ? e.message : e,
         );
       }
+    }
+    // WR-04: si AMBAS ops fallaron (red caída / WAF / robots fail-closed) el año NO es
+    // "vacío": es un fallo TOTAL. Lanzar hace la señal AUDIBLE — el CLI lo cuenta en
+    // `errores` y sale con exit 1, en vez de imprimir "0 boletines" y salir 0 (lo que un
+    // operador leería como "no hay proyectos" y se saltaría el backfill). Best-effort por op
+    // sí; best-effort por año con señal muerta no.
+    if (fallos === ops.length) {
+      throw new Error(`enumerarProyectosXAnno ${anno}: ambas ops fallaron`);
     }
     return [...out];
   }

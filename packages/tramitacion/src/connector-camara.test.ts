@@ -112,4 +112,31 @@ describe("CamaraConnector — reuso de @obs/ingest (orden LOCKED)", () => {
     );
     expect(calls).not.toContain("fetch"); // robots prohíbe → no se emite request
   });
+
+  describe("enumerarProyectosXAnno — fallo total AUDIBLE (WR-04)", () => {
+    it("AMBAS ops fallan (robots prohíbe) → LANZA, no devuelve [] silencioso", async () => {
+      // robotsAllow=false → cada op lanza RobotsDisallowError dentro del try; fallos=2.
+      const { deps } = makeDeps({ responder: () => "", robotsAllow: false });
+      const conn = new CamaraConnector(deps);
+      await expect(conn.enumerarProyectosXAnno(2020)).rejects.toThrow(
+        /ambas ops fallaron/,
+      );
+    });
+
+    it("UNA op falla y la otra devuelve boletines → NO lanza, retorna lo parcial", async () => {
+      // Mociones responde con un boletín válido; Mensajes responde XML basura → parse
+      // vacío (no lanza). fallos < 2 → best-effort por op, sin throw.
+      const mociones =
+        `<?xml version="1.0"?><ProyectosLeyColeccion>` +
+        `<ProyectoLey><NumeroBoletin>14309-04</NumeroBoletin></ProyectoLey>` +
+        `</ProyectosLeyColeccion>`;
+      const { deps } = makeDeps({
+        responder: (url) =>
+          url.includes("retornarMocionesXAnno") ? mociones : "<vacio/>",
+      });
+      const conn = new CamaraConnector(deps);
+      const boletines = await conn.enumerarProyectosXAnno(2020);
+      expect(boletines).toContain("14309-04");
+    });
+  });
 });
