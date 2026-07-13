@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sketch 002 — /red rediseño visual (3 propuestas)</title>
+<link rel="stylesheet" href="../themes/default.css">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding-top: 56px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+  }
+  a { color: var(--color-primary); }
+  button { font-family: inherit; }
+
+  /* ── Tab bar de variantes ─────────────────────────────── */
+  #variant-nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9998;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: 8px 16px; display: flex; gap: 8px; align-items: center;
+    font-size: var(--text-sm); flex-wrap: wrap;
+  }
+  #variant-nav .lbl { color: var(--color-text-muted); font-size: var(--text-xs); margin-right: 4px; }
+  .variant-tab {
+    border: 1px solid var(--color-border); background: transparent;
+    border-radius: var(--radius-full); padding: 6px 14px; cursor: pointer;
+    font-size: var(--text-sm); color: var(--color-text); transition: all .15s ease;
+  }
+  .variant-tab:hover { border-color: var(--color-primary); }
+  .variant-tab.active {
+    background: var(--color-primary); color: #fff; border-color: var(--color-primary);
+  }
+  .variant { display: none; }
+  .variant.active { display: block; }
+
+  /* ── Stage (viewport preview) ─────────────────────────── */
+  #stage { margin: 0 auto; transition: max-width .2s ease; }
+
+  /* ── Header compartido ────────────────────────────────── */
+  .page { max-width: 1120px; margin: 0 auto; padding: var(--space-6) var(--space-4) var(--space-12); }
+  .page-header h1 { font-size: var(--text-2xl); margin: 0 0 4px; letter-spacing: -0.01em; }
+  .page-header .sub { color: var(--color-text-muted); font-size: var(--text-sm); margin: 0; }
+
+  /* ── Chips de cámara (borde civic, nunca relleno) ─────── */
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; padding: 1px 8px; border-radius: var(--radius-full);
+    background: transparent; border: 1.5px solid; font-weight: 500;
+    white-space: nowrap;
+  }
+  .chip.camara { border-color: var(--color-camara); color: var(--color-camara-muted-fg); }
+  .chip.senado { border-color: var(--color-senado); color: var(--color-senado-muted-fg); }
+
+  /* ── Leyenda "cómo leer" (detallada, paso a paso) ─────── */
+  .leyenda {
+    border: 1px solid var(--color-border); background: var(--color-muted);
+    border-radius: var(--radius-md); padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm); color: var(--color-text-muted); margin: var(--space-4) 0;
+  }
+  .leyenda summary {
+    cursor: pointer; font-weight: 600; color: var(--color-text);
+    list-style: none; display: flex; align-items: center; gap: 8px;
+  }
+  .leyenda summary::before { content: "▸"; color: var(--color-primary); transition: transform .15s; }
+  .leyenda[open] summary::before { transform: rotate(90deg); }
+  .leyenda ol { margin: var(--space-2) 0 0; padding-left: 20px; }
+  .leyenda li { margin-bottom: 6px; }
+  .leyenda li strong { color: var(--color-text); font-weight: 600; }
+  .leyenda .fuente-nota { font-size: var(--text-xs); margin-top: var(--space-2); margin-bottom: 0; }
+
+  /* ── Procedencia (siempre en DOM) ─────────────────────── */
+  .prov {
+    font-size: var(--text-xs); color: var(--color-provenance-fg);
+    background: var(--color-provenance-bg); border: 1px solid var(--color-provenance-border);
+    border-radius: var(--radius-sm); padding: 6px 8px; margin-top: 6px;
+  }
+  .prov .row { display: flex; gap: 6px; }
+  .prov dt { font-weight: 600; min-width: 56px; }
+  .prov dd { margin: 0; }
+  .prov a { color: var(--color-primary); text-decoration: underline; text-underline-offset: 2px; }
+  .mono { font-family: var(--font-mono); font-size: 0.92em; }
+
+  /* ── Hecho (item compartido entre variantes) ──────────── */
+  .hecho { padding: var(--space-2) 0; border-top: 1px dashed var(--color-border); }
+  .hecho:first-child { border-top: 0; }
+  .hecho .h-label { font-size: var(--text-sm); color: var(--color-text); }
+  .hecho .h-ventana { font-size: var(--text-xs); color: var(--color-text-muted); display: block; margin-top: 2px; }
+
+  .microcopy {
+    font-size: var(--text-xs); color: var(--color-text-muted);
+    border-left: 3px solid var(--color-primary); padding-left: 10px; margin-top: var(--space-3);
+  }
+
+  .btn-link {
+    background: none; border: none; padding: 0; cursor: pointer;
+    color: var(--color-primary); font-size: var(--text-sm);
+    text-decoration: underline; text-underline-offset: 2px;
+  }
+  .btn-link:hover { color: var(--color-primary-hover); }
+  .btn-pill {
+    border: 1px solid var(--color-border); background: var(--color-surface);
+    border-radius: var(--radius-full); padding: 6px 14px; cursor: pointer;
+    font-size: var(--text-sm); transition: all .15s ease;
+  }
+  .btn-pill:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+  .btn-pill:disabled { opacity: .4; cursor: default; }
+  :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+  /* ═══ VARIANTE A: fichas paginadas ═════════════════════ */
+  .a-seed {
+    display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+    background: var(--color-surface); border: 2px solid var(--color-text);
+    border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+  }
+  .a-seed .quien { font-size: var(--text-lg); font-weight: 600; }
+  .a-seed .resumen { color: var(--color-text-muted); font-size: var(--text-sm); flex-basis: 100%; margin: 0; }
+  .a-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: var(--space-3); align-items: start;
+  }
+  .a-card {
+    background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: var(--radius-md); padding: var(--space-3);
+    border-top: 3px solid var(--color-border); transition: box-shadow .15s ease;
+  }
+  .a-card.camara { border-top-color: var(--color-camara); }
+  .a-card.senado { border-top-color: var(--color-senado); }
+  .a-card:hover { box-shadow: var(--shadow-md); }
+  .a-card .nombre { font-weight: 600; font-size: var(--text-sm); margin-bottom: 4px; }
+  .a-card .meta { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  .a-card .n-hechos { font-size: var(--text-xs); color: var(--color-primary); font-weight: 600; }
+  .a-card .hechos-panel { display: none; margin-top: var(--space-2); border-top: 1px solid var(--color-border); padding-top: var(--space-2); }
+  .a-card.open .hechos-panel { display: block; }
+  .a-card .acciones { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; }
+  .a-pager {
+    display: flex; align-items: center; gap: var(--space-3);
+    margin-top: var(--space-4); flex-wrap: wrap;
+  }
+  .a-pager .estado { color: var(--color-text-muted); font-size: var(--text-sm); }
+
+  /* ═══ VARIANTE B: seed-izquierda → columna fan-out ═════ */
+  .b-layout { position: relative; display: flex; gap: 56px; align-items: flex-start; }
+  #conn-b { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+  .b-seedcol { flex: 0 0 250px; position: sticky; top: 72px; z-index: 2; }
+  .b-seed {
+    background: var(--color-surface); border: 2px solid var(--color-text);
+    border-radius: var(--radius-lg); padding: var(--space-4); box-shadow: var(--shadow-sm);
+  }
+  .b-seed .quien { font-weight: 600; font-size: var(--text-base); }
+  .b-seednote { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-2); }
+  .b-list { flex: 1; display: flex; flex-direction: column; gap: var(--space-2); z-index: 2; min-width: 0; }
+  .b-row {
+    background: var(--color-surface); border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-border);
+    border-radius: var(--radius-md); padding: var(--space-2) var(--space-3);
+    cursor: pointer; transition: all .15s ease;
+  }
+  .b-row.camara { border-left-color: var(--color-camara); }
+  .b-row.senado { border-left-color: var(--color-senado); }
+  .b-row:hover { box-shadow: var(--shadow-sm); }
+  .b-row.sel { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+  .b-row .fila { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .b-row .nombre { font-weight: 600; font-size: var(--text-sm); }
+  .b-row .n-hechos { margin-left: auto; font-size: var(--text-xs); color: var(--color-primary); font-weight: 600; white-space: nowrap; }
+  .b-row .detalle { display: none; margin-top: var(--space-2); border-top: 1px solid var(--color-border); padding-top: 4px; }
+  .b-row.sel .detalle { display: block; }
+  .b-pager { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-3); flex-wrap: wrap; }
+  .b-pager .estado { color: var(--color-text-muted); font-size: var(--text-sm); }
+  .b-nota-movil { display: none; font-size: var(--text-xs); color: var(--color-text-muted); margin: var(--space-2) 0; }
+
+  /* ═══ VARIANTE C: radial descargado + panel ════════════ */
+  .c-layout { display: flex; gap: var(--space-4); align-items: stretch; }
+  .c-canvas-wrap {
+    position: relative; flex: 1; min-width: 0; height: 560px;
+    background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg); overflow: hidden;
+  }
+  #c-edges { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #c-edges line { stroke: var(--color-primary); stroke-width: 1.5; opacity: .45; transition: all .15s ease; }
+  #c-edges line.sel { stroke-width: 2.5; opacity: 1; }
+  #c-edges line.dim { opacity: .12; }
+  .c-node {
+    position: absolute; transform: translate(-50%, -50%);
+    background: var(--color-surface); border: 2px solid var(--color-border);
+    border-radius: var(--radius-md); padding: 6px 10px; max-width: 168px;
+    text-align: center; cursor: pointer; transition: box-shadow .15s ease;
+    box-shadow: var(--shadow-sm); z-index: 2;
+  }
+  .c-node.camara { border-color: var(--color-camara); }
+  .c-node.senado { border-color: var(--color-senado); }
+  .c-node:hover { box-shadow: var(--shadow-md); }
+  .c-node.sel { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  .c-node .nombre { font-size: 12px; font-weight: 600; line-height: 1.25; }
+  .c-node .sub { font-size: 10px; color: var(--color-text-muted); }
+  .c-node .n-hechos { font-size: 10px; color: var(--color-primary); font-weight: 600; }
+  .c-node.is-seed { border-color: var(--color-text); border-width: 2.5px; cursor: default; }
+  .c-hint {
+    position: absolute; left: 12px; bottom: 10px; font-size: var(--text-xs);
+    color: var(--color-text-muted); z-index: 3; margin: 0;
+  }
+  .c-panel {
+    flex: 0 0 340px; background: var(--color-surface);
+    border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+    padding: var(--space-4); overflow-y: auto; max-height: 560px;
+  }
+  .c-panel .vacio { color: var(--color-text-muted); font-size: var(--text-sm); }
+  .c-panel .cerrar { float: right; }
+  .c-panel h3 { margin: 0 0 4px; font-size: var(--text-base); }
+  .c-mas { margin-top: var(--space-3); }
+  .c-mas .estado { font-size: var(--text-sm); color: var(--color-text-muted); }
+  .c-mas ul { columns: 2; margin: var(--space-2) 0 0; padding-left: 20px; display: none; }
+  .c-mas.open ul { display: block; }
+  .c-mas li { margin-bottom: 4px; font-size: var(--text-sm); }
+  #c-mobile-list { display: none; }
+
+  /* ── Modo teléfono (via toolbar, clase en body) ───────── */
+  body.vp-phone .b-layout { flex-direction: column; gap: var(--space-3); }
+  body.vp-phone .b-seedcol { position: static; flex: none; width: 100%; }
+  body.vp-phone #conn-b { display: none; }
+  body.vp-phone .b-nota-movil { display: block; }
+  body.vp-phone .c-layout { display: none; }
+  body.vp-phone #c-mobile-list { display: block; }
+  body.vp-phone .c-mas ul { columns: 1; }
+  body.vp-phone .page { padding-left: var(--space-3); padding-right: var(--space-3); }
+
+  /* ── Lista móvil C ────────────────────────────────────── */
+  .cm-item {
+    background: var(--color-surface); border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-border);
+    border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); margin-bottom: var(--space-2);
+  }
+  .cm-item.camara { border-left-color: var(--color-camara); }
+  .cm-item.senado { border-left-color: var(--color-senado); }
+  .cm-item .cab { display: flex; gap: 8px; align-items: center; cursor: pointer; flex-wrap: wrap; }
+  .cm-item .nombre { font-weight: 600; font-size: var(--text-sm); }
+  .cm-item .det { display: none; margin-top: var(--space-2); border-top: 1px solid var(--color-border); padding-top: 4px; }
+  .cm-item.open .det { display: block; }
+
+  /* ── Toolbar del sketch ───────────────────────────────── */
+  #sketch-tools {
+    position: fixed; bottom: 12px; right: 12px; z-index: 9999;
+    font-family: system-ui; font-size: 12px; background: rgba(0,0,0,0.72);
+    color: #fff; padding: 8px 12px; border-radius: 8px; opacity: .4;
+    transition: opacity .2s; display: flex; gap: 8px; align-items: center;
+  }
+  #sketch-tools:hover { opacity: 1; }
+  #sketch-tools button {
+    background: rgba(255,255,255,.15); color: #fff; border: none;
+    border-radius: 4px; padding: 3px 8px; cursor: pointer; font-size: 11px;
+  }
+  #sketch-tools button.on { background: rgba(255,255,255,.45); }
+</style>
+</head>
+<body>
+
+<div id="variant-nav">
+  <span class="lbl">Sketch 002 · /red</span>
+  <button class="variant-tab" data-v="a" onclick="showVariant('a', this)">A: Fichas paginadas</button>
+  <button class="variant-tab active" data-v="b" onclick="showVariant('b', this)">B: Diagrama seed → columna ★ Elegida</button>
+  <button class="variant-tab" data-v="c" onclick="showVariant('c', this)">C: Radial liviano + panel</button>
+</div>
+
+<div id="stage">
+
+<!-- ═════════ VARIANTE A: nodos-tarjeta paginados ═════════ -->
+<section id="variant-a" class="variant">
+  <div class="page">
+    <header class="page-header">
+      <h1>Red de relaciones</h1>
+      <p class="sub">Hechos públicos documentados que vinculan a este parlamentario con otros. Cada hecho lleva su fuente, fecha y enlace al registro original.</p>
+    </header>
+
+    <details class="leyenda" open>
+      <summary>Cómo leer esta vista</summary>
+      <ol>
+        <li><strong>La persona elegida</strong> aparece arriba; debajo, sus <strong>vecinos</strong>: parlamentarios con los que comparte al menos un hecho público documentado.</li>
+        <li><strong>Una relación es un hecho, no una afinidad</strong>: por ejemplo, haber recibido audiencia de la misma contraparte de lobby, o estar registrados en la misma votación. No indica acuerdo, cercanía política ni motivo.</li>
+        <li>Las fichas van en <strong>orden alfabético</strong> — el orden y la posición no significan nada más.</li>
+        <li>Pulsa <strong>“Ver los hechos”</strong> en cualquier ficha para ver qué hechos comparten, con su fecha, su fuente y el enlace al registro original.</li>
+        <li>El borde superior de cada ficha indica la cámara: <span class="chip camara">Cámara de Diputadas y Diputados</span> <span class="chip senado">Senado</span></li>
+      </ol>
+      <p class="fuente-nota">Fuente: Ley del Lobby (Ley 20.730) y votaciones de sala · datos ingestados por este observatorio.</p>
+    </details>
+
+    <div class="a-seed">
+      <span class="quien" id="a-seed-nombre"></span>
+      <span class="chip camara">Cámara de Diputadas y Diputados</span>
+      <p class="resumen" id="a-seed-resumen"></p>
+    </div>
+
+    <div class="a-grid" id="a-grid"></div>
+
+    <div class="a-pager">
+      <button class="btn-pill" id="a-prev" onclick="aPageMove(-1)">← Anteriores</button>
+      <button class="btn-pill" id="a-next" onclick="aPageMove(1)">Siguientes →</button>
+      <span class="estado" id="a-estado"></span>
+    </div>
+    <p class="microcopy">Se muestran 8 vecinos por página, en orden alfabético. Ningún vecino se descarta: el conteo total es verdadero.</p>
+  </div>
+</section>
+
+<!-- ═════════ VARIANTE B: seed-izquierda → columna ═════════ -->
+<section id="variant-b" class="variant active">
+  <div class="page">
+    <header class="page-header">
+      <h1>Red de relaciones</h1>
+      <p class="sub">Un diagrama de lectura izquierda → derecha: la persona elegida y, a su derecha, cada parlamentario con quien comparte hechos públicos documentados.</p>
+    </header>
+
+    <details class="leyenda" open>
+      <summary>Cómo leer este diagrama</summary>
+      <ol>
+        <li><strong>A la izquierda</strong>, la persona elegida. <strong>A la derecha</strong>, en una columna, sus vecinos en orden alfabético.</li>
+        <li><strong>Cada línea</strong> conecta a la persona elegida con un vecino y representa uno o más hechos públicos compartidos. El largo o la curva de la línea <strong>no significan nada</strong>.</li>
+        <li>Pulsa un vecino para <strong>destacar su línea</strong> y ver el detalle: qué hechos comparten, cuándo, y el enlace a la fuente original.</li>
+        <li>Una relación = un hecho documentado (audiencia de la misma contraparte de lobby, misma votación). <strong>Nunca</strong> indica afinidad, acuerdo ni motivo.</li>
+        <li>El filo izquierdo de cada tarjeta indica la cámara: <span class="chip camara">Cámara</span> <span class="chip senado">Senado</span></li>
+      </ol>
+      <p class="fuente-nota">Fuente: Ley del Lobby (Ley 20.730) y votaciones de sala · datos ingestados por este observatorio.</p>
+    </details>
+
+    <p class="b-nota-movil">En pantallas angostas las líneas se omiten; el orden sigue siendo alfabético y el detalle se abre igual al pulsar cada vecino.</p>
+
+    <div class="b-layout" id="b-layout">
+      <svg id="conn-b" aria-hidden="true"></svg>
+      <div class="b-seedcol">
+        <div class="b-seed" id="b-seed">
+          <div class="quien" id="b-seed-nombre"></div>
+          <div style="margin-top:4px"><span class="chip camara">Cámara de Diputadas y Diputados</span></div>
+          <p class="b-seednote" id="b-seed-resumen"></p>
+          <p class="b-seednote">El orden de la columna es alfabético; la posición no implica afinidad.</p>
+        </div>
+      </div>
+      <div class="b-list" id="b-list"></div>
+    </div>
+
+    <div class="b-pager">
+      <button class="btn-pill" id="b-prev" onclick="bPageMove(-1)">← Anteriores</button>
+      <button class="btn-pill" id="b-next" onclick="bPageMove(1)">Siguientes →</button>
+      <span class="estado" id="b-estado"></span>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════ VARIANTE C: radial liviano + panel ═════════ -->
+<section id="variant-c" class="variant">
+  <div class="page">
+    <header class="page-header">
+      <h1>Red de relaciones</h1>
+      <p class="sub">Vista radial liviana: la persona elegida al centro y hasta 10 vecinos alrededor. El detalle de cada relación se abre en el panel, no sobre el dibujo.</p>
+    </header>
+
+    <details class="leyenda">
+      <summary>Cómo leer este grafo (posición ≠ afinidad)</summary>
+      <ol>
+        <li><strong>Al centro</strong>, la persona elegida. <strong>Alrededor</strong>, sus vecinos en orden alfabético desde las 12 en punto, en sentido horario.</li>
+        <li><strong>Cada línea</strong> es uno o más hechos públicos compartidos. La distancia y el ángulo <strong>no indican</strong> cercanía ni relación entre las personas: son solo orden alfabético.</li>
+        <li>Pulsa un vecino para abrir el <strong>panel de detalle</strong>: qué hechos comparten, fechas, fuente y enlace al registro original.</li>
+        <li>Se muestran como máximo 10 vecinos en el dibujo; el resto aparece listado debajo, sin descartar a nadie.</li>
+      </ol>
+      <p class="fuente-nota">Fuente: Ley del Lobby (Ley 20.730) y votaciones de sala · datos ingestados por este observatorio.</p>
+    </details>
+
+    <div class="c-layout">
+      <div class="c-canvas-wrap" id="c-canvas">
+        <svg id="c-edges" aria-hidden="true"></svg>
+        <p class="c-hint">Orden alfabético desde las 12, sentido horario — la posición no implica afinidad.</p>
+      </div>
+      <aside class="c-panel" id="c-panel" aria-label="Detalle de la relación seleccionada">
+        <p class="vacio">Pulsa un vecino del dibujo para ver aquí el detalle: qué hechos comparten, cuándo, y la fuente de cada uno.</p>
+      </aside>
+    </div>
+
+    <div id="c-mobile-list"></div>
+
+    <div class="c-mas" id="c-mas">
+      <span class="estado" id="c-mas-estado"></span>
+      <button class="btn-link" id="c-mas-btn" onclick="toggleCMas()"></button>
+      <ul id="c-mas-lista"></ul>
+    </div>
+  </div>
+</section>
+
+</div><!-- /stage -->
+
+<!-- ── Toolbar del sketch ── -->
+<div id="sketch-tools">
+  <select onchange="document.querySelector('link[href*=themes]').href='../themes/'+this.value+'.css'">
+    <option value="default">Tema: sitio</option>
+  </select>
+  <button id="vp-phone" onclick="setViewport('phone', this)">390</button>
+  <button id="vp-tablet" onclick="setViewport('tablet', this)">768</button>
+  <button id="vp-full" class="on" onclick="setViewport('full', this)">Full</button>
+</div>
+
+<script>
+/* ═══════════ Datos de ejemplo (ficticios, deterministas) ═══════════
+   Espejo del contrato real del RPC subgrafo_red:
+   arista = {tipo, contexto, desde, hasta, dataset, origen, enlace, licencia} */
+
+const SEED = { id: "D1009", nombre: "Delgado Pinto, Carmen", camara: "diputados" };
+
+const NOMBRES = [
+  ["Acevedo Rojas, María Ignacia", "diputados"],
+  ["Barrientos Vidal, Tomás", "diputados"],
+  ["Bravo Saldías, Antonia", "senado"],
+  ["Cárdenas Ulloa, Paula", "diputados"],
+  ["Castillo Fuentes, Rodrigo", "diputados"],
+  ["Contreras Maldonado, Javiera", "senado"],
+  ["Díaz Quintana, Álvaro", "diputados"],
+  ["Escobar Riquelme, Constanza", "diputados"],
+  ["Farías Ortiz, Manuel", "senado"],
+  ["Fuentealba Soto, Daniela", "diputados"],
+  ["Gallardo Pinto, Sebastián", "diputados"],
+  ["Herrera Bustos, Valentina", "senado"],
+  ["Ibáñez Cruz, Matías", "diputados"],
+  ["Jara Villalobos, Francisca", "diputados"],
+  ["Lagos Mena, Cristóbal", "senado"],
+  ["Miranda Salas, Josefa", "diputados"],
+  ["Navarro Peña, Diego", "diputados"],
+  ["Ortega Ramírez, Camila", "senado"],
+  ["Paredes Silva, Vicente", "diputados"],
+  ["Quezada Torres, Isidora", "diputados"],
+  ["Reyes Aravena, Felipe", "senado"],
+  ["Salazar Molina, Fernanda", "diputados"],
+  ["Toro Sandoval, Ignacio", "diputados"],
+  ["Vergara Núñez, Amparo", "senado"],
+];
+
+const LOBBY = [
+  ["Corporación Chilena de la Madera (Corma)", "2025-03-12", "2025-11-04"],
+  ["Asociación de Generadoras de Chile", "2024-08-19", "2025-06-30"],
+  ["Sociedad Nacional de Agricultura (SNA)", "2025-01-22", "2025-01-22"],
+  ["Consejo Minero", "2024-11-05", "2025-09-17"],
+  ["Asociación de AFP de Chile", "2025-05-08", "2025-05-08"],
+  ["Cámara Chilena de la Construcción (CChC)", "2024-06-14", "2025-10-02"],
+];
+const VOTOS = [
+  ["Boletín 14309-04 · sesión 45ª", "2025-04-16"],
+  ["Boletín 15862-07 · sesión 12ª", "2025-08-27"],
+];
+
+function hechoLobby(i) {
+  const [ctx, d, h] = LOBBY[i % LOBBY.length];
+  return { tipo: "co_lobby_contraparte", contexto: ctx, desde: d, hasta: h,
+    dataset: "lobby_audiencias", origen: "InfoLobby (Ley 20.730)",
+    enlace: "https://www.infolobby.cl/#/audiencias", licencia: null };
+}
+function hechoVoto(i) {
+  const [ctx, d] = VOTOS[i % VOTOS.length];
+  return { tipo: "co_votacion", contexto: ctx, desde: d, hasta: d,
+    dataset: "votaciones_sala", origen: "Cámara de Diputadas y Diputados",
+    enlace: "https://www.camara.cl/legislacion/sala_sesiones/votaciones.aspx", licencia: null };
+}
+// Asignación determinista de 1–3 hechos por vecino (sin Math.random).
+function hechosFor(i) {
+  const hs = [hechoLobby(i)];
+  if (i % 3 === 0) hs.push(hechoLobby(i + 2));
+  if (i % 4 === 0) hs.push(hechoVoto(Math.floor(i / 4)));
+  return hs;
+}
+
+const VECINOS = NOMBRES.map((n, i) => ({
+  id: (n[1] === "senado" ? "S6" : "D1") + String(100 + i),
+  nombre: n[0], camara: n[1], hechos: hechosFor(i),
+}));
+
+/* ── Copy idéntico al componente real (etiquetaHecho / ventanaTexto) ── */
+function etiquetaHecho(h) {
+  const quien = (h.contexto || "").trim() || "la misma contraparte";
+  if (h.tipo === "co_lobby_contraparte") return "Ambos recibieron audiencia de " + quien;
+  if (h.tipo === "co_votacion") return "Registrados en la misma votación: " + quien;
+  return "Hecho público compartido: " + quien;
+}
+function ventanaTexto(d, h) {
+  if (d && h) return d === h ? "el " + d : "entre " + d + " y " + h;
+  if (d) return "desde " + d;
+  if (h) return "hasta " + h;
+  return null;
+}
+function camaraLabel(c) { return c === "senado" ? "Senado" : "Cámara de Diputadas y Diputados"; }
+function chipHtml(c) {
+  return '<span class="chip ' + (c === "senado" ? "senado" : "camara") + '">' + camaraLabel(c) + "</span>";
+}
+function plural(n, uno, varios) { return n + " " + (n === 1 ? uno : varios); }
+
+/* Bloque de hechos + procedencia (compartido por las tres variantes).
+   La procedencia (fuente + periodo + registro + enlace) va SIEMPRE en el DOM. */
+function hechosHtml(vecino) {
+  return vecino.hechos.map(function (h) {
+    const v = ventanaTexto(h.desde, h.hasta);
+    return '<div class="hecho">' +
+      '<span class="h-label">' + etiquetaHecho(h) + "</span>" +
+      (v ? '<span class="h-ventana mono">' + v + "</span>" : "") +
+      '<dl class="prov">' +
+        '<div class="row"><dt>Fuente</dt><dd>' + h.origen + "</dd></div>" +
+        (v ? '<div class="row"><dt>Periodo</dt><dd class="mono">' + v + "</dd></div>" : "") +
+        '<div class="row"><dt>Registro</dt><dd>' + h.dataset + "</dd></div>" +
+        '<div class="row"><dt></dt><dd><a href="' + h.enlace + '" target="_blank" rel="noopener noreferrer">Ver fuente oficial ↗</a></dd></div>' +
+      "</dl></div>";
+  }).join("");
+}
+const MICROCOPY_HECHO = '<p class="microcopy">Una relación aquí es un hecho público documentado. No indica afinidad, acuerdo ni motivo entre las personas.</p>';
+
+const totalHechos = VECINOS.reduce(function (s, v) { return s + v.hechos.length; }, 0);
+
+/* ═══════════ Variante A: fichas paginadas ═══════════ */
+const A_PAGE = 8;
+let aPage = 0;
+const aOpen = {};
+
+function renderA() {
+  document.getElementById("a-seed-nombre").textContent = SEED.nombre;
+  document.getElementById("a-seed-resumen").textContent =
+    "Comparte hechos públicos documentados con " + plural(VECINOS.length, "parlamentario", "parlamentarios") +
+    " (" + plural(totalHechos, "hecho", "hechos") + " en total).";
+  const start = aPage * A_PAGE;
+  const pageItems = VECINOS.slice(start, start + A_PAGE);
+  document.getElementById("a-grid").innerHTML = pageItems.map(function (v) {
+    const open = aOpen[v.id] ? " open" : "";
+    return '<article class="a-card ' + (v.camara === "senado" ? "senado" : "camara") + open + '" id="a-card-' + v.id + '">' +
+      '<div class="nombre">' + v.nombre + "</div>" +
+      '<div class="meta">' + chipHtml(v.camara) +
+        '<span class="n-hechos">' + plural(v.hechos.length, "hecho en común", "hechos en común") + "</span></div>" +
+      '<div class="acciones">' +
+        '<button class="btn-link" onclick="toggleACard(\'' + v.id + '\')">' + (aOpen[v.id] ? "Ocultar los hechos" : "Ver los hechos") + "</button>" +
+        '<a href="#" onclick="return false" title="Mockup: navegaría a /red?seed=' + v.id + '">Ver su red →</a>' +
+      "</div>" +
+      '<div class="hechos-panel">' + hechosHtml(v) + MICROCOPY_HECHO + "</div>" +
+    "</article>";
+  }).join("");
+  const totalPages = Math.ceil(VECINOS.length / A_PAGE);
+  document.getElementById("a-estado").textContent =
+    "Vecinos " + (start + 1) + "–" + Math.min(start + A_PAGE, VECINOS.length) + " de " + VECINOS.length +
+    " · página " + (aPage + 1) + " de " + totalPages + " · orden alfabético";
+  document.getElementById("a-prev").disabled = aPage === 0;
+  document.getElementById("a-next").disabled = aPage >= totalPages - 1;
+}
+function aPageMove(d) {
+  aPage = Math.max(0, Math.min(Math.ceil(VECINOS.length / A_PAGE) - 1, aPage + d));
+  renderA();
+}
+function toggleACard(id) { aOpen[id] = !aOpen[id]; renderA(); }
+
+/* ═══════════ Variante B: seed → columna con fan-out ═══════════ */
+const B_PAGE = 10;
+let bPage = 0;
+let bSel = null;
+
+function renderB() {
+  document.getElementById("b-seed-nombre").textContent = SEED.nombre;
+  document.getElementById("b-seed-resumen").textContent =
+    plural(VECINOS.length, "vecino", "vecinos") + " · " + plural(totalHechos, "hecho documentado", "hechos documentados") + ".";
+  const start = bPage * B_PAGE;
+  const pageItems = VECINOS.slice(start, start + B_PAGE);
+  document.getElementById("b-list").innerHTML = pageItems.map(function (v) {
+    const sel = bSel === v.id ? " sel" : "";
+    return '<div class="b-row ' + (v.camara === "senado" ? "senado" : "camara") + sel + '" id="b-row-' + v.id +
+      '" onclick="selB(\'' + v.id + '\')" tabindex="0" onkeydown="if(event.key===\'Enter\')selB(\'' + v.id + '\')">' +
+      '<div class="fila"><span class="nombre">' + v.nombre + "</span>" + chipHtml(v.camara) +
+        '<span class="n-hechos">' + plural(v.hechos.length, "hecho", "hechos") + " →</span></div>" +
+      '<div class="detalle">' + hechosHtml(v) + MICROCOPY_HECHO +
+        '<p style="margin:8px 0 0"><a href="#" onclick="return false" title="Mockup: navegaría a /red?seed=' + v.id + '">Ver la red de esta persona →</a></p>' +
+      "</div></div>";
+  }).join("");
+  const totalPages = Math.ceil(VECINOS.length / B_PAGE);
+  document.getElementById("b-estado").textContent =
+    "Vecinos " + (start + 1) + "–" + Math.min(start + B_PAGE, VECINOS.length) + " de " + VECINOS.length +
+    " · página " + (bPage + 1) + " de " + totalPages + " · orden alfabético";
+  document.getElementById("b-prev").disabled = bPage === 0;
+  document.getElementById("b-next").disabled = bPage >= totalPages - 1;
+  requestAnimationFrame(drawConnB);
+}
+function bPageMove(d) {
+  bPage = Math.max(0, Math.min(Math.ceil(VECINOS.length / B_PAGE) - 1, bPage + d));
+  bSel = null;
+  renderB();
+}
+function selB(id) { bSel = bSel === id ? null : id; renderB(); }
+
+/* Conectores fan-out: parten repartidos por el borde derecho de la tarjeta seed
+   (NO convergen a un punto) y llegan al borde izquierdo de cada fila. */
+function drawConnB() {
+  const svg = document.getElementById("conn-b");
+  const cont = document.getElementById("b-layout");
+  const seed = document.getElementById("b-seed");
+  if (!svg || !cont.offsetParent) return;
+  const cr = cont.getBoundingClientRect();
+  svg.setAttribute("viewBox", "0 0 " + cr.width + " " + cr.height);
+  svg.style.width = cr.width + "px";
+  svg.style.height = cr.height + "px";
+  const sr = seed.getBoundingClientRect();
+  const rows = Array.prototype.slice.call(cont.querySelectorAll(".b-row"));
+  const n = rows.length;
+  let html = "";
+  rows.forEach(function (row, k) {
+    // salida: repartida verticalmente por el borde derecho del seed (fan-out)
+    const pad = 18;
+    const span = Math.max(sr.height - pad * 2, 1);
+    const sx = sr.right - cr.left;
+    const sy = sr.top - cr.top + pad + (n > 1 ? (span * k) / (n - 1) : span / 2);
+    const rr = row.getBoundingClientRect();
+    const ex = rr.left - cr.left;
+    const ey = rr.top - cr.top + Math.min(rr.height, 40) / 2 + 2;
+    const mx = (sx + ex) / 2;
+    const sel = bSel && row.id === "b-row-" + bSel;
+    const stroke = "var(--color-primary)";
+    const w = sel ? 2.5 : 1.5;
+    const op = bSel ? (sel ? 1 : 0.13) : 0.5;
+    html += '<path d="M ' + sx + " " + sy + " C " + mx + " " + sy + ", " + mx + " " + ey + ", " + ex + " " + ey +
+      '" fill="none" stroke="' + stroke + '" stroke-width="' + w + '" opacity="' + op + '"/>';
+  });
+  svg.innerHTML = html;
+}
+window.addEventListener("resize", function () { requestAnimationFrame(drawConnB); });
+
+/* ═══════════ Variante C: radial liviano + panel ═══════════ */
+const C_CAP = 10;
+let cSel = null;
+let cMasOpen = false;
+
+function renderC() {
+  const wrap = document.getElementById("c-canvas");
+  // limpiar nodos previos (deja el svg y el hint)
+  Array.prototype.slice.call(wrap.querySelectorAll(".c-node")).forEach(function (n) { n.remove(); });
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  const cx = W / 2, cy = H / 2;
+  const R = Math.min(W, H) / 2 - 78; // radio holgado: los nodos no tocan el borde
+  const shown = VECINOS.slice(0, C_CAP);
+
+  // seed al centro
+  const seedEl = document.createElement("div");
+  seedEl.className = "c-node is-seed";
+  seedEl.style.left = cx + "px"; seedEl.style.top = cy + "px";
+  seedEl.innerHTML = '<div class="nombre">' + SEED.nombre + '</div><div class="sub">' + camaraLabel(SEED.camara) + " · persona elegida</div>";
+  wrap.appendChild(seedEl);
+
+  let edges = "";
+  shown.forEach(function (v, i) {
+    // alfabético desde las 12 en punto, sentido horario — igual que radialPos()
+    const theta = -Math.PI / 2 + (2 * Math.PI * i) / shown.length;
+    const x = cx + R * Math.cos(theta), y = cy + R * Math.sin(theta);
+    const sel = cSel === v.id;
+    const cls = sel ? "sel" : (cSel ? "dim" : "");
+    // la línea parte del borde del seed hacia el nodo (no del centro exacto)
+    const sx = cx + 52 * Math.cos(theta), sy = cy + 30 * Math.sin(theta);
+    const ex = x - 62 * Math.cos(theta), ey = y - 26 * Math.sin(theta);
+    edges += '<line x1="' + sx + '" y1="' + sy + '" x2="' + ex + '" y2="' + ey + '" class="' + cls + '"/>';
+    const el = document.createElement("div");
+    el.className = "c-node " + (v.camara === "senado" ? "senado" : "camara") + (sel ? " sel" : "");
+    el.style.left = x + "px"; el.style.top = y + "px";
+    el.setAttribute("tabindex", "0");
+    el.innerHTML = '<div class="nombre">' + v.nombre + '</div>' +
+      '<div class="sub">' + (v.camara === "senado" ? "Senado" : "Cámara") + '</div>' +
+      '<div class="n-hechos">' + plural(v.hechos.length, "hecho", "hechos") + "</div>";
+    el.onclick = function () { selC(v.id); };
+    el.onkeydown = function (e) { if (e.key === "Enter") selC(v.id); };
+    wrap.appendChild(el);
+  });
+  document.getElementById("c-edges").innerHTML = edges;
+
+  // panel
+  const panel = document.getElementById("c-panel");
+  const v = VECINOS.find(function (x) { return x.id === cSel; });
+  if (!v) {
+    panel.innerHTML = '<p class="vacio">Pulsa un vecino del dibujo para ver aquí el detalle: qué hechos comparten, cuándo, y la fuente de cada uno.</p>';
+  } else {
+    panel.innerHTML =
+      '<button class="btn-link cerrar" onclick="selC(null)">Cerrar ✕</button>' +
+      "<h3>" + v.nombre + "</h3>" +
+      '<div style="margin-bottom:8px">' + chipHtml(v.camara) + "</div>" +
+      '<p style="font-size:var(--text-sm);color:var(--color-text-muted);margin:0 0 4px">' +
+        "Hechos públicos que comparte con " + SEED.nombre + ":</p>" +
+      hechosHtml(v) + MICROCOPY_HECHO +
+      '<p style="margin-top:12px"><a href="#" onclick="return false" title="Mockup: navegaría a /red?seed=' + v.id + '">Ver la red de esta persona →</a></p>';
+  }
+
+  // overflow honesto
+  const resto = VECINOS.slice(C_CAP);
+  document.getElementById("c-mas-estado").textContent =
+    "Se muestran los primeros " + C_CAP + " vecinos en orden alfabético de " + VECINOS.length + ". ";
+  document.getElementById("c-mas-btn").textContent =
+    (cMasOpen ? "Ocultar" : "Ver") + " " + resto.length + " vecinos más";
+  document.getElementById("c-mas").classList.toggle("open", cMasOpen);
+  document.getElementById("c-mas-lista").innerHTML = resto.map(function (v) {
+    return '<li><a href="#" onclick="return false" title="Mockup: navegaría a /red?seed=' + v.id + '">' + v.nombre + "</a> · " +
+      (v.camara === "senado" ? "Senado" : "Cámara") + " · " + plural(v.hechos.length, "hecho", "hechos") + "</li>";
+  }).join("");
+
+  // lista móvil (reemplaza el canvas en 390px)
+  document.getElementById("c-mobile-list").innerHTML = VECINOS.slice(0, C_CAP).map(function (v) {
+    const open = cSel === v.id ? " open" : "";
+    return '<div class="cm-item ' + (v.camara === "senado" ? "senado" : "camara") + open + '">' +
+      '<div class="cab" onclick="selC(\'' + v.id + '\')"><span class="nombre">' + v.nombre + "</span>" + chipHtml(v.camara) +
+        '<span class="n-hechos" style="margin-left:auto;font-size:11px;color:var(--color-primary);font-weight:600">' + plural(v.hechos.length, "hecho", "hechos") + "</span></div>" +
+      '<div class="det">' + hechosHtml(v) + MICROCOPY_HECHO + "</div></div>";
+  }).join("");
+}
+function selC(id) { cSel = cSel === id ? null : id; renderC(); }
+function toggleCMas() { cMasOpen = !cMasOpen; renderC(); }
+window.addEventListener("resize", function () {
+  if (document.getElementById("variant-c").classList.contains("active")) renderC();
+});
+
+/* ═══════════ Navegación de variantes + viewport ═══════════ */
+function showVariant(id, btn) {
+  document.querySelectorAll(".variant").forEach(function (v) { v.classList.remove("active"); });
+  document.querySelectorAll(".variant-tab").forEach(function (t) { t.classList.remove("active"); });
+  document.getElementById("variant-" + id).classList.add("active");
+  btn.classList.add("active");
+  if (id === "b") requestAnimationFrame(drawConnB);
+  if (id === "c") requestAnimationFrame(renderC);
+}
+function setViewport(mode, btn) {
+  const stage = document.getElementById("stage");
+  document.body.classList.remove("vp-phone");
+  if (mode === "phone") { stage.style.maxWidth = "390px"; document.body.classList.add("vp-phone"); }
+  else if (mode === "tablet") { stage.style.maxWidth = "768px"; }
+  else { stage.style.maxWidth = "none"; }
+  document.querySelectorAll("#sketch-tools button").forEach(function (b) { b.classList.remove("on"); });
+  btn.classList.add("on");
+  requestAnimationFrame(function () {
+    drawConnB();
+    if (document.getElementById("variant-c").classList.contains("active")) renderC();
+  });
+}
+
+renderA();
+renderB();
+renderC();
+</script>
+</body>
+</html>

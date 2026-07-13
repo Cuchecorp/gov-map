@@ -11,6 +11,7 @@ El propio sitio en PROD (https://observatorio-congreso.thevalis.workers.dev) com
 | # | Name | Design Question | Winner | Tags |
 |---|------|----------------|--------|------|
 | 001 | ficha-parlamentario-cognitiva | ¿Qué estructura capa-1 + disclosure hace legible la ficha sin perder datos? | **B: Informe con rail** (operador, 2026-07-07) | layout, ficha-parlamentario, progressive-disclosure |
+| 002 | red-rediseno-visual | ¿Qué forma visual hace legible el ego-network de /red sin telaraña y con explicaciones detalladas? | **B: Diagrama seed → columna** (operador, 2026-07-13) | red, grafo, layout, anti-insinuacion |
 
 ## Decisión de dirección (cierra la exploración)
 
