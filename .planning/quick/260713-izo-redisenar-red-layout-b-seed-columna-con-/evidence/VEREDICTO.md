@@ -91,5 +91,5 @@ para re-fix + re-captura.
 - Deploy: ✅ LIVE (verificado por HTTP 200 + marcadores del layout B en el HTML).
 - Lectura fría BrowserOS (Claude): ✅ EJECUTADA — veredicto COMPRENSIBLE / YA NO APIÑADO,
   6 capturas + verificación programática archivadas (2026-07-13).
-- Aprobación humana final: ⏳ PENDIENTE — el operador cierra el gate con "aprobado" o
-  reporta hallazgos para re-fix + re-captura.
+- Aprobación humana final: ✅ **APROBADO por el operador (2026-07-13)** — gate
+  checkpoint:human-verify CERRADO. /red layout B queda validado en producción.

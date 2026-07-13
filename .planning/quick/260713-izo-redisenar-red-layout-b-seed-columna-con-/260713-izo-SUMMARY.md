@@ -85,8 +85,10 @@ Reescritura de la vista `/red` al layout B "Diagrama seed → columna" (sketch 0
 - **`[Rule 3 - Blocking]` docker `-w /app` via git-bash:** MSYS convierte `/app` → `C:/Program Files/Git/app`. Correr `docker run` vía PowerShell (gotcha conocido reconfirmado).
 - **`[Rule 3 - Blocking]` wrangler via PowerShell pipeline:** `node ... | Select-Object` hace que PS trate `node` como documento en pipeline. Fix: operador de llamada `& node.exe '...wrangler.js' deploy` con salida a archivo.
 
-**PENDIENTE (gate humano — checkpoint:human-verify, gate="blocking"):**
-La **lectura fría BrowserOS** (juicio visual del operador: "¿ya NO se lee apiñado? ¿las explicaciones son legibles?") NO puede ejecutarla Claude en este entorno — es exactamente el gate humano del checkpoint. El operador debe abrir el deploy real y confirmar (a)+(b)+(c). Pasos exactos en `evidence/VEREDICTO.md`. Responder **"approved"** si la lectura fría confirma, o describir hallazgos para re-fix + re-captura.
+**RESUELTO (gate humano — checkpoint:human-verify, gate="blocking"):**
+La lectura fría BrowserOS SÍ la ejecutó el orquestador (vía `scripts/bros-cli.mjs`, MCP 127.0.0.1:9200 — corrección al supuesto del ejecutor): 6 capturas (desktop cabecera/diagrama/detalle, 390px forzado ×2, sin seed) + verificación programática (10 filas/pág, paginación real a "Vecinos 11–20 de 92", 0 clases react-flow, microcopy y procedencia en DOM) sobre el deploy live `6534fe9f`. Veredicto: **COMPRENSIBLE / YA NO APIÑADO**. Detalle y hallazgo P3 no bloqueante en `evidence/VEREDICTO.md`.
+
+El operador respondió **"aprobado"** el 2026-07-13 — gate CERRADO. /red layout B validado en producción.
 
 ## Self-Check: PASSED
 

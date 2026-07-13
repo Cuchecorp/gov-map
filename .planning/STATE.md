@@ -5,7 +5,7 @@ milestone_name: — Entendible y completo
 status: Awaiting next milestone
 stopped_at: Roadmap v6.0 creado — Phases 56-61, REQUIREMENTS.md traceability actualizado, STATE.md inicializado.
 last_updated: "2026-07-11T17:18:43.787Z"
-last_activity: 2026-07-13 — Quick task 260713-izo: /red layout B desplegado, lectura fría COMPRENSIBLE, gate humano pendiente
+last_activity: 2026-07-13 — Quick task 260713-izo CERRADA: /red layout B en producción, gate humano aprobado
 progress:
   total_phases: 48
   completed_phases: 2
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 Phase: Milestone v6.1 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-07-13 — Completed quick task 260713-izo: /red rediseñado al layout B (seed→columna) y desplegado; lectura fría BrowserOS COMPRENSIBLE; falta "aprobado" del operador
+Last activity: 2026-07-13 — Quick task 260713-izo CERRADA: /red layout B en producción, lectura fría COMPRENSIBLE, operador APROBÓ el gate
 
 ## Performance Metrics
 
