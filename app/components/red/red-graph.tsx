@@ -1,57 +1,41 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  ReactFlow,
-  ReactFlowProvider,
-  Background,
-  Controls,
-  type Edge,
-  type Node,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
 
-import {
-  NodoParlamentario,
-  type NodoParlamentarioData,
-} from "./nodo-parlamentario";
-import {
-  AristaHecho,
-  type AristaHechoData,
-  etiquetaHecho,
-  ventanaTexto,
-} from "./arista-hecho";
+import { etiquetaHecho, ventanaTexto } from "./arista-hecho";
 import { formatNombre } from "@/lib/format";
 import { safeExternalHref } from "@/lib/utils";
 
 /**
- * <RedGraph> — isla cliente del grafo de relaciones NET (NET-02).
+ * <RedGraph> — isla cliente del diagrama de relaciones NET (NET-02), LAYOUT B.
  *
- * Recibe como props el JSON plano que emite el RPC `subgrafo_red` (PII-safe:
- * nodo = id/nombre/cámara) y lo renderiza con `@xyflow/react` como CLIENT ISLAND
- * — esto mantiene la librería (~1.2MB) fuera del bundle server de las demás
- * rutas. La firma de props NO cambia respecto del placeholder 18-02: la ruta
- * `/red` (server) sigue montando `<RedGraph subgrafo={data} />`.
+ * Recibe el JSON plano del RPC `subgrafo_red` (PII-safe: nodo = id/nombre/cámara)
+ * y lo renderiza como un DIAGRAMA DOM legible de lectura izquierda→derecha
+ * (RED-LAYOUT-B, sketch 002 variante B ★): la persona elegida (seed) a la
+ * IZQUIERDA y una COLUMNA paginada de sus vecinos a la derecha, unidos por
+ * conectores SVG curvos con fan-out. Reemplaza el canvas radial `@xyflow/react`
+ * —que se leía apiñado (24 nodos convergiendo a un anillo de 260px)— sin cambiar
+ * la firma de props: `/red` (server) sigue montando `<RedGraph subgrafo seedId>`.
  *
- * Ofrece dos filtros client-side sobre el subgrafo YA recibido (sin round-trips):
- * por TIPO de relación y por VENTANA temporal (desde/hasta). Cada arista lleva su
- * procedencia en un tooltip (origen + ventana + enlace + licencia).
+ * Dos filtros client-side sobre el subgrafo YA recibido (sin round-trips): por
+ * TIPO de relación y por VENTANA temporal (desde/hasta). Cada hecho lleva su
+ * procedencia SIEMPRE en el DOM (origen + ventana + enlace + licencia) dentro del
+ * detalle inline que se abre al seleccionar cada vecino.
  *
  * ANTI-INSINUACIÓN (18-CONTEXT, 17-LEGAL-DOSSIER §2, DESIGN-SYSTEM §8, LOCKED):
- * - el nodo es identidad pública confirmada (nombre + cámara), nunca la
+ * - la fila es identidad pública confirmada (nombre + cámara), nunca la
  *   afiliación, ni una imagen del rostro, ni una insignia que valore u ordene
  *   personas;
- * - la arista es un hecho tipado con fuente y ventana; el copy describe el hecho,
- *   jamás una valoración, una medida de proximidad, ni una explicación de motivo;
- * - el layout es radial ego-céntrico determinista: el parlamentario elegido va al
- *   centro y sus vecinos se ordenan por orden alfabético en el anillo — la posición
- *   en el anillo es orden alfabético, no cercanía; jamás una simulación física
- *   (esa proximidad visual se leería como una relación entre las personas);
- * - sin medida agregada de co-ocurrencia, sin orden de personas, sin camino
- *   presentado como hallazgo;
- * - grafo VACÍO (0 aristas) = estado honesto ("aún no hay relaciones para
- *   mostrar"), NUNCA un error ni un nodo inventado.
+ * - la línea/detalle es un hecho tipado con fuente y ventana; el copy describe el
+ *   hecho, jamás una valoración, una medida de proximidad, ni un motivo;
+ * - el orden de la columna es ALFABÉTICO es-locale y determinista (cero
+ *   force-simulation); la POSICIÓN no implica afinidad; el largo o la curva de
+ *   los conectores NO significan nada;
+ * - el petróleo (--accent-product) vive SOLO en conectores/enlaces/focus, jamás
+ *   como relleno de fila/tarjeta ni color de cámara/partido;
+ * - grafo VACÍO (0 aristas) = estado honesto ("aún no hay relaciones"), NUNCA un
+ *   error ni un nodo inventado.
  */
 
 // Contrato del JSON del RPC subgrafo_red (PII-safe: nodo = id/nombre/camara).
@@ -84,10 +68,9 @@ export interface RedGraphProps {
   subgrafo: Subgrafo | null;
   /**
    * Semilla del ego-framing (55-05): id del parlamentario desde el que se abrió
-   * la vista. Con seedId, el grafo se centra en su vecindario inmediato (seed +
-   * nodos 1-hop) vía `fitViewOptions.nodes`, en vez del fitView global de 136
-   * nodos; y el nodo semilla se marca sobrio (no-ranking). Sin seedId, fitView
-   * global (shipped). Solo props de @xyflow/react ya disponibles — cero física.
+   * la vista. Con seedId, el diagrama pinta la tarjeta seed a la izquierda y la
+   * columna de sus vecinos 1-hop a la derecha. Sin seedId, la columna cae sobre
+   * los nodos con arista visible (rama fallback determinista).
    */
   seedId?: string;
 }
@@ -98,8 +81,21 @@ const TIPO_LABEL: Record<string, string> = {
   co_votacion: "Misma votación",
 };
 
-const nodeTypes = { parlamentario: NodoParlamentario };
-const edgeTypes = { hecho: AristaHecho };
+const CAMARA_LABEL: Record<string, string> = {
+  diputados: "Cámara de Diputadas y Diputados",
+  senado: "Senado",
+};
+
+// Vecinos por página de la columna (RED-LAYOUT-B): TODOS los vecinos son
+// alcanzables paginando; ninguno se descarta.
+const B_PAGE = 10;
+
+// Breakpoint md de Tailwind v4 = 48rem. Bajo este ancho los conectores SVG se
+// omiten (la columna sigue siendo legible sin líneas).
+const MD_BREAKPOINT_PX = 48 * 16; // 48rem @ root 16px
+
+const MICROCOPY_HECHO =
+  "Una relación aquí es un hecho público documentado. No indica afinidad, acuerdo ni motivo entre las personas.";
 
 /** ISO → epoch ms; null si no hay fecha. */
 function ms(iso: string | null): number | null {
@@ -108,48 +104,116 @@ function ms(iso: string | null): number | null {
   return Number.isNaN(t) ? null : t;
 }
 
-// Geometría radial (píxeles DENTRO del canvas SVG, NO el scale de 4px de página).
-const RING1_R = 260; // primer anillo de vecinos directos
-const RING2_R = 460; // anillo de desborde cuando pasan de 12 vecinos
-const CAP = 24; // tope duro de vecinos renderizados (RED-01)
-
 /**
- * Layout RADIAL ego-céntrico determinista (trig pura); jamás una simulación
- * física. `index` es el índice ALFABÉTICO del vecino en el anillo (0-based) y
- * `total` la cantidad de vecinos renderizados. El seed va en {x:0,y:0}; cada
- * vecino cae en el ángulo `theta = -π/2 + 2π·inRing/countInRing` (12 en punto,
- * horario). La POSICIÓN EN EL ANILLO ES ORDEN ALFABÉTICO, NO CERCANÍA
- * (anti-insinuación LOCKED): es función pura de (índice alfabético, cantidad de
- * vecinos), byte-idéntica en cada render, no una medida de afinidad entre
- * personas.
- */
-function radialPos(index: number, total: number): { x: number; y: number } {
-  const perRing = 12; // capacidad del anillo 1 antes de desbordar al anillo 2
-  const ring = index < perRing ? 0 : 1;
-  const R = ring === 0 ? RING1_R : RING2_R;
-  const inRing = ring === 0 ? index : index - perRing;
-  const countInRing =
-    ring === 0 ? Math.min(total, perRing) : total - perRing;
-  const theta =
-    -Math.PI / 2 + (2 * Math.PI * inRing) / Math.max(countInRing, 1);
-  return {
-    x: Math.round(R * Math.cos(theta)),
-    y: Math.round(R * Math.sin(theta)),
-  };
-}
-
-/**
- * Nombre de display de un nodo, con el MISMO fallback que <NodoParlamentario>
- * (nodo-parlamentario.tsx:43): `nombre?.trim() || id`. WR-05 (62-REVIEW): el
+ * Nombre de display de un nodo con fallback WR-05: `nombre?.trim() || id`. El
  * patrón previo `nombre ?? id` NO atrapaba `""` ni cadenas de solo-espacios (la
- * columna es text nullable; el string vacío es representable) → una fila con
- * `nombre: ""` producía un <Link> con nombre accesible vacío en la lista móvil y
- * en el control de overflow, y ordenaba antes que todo. Un solo helper mantiene la
- * misma semántica de fallback en los 4 sitios (sort, seedNombre, lista móvil,
- * overflow).
+ * columna es text nullable) → una fila con `nombre: ""` producía un texto
+ * accesible vacío y ordenaba antes que todo. Un solo helper mantiene la semántica
+ * de fallback en sort + render.
  */
 function displayNombre(n: { nombre: string | null; id: string }): string {
   return formatNombre(n.nombre?.trim() || n.id);
+}
+
+function camaraLabel(camara: string | null): string | null {
+  if (!camara) return null;
+  return CAMARA_LABEL[camara] ?? camara;
+}
+
+function camaraClase(camara: string | null): string | null {
+  if (camara === "diputados") return "net-b-row--camara";
+  if (camara === "senado") return "net-b-row--senado";
+  return null;
+}
+
+function plural(n: number, uno: string, varios: string): string {
+  return `${n} ${n === 1 ? uno : varios}`;
+}
+
+/** Chip de cámara: borde civic 1.5px, background transparente, JAMÁS relleno. */
+function ChipCamara({ camara }: { camara: string | null }) {
+  const label = camaraLabel(camara);
+  if (!label) return null;
+  const clase =
+    camara === "senado"
+      ? "net-chip net-chip--senado"
+      : "net-chip net-chip--camara";
+  return <span className={clase}>{label}</span>;
+}
+
+/**
+ * Bloque de detalle inline de un vecino: por cada hecho seed↔vecino, la etiqueta
+ * del hecho + su ventana + la procedencia (Fuente / Periodo / Registro / enlace)
+ * SIEMPRE en el DOM, la microcopy anti-insinuación, y el link a la red del vecino.
+ */
+function DetalleVecino({
+  vecinoId,
+  hechos,
+}: {
+  vecinoId: string;
+  hechos: SubgrafoArista[];
+}) {
+  return (
+    <div className="net-b-row__detalle">
+      {hechos.map((h, i) => {
+        const ventana = ventanaTexto(h.desde, h.hasta);
+        const enlaceSeguro = safeExternalHref(h.enlace);
+        return (
+          <div key={`${h.tipo}-${i}`} className="net-b-hecho">
+            <span className="net-b-hecho__label">
+              {etiquetaHecho(h.tipo, h.contexto)}
+            </span>
+            {ventana ? (
+              <span className="net-b-hecho__ventana font-mono">{ventana}</span>
+            ) : null}
+            <dl className="net-prov">
+              <div className="net-prov__row">
+                <dt>Fuente</dt>
+                <dd>{h.origen}</dd>
+              </div>
+              {ventana ? (
+                <div className="net-prov__row">
+                  <dt>Periodo</dt>
+                  <dd className="font-mono">{ventana}</dd>
+                </div>
+              ) : null}
+              <div className="net-prov__row">
+                <dt>Registro</dt>
+                <dd>{h.dataset}</dd>
+              </div>
+              {h.licencia ? (
+                <div className="net-prov__row">
+                  <dt>Licencia</dt>
+                  <dd>{h.licencia}</dd>
+                </div>
+              ) : null}
+              {enlaceSeguro ? (
+                <div className="net-prov__row">
+                  <dt aria-hidden="true"></dt>
+                  <dd>
+                    <a
+                      href={enlaceSeguro}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="net-prov__enlace"
+                    >
+                      Ver fuente oficial ↗
+                    </a>
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          </div>
+        );
+      })}
+      <p className="net-microcopy">{MICROCOPY_HECHO}</p>
+      <p className="net-b-row__vernred">
+        <Link href={`/red?seed=${vecinoId}`} className="net-b-link">
+          Ver la red de esta persona →
+        </Link>
+      </p>
+    </div>
+  );
 }
 
 export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
@@ -163,16 +227,24 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
     [aristas],
   );
 
-  // Estado de filtros: tipos OCULTOS (deseleccionados) + ventana temporal.
-  // WR-05 (53-REVIEW): se trackean los tipos DESTILDADOS (set vacío = todos
-  // visibles), no los activos. Un set de "activos" inicializado desde
-  // `tiposPresentes` al montar queda OBSOLETO si `subgrafo` cambia sin remount
-  // (p.ej. un futuro <Link> a /red?seed=…): un tipo nuevo llegaría destildado y
-  // sus aristas filtradas → "Ninguna relación coincide" sin tocar nada. Con el
-  // set de ocultos, todo tipo nuevo nace visible por defecto.
+  // Estado de filtros: tipos OCULTOS (deseleccionados = set vacío ⇒ todos
+  // visibles) + ventana temporal. Trackear ocultos (no activos) evita que un tipo
+  // nuevo, llegado por un cambio de subgrafo sin remount, nazca destildado.
   const [tiposOcultos, setTiposOcultos] = useState<Set<string>>(new Set());
   const [desde, setDesde] = useState<string>("");
   const [hasta, setHasta] = useState<string>("");
+
+  // Estado de la columna: página actual + vecino seleccionado (detalle abierto).
+  const [bPage, setBPage] = useState(0);
+  const [bSel, setBSel] = useState<string | null>(null);
+
+  // Cambiar un filtro RESETEA a página 1 y cierra el detalle (el conjunto de
+  // vecinos cambió → la página previa podría no existir y la selección podría
+  // haber salido del set visible).
+  const resetPager = useCallback(() => {
+    setBPage(0);
+    setBSel(null);
+  }, []);
 
   const toggleTipo = (tipo: string) => {
     setTiposOcultos((prev) => {
@@ -181,6 +253,7 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
       else next.add(tipo);
       return next;
     });
+    resetPager();
   };
 
   // Aristas visibles = pasan el filtro de tipo Y el de ventana temporal.
@@ -191,27 +264,25 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
       if (tiposOcultos.has(a.tipo)) return false;
       const aDesde = ms(a.desde);
       const aHasta = ms(a.hasta);
-      // La arista solapa la ventana seleccionada (extremos abiertos permitidos).
       if (desdeMs !== null && aHasta !== null && aHasta < desdeMs) return false;
       if (hastaMs !== null && aDesde !== null && aDesde > hastaMs) return false;
       return true;
     });
   }, [aristas, tiposOcultos, desde, hasta]);
 
-  // Vecinos del seed = el OTRO extremo de cada arista VISIBLE que toca el seed.
-  // (El subgrafo también trae aristas vecino↔vecino; ésas NO son vecinos nuevos
-  // del seed.) Orden ALFABÉTICO por nombre de display — criterio neutral y
-  // declarado (RED-02); JAMÁS por peso/co-ocurrencia. Debe vivir ANTES del
-  // early-return (`aristas.length === 0`) para no violar las reglas de hooks.
+  const seedNodo = useMemo(
+    () => (seedId ? (nodos.find((n) => n.id === seedId) ?? null) : null),
+    [nodos, seedId],
+  );
+
+  // Vecinos del seed = el OTRO extremo de cada arista visible que toca el seed,
+  // en orden ALFABÉTICO es-locale (criterio neutral declarado, jamás por peso).
+  // WR-04: excluir explícitamente el self-loop del seed. Debe vivir ANTES del
+  // early-return para no violar las reglas de hooks.
   const seedNeighbors = useMemo(() => {
     if (!seedId) return [];
     const ids = new Set<string>();
     for (const a of aristasVisibles) {
-      // WR-04 (62-REVIEW): excluir explícitamente el propio seed. Un self-loop
-      // malformado del RPC (a.a === a.b === seedId) metería al seed en su propio
-      // anillo de vecinos → el seed aparecería DOS veces en rfNodes (centro +
-      // anillo) con el mismo id, colisión de keys de React / ids duplicados en
-      // xyflow. El componente ya se defiende de datos que "nunca debería recibir".
       if (a.a === seedId && a.b !== seedId) ids.add(a.b);
       else if (a.b === seedId && a.a !== seedId) ids.add(a.a);
     }
@@ -220,11 +291,140 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
       .sort((x, y) => displayNombre(x).localeCompare(displayNombre(y), "es"));
   }, [aristasVisibles, nodos, seedId]);
 
-  // Estado honesto: el grafo puede venir genuinamente sin relaciones. NO es un
-  // error — se nombra el hecho de que aún no hay aristas, sin inventar nodos.
+  // Rama fallback SIN seedNodo: la columna cae sobre los nodos con arista visible
+  // (determinista, orden alfabético), excluyendo el seedId si estuviera presente.
+  const nodosVisibles = useMemo(() => {
+    const ids = new Set<string>();
+    aristasVisibles.forEach((a) => {
+      ids.add(a.a);
+      ids.add(a.b);
+    });
+    return nodos
+      .filter((n) => ids.has(n.id) && n.id !== seedId)
+      .sort((x, y) => displayNombre(x).localeCompare(displayNombre(y), "es"));
+  }, [aristasVisibles, nodos, seedId]);
+
+  // La columna final: con seedNodo → sus vecinos; sin él → nodosVisibles.
+  const columna = seedNodo ? seedNeighbors : nodosVisibles;
+
+  // Hechos seed↔vecino por vecino (para el detalle inline). Solo con seedNodo.
+  const hechosPorVecino = useMemo(() => {
+    const map = new Map<string, SubgrafoArista[]>();
+    if (!seedNodo) return map;
+    for (const v of seedNeighbors) {
+      map.set(
+        v.id,
+        aristasVisibles.filter(
+          (a) =>
+            (a.a === seedNodo.id && a.b === v.id) ||
+            (a.b === seedNodo.id && a.a === v.id),
+        ),
+      );
+    }
+    return map;
+  }, [seedNodo, seedNeighbors, aristasVisibles]);
+
+  const totalHechos = useMemo(() => {
+    let s = 0;
+    for (const arr of hechosPorVecino.values()) s += arr.length;
+    return s;
+  }, [hechosPorVecino]);
+
+  // Paginación sobre TODA la columna.
+  const totalVecinos = columna.length;
+  const totalPages = Math.max(1, Math.ceil(totalVecinos / B_PAGE));
+  const pageStart = bPage * B_PAGE;
+  const pageItems = columna.slice(pageStart, pageStart + B_PAGE);
+
+  // ── Conectores SVG (fan-out) ────────────────────────────────────────────────
+  const layoutRef = useRef<HTMLDivElement | null>(null);
+  const seedRef = useRef<HTMLDivElement | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  const drawConn = useCallback(() => {
+    const svg = svgRef.current;
+    const cont = layoutRef.current;
+    const seedEl = seedRef.current;
+    // DEFENSIVO: sin contenedor, sin seed (rama fallback), oculto (offsetParent
+    // null en móvil/jsdom), o bajo el breakpoint md → no dibujamos (jsdom da
+    // ceros; móvil omite líneas por diseño).
+    if (!svg || !cont || !seedEl) return;
+    if (!cont.offsetParent) {
+      svg.innerHTML = "";
+      return;
+    }
+    if (typeof window !== "undefined" && window.innerWidth < MD_BREAKPOINT_PX) {
+      svg.innerHTML = "";
+      return;
+    }
+    const cr = cont.getBoundingClientRect();
+    if (cr.width === 0 || cr.height === 0) {
+      svg.innerHTML = "";
+      return;
+    }
+    svg.setAttribute("viewBox", `0 0 ${cr.width} ${cr.height}`);
+    svg.style.width = `${cr.width}px`;
+    svg.style.height = `${cr.height}px`;
+    const sr = seedEl.getBoundingClientRect();
+    const rows = Array.prototype.slice.call(
+      cont.querySelectorAll(".net-b-row"),
+    ) as HTMLElement[];
+    const n = rows.length;
+    let html = "";
+    rows.forEach((row, k) => {
+      // Salida REPARTIDA verticalmente por el borde derecho del seed (fan-out):
+      // NUNCA convergen a un punto.
+      const pad = 18;
+      const span = Math.max(sr.height - pad * 2, 1);
+      const sx = sr.right - cr.left;
+      const sy = sr.top - cr.top + pad + (n > 1 ? (span * k) / (n - 1) : span / 2);
+      const rr = row.getBoundingClientRect();
+      const ex = rr.left - cr.left;
+      const ey = rr.top - cr.top + Math.min(rr.height, 40) / 2 + 2;
+      const mx = (sx + ex) / 2;
+      const sel = bSel !== null && row.getAttribute("data-vecino") === bSel;
+      const w = sel ? 2.5 : 1.5;
+      const op = bSel !== null ? (sel ? 1 : 0.13) : 0.5;
+      html +=
+        `<path d="M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ey}, ${ex} ${ey}" ` +
+        `fill="none" stroke="hsl(var(--accent-product))" stroke-width="${w}" opacity="${op}"/>`;
+    });
+    svg.innerHTML = html;
+  }, [bSel]);
+
+  const scheduleDraw = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(drawConn);
+  }, [drawConn]);
+
+  // Redibujar tras cada layout (página/selección/columna) + en resize.
+  useLayoutEffect(() => {
+    scheduleDraw();
+  }, [scheduleDraw, bPage, bSel, pageItems.length, totalVecinos]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const cont = layoutRef.current;
+    const onResize = () => scheduleDraw();
+    window.addEventListener("resize", onResize);
+    let ro: ResizeObserver | null = null;
+    if (cont && typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => scheduleDraw());
+      ro.observe(cont);
+    }
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (ro) ro.disconnect();
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, [scheduleDraw]);
+
+  // ── Estado honesto: grafo genuinamente sin relaciones (0 aristas). ───────────
   if (aristas.length === 0) {
     return (
-      <section aria-label="Grafo de relaciones" className="mt-8">
+      <section aria-label="Diagrama de relaciones" className="mt-8">
         <p className="text-base leading-relaxed text-muted-foreground">
           Aún no hay relaciones para mostrar para este parlamentario. Cuando
           existan hechos públicos que vinculen a dos parlamentarios —por
@@ -246,180 +446,60 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
     );
   }
 
-  // Nodos que aún participan de alguna arista visible.
-  const nodosVisiblesIds = new Set<string>();
-  aristasVisibles.forEach((a) => {
-    nodosVisiblesIds.add(a.a);
-    nodosVisiblesIds.add(a.b);
-  });
+  // CR-01: el seed puede quedar sin ningún vecino visible tras los filtros
+  // (sobrevive una arista vecino↔vecino, pero mueren las seed↔vecino) → su propio
+  // estado honesto, nunca el seed suelto ni la columna vacía sin mensaje.
+  const sinVecinosVisibles = totalVecinos === 0;
 
-  // B20a — Solo los nodos que participan de alguna arista VISIBLE llegan al
-  // lienzo: un nodo huérfano flotando se leería como una persona "suelta" sin
-  // hecho que la vincule. El early-return de `aristas.length === 0` (arriba) cubre
-  // el grafo genuinamente vacío; este filtro cubre el caso de filtros que dejan
-  // nodos sin arista visible.
-  const nodosVisibles = nodos.filter((n) => nodosVisiblesIds.has(n.id));
-
-  // Cap duro (RED-01): renderizamos como máximo 24 vecinos alfabéticos; el resto
-  // va al control honesto "N vecinos más" (cada uno un Link a /red?seed=<id>).
-  const rendered = seedNeighbors.slice(0, CAP);
-  const overflow = seedNeighbors.slice(CAP);
-
-  // El set renderizado con seed = [seed, ...rendered]. Sin él construimos el
-  // conjunto de nodos que llegan al lienzo.
-  const seedNodo = seedId
-    ? (nodos.find((n) => n.id === seedId) ?? null)
-    : null;
-
-  let rfNodes: Node<NodoParlamentarioData>[];
-  // IDs de los nodos efectivamente montados en el lienzo (para filtrar aristas).
-  let renderedIds: Set<string>;
-
-  if (seedNodo) {
-    // Path CON seed (foco de la fase): seed al centro + vecinos alfabéticos en
-    // el anillo radial. DOM invariant (RED-01): |rfNodes| === rendered.length + 1.
-    rfNodes = [
-      {
-        id: seedNodo.id,
-        type: "parlamentario",
-        position: { x: 0, y: 0 },
-        data: {
-          nombre: seedNodo.nombre,
-          camara: seedNodo.camara,
-          id: seedNodo.id,
-          esSeed: true,
-        },
-      },
-      ...rendered.map((n, i) => ({
-        id: n.id,
-        type: "parlamentario",
-        position: radialPos(i, rendered.length),
-        data: {
-          nombre: n.nombre,
-          camara: n.camara,
-          id: n.id,
-          esSeed: false,
-        },
-      })),
-    ];
-    renderedIds = new Set([seedNodo.id, ...rendered.map((n) => n.id)]);
-  } else {
-    // Rama fallback legacy SIN seed (o seed ausente de toda arista visible): no
-    // hay centro ego, así que conservamos el render mínimo de todos los nodos con
-    // arista visible, posicionados radialmente por índice de llegada (determinista,
-    // sin física). El foco de la fase es el path CON seed; esta rama sólo evita
-    // romper el render sin-seed.
-    rfNodes = nodosVisibles.map((n, i) => ({
-      id: n.id,
-      type: "parlamentario",
-      position: radialPos(i, nodosVisibles.length),
-      data: {
-        nombre: n.nombre,
-        camara: n.camara,
-        id: n.id,
-        esSeed: false,
-      },
-    }));
-    renderedIds = new Set(nodosVisibles.map((n) => n.id));
-  }
-
-  // Ego-framing (55-05): con seedId, encuadra el vecindario inmediato del seed
-  // (los nodos efectivamente montados) vía `fitViewOptions.nodes`. Sin seedId, se
-  // conserva el fitView global shipped.
-  const fitViewOptions = seedId
-    ? {
-        padding: 0.2,
-        nodes: Array.from(renderedIds).map((id) => ({ id })),
-        minZoom: 0.2,
-      }
-    : { padding: 0.05 };
-
-  // Sólo dibujamos aristas cuyos DOS extremos estén en el set renderizado — así no
-  // trazamos líneas a vecinos capados.
-  const rfEdges: Edge<AristaHechoData>[] = aristasVisibles
-    .filter((a) => renderedIds.has(a.a) && renderedIds.has(a.b))
-    .map((a, i) => ({
-      id: `${a.tipo}-${a.a}-${a.b}-${i}`,
-      type: "hecho",
-      source: a.a,
-      target: a.b,
-      data: {
-        tipo: a.tipo,
-        contexto: a.contexto,
-        desde: a.desde,
-        hasta: a.hasta,
-        dataset: a.dataset,
-        origen: a.origen,
-        enlace: a.enlace,
-        licencia: a.licencia,
-      },
-    }));
-
-  // Lista de vecinos para el fallback móvil <768px (RED-02): a 390px un anillo de
-  // 24 nodos es ilegible; la forma honesta y usable es una LISTA de vecinos con su
-  // hecho + procedencia. Cada fila = un vecino renderizado + las aristas seed↔vecino
-  // (el hecho compartido). Solo se arma cuando hay seed y al menos un vecino
-  // renderizado; el estado vacío (0 aristas) ya retornó antes.
-  const seedNombreDisplay = seedNodo ? displayNombre(seedNodo) : null;
-  const vecinosLista = seedNodo
-    ? rendered.map((vecino) => {
-        const hechos = aristasVisibles.filter(
-          (a) =>
-            (a.a === seedNodo.id && a.b === vecino.id) ||
-            (a.b === seedNodo.id && a.a === vecino.id),
-        );
-        return { vecino, hechos };
-      })
-    : [];
-
-  // CR-01 (62-REVIEW, B20a LOCKED): "el seed no tiene ningún vecino visible" es su
-  // PROPIO estado honesto, no el lienzo. `aristasVisibles` puede ser > 0 y aun así
-  // dejar al seed sin vecinos: el subgrafo también trae aristas vecino↔vecino, y las
-  // ventanas temporales se evalúan por-arista de forma independiente, así que un
-  // filtro de fecha puede matar TODAS las aristas seed↔vecino mientras sobrevive una
-  // arista vecino↔vecino. Sin este flag: (a) desktop pintaba el seed SOLO, flotando
-  // sin arista (la "persona suelta" que B20a prohíbe); (b) móvil quedaba en blanco
-  // (canvas hidden + vecinosLista vacía = ni contenido ni mensaje). Con seedNodo y
-  // 0 vecinos renderizados → se muestra el mensaje honesto en vez del canvas/lista.
-  const sinVecinosVisibles = Boolean(seedNodo) && rendered.length === 0;
-
-  // CR-01 (móvil de la rama fallback): con seedId pero sin seedNodo (el seed no está
-  // en ningún nodo del subgrafo visible), la rama fallback pinta `nodosVisibles` en
-  // el canvas ≥md, pero <md no hay lista → móvil quedaba mudo mientras el desktop sí
-  // mostraba grafo. Un aviso SOLO-móvil evita el callejón sin salida sin tocar el
-  // canvas de desktop.
-  const avisoMovilFallback = Boolean(seedId) && !seedNodo && !sinVecinosVisibles;
+  const seedNombre = seedNodo ? displayNombre(seedNodo) : null;
 
   return (
-    <section aria-label="Grafo de relaciones" className="mt-8">
-      {/* Leyenda de lectura: qué es un nodo, qué es una arista (COMP-03). */}
-      <div className="mb-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground space-y-1">
-        <p className="font-medium text-foreground">Cómo leer este grafo</p>
-        <ul className="list-disc list-inside space-y-1">
+    <section aria-label="Diagrama de relaciones" className="mt-8">
+      {/* Leyenda "Cómo leer este diagrama": paso a paso LOCKED anti-insinuación. */}
+      <details className="net-leyenda" open>
+        <summary className="net-leyenda__summary">
+          Cómo leer este diagrama
+        </summary>
+        <ol className="net-leyenda__ol">
           <li>
-            <strong className="font-medium text-foreground">Nodo</strong>: un
-            parlamentario con identidad confirmada (nombre y cámara).
+            <strong>A la izquierda</strong>, la persona elegida.{" "}
+            <strong>A la derecha</strong>, en una columna, sus vecinos en orden
+            alfabético.
           </li>
           <li>
-            <strong className="font-medium text-foreground">Línea</strong>: un
-            hecho público que vincula a dos parlamentarios, por ejemplo haber
-            recibido audiencia de la misma contraparte de lobby. Cada línea
-            lleva su fuente, ventana temporal y enlace al registro original.
+            <strong>Cada línea</strong> conecta a la persona elegida con un
+            vecino y representa uno o más hechos públicos compartidos. El largo o
+            la curva de la línea <strong>no significan</strong> nada.
           </li>
           <li>
-            La posición en el anillo es orden alfabético, no cercanía: el
-            parlamentario elegido va al centro y sus vecinos se ordenan
-            alfabéticamente alrededor. La distancia o el ángulo no indican
-            afinidad ni relación entre las personas.
+            Pulsa un vecino para <strong>destacar su línea</strong> y ver el
+            detalle: qué hechos comparten, cuándo, y el enlace a la fuente
+            original.
           </li>
-        </ul>
-        <p className="text-xs mt-1">
-          Fuente: Ley del Lobby (Ley 20.730) · datos ingestados por este
-          observatorio.
+          <li>
+            Una relación es un hecho documentado (audiencia de la misma
+            contraparte de lobby, misma votación). <strong>Nunca</strong> indica
+            afinidad, acuerdo ni motivo.
+          </li>
+          <li>
+            El filo izquierdo de cada tarjeta indica la cámara:{" "}
+            <ChipCamara camara="diputados" /> <ChipCamara camara="senado" />
+          </li>
+        </ol>
+        <p className="net-leyenda__fuente">
+          Fuente: Ley del Lobby (Ley 20.730) y votaciones de sala · datos
+          ingestados por este observatorio.
         </p>
-      </div>
+      </details>
+
+      {/* Nota móvil: bajo el breakpoint md los conectores se omiten. */}
+      <p className="net-b-nota-movil">
+        En pantallas angostas las líneas se omiten; el orden sigue siendo
+        alfabético y el detalle se abre igual al pulsar cada vecino.
+      </p>
+
       {/* Controles de filtro: por tipo de relación y por ventana temporal. */}
-      <div className="net-filtros" role="group" aria-label="Filtros del grafo">
+      <div className="net-filtros" role="group" aria-label="Filtros del diagrama">
         <fieldset className="net-filtros__tipos">
           <legend className="net-filtros__legend">Tipo de relación</legend>
           {tiposPresentes.map((tipo) => (
@@ -440,7 +520,10 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
             <input
               type="date"
               value={desde}
-              onChange={(e) => setDesde(e.target.value)}
+              onChange={(e) => {
+                setDesde(e.target.value);
+                resetPager();
+              }}
               aria-label="Desde (fecha)"
               className="font-mono"
             />
@@ -450,7 +533,10 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
             <input
               type="date"
               value={hasta}
-              onChange={(e) => setHasta(e.target.value)}
+              onChange={(e) => {
+                setHasta(e.target.value);
+                resetPager();
+              }}
               aria-label="Hasta (fecha)"
               className="font-mono"
             />
@@ -458,151 +544,137 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
         </div>
       </div>
 
-      {aristasVisibles.length === 0 || sinVecinosVisibles ? (
-        // CR-01 (62-REVIEW): mensaje honesto también cuando el seed quedó sin
-        // vecinos visibles (filtros que matan todas las aristas seed↔vecino aunque
-        // sobreviva alguna vecino↔vecino) — nunca el seed suelto ni el móvil mudo.
+      {sinVecinosVisibles ? (
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-          Ninguna relación coincide con los filtros seleccionados. Ajusta el
-          tipo o el periodo para ver los hechos disponibles.
+          Ninguna relación coincide con los filtros seleccionados. Ajusta el tipo
+          o el periodo para ver los hechos disponibles.
         </p>
       ) : (
         <>
-          {/* CR-01 (móvil rama fallback): con seedId pero sin seedNodo, el canvas
-              ≥md muestra el grafo pero <md no hay lista → este aviso solo-móvil
-              impide el callejón sin salida silencioso. */}
-          {avisoMovilFallback && (
-            <p className="md:hidden mt-4 text-sm leading-relaxed text-muted-foreground">
-              El grafo con las relaciones disponibles se muestra en pantallas de
-              mayor tamaño.
-            </p>
-          )}
-          {/* Canvas radial SOLO ≥768px (RED-02): a 390px el anillo es ilegible,
-              así que el canvas se oculta en móvil y en su lugar va la lista de
-              vecinos (abajo). El wrapper hidden md:block mantiene el lienzo con sus
-              clases token h-96 md:h-120 byte-idénticas. */}
-          <div className="hidden md:block">
-            {/* Altura por token adaptativa: h-96=384px móvil / md:h-120=480px ≥768px
-                (sin inline style, sin arbitrary [Npx]). */}
-            <div className="net-lienzo mt-4 h-96 md:h-120">
-              <ReactFlowProvider>
-                <ReactFlow
-                  nodes={rfNodes}
-                  edges={rfEdges}
-                  nodeTypes={nodeTypes}
-                  edgeTypes={edgeTypes}
-                  fitView
-                  fitViewOptions={fitViewOptions}
-                  minZoom={0.2}
-                  proOptions={{ hideAttribution: true }}
-                >
-                  <Background />
-                  <Controls showInteractive={false} />
-                </ReactFlow>
-              </ReactFlowProvider>
+          <div className="net-b-layout" ref={layoutRef}>
+            {/* Conectores SVG (fan-out) — solo decorativos (aria-hidden). */}
+            <svg
+              ref={svgRef}
+              className="net-b-conn"
+              aria-hidden="true"
+              role="presentation"
+            />
+
+            {/* Tarjeta seed a la IZQUIERDA (solo en el path con seedNodo). */}
+            {seedNodo ? (
+              <div className="net-b-seedcol">
+                <div className="net-b-seed" ref={seedRef}>
+                  <div className="net-b-seed__nombre">
+                    {seedNombre ?? seedNodo.id}
+                  </div>
+                  <div className="net-b-seed__chip">
+                    <ChipCamara camara={seedNodo.camara} />
+                  </div>
+                  <p className="net-b-seednote">
+                    {plural(totalVecinos, "vecino", "vecinos")} ·{" "}
+                    {plural(
+                      totalHechos,
+                      "hecho documentado",
+                      "hechos documentados",
+                    )}
+                    .
+                  </p>
+                  <p className="net-b-seednote">
+                    El orden de la columna es alfabético; la posición no implica
+                    afinidad.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              // Rama fallback (sin seedNodo): aviso sobrio; la columna se puebla
+              // sobre nodosVisibles sin tarjeta seed ni conectores.
+              <div className="net-b-seedcol">
+                <p className="net-b-seednote">
+                  Estas son las relaciones disponibles, en orden alfabético. La
+                  posición no implica afinidad.
+                </p>
+              </div>
+            )}
+
+            {/* Columna de vecinos. */}
+            <div className="net-b-list">
+              {pageItems.map((v) => {
+                const sel = bSel === v.id;
+                const clases = [
+                  "net-b-row",
+                  camaraClase(v.camara),
+                  sel ? "net-b-row--sel" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+                const hechos = hechosPorVecino.get(v.id) ?? [];
+                return (
+                  <div
+                    key={v.id}
+                    data-vecino={v.id}
+                    className={clases}
+                    tabIndex={0}
+                    role="button"
+                    aria-expanded={sel}
+                    aria-label={`Vecino: ${displayNombre(v)}`}
+                    onClick={() => setBSel(sel ? null : v.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setBSel(sel ? null : v.id);
+                      }
+                    }}
+                  >
+                    <div className="net-b-row__fila">
+                      <span className="net-b-row__nombre">
+                        {displayNombre(v)}
+                      </span>
+                      <ChipCamara camara={v.camara} />
+                      {seedNodo ? (
+                        <span className="net-b-row__nhechos">
+                          {plural(hechos.length, "hecho", "hechos")} →
+                        </span>
+                      ) : null}
+                    </div>
+                    {sel && seedNodo ? (
+                      <DetalleVecino vecinoId={v.id} hechos={hechos} />
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Fallback móvil <768px (RED-02): lista honesta de vecinos con enlaces.
-              Cada fila lleva el nombre + cámara del vecino, el/los hecho(s)
-              compartido(s) con su ventana temporal, y el enlace a la fuente oficial
-              (procedencia SIEMPRE en el DOM, trazabilidad rector). Cada fila es un
-              Link a /red?seed=<id> para saltar a su propio ego-network. Solo con
-              seed y ≥1 vecino renderizado. */}
-          {vecinosLista.length > 0 && (
-            <ul className="net-vecinos md:hidden mt-4" aria-label="Vecinos">
-              <li className="net-vecinos__heading">
-                Vecinos de {seedNombreDisplay ?? "este parlamentario"}
-              </li>
-              {vecinosLista.map(({ vecino, hechos }) => {
-                const camaraLabel =
-                  vecino.camara === "senado"
-                    ? "Senado"
-                    : vecino.camara === "diputados"
-                      ? "Cámara de Diputadas y Diputados"
-                      : null;
-                return (
-                  <li key={vecino.id} className="net-vecinos__item">
-                    <Link
-                      href={`/red?seed=${vecino.id}`}
-                      className="net-vecinos__fila"
-                    >
-                      <span className="net-vecinos__nombre">
-                        {displayNombre(vecino)}
-                      </span>
-                      {camaraLabel ? (
-                        <span className="net-vecinos__camara">
-                          {camaraLabel}
-                        </span>
-                      ) : null}
-                    </Link>
-                    <ul className="net-vecinos__hechos">
-                      {hechos.map((h, i) => {
-                        const ventana = ventanaTexto(h.desde, h.hasta);
-                        const enlaceSeguro = safeExternalHref(h.enlace);
-                        return (
-                          <li
-                            key={`${h.tipo}-${i}`}
-                            className="net-vecinos__hecho"
-                          >
-                            <span>{etiquetaHecho(h.tipo, h.contexto)}</span>
-                            {ventana ? (
-                              <span className="net-vecinos__ventana font-mono">
-                                {ventana}
-                              </span>
-                            ) : null}
-                            <span className="net-vecinos__prov">
-                              Fuente: {h.origen}
-                              {enlaceSeguro ? (
-                                <>
-                                  {" · "}
-                                  <a
-                                    href={enlaceSeguro}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="net-vecinos__enlace"
-                                  >
-                                    Ver fuente oficial ↗
-                                  </a>
-                                </>
-                              ) : null}
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {/* Truncación honesta (RED-01): si el seed tiene más de 24 vecinos
-              directos, se muestran los primeros 24 alfabéticos en el anillo y el
-              resto se lista aquí — cada nombre un Link a su propio ego-network.
-              NUNCA se descartan vecinos en silencio; el conteo es verdadero
-              (total − 24). Sin force-simulation, sin orden por peso. */}
-          {overflow.length > 0 && (
-            <div className="net-vecinos-mas mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-              <p>
-                Se muestran los primeros {CAP} vecinos en orden alfabético.
-              </p>
-              <p className="mt-1 font-medium text-foreground">
-                Ver {overflow.length} vecinos más
-              </p>
-              <ul className="mt-2 space-y-1">
-                {overflow.map((n) => (
-                  <li key={n.id}>
-                    <Link
-                      href={`/red?seed=${n.id}`}
-                      className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2"
-                    >
-                      {displayNombre(n)}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* Pager honesto: cubre TODOS los vecinos, conteo verdadero. */}
+          <div className="net-b-pager">
+            <button
+              type="button"
+              className="net-b-pager__btn"
+              onClick={() => {
+                setBPage((p) => Math.max(0, p - 1));
+                setBSel(null);
+              }}
+              disabled={bPage === 0}
+            >
+              ← Anteriores
+            </button>
+            <button
+              type="button"
+              className="net-b-pager__btn"
+              onClick={() => {
+                setBPage((p) => Math.min(totalPages - 1, p + 1));
+                setBSel(null);
+              }}
+              disabled={bPage >= totalPages - 1}
+            >
+              Siguientes →
+            </button>
+            <span className="net-b-pager__estado">
+              Vecinos {pageStart + 1}–
+              {Math.min(pageStart + B_PAGE, totalVecinos)} de {totalVecinos} ·
+              página {bPage + 1} de {totalPages} · orden alfabético
+            </span>
+          </div>
         </>
       )}
     </section>
