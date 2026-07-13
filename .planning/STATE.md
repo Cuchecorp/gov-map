@@ -93,8 +93,8 @@ None yet.
 | Legal | Sign-offs F13/MONEY + F17/NET | Human gate (Phase 39) | v4.0 |
 | Data | RUT-01 backfill + ChileCompra/SERVEL | Needs-human (Phase 40) | v4.0 |
 | Ops | Rotar DB password (B26) | Acción de operador en dashboard | v5.0 |
-| UI | Rediseño /red móvil (P1 de F53) | Diferido | v5.0 |
-| uat_gap | Phase 62: 62-HUMAN-UAT.md (rotate móvil→desktop, WR-06) | partial (1 escenario pendiente) | v6.1 close 2026-07-11 |
+| UI | Rediseño /red móvil (P1 de F53) | ✅ RESUELTO 2026-07-13 (quick 260713-izo: layout B, columna responsive única) | v5.0 |
+| uat_gap | Phase 62: 62-HUMAN-UAT.md (rotate móvil→desktop, WR-06) | ✅ RESUELTO 2026-07-13 (quick 260713-izo: xyflow eliminado, ya no monta bajo display:none; /red aprobado en prod) | v6.1 close 2026-07-11 |
 | verification_gap | Phase 62: 62-VERIFICATION.md | human_needed (mismo ítem UAT) | v6.1 close 2026-07-11 |
 | quick_task | 260623-rtl-loadenv-ci-safe-clis | unknown (pre-v6.1) | v6.1 close 2026-07-11 |
 | quick_task | 260702-rbb-fix-b20-b21-pre-flip-net-red-graph-nodos | unknown (pre-v6.1; B20/B21 ya shipped en v5) | v6.1 close 2026-07-11 |
