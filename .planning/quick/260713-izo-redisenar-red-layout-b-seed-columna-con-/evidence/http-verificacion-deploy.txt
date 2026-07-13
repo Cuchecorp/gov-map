@@ -1,0 +1,25 @@
+﻿Deploy verificado por HTTP — layout B en producción
+Fecha: 2026-07-13
+URL: https://observatorio-congreso.thevalis.workers.dev/red?seed=D1009
+Version ID: 6534fe9f-52bf-4a5b-a527-e788f1b75250
+HTTP status: 200
+
+Marcadores en el HTML servido:
+  PRESENTE net-b-layout = True
+  PRESENTE net-b-seedcol = True
+  PRESENTE net-b-seed = True
+  PRESENTE net-b-list = True
+  PRESENTE net-b-row = True
+  PRESENTE net-b-conn = True
+  PRESENTE net-b-pager = True
+  PRESENTE net-leyenda = True
+  PRESENTE net-chip = True
+
+Clases xyflow antiguas (deben estar AUSENTES):
+  AUSENTE  net-lienzo = False
+  AUSENTE  net-nodo = False
+  AUSENTE  net-arista = False
+  AUSENTE  net-vecinos = False
+
+Nota: net-microcopy no aparece en el HTML SSR porque el detalle inline se
+renderiza solo al seleccionar una fila (client-side).
