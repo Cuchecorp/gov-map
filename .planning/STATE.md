@@ -1,34 +1,33 @@
 ---
 gsd_state_version: 1.0
-milestone: v6.1
-milestone_name: — Entendible y completo
-status: Awaiting next milestone
-stopped_at: Roadmap v6.0 creado — Phases 56-61, REQUIREMENTS.md traceability actualizado, STATE.md inicializado.
-last_updated: "2026-07-11T17:18:43.787Z"
-last_activity: 2026-07-13 — Quick task 260713-izo CERRADA: /red layout B en producción, gate humano aprobado
+milestone: v7.0
+milestone_name: Votos, dinero y cierre técnico
+status: planning
+last_updated: "2026-07-13T23:58:41.418Z"
+last_activity: 2026-07-13
 progress:
-  total_phases: 48
-  completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
-  percent: 4
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-08)
+See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 63 — BUSQ — Búsqueda de proyectos completa
+**Current focus:** Milestone v7.0 — Votos, dinero y cierre técnico (definiendo requirements)
 
 ## Current Position
 
-Phase: Milestone v6.1 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-13 — Quick task 260713-izo CERRADA: /red layout B en producción, lectura fría COMPRENSIBLE, operador APROBÓ el gate
+Status: Defining requirements
+Last activity: 2026-07-13 — Milestone v7.0 started
 
 ## Performance Metrics
 

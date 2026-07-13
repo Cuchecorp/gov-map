@@ -8,6 +8,22 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato mostrado lleva fuente, fecha y enlace original, sin afirmar nunca intención ni causalidad.
 
+## Current Milestone: v7.0 — Votos, dinero y cierre técnico
+
+**Goal:** Completar los dos frentes de datos que aún faltaban del producto —cómo vota individualmente cada parlamentario, y el dinero que lo rodea (financiamiento electoral + contratos del Estado)— y cerrar la deuda técnica de ingesta acumulada; todo en fases MUY GRANULARES, deny-by-default, con trazabilidad a la fuente y sin afirmar causalidad.
+
+**Frentes (en orden de ejecución):**
+
+1. **P3 — Cómo vota el Congreso (voto individual).** Hoy el voto por diputado es `Votos=null` en `doGet.asmx` → vive en `opendata.camara.cl` (endpoint SIN VALIDAR, bloqueante histórico de P3). Secuencia: (a) validar/caracterizar el endpoint opendata; (b) conector TS de dos etapas fuente→R2→Supabase con hash-check e idempotencia; (c) modelo de voto individual reconciliado contra la maestra de identidad (fail-closed); (d) superficies de análisis voto × parlamentario × tema/sesión, descriptivas nunca causales, con leyenda anti-insinuación.
+
+2. **P5 — Dimensión dinero (SERVEL + ChileCompra por RUT).** El cruce de mayor impacto reputacional → deny-by-default hasta gate. **Prerrequisito duro REAL: RUT-01** (backfill de RUT a la maestra `entidad_tercero`) debe existir físicamente antes de cruzar — es dato, no un flag. SERVEL es conector artesanal frágil (no API REST, manual por elección); ChileCompra por RUT. Señales de cruce = conteos factuales, nunca scores de correlación. Flag `MONEY_PUBLIC_ENABLED` OFF hasta encendido autorizado.
+
+3. **Deuda técnica + hardening (backlog v6.x).** `source_snapshot` en los conectores restantes (dos etapas LOCKED completas), lobby/probidad `--from-r2` (replay sin molestar la fuente), cursor leylobby, `CLOUDFLARE_API_TOKEN` en CI (crons verdes sin fallback local), rotación round-robin del cron leyes-weekly sobre el corpus 3.657 (dilución de frescura), typography island `.net-*` fuera de contrato, rotar DB password (B26).
+
+**Gates (autorización del operador, 2026-07-13):** el operador PRE-APRUEBA encender los flags `MONEY/NET/cruces` cuando cada fase llegue a su gate con la suite verde. DOS prerrequisitos del mundo real siguen vigentes y el roadmap los secuencia como tales, no como flags que un agente inventa: (1) **RUT-01** — los RUT deben estar backfilleados antes de que P5 cruce; (2) **Ley 21.719** (plena vigencia 2026-12-01) — la pasada de asesoría legal es un acto humano real que el operador provee; su aprobación autoriza el flip, no reemplaza la revisión. El agente construye TODO hasta el gate deny-by-default; el encendido queda autorizado.
+
+**Modo de trabajo (directiva del operador):** Fable (main loop) planifica/dirime/controla; ejecución delegada a agentes Sonnet o menores; BrowserOS como gate de comprensión de cada superficie nueva; fases muy granulares; corrida autónoma tras contexto limpio (ver `.planning/PROMPT-v7.0-build-autonomo.md`).
+
 ## Current State: v6.1 shipped (2026-07-11)
 
 **Shipped v6.1 — Entendible y completo.** Las dos quejas del operador (2026-07-09) quedaron resueltas y en PROD (deploy `af1cfcaf`): (1) `/red` es ENTENDIBLE — ego-network radial determinista (seed + ≤24 vecinos alfabéticos, "Ver N más" honesto, lista móvil <48rem, borde institucional por cámara, leyenda "posición = orden alfabético, no cercanía"; F18 LOCKED intacto), validado por lectura fría BrowserOS ("comprensible") y aprobado por el operador; (2) la búsqueda es COMPLETA — corpus 156→3.657 proyectos (legislatura 2022-2026, enumeración WSLegislativo + backfill LOCAL R2-first reanudable), 3.100 embeddings (84,6% cobertura semántica), ideas matrices 60→1.504, techo honesto 565 por causa (478 RUT-guard LOCKED + 87 schema-fail), y la cobertura DECLARADA en /buscar ("Busca sobre 3100 proyectos…") + señal N/M en `pnpm freshness`. Audit: tech_debt (0 gaps, 6/6 reqs). Detalle: `milestones/v6.1-*.md`.
@@ -111,6 +127,7 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 ### Active
 
+- [ ] **v7.0 — votos, dinero y cierre técnico** (en curso, arrancado 2026-07-13): P3 voto individual (opendata.camara.cl) → P5 dimensión dinero (SERVEL + ChileCompra por RUT, prereq RUT-01) → deuda técnica/hardening. Gates pre-aprobados por el operador; RUT-01 y revisión legal 21.719 siguen como prerrequisitos reales.
 - [x] **v6.1 — entendible y completo** (shipped 2026-07-11): /red ego-network radial legible + búsqueda sobre corpus completo declarado (3.657 proyectos, techo honesto).
 - [x] **v6.0 — confiabilidad y comprensión** (shipped 2026-07-09): crons/ingesta E2E perfecta (R2 dos-etapas, hash-check, monitoreo de frescura) · autoría de proyectos (desbloquea F48) · ícono/identidad visual gov-map · visualización comprensible con loop BrowserOS.
 - [ ] **Pendiente de operador (fuera de v6):** RUT-01 backfill + ChileCompra/SERVEL (Phase 40) · sign-offs F13/MONEY + cierre F17/NET (Phase 39) · rotar DB password (B26).
@@ -197,4 +214,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-11 after v6.1 milestone — Entendible y completo shipped; próximo = gates humanos/legales (F13/F17/0042, RUT-01, B26) + backlog v6.x (source_snapshot multi-fuente, rotación cron sobre corpus 3657, UAT rotate /red, typography .net-*)*
+*Last updated: 2026-07-13 — Milestone v7.0 (Votos, dinero y cierre técnico) arrancado. Frentes P3 (voto individual, opendata.camara.cl) → P5 (dinero SERVEL/ChileCompra, prereq RUT-01) → deuda técnica. Gates pre-aprobados por el operador; RUT-01 + revisión legal 21.719 = prerrequisitos reales. Quick 260713-izo (rediseño /red layout B) resolvió P1-F53 móvil + WR-06.*
