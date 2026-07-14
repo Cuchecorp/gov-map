@@ -141,7 +141,13 @@ DEUDA (paralelizable, no bloquea P3/P5): 74 (cursor leylobby + CF token CI + rou
   3. El linter anti-vocabulario-insinuante corre TAMBIÉN sobre los componentes de voto nuevos; no existe vista "parlamentarios que votan como X" ni matriz de similitud
   4. La cobertura del voto individual está DECLARADA (N/M sesiones cubiertas, techo por causa) en la UI y en `pnpm freshness`; el veredicto BrowserOS es "comprensible"
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+- [ ] 68-01-PLAN.md — Linter anti-insinuación como test de vitest (espejo lockdown-guard, stripTsComments, self-check de mutación)
+- [ ] 68-02-PLAN.md — Señal de cobertura del voto en `pnpm freshness` (COBERTURA_VOTO_SENALES separado, N/M por cámara, degrade honesto)
+- [ ] 68-03-PLAN.md — Poda rebeldía+mediana (4 puntos×2 bloques) + borrar ausencias-contexto + leyenda verbatim + cobertura UI + endurecer allowlist
+- [ ] 68-04-PLAN.md — Gate de comprensión BrowserOS (operador, checkpoint human-verify)
+
 **UI hint**: yes
 
 ### Phase 69: DINERO P5a — RUT-01 backfill a la maestra (CHECKPOINT OPERADOR, bloqueante duro)
