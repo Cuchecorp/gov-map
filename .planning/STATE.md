@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: — Votos, dinero y cierre técnico
-status: verifying
+status: executing
 stopped_at: "Completed 66-01-PLAN.md (wire dos-etapas votos: r2Store/snapshotWriter/fromR2; cobertura estado_vinculo + invariante DIPID-maestra). Phase 66 P1 de 2. Próximo: 66-02 (runbook operador-LOCAL del backfill LIVE gated)."
-last_updated: "2026-07-14T04:44:48.190Z"
+last_updated: "2026-07-14T05:39:14.398Z"
 last_activity: 2026-07-14
 progress:
   total_phases: 12
   completed_phases: 2
-  total_plans: 9
-  completed_plans: 7
+  total_plans: 13
+  completed_plans: 8
   percent: 17
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 67 — VOTO P3d — Paridad Senado (voto individual por nombre)
+**Current focus:** Phase 68 — VOTO P3e — Superficies de voto + linter + cobertura + gate BrowserOS
 
 ## Current Position
 
-Phase: 67 (VOTO P3d — Paridad Senado (voto individual por nombre)) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
+Phase: 68 (VOTO P3e — Superficies de voto + linter + cobertura + gate BrowserOS) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-07-14
 
 Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shipped)
@@ -54,6 +54,7 @@ Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shi
 | Phase 66 P01 | ~8 min | 3 tasks | 6 files |
 | Phase 66 P02 | 6 | 2 tasks | 1 files |
 | Phase 67 P02 | ~10min | 1 tasks | 1 files |
+| Phase 68 P03 | ~9 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 66-02: backfill de votos a escala documentado como runbook operador-LOCAL; corrida LIVE + write PROD PENDIENTE (checkpoint human-action)
 - [Phase ?]: 67-01: votXmlSenado en el envelope R2 → --from-r2 reconstruye los votos del Senado; mapSeleccion fail-loud (D-A4); reconciliar-senado.ts intacto (D-A1)
 - [Phase ?]: 67-02: runbook operador-LOCAL del backfill Senado (67-BACKFILL-SENADO-RUNBOOK.md) espeja 66; corrida LIVE votaciones.php + write PROD + confirmacion tokens SELECCION = checkpoint operador PENDIENTE (agente NO toco WAF ni PROD)
+- [Phase ?]: [Phase 68] 68-03: carril de voto PODADO (rebeldía + mediana de cámara FUERA del render; RPC inertes en DB y fuera de PUBLIC_RPC_ALLOWLIST). Leyenda anti-insinuación VERBATIM bloque 0; N/M incondicional; techo por causa condicional. Ejecutado ANTES de 68-01.
 
 ### Pending Todos
 
@@ -105,7 +107,7 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-14T04:44:21.641Z
+Last session: 2026-07-14T05:38:52.398Z
 Stopped at: Completed 66-01-PLAN.md (wire dos-etapas votos: r2Store/snapshotWriter/fromR2; cobertura estado_vinculo + invariante DIPID-maestra). Phase 66 P1 de 2. Próximo: 66-02 (runbook operador-LOCAL del backfill LIVE gated).
 Resume file: None
 
