@@ -4,7 +4,6 @@ import { createServerSupabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { VotosChart } from "@/components/votos-chart";
-import { AusenciasContexto } from "@/components/ausencias-contexto";
 import { SELECCION_STYLE } from "@/components/voto-row";
 import { cn } from "@/lib/utils";
 import { fechaCortaSegura, extractoIdea, conteoVotacion } from "@/lib/format";
@@ -16,24 +15,28 @@ import {
 import type {
   Seleccion,
   VotoFichaRow as VotoFichaRowData,
-  RebeldiaRow,
-  AusenciaContextoRow,
 } from "@/lib/types";
 
 /**
- * Sección VOTE de la ficha del parlamentario (UI-SPEC §3.2–§3.6).
+ * Sección VOTE de la ficha del parlamentario (68-UI-SPEC §Composición).
  *
- * Sub-bloques en orden: asistencia (§3.3) → lista paginada por votación (§3.2) →
- * voto×tema (§3.4) → votó distinto a su bancada (§3.5). Cada uno con su `<h3>` y
- * su estado honesto. Los AGREGADOS (asistencia / votó distinto) se computan SOLO
- * sobre filas confirmadas — el RPC `votos_de_parlamentario` ya devuelve solo
- * confirmadas, así que las menciones no verificadas nunca entran en los conteos.
+ * Sub-bloques en orden (top→bottom): leyenda anti-insinuación (bloque 0, al tope
+ * del detalle) → ¿Cuándo votó? (VIZ-02) → Cómo votó (sentido + asistencia real) →
+ * Por tema (faceta cruda) → votaciones agrupadas por proyecto (el arco, núcleo
+ * VOTO-02) + notas de cobertura. Cada uno con su `<h3>` y su estado honesto. Los
+ * AGREGADOS se computan SOLO sobre filas confirmadas — el RPC
+ * `votos_de_parlamentario` ya devuelve solo confirmadas, así que las menciones no
+ * verificadas nunca entran en los conteos.
  *
- * GATE DE CONTENIDO (§9.1, release gate): ver UI-SPEC §9.1 para la lista dura de
+ * PODA v7.0 (68-03, LOCKED defamación): el carril es PURAMENTE DESCRIPTIVO. Las
+ * superficies de juicio/comparación con la bancada/mediana de cámara quedan FUERA
+ * del render ciudadano (diferidas a VOTOX v2, 17-LEGAL-DOSSIER). Sus RPC quedan
+ * inertes en la DB, fuera del árbol público.
+ *
+ * GATE DE CONTENIDO (68-UI-SPEC §Linter, release gate): ver la lista dura de
  * términos prohibidos (relación/cercanía política, puntaje/índice/ranking,
  * adjetivos de juicio sobre un voto, y lenguaje causal). Nada de eso entra en el
- * código ni en el copy de esta sección. El heading neutro es "Votó distinto a su
- * bancada"; el nombre interno "rebeldías" jamás aparece en la UI.
+ * código ni en el copy de esta sección.
  *
  * Los componentes de PRESENTACIÓN (`VotosView` y abajo) son puros: reciben datos
  * por props y se testean con fixtures (RTL), sin runtime de Supabase/Next.
@@ -118,8 +121,6 @@ export interface VotosViewData {
    * mismo conjunto que `totalVotos` (filtrado si hay tema activo, global si no).
    */
   conteos: Record<Seleccion, number>;
-  /** votó distinto a su bancada (derivado del RPC security definer). */
-  rebeldias: RebeldiaRow[];
   /** materia activa del facet (slug) o null. */
   materiaActiva: string | null;
   /** materias disponibles (label + slug) derivadas de los votos. */
@@ -151,13 +152,6 @@ export interface VotosViewData {
    * en cero).
    */
   periodos: VotoPeriodo[];
-  /**
-   * Comparativo de ausencia (VIZ-03): shape plano de la RPC `tasa_ausencia_comparada`
-   * resuelto server-side, o `null` si la RPC no está aplicada (PGRST202, degrade
-   * honesto) → el sub-bloque "Ausencias en contexto" se OMITE. Opcional/nullable:
-   * la vista pasa `data.ausenciaContexto ?? null` al sub-bloque puro.
-   */
-  ausenciaContexto?: AusenciaContextoRow | null;
 }
 
 /**
@@ -569,7 +563,7 @@ export function VotosView({
   id: string;
   data: VotosViewData;
 }) {
-  const { votos, totalVotos, conteos, rebeldias, materiaActiva, materias, page, totalPages, noIngestado, votosVer, totalProyectos: totalProyectosProp } =
+  const { votos, totalVotos, conteos, materiaActiva, materias, page, totalPages, noIngestado, votosVer, totalProyectos: totalProyectosProp } =
     data;
   // Cobertura: nº de proyectos distintos. Si el server no lo pasó, se deriva de
   // los boletines distintos en la página (conservador, nunca aparenta más).
@@ -702,12 +696,6 @@ export function VotosView({
         )}
       </div>
 
-      {/* ── Ausencias en contexto (VIZ-03) — comparativo factual DENTRO del
-          detalle, JUSTO tras "Cómo votó" y antes de "Por tema" (placement LOCKED,
-          49-UI-SPEC). Sub-bloque de presentación puro: si el server pasó `null`
-          (RPC no aplicada / degrade PGRST202) no renderiza nada; capa-1 intacta. */}
-      <AusenciasContexto data={data.ausenciaContexto ?? null} />
-
       {/* ── Voto × tema (§3.4) — faceta, sin score ────────────────────────── */}
       {materias.length > 0 && (
         <div>
@@ -825,65 +813,6 @@ export function VotosView({
           </nav>
         )}
       </div>
-
-      {/* ── Votó distinto a su bancada (§3.5) — conteo+lista, sin juicio ───── */}
-      <div>
-        <h3 className="text-sm font-semibold">Votó distinto a su bancada</h3>
-        {rebeldias.length === 0 ? (
-          <p className="text-sm text-muted-foreground mt-2">
-            No se registran votaciones en que haya votado distinto a su bancada.
-          </p>
-        ) : (
-          <>
-            <p className="text-sm text-muted-foreground mt-2">
-              Se compara el voto del parlamentario con la opción mayoritaria de su
-              bancada en esa misma votación.
-            </p>
-            <p className="text-base mt-2">
-              Votó distinto a la mayoría de su bancada{" "}
-              <span className="font-mono">{rebeldias.length}</span>{" "}
-              {rebeldias.length === 1 ? "vez" : "veces"}.
-            </p>
-            <ul className="mt-2">
-              {rebeldias.map((r) => (
-                <li
-                  key={r.votacion_id}
-                  className="flex flex-wrap items-center gap-2 py-2 text-sm border-t first:border-t-0"
-                >
-                  {/* Título del proyecto cuando el RPC 0047 lo hidrata; fallback
-                      honesto al boletín mientras 0047 no esté aplicada (titulo
-                      null/undefined → NUNCA se fabrica un título). */}
-                  {r.titulo ? (
-                    <Link
-                      href={`/proyecto/${r.boletin}`}
-                      className="text-base text-accent-product underline underline-offset-2"
-                    >
-                      {r.titulo}
-                    </Link>
-                  ) : (
-                    <Link
-                      href={`/proyecto/${r.boletin}`}
-                      className="font-mono text-accent-product underline underline-offset-2"
-                    >
-                      Boletín N°{r.boletin}
-                    </Link>
-                  )}
-                  {r.etapa && (
-                    <span className="text-muted-foreground">{r.etapa}</span>
-                  )}
-                  <span className="font-mono text-muted-foreground">
-                    {fechaCortaSegura(r.fecha)}
-                  </span>
-                  <span className="text-muted-foreground">
-                    Su voto: {OPCION_LABEL[r.seleccion_propia]} · Mayoría de su
-                    bancada: {OPCION_LABEL[r.mayoria_bancada]}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </div>
     </div>
   );
 }
@@ -912,13 +841,11 @@ export function derivarVotosViewData({
   todasConMateria,
   materiaActiva,
   page,
-  rebeldias,
   votosVer = null,
 }: {
   todasConMateria: VotoFichaConMateria[];
   materiaActiva: string | null;
   page: number;
-  rebeldias: RebeldiaRow[];
   votosVer?: string | null;
 }): VotosViewData {
   // Materias disponibles (faceta) — derivadas, deduplicadas, ordenadas. WR-03: el
@@ -984,7 +911,6 @@ export function derivarVotosViewData({
     votos,
     totalVotos,
     conteos,
-    rebeldias,
     materiaActiva,
     materias,
     page: pageClamped,
@@ -1070,51 +996,17 @@ export async function VotosSection({
     materia: materiaPorBoletin.get(v.boletin) ?? null,
   }));
 
-  // Votó distinto a su bancada (RPC security definer; partido nunca llega a anon).
-  const { data: rebData, error: rebError } = await sb.rpc(
-    "rebeldias_de_parlamentario",
-    { p_id: id },
-  );
-  if (rebError) {
-    throw new Error(
-      `rebeldias_de_parlamentario falló para ${id}: ${rebError.message}`,
-    );
-  }
-  const rebeldias = (rebData as RebeldiaRow[] | null) ?? [];
-
-  // Comparativo de ausencia (VIZ-03): fetch SECUNDARIO a `tasa_ausencia_comparada`.
-  // Degrade espejo de cruces-de-proyecto (3 caminos): PGRST202 (función no aplicada,
-  // pre-apply) → null → el sub-bloque se OMITE; CUALQUIER otro error → throw (#34),
-  // nunca blanket-catch que oculte un error real como "sin ausencias" (falsa
-  // exoneración). Con data → primera fila (o null si vino vacía).
-  const { data: acData, error: acError } = await sb.rpc(
-    "tasa_ausencia_comparada",
-    { p_parlamentario_id: id },
-  );
-  let ausenciaContexto: AusenciaContextoRow | null = null;
-  if (acError?.code === "PGRST202") {
-    // Pre-apply: la RPC aún no existe → sub-bloque ausente, capa-1 intacta.
-    ausenciaContexto = null;
-  } else if (acError) {
-    throw new Error(
-      `tasa_ausencia_comparada falló para ${id}: ${acError.message}`,
-    );
-  } else {
-    ausenciaContexto = (acData as AusenciaContextoRow[] | null)?.[0] ?? null;
-  }
+  // PODA v7.0 (68-03, LOCKED): las superficies de comparación con la bancada y con
+  // la mediana de la cámara quedan FUERA del render ciudadano (diferidas a VOTOX v2,
+  // 17-LEGAL-DOSSIER). Sus RPC quedan inertes en la DB y el árbol público YA NO las
+  // invoca — por eso también salen de PUBLIC_RPC_ALLOWLIST (endurecimiento).
 
   const data = derivarVotosViewData({
     todasConMateria,
     materiaActiva,
     page,
-    rebeldias,
     votosVer,
   });
 
-  return (
-    <VotosView
-      id={id}
-      data={{ ...data, ausenciaContexto }}
-    />
-  );
+  return <VotosView id={id} data={data} />;
 }

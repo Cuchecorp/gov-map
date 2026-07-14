@@ -47,7 +47,7 @@ import {
   type VotoPeriodo,
 } from "./votos-por-parlamentario";
 import { extractoIdea, conteoVotacion } from "@/lib/format";
-import type { VotoFichaMencion, RebeldiaRow } from "@/lib/types";
+import type { VotoFichaMencion } from "@/lib/types";
 
 afterEach(cleanup);
 
@@ -103,7 +103,6 @@ function makeViewData(overrides: Partial<VotosViewData> = {}): VotosViewData {
     votos: [makeVoto()],
     totalVotos: 1,
     conteos: { si: 1, no: 0, abstencion: 0, pareo: 0, ausente: 0 },
-    rebeldias: [],
     materiaActiva: null,
     materias: [],
     page: 1,
@@ -446,75 +445,17 @@ describe("VotosView — sección VOTE (asistencia, tema, votó distinto, §3.3�
     expect(screen.getByText(/A favor 1/)).toBeInTheDocument();
   });
 
-  it("votó distinto a su bancada: conteo + lista + footnote del método, SIN juicio", () => {
-    const rebeldias: RebeldiaRow[] = [
-      {
-        votacion_id: "camara:1",
-        boletin: "16284-07",
-        titulo: null,
-        etapa: null,
-        fecha: "2026-05-14T00:00:00Z",
-        seleccion_propia: "no",
-        mayoria_bancada: "si",
-      },
-    ];
-    render(<VotosView id="P00001" data={makeViewData({ rebeldias })} />);
-    expect(screen.getByText(/Votó distinto a su bancada/i)).toBeInTheDocument();
+  // ── PODA v7.0 (68-03, LOCKED defamación): el bloque "Votó distinto a su
+  //    bancada" (rebeldía) queda FUERA del render ciudadano. Diferido a VOTOX v2. ──
+  it("PODA: NO renderiza el bloque 'Votó distinto a su bancada' (rebeldía diferida)", () => {
+    const { container } = render(<VotosView id="P00001" data={makeViewData()} />);
     expect(
-      screen.getByText((_, el) =>
-        /Votó distinto a la mayoría de su bancada\s*1\s*vez/i.test(
-          el?.tagName === "P" ? (el.textContent ?? "") : "",
-        ),
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/opción mayoritaria de su bancada en esa misma votación/i),
-    ).toBeInTheDocument();
-  });
-
-  it("SC5: fila de rebeldías con titulo → renderiza el título enlazado a /proyecto/[boletin]", () => {
-    const rebeldias: RebeldiaRow[] = [
-      {
-        votacion_id: "camara:1",
-        boletin: "18296-05",
-        titulo: "Reforma previsional",
-        etapa: "Tercer trámite",
-        fecha: "2026-05-14T00:00:00Z",
-        seleccion_propia: "no",
-        mayoria_bancada: "si",
-      },
-    ];
-    render(<VotosView id="P00001" data={makeViewData({ rebeldias })} />);
-    const link = screen.getByRole("link", { name: "Reforma previsional" });
-    expect(link).toHaveAttribute("href", "/proyecto/18296-05");
-    // La etapa acompaña al título cuando existe.
-    expect(screen.getByText(/Tercer trámite/)).toBeInTheDocument();
-  });
-
-  it("SC5: fila de rebeldías con titulo null → fallback honesto al boletín (cero fabricación)", () => {
-    const rebeldias: RebeldiaRow[] = [
-      {
-        votacion_id: "camara:1",
-        boletin: "16284-07",
-        titulo: null,
-        etapa: null,
-        fecha: "2026-05-14T00:00:00Z",
-        seleccion_propia: "no",
-        mayoria_bancada: "si",
-      },
-    ];
-    render(<VotosView id="P00001" data={makeViewData({ rebeldias })} />);
-    expect(
-      screen.getByRole("link", { name: /Boletín N°16284-07/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("votó distinto — vacío es un HECHO, no una virtud (§9.1 regla 7)", () => {
-    render(<VotosView id="P00001" data={makeViewData({ rebeldias: [] })} />);
-    expect(
-      screen.getByText(/No se registran votaciones en que haya votado distinto a su bancada/i),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/100% alinead|leal|disciplinad/i)).not.toBeInTheDocument();
+      screen.queryByRole("heading", { name: /Votó distinto a su bancada/i }),
+    ).not.toBeInTheDocument();
+    const texto = container.textContent ?? "";
+    // Ningún vocabulario del bloque podado sobrevive en el render.
+    expect(texto).not.toMatch(/distinto a su bancada|distinto a la mayoría/i);
+    expect(texto).not.toMatch(/opción mayoritaria de su bancada/i);
   });
 
   it("voto×tema: faceta por materia (chips) sin score ni afinidad", () => {
@@ -532,18 +473,7 @@ describe("VotosView — sección VOTE (asistencia, tema, votó distinto, §3.3�
   });
 
   // ── GATE DE CONTENIDO (§9.1, release gate) ───────────────────────────────────
-  it("GATE §9.1: el render NO contiene lenguaje de afinidad/score/causal", () => {
-    const rebeldias: RebeldiaRow[] = [
-      {
-        votacion_id: "camara:1",
-        boletin: "16284-07",
-        titulo: null,
-        etapa: null,
-        fecha: "2026-05-14T00:00:00Z",
-        seleccion_propia: "no",
-        mayoria_bancada: "si",
-      },
-    ];
+  it("GATE §9.1: el render NO contiene lenguaje de afinidad/score/causal/rebeldía", () => {
     const { container } = render(
       <VotosView
         id="P00001"
@@ -551,17 +481,15 @@ describe("VotosView — sección VOTE (asistencia, tema, votó distinto, §3.3�
           votos: [makeVoto(), makeVoto({ votacion_id: "camara:2", seleccion: "ausente" })],
           totalVotos: 2,
           conteos: { si: 1, no: 0, abstencion: 0, pareo: 0, ausente: 1 },
-          rebeldias,
           materias: [{ slug: "salud", label: "Salud" }],
         })}
       />,
     );
     const texto = container.textContent ?? "";
+    // Tras la PODA (68-03), `rebeld`/`disciplina`/bancada-comparativa quedan FUERA.
     const PROHIBIDO =
-      /afinidad|alinead|en l[ií]nea con|af[ií]n a|aliad|rival|d[ií]scolo|rebeld|leal(?!es)|disciplina|score|ranking|índice de|por presión de|a cambio de|favoreciendo a/i;
+      /afinidad|alinead|en l[ií]nea con|af[ií]n a|aliad|rival|d[ií]scolo|rebeld|leal(?!es)|disciplina|score|ranking|índice de|por presión de|a cambio de|favoreciendo a|distinto a su bancada/i;
     expect(texto).not.toMatch(PROHIBIDO);
-    // El heading neutro EXACTO sí está presente.
-    expect(texto).toContain("Votó distinto a su bancada");
   });
 
   it("paginación SSR: 'Página N de M' + anchors deep-linkables", () => {
@@ -907,7 +835,6 @@ describe("derivarVotosViewData — invariantes de filtro/paginación (WR-01, WR-
       todasConMateria: fixtureMultiTema(),
       materiaActiva: "salud",
       page: 1,
-      rebeldias: [],
     });
     // Salud = 5 votos (1 ausente, 4 sí); NO los 8 globales.
     expect(data.totalVotos).toBe(5);
@@ -921,7 +848,6 @@ describe("derivarVotosViewData — invariantes de filtro/paginación (WR-01, WR-
       todasConMateria: fixtureMultiTema(),
       materiaActiva: null,
       page: 1,
-      rebeldias: [],
     });
     expect(data.totalVotos).toBe(8);
     expect(data.conteos.no).toBe(3);
@@ -933,8 +859,8 @@ describe("derivarVotosViewData — invariantes de filtro/paginación (WR-01, WR-
     const votos = Array.from({ length: 21 }, (_, i) =>
       makeVoto({ votacion_id: `p:${i}`, boletin: `${300 + i}-07`, materia: null }),
     );
-    const p1 = derivarVotosViewData({ todasConMateria: votos, materiaActiva: null, page: 1, rebeldias: [] });
-    const p2 = derivarVotosViewData({ todasConMateria: votos, materiaActiva: null, page: 2, rebeldias: [] });
+    const p1 = derivarVotosViewData({ todasConMateria: votos, materiaActiva: null, page: 1 });
+    const p2 = derivarVotosViewData({ todasConMateria: votos, materiaActiva: null, page: 2 });
     expect(p1.totalPages).toBe(2);
     expect(p1.votos.length).toBe(20);
     expect(p2.votos.length).toBe(1);
@@ -958,7 +884,6 @@ describe("derivarVotosViewData — invariantes de filtro/paginación (WR-01, WR-
       todasConMateria: [...sueltos, ...arco2],
       materiaActiva: null,
       page: 1,
-      rebeldias: [],
     });
     expect(data.totalPages).toBe(1); // 20 arcos → 1 página
     // Las 2 etapas del boletín 999-07 están juntas en la misma página.
@@ -971,14 +896,14 @@ describe("derivarVotosViewData — invariantes de filtro/paginación (WR-01, WR-
       makeVoto({ votacion_id: "a:0", boletin: "500-07", materia: "Niñez" }),
       makeVoto({ votacion_id: "b:0", boletin: "600-07", materia: "Ninez" }),
     ];
-    const data = derivarVotosViewData({ todasConMateria: votos, materiaActiva: null, page: 1, rebeldias: [] });
+    const data = derivarVotosViewData({ todasConMateria: votos, materiaActiva: null, page: 1 });
     // Dos chips distintos (no uno fusionado).
     expect(data.materias.length).toBe(2);
     const slugs = data.materias.map((m) => m.slug);
     expect(new Set(slugs).size).toBe(2);
     // Filtrar por el slug de "Niñez" trae sólo su boletín, no el de "Ninez".
     const slugNinez = data.materias.find((m) => m.label === "Niñez")!.slug;
-    const filtrada = derivarVotosViewData({ todasConMateria: votos, materiaActiva: slugNinez, page: 1, rebeldias: [] });
+    const filtrada = derivarVotosViewData({ todasConMateria: votos, materiaActiva: slugNinez, page: 1 });
     expect(filtrada.votos.map((v) => v.boletin)).toEqual(["500-07"]);
   });
 
@@ -997,7 +922,7 @@ describe("derivarVotosViewData — invariantes de filtro/paginación (WR-01, WR-
     const votos = Array.from({ length: 5 }, (_, i) =>
       makeVoto({ votacion_id: `z:${i}`, boletin: `${700 + i}-07`, materia: null }),
     );
-    const data = derivarVotosViewData({ todasConMateria: votos, materiaActiva: null, page: 99999, rebeldias: [] });
+    const data = derivarVotosViewData({ todasConMateria: votos, materiaActiva: null, page: 99999 });
     expect(data.totalPages).toBe(1);
     expect(data.page).toBe(1); // clamp: 99999 → 1
     expect(data.votos.length).toBe(5);
@@ -1140,7 +1065,6 @@ describe("agruparVotosPorTrimestre — bucketing puro por trimestre (VIZ-02)", (
       todasConMateria: votos,
       materiaActiva: "salud",
       page: 1,
-      rebeldias: [],
     });
     expect(data.periodos.map((p) => p.periodo)).toEqual(["2024 · T1", "2024 · T2"]);
     expect(data.periodos[0].si).toBe(1);
