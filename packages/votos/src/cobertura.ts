@@ -6,14 +6,25 @@
 //       head+count (`select("*", {count:"exact", head:true})`) → NO trae filas → sin el cap 1k de
 //       PostgREST. El % puede subir en absoluto al escalar (periodos históricos → más no_confirmado
 //       LEGÍTIMOS), por eso el absoluto NO es el invariante.
-//   (b) `dipidsMaestraNoConfirmados`: el INVARIANTE duro. Cuenta las filas `voto` con
-//       `estado_vinculo='no_confirmado'` cuyo `fuente_voter_id` pertenece a un DIPID de la maestra
-//       vigente (camara='diputados', periodo vigente). DEBE ser 0 — el golden gate (P65) lo
-//       garantiza y `reconciliarVotosCamara` NUNCA hace name-match. Si sube de 0 → regresión.
+//   (b) `dipidsMaestraNoConfirmados`: el INVARIANTE duro. Cuenta las filas `voto` de la CÁMARA
+//       (votación con `camara='diputados'`) con `estado_vinculo='no_confirmado'` cuyo
+//       `fuente_voter_id` pertenece a un DIPID de la maestra VIGENTE. DEBE ser 0. Lo que detecta,
+//       con precisión (WR-02): DERIVA DE ÍNDICE/SEED — un DIPID que HOY pertenece a la maestra
+//       vigente pero cuyo voto volvió `no_confirmado` (p.ej. el índice del reconciliador se
+//       construyó mal, o el seed derivó a menos DIPIDs de los que debía). NO detecta una "regresión
+//       de name-match": `reconciliarVotosCamara` NUNCA hace name-match (linkea por PRESENCIA de
+//       DIPID en el índice), así que un vínculo por-nombre incorrecto se manifestaría como un
+//       `confirmado` FALSO — algo que este conteo de `no_confirmado` jamás vería.
 //
-// NUNCA hace name-match: el eje es `estado_vinculo` + pertenencia por DIPID exacto. El conjunto de
-// DIPIDs vigentes se recibe como parámetro (derivado del seed vía `derivarGoldenDipid`), no se
-// consulta a la fuente ni se adivina por nombre.
+// SCOPING (WR-01, recycle-trap): el `fuente_voter_id` de un voto NO es globalmente único en el
+// tiempo — un DIPID de un periodo anterior puede coincidir NUMÉRICAMENTE con un DIPID de la maestra
+// vigente (golden-dipid.ts:19-23, PERIODO_VIGENTE). Por eso el invariante se acota a la CÁMARA de
+// diputados vía join `voto → votacion (camara='diputados')`: un voto del Senado (u otra cámara)
+// jamás contamina el conteo. `dipidsMaestra` es el conjunto de la maestra VIGENTE (derivado del seed
+// vía `derivarGoldenDipid`, mono-periodo por el gate P65), no se consulta a la fuente ni se adivina
+// por nombre. PRECONDICIÓN documentada: mientras el seed es MONO-PERIODO (validado por
+// `validarGoldenDipid`), el join por cámara basta; si el seed pasara a MULTI-periodo, hay que sumar
+// un filtro de periodo sobre la votación (hoy `voto` no lleva columna de periodo).
 //
 // Paginación PostgREST (gotcha v6.1): si en algún punto se MATERIALIZAN filas de `voto`, el bucle
 // DEBE usar `.order("votacion_id").range(from, from+PAGE-1)` (cap 1k/request). El invariante (b)
@@ -33,8 +44,9 @@ export interface CoberturaReport {
   /** Conteo absoluto por `estado_vinculo` (head+count, sin materializar filas). */
   porEstado: Record<string, number>;
   /**
-   * Invariante duro D-SC4-MET: filas `voto` no_confirmado cuyo `fuente_voter_id` es un DIPID de
-   * la maestra vigente. DEBE ser 0 (el golden gate lo garantiza). >0 = regresión ruidosa.
+   * Invariante duro D-SC4-MET: filas `voto` DE LA CÁMARA (votacion.camara='diputados')
+   * no_confirmado cuyo `fuente_voter_id` es un DIPID de la maestra vigente. DEBE ser 0 (el golden
+   * gate lo garantiza). >0 = deriva de índice/seed ruidosa (NO una regresión de name-match).
    */
   dipidsMaestraNoConfirmados: number;
 }
@@ -59,9 +71,13 @@ async function contarPorEstado(
 }
 
 /**
- * Cuenta las filas `voto` no_confirmado cuyo `fuente_voter_id` está en el conjunto de DIPIDs de
- * la maestra vigente. Head+count por lotes de DIPIDs (`.in(...)`) → nunca materializa filas.
- * DEBE devolver 0 (invariante D-SC4-MET). NUNCA hace name-match.
+ * Cuenta las filas `voto` DE LA CÁMARA (votacion.camara='diputados') no_confirmado cuyo
+ * `fuente_voter_id` está en el conjunto de DIPIDs de la maestra vigente. Head+count por lotes de
+ * DIPIDs (`.in(...)`) → nunca materializa filas. DEBE devolver 0 (invariante D-SC4-MET).
+ *
+ * WR-01 (recycle-trap): el join `!inner` a `votacion` con `votacion.camara='diputados'` acota el
+ * conteo a la cámara de diputados, evitando que un voto de otra cámara cuyo `fuente_voter_id`
+ * colisione numéricamente con un DIPID vigente inflе el invariante. NUNCA hace name-match.
  */
 async function contarDipidsMaestraNoConfirmados(
   client: SupabaseClient,
@@ -72,7 +88,9 @@ async function contarDipidsMaestraNoConfirmados(
   for (const lote of chunk([...dipidsMaestra], IN_CHUNK)) {
     const { count, error } = await client
       .from("voto")
-      .select("*", { count: "exact", head: true })
+      // `!inner` fuerza el join a votacion (solo cuenta votos con votación diputados-cámara).
+      .select("*, votacion!inner(camara)", { count: "exact", head: true })
+      .eq("votacion.camara", "diputados")
       .eq("estado_vinculo", "no_confirmado")
       .in("fuente_voter_id", lote);
     if (error) {
