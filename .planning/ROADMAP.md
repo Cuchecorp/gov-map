@@ -230,7 +230,12 @@ Plans:
   3. La señal solo cuenta parlamentarios con RUT presente (depende de RUT-01); sin RUT rinde vacío honesto, no falso
   4. Ninguna afirmación causal ("financió su voto") aparece en la señal ni en su etiqueta
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+
+- [ ] 72-01-PLAN.md — Migración aditiva 0052 (ampliar CHECK a `lobby_sector_aporte` + re-emitir `materializar_cruces()` con la rama lobby verbatim + rama aporte: contratos ChileCompra por parlamentario_id confirmado × sector de lobby, evidencia PII-safe, sin rut/partido en el cuerpo) + pgTAP espejo de 0039 (CHECK/happy/vacío-honesto/PII-safe/cuerpo-no-PII/lobby-preservado)
+- [ ] 72-02-PLAN.md — Runbook operador-LOCAL de aplicación de 0052 a PROD (psql --db-url, pgTAP, vacío honesto hoy, MONEY OFF) + checkpoint blocking-human (el agente NO aplica el DDL)
 
 ### Phase 73: DINERO P5e — Superficies MONEY gated OFF + linter + GATE LEGAL humano
 
