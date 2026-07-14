@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: — Votos, dinero y cierre técnico
-status: verifying
+status: executing
 stopped_at: "Completed 68-02-PLAN.md (cobertura del voto individual N/M en pnpm freshness: COBERTURA_VOTO_SENALES + renderCoberturaVoto; Camara confirmado / Senado por nombre). Phase 68 P2 de 4."
-last_updated: "2026-07-14T07:07:22.915Z"
+last_updated: "2026-07-14T08:08:09.074Z"
 last_activity: 2026-07-14
 progress:
   total_phases: 12
   completed_phases: 4
-  total_plans: 16
-  completed_plans: 14
+  total_plans: 19
+  completed_plans: 15
   percent: 33
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 69 — DINERO P5a — RUT-01 backfill a la maestra
+**Current focus:** Phase 70 — DINERO P5b — Wire ChileCompra por RUT
 
 ## Current Position
 
-Phase: 69 (DINERO P5a — RUT-01 backfill a la maestra) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 70 (DINERO P5b — Wire ChileCompra por RUT) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-07-14
 
 Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shipped)
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shi
 | Phase 69 P01 | 35min | 1 tasks | 2 files |
 | Phase 69 P02 | 14min | 2 tasks | 4 files |
 | Phase 69 P03 | 20min | 1 tasks | 1 files |
+| Phase 70 P01 | 7 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: [Phase 68] 68-02: cobertura del voto individual en pnpm freshness = array COBERTURA_VOTO_SENALES SEPARADO (denominador = sesiones de sala conocidas, count(DISTINCT votacion.id), NO proyecto) + renderCoberturaVoto; evaluateCobertura se reusa tal cual (array marca su propio esDenominador); Camara solo confirmado determinista, Senado por nombre (probable/no_confirmado, techo honesto); degrada a null NO 0; en vivo 4731 sesiones, Camara 80%, Senado 20%.
 - [Phase ?]: Phase 69 69-01: guard-guardian name-match no escribe rut BIFURCADO (estatico app/lib fs + companion comportamiento packages/dinero, app NO depende de @obs/dinero); detector cubre revisionesRut->writer y cosechas.push fuera de corroboracion; mutation self-check probado contra el archivo real; reconciliar-contrato/harvest-rut intactos.
 - [Phase ?]: [Phase 69] 69-02: cobertura de RUT DV-valido en pnpm freshness = DOS arrays SEPARADOS (parlamentario confirmado / entidad_tercero juridica), cada uno con denom propio, evaluados por separado (evaluateCobertura toma un esDenominador por eval, no se toca); numerador = presencia de RUT no vacio, DV-validez la resuelve isRutValido en la capa de identidad (sub-techo declarado en CLI); degrada por causa (no-data n/d, cero real 0%, M=0 n/d); counts agregados NUNCA SELECT rut (minimizacion T-69-06); en vivo parl 0/186=0%, entidades 0=n/d; corpus/voto intactos.
+- [Phase ?]: Phase 70-01: --from-r2 deriva la tarea del envelope (rut+dias); wire dinero dos-etapas R2 put-gatea-upsert
 
 ### Pending Todos
 
@@ -119,7 +121,7 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-14T07:07:13.977Z
+Last session: 2026-07-14T08:08:01.805Z
 Stopped at: Completed 68-02-PLAN.md (cobertura del voto individual N/M en pnpm freshness: COBERTURA_VOTO_SENALES + renderCoberturaVoto; Camara confirmado / Senado por nombre). Phase 68 P2 de 4.
 Resume file: None
 

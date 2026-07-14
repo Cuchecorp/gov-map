@@ -188,7 +188,7 @@ Plans:
 
 Plans:
 
-- [ ] 70-01-PLAN.md — Wire dos-etapas (r2Store/snapshotWriter/--from-r2) en runIngestDinero + CLI operador + tests fake-R2 + CR-01 redacción ticket
+- [x] 70-01-PLAN.md — Wire dos-etapas (r2Store/snapshotWriter/--from-r2) en runIngestDinero + CLI operador + tests fake-R2 + CR-01 redacción ticket
 - [ ] 70-02-PLAN.md — Señal freshness ChileCompra (contratos_ingesta_estado.ingestado_hasta) + guard frozen-reconciler + verificación MONEY gate OFF
 - [ ] 70-03-PLAN.md — Runbook operador-LOCAL del backfill LIVE (cuota 10k/día, multi-día reanudable) + registro SPIKE cuota/OCDS (deferred)
 
@@ -1009,7 +1009,7 @@ Plans:
 | 67. VOTO P3d — Paridad Senado (voto individual por nombre) | v7.0 | 2/2 | Complete   | 2026-07-14 |
 | 68. VOTO P3e — Superficies de voto + linter + cobertura + BrowserOS | v7.0 | 4/4 | Complete   | 2026-07-14 |
 | 69. DINERO P5a — RUT-01 backfill (checkpoint operador, bloqueante) | v7.0 | 3/3 | Complete   | 2026-07-14 |
-| 70. DINERO P5b — Wire dos-etapas ChileCompra por RUT (SPIKE cuota) | v7.0 | 0/? | Not started | - |
+| 70. DINERO P5b — Wire dos-etapas ChileCompra por RUT (SPIKE cuota) | v7.0 | 1/3 | In Progress|  |
 | 71. DINERO P5c — SERVEL LOCAL (.xlsx artesanal) | v7.0 | 0/? | Not started | - |
 | 72. DINERO P5d — Extender materializador cruce_senal (lobby_sector_aporte) | v7.0 | 0/? | Not started | - |
 | 73. DINERO P5e — Superficies MONEY gated OFF + linter + gate legal | v7.0 | 0/? | Not started | - |
