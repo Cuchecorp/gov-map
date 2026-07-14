@@ -89,7 +89,8 @@ DEUDA (paralelizable, no bloquea P3/P5): 74 (cursor leylobby + CF token CI + rou
   4. El FK del voto sigue siendo `EnlaceConfirmado | null` branded (un string crudo no compila)
 
 **Plans**: 1 plan
-- [ ] 65-01-PLAN.md — golden set DIPID→id_maestra derivado+validado del seed + gate fail-closed (invariantes, fail-closed contra reconciliador real, grep-gate anti-name-match, aserción branded-FK)
+
+- [x] 65-01-PLAN.md — golden set DIPID→id_maestra derivado+validado del seed + gate fail-closed (invariantes, fail-closed contra reconciliador real, grep-gate anti-name-match, aserción branded-FK)
 
 ### Phase 66: VOTO P3c — Wire dos-etapas Cámara + backfill a escala (funde DEBT-01)
 
@@ -978,7 +979,7 @@ Plans:
 | 62. RED — /red ego-network radial legible | v6.1 | 4/4 | Complete   | 2026-07-11 |
 | 63. BUSQ — Búsqueda sobre corpus completo declarado | v6.1 | 3/3 | Complete   | 2026-07-11 |
 | 64. VOTO P3a — Validar/caracterizar opendata.camara.cl LIVE (SPIKE) | v7.0 | 2/2 | Complete   | 2026-07-14 |
-| 65. VOTO P3b — Golden set DIPID→maestra (gate pre-backfill) | v7.0 | 0/? | Not started | - |
+| 65. VOTO P3b — Golden set DIPID→maestra (gate pre-backfill) | v7.0 | 1/1 | Complete   | 2026-07-14 |
 | 66. VOTO P3c — Wire dos-etapas Cámara + backfill a escala | v7.0 | 0/? | Not started | - |
 | 67. VOTO P3d — Paridad Senado (voto individual por nombre) | v7.0 | 0/? | Not started | - |
 | 68. VOTO P3e — Superficies de voto + linter + cobertura + BrowserOS | v7.0 | 0/? | Not started | - |
