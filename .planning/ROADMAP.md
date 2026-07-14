@@ -207,7 +207,15 @@ Plans:
   3. La fecha de corte y qué elección/período cubre el dato SERVEL están VISIBLES por dato (nunca dato viejo presentado como actual)
   4. `ServelBloqueadaError` degrada ESA elección sin abortar la corrida; SERVEL aparece en `pnpm freshness` con staleness
 
-**Plans**: TBD
+**Nota rectora (research HIGH):** SERVEL NO trae RUT — el enlace candidato→parlamentario es por NOMBRE determinista (IDENT-12 fail-closed: solo `determinista` mintea el FK). El plan honra el espíritu "nunca falso por nombre" con el cruce por NOMBRE existente, NO añadiendo un RUT que la fuente no publica.
+
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 71-01-PLAN.md — Wire dos-etapas (r2Store/snapshotWriter/--from-r2 + modo LOCAL con r2Path) en runIngestServel + fixture .xlsx exceljs + tests fake-R2 (SC#1/#3/#4)
+- [ ] 71-02-PLAN.md — CLI operador LOCAL run-servel-local-cli + señal freshness servel (365d, GH n/d) + guard frozen-servel + MONEY gate OFF (SC#4)
+- [ ] 71-03-PLAN.md — Runbook operador-LOCAL del backfill SERVEL por elección (obtener + colocar .xlsx en R2 + --from-r2) + checkpoint human-action (SC#1)
 
 ### Phase 72: DINERO P5d — Extender materializador `cruce_senal` con `lobby_sector_aporte`
 
