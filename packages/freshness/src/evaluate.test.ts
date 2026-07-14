@@ -92,10 +92,10 @@ describe("evaluate", () => {
     expect(results[0]!.stale).toBe(false);
   });
 
-  it("evaluates all 6 catalog entries", () => {
+  it("evaluates all 7 catalog entries", () => {
     const rows: QueryRow[] = CATALOG.map((c) => makeRow(c.fuente, 1)); // 1 day → all fresh
     const results = evaluate(rows, CATALOG, NOW);
-    expect(results).toHaveLength(6);
+    expect(results).toHaveLength(7);
     for (const r of results) {
       expect(r.stale).toBe(false);
     }
@@ -114,6 +114,54 @@ describe("evaluate", () => {
     const results = evaluate(rows, catalog, NOW);
     expect(results[0]!.ghRun).toBe("success @ 2026-07-07");
     expect(results[0]!.r2Snapshot).toBe("2026-07-07T10:00:00Z");
+  });
+});
+
+describe("staleness de ChileCompra (MONEY-01)", () => {
+  // La señal ChileCompra mide `contratos_ingesta_estado.ingestado_hasta` (umbral 30d),
+  // MISMO patrón declarativo que las 6 fuentes previas: el evaluador `evaluate` se reusa
+  // TAL CUAL (la entrada CATALOG basta). Estos 3 casos congelan el comportamiento honesto:
+  // stale-null (nunca barrido, el estado HOY) / stale > umbral / fresh <= umbral.
+  const chilecompra = () => CATALOG.filter((c) => c.fuente === "chilecompra");
+
+  it("la entrada chilecompra existe sobre contratos_ingesta_estado.ingestado_hasta, umbral 30", () => {
+    const cfg = CATALOG.find((c) => c.fuente === "chilecompra");
+    expect(cfg).toBeDefined();
+    expect(cfg!.tabla).toBe("contratos_ingesta_estado");
+    expect(cfg!.columna).toBe("ingestado_hasta");
+    expect(cfg!.umbralDias).toBe(30);
+    expect(cfg!.overrideEnv).toBe("FRESHNESS_UMBRAL_CHILECOMPRA");
+    expect(cfg!.workflowYml).toBe("chilecompra-weekly.yml");
+  });
+
+  it("stale-null: ingestado_hasta null (nunca barrido, estado HOY) → stale (desconocido = stale, fail-closed)", () => {
+    const rows: QueryRow[] = [makeRow("chilecompra", null)];
+    const results = evaluate(rows, chilecompra(), NOW);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.fuente).toBe("chilecompra");
+    expect(results[0]!.diasDesdeUpsert).toBeNull();
+    expect(results[0]!.stale).toBe(true);
+  });
+
+  it("stale > umbral: 45 días desde el último barrido (> 30) → stale", () => {
+    const rows: QueryRow[] = [makeRow("chilecompra", 45)];
+    const results = evaluate(rows, chilecompra(), NOW);
+    expect(results[0]!.diasDesdeUpsert).toBe(45);
+    expect(results[0]!.stale).toBe(true);
+  });
+
+  it("fresh <= umbral: 20 días desde el último barrido (<= 30) → fresco", () => {
+    const rows: QueryRow[] = [makeRow("chilecompra", 20)];
+    const results = evaluate(rows, chilecompra(), NOW);
+    expect(results[0]!.diasDesdeUpsert).toBe(20);
+    expect(results[0]!.stale).toBe(false);
+  });
+
+  it("respeta el override FRESHNESS_UMBRAL_CHILECOMPRA (baja el umbral a 15 → 20d ahora es stale)", () => {
+    const rows: QueryRow[] = [makeRow("chilecompra", 20)];
+    const results = evaluate(rows, chilecompra(), NOW, { FRESHNESS_UMBRAL_CHILECOMPRA: "15" });
+    expect(results[0]!.umbralDias).toBe(15);
+    expect(results[0]!.stale).toBe(true);
   });
 });
 

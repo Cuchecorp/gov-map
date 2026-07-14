@@ -11,6 +11,7 @@
  * | lobby-leylobby   | lobby_ingesta_estado   | ingestado_hasta  | 7d     | tabla distinta para distinguir de camara    |
  * | probidad         | declaracion            | fecha_captura    | 30d    | patrimonio/intereses CPLT                   |
  * | fichas           | proyecto               | fecha_captura    | 30d    | mismo proyecto; fichas llena idea_matriz    |
+ * | chilecompra      | contratos_ingesta_estado | ingestado_hasta | 30d  | marcador de barrido (dist. "0 filas" de "no barrido") |
  *
  * NOTA lobby-camara vs lobby-leylobby:
  *   Ambas fuentes escriben en lobby_audiencia (sin columna discriminadora "fuente").
@@ -255,5 +256,27 @@ export const CATALOG: FuenteConfig[] = [
     umbralDias: 30,
     overrideEnv: "FRESHNESS_UMBRAL_FICHAS",
     workflowYml: "fichas-backfill.yml",
+  },
+  {
+    // ChileCompra (MONEY-01) — staleness del barrido de contratos del Estado por RUT.
+    //
+    // Se mide `contratos_ingesta_estado.ingestado_hasta` (marcador de ingesta por-parlamentario,
+    // 0023_dinero.sql), NO `contrato.fecha_captura` — MISMO patrón que `lobby-leylobby`: el
+    // marcador de ingesta distingue "consultado sin contratos" (ingestado_hasta al día, 0 filas
+    // en `contrato`) de "no consultado" (ingestado_hasta null/viejo). Un MAX(contrato.fecha_captura)
+    // no puede distinguir esos dos casos (0 filas se ve igual que "nunca barrido"). Columna EXISTENTE
+    // de 0023 (NO se añade migración).
+    //
+    // umbral 30d: la fuente OCDS/Mercado Público se refresca mensual (día ~20); >30d = stale honesto.
+    // workflowYml "chilecompra-weekly.yml" AÚN NO existe (el flip MONEY vive en Phase 73) → la señal
+    // de GH Actions figura "n/d" hasta entonces: comportamiento honesto, NO un error.
+    // HONESTIDAD (MONEY-01): sin crawl LIVE corrido, `ingestado_hasta` es null HOY → la señal reporta
+    // stale (desconocido = stale, fail-closed), reflejando cobertura ≈ 0, no un fresco fingido.
+    fuente: "chilecompra",
+    tabla: "contratos_ingesta_estado",
+    columna: "ingestado_hasta",
+    umbralDias: 30,
+    overrideEnv: "FRESHNESS_UMBRAL_CHILECOMPRA",
+    workflowYml: "chilecompra-weekly.yml",
   },
 ];
