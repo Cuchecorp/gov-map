@@ -15,6 +15,7 @@ import { join } from "node:path";
 import {
   queryCobertura,
   queryCoberturaVoto,
+  queryCoberturaRut,
   queryFreshness,
 } from "./query-runner.js";
 import {
@@ -27,6 +28,8 @@ import {
   CATALOG,
   COBERTURA_SENALES,
   COBERTURA_VOTO_SENALES,
+  COBERTURA_RUT_PARLAMENTARIO_SENALES,
+  COBERTURA_RUT_ENTIDAD_SENALES,
 } from "./catalog.js";
 
 // ─── loadEnv (BOM-safe, process.env tiene precedencia sobre .env) ─────────────
@@ -195,6 +198,66 @@ function renderCoberturaVoto(results: CoberturaResult[]): string {
   ].join("\n");
 }
 
+// ─── Cobertura de RUT DV-válido (RUT-01) ──────────────────────────────────────
+
+/**
+ * Sub-tabla N/M de una maestra (parlamentario o entidad_tercero). Espejo de
+ * `renderCoberturaVoto` (mismo layout), un denominador propio por maestra. Degrada `n/d`
+ * cuando el count no se pudo leer (T-69-07). NUNCA imprime el RUT crudo (T-69-06): son
+ * counts agregados. No reemplaza las tablas de corpus/voto.
+ */
+function renderCoberturaRutTabla(
+  titulo: string,
+  results: CoberturaResult[],
+): string {
+  const cols = { senal: 36, n: 8, m: 9, pct: 6 };
+  const header =
+    pad("Maestra/Señal", cols.senal) +
+    " | " +
+    pad("N", cols.n) +
+    " | " +
+    pad("M (total)", cols.m) +
+    " | " +
+    "N/M";
+  const sep = "-".repeat(header.length);
+  const rows = results.map((r) => {
+    const nStr = r.n !== null ? String(r.n) : "?";
+    const mStr = r.m !== null ? String(r.m) : "?";
+    const pctStr = r.pct !== null ? `${r.pct}%` : "n/d";
+    return (
+      pad(r.etiqueta, cols.senal) +
+      " | " +
+      pad(nStr, cols.n) +
+      " | " +
+      pad(mStr, cols.m) +
+      " | " +
+      pctStr
+    );
+  });
+  return [`  ${titulo}`, header, sep, ...rows].join("\n");
+}
+
+/**
+ * Encabezado RUT-01 + las dos sub-tablas de maestra (parlamentario + entidad_tercero).
+ * Declara el techo HONESTO: "sin dato de RUT" ≠ "sin vínculos"; el RUT es interno
+ * (minimización), nunca público. El % cuenta presencia de RUT no vacío; la DV-validez
+ * se resuelve en la capa de identidad (`isRutValido`) — sub-techo declarado aquí.
+ */
+function renderCoberturaRut(
+  parlamentario: CoberturaResult[],
+  entidad: CoberturaResult[],
+): string {
+  return [
+    "Cobertura de RUT DV-válido (RUT-01):",
+    "  (techo honesto — 'sin dato de RUT' ≠ 'sin vínculos'; el RUT es interno, nunca público.",
+    "   El % mide presencia de RUT no vacío; la DV-validez la resuelve la capa de identidad.)",
+    "",
+    renderCoberturaRutTabla("Parlamentarios (maestra cruzable):", parlamentario),
+    "",
+    renderCoberturaRutTabla("Entidades terceras jurídicas:", entidad),
+  ].join("\n");
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
@@ -267,25 +330,61 @@ async function main(): Promise<void> {
     COBERTURA_VOTO_SENALES,
   );
 
+  // Cobertura N/M del RUT DV-válido (RUT-01): señal SEPARADA (dos maestras, dos
+  // denominadores), APPEND — no reemplaza corpus ni voto. Cada maestra se evalúa con
+  // su propio array (evaluateCobertura toma un solo denominador). Solo counts, nunca rut.
+  const coberturaRutCounts = queryCoberturaRut(env["SUPABASE_DB_URL"]!);
+  const coberturaRutParlamentario = evaluateCobertura(
+    coberturaRutCounts.parlamentario,
+    COBERTURA_RUT_PARLAMENTARIO_SENALES,
+  );
+  const coberturaRutEntidad = evaluateCobertura(
+    coberturaRutCounts.entidad,
+    COBERTURA_RUT_ENTIDAD_SENALES,
+  );
+
   const table = renderTable(results);
   const coberturaTable = renderCobertura(cobertura);
   const coberturaVotoTable = renderCoberturaVoto(coberturaVoto);
+  const coberturaRutTable = renderCoberturaRut(
+    coberturaRutParlamentario,
+    coberturaRutEntidad,
+  );
   const anyStale = results.some((r) => r.stale);
+
+  const coberturaRut = {
+    parlamentario: coberturaRutParlamentario,
+    entidad: coberturaRutEntidad,
+  };
 
   if (jsonMode) {
     process.stderr.write(
-      table + "\n\n" + coberturaTable + "\n\n" + coberturaVotoTable + "\n",
+      table +
+        "\n\n" +
+        coberturaTable +
+        "\n\n" +
+        coberturaVotoTable +
+        "\n\n" +
+        coberturaRutTable +
+        "\n",
     );
     process.stdout.write(
       JSON.stringify(
-        { frescura: results, cobertura, coberturaVoto },
+        { frescura: results, cobertura, coberturaVoto, coberturaRut },
         null,
         2,
       ) + "\n",
     );
   } else {
     process.stdout.write(
-      table + "\n\n" + coberturaTable + "\n\n" + coberturaVotoTable + "\n",
+      table +
+        "\n\n" +
+        coberturaTable +
+        "\n\n" +
+        coberturaVotoTable +
+        "\n\n" +
+        coberturaRutTable +
+        "\n",
     );
   }
 
