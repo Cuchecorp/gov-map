@@ -258,7 +258,21 @@ export function parseCamaraVotoDetalle(detalleXml: string): CamaraVotoDetalle[] 
 
       // Pareo derivado de <Pareos>: re-etiqueta la fila (que el roster dio como "ausente" por
       // código 4) a "pareo". Solo sobre filas YA presentes; nunca inventa una fila (VOTO-04).
-      if (pareados.has(diputadoId)) opcion = "pareo";
+      // GUARDA (defamation-critical): SOLO se re-etiqueta cuando el roster dio "ausente".
+      // Si un DIPID figura en <Pareos> Y ADEMÁS trae un voto nominal (si/no/abstencion por
+      // código 0/1/2), es una contradicción de integridad de la fuente → se falla RUIDOSO
+      // (throw, consistente con el cross-check), NUNCA se sobrescribe el voto real con "pareo".
+      // "voted YES" jamás se reescribe a "was paired" en silencio.
+      if (pareados.has(diputadoId)) {
+        if (opcion === "ausente") {
+          opcion = "pareo";
+        } else {
+          throw new Error(
+            `pareo/voto conflict DIPID=${diputadoId}: en <Pareos> pero roster dio "${opcion}" ` +
+              `(no "ausente") — no se re-etiqueta a pareo (VOTO-04, defamation-critical)`,
+          );
+        }
+      }
 
       const nombreCrudo = [
         txt(dip.Nombre),

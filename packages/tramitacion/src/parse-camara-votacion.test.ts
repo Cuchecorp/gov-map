@@ -163,6 +163,25 @@ describe("parseCamaraVotoDetalle (ns tempuri REAL: getVotacion_Detalle, DIPID + 
       expect(["si", "no", "abstencion", "pareo", "ausente"]).toContain(v.opcion);
   });
 
+  // CR-01 (defamation-critical): un DIPID que figura en <Pareos> pero que ADEMÁS trae un voto
+  // nominal (código 1 = afirmativo) es una contradicción de integridad de la fuente. El parser
+  // JAMÁS reescribe el voto real "si" a "pareo" en silencio: DEBE lanzar (fail-loud) para que la
+  // contradicción se investigue, no se atribuya como falsa ("voted YES" → "was paired").
+  it("CR-01: un pareado que trae voto nominal (code-1 afirmativo) hace THROW, nunca sobrescribe el 'si' con 'pareo'", () => {
+    const conflicto = `<?xml version="1.0" encoding="utf-8"?>
+      <Votacion xmlns="http://tempuri.org/">
+        <Votos>
+          <Voto><Diputado><DIPID>777</DIPID></Diputado><Opcion Codigo="1">A Favor</Opcion></Voto>
+        </Votos>
+        <Pareos>
+          <Pareo><Diputado1><DIPID>777</DIPID></Diputado1><Diputado2><DIPID>778</DIPID></Diputado2></Pareo>
+        </Pareos>
+      </Votacion>`;
+    expect(() => parseCamaraVotoDetalle(conflicto)).toThrow(/pareo\/voto conflict DIPID=777/);
+    // Y nunca emite una fila "pareo" que oculte el voto real.
+    expect(() => parseCamaraVotoDetalle(conflicto)).toThrow(/VOTO-04/);
+  });
+
   it("sin bloque <Pareos> nadie se marca pareo espurio", () => {
     const sinPareos = `<?xml version="1.0" encoding="utf-8"?>
       <Votacion xmlns="http://tempuri.org/">
