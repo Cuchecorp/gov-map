@@ -123,7 +123,9 @@ DEUDA (paralelizable, no bloquea P3/P5): 74 (cursor leylobby + CF token CI + rou
   3. `runIngest` degrada fail-closed sin provider Senado — no inventa votos del Senado
   4. La UI solo muestra como atribuido lo `confirmado`; lo demás no se presenta como voto de la persona
 
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 67-01-PLAN.md — Fix del gap de replay: votXmlSenado en el envelope + senadoFake lo sirve + mapSeleccion fail-loud + fixtures/tests Senado (offline, autónomo)
+- [ ] 67-02-PLAN.md — Runbook operador-LOCAL del backfill LIVE Senado (votaciones.php a escala, gated) + SPIKE de tokens SELECCION
 
 ### Phase 68: VOTO P3e — Superficies de voto + linter anti-insinuación + cobertura + gate BrowserOS
 
