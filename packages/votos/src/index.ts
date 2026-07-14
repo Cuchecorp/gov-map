@@ -10,3 +10,13 @@ export {
   type RunCamaraVotosOpts,
   type RunCamaraVotosResult,
 } from "./run-camara-votos";
+
+// ── VOTO-03: golden set DIPID→id_maestra derivado del seed + gate fail-closed (Phase 65) ──
+export {
+  derivarGoldenDipid,
+  validarGoldenDipid,
+  PERIODO_VIGENTE,
+  N_MIN,
+  N_MAX,
+  type GoldenDipidRow,
+} from "./golden-dipid";
