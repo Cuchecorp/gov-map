@@ -152,6 +152,13 @@ export interface VotosViewData {
    * en cero).
    */
   periodos: VotoPeriodo[];
+  /**
+   * Techo de cobertura por causa conocida (VOTO-05, 68-UI-SPEC §Cobertura). CONDICIONAL:
+   * `true` SOLO cuando hay una causa conocida por la cual algunas votaciones no se pueden
+   * atribuir individualmente (RUT-bloqueado, PDF escaneado, fuente sin desglose nominal).
+   * Si es `undefined`/`false` la línea de techo se OMITE — NUNCA se fabrica el techo.
+   */
+  techoPorCausa?: boolean;
 }
 
 /**
@@ -259,8 +266,20 @@ function buildHref(
   return `/parlamentario/${id}${qs ? `?${qs}` : ""}`;
 }
 
-/** Bajo este nº de proyectos, la vista muestra una nota de cobertura honesta. */
-const COBERTURA_BAJA_UMBRAL = 5;
+/**
+ * Leyenda anti-insinuación (VERBATIM LOCKED — 68-UI-SPEC §Leyenda / CONTEXT §decisions).
+ * Aparece 1× al TOPE del detalle del carril (bloque 0), ANTES de cualquier dato. Copy
+ * EXACTO, sin variaciones: un voto es un hecho observable, no un juicio de disciplina.
+ */
+const LEYENDA_ANTI_INSINUACION =
+  "Un voto es un hecho observable. Ausente o pareo no equivalen a votar en contra. No medimos disciplina ni motivo.";
+
+/**
+ * Techo por causa (VERBATIM LOCKED — 68-UI-SPEC §Cobertura, CONDICIONAL). Solo se muestra
+ * cuando `techoPorCausa` es true (causa conocida); si no, se OMITE — nunca se fabrica.
+ */
+const COPY_TECHO_POR_CAUSA =
+  "Algunas votaciones no se pueden atribuir individualmente porque la fuente publica el registro sin desglose nominal; se declara lo disponible.";
 
 /** Un proyecto agrupado: su cabecera (titulo/idea) + las etapas en que votó. */
 interface ProyectoArco {
@@ -619,11 +638,20 @@ export function VotosView({
 
   return (
     <div className="space-y-10">
+      {/* ── Bloque 0: leyenda anti-insinuación (VERBATIM LOCKED, VOTO-04) ───────
+          PRIMER hijo del detalle, ANTES de cualquier dato — el marco honesto
+          precede al voto. Nota sobria (borde-izquierdo petróleo), nunca banner
+          alarmista. Aparece 1× por superficie, jamás repetida por arco/fila. */}
+      <p className="text-sm text-muted-foreground border-l-[3px] border-[--accent-product] pl-2.5">
+        {LEYENDA_ANTI_INSINUACION}
+      </p>
+
       {/* ── Cuándo votó — chart de evolución por trimestre (VIZ-02) ────────────
-          PRIMER hijo del detalle, ENCIMA de "Cómo votó". El chart es un stacked
-          BarChart DISCRETO (isla cliente): jamás una línea/área — no insinúa
-          tendencia. Si ninguna fila tiene fecha parseable, `periodos` viene vacío y
-          se muestra copy honesto en vez de una barra en cero (degrade honesto). */}
+          Primer sub-bloque de DATOS del detalle, ENCIMA de "Cómo votó" (la leyenda
+          va antes). El chart es un stacked BarChart DISCRETO (isla cliente): jamás
+          una línea/área — no insinúa tendencia. Si ninguna fila tiene fecha
+          parseable, `periodos` viene vacío y se muestra copy honesto en vez de una
+          barra en cero (degrade honesto). */}
       <div>
         <h3 className="text-sm font-semibold">¿Cuándo votó?</h3>
         {data.periodos.length > 0 ? (
@@ -767,12 +795,24 @@ export function VotosView({
           </p>
         )}
 
-        {/* Cobertura honesta: con pocos proyectos NO se aparenta exhaustividad. */}
-        {votos.length > 0 && totalProyectos <= COBERTURA_BAJA_UMBRAL && (
+        {/* Cobertura honesta (VOTO-05): la N/M por proyecto es INCONDICIONAL cuando
+            hay votos — el observatorio NUNCA finge exhaustividad, así que se declara
+            siempre lo cubierto (no solo bajo un umbral). */}
+        {votos.length > 0 && (
           <p className="text-sm text-muted-foreground mt-4">
             Se registran votaciones de {totalProyectos}{" "}
             {totalProyectos === 1 ? "proyecto" : "proyectos"} en las fuentes
             consultadas; la cobertura se está ampliando.
+          </p>
+        )}
+
+        {/* Techo por causa (VOTO-05, CONDICIONAL): SOLO cuando hay una causa conocida
+            por la que algunas votaciones no se atribuyen individualmente (fuente sin
+            desglose nominal, etc.). Copy verbatim; si no hay causa, se OMITE — nunca
+            se fabrica el techo (68-UI-SPEC §Cobertura / RESEARCH Open Question 3). */}
+        {votos.length > 0 && data.techoPorCausa && (
+          <p className="text-sm text-muted-foreground mt-4">
+            {COPY_TECHO_POR_CAUSA}
           </p>
         )}
 

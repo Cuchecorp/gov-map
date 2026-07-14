@@ -47,9 +47,15 @@ import {
   type VotoPeriodo,
 } from "./votos-por-parlamentario";
 import { extractoIdea, conteoVotacion } from "@/lib/format";
+import { VOTO_PRESENTACION } from "@/lib/voto-presentacion";
 import type { VotoFichaMencion } from "@/lib/types";
 
 afterEach(cleanup);
+
+// Leyenda anti-insinuación VERBATIM (LOCKED 68-UI-SPEC §Leyenda). Se referencia en
+// varios asserts (presencia 1×, orden, resta del negative-match del GATE).
+const LEYENDA =
+  "Un voto es un hecho observable. Ausente o pareo no equivalen a votar en contra. No medimos disciplina ni motivo.";
 
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 function makeVoto(
@@ -485,8 +491,9 @@ describe("VotosView — sección VOTE (asistencia, tema, votó distinto, §3.3�
         })}
       />,
     );
-    const texto = container.textContent ?? "";
-    // Tras la PODA (68-03), `rebeld`/`disciplina`/bancada-comparativa quedan FUERA.
+    // La leyenda NIEGA "disciplina" → se resta antes del negative-match (patrón LOCKED).
+    const texto = (container.textContent ?? "").replace(LEYENDA, "");
+    // Tras la PODA (68-03), `rebeld`/bancada-comparativa quedan FUERA del render.
     const PROHIBIDO =
       /afinidad|alinead|en l[ií]nea con|af[ií]n a|aliad|rival|d[ií]scolo|rebeld|leal(?!es)|disciplina|score|ranking|índice de|por presión de|a cambio de|favoreciendo a|distinto a su bancada/i;
     expect(texto).not.toMatch(PROHIBIDO);
@@ -651,10 +658,112 @@ describe("VotosView — instructiva (asistencia corregida, arco, cobertura, §3.
         })}
       />,
     );
-    const texto = container.textContent ?? "";
+    // La leyenda anti-insinuación NIEGA "disciplina" ("No medimos disciplina ni
+    // motivo"): se resta del texto antes del negative-match, igual que la caption
+    // del chart resta "tendencia" (patrón LOCKED).
+    const texto = (container.textContent ?? "").replace(LEYENDA, "");
     const PROHIBIDO =
       /afinidad|alinead|en l[ií]nea con|af[ií]n a|aliad|rival|d[ií]scolo|rebeld|leal(?!es)|disciplina|score|ranking|índice de|por presión de|a cambio de|favoreciendo a|porque|conflicto de inter|enriquecimiento|sospechos/i;
     expect(texto).not.toMatch(PROHIBIDO);
+  });
+});
+
+// ── Task 2 (68-03): leyenda anti-insinuación + techo por causa + cobertura N/M ──
+describe("VotosView — leyenda anti-insinuación + cobertura honesta (68-03, VOTO-04/05)", () => {
+  it("la leyenda anti-insinuación verbatim aparece EXACTAMENTE 1× al tope del detalle", () => {
+    render(<VotosView id="P00001" data={makeViewData()} />);
+    const hits = screen.getAllByText(LEYENDA);
+    expect(hits).toHaveLength(1);
+  });
+
+  it("la leyenda precede a '¿Cuándo votó?' en el orden del DOM (marco honesto primero)", () => {
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          periodos: [
+            { periodo: "2024 · T1", si: 3, no: 1, abstencion: 0, pareo: 0, ausente: 0 },
+          ],
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto.indexOf(LEYENDA)).toBeGreaterThanOrEqual(0);
+    expect(texto.indexOf(LEYENDA)).toBeLessThan(texto.indexOf("¿Cuándo votó?"));
+  });
+
+  it("la nota de significado 'A favor / En contra…' sigue presente (conservada)", () => {
+    render(<VotosView id="P00001" data={makeViewData()} />);
+    expect(
+      screen.getByText(
+        /A favor \/ En contra se refiere a aprobar o rechazar el proyecto en esa etapa de su tramitación\./,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("techo por causa: aparece 1× cuando techoPorCausa=true (copy verbatim)", () => {
+    render(<VotosView id="P00001" data={makeViewData({ techoPorCausa: true })} />);
+    expect(
+      screen.getByText(
+        "Algunas votaciones no se pueden atribuir individualmente porque la fuente publica el registro sin desglose nominal; se declara lo disponible.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("techo por causa: NO aparece cuando no hay causa conocida (condicional, sin fabricar)", () => {
+    render(<VotosView id="P00001" data={makeViewData()} />);
+    expect(
+      screen.queryByText(/no se pueden atribuir individualmente/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("cobertura N/M: la nota de cobertura por proyecto aparece cuando hay votos", () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: [
+            makeVoto({ boletin: "18296-05", votacion_id: "camara:1" }),
+            makeVoto({ boletin: "14309-04", votacion_id: "camara:2" }),
+          ],
+          totalVotos: 2,
+          conteos: { si: 2, no: 0, abstencion: 0, pareo: 0, ausente: 0 },
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(/Se registran votaciones de 2 proyectos en las fuentes consultadas/i),
+    ).toBeInTheDocument();
+  });
+
+  it("pareo y ausente usan tokens slate (voto-presentacion.ts), NUNCA rojo de 'en contra'", () => {
+    // El token único vive en voto-presentacion.ts: pareo=bg-slate-400, ausente=bg-slate-300.
+    // Nunca bg-red-* (que es el sentido 'no'). Se verifica contra la fuente de verdad.
+    expect(VOTO_PRESENTACION.pareo.bgClass).toMatch(/slate/);
+    expect(VOTO_PRESENTACION.ausente.bgClass).toMatch(/slate/);
+    expect(VOTO_PRESENTACION.pareo.bgClass).not.toMatch(/red/);
+    expect(VOTO_PRESENTACION.ausente.bgClass).not.toMatch(/red/);
+    // El rojo pertenece SOLO a 'no' (en contra) — pareo/ausente jamás se funden con él.
+    expect(VOTO_PRESENTACION.no.bgClass).toMatch(/red/);
+  });
+
+  it("provenance inline (ProvenanceBadge) presente por voto en el detalle del arco", () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: [
+            makeVoto({ boletin: "18296-05", votacion_id: "camara:1", etapa: "Primer trámite" }),
+          ],
+          totalVotos: 1,
+          conteos: { si: 1, no: 0, abstencion: 0, pareo: 0, ausente: 0 },
+          votosVer: "18296-05",
+        })}
+      />,
+    );
+    // ProvenanceBadge expone el enlace a la fuente oficial ("fuente oficial ↗").
+    const fuente = screen.getByRole("link", { name: /fuente oficial/i });
+    expect(fuente).toHaveAttribute("href", "https://opendata.camara.cl/votacion/1");
   });
 });
 
@@ -800,7 +909,8 @@ describe("VotosView — línea-resumen por arco + toggle ?votosVer (SC1, 51-02)"
         })}
       />,
     );
-    const texto = container.textContent ?? "";
+    // La leyenda NIEGA "disciplina" → se resta antes del negative-match (patrón LOCKED).
+    const texto = (container.textContent ?? "").replace(LEYENDA, "");
     const PROHIBIDO =
       /afinidad|alinead|en l[ií]nea con|af[ií]n a|aliad|rival|d[ií]scolo|rebeld|leal(?!es)|disciplina|score|ranking|índice de|por presión de|a cambio de|favoreciendo a|porque|mejor|peor/i;
     expect(texto).not.toMatch(PROHIBIDO);
