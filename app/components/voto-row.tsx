@@ -41,7 +41,7 @@ export function VotoRow({ voto }: { voto: VotoRowData }) {
         {confirmado ? (
           <Link
             href={`/parlamentario/${voto.parlamentario_id}`}
-            className="text-primary underline underline-offset-2"
+            className="text-accent-product underline underline-offset-2"
           >
             {formatNombre(voto.mencion_nombre)}
           </Link>

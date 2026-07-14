@@ -30,7 +30,7 @@ export function VotoDetalle({ votos }: { votos: VotoRowData[] }) {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls={panelId}
-        className="text-sm font-semibold text-primary underline underline-offset-2 min-h-[44px] flex items-center"
+        className="text-sm font-semibold text-accent-product underline underline-offset-2 min-h-[44px] flex items-center"
       >
         {open
           ? "Ocultar votos individuales"

@@ -117,14 +117,14 @@ export function VotoFichaRow({ voto }: { voto: VotoFichaRowData }) {
       {voto.titulo ? (
         <Link
           href={`/proyecto/${voto.boletin}`}
-          className="text-base text-primary underline underline-offset-2"
+          className="text-base text-accent-product underline underline-offset-2"
         >
           {voto.titulo}
         </Link>
       ) : (
         <Link
           href={`/proyecto/${voto.boletin}`}
-          className="font-mono text-primary underline underline-offset-2"
+          className="font-mono text-accent-product underline underline-offset-2"
         >
           Boletín N°{voto.boletin}
         </Link>
@@ -197,14 +197,14 @@ export function VotoFichaMencionRow({ voto }: { voto: VotoFichaMencion }) {
       {voto.titulo ? (
         <Link
           href={`/proyecto/${voto.boletin}`}
-          className="text-base text-primary underline underline-offset-2"
+          className="text-base text-accent-product underline underline-offset-2"
         >
           {voto.titulo}
         </Link>
       ) : (
         <Link
           href={`/proyecto/${voto.boletin}`}
-          className="font-mono text-primary underline underline-offset-2"
+          className="font-mono text-accent-product underline underline-offset-2"
         >
           Boletín N°{voto.boletin}
         </Link>
