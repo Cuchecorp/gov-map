@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { evaluate, evaluateCobertura } from "./evaluate.js";
-import { CATALOG, COBERTURA_SENALES } from "./catalog.js";
+import { CATALOG, COBERTURA_SENALES, COBERTURA_VOTO_SENALES } from "./catalog.js";
 import type { CoberturaCount, QueryRow } from "./query-runner.js";
 
 const NOW = new Date("2026-07-09T12:00:00Z");
@@ -166,5 +166,71 @@ describe("evaluateCobertura (BUSQ-03)", () => {
     );
     expect(results).toHaveLength(4);
     expect(results.map((r) => r.senal)).toEqual(["proyecto", "ficha", "idea", "embedding"]);
+  });
+});
+
+describe("evaluateCobertura del voto (VOTO-05)", () => {
+  // El array de voto tiene su PROPIO denominador (sesiones de sala conocidas),
+  // DISTINTO de `proyecto`. La misma función evaluateCobertura se reusa porque el
+  // array marca su propio esDenominador. NO se toca la semántica del corpus.
+  function votoCounts(map: Record<string, number | null>): CoberturaCount[] {
+    return COBERTURA_VOTO_SENALES.map((c) => ({
+      senal: c.senal,
+      count: c.senal in map ? map[c.senal]! : null,
+    }));
+  }
+
+  it("el array de voto es SEPARADO y tiene su propio denominador (NO proyecto)", () => {
+    const denom = COBERTURA_VOTO_SENALES.filter((s) => s.esDenominador);
+    expect(denom).toHaveLength(1);
+    // El denominador del voto NO es 'proyecto' (ese es el del corpus).
+    expect(denom[0]!.senal).not.toBe("proyecto");
+    // Existe una fila Cámara y una fila Senado.
+    const senales = COBERTURA_VOTO_SENALES.map((s) => s.senal);
+    expect(senales).toContain("camara");
+    expect(senales).toContain("senado");
+  });
+
+  it("SQL 100% estático (sin interpolación de input) en todas las señales de voto", () => {
+    for (const cfg of COBERTURA_VOTO_SENALES) {
+      expect(cfg.sql).not.toMatch(/\$\{/); // sin template interpolation
+      expect(cfg.sql.toLowerCase()).toMatch(/select/);
+    }
+  });
+
+  it("feliz: Cámara N y Senado K contra M sesiones → pcts correctos por cámara", () => {
+    // M = 100 sesiones de sala conocidas; Cámara 40 confirmadas; Senado 25 por nombre.
+    const results = evaluateCobertura(
+      votoCounts({ sesiones: 100, camara: 40, senado: 25 }),
+      COBERTURA_VOTO_SENALES,
+    );
+    const byId = Object.fromEntries(results.map((r) => [r.senal, r]));
+    expect(byId["sesiones"]!.m).toBe(100);
+    expect(byId["sesiones"]!.pct).toBe(100);
+    expect(byId["camara"]!.n).toBe(40);
+    expect(byId["camara"]!.m).toBe(100); // divide contra sesiones, NO contra proyecto
+    expect(byId["camara"]!.pct).toBe(40);
+    expect(byId["senado"]!.n).toBe(25);
+    expect(byId["senado"]!.pct).toBe(25);
+  });
+
+  it("degrade: numerador null → n y pct null, NUNCA 0 (degradación honesta)", () => {
+    const results = evaluateCobertura(
+      votoCounts({ sesiones: 100, camara: null, senado: 10 }),
+      COBERTURA_VOTO_SENALES,
+    );
+    const camara = results.find((r) => r.senal === "camara")!;
+    expect(camara.n).toBeNull();
+    expect(camara.pct).toBeNull();
+  });
+
+  it("denominador 0/ausente → pct null (no divide por cero)", () => {
+    const results = evaluateCobertura(
+      votoCounts({ sesiones: 0, camara: 0, senado: 0 }),
+      COBERTURA_VOTO_SENALES,
+    );
+    for (const r of results) {
+      expect(r.pct).toBeNull(); // M=0 → sin universo, no 0%
+    }
   });
 });

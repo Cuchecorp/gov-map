@@ -82,6 +82,60 @@ export const COBERTURA_SENALES: CoberturaSenalConfig[] = [
   },
 ];
 
+/**
+ * Cobertura del voto individual (VOTO-05) — señal N/M por CÁMARA, denominador PROPIO.
+ *
+ * A DIFERENCIA de COBERTURA_SENALES (denominador = `proyecto`, semántica del corpus de
+ * búsqueda), esta cobertura responde: ¿de M sesiones de sala CONOCIDAS (ingeridas), en
+ * cuántas hay voto individual atribuible? El denominador es `count(distinct votacion.id)`
+ * (universo de votaciones/sesiones ingeridas), NO `proyecto`. Es un array SEPARADO para NO
+ * romper la semántica de denominador único del corpus (RESEARCH pitfall 3 / Open Question 1).
+ *
+ * Dos numeradores por CÁMARA, declarados HONESTAMENTE (VOTO-05, anti-insinuación):
+ *   - Cámara (diputados): sesiones con al menos un voto `estado_vinculo='confirmado'`
+ *     (linking DETERMINISTA por DIPID). Voto atribuido de verdad.
+ *   - Senado: sesiones con voto por NOMBRE (`estado_vinculo` in probable/no_confirmado).
+ *     El Senado publica por nombre, no por id maestro → nunca se declara "confirmado".
+ *     Se muestra como techo honesto: hay dato, pero NO es atribución dura.
+ *
+ * `probable`/`no_confirmado` NUNCA se cuentan como voto atribuido en la Cámara: el numerador
+ * Cámara filtra SOLO `confirmado`. El renderer y la UI declaran la brecha, nunca "completo".
+ *
+ * SQL 100% estático (sin interpolación de input) — T-68-03 (tampering). Corre read-only vía
+ * el mismo `psql` de query-runner (T-68-04: nunca imprime dbUrl/password).
+ */
+export const COBERTURA_VOTO_SENALES: CoberturaSenalConfig[] = [
+  {
+    senal: "sesiones",
+    etiqueta: "sesiones de sala conocidas",
+    // Denominador: universo de votaciones/sesiones ingeridas (ambas cámaras).
+    sql: "SELECT count(DISTINCT id) FROM votacion;",
+    esDenominador: true,
+  },
+  {
+    senal: "camara",
+    etiqueta: "Cámara — voto confirmado",
+    // Numerador determinista: sesiones de diputados con >=1 voto confirmado (DIPID maestro).
+    sql:
+      "SELECT count(DISTINCT vo.id) FROM votacion vo " +
+      "JOIN voto v ON v.votacion_id = vo.id " +
+      "WHERE vo.camara = 'diputados' AND v.estado_vinculo = 'confirmado';",
+    esDenominador: false,
+  },
+  {
+    senal: "senado",
+    etiqueta: "Senado — voto por nombre",
+    // Numerador por nombre: sesiones de senado con voto ingerido (probable/no_confirmado).
+    // NUNCA 'confirmado' — el Senado publica por nombre, no por id maestro (techo honesto).
+    sql:
+      "SELECT count(DISTINCT vo.id) FROM votacion vo " +
+      "JOIN voto v ON v.votacion_id = vo.id " +
+      "WHERE vo.camara = 'senado' " +
+      "AND v.estado_vinculo IN ('probable', 'no_confirmado');",
+    esDenominador: false,
+  },
+];
+
 export const CATALOG: FuenteConfig[] = [
   {
     fuente: "leyes",

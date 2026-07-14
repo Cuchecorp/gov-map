@@ -27,7 +27,11 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { CATALOG, COBERTURA_SENALES } from "./catalog.js";
+import {
+  CATALOG,
+  COBERTURA_SENALES,
+  COBERTURA_VOTO_SENALES,
+} from "./catalog.js";
 
 export interface QueryRow {
   fuente: string;
@@ -147,6 +151,23 @@ export async function queryFreshness(dbUrl: string): Promise<QueryRow[]> {
  */
 export function queryCobertura(dbUrl: string): CoberturaCount[] {
   return COBERTURA_SENALES.map((cfg) => {
+    const raw = psql(dbUrl, cfg.sql);
+    const parsed = Number.parseInt(raw, 10);
+    const count = raw === "" || Number.isNaN(parsed) ? null : parsed;
+    return { senal: cfg.senal, count };
+  });
+}
+
+/**
+ * Lee los counts de cobertura del VOTO INDIVIDUAL (VOTO-05) — señal SEPARADA del corpus.
+ *
+ * Reusa el MISMO `psql` read-only (T-68-04: nunca imprime dbUrl/password) sobre las SQL
+ * estáticas de COBERTURA_VOTO_SENALES (denominador = sesiones de sala conocidas; numeradores
+ * Cámara confirmado / Senado por nombre). NO toca COBERTURA_SENALES ni su denominador único.
+ * Degrada honestamente (T-68-05): un count que no se pudo leer → null, NO 0.
+ */
+export function queryCoberturaVoto(dbUrl: string): CoberturaCount[] {
+  return COBERTURA_VOTO_SENALES.map((cfg) => {
     const raw = psql(dbUrl, cfg.sql);
     const parsed = Number.parseInt(raw, 10);
     const count = raw === "" || Number.isNaN(parsed) ? null : parsed;
