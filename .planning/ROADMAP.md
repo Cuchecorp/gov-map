@@ -179,12 +179,19 @@ Plans:
 **Componentes**: MODIFICADO (wire R2; `ingest-run` hoy marca "R2 BLOQUEADO") · `connector-chilecompra.ts` + `reconciliar-contrato.ts` + tablas `contrato/contratista` (0023) YA-EXISTEN
 **Success Criteria** (what must be TRUE):
 
-  1. ChileCompra ingesta fuente→R2→Supabase re-ejecutable (`--from-r2`), serial por RUT respetando 2-3s, ticket `CHILECOMPRA_TICKET` redactado en logs
+  1. ChileCompra ingesta fuente→R2→Supabase re-ejecutable (`--from-r2`), serial por RUT respetando 2-3s, ticket `MERCADOPUBLICO_TICKET` redactado en logs (nombre real; CONTEXT decía CHILECOMPRA_TICKET)
   2. Detrás de `MONEY_PUBLIC_ENABLED` OFF, existen los contratos del Estado de empresas ligadas por RUT exacto con fuente/fecha/enlace (monto VERBATIM string)
   3. La rama de persona jurídica reconcilia SOLO por RUT exacto fail-closed — nunca `correrPipeline`/LLM/name-match
   4. Si el universo excede la cuota (10k/día), el crawl se parte en varios días (LOCAL reanudable); freshness cubre ChileCompra con staleness
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 70-01-PLAN.md — Wire dos-etapas (r2Store/snapshotWriter/--from-r2) en runIngestDinero + CLI operador + tests fake-R2 + CR-01 redacción ticket
+- [ ] 70-02-PLAN.md — Señal freshness ChileCompra (contratos_ingesta_estado.ingestado_hasta) + guard frozen-reconciler + verificación MONEY gate OFF
+- [ ] 70-03-PLAN.md — Runbook operador-LOCAL del backfill LIVE (cuota 10k/día, multi-día reanudable) + registro SPIKE cuota/OCDS (deferred)
+
 **Research**: yes (SPIKE — cuota ChileCompra por universo de diputados; bulk OCDS mecánica no documentada)
 
 ### Phase 71: DINERO P5c — SERVEL LOCAL (.xlsx artesanal, funde DEBT-01)
