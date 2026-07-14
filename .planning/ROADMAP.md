@@ -88,7 +88,8 @@ DEUDA (paralelizable, no bloquea P3/P5): 74 (cursor leylobby + CF token CI + rou
   3. Un DIPID fuera de la maestra queda `no_confirmado` con `parlamentario_id=null` — jamás se atribuye a la persona equivocada
   4. El FK del voto sigue siendo `EnlaceConfirmado | null` branded (un string crudo no compila)
 
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 65-01-PLAN.md — golden set DIPID→id_maestra derivado+validado del seed + gate fail-closed (invariantes, fail-closed contra reconciliador real, grep-gate anti-name-match, aserción branded-FK)
 
 ### Phase 66: VOTO P3c — Wire dos-etapas Cámara + backfill a escala (funde DEBT-01)
 
