@@ -42,3 +42,18 @@ export const SELECCION_ORDEN: Seleccion[] = [
   "pareo",
   "ausente",
 ];
+
+/**
+ * Leyenda anti-insinuación (VERBATIM LOCKED — 68-UI-SPEC §Leyenda / CONTEXT §decisions,
+ * REQUIREMENTS VOTO-04). ÚNICA fuente de verdad, byte-idéntica: la consumen TODAS las
+ * superficies de voto (ficha del parlamentario `votos-por-parlamentario.tsx` bloque 0 y
+ * ficha del proyecto / Senado `voto-detalle.tsx` a nivel de la votación). NO duplicar el
+ * string en ningún componente — importar desde aquí.
+ *
+ * OJO (guard): este string NIEGA "disciplina" ("No medimos disciplina ni motivo."). El
+ * `anti-insinuacion-guard.test.ts` lo RESTA (NEGACIONES_LOCKED) antes de matchear, así que
+ * la leyenda que enfuerza la regla no se auto-caza. Si se edita el copy aquí, debe editarse
+ * verbatim en NEGACIONES_LOCKED del guard también.
+ */
+export const LEYENDA_ANTI_INSINUACION =
+  "Un voto es un hecho observable. Ausente o pareo no equivalen a votar en contra. No medimos disciplina ni motivo.";

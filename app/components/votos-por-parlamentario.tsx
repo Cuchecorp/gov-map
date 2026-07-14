@@ -11,6 +11,7 @@ import { sourceLabel } from "@/lib/types";
 import {
   VOTO_PRESENTACION,
   SELECCION_ORDEN,
+  LEYENDA_ANTI_INSINUACION,
 } from "@/lib/voto-presentacion";
 import type {
   Seleccion,
@@ -265,14 +266,6 @@ function buildHref(
   const qs = new URLSearchParams(base).toString();
   return `/parlamentario/${id}${qs ? `?${qs}` : ""}`;
 }
-
-/**
- * Leyenda anti-insinuación (VERBATIM LOCKED — 68-UI-SPEC §Leyenda / CONTEXT §decisions).
- * Aparece 1× al TOPE del detalle del carril (bloque 0), ANTES de cualquier dato. Copy
- * EXACTO, sin variaciones: un voto es un hecho observable, no un juicio de disciplina.
- */
-const LEYENDA_ANTI_INSINUACION =
-  "Un voto es un hecho observable. Ausente o pareo no equivalen a votar en contra. No medimos disciplina ni motivo.";
 
 /**
  * Techo por causa (VERBATIM LOCKED — 68-UI-SPEC §Cobertura, CONDICIONAL). Solo se muestra
