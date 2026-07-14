@@ -17,7 +17,13 @@
 // @obs/ingest y se ensambla aquí heredando `buildCamaraConnector()` del spike (allowlist `{}`,
 // el default ya cubre el sufijo `camara.cl` → `opendata.camara.cl` pasa). NO se edita el allowlist.
 
-import { Fetcher, HostRateLimiter, RobotsGuard } from "@obs/ingest";
+import {
+  Fetcher,
+  HostRateLimiter,
+  RobotsGuard,
+  type R2Store,
+  type SnapshotWriter,
+} from "@obs/ingest";
 import {
   CamaraConnector,
   SenadoConnector,
@@ -61,6 +67,25 @@ export interface RunCamaraVotosOpts {
   writer?: TramitacionWriter;
   /** Raíz del workspace para resolver el seed (default: cwd). */
   cwd?: string;
+  /**
+   * Store R2 para Etapa 1 (crudo por boletín, content-addressed). Threaded a `runIngest`
+   * (que YA ejecuta la Etapa 1 y hace skip de la Etapa 2 si `existed=true`). Sin él, no se
+   * persiste crudo (best-effort, NOT fatal) — por eso hoy los votos tienen 0 snapshots R2.
+   * También es requerido por el modo `fromR2` (replay de la Etapa 2 desde R2).
+   */
+  r2Store?: R2Store;
+  /**
+   * Writer de `source_snapshot` (FND-08/CRON-02). Threaded a `runIngest`; solo efectivo cuando
+   * `r2Store` está configurado y `putImmutable` tiene éxito. Si se omite, no se registra provenance.
+   */
+  snapshotWriter?: SnapshotWriter;
+  /**
+   * Modo re-ingesta desde R2 (DEBT-01, espejo VERBATIM de ingest-cli.ts): r2Path del envelope
+   * crudo guardado por la Etapa 1. Cuando presente, se lee el envelope de R2 y se inyectan
+   * conectores fake que sirven el XML desde el envelope — CERO fetches a camara.cl / senado.cl.
+   * Requiere `r2Store` configurado (lanza `RunCamaraVotosArgsError` si es ausente).
+   */
+  fromR2?: string;
   /** Sink de logs (inyectable en tests). Default: noop. */
   log?: (msg: string) => void;
 }
@@ -119,9 +144,10 @@ export async function runCamaraVotos(
   const log = opts.log ?? (() => {});
 
   // Acotar SIEMPRE: o boletines explícitos o un límite > 0 (nunca todo a ciegas contra el WAF).
+  // El modo --from-r2 ya está acotado por el propio envelope (1 boletín) y no toca la fuente.
   const tieneBoletines = opts.boletines != null && opts.boletines.length > 0;
   const tieneLimite = opts.limite != null && opts.limite > 0;
-  if (!tieneBoletines && !tieneLimite) {
+  if (!tieneBoletines && !tieneLimite && opts.fromR2 == null) {
     throw new RunCamaraVotosArgsError(
       "corrida no acotada: pasa `boletines` explícitos o un `limite` > 0 (alcance WAF/tiempo)",
     );
@@ -152,6 +178,64 @@ export async function runCamaraVotos(
     }
   }
 
+  // Modo --from-r2 (DEBT-01): lee el envelope crudo desde R2 y usa conectores fake que lo sirven.
+  // CERO fetches a camara.cl / senado.cl. Espeja VERBATIM el envelope shape de ingest-cli.ts,
+  // pero REUSA el `writer` ya resuelto arriba (W-1: no re-derivar un writer nuevo).
+  if (opts.fromR2 != null) {
+    if (opts.r2Store == null) {
+      throw new RunCamaraVotosArgsError(
+        "--from-r2 requiere `r2Store` configurado (R2_ACCESS_KEY_ID + R2_ENDPOINT_URL)",
+      );
+    }
+    log(`votos: modo --from-r2 → leyendo crudo desde R2 (${opts.fromR2})`);
+    const bytes = await opts.r2Store.getObject(opts.fromR2);
+    const envelope = JSON.parse(new TextDecoder().decode(bytes)) as {
+      boletin: string;
+      tramXml: string | null;
+      votXml: string | null;
+      detalles: string[];
+    };
+    // Conectores fake que sirven los XML del envelope sin red (mismo shape que ingest-cli.ts).
+    let detalleIdx = 0;
+    const camaraFake = {
+      async descubrirBoletines() {
+        return [envelope.boletin];
+      },
+      async fetchVotacionesBoletin() {
+        return envelope.votXml ?? "";
+      },
+      async fetchVotacionDetalle() {
+        return envelope.detalles[detalleIdx++] ?? "";
+      },
+    } as unknown as CamaraConnector;
+    const senadoFake = {
+      async fetchTramitacion() {
+        return envelope.tramXml ?? "";
+      },
+      async fetchVotaciones() {
+        return "";
+      },
+    } as unknown as SenadoConnector;
+
+    const resReplay = await runIngest({
+      boletines: [envelope.boletin],
+      maestra,
+      camara: camaraFake,
+      senado: senadoFake,
+      writer,
+      log,
+    });
+    log(
+      `votos: OK (--from-r2) → ${resReplay.votaciones} votaciones / ${resReplay.votos} votos ` +
+        `(${resReplay.errores.length} errores) dbLoaded=${dbLoaded}`,
+    );
+    return {
+      ...resReplay,
+      dbLoaded,
+      boletinesPedidos: [envelope.boletin],
+    };
+  }
+
   const res = await runIngest({
     ...(tieneBoletines ? { boletines: opts.boletines } : {}),
     legislaturaId,
@@ -161,6 +245,8 @@ export async function runCamaraVotos(
     senado,
     writer,
     log,
+    ...(opts.r2Store ? { r2Store: opts.r2Store } : {}),
+    ...(opts.snapshotWriter ? { snapshotWriter: opts.snapshotWriter } : {}),
   });
 
   log(
