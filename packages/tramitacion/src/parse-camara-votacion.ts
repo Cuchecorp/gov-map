@@ -196,11 +196,18 @@ function totalesDesdeDetalle(detalleXml: string): Map<string, Totales> {
  *       `Opcion Codigo` (0=En Contra→no, 1=A Favor→si, 4=No Vota→ausente — confirmados LIVE),
  *       apellidos `Apellido_Paterno`/`Apellido_Materno`.
  *
- * VOTE-03: emite el ROSTER COMPLETO con las 5 opciones (no solo sí/no). `abstencion`/`pareo`
- * se resuelven por el TEXTO `#text` ("Abstención"/"Pareo") porque sus códigos exactos NO
- * fueron confirmados LIVE (Assumption A1; se re-verifican en la corrida LIVE de Plan 02).
- * NUNCA se fabrica un sí/no: una opción no-nominal jamás se colapsa a si/no, y `ausente` se
- * deriva del roster (código de no-asistencia), nunca de la ausencia de fila.
+ * VOTE-03: emite el ROSTER COMPLETO con las 5 opciones (no solo sí/no). `abstencion` se
+ * mapea por CÓDIGO (2, confirmado LIVE 2026-07-13). `ausente` se deriva del roster (código de
+ * no-asistencia), nunca de la ausencia de fila. NUNCA se fabrica un sí/no.
+ *
+ * PAREO (A1b RESUELTO — hallazgo LIVE 2026-07-13): el pareo NO es un `Opcion Codigo=3` en el
+ * roster (tal código NO se observó live). Vive en un bloque HERMANO top-level
+ * `<Pareos><Pareo><Diputado1><DIPID>…<Diputado2><DIPID>`, y los diputados pareados figuran en
+ * `<Votos>` como "No Vota" (código 4). Este parser recolecta el set de DIPID pareados de
+ * `<Pareos>` y RE-ETIQUETA a "pareo" las filas del roster que ya existen para esos DIPID
+ * (sobrescribiendo el "ausente" que el código 4 habría dado). No fabrica filas nuevas: solo
+ * corrige la atribución de filas presentes (pareo ≠ ausente, VOTO-04). Un No Vota que NO está
+ * en `<Pareos>` sigue siendo "ausente".
  *
  * El cruce es por id (DIPID/Id), no por nombre; el `nombreCrudo` es para display/fallback.
  */
@@ -214,6 +221,23 @@ export function parseCamaraVotoDetalle(detalleXml: string): CamaraVotoDetalle[] 
   );
   const out: CamaraVotoDetalle[] = [];
   for (const v of lista) {
+    // Set de DIPID pareados desde el bloque hermano <Pareos> (A1b resuelto LIVE): cada <Pareo>
+    // empareja Diputado1↔Diputado2; ambos DIPID se marcan como pareo, aunque en <Votos>
+    // aparezcan como "No Vota" (código 4). Sin bloque/vacío → set vacío → nadie se re-etiqueta.
+    const pareados = new Set<string>();
+    const pareos = asArray<Record<string, unknown>>(
+      (v?.Pareos as Record<string, unknown> | undefined)?.Pareo as
+        | Record<string, unknown>
+        | Record<string, unknown>[]
+        | undefined,
+    );
+    for (const p of pareos) {
+      const d1 = txt((p.Diputado1 as Record<string, unknown> | undefined)?.DIPID);
+      const d2 = txt((p.Diputado2 as Record<string, unknown> | undefined)?.DIPID);
+      if (d1 != null) pareados.add(d1);
+      if (d2 != null) pareados.add(d2);
+    }
+
     const votos = asArray<Record<string, unknown>>(
       (v?.Votos as Record<string, unknown> | undefined)?.Voto as
         | Record<string, unknown>
@@ -229,8 +253,12 @@ export function parseCamaraVotoDetalle(detalleXml: string): CamaraVotoDetalle[] 
       // Opción: (a) <OpcionVoto Valor="1|0">; (b) <Opcion Codigo>texto. Las 5 opciones del
       // roll-call (VOTE-03): ninguna se descarta. Solo un nodo de opción ILEGIBLE (sin valor
       // ni texto reconocible) devuelve null → ahí sí se omite, para no fabricar un dato falso.
-      const opcion = opcionDeVoto(voto);
+      let opcion = opcionDeVoto(voto);
       if (opcion == null) continue; // opción ilegible/desconocida → fail-closed, no fabrica
+
+      // Pareo derivado de <Pareos>: re-etiqueta la fila (que el roster dio como "ausente" por
+      // código 4) a "pareo". Solo sobre filas YA presentes; nunca inventa una fila (VOTO-04).
+      if (pareados.has(diputadoId)) opcion = "pareo";
 
       const nombreCrudo = [
         txt(dip.Nombre),
@@ -251,9 +279,11 @@ export function parseCamaraVotoDetalle(detalleXml: string): CamaraVotoDetalle[] 
  * `abstencion`/`pareo`. Devuelve `null` SOLO cuando el nodo de opción es ilegible (sin valor
  * ni texto reconocible) → el caller lo omite, para no fabricar un dato falso (fail-closed).
  *
- * Mapeo por CÓDIGO cuando es conocido (confirmado LIVE Phase 8): 1→si, 0→no, 4→ausente.
- * `abstencion`/`pareo` (y un No Vota textual) se resuelven por el TEXTO `#text` porque sus
- * códigos exactos NO fueron confirmados LIVE (Assumption A1 — re-verificar en Plan 02).
+ * Mapeo por CÓDIGO cuando es conocido: 1→si, 0→no, 2→abstencion (CONFIRMADO LIVE 2026-07-13),
+ * 4→ausente. El `pareo` NO se resuelve aquí: el roster real NUNCA trae un `Opcion Codigo=3`
+ * ni el texto "Pareo" (A1b resuelto LIVE — código 3 no observado); el pareo lo deriva
+ * `parseCamaraVotoDetalle` cruzando los DIPID del bloque hermano `<Pareos>`. El fallback por
+ * texto `/pareo/` se conserva por robustez, pero no es el camino real de la Cámara.
  */
 function opcionDeVoto(voto: Record<string, unknown>): Seleccion | null {
   // (a) v1: <OpcionVoto Valor="1|0"> (solo trae sí/no nominal en ese shape histórico).
@@ -280,6 +310,9 @@ function opcionDeVoto(voto: Record<string, unknown>): Seleccion | null {
     // independientemente del #text. El fallback por texto (/abstenci/) se conserva por si
     // otra fuente/legislatura trae solo el texto y no el código.
     if (codigo === "2" || /abstenci/i.test(texto)) return "abstencion";
+    // Pareo por TEXTO solo como fallback robusto: el roster REAL de la Cámara NO trae este
+    // texto ni un código 3 (A1b resuelto LIVE 2026-07-13). El pareo real se deriva del bloque
+    // hermano <Pareos> en parseCamaraVotoDetalle, NO aquí. NO se añade una rama `codigo === "3"`.
     if (/pareo/i.test(texto)) return "pareo";
     // Ausente: No Vota (código 4 confirmado LIVE) o dispensado/inasistencia por texto.
     if (codigo === "4" || /no vota|dispensad|inasist|ausen/i.test(texto)) return "ausente";

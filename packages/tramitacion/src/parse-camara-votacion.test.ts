@@ -134,6 +134,46 @@ describe("parseCamaraVotoDetalle (ns tempuri REAL: getVotacion_Detalle, DIPID + 
     const raro = parseCamaraVotoDetalle(votacionConCodigo("9", "???"));
     expect(raro.find((v) => v.diputadoId === "999")).toBeUndefined();
   });
+
+  // --- Task 2 (Plan 64-01): pareo DERIVADO del bloque <Pareos> por DIPID (A1b resuelto) ---
+  // El fixture LIVE prueba que el pareo NO es un Opcion Codigo=3 (inexistente en el roster):
+  // vive en un bloque hermano <Pareos><Pareo><Diputado1/2><DIPID>, y esos diputados figuran
+  // en <Votos> como "No Vota" (codigo 4). El parser los re-etiqueta a "pareo".
+  const PAREADOS = ["1240", "1082", "1259", "1142", "1039", "1131", "1015", "1217", "1107", "1219"];
+
+  it("emite 'pareo' para los 10 DIPID del bloque <Pareos>, aunque en <Votos> figuren como No Vota", () => {
+    const votos = parseCamaraVotoDetalle(detalleReal);
+    const pareo = votos.filter((v) => v.opcion === "pareo");
+    expect(pareo.length).toBe(10);
+    const idsPareo = new Set(pareo.map((v) => v.diputadoId));
+    for (const id of PAREADOS) expect(idsPareo.has(id)).toBe(true);
+    // Pareo 1 del fixture: 1240 (Parisi) y 1082 (Urruticoechea).
+    expect(votos.find((v) => v.diputadoId === "1240")?.opcion).toBe("pareo");
+    expect(votos.find((v) => v.diputadoId === "1082")?.opcion).toBe("pareo");
+  });
+
+  it("un DIPID 'No Vota' que NO está en <Pareos> sigue siendo 'ausente' (1009 Alessandri)", () => {
+    const votos = parseCamaraVotoDetalle(detalleReal);
+    expect(votos.find((v) => v.diputadoId === "1009")?.opcion).toBe("ausente");
+  });
+
+  it("todas las opciones ∈ {si,no,abstencion,pareo,ausente} (roll-call fiel, nada fabricado)", () => {
+    const votos = parseCamaraVotoDetalle(detalleReal);
+    for (const v of votos)
+      expect(["si", "no", "abstencion", "pareo", "ausente"]).toContain(v.opcion);
+  });
+
+  it("sin bloque <Pareos> nadie se marca pareo espurio", () => {
+    const sinPareos = `<?xml version="1.0" encoding="utf-8"?>
+      <Votacion xmlns="http://tempuri.org/">
+        <Votos>
+          <Voto><Diputado><DIPID>803</DIPID></Diputado><Opcion Codigo="4">No Vota</Opcion></Voto>
+        </Votos>
+      </Votacion>`;
+    const votos = parseCamaraVotoDetalle(sinPareos);
+    expect(votos.find((v) => v.diputadoId === "803")?.opcion).toBe("ausente");
+    expect(votos.some((v) => v.opcion === "pareo")).toBe(false);
+  });
 });
 
 describe("parseCamaraVotoDetalle (roster completo: las 5 opciones por diputado, VOTE-03)", () => {
