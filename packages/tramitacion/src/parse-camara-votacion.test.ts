@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
+  caracterizarVotacionDetalle,
   parseCamaraVotacion,
   parseCamaraVotoDetalle,
 } from "./parse-camara-votacion";
@@ -238,12 +239,20 @@ describe("parseCamaraVotoDetalle (roster completo: las 5 opciones por diputado, 
 describe("cross-check de totales (SC#3): Σ roster == Total* del header, mismatch RUIDOSO", () => {
   const detalleReal = leer("camara-votacion-detalle-real.xml");
 
-  // Totales del header, extraídos por regex sobre los tags estructurados del XML de detalle.
-  // (El header vive en <Votacion>, no en cada <Voto> — se lee del XML crudo del fixture.)
+  // Totales del header leídos con el MISMO parser de producción (caracterizarVotacionDetalle,
+  // fast-xml-parser) que usa el LIVE probe — no con un regex hand-rolled frágil ante atributos
+  // (p.ej. <TotalNegativos xsi:nil="true"/>) o tags con prefijo similar (IN-01). Test y camino
+  // de producción comparten un solo lector.
+  const HEADER_FIELD: Record<string, keyof ReturnType<typeof caracterizarVotacionDetalle>> = {
+    TotalAfirmativos: "afirmativos",
+    TotalNegativos: "negativos",
+    TotalAbstenciones: "abstenciones",
+  };
   const totalHeader = (xml: string, tag: string): number => {
-    const m = xml.match(new RegExp(`<${tag}>\\s*(\\d+)\\s*</${tag}>`));
-    if (m == null) throw new Error(`header total <${tag}> ausente/ilegible en el XML`);
-    return Number(m[1]);
+    const field = HEADER_FIELD[tag];
+    if (field == null) throw new Error(`tag de header no soportado en el cross-check: <${tag}>`);
+    const valor = caracterizarVotacionDetalle(xml)[field];
+    return valor as number;
   };
 
   // Cross-check por BUCKET SEMÁNTICO (si↔Afirmativos, no↔Negativos, abstencion↔Abstenciones),
