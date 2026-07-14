@@ -243,6 +243,18 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
           reconcOpts(sv.votacion.id),
         );
         votosBoletin.push(...votos);
+        // WR-01: un `<SELECCION>` presente pero desconocido se reporta PER-PERSONA (no borra el
+        // roll-call). El resto de los votos de la votación YA está en `votosBoletin`; aquí solo
+        // subimos el diagnóstico ruidoso a `errores` para que el token novedoso sea VISIBLE.
+        for (const td of sv.tokensDesconocidos) {
+          errores.push({
+            boletin: boletinFull,
+            etapa: `senado-votaciones:token-desconocido:${sv.votacion.id}`,
+            mensaje:
+              `<SELECCION> desconocido "${td.token}" en "${td.mencionNombre}" ` +
+              `(votoSeq ${td.votoSeq}) — voto NO contado; confirmar token real del Senado (Plan 02)`,
+          });
+        }
       }
     } catch (err) {
       errores.push({

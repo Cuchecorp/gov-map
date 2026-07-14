@@ -56,23 +56,38 @@ function asArray<T>(v: T | T[] | undefined | null): T[] {
   return ([] as T[]).concat(v as T | T[]);
 }
 
+/** Error tipado que porta el token crudo desconocido (WR-01: se captura PER-VOTO, no se propaga). */
+export class SeleccionDesconocidaError extends Error {
+  readonly token: string;
+  constructor(token: string) {
+    super(
+      `<SELECCION> con token desconocido "${token}" — voto NO omitido en silencio (D-A4); ` +
+        `confirmar el token real del Senado (Plan 02) antes de mapearlo`,
+    );
+    this.name = "SeleccionDesconocidaError";
+    this.token = token;
+  }
+}
+
 /**
- * Mapea el `SELECCION` crudo a una opción nominal. Tres casos (D-A4, P67):
+ * Mapea el `SELECCION` crudo a una opción nominal. Casos (D-A4, P67):
  *   (a) VACÍO/ausente (`null`/"") → devuelve `null` → el caller OMITE el voto (no es un voto
  *       clasificable; no hay persona-que-votó que perder).
- *   (b) token conocido (prefijo si/sí/no/abst/pareo) → la `Seleccion` correspondiente.
- *   (c) token PRESENTE pero DESCONOCIDO ("A FAVOR", "AF", un código numérico) → LANZA con el
- *       token crudo exacto en el mensaje. NO se omite en silencio: omitir un voto del Senado por
- *       un token inesperado es una MENTIRA de cobertura (una persona que votó desaparece del
- *       roll-call). El fail-loud hace VISIBLE un shape LIVE inesperado — el `try/catch` de
- *       `runIngest` paso 4 lo registra en `errores` sin abortar el boletín.
+ *   (b) token conocido → la `Seleccion` correspondiente (IN-03: por token normalizado/anclado,
+ *       con las variantes de ausencia resueltas antes de la rama contra).
+ *   (c) token PRESENTE pero DESCONOCIDO ("A FAVOR", "AF", un código numérico) → LANZA
+ *       `SeleccionDesconocidaError` con el token crudo. NO se omite en silencio. WR-01: el caller
+ *       (`parseSenadoVotaciones`) captura este throw PER-VOTO y lo registra en `tokensDesconocidos`
+ *       — los demás votos del roll-call SOBREVIVEN; un token novedoso ya NO borra el boletín entero
+ *       (antes el throw desenrollaba todo el parse → se perdían N-1 votos válidos del boletín).
  *
  * WR-03 se preserva: NUNCA se coacciona un token a 'abstencion' (eso fabricaría una clasificación
- * contada). La diferencia con antes: el desconocido ya no se traga en silencio, lanza.
+ * contada). El desconocido no se traga en silencio: se marca ruidoso (diagnóstico per-persona).
  *
  * NOTA (riesgo residual gated, Plan 02): los tokens reales de `<SELECCION>` del Senado LIVE no
- * están confirmados en esta fase; este fail-loud es lo que hace que un token real distinto del
- * esperado sea RUIDOSO en vez de silencioso, hasta fijarlos con un SPIKE LIVE (operador).
+ * están confirmados en esta fase; el diagnóstico per-voto hace que un token real distinto del
+ * esperado sea RUIDOSO (aparece en `errores` con la mención) sin ser silencioso ni destructivo,
+ * hasta fijarlos con un SPIKE LIVE (operador).
  */
 function mapSeleccion(s: string | null): Seleccion | null {
   const raw = (s ?? "").trim();
@@ -90,11 +105,8 @@ function mapSeleccion(s: string | null): Seleccion | null {
   if (/^no( |$)/.test(v)) return "no";
   if (/^abst/.test(v)) return "abstencion";
   if (/^pareo/.test(v)) return "pareo";
-  // (c) token presente pero desconocido → FALLA RUIDOSO (no se omite el voto en silencio).
-  throw new Error(
-    `parseSenadoVotaciones: <SELECCION> con token desconocido "${raw}" — voto NO omitido en ` +
-      `silencio (D-A4); confirmar el token real del Senado (Plan 02) antes de mapearlo`,
-  );
+  // (c) token presente pero desconocido → FALLA RUIDOSO (capturado per-voto por el caller).
+  throw new SeleccionDesconocidaError(raw);
 }
 
 /**
@@ -133,9 +145,27 @@ export interface VotoSenadoCrudo {
   votoSeq: number;
 }
 
+/**
+ * Diagnóstico de un `<SELECCION>` PRESENTE pero desconocido (WR-01). Se colecta PER-VOTO en
+ * vez de lanzar a través de todo el parse: el token novedoso queda VISIBLE (con la mención y el
+ * token crudo) pero los demás votos del roll-call SOBREVIVEN. El caller (`runIngest`) lo sube a
+ * `errores` por persona.
+ */
+export interface TokenDesconocido {
+  mencionNombre: string;
+  token: string;
+  votoSeq: number;
+}
+
 export interface VotacionSenado {
   votacion: Votacion;
   votos: VotoSenadoCrudo[];
+  /**
+   * Tokens `<SELECCION>` desconocidos hallados en esta votación (WR-01). Vacío en el caso normal.
+   * Cada entrada es un voto que NO se pudo clasificar y NO se contó — se reporta ruidoso, sin
+   * borrar el resto de la votación ni fabricar una clasificación.
+   */
+  tokensDesconocidos: TokenDesconocido[];
 }
 
 /**
@@ -207,21 +237,34 @@ export function parseSenadoVotaciones(
 
     const detalle = (v.DETALLE_VOTACION ?? {}) as Record<string, unknown>;
     const votos: VotoSenadoCrudo[] = [];
+    const tokensDesconocidos: TokenDesconocido[] = [];
     // CR-02: `votoSeq` es el índice posicional EN LA FUENTE (antes de filtrar) → estable e
     // idempotente. D-A4: un `<SELECCION>` VACÍO/ausente se OMITE (mapSeleccion → null); un token
-    // PRESENTE pero desconocido LANZA (fail-loud) — NO se traga un voto en silencio. WR-03 se
-    // mantiene: nunca se coacciona un token a 'abstencion'.
+    // PRESENTE pero desconocido se CAPTURA PER-VOTO en `tokensDesconocidos` (WR-01) — no se traga
+    // en silencio pero TAMPOCO borra el resto del roll-call. WR-03 se mantiene: nunca se coacciona
+    // un token a 'abstencion'.
     asArray<Record<string, unknown>>(
       detalle.VOTO as Record<string, unknown> | Record<string, unknown>[],
     ).forEach((voto, idx) => {
       const mencionNombre = txt(voto.PARLAMENTARIO) ?? "";
       if (mencionNombre.length === 0) return;
-      const seleccion = mapSeleccion(txt(voto.SELECCION));
+      let seleccion: Seleccion | null;
+      try {
+        seleccion = mapSeleccion(txt(voto.SELECCION));
+      } catch (err) {
+        if (err instanceof SeleccionDesconocidaError) {
+          // WR-01: token desconocido → se marca ruidoso PER-VOTO; los votos hermanos sobreviven.
+          // El voto NO se registra (no se le atribuye ninguna clasificación real).
+          tokensDesconocidos.push({ mencionNombre, token: err.token, votoSeq: idx });
+          return;
+        }
+        throw err;
+      }
       if (seleccion == null) return; // D-A4 caso (a): <SELECCION> vacío/ausente → se omite
       votos.push({ mencionNombre, seleccion, votoSeq: idx });
     });
 
-    out.push({ votacion, votos });
+    out.push({ votacion, votos, tokensDesconocidos });
   }
   return out;
 }
