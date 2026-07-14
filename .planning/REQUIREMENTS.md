@@ -75,7 +75,7 @@ Se completa durante la creación del roadmap (gsd-roadmapper). Cada requisito ma
 | VOTO-02 | Phase 68 | Pending |
 | VOTO-03 | Phase 65 | Pending |
 | VOTO-04 | Phase 68 | Pending |
-| VOTO-05 | Phase 64 (enabler) + Phase 68 (declarada) | Pending |
+| VOTO-05 | Phase 64 (enabler) + Phase 68 (declarada) | In Progress |
 | RUT-01 | Phase 69 | Pending |
 | MONEY-01 | Phase 70 | Pending |
 | MONEY-02 | Phase 71 | Pending |
@@ -90,6 +90,7 @@ Se completa durante la creación del roadmap (gsd-roadmapper). Cada requisito ma
 | DEBT-06 | Phase 75 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 17 total (VOTO×5, RUT×1, MONEY×5, DEBT×6)
 - Mapped to phases: 17/17 ✓ (Phases 64-75)
 - Unmapped: 0 · Orphaned: 0 · Duplicates: 0

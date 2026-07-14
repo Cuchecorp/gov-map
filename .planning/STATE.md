@@ -1,15 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v7.0
-milestone_name: Votos, dinero y cierre técnico
-status: ready_to_plan
-last_updated: "2026-07-13T23:58:41.418Z"
-last_activity: 2026-07-13
+milestone_name: — Votos, dinero y cierre técnico
+status: executing
+stopped_at: "ROADMAP.md + STATE.md v7.0 escritos; REQUIREMENTS.md traceability actualizado (17/17 mapeados). Listo para /gsd:plan-phase 64."
+last_updated: "2026-07-14T01:52:13.446Z"
+last_activity: 2026-07-14
 progress:
   total_phases: 12
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 1
   percent: 0
 ---
 
@@ -20,20 +21,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** v7.0 — Votos, dinero y cierre técnico (Phase 64: validar opendata.camara.cl LIVE)
+**Current focus:** Phase 64 — VOTO P3a — Validar/caracterizar opendata.camara.cl LIVE (SPIKE)
 
 ## Current Position
 
-Phase: 64 of 75 (VOTO P3a — Validar/caracterizar opendata.camara.cl LIVE)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-07-13 — ROADMAP v7.0 creado (Phases 64-75), 17/17 reqs mapeados, cobertura 100%
+Phase: 64 (VOTO P3a — Validar/caracterizar opendata.camara.cl LIVE (SPIKE)) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-07-14
 
 Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shipped)
 
 ## Performance Metrics
 
 **Velocity:**
+
 - v7.0 plans completed: 0
 - v6.1 (62-63): 7 planes, corrida autónoma ~3 días con 2 checkpoints humanos
 
@@ -44,6 +46,7 @@ Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shi
 | 64–75 | TBD | - | - |
 
 **Recent Trend:**
+
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -59,6 +62,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - DEBT-01 (source_snapshot/`--from-r2`) se FUNDE con el wire de votos (66) y dinero (70/71), no es fase aparte.
 - Gates que el agente NO flipea: RUT-01 (checkpoint operador, Phase 69) + sign-off legal 21.719 (Phase 73). El operador pre-aprobó el encendido; la aprobación NO reemplaza la revisión.
 - Voto reconciliado por DIPID determinista PUNTO; nunca name-match para votos (riesgo #1). Senado por nombre → probable/no_confirmado.
+- [Phase ?]: Phase 64: codigo 2 -> abstencion CONFIRMADO LIVE 2026-07-13; pareo desde bloque Pareos por DIPID, NUNCA codigo 3
 
 ### Pending Todos
 
@@ -88,9 +92,9 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-13
+Last session: 2026-07-14T01:51:56.710Z
 Stopped at: ROADMAP.md + STATE.md v7.0 escritos; REQUIREMENTS.md traceability actualizado (17/17 mapeados). Listo para /gsd:plan-phase 64.
-Resume file: None (ver .planning/PROMPT-v7.0-build-autonomo.md para corrida autónoma)
+Resume file: None
 
 ## Operator Next Steps
 
