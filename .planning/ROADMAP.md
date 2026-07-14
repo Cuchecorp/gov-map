@@ -108,7 +108,7 @@ DEUDA (paralelizable, no bloquea P3/P5): 74 (cursor leylobby + CF token CI + rou
 **Plans**: 2 plans
 
 - [x] 66-01-PLAN.md — Wire dos-etapas (r2Store/snapshotWriter/--from-r2) en runCamaraVotos + reporte de cobertura + tests fake-R2
-- [ ] 66-02-PLAN.md — Runbook operador-LOCAL del backfill a escala (LIVE gated, reanudable, cobertura)
+- [x] 66-02-PLAN.md — Runbook operador-LOCAL del backfill a escala (LIVE gated, reanudable, cobertura)
 
 ### Phase 67: VOTO P3d — Paridad Senado (voto individual por nombre)
 
@@ -983,7 +983,7 @@ Plans:
 | 63. BUSQ — Búsqueda sobre corpus completo declarado | v6.1 | 3/3 | Complete   | 2026-07-11 |
 | 64. VOTO P3a — Validar/caracterizar opendata.camara.cl LIVE (SPIKE) | v7.0 | 2/2 | Complete   | 2026-07-14 |
 | 65. VOTO P3b — Golden set DIPID→maestra (gate pre-backfill) | v7.0 | 1/1 | Complete   | 2026-07-14 |
-| 66. VOTO P3c — Wire dos-etapas Cámara + backfill a escala | v7.0 | 1/2 | In Progress|  |
+| 66. VOTO P3c — Wire dos-etapas Cámara + backfill a escala | v7.0 | 2/2 | Complete   | 2026-07-14 |
 | 67. VOTO P3d — Paridad Senado (voto individual por nombre) | v7.0 | 0/? | Not started | - |
 | 68. VOTO P3e — Superficies de voto + linter + cobertura + BrowserOS | v7.0 | 0/? | Not started | - |
 | 69. DINERO P5a — RUT-01 backfill (checkpoint operador, bloqueante) | v7.0 | 0/? | Not started | - |
