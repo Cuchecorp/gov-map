@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: — Votos, dinero y cierre técnico
-status: verifying
-stopped_at: "Completed 64-02-PLAN.md (SPIKE LIVE cerrado: endpoint UP, pareo confirmado, crudo en R2). Phase 64 COMPLETE (2/2)."
-last_updated: "2026-07-14T03:18:48.098Z"
+status: executing
+stopped_at: "Completed 66-01-PLAN.md (wire dos-etapas votos: r2Store/snapshotWriter/fromR2 threaded a runIngest; cobertura estado_vinculo + invariante DIPID-maestra; suite 26 votos + 147 tramitacion verdes). Phase 66 P1 de 2."
+last_updated: "2026-07-14T03:53:02.900Z"
 last_activity: 2026-07-14
 progress:
   total_phases: 12
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 3
+  total_plans: 7
+  completed_plans: 4
   percent: 8
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 65 — VOTO P3b — Golden set DIPID→maestra
+**Current focus:** Phase 66 — VOTO P3c — Wire dos-etapas Camara + backfill
 
 ## Current Position
 
-Phase: 65 (VOTO P3b — Golden set DIPID→maestra) — EXECUTING
-Plan: 1 of 1
-Status: Phase complete — ready for verification
+Phase: 66 (VOTO P3c — Wire dos-etapas Camara + backfill) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-07-14
 
 Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shipped)
@@ -51,6 +51,7 @@ Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shi
 
 *Updated after each plan completion*
 | Phase 64 P02 | ~25 min | 2 tasks | 5 files |
+| Phase 66 P01 | ~8 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,8 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: Phase 64: codigo 2 -> abstencion CONFIRMADO LIVE 2026-07-13; pareo desde bloque Pareos por DIPID, NUNCA codigo 3
 - [Phase ?]: Phase 64: getVotacion_Detalle UP a escala; PAREO confirmado LIVE desde <Pareos> (A1b resuelto, 5/5); Dispensado no observado (no fabricado); crudo LIVE en R2
 - [Phase ?]: Phase 65: golden set DIPID->id_maestra DERIVADO del seed + gate CI fail-closed 4-aristas; reconciliador y branded type NO tocados
+- [Phase 66]: wire dos-etapas votos por RUTA A (threadear runCamaraVotos r2Store/snapshotWriter/fromR2 a runIngest); --from-r2 REUSA el writer resuelto (W-1, no re-deriva como ingest-cli); CLI operador construye R2Store real de .env R2_* (W-2)
+- [Phase 66]: cobertura = conteo por estado_vinculo (head+count, sin cap 1k) + invariante duro '0 DIPID-maestra no_confirmado' (D-SC4-MET), NUNCA name-match; @obs/votos gana dep @supabase/supabase-js@^2.108.2 (ya en el monorepo)
 
 ### Pending Todos
 
@@ -95,8 +98,8 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-14T03:18:31.450Z
-Stopped at: Completed 64-02-PLAN.md (SPIKE LIVE cerrado: endpoint UP, pareo confirmado, crudo en R2). Phase 64 COMPLETE (2/2).
+Last session: 2026-07-14T03:53:02.892Z
+Stopped at: Completed 66-01-PLAN.md (wire dos-etapas votos: r2Store/snapshotWriter/fromR2; cobertura estado_vinculo + invariante DIPID-maestra). Phase 66 P1 de 2. Próximo: 66-02 (runbook operador-LOCAL del backfill LIVE gated).
 Resume file: None
 
 ## Operator Next Steps

@@ -11,7 +11,7 @@ Requirements de este milestone. Cada uno mapea a una fase del roadmap.
 
 ### VOTO — Cómo vota el Congreso (P3, voto individual)
 
-- [ ] **VOTO-01**: El ciudadano puede ver cómo votó individualmente cada parlamentario en una votación de sala — el sentido literal (a favor / en contra / abstención / pareo / ausente), con fuente, fecha y enlace al registro oficial.
+- [x] **VOTO-01**: El ciudadano puede ver cómo votó individualmente cada parlamentario en una votación de sala — el sentido literal (a favor / en contra / abstención / pareo / ausente), con fuente, fecha y enlace al registro oficial.
 - [ ] **VOTO-02**: El ciudadano puede ver, en la ficha del parlamentario, su historial de votos individuales por sesión/proyecto — descriptivo, nunca presentado como "alineamiento", "disciplina de bancada" ni "rebeldía" con carga de afinidad.
 - [x] **VOTO-03**: Cada voto individual está reconciliado fail-closed contra la maestra de identidad (link solo si `confirmado`; un voto jamás se atribuye a la persona equivocada) — golden set DIPID→maestra validado ANTES del backfill masivo.
 - [ ] **VOTO-04**: Toda superficie de voto lleva leyenda anti-insinuación ("un voto es un hecho observable; ausente/pareo ≠ en contra; no medimos disciplina ni motivo") + provenance inline; el linter anti-vocabulario-insinuante cubre estas superficies.
@@ -31,7 +31,7 @@ Requirements de este milestone. Cada uno mapea a una fase del roadmap.
 
 ### DEUDA — Cierre técnico + hardening (backlog v6.x)
 
-- [ ] **DEBT-01**: Los conectores restantes cumplen las dos etapas LOCKED — `source_snapshot` a R2 crudo content-addressed — y soportan `--from-r2` (replay a Supabase sin volver a molestar la fuente). (Se funde con VOTO/MONEY: votos y dinero son precisamente los conectores hoy sin snapshot R2.)
+- [x] **DEBT-01**: Los conectores restantes cumplen las dos etapas LOCKED — `source_snapshot` a R2 crudo content-addressed — y soportan `--from-r2` (replay a Supabase sin volver a molestar la fuente). (Se funde con VOTO/MONEY: votos y dinero son precisamente los conectores hoy sin snapshot R2.)
 - [ ] **DEBT-02**: El conector leylobby usa cursor incremental (no re-scrapea todo el histórico en cada corrida).
 - [ ] **DEBT-03**: `CLOUDFLARE_API_TOKEN` cargado en CI → crons de novedades verdes en GitHub Actions sin fallback local manual.
 - [ ] **DEBT-04**: El cron `leyes-weekly` rota round-robin sobre el corpus 3.657 para no diluir la frescura (hoy 80/sem sobre 3.657 deja proyectos sin refrescar).
@@ -71,7 +71,7 @@ Se completa durante la creación del roadmap (gsd-roadmapper). Cada requisito ma
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VOTO-01 | Phase 66 (Cámara) + Phase 67 (Senado) | Pending |
+| VOTO-01 | Phase 66 (Cámara) + Phase 67 (Senado) | Complete |
 | VOTO-02 | Phase 68 | Pending |
 | VOTO-03 | Phase 65 | Complete |
 | VOTO-04 | Phase 68 | Pending |
@@ -82,7 +82,7 @@ Se completa durante la creación del roadmap (gsd-roadmapper). Cada requisito ma
 | MONEY-03 | Phase 72 | Pending |
 | MONEY-04 | Phase 73 | Pending |
 | MONEY-05 | Phase 73 | Pending |
-| DEBT-01 | Phase 66 (votos) + Phase 70/71 (dinero) — fundido | Pending |
+| DEBT-01 | Phase 66 (votos) + Phase 70/71 (dinero) — fundido | Complete |
 | DEBT-02 | Phase 74 | Pending |
 | DEBT-03 | Phase 74 | Pending |
 | DEBT-04 | Phase 74 | Pending |
