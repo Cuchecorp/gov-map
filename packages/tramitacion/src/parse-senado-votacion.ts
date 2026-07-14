@@ -2,9 +2,18 @@
 //
 // `<votaciones><votacion>`: totales SI/NO/ABSTENCION/PAREO + quorum/tipo/etapa, y por cada
 // `<DETALLE_VOTACION><VOTO>` el `<PARLAMENTARIO>` crudo (con whitespace final → trim, Pitfall 3)
-// + `<SELECCION>` mapeada a si|no|abstencion|pareo. NO se reconcilia identidad aquí (eso es la
-// ola 3): solo se devuelve `mencionNombre` crudo. La llave de boletín es el PARÁMETRO recibido,
-// NO el `<TEMA>` (trae puntos de millar). Votaciones vacías → [] sin lanzar (Pitfall 2).
+// + `<SELECCION>` mapeada a si|no|abstencion|pareo|ausente. NO se reconcilia identidad aquí (eso
+// es la ola 3): solo se devuelve `mencionNombre` crudo. La llave de boletín es el PARÁMETRO
+// recibido, NO el `<TEMA>` (trae puntos de millar). Votaciones vacías → [] sin lanzar (Pitfall 2).
+//
+// WR-02 (manejo de token desconocido — NO "espeja la Cámara"): la Cámara mapea por código y
+// OMITE en silencio una opción ilegible (`opcionDeVoto` → null → el caller hace `continue`). El
+// Senado NO omite en silencio: un `<SELECCION>` presente pero desconocido se CAPTURA PER-VOTO en
+// `tokensDesconocidos` (diagnóstico ruidoso con la mención y el token crudo) mientras los demás
+// votos del roll-call sobreviven (ex-WR-01: antes lanzaba y borraba el boletín entero). Es una
+// divergencia DELIBERADA con la Cámara: el vocabulario de tokens del Senado LIVE está sin
+// confirmar (Plan 02), así que un token novedoso debe ser VISIBLE, no tragado. NO fabrica una
+// clasificación (WR-03) ni borra votos válidos.
 
 import { XMLParser } from "fast-xml-parser";
 import { makeProvenance } from "@obs/core";
