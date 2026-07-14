@@ -21,9 +21,47 @@
  * El canal `cosechas` (CandidatoCosechaRut) es el ÚNICO input de
  * `runHarvestRut`/`runBackfillRut`/`updateRut`. El canal `revisionesRut`
  * (CandidatoRevisionRut) viaja SOLO por `enqueueRevision` (cola humana) y NUNCA
- * alimenta un writer de escritura de RUT. Este guard CONGELA ese corte contra
- * refactors futuros — MUERDE (Test 5) si alguien empuja un RUT name-only a
- * `cosechas` o pasa `revisionesRut` a un writer.
+ * alimenta un writer de escritura de RUT.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * HONESTIDAD SOBRE LAS CAPAS DE DEFENSA (WR-01/02/03) — leer antes de confiar:
+ *
+ * La defensa DURABLE y NO-EVADIBLE es EL TIPO BRANDED, no este archivo. El input
+ * del writer (`RutBackfillWriter.updateRut`) es `FilaRutCorroborada[]`
+ * (`packages/identity/src/rut-corroborado.ts`), minteado SOLO por el DV-gate
+ * `corroborarRutFila`. Un RUT derivado por NOMBRE — un `CandidatoRevisionRut`, un
+ * objeto plano, un string — NO satisface ese tipo, así que el COMPILADOR lo
+ * rechaza. Ese gate lo prueba `packages/identity/src/rut-corroborado.test-d.ts`
+ * (cada `@ts-expect-error` es un fallo de `tsc` si el brand se debilitara), y es
+ * inmune a los vectores que ESTE guard de texto NO caza.
+ *
+ * La segunda defensa load-bearing es el COMPORTAMIENTO:
+ * `packages/dinero/src/name-match-rut-guard.behavior.test.ts` EJERCITA
+ * `reconciliarContrato` con valores reales (name-only → 0 cosechas/1 revisión;
+ * corroboración → 1 cosecha), así que caza regresiones de FLUJO DE DATOS sin
+ * importar cómo se deletree el código (un alias, un `.map`, un spread).
+ *
+ * ESTE archivo es un TRIPWIRE ESTÁTICO secundario (defense-in-depth), NO una
+ * garantía de completitud. Es un matcher de TEXTO/regex, no un detector AST: NO
+ * sigue el flujo de datos. Tiene HUECOS CONOCIDOS y aceptados, cubiertos por las
+ * dos capas de arriba:
+ *   - variante (A) sólo caza el TOKEN literal `revisionesRut` dentro de la lista de
+ *     argumentos de un writer; un `const alias = revisionesRut`, un `.map`, un
+ *     spread o un helper lo evaden (WR-01);
+ *   - variante (B) sólo caza `cosechas.push`; poblar `cosechas` por `.map`/`unshift`/
+ *     `splice`/asignación por índice/clave-de-objeto-retornada la evade (WR-02);
+ *   - `WRITERS_RUT` es un ALLOWLIST de tres nombres; un `.update({ rut })` crudo o un
+ *     writer nuevo con otro nombre es invisible a este archivo (WR-03). Añadir una
+ *     ruta de escritura de RUT EXIGE (1) que su input sea `FilaRutCorroborada` (el
+ *     brand la fuerza) y, secundariamente, actualizar `WRITERS_RUT` aquí.
+ * Un fallo de este guard SIGUE siendo señal fuerte (algo tocó el corte); un VERDE
+ * de este guard NO prueba por sí solo que el corte esté intacto — eso lo prueban el
+ * brand (tsc) y el test de comportamiento.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * Este guard CONGELA la FORMA ACTUAL del corte y MUERDE (Test 5) si alguien empuja
+ * un RUT name-only a `cosechas` fuera de la corroboración o pasa el token
+ * `revisionesRut` a un writer.
  *
  * DOS piezas críticas heredadas del molde:
  *
@@ -63,6 +101,13 @@ const REPO_ROOT = path.resolve(APP_ROOT, ".."); // monorepo root
 
 const DINERO_SRC = path.join(REPO_ROOT, "packages", "dinero", "src");
 const IDENTITY_SRC = path.join(REPO_ROOT, "packages", "identity", "src");
+// WR-04: la ruta de RESOLUCIÓN humana que PROMUEVE un candidato
+// (`RevisionWriter.resolverIdentidad` → RPC `resolver_identidad`) vive en
+// @obs/adjudication. Se incluye en el barrido para que un futuro refactor que rutee un
+// `rutCandidato` a esa promoción (p.ej. añadir `rut` a los params del RPC o a un
+// upsertVinculo) NO quede fuera del guard estático. La minimización de esos jsonb
+// (candidatos/salida_modelo RUT-free, 04-01/04-02) queda así ENFORZADA, no solo citada.
+const ADJUDICATION_SRC = path.join(REPO_ROOT, "packages", "adjudication", "src");
 const RECONCILIAR_CONTRATO = path.join(DINERO_SRC, "reconciliar-contrato.ts");
 
 // ---------------------------------------------------------------------------
@@ -298,9 +343,9 @@ describe("(1) Guard estático — cosechas guardado por corroboración; revision
     ).toHaveLength(0);
   });
 
-  it("en TODO el árbol de packages/dinero/src + packages/identity/src: revisionesRut nunca se pasa a un writer de RUT", () => {
+  it("en TODO el árbol de packages/dinero/src + packages/identity/src + packages/adjudication/src: revisionesRut nunca se pasa a un writer de RUT", () => {
     const offenders: string[] = [];
-    for (const dir of [DINERO_SRC, IDENTITY_SRC]) {
+    for (const dir of [DINERO_SRC, IDENTITY_SRC, ADJUDICATION_SRC]) {
       for (const file of walkSourceFiles(dir)) {
         const raw = readFileSync(file, "utf-8");
         for (const off of detectarViolacionesCorteRut(raw)) {
@@ -315,9 +360,10 @@ describe("(1) Guard estático — cosechas guardado por corroboración; revision
     ).toHaveLength(0);
   });
 
-  it("sanity: el walker encontró las fuentes de dinero e identity", () => {
+  it("sanity: el walker encontró las fuentes de dinero, identity y adjudication", () => {
     expect(walkSourceFiles(DINERO_SRC).length).toBeGreaterThan(5);
     expect(walkSourceFiles(IDENTITY_SRC).length).toBeGreaterThan(3);
+    expect(walkSourceFiles(ADJUDICATION_SRC).length).toBeGreaterThan(3);
   });
 });
 
