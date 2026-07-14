@@ -15,7 +15,7 @@
 //    con TotalDispensados>0, y registra lo observado. Si no aparece en la muestra → "no
 //    observado" (fail-closed documentado, NUNCA fabricado).
 //
-// Rate-limit 2-3s LOCKED: los fetch son SERIALES (sin Promise.all); el HostRateLimiter interno
+// Rate-limit 2-3s LOCKED: los fetch son SERIALES (nunca en paralelo); el HostRateLimiter interno
 // de buildCamaraConnector() impone el delay — NO se override. UA identificatorio vía Fetcher.
 // NO escribe a Supabase (eso es Phase 66). Cero paquetes nuevos.
 
@@ -82,7 +82,7 @@ function loadEnv(root: string): Record<string, string> {
         let pareoObservado = false;
         let dispensadoObservado = false;
 
-        // Recorrido SERIAL (NO Promise.all): el HostRateLimiter interno impone el delay 2-3s
+        // Recorrido SERIAL (for-await, nunca en paralelo): el HostRateLimiter interno impone el delay 2-3s
         // LOCKED entre requests al mismo host. Persistir ≥1 crudo satisface SC#1.
         for (const id of VOTACION_IDS) {
           let xml: string;
