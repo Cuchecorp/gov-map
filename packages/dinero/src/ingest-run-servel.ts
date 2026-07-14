@@ -26,6 +26,7 @@ import { reconciliarCompletitud, type ControlTotal } from "./reconciliar-complet
 import { reconciliarAporte, type ReconciliarAporteOpts } from "./reconciliar-aporte";
 import { donanteIdDe, ORIGEN_SERVEL, LICENCIA_SERVEL, type Donante } from "./model-servel";
 import type { ServelWriter } from "./writer-servel";
+import { sha256Hex, type R2Store, type SnapshotWriter } from "@obs/ingest";
 
 const ORIGEN_DRIFT = ORIGEN_SERVEL;
 
@@ -42,6 +43,13 @@ export interface TareaEleccion {
   anio?: string | null;
   /** Conteo declarado (TOTAL) si el operador lo conoce (control secundario best-effort). */
   declaredRowCount?: number | null;
+  /**
+   * Modo LOCAL (DEBT-01): en vez de fetchear el blob, la Etapa 1 la hizo el operador colocando el
+   * `.xlsx` en R2. Cuando se setea `r2Path`, el pipeline LEE los bytes del `.xlsx` de R2 (`getObject`)
+   * y NUNCA toca la fuente. `url` puede venir vacio en este modo (la frontera acepta `r2Path` como
+   * alternativa valida). Requiere `r2Store`.
+   */
+  r2Path?: string;
 }
 
 /** Marcador de degradacion de una fuente (no es un error de datos: es honestidad). */
@@ -61,11 +69,29 @@ export interface RunIngestServelOpts {
   tareas: TareaEleccion[];
   /** Opciones del cruce por NOMBRE (provider/writer/periodo) — se pasan TAL CUAL a reconciliarAporte. */
   reconciliar?: ReconciliarAporteOpts;
-  /** Subida del crudo (Supabase Storage). Si se omite, no se sube (dry-run). */
+  /**
+   * Subida del crudo a Supabase Storage. DEGRADADO a secundario best-effort (decision LOCKED de
+   * Plan 71-01): corre DESPUES del put R2 exitoso y NUNCA gatea (su fallo no aborta ni impide el
+   * upsert). R2 es la UNICA verdad cruda gateante. Si se omite, no se sube (dry-run).
+   */
   subirCrudo?: SubirCrudoFn;
   /** Fecha de corte para el marcador + el crudo. Default: hoy (ISO date). */
   fechaCorte?: string;
   log?: (msg: string) => void;
+  /**
+   * Store de crudo R2 (Etapa 1, DEBT-01). Si se configura, cada eleccion persiste los BYTES del
+   * `.xlsx` content-addressed en R2 ANTES del upsert a Supabase; un put fallido (no-412) GATEA la
+   * Etapa 2 (nunca hay derivado sin crudo reconstruible). Sin el, el runner corre como antes.
+   */
+  r2Store?: R2Store;
+  /** Registro de provenance (`source_snapshot`) best-effort tras un put exitoso (no fatal). */
+  snapshotWriter?: SnapshotWriter;
+  /**
+   * Modo replay LOCAL: r2Path del `.xlsx` que el operador coloco en R2. Reconstruye los aportes
+   * DESDE R2 (0 fetch al blob). Requiere `r2Store`; si falta, lanza. Aplica a la(s) tarea(s):
+   * cuando se setea, la lectura de bytes de esa tarea usa `getObject(fromR2)`.
+   */
+  fromR2?: string;
 }
 
 export interface RunIngestServelResult {
@@ -97,6 +123,13 @@ export async function runIngestServel(opts: RunIngestServelOpts): Promise<RunIng
   const log = opts.log ?? (() => {});
   const fechaCorte = opts.fechaCorte ?? new Date().toISOString().slice(0, 10);
 
+  // Guard de args (DEBT-01): el modo LOCAL/--from-r2 EXIGE R2 (de otro modo no hay de donde leer el
+  // crudo que el operador coloco). Espeja ingest-run.ts (Phase 70).
+  const modoLocal = opts.fromR2 != null && opts.fromR2 !== "";
+  if (modoLocal && !opts.r2Store) {
+    throw new Error("runIngestServel: --from-r2 requiere r2Store");
+  }
+
   const errores: RunIngestServelResult["errores"] = [];
   const degradaciones: DegradacionDinero[] = [];
   const marcados = new Set<string>();
@@ -107,12 +140,17 @@ export async function runIngestServel(opts: RunIngestServelOpts): Promise<RunIng
   for (const tarea of opts.tareas) {
     const clave = `eleccion:${tarea.eleccion}`;
 
-    // 0. GUARDA DE FRONTERA (rule #4, WR-05): `eleccion`/`url` vacios JAMAS deben fluir a
-    // storage/marcador (un slug vacio -> clave "servel/sin-eleccion/..." es un mislabel silencioso).
-    // El CLI solo validaba cuando NO se inyecta conector; aqui el run boundary lo enforce SIEMPRE
-    // (incluido el camino de conector inyectado / llamada directa). 0 filas para esta tarea, sin
-    // tocar storage ni marcador.
-    if (!tarea.eleccion?.trim() || !tarea.url?.trim()) {
+    // Modo LOCAL para esta tarea: el operador coloco el `.xlsx` en R2. La fuente de bytes es R2
+    // (`getObject`), NUNCA el fetch al blob. `opts.fromR2` (replay explicito) o `tarea.r2Path` (tarea
+    // LOCAL) habilitan el modo; el path efectivo es el que aplique.
+    const r2PathTarea = modoLocal ? opts.fromR2! : tarea.r2Path;
+    const esLocal = r2PathTarea != null && r2PathTarea !== "";
+
+    // 0. GUARDA DE FRONTERA (rule #4, WR-05): `eleccion` vacia JAMAS debe fluir a storage/marcador
+    // (un slug vacio -> clave "servel/sin-eleccion/..." es un mislabel silencioso). Se exige `url` O
+    // `r2Path` (una tarea LOCAL valida trae `eleccion`+`r2Path` aunque `url` este vacio). El run
+    // boundary lo enforce SIEMPRE. 0 filas para esta tarea, sin tocar storage ni marcador.
+    if (!tarea.eleccion?.trim() || (!tarea.url?.trim() && !esLocal)) {
       const motivo = `tarea invalida: eleccion/url vacios (eleccion='${tarea.eleccion ?? ""}', url='${tarea.url ?? ""}'); 0 filas`;
       log(`ingest-servel: ${clave} TAREA INVALIDA -> ${motivo}`);
       errores.push({ fuente: ORIGEN_DRIFT, clave, mensaje: motivo });
@@ -120,15 +158,30 @@ export async function runIngestServel(opts: RunIngestServelOpts): Promise<RunIng
       continue;
     }
 
-    // 1. Descarga (orden LOCKED dentro del conector). Bloqueada -> degradacion honesta, continue.
+    // 1. Obtencion de bytes. LOCAL -> lee de R2 (`getObject`), 0 fetch al blob. Camino NORMAL ->
+    // `descargar` (orden LOCKED dentro del conector). Bloqueada -> degradacion honesta, continue.
     let bytes: Uint8Array;
     let anclas;
     let byteLength: number;
     try {
-      const desc = await opts.conector.descargar(tarea.url);
-      bytes = desc.bytes;
-      anclas = desc.anclas;
-      byteLength = desc.byteLength;
+      if (esLocal) {
+        // Etapa 1 la hizo el operador (crudo YA en R2): leer los BYTES del `.xlsx` sin tocar la fuente.
+        bytes = await opts.r2Store!.getObject(r2PathTarea!);
+        byteLength = bytes.byteLength;
+        // En modo LOCAL no hay HEAD del blob -> las anclas de completitud se derivan del crudo local
+        // (md5/byte-length de los bytes leidos). La cuarentena run-level se mantiene intacta.
+        anclas = {
+          etag: null,
+          contentMd5: md5Base64(bytes),
+          lastModified: null,
+          contentLength: bytes.byteLength,
+        };
+      } else {
+        const desc = await opts.conector.descargar(tarea.url);
+        bytes = desc.bytes;
+        anclas = desc.anclas;
+        byteLength = desc.byteLength;
+      }
     } catch (err) {
       if (err instanceof ServelBloqueadaError) {
         log(`ingest-servel: ${clave} BLOQUEADA (HTTP ${err.status}) -> degradacion honesta`);
@@ -183,11 +236,81 @@ export async function runIngestServel(opts: RunIngestServelOpts): Promise<RunIng
       continue; // NUNCA emite un parcial silencioso.
     }
 
-    // 4. Solo si header OK Y completitud OK: subirCrudo -> reconciliar por NOMBRE -> upsert.
+    // Etapa 1 R2 (LOCKED — "crudo PRIMERO en R2"): en el camino NORMAL (fetched), persiste los BYTES
+    // del `.xlsx` content-addressed en R2 ANTES del upsert a Supabase. Espeja ingest-run.ts (Phase 70),
+    // adaptado a que el crudo SERVEL son los bytes binarios del `.xlsx` (ext "xlsx"), no un envelope
+    // JSON. T-71-02: si el `putImmutable` FALLA (no-412) NO se escribe el derivado — un crudo que no
+    // quedo en R2 daria 404 en `--from-r2` y el derivado seria IRRECONSTRUIBLE. La eleccion se registra
+    // en `errores` y se OMITE la Etapa 2; re-correr lo recupera (upserts idempotentes).
+    // En modo LOCAL la Etapa 1 ya la hizo el operador (crudo YA en R2): no se re-persiste.
+    if (opts.r2Store && !esLocal) {
+      const sha = await sha256Hex(bytes);
+      const today = fechaCorte;
+      let r2Path: string;
+      let existed: boolean;
+      try {
+        ({ r2Path, existed } = await opts.r2Store.putImmutable(
+          "servel",
+          tarea.eleccion,
+          today,
+          sha,
+          "xlsx",
+          bytes,
+        ));
+      } catch (err) {
+        // Etapa-1-primero es LOCKED: sin crudo en R2, NO escribimos el derivado.
+        errores.push({
+          fuente: ORIGEN_DRIFT,
+          clave: `${clave}#r2-etapa1`,
+          mensaje: err instanceof Error ? err.message : String(err),
+        });
+        log(
+          `ingest-servel: ERROR Etapa 1 R2 ${clave} -> se OMITE la escritura a Supabase ` +
+            `(idempotente al re-correr): ${err instanceof Error ? err.message : String(err)}`,
+        );
+        continue;
+      }
+      if (existed) {
+        // 412 = el crudo ya existia = exito idempotente. Sin novedades -> skip Etapa 2.
+        log(`[skip] sin novedades — servel ${clave}`);
+        continue;
+      }
+      log(`ingest-servel: crudo en R2 -> ${r2Path}`);
+      // Registro source_snapshot (FND-08/CRON-02): best-effort, no fatal.
+      if (opts.snapshotWriter) {
+        try {
+          await opts.snapshotWriter.write({
+            source: "servel",
+            resource: tarea.eleccion,
+            cacheKey: sha,
+            r2Path,
+            contentHash: sha,
+            fingerprint: sha.slice(0, 8),
+            dateBucket: today,
+            provenance: {
+              source: "servel",
+              sourceUrl: "https://repodocgastoelectoral.blob.core.windows.net",
+              fetchedAt: new Date().toISOString(),
+            },
+          });
+        } catch (snErr) {
+          log(`ingest-servel: source_snapshot fallo (no fatal): ${(snErr as Error).message}`);
+        }
+      }
+    }
+
+    // 4. Solo si header OK Y completitud OK (y crudo en R2, en el camino normal): subirCrudo
+    // (DEGRADADO a best-effort no-gate) -> reconciliar por NOMBRE -> upsert.
     try {
+      // `subirCrudo` (Supabase Storage) es SECUNDARIO best-effort (decision LOCKED 71-01): corre
+      // DESPUES del put R2 exitoso y su fallo NUNCA gatea ni aborta el upsert. R2 es la verdad cruda.
       if (opts.subirCrudo) {
-        const key = await opts.subirCrudo(tarea.eleccion, fechaCorte, bytes);
-        log(`ingest-servel: ${clave} crudo subido -> ${key}`);
+        try {
+          const key = await opts.subirCrudo(tarea.eleccion, fechaCorte, bytes);
+          log(`ingest-servel: ${clave} crudo (secundario) subido -> ${key}`);
+        } catch (scErr) {
+          log(`ingest-servel: subirCrudo (secundario, no fatal) fallo: ${(scErr as Error).message}`);
+        }
       }
 
       const { aportes: filas, parlamentariosConfirmados } = await reconciliarAporte(
