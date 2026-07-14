@@ -51,7 +51,14 @@ function flagValue(name: string): string | null {
 async function main(): Promise<void> {
   const root = findWorkspaceRoot(process.cwd());
   const dryRun = process.argv.includes("--dry-run");
-  const limite = Number(flagValue("--limit") ?? "1000");
+  // WR-04: `--limit` es un control de seguridad (backfill sensible al WAF) → validar explícito.
+  // `Number("abc")`→NaN, `Number("")`→0, `Number("50.7")`→50.7 pasarían silenciosos; rechazamos
+  // cualquier no-entero o valor ≤0 con un error CLARO en vez de aceptar basura.
+  const rawLimit = flagValue("--limit");
+  const limite = rawLimit == null ? 1000 : Number(rawLimit);
+  if (!Number.isInteger(limite) || limite <= 0) {
+    throw new Error(`--limit inválido: '${rawLimit}' (debe ser un entero > 0)`);
+  }
   const env = loadEnv(root);
   const log = (m: string) => console.log(m);
 
