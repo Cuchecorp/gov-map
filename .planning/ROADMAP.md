@@ -144,7 +144,7 @@ DEUDA (paralelizable, no bloquea P3/P5): 74 (cursor leylobby + CF token CI + rou
 **Plans**: 4 plans
 
 - [x] 68-01-PLAN.md — Linter anti-insinuación como test de vitest (espejo lockdown-guard, stripTsComments, self-check de mutación)
-- [ ] 68-02-PLAN.md — Señal de cobertura del voto en `pnpm freshness` (COBERTURA_VOTO_SENALES separado, N/M por cámara, degrade honesto)
+- [x] 68-02-PLAN.md — Señal de cobertura del voto en `pnpm freshness` (COBERTURA_VOTO_SENALES separado, N/M por cámara, degrade honesto)
 - [x] 68-03-PLAN.md — Poda rebeldía+mediana (4 puntos×2 bloques) + borrar ausencias-contexto + leyenda verbatim + cobertura UI + endurecer allowlist
 - [ ] 68-04-PLAN.md — Gate de comprensión BrowserOS (operador, checkpoint human-verify)
 
@@ -994,7 +994,7 @@ Plans:
 | 65. VOTO P3b — Golden set DIPID→maestra (gate pre-backfill) | v7.0 | 1/1 | Complete   | 2026-07-14 |
 | 66. VOTO P3c — Wire dos-etapas Cámara + backfill a escala | v7.0 | 2/2 | Complete   | 2026-07-14 |
 | 67. VOTO P3d — Paridad Senado (voto individual por nombre) | v7.0 | 2/2 | Complete   | 2026-07-14 |
-| 68. VOTO P3e — Superficies de voto + linter + cobertura + BrowserOS | v7.0 | 2/4 | In Progress|  |
+| 68. VOTO P3e — Superficies de voto + linter + cobertura + BrowserOS | v7.0 | 3/4 | In Progress|  |
 | 69. DINERO P5a — RUT-01 backfill (checkpoint operador, bloqueante) | v7.0 | 0/? | Not started | - |
 | 70. DINERO P5b — Wire dos-etapas ChileCompra por RUT (SPIKE cuota) | v7.0 | 0/? | Not started | - |
 | 71. DINERO P5c — SERVEL LOCAL (.xlsx artesanal) | v7.0 | 0/? | Not started | - |

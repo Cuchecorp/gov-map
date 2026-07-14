@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: — Votos, dinero y cierre técnico
 status: executing
-stopped_at: "Completed 66-01-PLAN.md (wire dos-etapas votos: r2Store/snapshotWriter/fromR2; cobertura estado_vinculo + invariante DIPID-maestra). Phase 66 P1 de 2. Próximo: 66-02 (runbook operador-LOCAL del backfill LIVE gated)."
-last_updated: "2026-07-14T05:45:53.709Z"
+stopped_at: "Completed 68-02-PLAN.md (cobertura del voto individual N/M en pnpm freshness: COBERTURA_VOTO_SENALES + renderCoberturaVoto; Camara confirmado / Senado por nombre). Phase 68 P2 de 4."
+last_updated: "2026-07-14T05:53:07.661Z"
 last_activity: 2026-07-14
 progress:
   total_phases: 12
   completed_phases: 2
   total_plans: 13
-  completed_plans: 9
+  completed_plans: 10
   percent: 17
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 68 (VOTO P3e — Superficies de voto + linter + cobertura + gate BrowserOS) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-14
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shi
 | Phase 67 P02 | ~10min | 1 tasks | 1 files |
 | Phase 68 P03 | ~9 min | 2 tasks | 6 files |
 | Phase 68 P01 | ~5 min | 1 tasks | 1 files |
+| Phase 68 P02 | ~12min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 67-02: runbook operador-LOCAL del backfill Senado (67-BACKFILL-SENADO-RUNBOOK.md) espeja 66; corrida LIVE votaciones.php + write PROD + confirmacion tokens SELECCION = checkpoint operador PENDIENTE (agente NO toco WAF ni PROD)
 - [Phase ?]: [Phase 68] 68-03: carril de voto PODADO (rebeldía + mediana de cámara FUERA del render; RPC inertes en DB y fuera de PUBLIC_RPC_ALLOWLIST). Leyenda anti-insinuación VERBATIM bloque 0; N/M incondicional; techo por causa condicional. Ejecutado ANTES de 68-01.
 - [Phase ?]: [Phase 68] 68-01: linter anti-insinuacion = test de vitest (app/lib/anti-insinuacion-guard.test.ts), espejo lockdown-guard; caza texto RENDERIZADO post-stripTsComments (no identificadores), resta la leyenda LOCKED que NIEGA disciplina, mutation self-check prueba que muerde; 0 offenders sobre arbol podado 68-03, suite app 758 verde.
+- [Phase ?]: [Phase 68] 68-02: cobertura del voto individual en pnpm freshness = array COBERTURA_VOTO_SENALES SEPARADO (denominador = sesiones de sala conocidas, count(DISTINCT votacion.id), NO proyecto) + renderCoberturaVoto; evaluateCobertura se reusa tal cual (array marca su propio esDenominador); Camara solo confirmado determinista, Senado por nombre (probable/no_confirmado, techo honesto); degrada a null NO 0; en vivo 4731 sesiones, Camara 80%, Senado 20%.
 
 ### Pending Todos
 
@@ -109,8 +111,8 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-14T05:45:31.895Z
-Stopped at: Completed 66-01-PLAN.md (wire dos-etapas votos: r2Store/snapshotWriter/fromR2; cobertura estado_vinculo + invariante DIPID-maestra). Phase 66 P1 de 2. Próximo: 66-02 (runbook operador-LOCAL del backfill LIVE gated).
+Last session: 2026-07-14T05:53:07.652Z
+Stopped at: Completed 68-02-PLAN.md (cobertura del voto individual N/M en pnpm freshness: COBERTURA_VOTO_SENALES + renderCoberturaVoto; Camara confirmado / Senado por nombre). Phase 68 P2 de 4.
 Resume file: None
 
 ## Operator Next Steps
