@@ -279,4 +279,28 @@ export const CATALOG: FuenteConfig[] = [
     overrideEnv: "FRESHNESS_UMBRAL_CHILECOMPRA",
     workflowYml: "chilecompra-weekly.yml",
   },
+  {
+    // SERVEL (MONEY-02) — staleness del barrido de aportes de campaña por parlamentario.
+    //
+    // Se mide `aportes_ingesta_estado.ingestado_hasta` (marcador de ingesta por-parlamentario,
+    // 0024_servel.sql), NO `aporte.fecha_captura` — MISMO patrón que `lobby-leylobby`/`chilecompra`:
+    // el marcador distingue "consultado sin aportes" (ingestado_hasta al día, 0 filas en `aporte`) de
+    // "no consultado" (ingestado_hasta null/viejo). Un MAX(aporte.fecha_captura) no puede distinguir
+    // esos dos casos. Columna EXISTENTE de 0024 (NO se añade migración).
+    //
+    // LOCAL POR DISEÑO (DEBT-01): SERVEL no publica una API amable — el operador descarga el `.xlsx`
+    // a mano y lo coloca en R2 (run-servel-local-cli). NO hay cron ni GH Actions → `servel-weekly.yml`
+    // NO existe ni debe crearse → la señal de GH Actions figura "n/d" (honesto, NO un error).
+    //
+    // umbral 365d GENEROSO: los ciclos electorales son bianuales/cuatrienales; un barrido con >365d
+    // sigue siendo el corte vigente hasta la próxima elección. Override por `FRESHNESS_UMBRAL_SERVEL`.
+    // HONESTIDAD (MONEY-02): sin barrido corrido, `ingestado_hasta` es null HOY → la señal reporta
+    // stale (desconocido = stale, fail-closed), reflejando cobertura ≈ 0, no un fresco fingido.
+    fuente: "servel",
+    tabla: "aportes_ingesta_estado",
+    columna: "ingestado_hasta",
+    umbralDias: 365,
+    overrideEnv: "FRESHNESS_UMBRAL_SERVEL",
+    workflowYml: "servel-weekly.yml",
+  },
 ];

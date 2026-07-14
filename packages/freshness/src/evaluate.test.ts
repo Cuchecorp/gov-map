@@ -92,10 +92,13 @@ describe("evaluate", () => {
     expect(results[0]!.stale).toBe(false);
   });
 
-  it("evaluates all 7 catalog entries", () => {
+  it("evaluates all catalog entries (una fila por fuente registrada)", () => {
+    // El catálogo crece por diseño (chilecompra=MONEY-01, servel=MONEY-02). El evaluador debe
+    // devolver EXACTAMENTE una fila por fuente registrada — se afirma contra CATALOG.length, no
+    // contra un número hardcodeado que se desactualiza cada vez que se registra una fuente nueva.
     const rows: QueryRow[] = CATALOG.map((c) => makeRow(c.fuente, 1)); // 1 day → all fresh
     const results = evaluate(rows, CATALOG, NOW);
-    expect(results).toHaveLength(7);
+    expect(results).toHaveLength(CATALOG.length);
     for (const r of results) {
       expect(r.stale).toBe(false);
     }
@@ -162,6 +165,63 @@ describe("staleness de ChileCompra (MONEY-01)", () => {
     const results = evaluate(rows, chilecompra(), NOW, { FRESHNESS_UMBRAL_CHILECOMPRA: "15" });
     expect(results[0]!.umbralDias).toBe(15);
     expect(results[0]!.stale).toBe(true);
+  });
+});
+
+describe("staleness de SERVEL (MONEY-02)", () => {
+  // La señal SERVEL mide `aportes_ingesta_estado.ingestado_hasta` (umbral 365d), MISMO patrón
+  // declarativo que ChileCompra: el evaluador `evaluate` se reusa TAL CUAL. SERVEL es LOCAL por
+  // diseño (sin cron → workflowYml "servel-weekly.yml" inexistente → GH "n/d" honesto). Estos casos
+  // congelan: la forma de la entrada, stale-null (nunca barrido, estado HOY), stale > umbral,
+  // fresh <= umbral, override, y la señal GH "n/d".
+  const servel = () => CATALOG.filter((c) => c.fuente === "servel");
+
+  it("la entrada servel existe sobre aportes_ingesta_estado.ingestado_hasta, umbral 365", () => {
+    const cfg = CATALOG.find((c) => c.fuente === "servel");
+    expect(cfg).toBeDefined();
+    expect(cfg!.tabla).toBe("aportes_ingesta_estado");
+    expect(cfg!.columna).toBe("ingestado_hasta");
+    expect(cfg!.umbralDias).toBe(365);
+    expect(cfg!.overrideEnv).toBe("FRESHNESS_UMBRAL_SERVEL");
+    // servel-weekly.yml NO existe (LOCAL sin cron) — la señal GH figura "n/d" (honesto).
+    expect(cfg!.workflowYml).toBe("servel-weekly.yml");
+  });
+
+  it("stale-null: ingestado_hasta null (nunca barrido, estado HOY) → stale (desconocido = stale, fail-closed)", () => {
+    const rows: QueryRow[] = [makeRow("servel", null)];
+    const results = evaluate(rows, servel(), NOW);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.fuente).toBe("servel");
+    expect(results[0]!.diasDesdeUpsert).toBeNull();
+    expect(results[0]!.stale).toBe(true);
+  });
+
+  it("stale > umbral: 400 días desde el último barrido (> 365) → stale", () => {
+    const rows: QueryRow[] = [makeRow("servel", 400)];
+    const results = evaluate(rows, servel(), NOW);
+    expect(results[0]!.diasDesdeUpsert).toBe(400);
+    expect(results[0]!.stale).toBe(true);
+  });
+
+  it("fresh <= umbral: 200 días desde el último barrido (<= 365) → fresco", () => {
+    const rows: QueryRow[] = [makeRow("servel", 200)];
+    const results = evaluate(rows, servel(), NOW);
+    expect(results[0]!.diasDesdeUpsert).toBe(200);
+    expect(results[0]!.stale).toBe(false);
+  });
+
+  it("respeta el override FRESHNESS_UMBRAL_SERVEL (baja el umbral a 100 → 200d ahora es stale)", () => {
+    const rows: QueryRow[] = [makeRow("servel", 200)];
+    const results = evaluate(rows, servel(), NOW, { FRESHNESS_UMBRAL_SERVEL: "100" });
+    expect(results[0]!.umbralDias).toBe(100);
+    expect(results[0]!.stale).toBe(true);
+  });
+
+  it("GH Actions 'n/d' honesto: sin señal de workflow (LOCAL sin cron) el ghRun cae a 'n/d'", () => {
+    // makeRow no adjunta ghRun (default "n/d"); el evaluador lo propaga sin fabricar un 'success'.
+    const rows: QueryRow[] = [makeRow("servel", null)];
+    const results = evaluate(rows, servel(), NOW);
+    expect(results[0]!.ghRun).toBe("n/d");
   });
 });
 
