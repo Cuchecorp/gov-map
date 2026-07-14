@@ -244,11 +244,24 @@ export function parseCamaraVotoDetalle(detalleXml: string): CamaraVotoDetalle[] 
         | Record<string, unknown>[]
         | undefined,
     );
+    // Uniqueness de DIPID dentro de UNA votación (WR-01): si la fuente emite el mismo diputado
+    // dos veces (p.ej. una fila de corrección), el roster produciría dos filas para una persona,
+    // inflando un bucket del cross-check y creando una doble atribución silenciosa. Para un
+    // roster defamation-critical eso NO se fusiona en silencio: se falla RUIDOSO, consistente
+    // con la guarda de pareo (CR-01) y el cross-check.
+    const vistos = new Set<string>();
     for (const voto of votos) {
       const dip = (voto.Diputado ?? {}) as Record<string, unknown>;
       // (a) v1 usa Id; (b) real usa DIPID.
       const diputadoId = txt(dip.Id) ?? txt(dip.ID) ?? txt(dip.DIPID);
       if (diputadoId == null) continue;
+      if (vistos.has(diputadoId)) {
+        throw new Error(
+          `DIPID duplicado=${diputadoId} en <Votos> de una misma votación — fila repetida no se ` +
+            `fusiona en silencio (WR-01, defamation-critical: doble atribución)`,
+        );
+      }
+      vistos.add(diputadoId);
 
       // Opción: (a) <OpcionVoto Valor="1|0">; (b) <Opcion Codigo>texto. Las 5 opciones del
       // roll-call (VOTE-03): ninguna se descarta. Solo un nodo de opción ILEGIBLE (sin valor

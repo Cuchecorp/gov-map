@@ -182,6 +182,20 @@ describe("parseCamaraVotoDetalle (ns tempuri REAL: getVotacion_Detalle, DIPID + 
     expect(() => parseCamaraVotoDetalle(conflicto)).toThrow(/VOTO-04/);
   });
 
+  // WR-01: un DIPID repetido dentro de una misma votación (p.ej. fila de corrección) NO se
+  // fusiona en silencio — se falla RUIDOSO, para no inflar un bucket del cross-check ni crear
+  // una doble atribución de la misma persona a dos opciones.
+  it("WR-01: un DIPID duplicado en <Votos> hace THROW (no fusiona ni infla el roster)", () => {
+    const duplicado = `<?xml version="1.0" encoding="utf-8"?>
+      <Votacion xmlns="http://tempuri.org/">
+        <Votos>
+          <Voto><Diputado><DIPID>500</DIPID></Diputado><Opcion Codigo="1">A Favor</Opcion></Voto>
+          <Voto><Diputado><DIPID>500</DIPID></Diputado><Opcion Codigo="0">En Contra</Opcion></Voto>
+        </Votos>
+      </Votacion>`;
+    expect(() => parseCamaraVotoDetalle(duplicado)).toThrow(/DIPID duplicado=500/);
+  });
+
   it("sin bloque <Pareos> nadie se marca pareo espurio", () => {
     const sinPareos = `<?xml version="1.0" encoding="utf-8"?>
       <Votacion xmlns="http://tempuri.org/">
