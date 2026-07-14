@@ -105,7 +105,9 @@ DEUDA (paralelizable, no bloquea P3/P5): 74 (cursor leylobby + CF token CI + rou
   3. El voto individual se puebla a escala acotado por `--boletines`/`limite` respetando rate-limit 2-3s (WAF); backfill masivo LOCAL reanudable, paginando PostgREST `.range()`
   4. El % `confirmado` NO baja al escalar (ningún name-match entró); la cobertura confirmado/no_confirmado queda medida
 
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 66-01-PLAN.md — Wire dos-etapas (r2Store/snapshotWriter/--from-r2) en runCamaraVotos + reporte de cobertura + tests fake-R2
+- [ ] 66-02-PLAN.md — Runbook operador-LOCAL del backfill a escala (LIVE gated, reanudable, cobertura)
 
 ### Phase 67: VOTO P3d — Paridad Senado (voto individual por nombre)
 
