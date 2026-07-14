@@ -124,7 +124,8 @@ DEUDA (paralelizable, no bloquea P3/P5): 74 (cursor leylobby + CF token CI + rou
   4. La UI solo muestra como atribuido lo `confirmado`; lo demás no se presenta como voto de la persona
 
 **Plans**: 2 plans
-- [ ] 67-01-PLAN.md — Fix del gap de replay: votXmlSenado en el envelope + senadoFake lo sirve + mapSeleccion fail-loud + fixtures/tests Senado (offline, autónomo)
+
+- [x] 67-01-PLAN.md — Fix del gap de replay: votXmlSenado en el envelope + senadoFake lo sirve + mapSeleccion fail-loud + fixtures/tests Senado (offline, autónomo)
 - [ ] 67-02-PLAN.md — Runbook operador-LOCAL del backfill LIVE Senado (votaciones.php a escala, gated) + SPIKE de tokens SELECCION
 
 ### Phase 68: VOTO P3e — Superficies de voto + linter anti-insinuación + cobertura + gate BrowserOS
@@ -986,7 +987,7 @@ Plans:
 | 64. VOTO P3a — Validar/caracterizar opendata.camara.cl LIVE (SPIKE) | v7.0 | 2/2 | Complete   | 2026-07-14 |
 | 65. VOTO P3b — Golden set DIPID→maestra (gate pre-backfill) | v7.0 | 1/1 | Complete   | 2026-07-14 |
 | 66. VOTO P3c — Wire dos-etapas Cámara + backfill a escala | v7.0 | 2/2 | Complete   | 2026-07-14 |
-| 67. VOTO P3d — Paridad Senado (voto individual por nombre) | v7.0 | 0/? | Not started | - |
+| 67. VOTO P3d — Paridad Senado (voto individual por nombre) | v7.0 | 1/2 | In Progress|  |
 | 68. VOTO P3e — Superficies de voto + linter + cobertura + BrowserOS | v7.0 | 0/? | Not started | - |
 | 69. DINERO P5a — RUT-01 backfill (checkpoint operador, bloqueante) | v7.0 | 0/? | Not started | - |
 | 70. DINERO P5b — Wire dos-etapas ChileCompra por RUT (SPIKE cuota) | v7.0 | 0/? | Not started | - |
