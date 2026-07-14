@@ -12,14 +12,22 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { queryCobertura, queryFreshness } from "./query-runner.js";
+import {
+  queryCobertura,
+  queryCoberturaVoto,
+  queryFreshness,
+} from "./query-runner.js";
 import {
   evaluate,
   evaluateCobertura,
   type CoberturaResult,
   type FuenteResult,
 } from "./evaluate.js";
-import { CATALOG, COBERTURA_SENALES } from "./catalog.js";
+import {
+  CATALOG,
+  COBERTURA_SENALES,
+  COBERTURA_VOTO_SENALES,
+} from "./catalog.js";
 
 // ─── loadEnv (BOM-safe, process.env tiene precedencia sobre .env) ─────────────
 
@@ -144,6 +152,49 @@ function renderCobertura(results: CoberturaResult[]): string {
   return ["Cobertura del corpus de búsqueda (BUSQ-03):", "", header, sep, ...rows].join("\n");
 }
 
+// ─── Cobertura del voto individual (VOTO-05) ──────────────────────────────────
+
+/**
+ * Tabla N/M del voto individual por CÁMARA. Espejo de `renderCobertura` (mismo layout),
+ * denominador = sesiones de sala conocidas. Declara HONESTAMENTE: Cámara confirmado
+ * (determinista) y Senado por nombre (techo honesto, NO atribución dura). Degrada `n/d`
+ * cuando el count no se pudo leer (T-68-05). NO reemplaza la tabla del corpus.
+ */
+function renderCoberturaVoto(results: CoberturaResult[]): string {
+  const cols = { senal: 26, n: 8, m: 9, pct: 6 };
+  const header =
+    pad("Cámara/Señal", cols.senal) +
+    " | " +
+    pad("N", cols.n) +
+    " | " +
+    pad("M (total)", cols.m) +
+    " | " +
+    "N/M";
+  const sep = "-".repeat(header.length);
+  const rows = results.map((r) => {
+    const nStr = r.n !== null ? String(r.n) : "?";
+    const mStr = r.m !== null ? String(r.m) : "?";
+    const pctStr = r.pct !== null ? `${r.pct}%` : "n/d";
+    return (
+      pad(r.etiqueta, cols.senal) +
+      " | " +
+      pad(nStr, cols.n) +
+      " | " +
+      pad(mStr, cols.m) +
+      " | " +
+      pctStr
+    );
+  });
+  return [
+    "Cobertura del voto individual (VOTO-05):",
+    "  (Cámara = voto confirmado determinista; Senado = voto por nombre, techo honesto)",
+    "",
+    header,
+    sep,
+    ...rows,
+  ].join("\n");
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
@@ -208,17 +259,34 @@ async function main(): Promise<void> {
   const coberturaCounts = queryCobertura(env["SUPABASE_DB_URL"]!);
   const cobertura = evaluateCobertura(coberturaCounts, COBERTURA_SENALES);
 
+  // Cobertura N/M del VOTO INDIVIDUAL (VOTO-05): señal SEPARADA (denominador = sesiones de
+  // sala), APPEND — no reemplaza la del corpus. Cámara confirmado / Senado por nombre.
+  const coberturaVotoCounts = queryCoberturaVoto(env["SUPABASE_DB_URL"]!);
+  const coberturaVoto = evaluateCobertura(
+    coberturaVotoCounts,
+    COBERTURA_VOTO_SENALES,
+  );
+
   const table = renderTable(results);
   const coberturaTable = renderCobertura(cobertura);
+  const coberturaVotoTable = renderCoberturaVoto(coberturaVoto);
   const anyStale = results.some((r) => r.stale);
 
   if (jsonMode) {
-    process.stderr.write(table + "\n\n" + coberturaTable + "\n");
+    process.stderr.write(
+      table + "\n\n" + coberturaTable + "\n\n" + coberturaVotoTable + "\n",
+    );
     process.stdout.write(
-      JSON.stringify({ frescura: results, cobertura }, null, 2) + "\n",
+      JSON.stringify(
+        { frescura: results, cobertura, coberturaVoto },
+        null,
+        2,
+      ) + "\n",
     );
   } else {
-    process.stdout.write(table + "\n\n" + coberturaTable + "\n");
+    process.stdout.write(
+      table + "\n\n" + coberturaTable + "\n\n" + coberturaVotoTable + "\n",
+    );
   }
 
   process.exit(anyStale ? 1 : 0);
