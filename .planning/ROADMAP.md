@@ -214,7 +214,7 @@ Plans:
 Plans:
 
 - [x] 71-01-PLAN.md — Wire dos-etapas (r2Store/snapshotWriter/--from-r2 + modo LOCAL con r2Path) en runIngestServel + fixture .xlsx exceljs + tests fake-R2 (SC#1/#3/#4)
-- [ ] 71-02-PLAN.md — CLI operador LOCAL run-servel-local-cli + señal freshness servel (365d, GH n/d) + guard frozen-servel + MONEY gate OFF (SC#4)
+- [x] 71-02-PLAN.md — CLI operador LOCAL run-servel-local-cli + señal freshness servel (365d, GH n/d) + guard frozen-servel + MONEY gate OFF (SC#4)
 - [ ] 71-03-PLAN.md — Runbook operador-LOCAL del backfill SERVEL por elección (obtener + colocar .xlsx en R2 + --from-r2) + checkpoint human-action (SC#1)
 
 ### Phase 72: DINERO P5d — Extender materializador `cruce_senal` con `lobby_sector_aporte`
@@ -1018,7 +1018,7 @@ Plans:
 | 68. VOTO P3e — Superficies de voto + linter + cobertura + BrowserOS | v7.0 | 4/4 | Complete   | 2026-07-14 |
 | 69. DINERO P5a — RUT-01 backfill (checkpoint operador, bloqueante) | v7.0 | 3/3 | Complete   | 2026-07-14 |
 | 70. DINERO P5b — Wire dos-etapas ChileCompra por RUT (SPIKE cuota) | v7.0 | 3/3 | Complete   | 2026-07-14 |
-| 71. DINERO P5c — SERVEL LOCAL (.xlsx artesanal) | v7.0 | 1/3 | In Progress|  |
+| 71. DINERO P5c — SERVEL LOCAL (.xlsx artesanal) | v7.0 | 2/3 | In Progress|  |
 | 72. DINERO P5d — Extender materializador cruce_senal (lobby_sector_aporte) | v7.0 | 0/? | Not started | - |
 | 73. DINERO P5e — Superficies MONEY gated OFF + linter + gate legal | v7.0 | 0/? | Not started | - |
 | 74. DEUDA — Cursor leylobby + CF token CI + round-robin cron | v7.0 | 0/? | Not started | - |
