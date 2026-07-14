@@ -468,6 +468,9 @@ importers:
       '@obs/tramitacion':
         specifier: workspace:*
         version: link:../tramitacion
+      '@supabase/supabase-js':
+        specifier: ^2.108.2
+        version: 2.108.2
     devDependencies:
       '@types/node':
         specifier: ^20.19.43
