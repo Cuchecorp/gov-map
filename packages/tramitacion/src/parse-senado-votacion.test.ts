@@ -123,17 +123,42 @@ describe("WR-04: total presente pero ilegible NO se fabrica como un número fals
   });
 });
 
-describe("WR-03: selección desconocida NO se fabrica como 'abstencion'", () => {
-  const conGarbled = `<votaciones>
-    <votacion><SESION>1/1</SESION><FECHA>01/01/2026</FECHA><TEMA>x</TEMA><SI>1</SI><NO>0</NO><ABSTENCION>0</ABSTENCION><PAREO>0</PAREO><TIPOVOTACION>T</TIPOVOTACION><ETAPA>E</ETAPA><DETALLE_VOTACION><VOTO><PARLAMENTARIO>Valido V., Uno</PARLAMENTARIO><SELECCION>Si</SELECCION></VOTO><VOTO><PARLAMENTARIO>Garbled G., Dos</PARLAMENTARIO><SELECCION>???</SELECCION></VOTO><VOTO><PARLAMENTARIO>Blanco B., Tres</PARLAMENTARIO><SELECCION></SELECCION></VOTO></DETALLE_VOTACION></votacion>
+describe("D-A4 (P67): token <SELECCION> desconocido FALLA RUIDOSO (no omite el voto en silencio)", () => {
+  // Un token PRESENTE pero no reconocido ("A FAVOR", "AF", un código) hoy se omitía en silencio
+  // → una persona que votó desaparecía del roll-call (mentira de cobertura). Ahora LANZA con el
+  // token exacto → un shape LIVE inesperado es VISIBLE (se registra en `errores` de runIngest).
+  const conTokenDesconocido = (token: string) => `<votaciones>
+    <votacion><SESION>1/1</SESION><FECHA>01/01/2026</FECHA><TEMA>x</TEMA><SI>1</SI><NO>0</NO><ABSTENCION>0</ABSTENCION><PAREO>0</PAREO><TIPOVOTACION>T</TIPOVOTACION><ETAPA>E</ETAPA><DETALLE_VOTACION><VOTO><PARLAMENTARIO>Persona P., Real</PARLAMENTARIO><SELECCION>${token}</SELECCION></VOTO></DETALLE_VOTACION></votacion>
   </votaciones>`;
 
-  it("un token garbled NO se cuenta como abstención: el voto se OMITE", () => {
-    const { votos } = parseSenadoVotacion(conGarbled, "99999-01");
-    // Solo el 'Si' válido sobrevive; '???' y vacío se omiten (no fabricamos abstención).
+  it("token desconocido 'A FAVOR' → LANZA e incluye el token crudo en el mensaje", () => {
+    expect(() => parseSenadoVotaciones(conTokenDesconocido("A FAVOR"), "99999-01")).toThrow(
+      /A FAVOR/,
+    );
+  });
+
+  it("token desconocido numérico ('1') → LANZA con el token en el mensaje", () => {
+    expect(() => parseSenadoVotaciones(conTokenDesconocido("1"), "99999-01")).toThrow(/1/);
+  });
+
+  it("<SELECCION> VACÍO/ausente → NO lanza (no es un voto clasificable → se omite)", () => {
+    const conVacioYAusente = `<votaciones>
+      <votacion><SESION>1/1</SESION><FECHA>01/01/2026</FECHA><TEMA>x</TEMA><SI>1</SI><NO>0</NO><ABSTENCION>0</ABSTENCION><PAREO>0</PAREO><TIPOVOTACION>T</TIPOVOTACION><ETAPA>E</ETAPA><DETALLE_VOTACION><VOTO><PARLAMENTARIO>Valido V., Uno</PARLAMENTARIO><SELECCION>Si</SELECCION></VOTO><VOTO><PARLAMENTARIO>Blanco B., Dos</PARLAMENTARIO><SELECCION></SELECCION></VOTO><VOTO><PARLAMENTARIO>SinSel S., Tres</PARLAMENTARIO></VOTO></DETALLE_VOTACION></votacion>
+    </votaciones>`;
+    let votos!: ReturnType<typeof parseSenadoVotaciones>[number]["votos"];
+    expect(() => {
+      votos = parseSenadoVotaciones(conVacioYAusente, "99999-01")[0]!.votos;
+    }).not.toThrow();
+    // Solo el 'Si' válido sobrevive; vacío y ausente se omiten sin lanzar.
     expect(votos).toHaveLength(1);
     expect(votos[0]!.mencionNombre).toBe("Valido V., Uno");
-    expect(votos.some((v) => v.mencionNombre.startsWith("Garbled"))).toBe(false);
-    expect(votos.every((v) => v.seleccion !== "abstencion")).toBe(true);
+  });
+
+  it("tokens conocidos (Sí/No/Abstención/Pareo) siguen mapeando sin regresión", () => {
+    const conocidos = `<votaciones>
+      <votacion><SESION>1/1</SESION><FECHA>01/01/2026</FECHA><TEMA>x</TEMA><SI>1</SI><NO>1</NO><ABSTENCION>1</ABSTENCION><PAREO>1</PAREO><TIPOVOTACION>T</TIPOVOTACION><ETAPA>E</ETAPA><DETALLE_VOTACION><VOTO><PARLAMENTARIO>Uno U., A</PARLAMENTARIO><SELECCION>Sí</SELECCION></VOTO><VOTO><PARLAMENTARIO>Dos D., B</PARLAMENTARIO><SELECCION>No</SELECCION></VOTO><VOTO><PARLAMENTARIO>Tres T., C</PARLAMENTARIO><SELECCION>Abstención</SELECCION></VOTO><VOTO><PARLAMENTARIO>Cuatro C., D</PARLAMENTARIO><SELECCION>Pareo</SELECCION></VOTO></DETALLE_VOTACION></votacion>
+    </votaciones>`;
+    const { votos } = parseSenadoVotacion(conocidos, "99999-01");
+    expect(votos.map((v) => v.seleccion)).toEqual(["si", "no", "abstencion", "pareo"]);
   });
 });
