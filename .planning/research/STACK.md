@@ -1,229 +1,188 @@
-# Stack Research — v2.0 Parlamentarios 360 (additions only)
+# Stack Research — v7.0 (Votos individuales + Dimensión dinero)
 
-**Domain:** Civic-tech ingestion + analysis of Chilean parliamentary data (votes, lobby, assets, money, influence graph)
-**Researched:** 2026-06-18
-**Confidence:** HIGH on access methods (votes, lobby, assets, contracts), MEDIUM-HIGH on graph library, HIGH on Postgres-graph decision
-**Scope note:** The v1.0 core stack is LOCKED (see STACK.md). Nothing here replaces it. Everything below either reuses an existing `@obs/*` package or is a small, justified addition.
+**Domain:** Civic data platform — additive fronts on an existing TS/Deno + Supabase + R2 stack
+**Researched:** 2026-07-13
+**Confidence:** HIGH (endpoints verified live/in-repo; two spikes flagged for re-confirmation)
 
----
+## TL;DR for the roadmapper
 
-## TL;DR
+**v7.0 needs essentially ZERO new stack.** The base stack (`@obs/ingest` framework, `fast-xml-parser@5`, `zod@4`, `@supabase/supabase-js@2`, R2 via `@obs/ingest`) already covers both new fronts. More importantly, **the connectors, parsers and models for BOTH P3 (voto individual) and P5 (dinero) already exist in the repo** — built code-complete during v2.0 and never fully wired/verified live at scale. The only non-base library in play is **`exceljs@4.4.0`** (SERVEL `.xlsx`), and it is **already installed** in `@obs/dinero`.
 
-- **Zero new ingestion libraries needed.** Every government source is reachable with the tools already locked: `fetch` + `fast-xml-parser` (votes), `fetch` + JSON (ChileCompra), `cheerio`/CSV (lobby, assets, SERVEL). The work is new **connectors inside `@obs/ingest`**, not new dependencies.
-- **The individual deputy vote IS reachable** via a documented HTTP-GET XML endpoint on opendata.camara.cl (`getVotacion_Detalle?prmVotacionID=`). It returns each `Diputado` with `DIPID` + `Opcion`. The live spike is still warranted (never validated live), but the source is documented, not hypothetical. Confidence on existence: HIGH; on live behavior: UNCONFIRMED until the spike runs.
-- **SERVEL is the only genuinely fragile source** — no API, no bulk download, authenticated XHTML/JSF web app; must be a scraper (cheerio + WebForms/JSF 2-step, headless only as last resort in CI). Treat as artisanal exactly as PROJECT.md says.
-- **Graph library: `@xyflow/react` (React Flow 12).** Best Next.js 16 / RC / SSR story of the three; the influence graph is small (hundreds of curated nodes, not a 100k-node hairball); v1.0 already uses visx/Recharts/React. Sigma.js is the right answer ONLY if the graph grows past ~5–10k visible nodes.
-- **Graph queries: stay relational + recursive CTEs.** Apache AGE is NOT available on managed Supabase (AGE caps at PG13, Supabase is PG15). No `ltree`/AGE needed. Add a normalized `entidad`/`arista` edge table + recursive-CTE RPCs.
+**So the roadmap's real work is NOT "choose libraries" — it is: (1) live spikes to re-confirm two uncertain sources, (2) wire existing connectors into the two-stage R2→Supabase pipeline with identity reconciliation, (3) coverage backfill, (4) deny-by-default surfaces.** Any phase plan that proposes adding a SOAP client, an OData client, a CSV lib, or a new HTTP framework is redundant — reject it.
+
+The one genuinely new operational dependency is a **ChileCompra API ticket** (a secret the operator requests once via Clave Única), not a code dependency.
 
 ---
 
-## Recommended Stack Additions
+## Recommended Stack
 
-### Ingestion connectors (NEW connectors, NO new libraries)
+### Core Technologies (all ALREADY IN REPO — reuse, do not re-add)
 
-| Capability | Library used | Status | Why |
-|------------|--------------|--------|-----|
-| **VOTE** — individual roll-call (`getVotacion_Detalle`) | `fetch` + `fast-xml-parser@5` (locked) | reuse | Endpoint returns XML; same parser as Senado `wspublico`. New `@obs/votaciones` (or extend `@obs/tramitacion`). |
-| **INT-lobby** — leylobby.gob.cl audiencias | `fetch` + CSV + `cheerio` (locked) | reuse | Per-institution bulk CSV/Excel + InfoLobby; HTML listing fallback via `cheerio`. |
-| **INT-assets** — InfoProbidad declaraciones | `fetch` + CSV catalogs + optional SPARQL over `fetch` | reuse | CSV catalogs + RDF/SPARQL at `datos.cplt.cl/sparql`; both plain HTTP. CC BY 4.0. |
-| **MONEY-contracts** — ChileCompra / mercadopublico.cl | `fetch` + JSON (locked) | reuse | Documented REST API, JSON by default, queryable by proveedor RUT. |
-| **MONEY-finance** — SERVEL aportes | `cheerio` (locked) + WebForms/JSF 2-step; headless only if forced | reuse / escalate | No API, no bulk dump. Authenticated JSF (`aportes.servel.cl`, `.xhtml`). Fragile by nature. |
+| Technology | Version | Purpose in v7.0 | Why (verified) |
+|------------|---------|------------------|----------------|
+| **`@obs/ingest` framework** | in-repo | Rate-limit 2–3s serial/host, robots, UA `Bot-Ciudadano/1.0`, R2 two-stage, hash-check | Both new connectors (`connector-chilecompra.ts`, `connector-servel.ts`) already call the LOCKED order `assertAllowedUrl → robots → rateLimiter.wait → fetcher.get`. `mercadopublico.cl` is already in `DEFAULT_ALLOWED_SUFFIXES`; SERVEL host scoped via `extraHosts`. HIGH |
+| **fast-xml-parser** | `^5.9.2` | Parse Cámara `getVotacion_Detalle` (SOAP/XML per-deputy) and Senado `votaciones.php` (XML per-senator) | Already the parser in `parse-camara-votacion.ts` + `parse-senado-votacion.ts`, both handling `ignoreAttributes:false, parseTagValue:false`. The nil/`#text`/`@_Codigo` shape of the SOAP response is already handled. HIGH |
+| **zod** | `^4.4.3` | Contract validation of vote XML + ChileCompra JSON + SERVEL xlsx rows | Already the validation gate across `@obs/tramitacion` and `@obs/dinero`. No new schema lib. HIGH |
+| **`@supabase/supabase-js`** | `^2.108.2` | Write `voto` rows + `entidad_tercero`/aporte/contrato rows; RLS/service_role | Existing writer pattern (`writer-supabase.ts`, `writer-supabase-servel.ts`). Remember PostgREST 1k cap → paginate `.order().range()` (known gotcha). HIGH |
 
-### Frontend — influence graph (NET) — ONE new dependency
+### Supporting Libraries
 
-| Library | Version (2026-06) | Purpose | Why |
-|---------|-------------------|---------|-----|
-| **`@xyflow/react`** (React Flow 12) | **12.11.0** | Influence graph rendering in Next.js 16 frontend | First-class Next.js App Router + Server Components + SSR support (documented `<ReactFlowProvider initialNodes/initialEdges>` + `initialWidth/Height` + `fitView` for first render). React-native API matches v1.0's React/visx/Recharts patterns. Curated, small graph (hundreds of nodes) — DOM/SVG rendering is fine and gives full styling control + accessibility + per-node/edge provenance badges. |
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| **exceljs** | `4.4.0` (already in `@obs/dinero`) | Parse SERVEL gasto-electoral `.xlsx` (Azure Blob `repodocgastoelectoral.blob.core.windows.net`) | SERVEL publishes manual per-election `.xlsx` (no REST API). `parse-servel.ts` already consumes it. This is the ONLY non-base library the money front needs. MEDIUM-HIGH |
 
-> Note: the old `reactflow` npm package (latest 11.11.4) is **deprecated in favor of the scoped `@xyflow/react`** as of v12. Install `@xyflow/react`, not `reactflow`.
+### Development / operational dependencies (NOT code libraries)
 
-### Postgres — graph queries (NO new extension)
-
-| Mechanism | Status | Purpose |
-|-----------|--------|---------|
-| **Recursive CTEs** (`WITH RECURSIVE`) | built-in PG15 | Multi-hop traversal (parlamentario → lobby → empresa → contrato/aporte). |
-| **Normalized edge table** (`entidad` + `arista` with `tipo`, `provenance`, `fecha`, source link) | new migration, no dependency | Materializes cross-source relationships; queried by recursive-CTE RPCs, fed to React Flow. |
-| **pgvector 0.8 (HNSW)** | already locked | Reused for "parlamentarios similares" if added — no change. |
+| Item | Purpose | Notes |
+|------|---------|-------|
+| **ChileCompra API ticket** | Auth for `api.mercadopublico.cl` | Operator requests once via Clave Única form; one ticket per person; **10,000 requests/day** hard cap. Store in `.env` (`CHILECOMPRA_TICKET`), NEVER interpolate into logs/errors (connector already redacts via `redactarTicket`). Operator action, not a build step. |
+| **SERVEL manual download** | Per-election gasto/aporte `.xlsx` | No API. Operator (or LOCAL backfill) downloads the workbook per election; connector then runs against the R2-cached crudo. Carga manual del operador, por elección. |
 
 ---
 
-## Per-Source Access Methods (concrete)
+## Front-by-front findings
 
-### VOTE — opendata.camara.cl individual roll-call — Confidence: HIGH (documented) / UNCONFIRMED (live)
+### P3 — Voto individual por diputado
 
-The individual deputy vote that is `null` in `doGet.asmx` lives in the **opendata.camara.cl SOAP service `wscamaradiputados.asmx`**, which also exposes plain **HTTP GET**:
+**VERDICT: source validated, parsers already exist, code path already exists. Not blocked on stack — blocked on a live re-confirmation spike + wiring/coverage.**
 
-- Discover vote IDs for a bill:
-  `GET https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin?prmBoletin={NNNNN-NN}` → XML list of `Votacion` with their `ID`.
-- Fetch per-deputy detail:
-  `GET https://opendata.camara.cl/wscamaradiputados.asmx/getVotacion_Detalle?prmVotacionID={ID}` → XML.
+The individual deputy vote that is `Votos=null` in `doGet.asmx` lives in the **opendata.camara.cl SOAP service `WSLegislativo.asmx` / `wscamaradiputados.asmx`**:
 
-Response (`getVotacion_Detalle`) per the WSDL/op page includes:
-- Vote metadata: `ID`, `Fecha`, `Tipo`, `Resultado`, `Quorum`, `Boletin`, `Articulo`, totals (`TotalAfirmativos`/`TotalNegativos`/`TotalAbstenciones`/`TotalDispensados`).
-- **`Voto[]`**, each with a **`Diputado` object (`DIPID`, `Nombre`, `Apellido_Paterno`, `Apellido_Materno`, …) and `Opcion`** (the actual vote), plus `Pareos`.
+| Endpoint | Shape | Returns individual votes? | Confidence |
+|----------|-------|---------------------------|------------|
+| `WSLegislativo.asmx?op=retornarVotacionDetalle` (SOAP, ns `.../camaradiputados/v1`), param `prmVotacionId` | XML `<Votos><Voto><Diputado>…</Diputado><OpcionVoto/></Voto></Votos>` | **YES** — `<Diputado>` includes Id, name, and even RUT/birthdate in the GET variant; `<OpcionVoto>` is the roll-call choice | HIGH (WSDL schema fetched live) |
+| `wscamaradiputados.asmx/getVotacion_Detalle` (ns `tempuri.org`), the REAL shape hit LIVE 2026-06-18 | XML `<Voto><Diputado><DIPID>…</DIPID></Diputado><Opcion Codigo="0/1/4">…</Opcion></Voto>` | **YES** — codes 1=A Favor→si, 0=En Contra→no, 4=No Vota→ausente (confirmed live); Abstención/Pareo by `#text` | HIGH (in-repo `parseCamaraVotoDetalle`, live test) |
+| `getVotaciones_Boletin` (ns `tempuri.org`) | XML boletín list → yields the **votacion IDs** to feed the detail call | Provides the IDs, not the votes | HIGH |
 
-**Integration:** parse with `fast-xml-parser@5`; map to the existing common `Votacion`/`Voto` model; cross to identity **deterministically by `DIPID` → `id_diputado_camara`** — exactly the path v1.0's Cámara reconciliation already uses (no LLM, official identifier). Clean fit with `@obs/identity`'s LOCKED guard.
+**Key realization — the code ALREADY EXISTS:**
+- `packages/tramitacion/src/parse-camara-votacion.ts` → `parseCamaraVotoDetalle()` already emits the full 5-option roll-call (si/no/abstencion/pareo/ausente), crosses by `DIPID`/`Id`, fail-closed on illegible options.
+- `packages/votos/src/run-camara-votos.ts` + `run-votos-masivo-cli.ts` + `run-camara-votos.live.test.ts` already orchestrate the fetch → parse → write.
+- The `voto` table already exists (migration `0008`); ARCHITECTURE guidance is "VOTE is enrichment, not a new model — write into the SAME `voto` table."
 
-**FLAG:** Despite being documented, opendata.camara.cl has never been hit live by this project. Phase-1 spike must confirm: (1) host reachable behind the gov WAF with the 2–3s rate-limit + UA; (2) `getVotaciones_Boletin` returns vote IDs for current-legislature bills; (3) `getVotacion_Detalle` actually populates `Diputado/Opcion` (not null like `doGet.asmx`). If any fails, the VOTE block replans (PROJECT.md already plans for this).
+**Senado individual vote — ALREADY INGESTED at per-senator level:**
+- `wspublico/votaciones.php?boletin=` returns `<votaciones><votacion><DETALLE_VOTACION><VOTO><PARLAMENTARIO>…</PARLAMENTARIO><SELECCION>…</SELECCION></VOTO>`.
+- `packages/tramitacion/src/parse-senado-votacion.ts` → `parseSenadoVotaciones()` already extracts each `<VOTO>` per senator, maps `SELECCION`→si/no/abstencion/pareo, handles multiple same-day votes (CR-01 discriminator), and OMITS garbled tokens (fail-closed WR-03).
+- Senado cross is by **normalized name** (`mencionNombre`), not an ID — so identity reconciliation is the real work, not parsing.
 
-### MONEY-contracts — ChileCompra / mercadopublico.cl — Confidence: HIGH
+**SPIKE (Phase-1, required — flagged uncertain):** opendata.camara.cl was last hit live 2026-06-18 and again for enumeration (WSLegislativo enumeration confirmed no-WAF 2026-07-10). Before building on it at scale, a spike must re-confirm: (1) host reachable behind the gov WAF with 2–3s rate-limit + UA; (2) `getVotaciones_Boletin` returns vote IDs for current-legislature bills; (3) `getVotacion_Detalle` still populates `Diputado/Opcion` (not null); (4) Abstención/Pareo codes (Assumption A1 — never confirmed live, currently resolved by `#text`). Confidence on the endpoint SHAPE is HIGH; confidence that it is up TODAY at scale is MEDIUM until the spike runs.
 
-Documented REST API, the cleanest source in v2.0:
-
-- Base: `https://api.mercadopublico.cl/servicios/v1/publico/`
-- Endpoints: `licitaciones.json`, `ordenesdecompra.json`, `Empresas/BuscarProveedor`, `Empresas/BuscarComprador`.
-- **By RUT:** `…/Empresas/BuscarProveedor?rutempresaproveedor={RUT}&ticket={TICKET}` → provider code + name; then query OC by `CodigoProveedor`/`fecha`/`estado`.
-- Formats: **JSON** (default), JSONP, XML. Auth: a **`ticket`** requested once by email.
-- **Rate limit: 10,000 requests/day per ticket** (hard) → respect with `@obs/ingest` daily cache + serial pacing; keep the 2–3s discipline regardless.
-
-**Integration:** `fetch` + `res.json()` + zod (locked pattern, identical to Cámara `doGet.asmx`). New `@obs/dinero` connector. Cross by RUT (internal-use key per PROJECT.md). The `datos-abiertos.chilecompra.cl` portal exists as a fallback but lacks documented bulk-download mechanics — prefer the REST API.
-
-### INT-assets — InfoProbidad (declaraciones de patrimonio e intereses) — Confidence: HIGH
-
-CPLT/Contraloría portal, explicitly open data, **CC BY 4.0** (matches PROJECT.md's attribution requirement):
-
-- CSV catalogs / datasets at `infoprobidad.cl/DatosAbiertos/DatosAbiertos` (subjects, declarations, real estate, personal property, family members, etc.).
-- RDF / **SPARQL endpoint: `https://datos.cplt.cl/sparql`** for linked-data queries.
-- Per-declaration listing/UI at `infoprobidad.cl/Home/Listado`.
-
-**Integration:** primary path = download CSV catalogs (`fetch` → CSV parse). SPARQL optional for targeted per-RUT/per-name queries. Cross by **normalized name** (bridge key) and RUT internal-use. **Sensitive-data posture (PROJECT.md + Ley 21.719):** only surface what the source already publishes; keep RUT/family data internal. Route any LLM extraction through `@obs/llm`'s `assertSensitivityAllowed` / `assertNoRutInLlmInput` gates.
-
-### INT-lobby — leylobby.gob.cl / InfoLobby — Confidence: MEDIUM-HIGH
-
-- Per-institution registries: `leylobby.gob.cl/instituciones/{CODE}/audiencias` (HTML).
-- **Bulk downloads** documented at `ayuda.leylobby.gob.cl/descargas/` (returned 503 at research time — likely transient; this is the documented bulk path).
-- Aggregated view at `infolobby.cl` (audiencias, viajes, donativos).
-
-**Integration:** prefer bulk CSV/Excel downloads when reachable; fall back to `cheerio` over per-institution HTML audiencias tables. New connector under `@obs/lobby` (or fold into `@obs/intereses`). Cross by normalized name. **FLAG:** descargas endpoint must be re-validated live (503 at research time); bulk-file structure unconfirmed.
-
-### MONEY-finance — SERVEL aportes de campaña — Confidence: HIGH that it's fragile
-
-- **No public API, no documented bulk download.** Contribution data lives behind an authenticated JSF web app: `aportes.servel.cl/servel-aportes/inicio.xhtml` (ClaveÚnica login for donors), plus public consultation pages on `servel.cl`.
-- Independent projects (LupaElectoral, `bastianolea/servel_scraping_votaciones`) reach SERVEL **only via web scraping** (RSelenium-class), confirming no machine-friendly endpoint.
-
-**Integration:** treat as a **scraper**, not an API connector. First attempt `cheerio` + WebForms/JSF 2-step (re-extract JSF view-state per postback, keep session cookies) under the locked rate-limit. Only if the JSF flow is unscrapable with fetch should a headless browser be considered — and that belongs in the **GitHub Actions escape hatch**, never in Edge Functions (CPU/time limits). Expect breakage on every SERVEL redesign; isolate behind `@obs/dinero` so failure degrades honestly. Highest-risk, lowest-priority source — schedule it last.
+**Stack additions for P3: NONE.** No SOAP client library needed — `fetch` + `fast-xml-parser` handle the ASMX GET/POST. Reject any proposal to add a SOAP/WSDL client, `soap` npm package, or headless browser.
 
 ---
 
-## Graph Library Decision — React Flow vs Sigma.js vs Cytoscape
+### P5 — Dimensión dinero (ChileCompra + SERVEL)
 
-**Recommendation: `@xyflow/react` (React Flow 12.11.0).**
+**VERDICT: ChileCompra has a real REST API (HIGH); SERVEL is manual `.xlsx` per election (HIGH). Both connectors already exist. Hard prerequisite RUT-01 is DATA, not code.**
 
-| Criterion | React Flow (`@xyflow/react` 12) | Sigma.js (`sigma` 3 + `graphology`) | Cytoscape.js (3.34) |
-|-----------|-------------------------------|-------------------------------------|---------------------|
-| Rendering | SVG/DOM | **WebGL** | Canvas/WebGL |
-| Scale ceiling | ~hundreds–low-thousands of nodes | **100k+ nodes** | tens of thousands |
-| Next.js 16 / RC / SSR | **Documented SSR/SSG config** (`ReactFlowProvider initialNodes/Edges`, `initialWidth/Height`, `fitView`) | client-only (`'use client'` + `dynamic ssr:false`); React via `@react-sigma/core` | client-only; `react-cytoscapejs` wrapper, no SSR |
-| React-idiomatic | **Native React components** | wrapper layer | wrapper layer |
-| Styling/accessibility control | **Full (DOM)** | limited (WebGL canvas) | moderate |
-| Built-in graph algorithms | none (bring your own layout) | graphology ecosystem (layouts, metrics) | **rich (centrality, layouts, traversal)** |
-| Fit with v1.0 (React/visx/Recharts) | **Best** | moderate | moderate |
+#### ChileCompra / Mercado Público — REST API (HIGH)
 
-**Why React Flow for THIS project:**
-1. The influence graph is **curated and small** — relationships are computed server-side from the relational model (parlamentario ↔ lobby ↔ empresa ↔ contrato ↔ aporte), filtered to one parlamentario's neighborhood per view. Hundreds of nodes, not a global hairball. DOM rendering is more than adequate and buys full CSS styling (existing civic design tokens), provenance badges on nodes/edges, and accessibility — all things this project cares about (every datum shows source/date/link).
-2. **Best SSR story** for Next.js 16 App Router + Server Components (the locked frontend). The other two are client-only canvas/WebGL needing `dynamic(..., { ssr: false })`.
-3. **Lowest learning/maintenance cost** given the team already ships React + visx + Recharts.
+| Attribute | Finding | Confidence |
+|-----------|---------|------------|
+| Base URL | `https://api.mercadopublico.cl/servicios/v1/publico/` | HIGH |
+| Auth | Per-person **ticket** via Clave Única form; email delivery; one ticket/person | HIGH |
+| Rate limit | **10,000 requests/day per ticket** (hard, unmodifiable) | HIGH |
+| Format | JSON / JSONP / XML by extension (`.json` preferred) | HIGH |
+| Supplier by RUT | `…/Publico/Empresas/BuscarProveedor?rutempresaproveedor=70.017.820-k&ticket=…` — **RUT must include dots, hyphen, DV** | HIGH |
+| Purchase orders | `…/servicios/v1/publico/ordenesdecompra.json?fecha=DDMMYYYY&ticket=…` or `?codigo=…&ticket=…` — **the API does NOT filter orders by RUT**, so it's a 2-step flow: BuscarProveedor(rut)→codigo, then orders by day/state | HIGH |
+| Bulk (OCDS) | `datos-abiertos.chilecompra.cl` exists (CSV/OCDS bulk) as a fallback but bulk-download mechanics are undocumented on the page fetched → prefer the ticketed REST API | MEDIUM |
 
-**Choose Sigma.js (`sigma@3` + `graphology@0.26` + `@react-sigma/core@5`) instead IF** the influence view evolves into an explorable global network of **>5–10k simultaneously rendered nodes**. WebGL is then mandatory and graphology's layout/metrics ecosystem becomes valuable. Reassess then — do not pre-optimize now.
+**In-repo reality:** `packages/dinero/src/connector-chilecompra.ts` already implements exactly this 2-step flow (`buscarProveedor` → `ordenesDeCompra`), reuses `@obs/ingest` LOCKED order, redacts the ticket from errors, and degrades honestly per-RUT on 403/429/503 (`ChileCompraBloqueadaError`). `parse-chilecompra.ts`, `reconciliar-contrato.ts`, `writer-supabase.ts` exist. There is even a `live-chilecompra.probe.ts`.
 
-**Cytoscape.js** is the pick only if you need **built-in graph-theory algorithms client-side** (centrality, community detection). Here those analytics belong **server-side in Postgres/SQL** (traceable/auditable), so Cytoscape's main advantage is moot and its non-React, no-SSR nature fits worst.
+**RUT format gotcha (HIGH):** ChileCompra requires the RUT WITH dots+hyphen+DV (`70.017.820-k`). The identity master likely stores canonical/clean RUT → the query builder must format on the way out. Verify `query.ts`/`urlBuscarProveedor` does this in the wiring phase.
+
+#### SERVEL — manual `.xlsx` per election (HIGH)
+
+| Attribute | Finding | Confidence |
+|-----------|---------|------------|
+| API? | **NO REST API.** Public data via web portals (`aportes.servel.cl`, `www.servel.cl/centro-de-datos/…`) + downloadable workbooks | HIGH |
+| Programmatic source | Gasto/aporte workbooks on Azure Blob `repodocgastoelectoral.blob.core.windows.net` (anonymous GET, `.xlsx`) | MEDIUM-HIGH (host in-repo, verified as connector target) |
+| Auth | None (anonymous GET); no ticket | HIGH |
+| Cadence | **Per election, manual.** SERVEL "gradually" incorporates open data; no stable programmatic feed of per-candidate aportes/gastos | HIGH |
+| Parsing | `.xlsx` → `exceljs@4.4.0` (already installed) | HIGH |
+
+**In-repo reality:** `connector-servel.ts` fetches the `.xlsx` from the Azure Blob host (scoped via `extraHosts` + https-only assertion, NOT added to default suffixes to avoid SSRF to all Azure tenants), captures ETag/Content-MD5/Last-Modified for idempotency. `parse-servel.ts`, `model-servel.ts`, `writer-servel.ts`, `reconciliar-aporte.ts`, `ingest-run-servel.ts`, `ingest-cli-servel.ts` all exist.
+
+**What automates vs. what is operator toil:**
+- **Automatable:** once the operator drops the per-election `.xlsx` URL (or the file into R2 crudo), the connector→parse→reconcile→write pipeline runs and re-runs from R2.
+- **Operator toil (manual, per election):** discovering/downloading the correct workbook URL for each election cycle; SERVEL does not expose a stable machine-readable index. This matches PROJECT.md's "conector artesanal frágil, manual por elección."
+
+#### RUT-01 — hard prerequisite (DATA, not stack)
+
+Cross-by-RUT is impossible until RUTs physically exist in the `entidad_tercero` master. `packages/dinero/src/harvest-rut.ts` + `encolar-revision-rut.ts` exist for the backfill. This is a **data phase** the roadmap must sequence BEFORE any ChileCompra cross — it is not a flag an agent flips, and no library solves it. Personas jurídicas: match by exact RUT only, NEVER LLM (fail-closed) — RUT never crosses to the LLM.
+
+**Stack additions for P5: NONE beyond the already-installed `exceljs`.** Reject proposals to add an OCDS SDK, a CSV parser, or a generic Excel lib other than the pinned `exceljs`.
 
 ---
 
-## Postgres / pgvector for graph queries
-
-**Recommendation: stay relational; use `WITH RECURSIVE` CTEs over a normalized edge table. Add no graph extension.**
-
-- **Apache AGE: NOT available on managed Supabase.** AGE supports up to PG13/14-beta; Supabase stable is PG15 — not in the Supabase extension list, only via self-hosted Docker. Adopting it means leaving managed Supabase, contradicting locked infra. (Confidence: HIGH.)
-- **`ltree`: wrong tool.** Models single-parent trees/hierarchies, not the many-to-many influence graph here. Skip.
-- **Recursive CTEs are sufficient.** The graph is shallow (2–4 hops: parlamentario → audiencia/lobby → persona/empresa → contrato/aporte) and per-parlamentario scoped. PG15 recursive CTEs over an indexed edge table handle this comfortably at this data scale, keep everything auditable in SQL, and expose results via Supabase RPC (same pattern as `match_proyectos`).
-- **Modeling:** one `entidad` table (typed nodes: parlamentario/empresa/persona/contrato/aporte/audiencia) + one `arista` table (typed, directional edges with `provenance`, `fecha`, source link). Every edge carries source/date/link to honor the rector rule (no causal claims; only sourced relationships). pgvector is unchanged.
-
----
-
-## Installation (additions only)
+## Installation
 
 ```bash
-# Frontend (Next.js app) — influence graph
-pnpm --filter @obs/app add @xyflow/react@12
+# NOTHING new to install for the core paths.
+# @obs/dinero already declares exceljs@4.4.0 + zod@4 + @supabase/supabase-js@2 + @obs/ingest.
+# @obs/votos + @obs/tramitacion already own the vote parsers.
 
-# Connectors (Deno Edge Functions / GitHub Actions) — NO new deps:
-#   votes:     import { XMLParser } from "npm:fast-xml-parser@5"   (locked)
-#   contracts: fetch + res.json() + zod                            (locked)
-#   assets:    fetch CSV / SPARQL over fetch                       (locked)
-#   lobby:     fetch CSV / cheerio                                 (locked)
-#   servel:    cheerio (WebForms/JSF 2-step)                       (locked)
-
-# Postgres: new migration only — entidad/arista tables + recursive-CTE RPC.
-# No new extension (pgvector/pg_cron/pgmq/pg_net already enabled).
+# Operator (secrets in .env — not a package):
+#   CHILECOMPRA_TICKET=<ticket from Clave Única form>   # 10k req/day cap
+#   (SERVEL needs no secret — anonymous .xlsx GET)
 ```
-
-If a dedicated CSV parser is wanted for the InfoProbidad/lobby catalogs, prefer a tiny zero-dep one usable in Deno (`jsr:@std/csv`) over a Node-heavy package — but first check whether catalogs are small/simple enough to split manually. Do NOT pull a large CSV framework.
-
----
 
 ## Alternatives Considered
 
-| Recommended | Alternative | When to use the alternative |
-|-------------|-------------|------------------------------|
-| `@xyflow/react` 12 (SVG/DOM) | Sigma.js 3 + graphology + `@react-sigma/core` 5 (WebGL) | Influence view becomes a global explorable network >5–10k simultaneous nodes. |
-| `@xyflow/react` 12 | Cytoscape.js 3 + `react-cytoscapejs` | You need rich client-side graph algorithms instead of computing them server-side. |
-| Recursive CTEs + edge table (managed Supabase) | Apache AGE (openCypher) | Only on self-hosted Postgres ≤13/14 — incompatible with managed Supabase PG15; do not adopt. |
-| ChileCompra REST API (per-RUT) | `datos-abiertos.chilecompra.cl` bulk | If the per-ticket 10k/day limit bottlenecks large backfills and a documented bulk export is found. |
-| InfoProbidad CSV catalogs | InfoProbidad SPARQL (`datos.cplt.cl/sparql`) | Targeted per-name/per-RUT lookups where downloading full catalogs is wasteful. |
-| `getVotacion_Detalle` HTTP GET (XML) | SOAP 1.1/1.2 envelope to same `.asmx` | Only if plain GET is disabled/firewalled; GET is simpler and avoids SOAP envelopes. |
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| `fetch` + `fast-xml-parser` for opendata.camara.cl ASMX | `soap`/`strong-soap` WSDL client | Never for this project — the ASMX exposes plain HTTP GET/POST; a SOAP client adds envelope ceremony and a dependency for zero benefit. Already proven with in-repo parser. |
+| ChileCompra ticketed REST API (per-RUT, 2-step) | `datos-abiertos.chilecompra.cl` OCDS bulk (CSV) | Only if per-RUT volume exceeds 10k req/day for the diputado universe, OR if a full-history cross is needed. Bulk download mechanics undocumented → validate in a spike before relying on it. |
+| `exceljs` for SERVEL `.xlsx` | `xlsx`/SheetJS | Only if `exceljs` chokes on a specific SERVEL workbook (merged cells / weird encoding). `exceljs` is already installed and proven in `parse-servel.ts`; do not add a second Excel lib. |
+| Reuse `voto` table (`0008`) for individual votes | New `voto_individual` model/table | Never — ARCHITECTURE decision: VOTE is enrichment, not a new model. A parallel table duplicates the roll-call. |
 
----
+## What NOT to Use
 
-## What NOT to Add
-
-| Avoid | Why | Use instead |
+| Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| **`reactflow` (old npm pkg, v11.x)** | Deprecated; v12 moved to scoped `@xyflow/react`. | `@xyflow/react@12`. |
-| **Apache AGE / openCypher** | Not available on managed Supabase (PG15); needs self-host. Contradicts locked infra. | Recursive CTEs over an edge table. |
-| **`ltree`** | Models single-parent trees, not a many-to-many influence graph. | Edge table + recursive CTEs. |
-| **Neo4j / dedicated graph DB** | New infra, new query language, splits the data plane; graph is small and read-mostly. | Postgres recursive CTEs. |
-| **Headless browser (Puppeteer/Playwright) in Edge Functions** | CPU/time limits; fragile and heavy — same warning as v1.0 WebForms. | `cheerio` + WebForms/JSF 2-step; headless only in GitHub Actions if SERVEL truly forces it. |
-| **A new HTTP/scraping framework per source** | Every source is plain `fetch`; `@obs/ingest` already centralizes rate-limit/UA/robots/cache/provenance. | Add connectors inside `@obs/ingest`, not new libs. |
-| **A new XML/JSON parser** | `fast-xml-parser@5` (votes, BCN) + native JSON (ChileCompra) cover all v2.0 sources. | Reuse locked parsers + zod. |
-| **Treating SERVEL as an API** | No API and no bulk dump; assuming one breaks the MONEY block. | Plan SERVEL as an explicitly fragile scraper, scheduled last, isolated behind `@obs/dinero`. |
-| **Assuming opendata.camara.cl works without a spike** | Documented but never validated live behind the gov WAF. | Phase-1 validation spike (reachability + non-null `Opcion`) before building VOTE. |
-| **Sending RUT/family data to LLMs or the client** | Ley 21.719 + rector rule; identity data is internal-use. | `@obs/llm` data-routing gates; surface only source-published fields with provenance. |
+| A new SOAP/WSDL client for opendata.camara.cl | ASMX serves plain HTTP GET/POST; `fetch`+`fast-xml-parser` already parse it (live-verified) | Existing `parseCamaraVotoDetalle` |
+| Headless browser (Puppeteer/Playwright) for any of these sources | All three (Cámara ASMX, Senado XML, ChileCompra JSON, SERVEL xlsx) are direct fetches; no JS rendering needed | `@obs/ingest` `fetcher.get` |
+| Adding SERVEL host to `DEFAULT_ALLOWED_SUFFIXES` | Widens SSRF surface to ALL Azure Blob tenants | Scoped `extraHosts` + https-only assertion (already done in `connector-servel.ts`) |
+| Interpolating the ChileCompra ticket into logs/errors | Secret leak | `redactarTicket` (already in `query.ts`); errors carry status only |
+| Crossing by RUT before RUT-01 backfill | The join key doesn't exist → empty/wrong crosses | Sequence RUT-01 (`harvest-rut.ts`) as a data phase first |
+| Sending RUT to the LLM for entity matching | PII to LLM is LOCKED-forbidden; jurídicas match by exact RUT | Deterministic exact-RUT match, fail-closed |
+| `BaseConnector.run` for these connectors | Its daily cache would skip re-runs / backfills | LOCKED manual order `assertAllowedUrl → robots → rateLimiter.wait → fetcher.get` (already used) |
+| New CSV/OData/OCDS SDK for ChileCompra | Ticketed REST JSON already covers the per-RUT need | `connector-chilecompra.ts` |
 
----
+## Stack Patterns by Variant
+
+**If the opendata.camara.cl spike FAILS (WAF/endpoint down/Opcion null):**
+- Fall back to `getVotaciones_Boletin` for aggregates only + re-plan the VOTE block (PROJECT.md already plans for this contingency).
+- Do NOT swap stacks — the failure would be source availability, not tooling.
+
+**If ChileCompra per-RUT volume exceeds 10k req/day across the diputado universe:**
+- Split the crawl across multiple days (backfill = LOCAL, reanudable) OR request additional operator tickets.
+- Evaluate the `datos-abiertos.chilecompra.cl` OCDS bulk as a batch source — but validate download mechanics first.
+
+**If SERVEL publishes a new election workbook mid-milestone:**
+- Operator drops the `.xlsx` URL/file → R2 crudo → existing `ingest-run-servel.ts` reprocesses from R2. No code change.
 
 ## Version Compatibility
 
-| Package | Version (2026-06-18) | Compatible with | Notes |
-|---------|----------------------|-----------------|-------|
-| `@xyflow/react` | 12.11.0 | React 19.2 / Next.js 16 App Router | Documented SSR/SSG config; use as a Client Component island (`'use client'`) inside Server-Component pages. |
-| `sigma` (alt) | 3.0.3 | + `graphology` 0.26.0, `@react-sigma/core` 5.0.6 | WebGL; client-only (`dynamic ssr:false`). Only if scale demands. |
-| `cytoscape` (alt) | 3.34.0 | + `react-cytoscapejs` | Client-only; not recommended here. |
-| `fast-xml-parser` | 5.x (locked) | Deno 2.x | Parses `getVotacion_Detalle` XML — same as Senado `wspublico`. |
-| Postgres recursive CTE | PG15 (Supabase) | pgvector 0.8 unchanged | No extension needed; expose via Supabase RPC like `match_proyectos`. |
-
----
+| Package A | Compatible With | Notes |
+|-----------|-----------------|-------|
+| fast-xml-parser@5.9.2 | Deno 2.x / Node 20+ | Handles ASMX `@_Codigo`/`#text`/nil shapes; stay on 5.x (v6 experimental). |
+| exceljs@4.4.0 | Node 20+ (tsx runner) | SERVEL `.xlsx`; pinned exact — do not float. |
+| zod@4.4.3 | @obs/dinero + @obs/tramitacion | v4 line; already the repo standard for this milestone's packages. |
+| @supabase/supabase-js@2.108.2 | PostgREST | Paginate reads (1k cap) via `.order().range()` — known gotcha at scale. |
+| ChileCompra ticket | api.mercadopublico.cl v1 | 10k req/day; RUT must be dotted+hyphen+DV in the query. |
 
 ## Sources
 
-- [opendata.camara.cl — Votaciones por Proyecto de Ley](https://opendata.camara.cl/pages/votacion_boletin.aspx) — `getVotaciones_Boletin`, param boletín — HIGH
-- [opendata.camara.cl — Detalle de Votación](https://opendata.camara.cl/pages/votacion_detalle.aspx) — `getVotacion_Detalle`, param vote ID — HIGH
-- [opendata.camara.cl — wscamaradiputados.asmx?op=getVotacion_Detalle](https://opendata.camara.cl/wscamaradiputados.asmx?op=getVotacion_Detalle) — WSDL/op: `prmVotacionID`, `Voto[]`→`Diputado{DIPID,Nombre,...}`+`Opcion`, HTTP GET equivalent — HIGH (documented), live behavior UNCONFIRMED
-- [opendata.congreso.cl](https://opendata.congreso.cl/) — index of Congreso open-data endpoints (XML); confirms `votacion_detalle` provides per-deputy detail — HIGH
-- [ChileCompra — API de Mercado Público](https://www.chilecompra.cl/api/) — endpoints `licitaciones.json`/`ordenesdecompra.json`/`Empresas/BuscarProveedor`, `rutempresaproveedor`, ticket, 10k/day, JSON/XML — HIGH
-- [api.mercadopublico.cl — Utilización](https://api.mercadopublico.cl/modules/api.aspx) — request/format details — MEDIUM-HIGH
-- [InfoProbidad — Datos Abiertos Enlazados](https://www.infoprobidad.cl/DatosAbiertos/DatosAbiertos) — CSV catalogs + SPARQL `datos.cplt.cl/sparql`, CC BY 4.0 — HIGH
-- [InfoProbidad — Declaraciones (Listado)](https://www.infoprobidad.cl/Home/Listado) — per-declaration access — HIGH
-- [Ley del Lobby — Instituciones / audiencias](https://www.leylobby.gob.cl/instituciones) — per-institution HTML audiencias — MEDIUM-HIGH
-- [Ayuda Ley del Lobby — Descargas](https://ayuda.leylobby.gob.cl/descargas/) — documented bulk-download path (503 at research time; re-validate) — MEDIUM, UNCONFIRMED live
-- [SERVEL — Aportes](https://aportes.servel.cl/servel-aportes/inicio.xhtml) + [servel.cl/aportes](https://www.servel.cl/aportes/) — authenticated JSF web app, no API — HIGH (that it's fragile)
-- [bastianolea/servel_scraping_votaciones (GitHub)](https://github.com/bastianolea/servel_scraping_votaciones) + [LupaElectoral](https://lupaelectoral.cl/datos/) — confirm SERVEL reachable only via scraping — MEDIUM-HIGH
-- Context7 `/websites/reactflow_dev` — SSR/SSG configuration (`ReactFlowProvider initialNodes/initialEdges`, `initialWidth/Height`, `fitView`) — HIGH
-- Context7 `/jacomyal/sigma.js`, `/websites/sigmajs`, `/dunnock/react-sigma` — WebGL large-graph rendering, graphology, React wrapper — HIGH
-- Context7 `/cytoscape/cytoscape.js`, `/plotly/react-cytoscapejs` — graph-theory algorithms, React wrapper — HIGH
-- npm registry (2026-06-18): `@xyflow/react`@12.11.0, `reactflow`@11.11.4 (deprecated→scoped), `sigma`@3.0.3, `graphology`@0.26.0, `@react-sigma/core`@5.0.6, `cytoscape`@3.34.0 — HIGH
-- [Supabase Discussion #13263 — add Apache AGE](https://github.com/orgs/supabase/discussions/13263) — AGE not available on managed Supabase (PG15 vs AGE≤PG13) — HIGH
+- `https://opendata.camara.cl/camaradiputados/WServices/WSLegislativo.asmx` (WSDL) + `?op=retornarVotacionDetalle` — SOAP method + response schema with `<Votos><Voto><Diputado>/<OpcionVoto>` incl. RUT — **HIGH** (schema fetched live)
+- `https://opendata.camara.cl/pages/votacion_detalle.aspx` — confirms `getVotacion_Detalle` / `prmVotacionId` — HIGH
+- In-repo `packages/tramitacion/src/parse-camara-votacion.ts` + `parse-senado-votacion.ts` — parsers already validated LIVE (2026-06-18); codes 1/0/4 confirmed — **HIGH**
+- In-repo `packages/votos/*` + `packages/dinero/*` (connectors, parsers, models, live probes) — code-complete since v2.0 — **HIGH**
+- `https://www.chilecompra.cl/api/` + `https://api.mercadopublico.cl/modules/api.aspx` — base URL, ticket flow, 10k/day, JSON/XML, `BuscarProveedor?rutempresaproveedor=…` + `ordenesdecompra.json` — **HIGH**
+- `https://datos-abiertos.chilecompra.cl/` — OCDS/CSV bulk exists; mechanics undocumented on page — MEDIUM
+- `https://www.servel.cl/centro-de-datos/estadisticas-de-datos-abiertos-4zg/` + `aportes.servel.cl` — open-data portals, NO REST API, gradual incorporation — **HIGH** (no API confirmed by absence + portal-only access)
+- In-repo `connector-servel.ts` — Azure Blob `repodocgastoelectoral.blob.core.windows.net` `.xlsx` target, anonymous GET — MEDIUM-HIGH
+- PROJECT.md / CLAUDE.md — SERVEL "manual por elección", RUT-01 hard prereq, LOCKED ingest order — HIGH
 
 ---
-*Stack research for: v2.0 Parlamentarios 360 (additions to a locked v1.0 stack)*
-*Researched: 2026-06-18*
+*Stack research for: v7.0 votos individuales + dimensión dinero (additive on existing stack)*
+*Researched: 2026-07-13*

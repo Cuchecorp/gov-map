@@ -1,274 +1,195 @@
-# Feature Research — Parlamentarios 360 (v2.0)
+# Feature Research
 
-**Domain:** Parliamentary-monitoring / legislator-transparency civic tech (Chile)
-**Researched:** 2026-06-18
-**Confidence:** MEDIUM-HIGH (comparator products HIGH; Chile-source feasibility lives in STACK/PITFALLS, not here)
+**Domain:** Observatorio legislativo ciudadano — voto individual (P3) + dimensión dinero (P5)
+**Researched:** 2026-07-13
+**Confidence:** HIGH (votos: TheyWorkForYou/GovTrack documentan explícitamente su postura anti-insinuación; dinero: OpenSecrets/SERVEL/ChileCompra bien documentados. LOW en cobertura exacta de SERVEL/opendata.camara.cl porque son fuentes frágiles no validadas aún.)
 
-> **Scope.** This file covers the **v2.0 "parlamentarios 360"** front. The v1.0 **"proyectos"** front
-> feature research lives in `FEATURES.md` (do not overwrite). This document was written as a sibling to
-> avoid clobbering valid v1.0 research that is still roadmap context.
-
----
-
-## Framing
-
-This milestone adds the **legislator-centric** front to a product whose v1.0 already shipped the
-bill-centric front and — critically — the **identity master** (186 confirmed legislators with a
-golden-gated reconciliation pipeline; three cross keys: boletín, normalized name, RUT-internal-only).
-Every feature below is a **profile facet** hanging off that master, governed by the LOCKED rule:
-*trazabilidad sobre interpretación, nunca causalidad ni intención.*
-
-The four blocks map to product risk in increasing order:
-
-| Block | What it surfaces | Identity dependency | Causality risk |
-|-------|------------------|---------------------|----------------|
-| **VOTE** | Individual votes, vote × topic, alignment | Already wired (Cámara by DIPID, Senado by name→pipeline) | Medium |
-| **INT** | Lobby meetings, asset & interest declarations | Name/RUT match against declarant lists | Medium-High |
-| **MONEY** | Campaign finance (SERVEL), state contracts (ChileCompra by RUT) | RUT-as-bridge (internal); contract subject ≠ legislator | **Highest** |
-| **NET** | Influence graph linking all of the above | Consumes the other three; cannot precede them | **Highest** |
-
-Comparators studied: **They Vote For You** / **Public Whip** (votes-by-policy), **Abgeordnetenwatch**
-(MP profile + extra-earnings + lobby), **OpenSecrets** (donor/money profiles + "money maps"),
-**Transparency International** asset/interest-disclosure guidance (conflict-of-interest framing).
+> **Nota:** este archivo reemplaza la versión de research v2.0. Alcance = SOLO las features NUEVAS de v7.0. Lo ya construido (timeline, votaciones AGREGADAS, ficha 360, lobby, patrimonio, `cruce_senal`, `/red`, búsqueda semántica, `/agenda`) NO se re-investiga.
+>
+> **Regla rectora que gobierna TODO lo de abajo:** cada dato lleva fuente + fecha + enlace original; el sistema describe el HECHO (cómo votó, cuánto recibió, qué contrato existe) y NUNCA infiere motivo, intención, causalidad ni "afinidad". Cada feature está redactada como "el ciudadano puede X" y probada contra la regla anti-causalidad. Los dos riesgos existenciales del proyecto — (#1) identidad que falla en silencio, (#2) "máquina de sospechas" — son el marco de aceptación de cada feature.
 
 ---
 
-## Feature Landscape
+## FRENTE P3 — Cómo vota el Congreso (voto individual)
 
-### Block VOTE — Cómo vota cada parlamentario
+### Table Stakes (el ciudadano espera que existan)
 
-#### Table Stakes
+| Feature | Por qué se espera | Complejidad | Notas de implementación |
+|---------|-------------------|-------------|-------------------------|
+| **"Cómo votó X en esta votación"** — por cada votación nominal, lista de a favor / en contra / abstención / pareo / ausente, con nombre de parlamentario | Es la unidad atómica de todo observatorio de votos (GovTrack, TheyWorkForYou, VotaInteligente). Sin esto no hay P3. | MEDIUM | Fuente = `opendata.camara.cl` (SIN VALIDAR — bloqueante histórico). Reconciliar cada nombre contra la maestra de identidad **fail-closed** (riesgo #1). Guarda UI: solo enlazar a la ficha si `confirmado`. Senado ya trae voto por PARLID en `votaciones.php`. |
+| **Historial de votos de un parlamentario** — en su ficha 360, "así votó" ordenado por fecha/sesión, cada fila enlaza a la votación y al proyecto | Espejo del anterior desde el eje persona. GovTrack "Voting Record", TheyWorkForYou "Votes" por MP. | MEDIUM | Ya existe VIZ-VOTOS agregado ("cuándo votó por trimestre"); esto es el detalle nominal por debajo. Paginar (PostgREST cap 1k — GOTCHA conocido del proyecto). |
+| **Tasa de asistencia / ausencia a votaciones** — "votó en N de M votaciones (X%)" | GovTrack publica "Missed Votes" como report card estándar; es la métrica de rendición de cuentas más pedida. | LOW-MEDIUM | Conteo factual puro. **CAVEAT OBLIGATORIO en UI** (copiar a TheyWorkForYou): las ausencias pueden deberse a licencia médica, maternidad o pareo; NO etiquetar "flojo". Ya hay VIZ-COMP (comparativo de ausencias vs mediana de cámara) — extenderlo con el detalle nominal. |
+| **Desglose de una votación** — totales por opción + resultado (aprobado/rechazado) + quórum, con desglose por bancada/cámara | Contexto mínimo para entender el resultado; TheyWorkForYou muestra "party-by-party breakdown" por división. | LOW | El agregado ya existe (votaciones AGREGADAS v1.0); aquí se añade la capa nominal debajo del agregado. |
+| **Trazabilidad por voto** — fuente + fecha + enlace a la votación oficial en cada fila | Regla rectora del proyecto; también estándar (TheyWorkForYou enlaza al Hansard/debate). | LOW | Patrón ya establecido en todas las superficies del proyecto. |
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Individual vote record on a legislator profile (`/parlamentario/[id]`) | The whole point of the front; They Vote For You / Public Whip are built on this | MEDIUM | Inverts v1.0's per-bill votación into a per-legislator view. Data already in `voto` table. **Gated on `opendata.camara.cl` spike** — `doGet.asmx` returns `Votos=null`; individual deputy vote is unvalidated. |
-| Per-vote: a favor / en contra / abstención / pareo / ausente + date + boletín + source link | Citizens need "qué votó, cuándo, según qué fuente" verbatim | LOW | Reuse `VotoRow` + `ProvenanceBadge` from v1.0. Map all official vote-type enums faithfully (do not collapse abstención into "no votó"). |
-| Identity guard on the profile itself | A profile is a stronger identity claim than a single vote row; a wrong match here is risk #1 | LOW (policy) but LOCKED | Profile page only for `estado='confirmado'`. Senado votes that resolved to `probable`/`revision` show as "identidad no verificada" — never silently attributed. |
-| Attendance / participation count (votes cast vs. divisions held) | Standard metric on every comparator ("attendance" column on TVFY) | LOW | Pure aggregate; honest denominator (divisions where the legislator was a member). |
+### Differentiators (ventaja competitiva)
 
-#### Differentiators
+| Feature | Propuesta de valor | Complejidad | Notas de implementación |
+|---------|--------------------|-------------|-------------------------|
+| **Alineamiento con la propia bancada — DESCRIPTIVO** — "en estas votaciones, X votó igual que la mayoría de su bancada el N% de las veces" | TheyWorkForYou tiene "party-alignment score" (distancia entre el voto del miembro y la proporción de su partido). Diferenciador real y muy usado por prensa. | MEDIUM-HIGH | **RIESGO ALTO de insinuación.** Solo el HECHO estadístico: "coincidió con el voto mayoritario de su bancada en N/M votaciones". NUNCA "leal/rebelde/disidente" como juicio, NUNCA inferir presión de partido. TheyWorkForYou advierte explícitamente que NO tiene datos de instrucción de voto (whip) y que el score ≠ rebeldía. Requiere linter de texto anti-insinuante (ya existe en el proyecto). Considerar diferir a un flag hasta sign-off legal. |
+| **"Se apartó de la mayoría de su bancada" (rebeldías) — como HECHO enumerado** | Prensa lo busca activamente; es señal noticiable. | MEDIUM | Solo enumerar las votaciones donde el voto difirió de la mayoría de su bancada, con enlace. Palabra neutra ("difirió", "votó distinto a la mayoría de su bancada"), NUNCA "traicionó/rebelde/quebró la línea". Es un caso especial del alineamiento; mismo gate. |
+| **Voto × tema/sector** — agrupar votaciones por materia (salud, pensiones, etc.) y mostrar cómo votó el parlamentario en ese grupo | GovTrack agrupa por "subject"; VotaInteligente por eje temático. Conecta con la búsqueda semántica y `cruce_senal` (etiquetado de sector por LLM ya existe). | HIGH | Reusa el etiquetado de sector del LLM (con su eval propio, NO el de extracción literal). Riesgo: agregación temática puede insinuar postura ideológica → mantener descriptivo ("en votaciones de materia X votó A a favor, B en contra"). TheyWorkForYou usa "consistently voted for/against" — es la línea roja; nosotros nos quedamos en el conteo, sin la etiqueta cualitativa. |
+| **Comparativo entre parlamentarios en la MISMA votación** — "en esta votación, quiénes de tal comisión/bancada votaron cómo" | Herramienta de prensa; ya hay precedente con VIZ-COMP y `/red`. | MEDIUM | Descriptivo, mismo eje temporal. No rankear "el más X". |
+| **Cruce voto × proyecto que el parlamentario presentó** — "presentó este proyecto y así votó en sus votaciones" | Diferenciador del producto (frente proyectos + frente parlamentario ya integrados; F48 autoría ya existe). | MEDIUM | Une autoría (763 autores ya poblados) con voto nominal. Puro hecho. |
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **Vote × topic** (votes grouped by policy/theme) | TVFY's core UX: "how did they vote on climate / housing". Makes a vote record *legible* to non-experts | HIGH | Requires a topic taxonomy. Reuse v1.0 semantic infra: cluster/label boletines via embeddings → roll votes up to themes. Each theme card stays *descriptive* ("voted X of Y times on bills tagged Z"), never a conviction score. |
-| **Cross-legislator alignment** ("votes most often with…") | Engaging; co-voting matrices draw users | HIGH | **Strong anti-feature pressure** (below). The Australia Institute warns co-voting ≠ shared views (procedural/government votes dominate). If built: descriptive co-occurrence only, with a standing caveat, never "ally/rival" language. |
-| Filter votes by chamber / legislature / time window | Press workflow; lets a journalist scope a claim | LOW | Standard faceting over existing rows. |
-| "Rebellions" (voted against own bench) | Public Whip / TVFY signature metric | MEDIUM | Requires bench-position-at-time-of-vote. Defensible *if* bench majority is computed from the same division, not inferred. |
+### Anti-Features (parecen buenas, crean problemas)
 
-#### Anti-Features (VOTE)
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| Ideology / left-right score derived from votes | Looks authoritative, "places" a legislator | Editorializing; invents a model the source doesn't publish → causality machine | Raw vote tallies per topic; reader infers |
-| "Voting power" / decisiveness index | Sounds analytical | Pivotality models are contestable and read as judgment | Attendance + raw outcomes |
-| Coloring votes "good/bad" or scoring vs. an agenda | AFL-CIO-style scorecards exist | Partisan; destroys neutral-arbiter posture | Neutral descriptive grouping only |
-
----
-
-### Block INT — Lobby + Patrimonio e Intereses
-
-#### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Lobby meetings list per legislator (who, when, on whose behalf, subject) | Ley del Lobby publishes this; Abgeordnetenwatch surfaces lobby contact as a headline facet | MEDIUM | Source = InfoLobby / Ley del Lobby registry. Match meetings to the legislator (sujeto pasivo) via name/cargo; the *lobbyist* counterpart is not yet in any master. |
-| Asset declaration (patrimonio) summary, with source/date/link | TI: online registries of declarations are the baseline transparency artifact | MEDIUM | Source = InfoProbidad (CC BY 4.0 — **attribution must be visible**). Show declared categories faithfully; link to the original declaration. |
-| Interest declaration (intereses): directorships, activities, holdings | TI: interest disclosure is the conflict-of-interest substrate | MEDIUM | Same source. Structured extraction (LLM + zod), literal-fidelity gate like v1.0 fichas. |
-| Declaration as-of-date + version history | Declarations are periodic; "qué declaró y cuándo" requires the date | LOW-MEDIUM | Store each declaration version with provenance; show timeline, not just latest. |
-
-#### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Lobby meeting **counterpart resolution** (recurring lobbyists / firms) | "Who lobbies this legislator most" — the Abgeordnetenwatch lobby angle | HIGH | Requires a lobbyist/firm identity sub-master (analogous to legislators). Feeds NET. Start minimal: store raw counterpart strings, normalize later. |
-| Patrimonio **timeline / side-by-side between declarations** | TI: wealth-evolution tracking is a stated purpose of periodic declarations | HIGH | **Anti-feature boundary** — show declared numbers and dates side-by-side; do NOT compute "unexplained enrichment" or flag deltas as suspicious. |
-| Cross-link declaration → bills on the same matter | Conflict-of-interest *context* (descriptive) | HIGH | Highest-value, highest-risk. Factual adjacency only ("declared interest in sector X; voted on bills tagged X") with explicit "no implica conflicto" framing. Strong candidate to **defer**. |
-
-#### Anti-Features (INT)
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| "Conflict of interest" flags / badges | Seems like the obvious payoff | Asserts a legal/ethical conclusion the source never makes → causality machine, defamation exposure | Show declaration + related activity adjacently; reader concludes |
-| Exposing family-member asset/data | Declarations sometimes include relatives | LOCKED out: minimization; family data internal-only, RUT-only for reconciliation | Show only the legislator's own publicly-published declared items |
-| "Enrichment alert" on patrimonio delta | Mimics anti-corruption tooling | Statistical accusation without adjudication; risk #2 | Side-by-side declared figures, no computed verdict |
-| Free-text "lobby influence score" | Engagement | Invented metric | Raw meeting count + counterpart list |
+| Feature | Por qué se pide | Por qué es problemática | Alternativa |
+|---------|-----------------|-------------------------|-------------|
+| **Score de "lealtad", "consistencia" o "coherencia" ideológica** (tipo GovTrack ideology/leadership score) | Resume en un número; muy compartible | GovTrack mismo advierte que su score "puede estar midiendo otra cosa", fluctúa por azar del proceso legislativo, y NO garantiza relación con ideología. Un número-juicio ES insinuación de intención → viola la regla rectora y alimenta la "máquina de sospechas". | Conteos factuales sin etiqueta cualitativa ("coincidió con su bancada en N/M"). Nunca colapsar a un rótulo. |
+| **Etiquetas cualitativas de postura** ("consistentemente votó a favor de X", "pro-Y") | Legible, así lo hace TheyWorkForYou | Requiere que el sistema AFIRME una postura política del parlamentario → prohibido por la regla rectora (no afirmar intención). Es exactamente la línea que TheyWorkForYou cruza y nosotros no podemos. | Mostrar los votos individuales agrupados por tema y dejar que el ciudadano lea el patrón. El sistema cuenta, no califica. |
+| **Ranking "los más ausentes / los más rebeldes"** | Titular fácil | Un ranking implica juicio de valor y descontextualiza (ausencia = licencia/pareo). GOTCHA del proyecto: "ranking implícito en ORDER BY". | Métrica individual con contexto + comparación explícita contra la mediana de cámara (VIZ-COMP ya lo hace bien), sin tabla de "peores". |
+| **Inferir presión de partido / "votó así porque el partido lo obligó"** | Explica el comportamiento | El sistema NO tiene datos de whip (TheyWorkForYou lo dice explícitamente) y afirmar la causa es intención pura. | Solo el hecho: "votó igual que la mayoría de su bancada". Sin el "porque". |
+| **Marcar ausencias como negativas / "flojo"** | Rendición de cuentas | Sesga; ignora licencia médica/maternidad/pareo (advertencia literal de TheyWorkForYou). | Mostrar asistencia como conteo neutro + caveat de contexto obligatorio + registrar el pareo como categoría propia (no como "ausente"). |
 
 ---
 
-### Block MONEY — Financiamiento + Contratos del Estado
+## FRENTE P5 — Dimensión dinero (SERVEL + ChileCompra por RUT)
 
-#### Table Stakes
+> **Prerrequisito duro REAL (no un flag): RUT-01** — los RUT deben estar backfilleados en la maestra `entidad_tercero` ANTES de que cualquier cruce por RUT sea posible. Es dato, no autorización. Flag `MONEY_PUBLIC_ENABLED` OFF hasta encendido humano (Ley 21.719, plena vigencia 2026-12-01).
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Campaign finance per legislator: donors, amounts, dates, source link | OpenSecrets' core: "where the campaign warchest came from" | HIGH | Source = SERVEL. **Connector is artisanal/fragile, not a REST API** (PROJECT.md) — highest ingestion risk of the milestone. Show declared contributions verbatim. |
-| State contracts *surrounding* the legislator, by RUT | Stated milestone goal; OpenSecrets links money→contracts conceptually | HIGH | Source = ChileCompra, keyed on RUT (**internal**). Legislator is rarely the direct contractor — usually a related person/firm. **Wording is everything**: "contratos asociados al RUT", never "contratos del parlamentario". |
-| Strict provenance + as-of-date on every money row | Money claims are the most defamatory if wrong | LOW (policy) | Non-negotiable: source/date/link on each figure. |
+### Table Stakes (el ciudadano espera que existan)
 
-#### Differentiators
+| Feature | Por qué se espera | Complejidad | Notas de implementación |
+|---------|-------------------|-------------|-------------------------|
+| **"Quién financió a X, cuánto y cuándo"** — aportes recibidos por el parlamentario en su campaña (aportante, monto, fecha), desde SERVEL | Es la unidad atómica de todo observatorio de dinero (OpenSecrets, FollowTheMoney). Table stake absoluto de P5. | HIGH | **SERVEL es conector artesanal frágil, NO API REST** (manual por elección/período; PROJECT.md lo marca como riesgo). Aportante persona natural → RUT es dato sensible (uso interno para identidad; publicar solo lo que SERVEL ya publica). Ley 19.884 exige nombre + RUT del aportante; verificar qué es público vs. reservado por tramo. |
+| **Gastos declarados de campaña** — total y desglose que el parlamentario declaró a SERVEL | Contraparte del aporte; SERVEL publica "gastos declarados". | MEDIUM | Conteo factual con fuente/fecha/enlace a SERVEL. |
+| **Contratos del Estado de empresas ligadas por RUT** — "empresas con este RUT tienen N contratos con el Estado por $X" (ChileCompra) | Diferenciador declarado del producto; ChileCompra es dato abierto. | HIGH | Cruce SOLO por **RUT exacto** de persona jurídica (NUNCA LLM para jurídicas — regla del proyecto). Depende 100% de RUT-01. "Ligada" debe definirse con precisión trazable (¿aportante? ¿proveedor? ¿director declarado en patrimonio?) — la relación tiene que ser un hecho verificable, no una inferencia. |
+| **Trazabilidad total por dato de dinero** — fuente (SERVEL/ChileCompra) + fecha + enlace + atribución CC BY 4.0 donde aplique | Regla rectora + marco legal del proyecto. | LOW | Patrón establecido. ChileCompra/InfoProbidad bajo CC BY 4.0 → atribución visible. |
+| **Caveat de contexto en TODA superficie de dinero** | Mitigación del riesgo #2, estándar de OpenSecrets | LOW | OpenSecrets: *"is impossible to know the motivation for each individual giver, [but] the patterns of contributions provide critical information."* Nuestro equivalente: leyenda fija "esto son montos y fechas declarados; el sistema no afirma relación entre financiamiento y decisiones". Reusar el patrón "Cómo leer esto" ya existente (v6.0). |
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Donor aggregation ("top donors", by sector/firm) | OpenSecrets "money maps" — the legible payoff | HIGH | Requires donor-identity normalization (a sub-master). Descriptive aggregation only. |
-| Contract aggregation by counterparty / agency | "Which agencies, which suppliers" | HIGH | Same normalization need; feeds NET. |
-| Money **timeline** aligned to electoral cycle | Context for "when" | MEDIUM | Honest dating; no inference of motive relative to votes. |
+### Differentiators (ventaja competitiva)
 
-#### Anti-Features (MONEY)
+| Feature | Propuesta de valor | Complejidad | Notas de implementación |
+|---------|--------------------|-------------|-------------------------|
+| **Cruce dinero × sector × lobby** — "recibió aportes de entidades del sector X; se reunió (lobby) con entidades del sector X; hay N proyectos/votaciones del sector X" | ES el diferenciador central del producto (los tres carriles conectados). Reusa `cruce_senal` (ya `parlamentario↔sector`, conteos sin score). | HIGH | Extiende `cruce_senal` con la dimensión dinero. **Conteos factuales, NUNCA score de correlación** (decisión LOCKED del proyecto, 17-LEGAL-DOSSIER §2). Deny-by-default detrás de `MONEY_PUBLIC_ENABLED`. Máximo riesgo reputacional → sign-off legal obligatorio. |
+| **Ficha de una entidad (aportante/proveedor) 360** — "esta empresa aportó a estos parlamentarios y tiene estos contratos" | OpenSecrets tiene perfiles de industria/organización. Da el eje "entidad" además del eje "parlamentario". | HIGH | Requiere `entidad_tercero` poblada (v4.0) + RUT-01. Solo hechos enumerados. |
+| **Línea de tiempo dinero × tramitación** — aportes/contratos ubicados temporalmente junto a la tramitación de proyectos del sector | Contexto temporal (que la regla rectora SÍ permite: "correlaciones con contexto temporal y fuente"). | HIGH | **Máxima tentación de insinuar causalidad** por la yuxtaposición temporal. La proximidad temporal en un timeline PUEDE leerse como "compró el voto". Requiere caveat reforzado y probablemente diferir hasta sign-off. Es el punto donde más fácilmente se convierte en "máquina de sospechas". |
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| Donation → vote correlation ("voted for donors") | The single most-requested, most-clickable cross | The textbook causality machine; risk #1 (wrong RUT match) + risk #2 (implied bribery). Defamation + Ley 21.719 exposure | Money and votes on the same profile, separately, with no joined claim |
-| Labeling contracts as "del parlamentario" | Shorthand | RUT proximity ≠ ownership/benefit; false attribution is libel | "Contratos asociados al RUT [internal] — relación: [declarada]" |
-| "Influence-for-sale" / ROI metrics | Engagement | Invents intent | Raw aggregates with caveats |
-| Exposing RUT publicly to "prove" the match | Seems like traceability | LOCKED: RUT is internal-only | Show source link; keep RUT server-side |
+### Anti-Features (parecen buenas, crean problemas)
 
----
-
-### Block NET — Grafo de influencia
-
-#### Table Stakes (only once the others are populated)
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Relationship graph: legislator ↔ lobbyist ↔ donor ↔ contractor | The synthesis the product promises ("observatorio de redes") | HIGH | **Pure consumer** of VOTE/INT/MONEY data + the sub-masters they create. Cannot exist before they are populated. |
-| Every edge carries provenance (source/date/link of the underlying datum) | A graph is the easiest place to launder unsourced claims | HIGH | Edge = a *published fact* (a meeting, a donation, a contract), never an inferred tie. No edge without a row behind it. |
-| Node = confirmed identity only | Risk #1 amplified: a graph multiplies one bad match across many edges | MEDIUM | Reuse golden-gated identity for legislators; lobbyist/donor/contractor sub-masters need their own confidence gates. |
-
-#### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Shared-counterparty discovery ("two legislators, same donor/lobbyist") | The genuinely novel cross only this product can do | HIGH | Descriptive co-occurrence of *published facts*. Frame as "comparten contraparte", never "aliados". |
-| Interactive exploration (filter by edge type, time) | Press research tool | HIGH | Frontend graph lib (react-flow / sigma.js — deferred decision per stack). |
-
-#### Anti-Features (NET)
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| Inferred / weighted "influence score" per node | The seductive endpoint of any graph | Manufactures a verdict from correlation; maximal causality-machine risk | Edges are facts; let the reader trace paths |
-| Auto-detected "suspicious clusters" / anomaly flags | Looks like investigative AI | Algorithmic accusation; indefensible legally | No automated flags; neutral exploration only |
-| Edges from semantic/LLM inference ("likely connected") | Fills gaps | Fabricated relationships; violates "no edge without a sourced row" | Only edges with a published-fact provenance |
+| Feature | Por qué se pide | Por qué es problemática | Alternativa |
+|---------|-----------------|-------------------------|-------------|
+| **"Compró su voto" / cualquier afirmación aporte→voto** | Titular explosivo | Afirma causalidad e intención → viola frontalmente la regla rectora, es el riesgo existencial #2, y expone a responsabilidad legal (Ley 21.719, riesgo "máquina de sospechas"). | Mostrar aporte y voto como HECHOS separados con contexto temporal; el ciudadano conecta, el sistema NO. FollowTheMoney/OpenSecrets nunca afirman el vínculo causal. |
+| **Score de corrupción / índice de conflicto de interés / "riesgo"** | Resume, rankea, es compartible | Un score de sospecha ES una acusación cuantificada sin sentencia; jurídicamente indefendible; destruye la trazabilidad-sobre-interpretación. | Conteos factuales por parlamentario (N aportes, $X, N contratos ligados por RUT). Sin agregarlo a un índice. |
+| **Ranking "los más financiados / más contratos"** | Titular fácil | Ranking = juicio implícito + descontextualiza (monto alto puede ser campaña legítima grande). GOTCHA "ranking implícito en ORDER BY". | Cifra individual + comparación neutra contra mediana si acaso, sin tabla de "peores". |
+| **Publicar RUT y datos de familiares** | "Máxima transparencia" | Prohibido por diseño del proyecto (minimización; RUT es uso INTERNO para reconciliar identidad). Ley 21.719: "fuente de acceso público" no exime cumplimiento; el dato DERIVADO del cruce queda protegido. | Publicar solo lo que la fuente ya publica; RUT nunca al LLM ni a la UI pública; guarda RUT-guard LOCKED (ya existe, 478 fichas bloqueadas por él). |
+| **Inferir "conflicto de interés" de un cruce dinero×voto** | Parece el propósito del cruce | "Conflicto de interés" es una calificación jurídica que el sistema no puede emitir. | Enumerar los hechos coincidentes (aportó del sector X, votó en materia X) y dejar la calificación al lector/prensa/autoridad. |
 
 ---
 
 ## Feature Dependencies
 
 ```
-v1.0 Identity Master (186 confirmed, golden-gated)   [EXISTS]
-      │
-      ├──enables──> VOTE (per-legislator view)         [Cámara wired; Senado partial]
-      │                 └─ vote × topic ──reuses──> v1.0 semantic/embedding infra
-      │
-      ├──enables──> INT  (lobby + patrimonio/intereses)
-      │                 └─ lobby counterpart ──creates──> Lobbyist/Firm sub-master
-      │
-      ├──enables──> MONEY (SERVEL + ChileCompra by RUT)
-      │                 ├─ donors ──creates──> Donor sub-master
-      │                 └─ contracts ──creates──> Contractor sub-master (RUT bridge, internal)
-      │
-      └──────────────────────────────┐
-                                      ▼
-   VOTE + INT + MONEY ──all populate──> NET (influence graph)   [LAST]
-                                      └─ consumes the 3 sub-masters above
+P3 — VOTO INDIVIDUAL
+  opendata.camara.cl VALIDADO (bloqueante histórico)
+      └──requires──> conector 2-etapas fuente→R2→Supabase (hash-check, idempotente)
+             └──requires──> reconciliación voto↔maestra identidad (FAIL-CLOSED, riesgo #1)
+                    ├──enables──> "cómo votó X" + historial por parlamentario (table stakes)
+                    ├──enables──> asistencia/ausencia (+ caveat contexto)
+                    └──enables──> alineamiento con bancada / rebeldías (DIFF, gate anti-insinuación)
+  voto × tema ──requires──> etiquetado de sector LLM (ya existe en cruce_senal)
+  voto × proyecto propio ──requires──> F48 autoría (ya poblada, 763 autores)
 
-opendata.camara.cl spike ──gates──> VOTE (individual deputy vote)   [BLOCKER, Phase 1]
+P5 — DINERO
+  RUT-01 backfill a entidad_tercero (PRERREQUISITO DURO REAL, es DATO)
+      ├──requires──> entidad_tercero poblada (v4.0, ya existe)
+      └──enables──> contratos ChileCompra por RUT (table stakes)
+                    └──enables──> cruce dinero × sector × lobby (DIFF, extiende cruce_senal)
+  SERVEL aportes/gastos ──requires──> conector artesanal manual por elección (frágil)
+      └──enables──> "quién financió a X" (table stakes)
+
+GATE TRANSVERSAL (ambos frentes):
+  cualquier superficie sensible ──gated-by──> flag *_PUBLIC_ENABLED OFF
+      └──unblocked-by──> sign-off legal humano (Ley 21.719) — NUNCA un agente
+  todo texto ──gated-by──> linter anti-insinuación (ya existe)
 ```
 
 ### Dependency Notes
 
-- **All four blocks require the v1.0 identity master.** Each is a profile facet keyed on a confirmed
-  legislator. No block attributes a datum without passing the same identity guard shipped in v1.0
-  (confirmed → link; otherwise "identidad no verificada" + raw mention).
-- **VOTE is gated by the `opendata.camara.cl` spike.** `doGet.asmx` returns `Votos=null`; individual
-  deputy votes were never validated live. If the spike fails, the VOTE block is replanned. This is the
-  declared Phase-1 validation and the milestone's first build step.
-- **VOTE × topic reuses v1.0 semantic infrastructure** (embeddings, boletín clustering) — cheap to add
-  *after* the raw per-legislator vote view exists; not a from-scratch build.
-- **INT and MONEY each spawn a new sub-master** (lobbyists/firms; donors; contractors). These are the
-  *real* cost of those blocks and the prerequisite NET silently depends on. Treat sub-master creation
-  as part of each block, not deferred to NET.
-- **NET strictly depends on VOTE + INT + MONEY being populated** and on their sub-masters existing.
-  Building NET earlier yields an empty or fabricated graph. NET adds almost no new ingestion — it is a
-  read/visualization layer over already-sourced edges. Schedule it last, as PROJECT.md states.
-- **MONEY's ChileCompra cross depends on RUT** (strongest, internal-only key, already in the master).
-  The risk is not the join but the *subject mismatch* (contract party ≠ legislator) — a wording and
-  data-model problem.
+- **P3 entero depende de validar `opendata.camara.cl`:** es el bloqueante histórico literal del milestone. Hasta caracterizar ese endpoint (formato, campos, estabilidad), ninguna feature de voto individual de la Cámara es construible. El Senado (`votaciones.php`) ya trae voto por PARLID → P3 puede empezar por el Senado mientras se valida Cámara.
+- **Reconciliación fail-closed es el cuello de botella de calidad de P3:** un voto atribuido al parlamentario equivocado = "afirmación falsa y creíble" (riesgo existencial #1). El voto individual debe pasar por la maestra de identidad con las MISMAS garantías que el resto (golden set, revisión humana, guarda UI `confirmado`).
+- **P5 entero depende de RUT-01, que es DATO no flag:** sin RUT en `entidad_tercero` no hay cruce posible por RUT. El roadmap debe secuenciar RUT-01 como fase de datos ANTES de cualquier superficie de dinero.
+- **El alineamiento-con-bancada (P3) y el cruce dinero×voto (P5) son los dos puntos de máximo riesgo de insinuación** → ambos detrás de flag + sign-off + caveat reforzado. Son diferenciadores, pero NO table stakes: el producto es válido sin ellos si el sign-off no llega.
 
 ---
 
-## MVP Definition (per block — actual selection happens in requirements)
+## MVP Definition (para v7.0)
 
-### Launch With (the defensible core of each block)
+### Launch With (P3 primero, deny-by-default)
 
-- [ ] **VOTE** — per-legislator vote list (after spike passes) with full provenance + identity guard + attendance.
-- [ ] **INT** — lobby meetings list + asset/interest declaration (latest, with date + InfoProbidad attribution).
-- [ ] **MONEY** — campaign finance list (SERVEL) with verbatim donors/amounts/dates. *Contracts may lag if SERVEL proves fragile.*
+- [ ] **Voto individual nominal (Cámara vía opendata + Senado)** reconciliado fail-closed — sin esto no hay P3.
+- [ ] **Historial de votos en la ficha del parlamentario** con enlace a votación y proyecto — es el 360 real.
+- [ ] **Asistencia/ausencia con caveat de contexto obligatorio** (pareo como categoría propia, no "ausente").
+- [ ] **Desglose nominal bajo el agregado ya existente** — la capa que faltaba.
+- [ ] **Leyenda anti-insinuación en cada superficie de voto** (reusar "Cómo leer esto").
 
-### Add After Validation
+### Add After Validation / behind gate (P5, MONEY_PUBLIC_ENABLED OFF hasta sign-off)
 
-- [ ] **VOTE × topic** — once raw votes render and the topic taxonomy is trusted.
-- [ ] **INT** counterpart resolution + patrimonio side-by-side (no delta verdict).
-- [ ] **MONEY** ChileCompra contracts-by-RUT — once subject-attribution wording is legally reviewed.
-- [ ] Sub-masters (lobbyist, donor, contractor) hardened with confidence gates.
+- [ ] **RUT-01 backfill** — prerrequisito duro, construir aunque el resto quede gated.
+- [ ] **SERVEL aportes/gastos "quién financió a X"** — conector frágil, construir hasta el gate.
+- [ ] **ChileCompra contratos por RUT exacto** — jurídicas nunca por LLM.
+- [ ] **Alineamiento con bancada (P3) descriptivo** — diferenciador, detrás de gate anti-insinuación.
 
-### Future Consideration
+### Future Consideration / diferir (v7.x+)
 
-- [ ] **NET** — entire block; only when VOTE/INT/MONEY + sub-masters are populated.
-- [ ] Cross-block adjacency context (declaration↔bill, money↔vote *shown separately*) — only post legal review.
-- [ ] Co-voting alignment view — only if the descriptive-caveat framing survives legal review.
+- [ ] **Cruce dinero × sector × lobby en `cruce_senal`** — máximo impacto reputacional; solo tras sign-off legal explícito.
+- [ ] **Timeline dinero × tramitación** — máxima tentación de causalidad; diferir hasta que el marco legal (21.719 vigente 2026-12-01) y el sign-off estén resueltos.
+- [ ] **Ficha de entidad 360 (aportante/proveedor)** — depende de `entidad_tercero` + RUT-01 maduros.
 
 ---
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| opendata.camara.cl spike (VOTE unblock) | HIGH (gates VOTE) | LOW | **P1** |
-| Per-legislator vote list + profile + identity guard | HIGH | MEDIUM | **P1** |
-| Attendance metric | MEDIUM | LOW | P1 |
-| Lobby meetings list (INT) | HIGH | MEDIUM | P1 |
-| Asset/interest declaration (INT) | HIGH | MEDIUM | P1 |
-| Campaign finance list (MONEY/SERVEL) | HIGH | HIGH (fragile connector) | P1/P2 |
-| Vote × topic | HIGH | HIGH | P2 |
-| ChileCompra contracts-by-RUT | HIGH | HIGH | P2 |
-| Lobby/donor/contractor sub-masters | MEDIUM (enabling) | HIGH | P2 |
-| Patrimonio side-by-side timeline | MEDIUM | HIGH | P3 |
-| Co-voting alignment | MEDIUM | HIGH | P3 |
-| NET influence graph | HIGH | HIGH | P3 (last) |
-| Any score / flag / correlation (any block) | — | — | **NEVER** (anti-feature) |
+| Feature | Valor ciudadano | Costo impl. | Riesgo insinuación | Prioridad |
+|---------|-----------------|-------------|--------------------|-----------|
+| Voto individual nominal (table stake P3) | HIGH | MEDIUM | BAJO | P1 |
+| Historial de votos en ficha | HIGH | MEDIUM | BAJO | P1 |
+| Asistencia/ausencia + caveat | HIGH | LOW-MED | MEDIO (mitigado con caveat) | P1 |
+| Desglose nominal de votación | MEDIUM | LOW | BAJO | P1 |
+| Voto × proyecto propio | MEDIUM | MEDIUM | BAJO | P2 |
+| Voto × tema/sector | HIGH | HIGH | MEDIO | P2 |
+| Alineamiento con bancada (descriptivo) | HIGH | MED-HIGH | ALTO | P2 (gated) |
+| RUT-01 backfill | HIGH (habilitador) | HIGH | N/A (dato interno) | P1 (para P5) |
+| SERVEL aportes "quién financió a X" | HIGH | HIGH | MEDIO | P2 (gated) |
+| ChileCompra contratos por RUT | HIGH | HIGH | MEDIO | P2 (gated) |
+| Cruce dinero×sector×lobby | HIGH | HIGH | ALTO | P3 (sign-off) |
+| Timeline dinero×tramitación | MEDIUM | HIGH | MUY ALTO | P3 (sign-off) |
+
+**Clave de prioridad:** P1 = table stakes de v7.0, deny-by-default construible ya · P2 = diferenciador o dinero, detrás de flag hasta gate · P3 = máximo riesgo reputacional, solo tras sign-off legal humano.
 
 ---
 
 ## Competitor Feature Analysis
 
-| Feature | They Vote For You / Public Whip | Abgeordnetenwatch | OpenSecrets | Our Approach |
-|---------|--------------------------------|-------------------|-------------|--------------|
-| Per-legislator votes | Core; grouped by policy | Voting record on profile | n/a | VOTE block; vote × topic via v1.0 embeddings |
-| Vote framing | Descriptive + cautions on co-voting | Descriptive | n/a | Descriptive only; explicit no-causality caveats |
-| Lobby | n/a | Headline facet + blog | Lobbying spend | INT lobby list, counterpart sub-master |
-| Asset/interest | n/a | Extra-earnings shown | n/a | INT declarations, literal extraction, InfoProbidad CC BY |
-| Money | n/a | Extra earnings | Donors, "money maps", contracts | MONEY block, SERVEL + ChileCompra-by-RUT, no money→vote join |
-| Network/graph | n/a | n/a | Org profiles cross-link | NET, last; edges = published facts only |
-| Stated caution | "co-voting ≠ shared views" | Neutral Q&A | Neutral data | "trazabilidad sobre interpretación, nunca causalidad" (LOCKED) |
+| Feature | GovTrack (US) | TheyWorkForYou (UK) | OpenSecrets/FollowTheMoney (US $) | Nuestro enfoque |
+|---------|---------------|---------------------|-----------------------------------|-----------------|
+| Voto individual por votación | Sí, "Voting Record" | Sí, división por MP + breakdown por partido | N/A | Sí (table stake), reconciliado fail-closed |
+| Asistencia/ausencia | Sí, "Missed Votes" report cards | NO cuenta ausencias en summaries (no sabe interpretarlas) | N/A | Sí, PERO con caveat literal de TheyWorkForYou (licencia/maternidad/pareo) |
+| Alineamiento con partido | "votes with party" | "party-alignment score" (distancia al voto del partido) | N/A | Conteo factual sin etiqueta cualitativa; gated |
+| Etiqueta cualitativa de postura | ideology/leadership **score** | "consistently voted for/against" | N/A | **NO lo hacemos** — es la línea roja que ambos cruzan y nosotros no |
+| Score ideológico | Sí (con auto-advertencia) | No | N/A | **Anti-feature** (prohibido) |
+| Financiamiento por industria/sector | N/A | N/A | Sí, perfil por industria | Sí, como conteo por sector; sin implicar motivo |
+| Caveat de no-motivación | — | "no data on whipping…a vote may not represent personal opinion" | "impossible to know the motivation…patterns provide critical information" | Leyenda fija en cada superficie; linter anti-insinuación |
+| Score de corrupción/riesgo | No | No | No | **Anti-feature** (prohibido) |
 
-The recurring lesson across all comparators: the credible ones **surface published facts and refuse to
-editorialize**. The Australia Institute's own warning about misuse of They Vote For You's data, and
-Transparency International's careful conflict-of-interest framing, are the exact failure modes the
-LOCKED no-causality rule pre-empts. Our differentiator is not a flashier score — it is being the
-neutral arbiter whose every datum is traceable.
+**Lección clave de los tres:** los observatorios más respetados (a) muestran el voto/aporte como hecho enlazado a la fuente, (b) publican explícitamente sus caveats de no-interpretación, y (c) donde agregan (party-alignment, industria) lo hacen como estadística descriptiva declarada, NUNCA como juicio. La línea que TheyWorkForYou SÍ cruza — la etiqueta cualitativa "consistently voted for X" — es precisamente la que nuestra regla rectora nos prohíbe: nosotros contamos, no calificamos.
+
+---
 
 ## Sources
 
-- [They Vote For You — How does your MP vote?](https://theyvoteforyou.org.au/) — votes-by-policy, profiles, attendance/rebellions — HIGH
-- [They Vote For You — FAQ](https://theyvoteforyou.org.au/help/faq) — divisions from Hansard, policy grouping — HIGH
-- [Who votes with whom? Beware claims… — The Australia Institute](https://australiainstitute.org.au/post/who-votes-with-whom-beware-claims-that-use-voting-records-to-argue-politicians-have-similar-views/) — co-voting ≠ shared views (anti-feature basis) — HIGH
-- [Public Whip — Wikipedia](https://en.wikipedia.org/wiki/Public_Whip) — rebellions/attendance metrics — MEDIUM
-- [Abgeordnetenwatch — Wikipedia / Parliamentwatch](https://en.wikipedia.org/wiki/Abgeordnetenwatch) — MP profile, voting record, extra earnings, lobby focus — HIGH
-- [OpenSecrets — Organization Profiles](https://www.opensecrets.org/orgs/all-profiles) / [Donor Lookup](https://www.opensecrets.org/donor-lookup) — donor/contribution display, money maps — HIGH
-- [Transparency International — Topic Guide: Interest and Asset Disclosure](https://knowledgehub.transparency.org/guide/topic-guide-on-interest-and-asset-disclosure/5874) — asset/interest registry baseline, conflict-of-interest framing — HIGH
-- [Open Government Partnership — Asset and Interest Disclosure](https://www.opengovpartnership.org/open-gov-guide/anti-corruption-asset-and-interest-disclosure/) — minimization vs. family data, public-access norms — MEDIUM
-- `.planning/PROJECT.md` — LOCKED rule, Ley 21.719, existential risks #1 (identity) and #2 (suspicion machine), three cross keys, source endpoints — HIGH (authoritative)
+- [TheyWorkForYou — Voting information](https://www.theyworkforyou.com/voting-information/) — caveats literales sobre whip, ausencias (licencia/maternidad), pareo, "un voto puede no representar la opinión personal" — HIGH
+- [TheyWorkForYou Votes — Help & About](https://votes.theyworkforyou.com/help/about) — party-alignment score (distancia al voto del partido), campos por división, "score ≠ rebeldía", release experimental — HIGH
+- [The Constitution Unit — Should we see MPs' voting records?](https://constitution-unit.com/2021/12/20/should-we-be-allowed-to-see-mps-voting-records/) — riesgos de mala interpretación de historiales de voto (ausencias tildadas de pereza, screenshots sin contexto) — MEDIUM
+- [GovTrack — Analysis Methodology](https://www.govtrack.us/about/analysis) — ideology/leadership score, auto-advertencias ("puede medir otra cosa", fluctúa por azar, no publicado con <10 proyectos) — HIGH
+- [GovTrack — Missed Votes report cards 2024](https://www.govtrack.us/congress/members/report-cards/2024/house/missed-votes) — asistencia/ausencia como métrica estándar — HIGH
+- [OpenSecrets — Members of Congress profiles](https://www.opensecrets.org/members-of-congress) / [Industry methodology](https://www.opensecrets.org/industries/methodology) — perfil de financiamiento por industria, caveat "impossible to know motivation…patterns provide critical information" — HIGH
+- [Demos — Empirical evidence money in politics](https://www.demos.org/blog/empirical-evidence-money-politics-matters) — "correlation does not imply causality — near impossible to prove dollars sway votes" — MEDIUM
+- [SERVEL — Aportes](https://www.servel.cl/aportes/) / [Datos abiertos](https://www.servel.cl/2017/11/24/estadisticas-de-datos-abiertos/) / [Campañas electorales](https://www.servel.cl/campanas-electorales-elecciones-presidencial-y-parlamentarias/) — aportes recibidos, gastos declarados, Ley 19.884 (nombre+RUT del aportante, plazo 3 días); no es API REST — MEDIUM
+- [Fundación Ciudadano Inteligente](https://ciudadaniai.org/timeline) / [VotaInteligente](https://votainteligente.cl/) — referencia chilena: monitoreo de cómo legisla cada parlamentario, cumplimiento de compromisos, casos de financiamiento ilegal — MEDIUM
+- PROJECT.md / CLAUDE.md (Observatorio del Congreso 360) — regla rectora, riesgos existenciales #1/#2, RUT-01 como dato, cruce_senal sin score, flags *_PUBLIC_ENABLED, Ley 21.719 — HIGH
 
 ---
-*Feature research for: Parlamentarios 360 (legislator-transparency civic tech, Chile)*
-*Researched: 2026-06-18*
+*Feature research for: observatorio legislativo — voto individual (P3) + dimensión dinero (P5)*
+*Researched: 2026-07-13*

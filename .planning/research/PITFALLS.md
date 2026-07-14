@@ -1,350 +1,290 @@
-# Pitfalls Research — v2.0 "Parlamentarios 360"
+# Pitfalls Research — v7.0 "Votos, dinero y cierre técnico"
 
-**Domain:** Civic-data platform — adding per-legislator analysis (votes, lobby, assets/interests, money, influence graph) on top of a shipped Chilean congress tracker.
-**Researched:** 2026-06-18
-**Confidence:** HIGH on identity/causality/legal framing (anchored to PROJECT.md guardrails + verified sources); MEDIUM-HIGH on source-fragility (endpoints validated 17/06/2026; SERVEL unvalidated by design).
+**Domain:** Datos públicos del Congreso de Chile — agregar voto individual (P3) y dimensión dinero (P5) a Observatorio del Congreso 360.
+**Researched:** 2026-07-13
+**Confidence:** HIGH (fundado en el código real del repo: `@obs/votos`, `@obs/dinero`, `@obs/identity`, `parse-camara-votacion.ts`, `money-gate.ts`, `backfill-rut.ts`, `reconciliar-contrato.ts`)
 
-> Scope note: these are the mistakes specific to **adding VOTE / INT / MONEY / NET to the existing system** — not generic web-app mistakes. Every per-legislator attribution inherits v1.0 existential risk #1 (identity fails silently → false-but-credible claim) and #2 ("máquina de sospechas"). The v1.0 identity guard (`estado_vinculo='confirmado'` → link; otherwise null + raw mention) and the "trazabilidad sobre interpretación" rule are LOCKED inputs; v2.0 must extend them to four new datasets, not re-invent them.
+## Contexto crítico que cambia la naturaleza de estos pitfalls
 
----
+**La mayoría de P3 y P5 ya existe como CÓDIGO** (v2.0 "parlamentarios 360" quedó code-complete; era source-limited/gated, no unbuilt). Existen y ya son fail-closed:
 
-## A. Identity-Attribution Pitfalls
+- `packages/votos/` — `runCamaraVotos` cruza DIPID→maestra DETERMINISTA, fail-closed, provenance por fila, idempotente por `(votacion_id, fuente_voter_id)`. Fue corrido source-limited (2 boletines del MVP).
+- `parse-camara-votacion.ts` — YA modela las **5 opciones** (`si/no/abstencion/pareo/ausente`) y maneja los **dos namespaces/shapes** de opendata (`getVotaciones_Boletin` vs `retornarVotacionDetalle`).
+- `app/lib/voto-presentacion.ts` — `pareo`/`ausente` en slate (color neutro), nunca fundidos con "en contra".
+- `packages/dinero/` — connector SERVEL (xlsx Azure Blob) + ChileCompra (por RUT + ticket), `reconciliar-contrato.ts` (jurídica solo por RUT exacto, natural por RUT/nombre con cola humana), `harvest-rut.ts`, `money-gate.ts` (fail-closed, solo literal `"true"`).
+- `packages/identity/` — `entidad_tercero`, `backfill-rut.ts` (DV módulo-11, provenance NOT NULL, RUT nunca a LLM ni a tabla pública).
 
-Each new dataset is a new way to pin a claim on a named person. A wrong match here is not a cosmetic bug — it manufactures "Diputado X votó / se reunió / cobró / donó" that is false and looks authoritative. The v1.0 vote slice already solved this for Cámara (deterministic by official `Diputado/Id`) and Senado (name → `correrPipeline`, only `determinista` populates the FK). v2.0 must apply the **same confirmed-link guard to every new join**, and the new datasets are harder because most of them join by RUT or by free-text name, not by an official chamber ID.
-
-### Pitfall A1: Treating an external dataset's join as automatically "confirmed"
-
-**What goes wrong:** A lobby meeting, a donation, or a contract is matched to a `parlamentario.id` and rendered as a confirmed fact on the legislator's ficha, bypassing the `estado_vinculo` gate that the vote pipeline enforces. The four new sources do NOT carry the chamber's official `Diputado/Id` — leylobby uses its own actor IDs, SERVEL uses candidate RUT, ChileCompra uses supplier RUT, declarations use the official's own RUT. None of these is the v1.0 deterministic key, so a naive `JOIN ... ON nombre` or `ON rut` silently asserts links that never passed the golden-set gate.
-
-**Why it happens:** The vote pipeline made deterministic linking look "free" because Cámara handed over an official ID. Developers generalize "we link votes, so we link everything" and forget the new keys are weaker.
-
-**How to avoid:** Generalize the guard into a single reusable rule: **no new dataset may write a `parlamentario_id` FK unless the match resolved to `confirmado`/`determinista` through the existing `@obs/identity` pipeline.** Otherwise persist the raw actor string + the source link, FK null, and render with the "identidad no verificada" marker (same UI component as Senado votes). Make this a typed invariant (a writer that refuses to set the FK on a non-confirmed match), not a convention. Add golden-set cases for each new source's name/RUT forms.
-
-**Warning signs:** A ficha shows a meeting/contract with a working link to the legislator but no audit row in `identidad_audit`. A new connector writes FKs directly instead of going through `correrPipeline`. Counts of "linked" rows ≈ counts of "raw" rows on day one (real linking is always partial).
-
-**Phase to address:** First INT/MONEY block (the lobby/declaration ingest) — the guard must exist before any cross-dataset attribution lands. NET block must consume only confirmed links.
+**Implicación para el roadmapper:** El pitfall #1 de v7.0 NO es "construir mal", es **REGRESIONAR patrones fail-closed ya correctos** al escalarlos, y **saltarse los prerrequisitos del mundo real** (validar opendata, RUT-01 físico, sign-off 21.719). Los pitfalls abajo priorizan eso.
 
 ---
 
-### Pitfall A2: RUT as a false "strong key" — wrong-person RUT match
+## Critical Pitfalls
 
-**What goes wrong:** PROJECT.md calls RUT "el más fuerte" cross key. But SERVEL/ChileCompra RUTs belong to *candidates / suppliers / natural persons*, not to the chamber roster. A donation RUT or a contract supplier RUT can: (a) be a homonym/relative sharing a surname, (b) be a company RUT whose representative shares the legislator's name, (c) be a transcription error (missing DV, transposed digits), or (d) be a *former* candidate who is not the sitting legislator. Any of these produces "Diputado X recibió $Y" when X never did.
+### Pitfall 1: Atribuir un voto a la persona equivocada (riesgo existencial #1 amplificado)
 
-**Why it happens:** RUT *feels* unique, so a match is trusted without validating the check digit (DV módulo-11), without confirming the RUT actually belongs to the roster row, and without distinguishing persona-natural RUT from persona-jurídica RUT.
+**What goes wrong:**
+Un voto individual mal reconciliado imputa a un parlamentario un "sí/no" que no emitió. A diferencia de un lobby o un patrimonio mal cruzado, **un voto mal atribuido es directamente difamatorio y verificable como falso** por la propia fuente. Es el peor caso del riesgo #1.
 
-**How to avoid:** (1) Validate the RUT check digit before any join; reject malformed RUTs to a review queue, never guess. (2) RUT-based links still pass through the identity gate — a RUT match against the internal master is `determinista` only if the master row's RUT (internal-only field) matches exactly; otherwise it is a candidate, not a fact. (3) Tag every money/contract row as `persona_natural` vs `persona_juridica` and never collapse a company contract into a personal attribution without an explicit, sourced ownership chain. (4) Keep RUT internal-only (already LOCKED) so a wrong RUT match cannot leak as public PII.
+**Why it happens:**
+Al escalar de 2 boletines a toda la Leg-58, la tentación es aflojar el fail-closed: aceptar un DIPID que no está en la maestra "para no perder el voto", o cruzar por nombre cuando el DIPID no matchea. El código actual **no** hace esto (cruza por `Diputado/Id` determinista y deja `no_confirmado` lo que no matchea), pero un ejecutor Sonnet que "mejora cobertura" puede introducir un name-match o un fallback silencioso.
 
-**Warning signs:** Links appearing for legislators with very common surnames (González, Muñoz, Rojas) at suspiciously high rates. Contract attributions to a legislator whose RUT digit-validates but whose name doesn't normalize-match. Donation totals that spike from a single high-collision surname.
+**How to avoid:**
+- El cruce de voto es **DIPID→maestra determinista, punto**. NUNCA name-match para votos (el nombre es puente para menciones libres, no para roll-calls que ya traen ID). Un DIPID fuera de la maestra → `no_confirmado`, la fila del voto se guarda con `parlamentario_id=null` y NO se muestra como atribuido.
+- El FK del voto sigue siendo `EnlaceConfirmado | null` (branded): un string crudo no compila. Preservar ese tipo.
+- Golden set de reconciliación DIPID→maestra ANTES del backfill masivo: verificar que el mapeo DIPID↔id_maestra es correcto para los ~155 diputados vigentes (los DIPID cambian entre legislaturas; un DIPID reciclado de una legislatura anterior es la trampa más peligrosa).
+- La UI solo muestra el voto si `confirmado` (mismo guard que el link de identidad en `/proyecto`).
 
-**Phase to address:** MONEY block (SERVEL + ChileCompra). The DV validator and persona-natural/jurídica tagging are entry criteria for that block.
+**Warning signs:**
+- Cobertura de votos "sube" pero el % `confirmado` baja → se está imputando ruido.
+- Aparece `correrPipeline`/LLM o `normalizarNombre` en el camino de votos (no debe existir ahí).
+- Un DIPID con dos nombres distintos entre boletines, o un voto atribuido a un parlamentario de otra cámara.
 
----
-
-### Pitfall A3: Name-only joins across sources with different name conventions
-
-**What goes wrong:** leylobby, declarations, SERVEL and ChileCompra each render names differently (orden de apellidos, tildes, "ñ", second names dropped, nombre social vs legal, all-caps). The v1.0 `normalizarNombre` was tuned for catálogo↔votación convergence. New sources introduce new variants it has not seen, so legitimate matches fail (under-link → missing data, "looks empty") AND near-collisions pass (over-link → wrong person).
-
-**Why it happens:** Reusing `normalizarNombre` as-is and assuming it generalizes to four new corpora.
-
-**How to avoid:** Extend the golden set with real name strings sampled from each new source BEFORE building the connector; treat the golden gate (≥0.95) as the acceptance test for each new source's normalization. Where a source offers any stronger key (leylobby actor id, declaration RUT), prefer it over name and let name only corroborate.
-
-**Warning signs:** Golden precision drops below 0.95 when new-source name fixtures are added. A legislator's lobby tab is empty while the source clearly lists meetings (under-link). Two legislators with similar names share meetings (over-link).
-
-**Phase to address:** Each ingest block, gated by the golden CI check (already wired in v1.0).
+**Phase to address:**
+Fase de **modelo de voto reconciliado** (P3c). Golden set DIPID→maestra como gate ANTES del backfill masivo (P3b).
 
 ---
 
-### Pitfall A4: Stale roster — attributing to the wrong term's legislator
+### Pitfall 2: opendata.camara.cl sin validar/caracterizar → rompe en silencio o cambia semántica
 
-**What goes wrong:** Money and declarations span years and *campaigns*; a SERVEL donation may belong to a candidacy by someone who is not the current office-holder, or to the same person in a prior term. Matching against today's 186-row master (sembrada v1.0) without a temporal key attributes historical money to the wrong sitting person, or to a "legislator" who lost.
+**What goes wrong:**
+opendata.camara.cl es el **bloqueante histórico declarado** de P3 (por eso P3 estuvo out-of-scope hasta v7). Es un WS ASP.NET (.asmx) con **dos endpoints, dos namespaces y dos shapes** (`getVotaciones_Boletin` bajo `tempuri.org`; `retornarVotacionDetalle` bajo `camaradiputados/v1`), con códigos de opción numéricos (`Valor 1=Afirmativo`, `0=En Contra`) que si se invierten producen el voto opuesto — silenciosamente correcto en forma, falso en fondo.
 
-**Why it happens:** The v1.0 master is a snapshot of *vigentes*. Money/declaration data is historical and term-scoped.
+**Why it happens:**
+Se asume que el endpoint es estable y bien documentado como el `doGet.asmx`. No lo es: fue explícitamente marcado "SIN VALIDAR" en PROJECT.md. Escribir el conector antes de caracterizar el endpoint contra respuestas reales lleva a un parser que funciona con el fixture y falla (o miente) en producción.
 
-**How to avoid:** Carry `periodo`/`fecha` on every attribution and constrain matches to the period in which the person held (or sought) office. Distinguish "candidate" from "elected." Never render a candidacy-era donation as a fact about the current mandate without dating it explicitly.
+**How to avoid:**
+- **Fase 1 de P3 = validar/caracterizar el endpoint contra respuestas LIVE reales** ANTES de escribir el conector de producción. Guardar respuestas crudas en R2 como fixtures autoritativos. Ya existe `run-camara-votos.live.test.ts` (gated por `VOTOS_LIVE=1`) — usarlo como gate de caracterización.
+- Bloquear el mapeo `OpcionVoto Valor → Seleccion` con un test que fije 1→si, 0→no, y verifique explícitamente pareo/abstención/dispensado contra la fuente (no asumir el orden).
+- Validar cada `Votacion`/`Voto` con `VotacionSchema` (zod) antes de escribir — el gate de contrato ya existe; que un cambio de shape del WS falle RUIDOSO, no que se cargue basura.
+- Cross-check de totales: el detalle voto-a-voto debe sumar a los `TotalSi/TotalNo/…` del boletín estructurado. Si no cuadra, la votación está incompleta → no publicar como total.
 
-**Warning signs:** Donations dated before a legislator's first term showing on their current ficha. Attributions to names not in the current 186 but rendered as if current.
+**Warning signs:**
+- El parser depende de un solo fixture; no hay respuesta LIVE guardada en R2.
+- Sumas de votos individuales ≠ totales reportados por la fuente.
+- 404/500/HTML de error del WS parseado como "0 votos" en vez de como fallo.
 
-**Phase to address:** MONEY block; the temporal constraint is a schema requirement (period column on attribution tables).
-
----
-
-## B. Causality / Insinuation Pitfalls ("máquina de sospechas")
-
-This is existential risk #2, and v2.0 is where it gets dangerous: v1.0 only crossed projects×votes (factual, intra-congress). v2.0 crosses **money × votes × meetings** — exactly the juxtaposition that *reads as* "he was paid, then he voted, because of the payment," even when the system says nothing of the sort. The legal defense of the whole product rests on never asserting motive.
-
-### Pitfall B1: Temporal adjacency rendered as implication
-
-**What goes wrong:** Placing "received donation from sector S" next to "voted FOR bill affecting S" on a timeline, or auto-surfacing "lobby meeting 3 days before vote," lets the UI *imply* causality the data cannot support. Even with no sentence asserting motive, the layout is the claim.
-
-**Why it happens:** Timelines and "related" panels are the natural UI for cross-dataset data, and proximity is visually persuasive. Engagement-oriented design rewards the "smoking gun" framing.
-
-**How to avoid:** (1) Never auto-generate a cross that pairs a money/lobby event with a vote as a *single highlighted unit*. (2) Show each dataset in its own sourced lane; require the *user* to navigate between them rather than pre-composing the juxtaposition. (3) Ban affinity/score/ranking language ("alineado con", "favorable a", "vinculado a") — same discipline already applied to "proyectos similares" (no score, no affinity language) in v1.0. (4) Every cross carries the standing disclaimer: correlación temporal con fuente, sin afirmación de causa.
-
-**Warning signs:** A component that takes both a vote and a donation as props. Copy containing "porque", "a cambio de", "favoreció", "alineado". A feature framed as "detect conflicts of interest" rather than "show declared interests."
-
-**Phase to address:** NET block (graph) is the highest-risk surface; but the framing rules must be set in the FIRST block that renders two datasets together. Make "no composed money-vote unit" a UI success criterion.
+**Phase to address:**
+**Fase 1 de P3 (validación de endpoint)** — bloqueante duro, antes del conector. El mapeo de opción y el cross-check de totales, en la fase de parseo/modelo.
 
 ---
 
-### Pitfall B2: The influence graph as an automatic "corruption map"
+### Pitfall 3: Inferir "alineamiento", "rebeldía" o "disciplina de voto" (riesgo existencial #2)
 
-**What goes wrong:** A graph cross-linking legislators ↔ lobbyists ↔ donors ↔ contractors invites readers (and headline-writers) to treat an *edge* as an *accusation*. A path "donor → legislator → contractor" looks like a kickback even when each edge is an independently-sourced public fact with no connection in reality.
+**What goes wrong:**
+El voto individual es el dato que MÁS invita a la "máquina de sospechas": comparar votos entre parlamentarios sugiere afinidad; señalar un voto contra el bloque sugiere "rebeldía"; agrupar votos sugiere causalidad política. Cualquiera de estos cruza de descriptivo a interpretativo/causal.
 
-**Why it happens:** Graphs visually assert relationship and flow; a path between two nodes reads as a story.
+**Why it happens:**
+Es la visualización "obvia" y periodísticamente atractiva. Pero co-votación fue EXPLÍCITAMENTE excluida del MVP (`17-LEGAL-DOSSIER §2`, señales de voto OFF hasta sign-off). La tentación de "solo mostrar quién votó igual que quién" reintroduce co_votacion por la puerta de atrás.
 
-**How to avoid:** (1) Edges are typed and sourced as discrete facts ("declaró reunión", "aparece como donante", "adjudicó contrato"), never as "influence." (2) No edge weighting that ranks "suspicion." (3) Path-finding between a donor and a contractor through a legislator must NOT be a headline feature; if shown at all, each hop shows its source/date and an explicit "estas relaciones son hechos públicos independientes; el sistema no afirma conexión entre ellas." (4) Defer NET to last (already planned) so the framing is mature before the most insinuating surface ships.
+**How to avoid:**
+- Superficies de voto **descriptivas por parlamentario × tema/sesión**, NUNCA comparativas entre parlamentarios como señal de afinidad. Ya hay precedente correcto: "Cuándo votó por trimestre" (VIZ-VOTOS) y comparativo de ausencias **vs mediana de cámara** (VIZ-COMP) — comparar contra una mediana agregada es factual; comparar par-a-par insinúa.
+- El **linter anti-insinuación debe cubrir las superficies de voto** (mismo linter que cruces): prohibir vocabulario "alineado con", "se rebeló", "leal a", "en contra de su bloque", "díscolo".
+- Leyenda "Cómo leer esto" anti-causal en toda superficie de voto (patrón ya establecido en cruces/charts v6.0).
+- co_votación / clustering de votos permanece OFF y detrás de sign-off legal — no es un flag que un agente inventa ni enciende.
 
-**Warning signs:** Graph copy or node sizing that implies importance/suspicion. A "find connections between X and Y" search. Press using the graph to assert wrongdoing the data doesn't show.
+**Warning signs:**
+- Aparece una vista "parlamentarios que votan como X" o una matriz de similitud de votos.
+- Texto generado (labels, tooltips) que atribuye motivo o postura política.
+- El linter anti-insinuación NO corre sobre los componentes de voto nuevos.
 
-**Phase to address:** NET block, last. Legal review (already mandated pre-launch) must specifically sign off on the graph framing.
-
----
-
-### Pitfall B3: Declarations of interest framed as proof of conflict
-
-**What goes wrong:** Patrimony/interest declarations exist *to be public*; rendering them as "conflictos detectados" converts a transparency record into an accusation, and inverts the legal posture (the legislator complied with the law; the platform implies guilt).
-
-**Why it happens:** "Conflict of interest" is the compelling story; "declared interest" is the accurate one.
-
-**How to avoid:** Label strictly as "intereses declarados" / "patrimonio declarado" with source and date. Never compute or display a "conflict" verdict. Let the user see the declaration alongside the legislator's committee/votes and draw their own conclusion — the system describes, never adjudicates.
-
-**Warning signs:** Any "conflicto" / "incompatibilidad" verdict field. Auto-flagging of "interest in a sector this person legislates."
-
-**Phase to address:** INT block (declarations).
+**Phase to address:**
+Fase de **superficies de análisis de voto** (P3d). El linter debe extenderse a esas superficies en esa misma fase; verificación por loop BrowserOS (gate de comprensión) como en v6.0.
 
 ---
 
-## C. Source-Fragility Pitfalls
+### Pitfall 4: Cruzar dinero por RUT antes de que RUT-01 exista físicamente
 
-The v1.0 ingest framework (rate-limit 2–3s serial, robots, UA, R2 content-addressed cache, drift-non-blocking) is the right substrate — but v2.0's new sources are markedly more fragile than the XML/JSON gov endpoints v1.0 consumed.
+**What goes wrong:**
+Cruzar SERVEL/ChileCompra por RUT contra una maestra donde `parlamentario.rut` está mayormente NULL produce: (a) cero matches (cruce vacío presentado como "sin vínculos") o, peor, (b) matches falsos si se rellena el gap con name-match. RUT-01 es un **prerrequisito de DATOS, no un flag** — el gate PROJECT.md es explícito: "RUT-01 debe existir físicamente antes de cruzar".
 
-### Pitfall C1: Assuming `opendata.camara.cl` won't deliver the individual vote (and over-/under-planning around it)
+**Why it happens:**
+El flag `MONEY_PUBLIC_ENABLED` y el gate legal enmascaran que la precondición real es DATO: la maestra necesita RUTs backfilleados. Un agente puede "completar P5" construyendo todo el pipeline y encolando el cruce, sin notar que la maestra tiene RUTs vacíos → el cruce corre pero cuenta mal. HALLAZGO decisivo del research (verificado LIVE 2026-06-18): **ningún catálogo oficial expone el RUT** (Senado no lo trae; Cámara `WSDiputado` lo trae vacío) → RUT entra solo por Track A (SERVEL, frágil) o Track B (seed curado `parlamentario-rut.seed.json`).
 
-**What goes wrong:** The whole VOTE block was treated as blocked pending a never-validated endpoint. Two opposite mistakes: (a) building elaborate fallbacks/scraping for a problem that doesn't exist, or (b) committing the block's scope before validating and then discovering a gap mid-build.
+**How to avoid:**
+- **RUT-01 como fase BLOQUEANTE explícita y secuenciada ANTES de cualquier cruce de dinero.** No es una casilla; es backfill real a `parlamentario.rut` vía `runBackfillRut` (Track B seed curado como default garantizado; Track A SERVEL como corroboración).
+- Medir cobertura de RUT en la maestra (N/M con RUT DV-válido) y DECLARARLA como techo honesto — igual que la cobertura de embeddings en v6.1. Un cruce de dinero solo cubre los parlamentarios con RUT presente; el resto se muestra como "sin dato de RUT", no como "sin vínculos".
+- El `reconciliar-contrato.ts` ya es correcto aquí: un name-match NUNCA escribe el `rut` de la maestra (name-uniqueness ≠ RUT-ownership); solo corrobora un RUT ya presente, o encola a revisión humana. Preservar esa separación de canales.
 
-**Verified finding (2026-06-18, MEDIUM-HIGH):** `opendata.camara.cl/wscamaradiputados.asmx` exposes `getVotaciones_Boletin`, whose response contains a `Votos` container of `Voto` elements, each with `Diputado` and `Opcion`, plus totals (`TotalAfirmativos/Negativos/Abstenciones/Dispensados`) and `Pareos`. **The per-deputy individual vote does appear to be available there** — contrary to the "never validated, may not exist" framing. This still needs a live spike (the project requires it) but the spike is now expected to *confirm*, not to *discover a blocker*.
+**Warning signs:**
+- Cruce de dinero corre pero `parlamentario.rut` está NULL para la mayoría.
+- Cobertura de RUT no está medida ni declarada.
+- Un RUT nuevo se escribe a la maestra derivado de un match por nombre.
 
-**How to avoid:** Keep the validation spike as Fase 1 of v2.0 (as planned) but scope it tightly: confirm (1) per-deputy `Diputado`+`Opcion` is present and complete vs totals, (2) the `Diputado` identifier maps to the v1.0 official `Diputado/Id` (enabling deterministic linking — the good path), (3) coverage/history depth, (4) rate behavior behind the WAF. Only branch to a fallback if the spike fails. Do NOT freeze downstream scope until the spike returns.
-
-**Warning signs:** Spike returns totals but empty/partial `Votos`. `Diputado` carries only a name, not the official id (forces name-pipeline linking like the Senado, weaker). History truncated to recent legislatura only.
-
-**Phase to address:** VOTE block, Fase 1 spike (already the plan). Treat as confirm-or-replan gate.
-
----
-
-### Pitfall C2: SERVEL artisanal connector — brittle, non-REST, will break silently
-
-**What goes wrong:** SERVEL campaign-finance data is not a clean REST API (PROJECT.md: "conector artesanal frágil"). Such connectors break on layout changes, paginate oddly, hide data behind forms/exports, and degrade into *partial* scrapes that look complete. A half-scraped donation set understates a legislator's money — a false-by-omission claim.
-
-**Why it happens:** Treating SERVEL like the Senado XML; assuming a successful HTTP 200 means complete data.
-
-**How to avoid:** (1) Build SERVEL last among MONEY sources and behind an explicit completeness check (expected counts / totals reconciliation), not just "200 OK." (2) Snapshot raw to R2 (already the pattern) so a future format break is recoverable from history. (3) Drift detection must be *loud* for SERVEL specifically — non-blocking drift (v1.0 default) is wrong here; a structure change should quarantine the run, not silently emit fewer rows. (4) Render honest emptiness/staleness (the v1.0 "estados vacíos honestos" posture) rather than partial totals presented as full.
-
-**Warning signs:** Donation counts dropping run-over-run without an obvious cause. A SERVEL run completing far faster than usual. Totals that don't reconcile to any SERVEL-published aggregate.
-
-**Phase to address:** MONEY block; SERVEL gets its own completeness-gate sub-task and an opt-in blocking-drift mode.
+**Phase to address:**
+**Fase RUT-01 (backfill)** — bloqueante, secuenciada como prerrequisito duro ANTES de la fase de cruce de dinero. Verificación: cobertura de RUT medida y declarada; gate CI que impide que un name-match escriba `parlamentario.rut`.
 
 ---
 
-### Pitfall C3: ChileCompra rate/quota and RUT-query volume
+### Pitfall 5: Encender MONEY_PUBLIC_ENABLED sin sign-off legal 21.719 (o que un agente lo flipee)
 
-**What goes wrong:** Querying ChileCompra by RUT for ~186 legislators (× related RUTs) is a high request count against a public API with quotas/rate limits; bursts trip the gov WAF (the same 2–3s constraint) and/or exhaust a daily quota, yielding partial contract sets that read as "this legislator has no state contracts" when the run was just throttled.
+**What goes wrong:**
+El cruce dinero↔parlamentario es "el de mayor impacto reputacional" (PROJECT.md). Exponerlo sin la pasada de asesoría legal 21.719 (plena vigencia 2026-12-01) es el riesgo jurídico-existencial del producto. "Fuente de acceso público" NO exime cumplimiento; el dato DERIVADO del cruce queda protegido por la ley.
 
-**Why it happens:** Fan-out queries (one per RUT) multiply request volume; the 2–3s serial constraint makes a full sweep slow, tempting parallelization that the WAF punishes.
+**Why it happens:**
+El operador PRE-APROBÓ encender flags "cuando cada fase llegue a su gate con la suite verde" (2026-07-13). Un agente autónomo puede malinterpretar esto como autorización para flipear el flag él mismo. NO lo es: el sign-off legal es un **acto humano real** que el operador provee; su aprobación autoriza el flip, no lo reemplaza.
 
-**How to avoid:** Keep serial 2–3s per host (LOCKED), queue the RUT sweep through pgmq (v1.0 pattern), checkpoint progress, and use the GitHub Actions escape hatch for the full historical backfill (>400s Edge limit). Distinguish "queried, no contracts found" from "not yet queried" in the data model so the UI never shows a throttled gap as a confirmed zero.
+**How to avoid:**
+- Construir TODO hasta el gate **deny-by-default**. `money-gate.ts` ya es fail-closed (solo el literal `"true"`; ausencia = OFF, no error). NO tocar esa semántica.
+- El flip de `MONEY_PUBLIC_ENABLED` requiere `signoff: approved` en `docs/legal/13-LEGAL-DOSSIER.md` (deuda F13) — es acción exclusivamente humana. **Un agente NUNCA flipea `MONEY/NET/cruces`.**
+- Guard CI: que ningún commit de agente cambie `MONEY_PUBLIC_ENABLED` a `"true"` ni añada un default distinto de OFF.
+- Chokepoint único: toda ruta pública MONEY pasa por `moneyPublicEnabled(process.env)`, nunca leyendo la env cruda.
 
-**Warning signs:** 429s in the ChileCompra connector logs. A sweep that never finishes within Edge limits. Fichas showing "sin contratos" for legislators a manual check shows have contracts.
+**Warning signs:**
+- Un PR/commit de agente toca el flag o el default del gate.
+- Rutas MONEY que leen `process.env.MONEY_PUBLIC_ENABLED` directo en vez del gate.
+- El dossier legal 13 no tiene `signoff: approved` pero las rutas MONEY renderizan.
 
-**Phase to address:** MONEY block; reuse pgmq + GH Actions backfill from v1.0.
-
----
-
-### Pitfall C4: HTML that changes (leylobby, declarations, SERVEL) breaking parsers silently
-
-**What goes wrong:** leylobby/InfoProbidad/SERVEL surfaces are HTML/portal-based and change without notice (cf. the v1.0 Senado Next.js `buildId` lesson). A changed table/selector makes a cheerio parser emit zero or garbage rows; drift-non-blocking lets the run "succeed" with bad/empty data.
-
-**Why it happens:** v1.0's drift posture is non-blocking by design (good for tramitación), but for these fragile public-PII sources, silent degradation is worse than failing.
-
-**How to avoid:** Per-source drift policy: for high-stakes PII sources (declarations) and fragile ones (SERVEL), drift quarantines the run and alerts; for stable XML, keep non-blocking. Pin parsers to fixtures captured from live, golden-test them, and re-capture on a schedule. Never hardcode portal build artifacts (the `buildId` lesson is LOCKED in CLAUDE.md).
-
-**Warning signs:** Row counts collapse to zero after a source redeploy. Drift alerts firing repeatedly on the same source. Parsed fields shifting columns.
-
-**Phase to address:** Each HTML-source block; per-source drift policy decided at block start.
+**Phase to address:**
+Fase de **superficies de dinero (deny-by-default)** construye todo detrás del gate OFF. El encendido es una fase-gate humana separada (sign-off F13), fuera del alcance del agente.
 
 ---
 
-## D. Legal Pitfalls — Ley 21.719 (full force 2026-12-01)
+### Pitfall 6: Afirmar "empresa ligada al parlamentario" sin base sólida de vínculo (difamación)
 
-Verified (2026-06-18): Ley 21.719 was published 13/12/2024 and enters full force **01/12/2026**; it creates a sanctioning Agencia de Protección de Datos with meaningful fines; and crucially it establishes that **"el carácter público no exime del cumplimiento"** — data from a public source must still be processed lawfully, proportionally and for a legitimate purpose. The new milestone ships into this regime; v1.0's mandated pre-launch legal review now has hard substance to check against.
+**What goes wrong:**
+Decir "empresa X, ligada al diputado Y, recibió contratos del Estado" cuando el vínculo es débil (homonimia, coincidencia de nombre, inferencia) es difamatorio. Persona jurídica name-linkeada a un parlamentario es el error más grave: **la empresa no es el parlamentario**.
 
-### Pitfall D1: Treating "fuente de acceso público" as a blanket exemption
+**Why it happens:**
+El impulso de "conectar los carriles" empuja a afirmar vínculos que la fuente no establece. Un LLM que clasifica "empresa relacionada" inventa una relación que no existe en el dato.
 
-**What goes wrong:** Assuming that because votes/lobby/declarations/SERVEL/ChileCompra are public, anything can be published and cross-referenced freely. Verified: público ≠ exento. Republishing and especially *deriving new datasets by crossing* sources imposes obligations (legitimacy, proportionality, purpose).
+**How to avoid:**
+- **LOCKED: persona jurídica SOLO por RUT exacto, fail-closed. Nunca LLM, nunca name-match.** `reconciliar-contrato.ts` ya lo enforça: jurídica → `matchDeterministaEntidad` por RUT exacto, nunca `correrPipeline`. Preservar esta rama intacta.
+- Persona natural puede cruzar por nombre determinista (finalidad del dato: enlazar un funcionario público es el pipeline confirmado/auditado), pero un confirmado-por-nombre prueba que el contrato está asociado a alguien confirmado como ese parlamentario — NO que el RUT del proveedor SEA el del parlamentario. La UI no debe colapsar ese matiz.
+- Presentar como **conteos factuales con provenance** ("N contratos con proveedores cuyo RUT/nombre coincide con el parlamentario, según ChileCompra, fecha, enlace"), NUNCA como "empresa ligada a" ni score de correlación.
+- El linter anti-insinuación cubre las superficies de dinero.
 
-**How to avoid:** Lock the purpose ("transparencia legislativa / control ciudadano") into the data-policy and surface it. Keep the minimization posture (already LOCKED: only show what the source already shows, with source/date/link; RUT and family data internal-only). Do not publish anything the source does not already publish. Run the mandated legal review specifically against republication + derived-data obligations, not just "it's public."
+**Warning signs:**
+- Aparece `correrPipeline`/LLM en la rama de persona jurídica.
+- Texto "empresa vinculada/ligada/asociada al parlamentario" sin RUT exacto.
+- Un score de correlación dinero↔parlamentario en vez de un conteo.
 
-**Warning signs:** Any plan to expose RUT or family data publicly. A cross that creates a *new* public fact not present in any single source (e.g., a computed "wealth change") without legal sign-off.
-
-**Phase to address:** Cross-cutting; gate before any public exposure (legal review, already mandated). Encode minimization as RLS/column rules (v1.0 already keeps `parlamentario.rut` out of `anon` reads — extend that to all new PII columns).
-
----
-
-### Pitfall D2: Vote pattern + party = *dato sensible* (afiliación política / convicción ideológica)
-
-**What goes wrong:** Verified: afiliación política and convicciones ideológicas/filosóficas are explicitly *datos sensibles* under Ley 21.719. A legislator's votes and party are public by function — but a *derived* analysis ("this legislator's ideological pattern", clustering legislators by inferred ideology, or attaching sensitive inferences to private individuals who appear as donors/lobbyists/family) can constitute sensitive-data processing with a higher bar — especially for the **non-legislator natural persons** (donors, lobby counterparts, relatives) who have no public-function justification.
-
-**Why it happens:** Conflating the legislator's reduced privacy expectation (public office) with that of private third parties who appear in lobby/donation records.
-
-**How to avoid:** (1) Sharp line between *office-holders* (public function → broader transparency) and *private third parties* (donors, lobbyists, relatives → minimization, no sensitive inference, RUT internal-only). (2) Do not compute or publish ideological/affinity inferences about anyone — this also satisfies the B-series anti-insinuation rules. (3) Keep family data internal-only (LOCKED). (4) Have legal review address the sensitive-data classification of party/vote derivations explicitly.
-
-**Warning signs:** Any feature inferring ideology/affinity. Sensitive attributes attached to private third parties. Public exposure of relatives.
-
-**Phase to address:** INT block (declarations, where third-party relatives appear) and NET block (where third parties become nodes). Legal review before NET ships.
+**Phase to address:**
+Fase de **cruce de dinero** (preservar la rama jurídica RUT-only) + fase de **superficies de dinero** (linter + provenance inline + fraseo factual).
 
 ---
 
-### Pitfall D3: LLM provider as sub-encargado / training on PII
+### Pitfall 7: SERVEL manual/desactualizado presentado como live
 
-**What goes wrong:** Sending declaration/lobby/finance PII to an LLM endpoint that trains on inputs (e.g., the Gemini free tier — flagged in v1.0 as `trainsOnInputs=true`) leaks protected data into a third party and breaches the sub-encargado/DPA expectation.
+**What goes wrong:**
+SERVEL es "conector artesanal frágil, no API REST" (xlsx en Azure Blob, por elección/manual). Presentar datos de financiamiento de una elección pasada como si fueran actuales, sin fecha de corte visible, engaña sobre la vigencia del dato.
 
-**Why it happens:** Reusing the volume-extraction LLM path (DeepSeek/Gemini) for the new PII-bearing documents without re-checking the data-routing gate.
+**Why it happens:**
+El conector SERVEL degrada honestamente ante 403/503/429 (`ServelBloqueadaError`) pero la UI puede no reflejar CUÁNDO se capturó el dato ni que la elección es antigua.
 
-**How to avoid:** The v1.0 `data-routing` policy already exists in code: `assertNoRutInLlmInput` blocks RUT before any LLM call, and `assertSensitivityAllowed` aborts PII toward a training tier (`SensitiveRoutingError`). v2.0 must route ALL new PII extraction through this gate and classify each new document's sensitivity. Use only no-training / DPA tiers for sensitive PII. Never send RUT to any LLM.
+**How to avoid:**
+- Fecha de corte / fecha de captura VISIBLE en toda superficie de financiamiento (principio rector: fuente + fecha + enlace por dato).
+- `pnpm freshness` debe cubrir SERVEL y ChileCompra con señal de staleness (patrón v6.0).
+- Declarar explícitamente qué elección/período cubre el dato de financiamiento.
 
-**Warning signs:** A new connector calling an LLM without going through the routing gate. PII document extraction defaulting to the free Gemini tier. RUT appearing in an LLM prompt.
+**Warning signs:**
+- Superficie de financiamiento sin fecha de corte.
+- Freshness no cubre SERVEL/ChileCompra.
 
-**Phase to address:** Any block that uses an LLM to extract from PII documents (declarations especially). Reuse and extend v1.0 data-routing; no new bypass paths.
-
----
-
-### Pitfall D4: CC BY 4.0 attribution dropped on derived views
-
-**What goes wrong:** InfoProbidad is CC BY 4.0 (visible attribution required). When declaration data is reshaped into a ficha or a graph node, the attribution can get lost, breaching the license.
-
-**How to avoid:** Carry source attribution as first-class provenance (v1.0 already has a first-class `Provenance` type and an always-visible `ProvenanceBadge`). Render CC BY 4.0 attribution wherever InfoProbidad-derived data appears, including inside graph nodes/tooltips.
-
-**Warning signs:** A declaration-derived figure with no visible source/attribution. Graph nodes without provenance.
-
-**Phase to address:** INT block; NET block must propagate attribution into nodes.
-
----
-
-## E. Data-Quality Pitfalls
-
-### Pitfall E1: Donations/contracts matched by RUT to the wrong person (homonyms, DV errors)
-
-**What goes wrong:** Same root cause as A2, but as a *data-quality* failure at scale: a single wrong RUT match pollutes a legislator's money total; common surnames amplify it. Output: a credible wrong number.
-
-**How to avoid:** DV (módulo-11) validation gate; persona-natural vs jurídica tagging; RUT match counts as `determinista` only against the internal master's own RUT; everything else is a candidate to the review queue, never an auto-fact. Reconcile totals to any source-published aggregate.
-
-**Warning signs:** Money totals dominated by common-surname collisions; totals not reconciling; review queue empty (means everything auto-linked — suspicious).
-
-**Phase to address:** MONEY block.
-
----
-
-### Pitfall E2: Stale declarations presented as current
-
-**What goes wrong:** Patrimony/interest declarations are filed periodically and go stale; rendering an old declaration without a prominent date implies it's the current state. A 2021 declaration shown as today's patrimony is misleading.
-
-**How to avoid:** Every declaration carries and prominently shows its filing date (reuse the `ProvenanceBadge` freshness pattern — amber when stale). Never aggregate declarations across periods into a single "patrimony" figure without showing the as-of date. Honest staleness over false currency.
-
-**Warning signs:** Declarations without a visible filing date; a single patrimony number with no as-of; freshness badge missing on declaration data.
-
-**Phase to address:** INT block; reuse v1.0 freshness/provenance UI.
-
----
-
-### Pitfall E3: Company contracts collapsed into personal attribution
-
-**What goes wrong:** A ChileCompra contract awarded to a *company* in which a legislator (or relative) has an interest gets rendered as "Diputado X recibió $Y del Estado," asserting a personal payment and an ownership chain that isn't sourced.
-
-**How to avoid:** Keep contract subject = the supplier entity (persona jurídica), distinct from any legislator link. Only connect a contract to a legislator through an *explicit, sourced* declared interest (from the declaration), and render it as "empresa Z, en la que X declara interés, adjudicó contrato" — describing two sourced facts, never asserting personal income or motive. This is both a data-quality and a B-series insinuation guard.
-
-**Warning signs:** Personal money totals that include company contracts; a contract→legislator edge with no declared-interest source backing it.
-
-**Phase to address:** MONEY + NET blocks.
-
----
-
-### Pitfall E4: Under-linking presented as "this legislator has nothing"
-
-**What goes wrong:** Because the confirmed-link guard (correctly) drops unconfirmed matches to null+raw, a legislator's lobby/money tab can look empty when data exists but didn't confirm. Users read empty as "clean," which is a different false claim.
-
-**How to avoid:** Distinguish three states in UI: confirmed-and-linked, present-but-unverified (raw mention + "identidad no verificada"), and not-yet-ingested. Never let "unverified" or "not ingested" render as a confident empty/zero. (Mirrors the v1.0 "estados vacíos honestos" posture and the Senado null+raw-mention pattern.)
-
-**Warning signs:** Empty tabs with no "verified vs unverified vs pending" distinction; users interpreting gaps as exoneration.
-
-**Phase to address:** Each ingest block + the parlamentario ficha UI.
+**Phase to address:**
+Fase de **superficies de dinero** (fecha de corte visible) + extender `freshness` a las fuentes de dinero (fase de hardening/deuda).
 
 ---
 
 ## Technical Debt Patterns
 
+Shortcuts que parecen razonables pero crean problemas al tocar los conectores existentes.
+
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Auto-link new datasets by name/RUT without the identity gate | Fast, full-looking fichas | False attributions = existential risk #1 realized | Never |
-| Non-blocking drift on SERVEL/declarations | Runs never fail | Silent partial/empty data = false-by-omission | Never (use blocking drift for these) |
-| Skip RUT DV validation | Less code | Wrong-person money attributions | Never |
-| Compose money+vote into one UI unit | Compelling story | "Máquina de sospechas" / legal exposure | Never |
-| Reuse free Gemini tier for PII extraction | Free | Ley 21.719 breach (training on PII) | Never |
-| Single patrimony figure across periods, no as-of date | Cleaner UI | Stale presented as current | Never |
-| Defer NET graph to last | — | None — this is correct | Always (already planned) |
+| Escribir el conector de votos contra un fixture sin caracterizar opendata LIVE | Avanza rápido | Parser que miente en prod (namespaces/códigos de opción); rompe silencioso | **Nunca** — validar endpoint es fase 1 de P3 |
+| Name-match para llenar votos sin DIPID en la maestra | +cobertura aparente | Voto difamatorio (riesgo #1) | **Nunca** para votos (roll-calls traen ID) |
+| Correr cruce de dinero antes de RUT-01 físico | "P5 completo" | Cruce vacío o falso; cuenta mal | **Nunca** — RUT-01 es prerreq de datos |
+| Escribir `rut` a la maestra desde un name-match | RUT "cosechado" | name-uniqueness ≠ RUT-ownership → RUT falso | **Nunca** — solo corroborar RUT presente o cola humana |
+| Editar el allowlist SSRF para agregar un host de dinero al default | Menos fricción | Amplía SSRF a todo el tenant (Azure/ChileCompra) | **Nunca** — usar `extraHosts` scoped al conector |
+| Tocar `runIngest`/`SnapshotWriter` compartido para "mejorar" votos | Reuso | Regresiona la ingesta que ya funciona (leyes/lobby/probidad) | Solo con suite verde de TODOS los consumidores + snapshot dos-etapas intacto |
+| Saltarse el paso R2 (fuente→R2) al agregar votos/dinero | Menos código | Rompe la regla LOCKED de dos etapas; no re-ingestable sin molestar la fuente | **Nunca** — dos etapas es LOCKED |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| opendata.camara.cl vote WS | Assuming individual vote absent / building fallbacks | `getVotaciones_Boletin` returns `Voto{Diputado,Opcion}` — validate in Fase-1 spike, prefer official `Diputado/Id` for deterministic link |
-| SERVEL | Treating 200 OK as complete | Completeness/total reconciliation + blocking drift + R2 raw snapshot |
-| ChileCompra (by RUT) | Parallel fan-out → WAF/quota | Serial 2–3s via pgmq + GH Actions backfill; "queried-zero" ≠ "not-queried" |
-| leylobby / InfoProbidad HTML | Hardcode selectors/build artifacts | Fixture-pinned golden parsers; per-source drift policy; never hardcode portal build ids |
-| Any LLM on PII docs | Reuse volume LLM path | Route through `data-routing` gate; no-training tier; never send RUT |
+| opendata.camara.cl (votos) | Asumir un solo shape/namespace | DOS endpoints, DOS namespaces (`tempuri.org` vs `camaradiputados/v1`), códigos `Valor 1=si/0=no` — fijar el mapeo con test |
+| opendata.camara.cl DIPID | Reusar DIPID entre legislaturas | DIPID puede reciclarse; golden set DIPID→maestra por legislatura vigente |
+| Cámara vs Senado (votos) | Un solo esquema para ambas cámaras | Esquemas distintos: Cámara (opendata XML voto-a-voto) vs Senado (`votaciones.php` XML). `runIngest` degrada fail-closed sin provider Senado — no fabricar votos del Senado |
+| ChileCompra | Asumir GET anónimo como SERVEL | ChileCompra requiere ticket/secreto por request; SERVEL es GET anónimo — no confundir el patrón de auth |
+| SERVEL (Azure Blob) | Agregar el host a `DEFAULT_ALLOWED_SUFFIXES` | `extraHosts` EXACTO scoped al conector + assert `protocol==="https:"` (extraHosts admite http) |
+| SERVEL bloqueo (403/503/429) | Abortar la corrida completa | `ServelBloqueadaError` degrada ESA elección, la corrida sigue (espejo `ChileCompraBloqueadaError`) |
+| RUT → LLM | Incrustar RUT en prompt/jsonb de revisión | `assertNoRutInLlmInput` dentro de `correrPipeline`; RUT viaja solo por canal de auditoría interno, nunca a `revision_*` |
+| PostgREST al backfill masivo | Leer >1000 filas sin paginar | Cap 1k de PostgREST: paginar `.order().range()` SIEMPRE (gotcha ya cazado en v6.1) |
+
+## Security Mistakes
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Exponer RUT en tabla/ruta pública | Violación 21.719 + PII; minimización rota | RUT es PII interna (`parlamentario.rut`, RLS deny-by-default); nunca a tabla pública ni LLM |
+| Encender flag MONEY sin sign-off | Riesgo jurídico-existencial | `money-gate.ts` fail-closed; flip = acto humano con dossier `signoff: approved`; guard CI |
+| RUT crudo al pipeline LLM (subencargado) | RUT sale del perímetro interno | `assertNoRutInLlmInput`; data-routing: solo el nombre al LLM, RUT solo al matcher determinista en memoria |
+| Ampliar allowlist SSRF por un host de dinero | SSRF a todo tenant Azure/gob | `extraHosts` exacto scoped, nunca al default; assert https |
+| Filtrar ticket ChileCompra en errores/logs | Secreto expuesto | Errores de bloqueo NUNCA incluyen el ticket (patrón `ServelBloqueadaError` que declara "sin secretos") |
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Mostrar "ausente" como "en contra" | Afirmación falsa sobre el voto | 5 opciones separadas; pareo/ausente en slate neutro (`voto-presentacion.ts` ya lo hace) — no fundir |
+| Comparar votos par-a-par | Insinúa afinidad política (riesgo #2) | Comparar contra mediana de cámara (agregado factual), como VIZ-COMP |
+| Financiamiento sin fecha de corte | Dato viejo parece actual | Fecha de captura + período electoral visible por dato |
+| "Empresa ligada a X" | Difamación por vínculo débil | Conteo factual con provenance; jurídica solo por RUT exacto |
+| Cruce de dinero sin declarar cobertura de RUT | "Sin vínculos" confundido con "sin datos" | Declarar N/M con RUT; "sin dato de RUT" ≠ "sin vínculos" |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **VOTE:** spike confirms per-deputy completeness AND `Diputado/Id` mapping (not just totals present)
-- [ ] **Every new attribution:** has an `identidad_audit` row; FK null+raw when not `confirmado`
-- [ ] **Money:** RUT DV-validated; persona-natural vs jurídica tagged; company contracts not collapsed into personal totals
-- [ ] **Declarations:** filing date prominent; staleness badge present; CC BY 4.0 attribution visible
-- [ ] **Crosses:** no single UI unit pairs money/lobby with a vote; no affinity/score/causal language
-- [ ] **NET:** edges typed+sourced; no path = accusation; legal sign-off on framing
-- [ ] **UI states:** confirmed vs unverified vs not-ingested distinguished — empty never reads as "clean"
-- [ ] **PII routing:** no LLM call on PII bypasses the data-routing gate; no RUT in any prompt
-- [ ] **Legal review:** covers republication, derived-data, sensitive-data (party/vote), third-party private persons — before public exposure
+- [ ] **Conector de votos:** Corre contra el fixture — verifica que hay respuesta LIVE de opendata guardada en R2 y que los totales voto-a-voto cuadran con los totales del boletín.
+- [ ] **Reconciliación de voto:** % `confirmado` no bajó al escalar — verifica que ningún name-match entró al camino de votos.
+- [ ] **Mapeo de opción:** `Valor 1→si, 0→no` — verifica con test explícito, no asumido; pareo/abstención/dispensado mapeados.
+- [ ] **RUT-01:** El backfill "corrió" — verifica cobertura N/M de RUT DV-válido en la maestra ANTES de habilitar cruce de dinero.
+- [ ] **Cruce jurídica:** "cruza empresas" — verifica que la rama jurídica NUNCA llama `correrPipeline` (solo RUT exacto).
+- [ ] **money-gate:** "gated OFF" — verifica que ningún commit cambió el default ni añadió lectura cruda de la env.
+- [ ] **Linter anti-insinuación:** "cubre cruces" — verifica que corre TAMBIÉN sobre superficies de voto y de dinero nuevas.
+- [ ] **Dos etapas:** conector nuevo "ingesta" — verifica fuente→R2 (crudo content-addressed) Y R2→Supabase, re-ejecutables por separado.
+- [ ] **Freshness:** "monitoreado" — verifica que SERVEL/ChileCompra/votos aparecen en `pnpm freshness` con staleness.
 
-## Pitfall-to-Phase (block) Mapping
+## Recovery Strategies
 
-| Pitfall | Owning block | Verification |
-|---------|-------------|--------------|
-| A1 confirmed-link guard not generalized | First INT block (before any cross) | New writers refuse FK unless `confirmado`/`determinista`; audit row exists |
-| A2/E1 wrong-RUT person | MONEY | DV validator + golden RUT cases; review-queue non-empty |
-| A3 name conventions | Each ingest block | Golden ≥0.95 with new-source name fixtures |
-| A4/E2 stale/term mismatch | MONEY + INT | Period column constrains matches; as-of date shown |
-| B1 temporal-adjacency implication | First two-dataset UI block | UI criterion: no composed money-vote unit; no causal copy |
-| B2 graph-as-corruption-map | NET (last) | Edges typed/sourced; legal sign-off on graph |
-| B3 conflict-verdict framing | INT (declarations) | No "conflicto" verdict field exists |
-| C1 opendata vote validation | VOTE Fase-1 spike | Confirm-or-replan gate |
-| C2 SERVEL fragility | MONEY | Completeness gate + blocking drift |
-| C3 ChileCompra quota | MONEY | Serial pgmq sweep; queried-zero distinguished |
-| C4 HTML drift | Each HTML block | Per-source drift policy; fixture goldens |
-| D1 público≠exento | Cross-cutting, pre-launch | Legal review on republication/derived data |
-| D2 vote/party = sensible | INT + NET | No ideology/affinity inference; third-party minimization |
-| D3 LLM sub-encargado | Any PII-LLM block | data-routing gate enforced; no-training tier |
-| D4 CC BY 4.0 attribution | INT + NET | Attribution visible incl. graph nodes |
-| E3 company→personal | MONEY + NET | Supplier entity distinct; interest-sourced edges only |
-| E4 under-link reads as "clean" | Each block + ficha UI | Three-state UI verified |
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Voto mal atribuido publicado | HIGH (reputacional/legal) | Re-reconciliar desde R2 (no re-scrapear); corregir DIPID→maestra; audit inmutable de la corrección; el crudo en R2 permite reconstruir sin tocar la fuente |
+| Cruce de dinero corrido antes de RUT-01 | MEDIUM | Los datos son derivados reconstruibles: backfillar RUT-01, re-correr `reconciliar-contrato` desde R2, re-materializar; el crudo no se re-descarga |
+| Flag MONEY encendido por error | HIGH | Revertir a OFF de inmediato (fail-closed); el gate hace que ausencia=OFF; auditar qué se expuso |
+| RUT falso escrito a la maestra por name-match | MEDIUM | La maestra tiene respaldo externo (snapshot git autoritativo); revertir; el canal de revisión humana debió interceptarlo |
+| opendata cambió shape y cargó basura | LOW-MEDIUM | El gate zod debió fallar ruidoso; si pasó, re-parsear desde R2 con el parser corregido (fuente no se toca) |
+
+## Pitfall-to-Phase Mapping
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| #2 opendata sin validar | **Fase 1 P3 — validar/caracterizar endpoint** (bloqueante, antes del conector) | Respuesta LIVE en R2; totales cuadran; mapeo de opción con test |
+| #1 voto mal atribuido (riesgo #1) | Fase P3 — modelo de voto reconciliado + golden set DIPID→maestra | % confirmado estable al escalar; cero name-match en votos |
+| #3 alineamiento/rebeldía (riesgo #2) | Fase P3 — superficies de análisis de voto | Linter anti-insinuación corre sobre voto; BrowserOS gate; sin co_votación |
+| #4 cruzar dinero sin RUT-01 | **Fase RUT-01 (backfill)** — bloqueante, ANTES del cruce de dinero | Cobertura RUT N/M declarada; guard CI anti name-match→rut |
+| #6 empresa ligada / jurídica name-match | Fase P5 — cruce de dinero (rama jurídica RUT-only intacta) | Jurídica nunca llama `correrPipeline`; provenance inline |
+| #7 SERVEL desactualizado | Fase P5 — superficies de dinero + freshness | Fecha de corte visible; SERVEL/ChileCompra en freshness |
+| #5 flag MONEY sin sign-off (legal) | Fase-gate humana separada (F13) — fuera del agente | `signoff: approved` en dossier 13; guard CI anti-flip; chokepoint `moneyPublicEnabled()` |
+
+## Deuda técnica / operacional al tocar conectores existentes
+
+**Regla rectora:** los conectores de leyes/lobby/probidad YA funcionan end-to-end (v6.0). Agregar votos/dinero NO debe regresionarlos.
+
+- **`source_snapshot` / dos etapas LOCKED:** todo conector nuevo (votos, ChileCompra si falta) escribe PRIMERO crudo content-addressed a R2 (`fuente/recurso/fecha/sha256.ext`, PUT `If-None-Match: *`, 412=ya-existía=éxito) y LUEGO R2→Supabase. Reusar `SnapshotWriter`/`base-connector`, no forkar. Verificar que las dos etapas son re-ejecutables por separado.
+- **`--from-r2` (replay):** el backfill de votos/dinero debe poder re-correr DESDE R2 sin molestar la fuente (regla LOCKED: re-ingestar a Supabase se hace SIEMPRE desde R2). Patrón ya presente en lobby/probidad — extenderlo, no reinventar.
+- **Hash-check ANTES de descargar:** votos y dinero comprueban sha256/ETag/If-Modified-Since antes de re-bajar; salir temprano sin novedades.
+- **Rotación del cron sin perder frescura:** agregar votos/dinero al scheduling round-robin (dilución ya identificada en el cron leyes-weekly sobre corpus 3.657). No sobrecargar un solo día; lotes acotados incrementales L–V; MONEY/SERVEL FUERA del cron mientras estén gated.
+- **Backfill masivo = LOCAL (operador), NO GitHub Actions** (minimizar minutos), idempotente/reanudable — patrón v6.1.
+- **PostgREST cap 1k:** paginar `.order().range()` SIEMPRE en el backfill masivo (gotcha recurrente v6.1).
 
 ## Sources
 
-- `.planning/PROJECT.md`, `.planning/MILESTONES.md`, `CLAUDE.md` — v1.0 guardrails, identity guard, data-routing gate, provenance/freshness UI, "What NOT to Use" (project canon) — HIGH
-- [WSCamaraDiputados — getVotaciones_Boletin (opendata.camara.cl)](https://opendata.camara.cl/wscamaradiputados.asmx?op=getVotaciones_Boletin) — confirms per-deputy `Voto{Diputado,Opcion}` + totals + `Pareos` available — MEDIUM-HIGH (page schema; needs live spike for completeness/id-mapping)
-- [Ley 21.719 — RSM Chile](https://www.rsm.global/chile/es/news/ley-21719-proteccion-de-datos-personales) — entry into force, sanctioning agency — HIGH
-- [Ley 21.719 — DOE Actualidad Jurídica](https://actualidadjuridica.doe.cl/ley-n-21-719-conoce-mas-sobre-la-nueva-ley-de-datos-personales/) — datos sensibles incl. afiliación política/ideología; "el carácter público no exime del cumplimiento"; fuentes de acceso público definition — HIGH
-- [Ley 21.719 guía 2026 — Prey](https://preyproject.com/es/blog/ley-de-proteccion-de-datos-en-chile) — full force 2026-12-01, ARCO+, breach notice, fines — MEDIUM
+- Código del repo (verificación directa, HIGH): `packages/votos/src/run-camara-votos.ts`, `run-votos-masivo-cli.ts`, `run-camara-votos.live.test.ts`; `packages/tramitacion/src/parse-camara-votacion.ts`; `app/lib/voto-presentacion.ts`; `app/lib/money-gate.ts`; `packages/dinero/src/reconciliar-contrato.ts`, `connector-servel.ts`; `packages/identity/src/backfill-rut.ts`.
+- `.planning/PROJECT.md` (HIGH) — riesgos existenciales #1/#2, milestone v7.0, gates, RUT-01 como prereq de datos, 21.719, opendata "sin validar".
+- `CLAUDE.md` (HIGH) — dos etapas LOCKED, WAF/rate-limit, jurídica RUT-only fail-closed, "qué NO usar", allowlist SSRF, PostgREST cap 1k.
+- `docs/legal/13-LEGAL-DOSSIER.md` / `17-LEGAL-DOSSIER-NET.md` (referenciados) — sign-off MONEY/NET, co_votación excluida del MVP §2.
+- MEMORY (contexto de corridas previas, HIGH) — gotchas v6.1 (paginación PostgREST, backfill local, linter/cascada).
 
 ---
-*Pitfalls research for: v2.0 "Parlamentarios 360" (VOTE/INT/MONEY/NET)*
-*Researched: 2026-06-18*
-</content>
+*Pitfalls research for: agregar voto individual (P3) + dimensión dinero (P5) a Observatorio del Congreso 360 — milestone v7.0*
+*Researched: 2026-07-13*
