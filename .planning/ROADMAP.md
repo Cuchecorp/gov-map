@@ -169,7 +169,7 @@ Plans:
 
 - [x] 69-01-PLAN.md — Guard CI name-match≠write-rut (comportamiento + estático) con mutation self-check
 - [x] 69-02-PLAN.md — Señal de cobertura N/M de RUT DV-válido en pnpm freshness (ambas maestras, techo honesto)
-- [ ] 69-03-PLAN.md — Runbook operador del write remoto + checkpoint (bloqueante duro)
+- [x] 69-03-PLAN.md — Runbook operador del write remoto + checkpoint (bloqueante duro)
 
 ### Phase 70: DINERO P5b — Wire dos-etapas ChileCompra por RUT (funde DEBT-01, SPIKE cuota)
 
@@ -1001,7 +1001,7 @@ Plans:
 | 66. VOTO P3c — Wire dos-etapas Cámara + backfill a escala | v7.0 | 2/2 | Complete   | 2026-07-14 |
 | 67. VOTO P3d — Paridad Senado (voto individual por nombre) | v7.0 | 2/2 | Complete   | 2026-07-14 |
 | 68. VOTO P3e — Superficies de voto + linter + cobertura + BrowserOS | v7.0 | 4/4 | Complete   | 2026-07-14 |
-| 69. DINERO P5a — RUT-01 backfill (checkpoint operador, bloqueante) | v7.0 | 2/3 | In Progress|  |
+| 69. DINERO P5a — RUT-01 backfill (checkpoint operador, bloqueante) | v7.0 | 3/3 | Complete   | 2026-07-14 |
 | 70. DINERO P5b — Wire dos-etapas ChileCompra por RUT (SPIKE cuota) | v7.0 | 0/? | Not started | - |
 | 71. DINERO P5c — SERVEL LOCAL (.xlsx artesanal) | v7.0 | 0/? | Not started | - |
 | 72. DINERO P5d — Extender materializador cruce_senal (lobby_sector_aporte) | v7.0 | 0/? | Not started | - |

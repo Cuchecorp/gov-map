@@ -19,7 +19,7 @@ Requirements de este milestone. Cada uno mapea a una fase del roadmap.
 
 ### RUT — Prerrequisito de datos de la dimensión dinero
 
-- [x] **RUT-01**: La maestra de terceros (`entidad_tercero`) tiene RUT backfilleado para las entidades cruzables, con cobertura N/M declarada como techo honesto — bloqueante duro de TODO cruce de dinero. El RUT nunca se expone públicamente (minimización) ni cruza al LLM (LOCKED); personas jurídicas solo por RUT exacto, fail-closed.
+- [ ] **RUT-01** (mecanismo entregado; write remoto PENDING operador — bloqueante duro P5): La maestra de terceros (`entidad_tercero`) tiene RUT backfilleado para las entidades cruzables, con cobertura N/M declarada como techo honesto — bloqueante duro de TODO cruce de dinero. Guard (69-01) + cobertura (69-02) + runbook (69-03) LISTOS; la ESCRITURA REMOTA de RUTs reales DV-válidos es checkpoint de operador (cobertura HOY ≈ 0/M hasta poblar el seed). El RUT nunca se expone públicamente (minimización) ni cruza al LLM (LOCKED); personas jurídicas solo por RUT exacto, fail-closed.
 
 ### MONEY — Dimensión dinero (P5, SERVEL + ChileCompra), deny-by-default
 
@@ -76,7 +76,7 @@ Se completa durante la creación del roadmap (gsd-roadmapper). Cada requisito ma
 | VOTO-03 | Phase 65 | Complete |
 | VOTO-04 | Phase 68 | Complete |
 | VOTO-05 | Phase 64 (enabler) + Phase 68 (declarada) | In Progress |
-| RUT-01 | Phase 69 | Complete |
+| RUT-01 | Phase 69 | In Progress (write remoto PENDING operador) |
 | MONEY-01 | Phase 70 | Pending |
 | MONEY-02 | Phase 71 | Pending |
 | MONEY-03 | Phase 72 | Pending |
