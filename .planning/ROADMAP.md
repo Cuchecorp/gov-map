@@ -163,7 +163,12 @@ DEUDA (paralelizable, no bloquea P3/P5): 74 (cursor leylobby + CF token CI + rou
   3. Un name-match NUNCA escribe el `rut` de la maestra (name-uniqueness ≠ RUT-ownership); solo corrobora un RUT presente o encola a revisión humana — guard CI lo enforça
   4. El RUT nunca cruza al LLM ni a una tabla/ruta pública (minimización, RLS deny-by-default)
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 69-01-PLAN.md — Guard CI name-match≠write-rut (comportamiento + estático) con mutation self-check
+- [ ] 69-02-PLAN.md — Señal de cobertura N/M de RUT DV-válido en pnpm freshness (ambas maestras, techo honesto)
+- [ ] 69-03-PLAN.md — Runbook operador del write remoto + checkpoint (bloqueante duro)
 
 ### Phase 70: DINERO P5b — Wire dos-etapas ChileCompra por RUT (funde DEBT-01, SPIKE cuota)
 
