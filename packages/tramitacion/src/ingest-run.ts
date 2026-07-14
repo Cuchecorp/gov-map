@@ -84,9 +84,11 @@ export interface RunIngestOpts {
   pipelineWriter?: PipelineWriter;
   /**
    * Store R2 para Etapa 1 (crudo por boletín, content-addressed). Si se omite no se persiste
-   * crudo — best-effort, NOT fatal (espejo de run-camara-lobby.ts L85–105). Si putImmutable
-   * devuelve existed=true se emite `[skip] sin novedades — tramitacion <boletin>` y se salta
-   * la Etapa 2 para ese boletín.
+   * crudo (no fatal — la corrida sigue sin Etapa 1). PERO si SÍ se pasa, el put del crudo es
+   * LOCKED: un FALLO de `putImmutable` (status HTTP no-412 o red) GATEA la Etapa 2 de ese
+   * boletín (CR-01) — se registra en `errores` y se OMITE el upsert a Supabase, para no dejar
+   * un derivado sin crudo reconstruible. Si `putImmutable` devuelve existed=true (412) se emite
+   * `[skip] sin novedades — tramitacion <boletin>` y también se salta la Etapa 2 (idempotente).
    */
   r2Store?: R2Store;
   /**
@@ -270,50 +272,69 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
       continue;
     }
 
-    // Etapa 1 R2 (best-effort): persiste el crudo del boletín content-addressed.
-    // Si existed=true → el contenido no cambió → skip Etapa 2 para este boletín.
+    // Etapa 1 R2 (LOCKED — "crudo PRIMERO en R2"): persiste el crudo del boletín
+    // content-addressed. Si existed=true → el contenido no cambió → skip Etapa 2 para este
+    // boletín. CR-01: si el `putImmutable` del crudo FALLA (status HTTP no-412 o fallo de red),
+    // NO escribimos el derivado a Supabase — si el crudo no quedó en R2, un `--from-r2` posterior
+    // daría 404 y el derivado sería IRRECONSTRUIBLE (viola la regla LOCKED de CLAUDE.md). En su
+    // lugar se registra el boletín en `errores` y se OMITE la Etapa 2; re-correr lo recupera una
+    // vez que R2 esté sano (los upserts son idempotentes). El sub-bloque de source_snapshot
+    // (bookkeeping de provenance) SÍ es best-effort/no-fatal — solo el put del crudo gatea.
     if (opts.r2Store) {
+      const envelope = { boletin: boletinFull, tramXml: tramXmlCrudo, votXml: votXmlCrudo, detalles: detallesCrudos };
+      const bytes = new TextEncoder().encode(JSON.stringify(envelope));
+      const sha = await sha256Hex(bytes);
+      const today = new Date().toISOString().slice(0, 10);
+      let r2Path: string;
+      let existed: boolean;
       try {
-        const envelope = { boletin: boletinFull, tramXml: tramXmlCrudo, votXml: votXmlCrudo, detalles: detallesCrudos };
-        const bytes = new TextEncoder().encode(JSON.stringify(envelope));
-        const sha = await sha256Hex(bytes);
-        const today = new Date().toISOString().slice(0, 10);
-        const { r2Path, existed } = await opts.r2Store.putImmutable(
+        ({ r2Path, existed } = await opts.r2Store.putImmutable(
           "tramitacion",
           boletinFull,
           today,
           sha,
           "json",
           bytes,
-        );
-        if (existed) {
-          log(`[skip] sin novedades — tramitacion ${boletinFull}`);
-          continue;
-        }
-        log(`tramitacion: crudo en R2 → ${r2Path}`);
-        // Registro source_snapshot (FND-08/CRON-02): best-effort, no fatal.
-        if (opts.snapshotWriter) {
-          try {
-            await opts.snapshotWriter.write({
-              source: "leyes",
-              resource: boletinFull,
-              cacheKey: sha,
-              r2Path,
-              contentHash: sha,
-              fingerprint: sha.slice(0, 8),
-              dateBucket: today,
-              provenance: {
-                source: "leyes",
-                sourceUrl: "https://tramitacion.senado.cl/",
-                fetchedAt: new Date().toISOString(),
-              },
-            });
-          } catch (snErr) {
-            log(`tramitacion: source_snapshot falló (no fatal): ${(snErr as Error).message}`);
-          }
-        }
+        ));
       } catch (err) {
-        log(`tramitacion: Etapa 1 R2 falló (no fatal): ${(err as Error).message}`);
+        // Etapa-1-primero es LOCKED: si el crudo NO quedó en R2, NO escribimos el derivado.
+        errores.push({
+          boletin: boletinFull,
+          etapa: "r2-etapa1",
+          mensaje: err instanceof Error ? err.message : String(err),
+        });
+        log(
+          `ingest: ERROR Etapa 1 R2 ${boletinFull} → se OMITE la escritura a Supabase ` +
+            `(idempotente al re-correr): ${err instanceof Error ? err.message : String(err)}`,
+        );
+        continue;
+      }
+      if (existed) {
+        // 412 = el crudo ya existía = éxito idempotente. Sin novedades → skip Etapa 2.
+        log(`[skip] sin novedades — tramitacion ${boletinFull}`);
+        continue;
+      }
+      log(`tramitacion: crudo en R2 → ${r2Path}`);
+      // Registro source_snapshot (FND-08/CRON-02): best-effort, no fatal.
+      if (opts.snapshotWriter) {
+        try {
+          await opts.snapshotWriter.write({
+            source: "leyes",
+            resource: boletinFull,
+            cacheKey: sha,
+            r2Path,
+            contentHash: sha,
+            fingerprint: sha.slice(0, 8),
+            dateBucket: today,
+            provenance: {
+              source: "leyes",
+              sourceUrl: "https://tramitacion.senado.cl/",
+              fetchedAt: new Date().toISOString(),
+            },
+          });
+        } catch (snErr) {
+          log(`tramitacion: source_snapshot falló (no fatal): ${(snErr as Error).message}`);
+        }
       }
     }
 

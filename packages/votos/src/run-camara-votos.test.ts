@@ -481,4 +481,39 @@ describe("runCamaraVotos — wire dos-etapas (P66 / DEBT-01)", () => {
     expect(writer.votos.size).toBe(sizeTras1);
     expect(r2.putTicks.length).toBe(2); // se intentó put ambas veces (2ª → 412 existed)
   });
+
+  it("Test E (CR-01): si putImmutable LANZA, NO se upsertan votos y el boletín queda en errores", async () => {
+    // R2Store que LANZA en Etapa 1 (crudo no persiste). La regla LOCKED exige que Etapa 2 NO
+    // corra: si el crudo no quedó en R2, un `--from-r2` posterior daría 404 y el derivado sería
+    // irreconstruible. El boletín debe caer a `errores` (etapa r2-etapa1), NO a Supabase.
+    let counter = 0;
+    const tick = () => ++counter;
+    const writer = new OrderTrackingWriter(tick);
+    const r2Falla = {
+      async putImmutable(): Promise<{ r2Path: string; existed: boolean }> {
+        throw new Error("R2 PUT 500 para tramitacion/14309-04/…"); // simula fallo HTTP no-412
+      },
+      async getObject(): Promise<Uint8Array> {
+        throw new Error("no aplica");
+      },
+    } as unknown as R2Store;
+
+    const res = await runCamaraVotos({
+      boletines: ["14309-04"],
+      camara: fakeCamara(),
+      senado: fakeSenado(),
+      writer,
+      maestra: maestraDePrueba(),
+      r2Store: r2Falla,
+    });
+
+    // Etapa 2 GATEADA: upsertVotos NUNCA se llamó para ese boletín.
+    expect(writer.upsertVotosTicks.length).toBe(0);
+    expect(writer.votos.size).toBe(0);
+    expect(res.votos).toBe(0);
+
+    // El boletín quedó registrado como error de Etapa 1 (re-correr lo recupera).
+    expect(res.errores.length).toBeGreaterThan(0);
+    expect(res.errores.some((e) => e.boletin === "14309-04" && e.etapa === "r2-etapa1")).toBe(true);
+  });
 });
