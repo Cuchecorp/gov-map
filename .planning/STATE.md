@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: — Votos, dinero y cierre técnico
-status: executing
+status: verifying
 stopped_at: "Completed 68-02-PLAN.md (cobertura del voto individual N/M en pnpm freshness: COBERTURA_VOTO_SENALES + renderCoberturaVoto; Camara confirmado / Senado por nombre). Phase 68 P2 de 4."
-last_updated: "2026-07-14T09:08:36.630Z"
+last_updated: "2026-07-14T09:14:59.471Z"
 last_activity: 2026-07-14
 progress:
   total_phases: 12
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 22
-  completed_plans: 19
-  percent: 42
+  completed_plans: 20
+  percent: 50
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 71 (DINERO P5c — SERVEL LOCAL (.xlsx)) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-14
 
 Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shipped)
@@ -91,6 +91,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: Phase 70-01: --from-r2 deriva la tarea del envelope (rut+dias); wire dinero dos-etapas R2 put-gatea-upsert
 - [Phase ?]: Phase 70-03: runbook backfill ChileCompra operador-LOCAL (70-BACKFILL-CHILECOMPRA-RUNBOOK.md, espejo 66/67, flags reales run-dinero-masivo-cli --ruts-file/--dia/--from-r2) + SPIKE (70-SPIKE-CUOTA-OCDS.md): cuota 10k/dia NO modificable -> particion multi-dia reanudable OBLIGATORIA (hash-check R2 salta lo hecho, upsert clave-natural no-op); OCDS bulk esquiva cuota pero parser DEFERRED (fuera de alcance); universo RUT depende de RUT-01. El agente NO corrio el crawl LIVE (deuda operador-LOCAL como 66/67), NO consumio cuota, MONEY-01 NO cerrado, MONEY_PUBLIC_ENABLED OFF (flip=Phase 73); ticket MERCADOPUBLICO_TICKET solo en .env (redactado).
 - [Phase ?]: Phase 70-02: señal freshness ChileCompra = entrada CATALOG declarativa sobre contratos_ingesta_estado.ingestado_hasta (marcador de barrido, espejo lobby-leylobby: distingue "sin contratos" de "no barrido"), umbral 30d, evaluate.ts reusado tal cual, CERO migraciones; degrada honesto (STALE ~= 0 hoy, sin crawl; GH n/d porque chilecompra-weekly.yml no existe hasta el flip de Phase 73). Guard frozen-reconciler (packages/dinero/reconciler-frozen-guard.test.ts, misma suite que name-match-rut-guard) congela 3 firmas LOCKED: rama juridica RUT-only (correrPipeline DESPUES de la guarda !==natural), monto string|null VERBATIM no numeric, header+tabla 0023 intactos; detector puro + mutation self-check EN MEMORIA (muerde por eje) + no-falsos-positivos. MONEY gate re-verificado OFF (=== "true"; .env.example=false; anti-flip Phase 69 verde). Archivos LOCKED git diff exit 0.
+- [Phase ?]: Phase 71-03: runbook backfill SERVEL operador-LOCAL POR ELECCION (71-BACKFILL-SERVEL-RUNBOOK.md, espeja 70/66/67, flags reales run-servel-local-cli --eleccion/--r2-path/--from-r2/--anio). MAS simple que ChileCompra: SERVEL no depende de RUT-01 (cruce por NOMBRE determinista, no trae RUT) ni de ticket/cuota (GET anonimo). Etapa 1 = acto humano (colocar .xlsx en R2 content-addressed servel/<eleccion>/<fecha>/<sha>.xlsx). El agente NO obtuvo/coloco .xlsx, NO toco SERVEL, NO flipeo MONEY. MONEY-02 NO cerrado (porcion LIVE = deuda operador); MONEY_PUBLIC_ENABLED OFF (flip=Phase 73).
 
 ### Pending Todos
 
@@ -107,6 +108,7 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 - 68-04 gate BrowserOS comprensible PENDING operador: requiere backfill votos 66/67 (LOCAL) + deploy Cloudflare, luego cold-read segun 68-BROWSEROS-GATE.md. Resume: escribir comprensible o listar puntos fallidos.
 - RUT-01 write remoto a la maestra PENDIENTE checkpoint operador blocking-human (bloqueante duro P5)
 - 70-03 PENDIENTE operador-LOCAL (checkpoint human-action bloqueante): correr el backfill LIVE de ChileCompra por RUT (cuota 10k/día, ticket MERCADOPUBLICO_TICKET solo en .env, rate-limit 2-3s, partición multi-día reanudable vía --ruts-file/--dia + replay --from-r2). BLOQUEANTE DURO: RUT-01 (Phase 69) debe estar poblado primero (sin RUTs no hay universo). MONEY_PUBLIC_ENABLED se queda OFF hasta el flip legal de Phase 73. MONEY-01 NO cerrado. Ver 70-BACKFILL-CHILECOMPRA-RUNBOOK.md + 70-SPIKE-CUOTA-OCDS.md
+- 71-03 PENDIENTE operador-LOCAL (checkpoint human-action blocking-human): poblar SERVEL POR ELECCION — obtener el .xlsx de financiamiento electoral a mano desde SERVEL, colocarlo en R2 content-addressed servel/<eleccion>/<fecha_corte>/<sha>.xlsx (Etapa 1 = acto humano), y correr run-servel-local-cli.ts --eleccion <slug> --r2-path <r2Path> [--anio YYYY] (Etapa 2, lee de R2, 0 fetch). SERVEL NO trae RUT (cruce por NOMBRE determinista) -> RUT-01 NO es prerrequisito. MONEY-02 NO cerrado; MONEY_PUBLIC_ENABLED OFF hasta flip legal Phase 73. Ver 71-BACKFILL-SERVEL-RUNBOOK.md
 
 ### Quick Tasks Completed
 
@@ -125,7 +127,7 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-14T09:08:36.621Z
+Last session: 2026-07-14T09:14:18.822Z
 Stopped at: Completed 68-02-PLAN.md (cobertura del voto individual N/M en pnpm freshness: COBERTURA_VOTO_SENALES + renderCoberturaVoto; Camara confirmado / Senado por nombre). Phase 68 P2 de 4.
 Resume file: None
 
