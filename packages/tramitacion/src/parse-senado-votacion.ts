@@ -77,11 +77,19 @@ function asArray<T>(v: T | T[] | undefined | null): T[] {
 function mapSeleccion(s: string | null): Seleccion | null {
   const raw = (s ?? "").trim();
   if (raw.length === 0) return null; // (a) vacío/ausente → se omite (no lanza)
-  const v = raw.toLowerCase();
-  if (v.startsWith("si") || v.startsWith("sí")) return "si";
-  if (v.startsWith("no")) return "no";
-  if (v.startsWith("abst")) return "abstencion";
-  if (v.startsWith("pareo")) return "pareo";
+  // IN-03: emparejamiento por TOKEN NORMALIZADO/ANCLADO (no prefijo greedy). Normaliza a
+  // minúsculas + colapsa whitespace interno.
+  const v = raw.toLowerCase().replace(/\s+/g, " ");
+  // AUSENCIA primero (más específico) — antes de la rama contra, para que "no vota"/"no votó"
+  // NO caiga en `no` (una atribución FALSA de voto en contra a quien NO votó). Simetría con la
+  // Cámara: No Vota → `ausente`.
+  if (/^(no vot|sin voto|ausente)/.test(v)) return "ausente";
+  // Tokens nominales anclados a TOKEN completo (o token seguido de espacio), NO prefijo greedy.
+  // Nota: `\b` no es fiable tras letras acentuadas ("sí") en JS regex → anclamos a fin/espacio.
+  if (/^(si|sí)( |$)/.test(v)) return "si";
+  if (/^no( |$)/.test(v)) return "no";
+  if (/^abst/.test(v)) return "abstencion";
+  if (/^pareo/.test(v)) return "pareo";
   // (c) token presente pero desconocido → FALLA RUIDOSO (no se omite el voto en silencio).
   throw new Error(
     `parseSenadoVotaciones: <SELECCION> con token desconocido "${raw}" — voto NO omitido en ` +

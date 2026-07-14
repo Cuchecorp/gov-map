@@ -162,3 +162,30 @@ describe("D-A4 (P67): token <SELECCION> desconocido FALLA RUIDOSO (no omite el v
     expect(votos.map((v) => v.seleccion)).toEqual(["si", "no", "abstencion", "pareo"]);
   });
 });
+
+describe("IN-03 (P67): 'No vota' NO se mis-mapea a `no` (atribución falsa de voto en contra)", () => {
+  const conToken = (token: string) => `<votaciones>
+    <votacion><SESION>1/1</SESION><FECHA>01/01/2026</FECHA><TEMA>x</TEMA><SI>0</SI><NO>1</NO><ABSTENCION>0</ABSTENCION><PAREO>0</PAREO><TIPOVOTACION>T</TIPOVOTACION><ETAPA>E</ETAPA><DETALLE_VOTACION><VOTO><PARLAMENTARIO>Ausente A., Uno</PARLAMENTARIO><SELECCION>${token}</SELECCION></VOTO></DETALLE_VOTACION></votacion>
+  </votaciones>`;
+
+  it("'No vota' → `ausente` (NO `no`), en simetría con la Cámara", () => {
+    const { votos } = parseSenadoVotacion(conToken("No vota"), "99999-01");
+    expect(votos).toHaveLength(1);
+    expect(votos[0]!.seleccion).toBe("ausente");
+    expect(votos[0]!.seleccion).not.toBe("no");
+  });
+
+  it("'No' pelado → `no` (contra) sigue funcionando", () => {
+    const { votos } = parseSenadoVotacion(conToken("No"), "99999-01");
+    expect(votos[0]!.seleccion).toBe("no");
+  });
+
+  it("'Sin voto' y 'Ausente' → `ausente` (variantes de ausencia)", () => {
+    expect(parseSenadoVotacion(conToken("Sin voto"), "99999-01").votos[0]!.seleccion).toBe(
+      "ausente",
+    );
+    expect(parseSenadoVotacion(conToken("Ausente"), "99999-01").votos[0]!.seleccion).toBe(
+      "ausente",
+    );
+  });
+});
