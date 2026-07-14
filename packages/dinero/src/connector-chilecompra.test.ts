@@ -11,6 +11,8 @@ import { describe, it, expect } from "vitest";
 import { Fetcher, HostRateLimiter, RobotsGuard } from "@obs/ingest";
 import { ChileCompraConnector, ChileCompraBloqueadaError } from "./connector-chilecompra";
 import { redactarTicket } from "./query";
+import { runIngestDinero } from "./ingest-run";
+import { InMemoryDineroWriter } from "./writer";
 
 const SECRET = "S3CR3T-TICKET-NO-LEAK-9f2a";
 
@@ -70,5 +72,84 @@ describe("redactarTicket — enmascara el query param ticket sin tocar el resto"
   it("es idempotente y null-safe sobre strings sin ticket", () => {
     expect(redactarTicket("sin ticket aqui")).toBe("sin ticket aqui");
     expect(redactarTicket(redactarTicket(`a?ticket=${SECRET}`))).toBe("a?ticket=***");
+  });
+});
+
+// ── CR-01 aplicado al NUEVO wire dos-etapas (Phase 70) ─────────────────────────
+// El envelope R2 guarda SOLO respuestas JSON crudas: el `MERCADOPUBLICO_TICKET` (que viaja en la
+// querystring del paso 1/2) NUNCA debe quedar en el crudo persistido ni en un error del wire.
+
+/** FakeR2Store que captura los bytes del envelope y sirve getObject. */
+class SpyR2Store {
+  readonly puts: { r2Path: string; bytes: Uint8Array }[] = [];
+  readonly byPath = new Map<string, Uint8Array>();
+  async putImmutable(source: string, resource: string, date: string, sha: string, ext: string, bytes: Uint8Array) {
+    const r2Path = `${source}/${resource}/${date}/${sha}.${ext}`;
+    this.puts.push({ r2Path, bytes });
+    this.byPath.set(r2Path, bytes);
+    return { r2Path, existed: false };
+  }
+  async getObject(r2Path: string): Promise<Uint8Array> {
+    return this.byPath.get(r2Path)!;
+  }
+}
+
+describe("CR-01 en el wire dos-etapas — el ticket NUNCA en el envelope guardado", () => {
+  it("el crudo persistido en R2 NO contiene el MERCADOPUBLICO_TICKET", async () => {
+    const r2 = new SpyR2Store();
+    // Conector fake que sirve JSON crudo SIN interpolar el ticket (comportamiento correcto).
+    const conector = {
+      async buscarProveedor() {
+        return { CodigoEmpresa: "17793", NombreEmpresa: "PROVEEDOR SA" };
+      },
+      async ordenesDeCompra() {
+        return { Cantidad: 1, Listado: [{ Codigo: "OC-1", Nombre: "Compra X", FechaEnvio: "2024-02-02" }] };
+      },
+    } as unknown as ChileCompraConnector;
+    await runIngestDinero({
+      conector,
+      writer: new InMemoryDineroWriter(),
+      ticket: SECRET,
+      maestra: [],
+      tareas: [{ rut: "76.123.456-0", dias: ["02022024"] }],
+      r2Store: r2 as never,
+    });
+    expect(r2.puts.length).toBe(1);
+    const envelopeTxt = new TextDecoder().decode(r2.puts[0]!.bytes);
+    expect(envelopeTxt).not.toContain(SECRET);
+    expect(envelopeTxt).not.toMatch(/ticket=/i);
+  });
+
+  it("un fallo del wire (put R2 lanza) surfacea en errores SIN el ticket", async () => {
+    const r2QueLanza = {
+      async putImmutable() {
+        // Simula un error que hipoteticamente arrastrara el ticket en el mensaje.
+        throw new Error(`R2 PUT 500 tras GET ...&ticket=${SECRET}`);
+      },
+      async getObject() {
+        return new Uint8Array();
+      },
+    };
+    const conector = {
+      async buscarProveedor() {
+        return { CodigoEmpresa: "17793", NombreEmpresa: "PROVEEDOR SA" };
+      },
+      async ordenesDeCompra() {
+        return { Cantidad: 1, Listado: [{ Codigo: "OC-1", Nombre: "Compra X" }] };
+      },
+    } as unknown as ChileCompraConnector;
+    const res = await runIngestDinero({
+      conector,
+      writer: new InMemoryDineroWriter(),
+      ticket: SECRET,
+      maestra: [],
+      tareas: [{ rut: "76.123.456-0", dias: ["02022024"] }],
+      r2Store: r2QueLanza as never,
+    });
+    expect(res.errores.length).toBeGreaterThan(0);
+    for (const e of res.errores) {
+      expect(e.mensaje).not.toContain(SECRET);
+      expect(e.mensaje).toContain("ticket=***");
+    }
   });
 });

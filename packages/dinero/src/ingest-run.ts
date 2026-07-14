@@ -104,6 +104,9 @@ export async function runIngestDinero(opts: RunIngestDineroOpts): Promise<RunIng
   // el conector fake + el mismo writer YA resuelto (W-1 de Phase 66: NO re-derivar el writer).
   let conector = opts.conector;
   let r2Store = opts.r2Store;
+  // Tareas a recorrer: normalmente `opts.tareas`; en `--from-r2` se DERIVAN del envelope (rut + los
+  // dias presentes en `ordenes`), espejando tramitacion que deriva `[envelope.boletin]`.
+  let tareas = opts.tareas;
   if (opts.fromR2 != null && opts.fromR2 !== "") {
     if (!opts.r2Store) {
       // Guard de args: el replay EXIGE R2 (de otro modo no hay de donde leer el crudo).
@@ -125,6 +128,8 @@ export async function runIngestDinero(opts: RunIngestDineroOpts): Promise<RunIng
         return envelope.ordenes[dia] ?? { Cantidad: 0, Listado: [] };
       },
     } as unknown as ChileCompraConnector;
+    // El envelope es la unidad de replay: una tarea por su RUT, con los dias que capturo el crudo.
+    tareas = [{ rut: envelope.rut, dias: Object.keys(envelope.ordenes) }];
     // En replay NO se re-persiste el crudo (ya esta en R2): desactivar la Etapa 1 para esta pasada.
     r2Store = undefined;
   }
@@ -136,7 +141,7 @@ export async function runIngestDinero(opts: RunIngestDineroOpts): Promise<RunIng
   let contratos = 0;
   let contratistas = 0;
 
-  for (const tarea of opts.tareas) {
+  for (const tarea of tareas) {
     const clave = `rut:${tarea.rut}`;
 
     // 1. DV modulo-11: RUT invalido -> CUARENTENA (0 filas, marca), nunca fabrica.
