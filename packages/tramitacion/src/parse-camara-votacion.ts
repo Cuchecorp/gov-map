@@ -274,6 +274,53 @@ export function parseCamaraVotoDetalle(detalleXml: string): CamaraVotoDetalle[] 
 }
 
 /**
+ * Totales del header + DIPID pareados de la respuesta LIVE `getVotacion_Detalle` (ns tempuri.org),
+ * extraídos con el MISMO parser XML del módulo (fast-xml-parser, NUNCA regex sobre el cuerpo del
+ * voto — CLAUDE.md). Lo consume el SPIKE LIVE (Phase 64) para el cross-check Σ(roster)==Total*
+ * contra la MISMA respuesta cruda y para cazar Pareo/Dispensado por observación. `dispensados`
+ * expone `TotalDispensados` (bucket a confirmar LIVE, Open Question 2). Lee el PRIMER nodo
+ * `<Votacion>` (el detalle trae uno).
+ */
+export interface CamaraDetalleHeader {
+  afirmativos: number;
+  negativos: number;
+  abstenciones: number;
+  dispensados: number;
+  /** DIPID del bloque hermano <Pareos> (ambos diputados de cada <Pareo>). */
+  pareados: string[];
+}
+
+export function caracterizarVotacionDetalle(detalleXml: string): CamaraDetalleHeader {
+  const doc = parser.parse(detalleXml);
+  const v = asArray<Record<string, unknown>>(
+    (doc?.Votacion ?? doc?.Votaciones?.Votacion) as
+      | Record<string, unknown>
+      | Record<string, unknown>[]
+      | undefined,
+  )[0];
+  const pareados = new Set<string>();
+  const pareos = asArray<Record<string, unknown>>(
+    (v?.Pareos as Record<string, unknown> | undefined)?.Pareo as
+      | Record<string, unknown>
+      | Record<string, unknown>[]
+      | undefined,
+  );
+  for (const p of pareos) {
+    const d1 = txt((p.Diputado1 as Record<string, unknown> | undefined)?.DIPID);
+    const d2 = txt((p.Diputado2 as Record<string, unknown> | undefined)?.DIPID);
+    if (d1 != null) pareados.add(d1);
+    if (d2 != null) pareados.add(d2);
+  }
+  return {
+    afirmativos: intOf(v?.TotalAfirmativos),
+    negativos: intOf(v?.TotalNegativos),
+    abstenciones: intOf(v?.TotalAbstenciones),
+    dispensados: intOf(v?.TotalDispensados),
+    pareados: [...pareados],
+  };
+}
+
+/**
  * Deriva la `Seleccion` del roll-call (las 5 opciones) del nodo de opción, soportando ambos
  * shapes. VOTE-03: ya NO descarta No Vota/Abstención/Pareo — los emite como `ausente`/
  * `abstencion`/`pareo`. Devuelve `null` SOLO cuando el nodo de opción es ilegible (sin valor

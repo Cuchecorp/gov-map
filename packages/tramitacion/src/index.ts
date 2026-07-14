@@ -33,7 +33,9 @@ export { parseFechaCL, toIso } from "./fecha";
 export {
   parseCamaraVotacion,
   parseCamaraVotoDetalle,
+  caracterizarVotacionDetalle,
   type CamaraVotoDetalle,
+  type CamaraDetalleHeader,
 } from "./parse-camara-votacion";
 export { parseCamaraSesion, type SesionCamara } from "./parse-camara-sesion";
 export { parseSenadoTramitacion } from "./parse-senado-tramitacion";
