@@ -275,8 +275,11 @@ function opcionDeVoto(voto: Record<string, unknown>): Seleccion | null {
     // Nominales (código confirmado LIVE o texto inequívoco).
     if (codigo === "1" || /a favor|afirmativ/i.test(texto)) return "si";
     if (codigo === "0" || /en contra|negativ/i.test(texto)) return "no";
-    // Abstención / Pareo: por TEXTO (códigos A1 no confirmados LIVE).
-    if (/abstenci/i.test(texto)) return "abstencion";
+    // Abstención: código 2 CONFIRMADO LIVE 2026-07-13 (dejó de ser sintético A1 → hecho
+    // verificado por cross-check de totales en 5 votaciones). Se mapea por CÓDIGO,
+    // independientemente del #text. El fallback por texto (/abstenci/) se conserva por si
+    // otra fuente/legislatura trae solo el texto y no el código.
+    if (codigo === "2" || /abstenci/i.test(texto)) return "abstencion";
     if (/pareo/i.test(texto)) return "pareo";
     // Ausente: No Vota (código 4 confirmado LIVE) o dispensado/inasistencia por texto.
     if (codigo === "4" || /no vota|dispensad|inasist|ausen/i.test(texto)) return "ausente";

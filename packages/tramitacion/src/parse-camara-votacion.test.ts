@@ -94,6 +94,46 @@ describe("parseCamaraVotoDetalle (ns tempuri REAL: getVotacion_Detalle, DIPID + 
     // Los DIPID son numéricos oficiales (803/815/843…) — el cruce lo hace reconciliarVotosCamara.
     for (const v of votos) expect(v.diputadoId).toMatch(/^\d+$/);
   });
+
+  // --- Task 1 (Plan 64-01): abstención por CÓDIGO 2 (CONFIRMADO LIVE 2026-07-13) ---
+  // El fixture real 88813 no trae una abstención (TotalAbstenciones=0), así que se ejercita
+  // el mapeo por código con un XML mínimo tempuri con un <Opcion Codigo="2">.
+  const votacionConCodigo = (codigo: string, texto: string) =>
+    `<?xml version="1.0" encoding="utf-8"?>
+     <Votacion xmlns="http://tempuri.org/">
+       <Votos>
+         <Voto>
+           <Diputado><DIPID>999</DIPID><Nombre>Test</Nombre><Apellido_Paterno>Diputado</Apellido_Paterno></Diputado>
+           <Opcion Codigo="${codigo}">${texto}</Opcion>
+         </Voto>
+       </Votos>
+     </Votacion>`;
+
+  it("mapea <Opcion Codigo=\"2\"> → 'abstencion' por CÓDIGO, con o sin texto reconocible (LIVE 2026-07-13)", () => {
+    // Con texto "Abstencion" (caso live).
+    const conTexto = parseCamaraVotoDetalle(votacionConCodigo("2", "Abstencion"));
+    expect(conTexto.find((v) => v.diputadoId === "999")?.opcion).toBe("abstencion");
+    // Código 2 SIN texto reconocible (o vacío): sigue siendo abstención POR CÓDIGO, no null.
+    const sinTexto = parseCamaraVotoDetalle(votacionConCodigo("2", ""));
+    expect(sinTexto.find((v) => v.diputadoId === "999")?.opcion).toBe("abstencion");
+    const textoRaro = parseCamaraVotoDetalle(votacionConCodigo("2", "xyz"));
+    expect(textoRaro.find((v) => v.diputadoId === "999")?.opcion).toBe("abstencion");
+  });
+
+  it("no regresa las otras ramas: code-1→si, code-0→no, code-4→ausente (contra el fixture real)", () => {
+    const votos = parseCamaraVotoDetalle(detalleReal);
+    // 986 Hernando = Afirmativo (Codigo=1) → si
+    expect(votos.find((v) => v.diputadoId === "986")?.opcion).toBe("si");
+    // 815 Bobadilla = En Contra (Codigo=0) → no
+    expect(votos.find((v) => v.diputadoId === "815")?.opcion).toBe("no");
+    // 1009 Alessandri = No Vota (Codigo=4), NO pareado → ausente
+    expect(votos.find((v) => v.diputadoId === "1009")?.opcion).toBe("ausente");
+  });
+
+  it("fail-closed: una opción con código desconocido y texto ilegible → fila omitida (nunca fabrica sí/no)", () => {
+    const raro = parseCamaraVotoDetalle(votacionConCodigo("9", "???"));
+    expect(raro.find((v) => v.diputadoId === "999")).toBeUndefined();
+  });
 });
 
 describe("parseCamaraVotoDetalle (roster completo: las 5 opciones por diputado, VOTE-03)", () => {
