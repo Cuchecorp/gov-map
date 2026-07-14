@@ -31,7 +31,10 @@ import {
   CATALOG,
   COBERTURA_SENALES,
   COBERTURA_VOTO_SENALES,
+  COBERTURA_RUT_PARLAMENTARIO_SENALES,
+  COBERTURA_RUT_ENTIDAD_SENALES,
 } from "./catalog.js";
+import type { CoberturaSenalConfig } from "./catalog.js";
 
 export interface QueryRow {
   fuente: string;
@@ -173,4 +176,40 @@ export function queryCoberturaVoto(dbUrl: string): CoberturaCount[] {
     const count = raw === "" || Number.isNaN(parsed) ? null : parsed;
     return { senal: cfg.senal, count };
   });
+}
+
+/** Corre un array de señales de cobertura vía `psql` read-only; count null si degrada. */
+function runCoberturaSenales(
+  dbUrl: string,
+  senales: CoberturaSenalConfig[],
+): CoberturaCount[] {
+  return senales.map((cfg) => {
+    const raw = psql(dbUrl, cfg.sql);
+    const parsed = Number.parseInt(raw, 10);
+    const count = raw === "" || Number.isNaN(parsed) ? null : parsed;
+    return { senal: cfg.senal, count };
+  });
+}
+
+/**
+ * Lee los counts de cobertura del RUT DV-válido (RUT-01) — señal SEPARADA del corpus/voto.
+ *
+ * Mide AMBAS maestras (RESEARCH A1): `parlamentario` (estado confirmado, universo cruzable)
+ * y `entidad_tercero` (tipo_entidad juridica, cruzable por RUT exacto). Cada maestra tiene
+ * su PROPIO denominador → se devuelven dos bloques que el CLI evalúa por separado. Reusa el
+ * MISMO `psql` read-only (T-69-05: nunca imprime dbUrl/password) sobre SQL estáticas
+ * (T-69-04). Degrada honestamente (T-69-07): count que no se pudo leer → null, NO 0.
+ * NUNCA proyecta el `rut` crudo — son counts agregados (T-69-06, minimización).
+ */
+export function queryCoberturaRut(dbUrl: string): {
+  parlamentario: CoberturaCount[];
+  entidad: CoberturaCount[];
+} {
+  return {
+    parlamentario: runCoberturaSenales(
+      dbUrl,
+      COBERTURA_RUT_PARLAMENTARIO_SENALES,
+    ),
+    entidad: runCoberturaSenales(dbUrl, COBERTURA_RUT_ENTIDAD_SENALES),
+  };
 }

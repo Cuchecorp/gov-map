@@ -136,6 +136,71 @@ export const COBERTURA_VOTO_SENALES: CoberturaSenalConfig[] = [
   },
 ];
 
+/**
+ * Cobertura del RUT DV-válido (RUT-01) — techo HONESTO de identificación por RUT.
+ *
+ * Señal SEPARADA (dos arrays con denominador PROPIO), igual que COBERTURA_VOTO_SENALES:
+ * NO toca el denominador único del corpus (COBERTURA_SENALES = `proyecto`) ni el del voto
+ * (COBERTURA_VOTO_SENALES = sesiones). El cruce de dinero de Phases 70/71 consulta AMBAS
+ * maestras, por eso se miden las dos (RESEARCH A1 / Open Question 1):
+ *
+ *   - `parlamentario` (estado='confirmado'): universo CRUZABLE de parlamentarios.
+ *   - `entidad_tercero` (tipo_entidad='juridica'): personas jurídicas cruzables por RUT
+ *     exacto (proveedores del Estado, donantes). Las naturales de lobby NO traen RUT.
+ *
+ * `evaluateCobertura` toma UN solo `esDenominador` por evaluación. Para medir DOS maestras
+ * con denominadores distintos se usan DOS arrays separados, cada uno con su propio
+ * `esDenominador: true`, evaluados por separado en el CLI. Esto respeta el contrato de
+ * `evaluateCobertura` (un denominador por array) sin romperlo.
+ *
+ * TECHO HONESTO — importante: "sin dato de RUT" ≠ "sin vínculos". El estado HOY (seed
+ * `filas: []`, `rut` vacío) es cobertura ≈ 0/M, y así se declara: ni 0% fingido ni 100%.
+ * El numerador cuenta presencia de RUT (`rut IS NOT NULL AND rut <> ''`); la validez de
+ * dígito verificador (DV) se computa en la capa de identidad (`isRutValido`), NO en SQL —
+ * el techo aquí es "con RUT no vacío"; la DV-validez es un sub-techo declarado en el CLI.
+ * El RUT es INTERNO (minimización 21.719): la señal cuenta filas, NUNCA proyecta el `rut`.
+ *
+ * SQL 100% estática (sin interpolación de input) — T-69-04 (tampering). Corre read-only vía
+ * el mismo `psql` de query-runner (T-69-05: nunca imprime dbUrl/password).
+ */
+export const COBERTURA_RUT_PARLAMENTARIO_SENALES: CoberturaSenalConfig[] = [
+  {
+    senal: "parl_universo",
+    etiqueta: "parlamentarios cruzables (universo)",
+    // Denominador: universo cruzable = maestra parlamentario en estado confirmado.
+    sql: "SELECT count(*) FROM parlamentario WHERE estado = 'confirmado';",
+    esDenominador: true,
+  },
+  {
+    senal: "parl_con_rut",
+    etiqueta: "con RUT DV-válido",
+    // Numerador: mismos + RUT presente (no nulo, no vacío). DV-validez = sub-techo (CLI).
+    sql:
+      "SELECT count(*) FROM parlamentario " +
+      "WHERE estado = 'confirmado' AND rut IS NOT NULL AND rut <> '';",
+    esDenominador: false,
+  },
+];
+
+export const COBERTURA_RUT_ENTIDAD_SENALES: CoberturaSenalConfig[] = [
+  {
+    senal: "ent_universo",
+    etiqueta: "entidades jurídicas (universo)",
+    // Denominador: personas jurídicas = las cruzables por RUT exacto (proveedores/donantes).
+    sql: "SELECT count(*) FROM entidad_tercero WHERE tipo_entidad = 'juridica';",
+    esDenominador: true,
+  },
+  {
+    senal: "ent_con_rut",
+    etiqueta: "con RUT DV-válido",
+    // Numerador: mismas + RUT presente (no nulo, no vacío). DV-validez = sub-techo (CLI).
+    sql:
+      "SELECT count(*) FROM entidad_tercero " +
+      "WHERE tipo_entidad = 'juridica' AND rut IS NOT NULL AND rut <> '';",
+    esDenominador: false,
+  },
+];
+
 export const CATALOG: FuenteConfig[] = [
   {
     fuente: "leyes",

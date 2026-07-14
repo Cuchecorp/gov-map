@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { evaluate, evaluateCobertura } from "./evaluate.js";
-import { CATALOG, COBERTURA_SENALES, COBERTURA_VOTO_SENALES } from "./catalog.js";
+import {
+  CATALOG,
+  COBERTURA_SENALES,
+  COBERTURA_VOTO_SENALES,
+  COBERTURA_RUT_PARLAMENTARIO_SENALES,
+  COBERTURA_RUT_ENTIDAD_SENALES,
+} from "./catalog.js";
 import type { CoberturaCount, QueryRow } from "./query-runner.js";
 
 const NOW = new Date("2026-07-09T12:00:00Z");
@@ -230,6 +236,112 @@ describe("evaluateCobertura del voto (VOTO-05)", () => {
       COBERTURA_VOTO_SENALES,
     );
     for (const r of results) {
+      expect(r.pct).toBeNull(); // M=0 → sin universo, no 0%
+    }
+  });
+});
+
+describe("evaluateCobertura de RUT DV-válido (RUT-01)", () => {
+  // Dos maestras, cada una con su PROPIO denominador — arrays SEPARADOS evaluados por
+  // separado. NO tocan el denominador del corpus (proyecto) ni el del voto (sesiones).
+  function parlCounts(map: Record<string, number | null>): CoberturaCount[] {
+    return COBERTURA_RUT_PARLAMENTARIO_SENALES.map((c) => ({
+      senal: c.senal,
+      count: c.senal in map ? map[c.senal]! : null,
+    }));
+  }
+  function entCounts(map: Record<string, number | null>): CoberturaCount[] {
+    return COBERTURA_RUT_ENTIDAD_SENALES.map((c) => ({
+      senal: c.senal,
+      count: c.senal in map ? map[c.senal]! : null,
+    }));
+  }
+
+  it("cada maestra es un array SEPARADO con su propio denominador (NO proyecto ni sesiones)", () => {
+    const dp = COBERTURA_RUT_PARLAMENTARIO_SENALES.filter((s) => s.esDenominador);
+    const de = COBERTURA_RUT_ENTIDAD_SENALES.filter((s) => s.esDenominador);
+    expect(dp).toHaveLength(1);
+    expect(de).toHaveLength(1);
+    // Denominadores propios, distintos del corpus/voto.
+    expect(dp[0]!.senal).toBe("parl_universo");
+    expect(de[0]!.senal).toBe("ent_universo");
+    for (const s of [...COBERTURA_RUT_PARLAMENTARIO_SENALES, ...COBERTURA_RUT_ENTIDAD_SENALES]) {
+      expect(s.senal).not.toBe("proyecto");
+      expect(s.senal).not.toBe("sesiones");
+    }
+  });
+
+  it("SQL 100% estática (sin interpolación de input) en ambas maestras — T-69-04", () => {
+    for (const cfg of [
+      ...COBERTURA_RUT_PARLAMENTARIO_SENALES,
+      ...COBERTURA_RUT_ENTIDAD_SENALES,
+    ]) {
+      expect(cfg.sql).not.toMatch(/\$\{/); // sin template interpolation
+      expect(cfg.sql.toLowerCase()).toMatch(/select count/);
+    }
+    // El numerador NUNCA proyecta el rut crudo (solo count) — T-69-06.
+    for (const cfg of [
+      ...COBERTURA_RUT_PARLAMENTARIO_SENALES,
+      ...COBERTURA_RUT_ENTIDAD_SENALES,
+    ]) {
+      expect(cfg.sql.toLowerCase()).not.toMatch(/select\s+rut/);
+    }
+  });
+
+  it("feliz: parlamentario N/M y entidad K/L → pcts correctos por maestra", () => {
+    const parl = evaluateCobertura(
+      parlCounts({ parl_universo: 150, parl_con_rut: 30 }),
+      COBERTURA_RUT_PARLAMENTARIO_SENALES,
+    );
+    const ent = evaluateCobertura(
+      entCounts({ ent_universo: 400, ent_con_rut: 100 }),
+      COBERTURA_RUT_ENTIDAD_SENALES,
+    );
+    const parlById = Object.fromEntries(parl.map((r) => [r.senal, r]));
+    const entById = Object.fromEntries(ent.map((r) => [r.senal, r]));
+    expect(parlById["parl_con_rut"]!.n).toBe(30);
+    expect(parlById["parl_con_rut"]!.m).toBe(150);
+    expect(parlById["parl_con_rut"]!.pct).toBe(20); // 30/150
+    expect(entById["ent_con_rut"]!.n).toBe(100);
+    expect(entById["ent_con_rut"]!.m).toBe(400);
+    expect(entById["ent_con_rut"]!.pct).toBe(25); // 100/400
+  });
+
+  it("techo por causa — no-data: numerador null → n y pct null, NUNCA 0", () => {
+    // Causa "no se pudo leer" (psql degradó): distinta de "cero real".
+    const parl = evaluateCobertura(
+      parlCounts({ parl_universo: 150, parl_con_rut: null }),
+      COBERTURA_RUT_PARLAMENTARIO_SENALES,
+    );
+    const con = parl.find((r) => r.senal === "parl_con_rut")!;
+    expect(con.n).toBeNull();
+    expect(con.pct).toBeNull();
+  });
+
+  it("techo por causa — seed vacío HOY: N=0, M>0 → pct 0 (cero REAL, distinto de n/d)", () => {
+    // El estado real HOY (seed filas:[]) es 0/M declarado honestamente como 0%, no n/d.
+    const parl = evaluateCobertura(
+      parlCounts({ parl_universo: 150, parl_con_rut: 0 }),
+      COBERTURA_RUT_PARLAMENTARIO_SENALES,
+    );
+    const ent = evaluateCobertura(
+      entCounts({ ent_universo: 400, ent_con_rut: 0 }),
+      COBERTURA_RUT_ENTIDAD_SENALES,
+    );
+    expect(parl.find((r) => r.senal === "parl_con_rut")!.pct).toBe(0);
+    expect(ent.find((r) => r.senal === "ent_con_rut")!.pct).toBe(0);
+  });
+
+  it("techo por causa — sin universo: M=0 → pct null (no divide por cero) en ambas maestras", () => {
+    const parl = evaluateCobertura(
+      parlCounts({ parl_universo: 0, parl_con_rut: 0 }),
+      COBERTURA_RUT_PARLAMENTARIO_SENALES,
+    );
+    const ent = evaluateCobertura(
+      entCounts({ ent_universo: 0, ent_con_rut: 0 }),
+      COBERTURA_RUT_ENTIDAD_SENALES,
+    );
+    for (const r of [...parl, ...ent]) {
       expect(r.pct).toBeNull(); // M=0 → sin universo, no 0%
     }
   });
