@@ -23,7 +23,7 @@ Requirements de este milestone. Cada uno mapea a una fase del roadmap.
 
 ### MONEY — Dimensión dinero (P5, SERVEL + ChileCompra), deny-by-default
 
-- [ ] **MONEY-01**: El ciudadano puede ver los contratos del Estado (ChileCompra / Mercado Público) de empresas ligadas por RUT, con fuente/fecha/enlace — construido detrás de `MONEY_PUBLIC_ENABLED` OFF.
+- [x] **MONEY-01**: El ciudadano puede ver los contratos del Estado (ChileCompra / Mercado Público) de empresas ligadas por RUT, con fuente/fecha/enlace — construido detrás de `MONEY_PUBLIC_ENABLED` OFF.
 - [ ] **MONEY-02**: El ciudadano puede ver el financiamiento electoral declarado (SERVEL: aportes/gastos por elección) asociado por RUT — construido detrás del flag; frescura del dato SERVEL declarada (qué elección/período cubre).
 - [ ] **MONEY-03**: Los cruces dinero × sector aparecen como conteos factuales en `cruce_senal` (materializador extendido con `lobby_sector_aporte`) — nunca un score de correlación, nunca "financió su voto".
 - [ ] **MONEY-04**: Toda superficie de dinero lleva procedencia inline + leyenda anti-insinuación; el vínculo "empresa ligada al parlamentario" se afirma solo con base RUT-exacta sólida, nunca por name-match ni LLM.
@@ -77,7 +77,7 @@ Se completa durante la creación del roadmap (gsd-roadmapper). Cada requisito ma
 | VOTO-04 | Phase 68 | Complete |
 | VOTO-05 | Phase 64 (enabler) + Phase 68 (declarada) | In Progress |
 | RUT-01 | Phase 69 | In Progress (write remoto PENDING operador) |
-| MONEY-01 | Phase 70 | Pending |
+| MONEY-01 | Phase 70 | Complete |
 | MONEY-02 | Phase 71 | Pending |
 | MONEY-03 | Phase 72 | Pending |
 | MONEY-04 | Phase 73 | Pending |
