@@ -71,7 +71,7 @@ DEUDA (paralelizable, no bloquea P3/P5): 74 (cursor leylobby + CF token CI + rou
 **Plans**: 2 plans
 
 - [x] 64-01-PLAN.md — Fijar mapeo offline: abstención por código (2), pareo desde bloque <Pareos> (no código 3), cross-check ruidoso Σ==totales (SC#2/SC#3)
-- [ ] 64-02-PLAN.md — Probe LIVE gated (VOTOS_LIVE=1): persist crudo a R2, hunt Pareo/Dispensado, cross-check LIVE, fallback documentado (SC#1/SC#4)
+- [x] 64-02-PLAN.md — Probe LIVE gated (VOTOS_LIVE=1): persist crudo a R2, hunt Pareo/Dispensado, cross-check LIVE, fallback documentado (SC#1/SC#4)
 
 **Research**: yes (SPIKE — opendata UP-a-escala-hoy es MEDIUM; códigos Abstención/Pareo nunca confirmados live)
 
@@ -976,7 +976,7 @@ Plans:
 | 61. COMP — Comprensión de visualizaciones (loop BrowserOS) | v6.0 | 4/4 | Complete   | 2026-07-09 |
 | 62. RED — /red ego-network radial legible | v6.1 | 4/4 | Complete   | 2026-07-11 |
 | 63. BUSQ — Búsqueda sobre corpus completo declarado | v6.1 | 3/3 | Complete   | 2026-07-11 |
-| 64. VOTO P3a — Validar/caracterizar opendata.camara.cl LIVE (SPIKE) | v7.0 | 1/2 | In Progress|  |
+| 64. VOTO P3a — Validar/caracterizar opendata.camara.cl LIVE (SPIKE) | v7.0 | 2/2 | Complete   | 2026-07-14 |
 | 65. VOTO P3b — Golden set DIPID→maestra (gate pre-backfill) | v7.0 | 0/? | Not started | - |
 | 66. VOTO P3c — Wire dos-etapas Cámara + backfill a escala | v7.0 | 0/? | Not started | - |
 | 67. VOTO P3d — Paridad Senado (voto individual por nombre) | v7.0 | 0/? | Not started | - |

@@ -15,7 +15,7 @@ Requirements de este milestone. Cada uno mapea a una fase del roadmap.
 - [ ] **VOTO-02**: El ciudadano puede ver, en la ficha del parlamentario, su historial de votos individuales por sesión/proyecto — descriptivo, nunca presentado como "alineamiento", "disciplina de bancada" ni "rebeldía" con carga de afinidad.
 - [ ] **VOTO-03**: Cada voto individual está reconciliado fail-closed contra la maestra de identidad (link solo si `confirmado`; un voto jamás se atribuye a la persona equivocada) — golden set DIPID→maestra validado ANTES del backfill masivo.
 - [ ] **VOTO-04**: Toda superficie de voto lleva leyenda anti-insinuación ("un voto es un hecho observable; ausente/pareo ≠ en contra; no medimos disciplina ni motivo") + provenance inline; el linter anti-vocabulario-insinuante cubre estas superficies.
-- [ ] **VOTO-05**: La cobertura del voto individual está DECLARADA honestamente en la UI (N/M sesiones cubiertas, techo por causa) — nunca se finge completitud; si el endpoint opendata falla a escala, fallback honesto a lo disponible.
+- [x] **VOTO-05**: La cobertura del voto individual está DECLARADA honestamente en la UI (N/M sesiones cubiertas, techo por causa) — nunca se finge completitud; si el endpoint opendata falla a escala, fallback honesto a lo disponible.
 
 ### RUT — Prerrequisito de datos de la dimensión dinero
 
