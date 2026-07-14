@@ -66,7 +66,9 @@ DEUDA (paralelizable, no bloquea P3/P5): 74 (cursor leylobby + CF token CI + rou
   2. Un test fija el mapeo `OpcionVoto Valor → Selección` (1→sí, 0→no) y verifica explícitamente Abstención/Pareo/Dispensado contra la fuente — no asumido
   3. El cross-check de totales cuadra: la suma voto-a-voto == `TotalSi/TotalNo/…` del boletín; un mismatch falla RUIDOSO (gate zod)
   4. Si el endpoint NO está UP a escala, queda registrado el fallback honesto (agregados `getVotaciones_Boletin`) y un re-plan del bloque VOTO
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 64-01-PLAN.md — Fijar mapeo offline: abstención por código (2), pareo desde bloque <Pareos> (no código 3), cross-check ruidoso Σ==totales (SC#2/SC#3)
+- [ ] 64-02-PLAN.md — Probe LIVE gated (VOTOS_LIVE=1): persist crudo a R2, hunt Pareo/Dispensado, cross-check LIVE, fallback documentado (SC#1/SC#4)
 **Research**: yes (SPIKE — opendata UP-a-escala-hoy es MEDIUM; códigos Abstención/Pareo nunca confirmados live)
 
 ### Phase 65: VOTO P3b — Golden set DIPID→maestra (gate fail-closed pre-backfill)
