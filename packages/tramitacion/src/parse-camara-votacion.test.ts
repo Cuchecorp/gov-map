@@ -202,6 +202,67 @@ describe("parseCamaraVotoDetalle (roster completo: las 5 opciones por diputado, 
   });
 });
 
+describe("cross-check de totales (SC#3): Σ roster == Total* del header, mismatch RUIDOSO", () => {
+  const detalleReal = leer("camara-votacion-detalle-real.xml");
+
+  // Totales del header, extraídos por regex sobre los tags estructurados del XML de detalle.
+  // (El header vive en <Votacion>, no en cada <Voto> — se lee del XML crudo del fixture.)
+  const totalHeader = (xml: string, tag: string): number => {
+    const m = xml.match(new RegExp(`<${tag}>\\s*(\\d+)\\s*</${tag}>`));
+    if (m == null) throw new Error(`header total <${tag}> ausente/ilegible en el XML`);
+    return Number(m[1]);
+  };
+
+  // Cross-check por BUCKET SEMÁNTICO (si↔Afirmativos, no↔Negativos, abstencion↔Abstenciones),
+  // NUNCA por comparación de strings de label del header. Lanza RUIDOSO ante cualquier
+  // desbalance — jamás retorna 0 en silencio.
+  const crossCheck = (xml: string): void => {
+    const votos = parseCamaraVotoDetalle(xml);
+    const cuenta = (op: string) => votos.filter((v) => v.opcion === op).length;
+    const pares: Array<[string, string]> = [
+      ["si", "TotalAfirmativos"],
+      ["no", "TotalNegativos"],
+      ["abstencion", "TotalAbstenciones"],
+    ];
+    for (const [bucket, tag] of pares) {
+      const suma = cuenta(bucket);
+      const esperado = totalHeader(xml, tag);
+      if (suma !== esperado) {
+        throw new Error(
+          `cross-check FALLÓ: Σ(${bucket})=${suma} ≠ ${tag}=${esperado} (roster no cuadra con el header)`,
+        );
+      }
+    }
+  };
+
+  it("positivo: Σ(si)=58, Σ(no)=81, Σ(abstencion)=0 cuadran con el header del fixture LIVE", () => {
+    const votos = parseCamaraVotoDetalle(detalleReal);
+    const cuenta = (op: string) => votos.filter((v) => v.opcion === op).length;
+    expect(cuenta("si")).toBe(58);
+    expect(cuenta("no")).toBe(81);
+    expect(cuenta("abstencion")).toBe(0);
+    expect(() => crossCheck(detalleReal)).not.toThrow();
+    // El pareo se cuenta APARTE (no entra en el cross-check nominal): 10 pareados en el fixture.
+    expect(cuenta("pareo")).toBe(10);
+    // NOTA: TotalDispensados vs "ausente" queda PENDIENTE de confirmación LIVE en Plan 02
+    // (Open Question 2). Aquí TotalDispensados=0 y no se assert-a ciegamente contra "ausente".
+  });
+
+  it("negativo: un voto mutado (no→si) desbalancea la suma y hace THROW ruidoso (nunca silencioso)", () => {
+    // Muta en memoria UN <Opcion Codigo="0">En Contra</Opcion> a Codigo="1">Afirmativo:
+    // ahora Σ(si)=59 y Σ(no)=80, que ya no cuadran con 58/81 → el cross-check DEBE lanzar.
+    const corrupto = detalleReal.replace(
+      '<Opcion Codigo="0">En Contra</Opcion>',
+      '<Opcion Codigo="1">Afirmativo</Opcion>',
+    );
+    expect(corrupto).not.toBe(detalleReal); // la mutación efectivamente ocurrió
+    expect(() => crossCheck(corrupto)).toThrow(/cross-check FALLÓ/);
+    // Y explícitamente: la suma mutada ya no es 58.
+    const votosMut = parseCamaraVotoDetalle(corrupto);
+    expect(votosMut.filter((v) => v.opcion === "si").length).not.toBe(58);
+  });
+});
+
 describe("parseCamaraVotacion con detalleXml (totales del detalle pisan boletín)", () => {
   it("usa los totales del detalle para la votación coincidente (id 89178 no está en boletín → solo boletín)", () => {
     // El detalle es de la votación 89178 (boletín 18296), no presente en el fixture de boletín
