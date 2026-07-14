@@ -11,6 +11,198 @@
 - ✅ **v5.0 — De datos a comprensión (legibilidad + análisis)** — Phases 44-55 (acordeones/navegación, gráficos descriptivos patrimonio/votos/ausencias, cruces nuevos, rediseño cognitivo 3 capas) — shipped 2026-07-08 (`74e3ad0f`); **F48 (autoría) DIFERIDA a milestone de ingesta** por gap de datos (autores 0/136). Audit `tech_debt`: milestones/v5.0-MILESTONE-AUDIT.md
 - ✅ **v6.0 — Confiabilidad y comprensión** — Phases 56-61 (ingesta E2E confiable, autores F48, ícono, comprensión BrowserOS) — shipped 2026-07-09
 - ✅ **v6.1 — Entendible y completo** — Phases 62-63 (/red ego-network radial + búsqueda corpus completo declarado) — shipped 2026-07-11
+- 🚧 **v7.0 — Votos, dinero y cierre técnico** — Phases 64-75 (voto individual P3 → dimensión dinero P5 prereq RUT-01 → cierre de deuda técnica; deny-by-default, gates pre-aprobados) — en curso, arrancado 2026-07-13
+
+
+## 🚧 v7.0 — Votos, dinero y cierre técnico (En curso)
+
+**Milestone Goal:** Completar los dos frentes de datos que aún faltaban del producto —cómo vota individualmente cada parlamentario, y el dinero que lo rodea (financiamiento electoral + contratos del Estado)— y cerrar la deuda técnica de ingesta acumulada; en fases MUY GRANULARES, deny-by-default, con trazabilidad a la fuente y sin afirmar causalidad.
+
+**Mode:** yolo · **Granularity:** fine (operador: MUY FINA — muchas fases pequeñas y atómicas) · **Numbering:** continúa desde v6.1 (Phase 63 fue la última) → v7.0 arranca en **Phase 64**.
+
+**HALLAZGO RECTOR (research HIGH, convergente 4/4):** el código de AMBOS frentes YA EXISTE desde v2.0 — `packages/votos/` y `packages/dinero/` code-complete, data-pending/gated. v7.0 NO es construcción net-new: es **WIRING dos-etapas + validación de endpoint LIVE + BACKFILL de datos + GATING deny-by-default**. Cada fase se redacta como EJECUCIÓN / WIRING / COBERTURA / GATING, marcando componentes YA-EXISTE / MODIFICADO / EJECUCIÓN. Se RECHAZA cualquier fase redactada como "crear tabla/conector/modelo".
+
+### Coverage
+
+- v7.0 requirements: 17 (VOTO×5, RUT×1, MONEY×5, DEBT×6)
+- Mapped to phases (64-75): 17/17 ✓
+- Orphaned: 0 · Duplicates: 0
+
+### Build order (dependencias duras de la investigación)
+
+```
+P3 VOTO:  64 (validar opendata LIVE, SPIKE) ──► 65 (golden set DIPID) ──► 66 (wire 2-etapas + backfill Cámara) ──► 67 (paridad Senado) ──► 68 (superficies voto + linter + cobertura + BrowserOS)
+                                                          │
+P5 DINERO: 69 (RUT-01 backfill, CHECKPOINT OPERADOR, bloqueante DURO de todo P5) ──► 70 (wire 2-etapas ChileCompra, SPIKE cuota) ──► 71 (SERVEL LOCAL) ──► 72 (materializador lobby_sector_aporte) ──► 73 (superficies MONEY gated OFF + linter + GATE LEGAL humano)
+DEUDA (paralelizable, no bloquea P3/P5): 74 (cursor leylobby + CF token CI + round-robin cron) · 75 (typography .net-* + rotar DB password operador)
+```
+
+`source_snapshot`/`--from-r2` (DEBT-01) NO son fases aparte: se FUNDEN con el wire de dos-etapas de votos (66) y dinero (70/71) — votos y dinero son precisamente los conectores hoy sin snapshot R2.
+
+### Phases
+
+- [ ] **Phase 64: VOTO P3a — Validar/caracterizar `opendata.camara.cl` LIVE (SPIKE)** — probe LIVE del endpoint bloqueante histórico; fixtures crudos a R2; mapeo `Valor→Selección` fijado con test; códigos Abstención/Pareo confirmados
+- [ ] **Phase 65: VOTO P3b — Golden set DIPID→maestra (gate fail-closed pre-backfill)** — verificar el mapeo DIPID↔id_maestra para los ~155 diputados vigentes ANTES de escalar; un DIPID reciclado es la trampa
+- [ ] **Phase 66: VOTO P3c — Wire dos-etapas Cámara + backfill a escala (funde DEBT-01)** — `run-camara-votos` enruta por BaseConnector (fuente→R2→Supabase, `--from-r2`); `voto` individual poblado a escala; cobertura confirmado/no_confirmado
+- [ ] **Phase 67: VOTO P3d — Paridad Senado (voto individual por nombre)** — `votaciones.php` a escala; `seq:<n>`, `probable/no_confirmado`, nunca fabrica FK; dos-etapas R2
+- [ ] **Phase 68: VOTO P3e — Superficies de voto + linter anti-insinuación + cobertura + gate BrowserOS** — historial en ficha, asistencia con caveat, desglose nominal, leyenda "cómo leer esto", cobertura N/M declarada; linter cubre voto
+- [ ] **Phase 69: DINERO P5a — RUT-01 backfill a la maestra (CHECKPOINT OPERADOR, bloqueante duro)** — `runBackfillRut` DV-gate módulo-11 contra la maestra remota; cobertura N/M de RUT DV-válido MEDIDA y DECLARADA; name-match nunca escribe `rut`
+- [ ] **Phase 70: DINERO P5b — Wire dos-etapas ChileCompra por RUT (funde DEBT-01, SPIKE cuota)** — `connector-chilecompra` fuente→R2→Supabase; ticket 10k/día operador; contratos por RUT exacto; freshness extendido
+- [ ] **Phase 71: DINERO P5c — SERVEL LOCAL (.xlsx artesanal, funde DEBT-01)** — `connector-servel` corre LOCAL (frágil, por elección); aportes/gastos por RUT; fecha de corte/elección declarada; dos-etapas R2
+- [ ] **Phase 72: DINERO P5d — Extender materializador `cruce_senal` con `lobby_sector_aporte`** — token ya RESERVADO en 0039; migración aditiva, FULL REBUILD; conteos factuales, nunca score
+- [ ] **Phase 73: DINERO P5e — Superficies MONEY gated OFF + linter + GATE LEGAL humano** — superficies detrás de `moneyPublicEnabled` OFF, provenance inline, jurídica solo RUT-exacto, BrowserOS; flip = sign-off 21.719 (acto humano, el agente NO flipea)
+- [ ] **Phase 74: DEUDA — Cursor leylobby + `CLOUDFLARE_API_TOKEN` CI + round-robin cron leyes-weekly** — DEBT-02/03/04: cursor incremental, crons verdes sin fallback, dilución de frescura del corpus 3.657 resuelta
+- [ ] **Phase 75: DEUDA — Typography island `.net-*` + rotar DB password (operador)** — DEBT-05/06: `.net-*` al design system; rotación de credencial B26 (acción operador, documentada)
+
+## Phase Details
+
+### Phase 64: VOTO P3a — Validar/caracterizar `opendata.camara.cl` LIVE (SPIKE)
+**Goal**: Confirmar la forma VIVA del endpoint bloqueante histórico de P3 antes de cablear nada de producción — la semántica del voto no puede quedar asumida.
+**Depends on**: Nothing (primera de v7.0; independiente de v6.1)
+**Requirements**: VOTO-05 (enabler)
+**Componentes**: EJECUCIÓN (probe LIVE) · `connector-camara.ts::fetchVotacionDetalle` y `parse-camara-votacion.ts` YA-EXISTEN
+**Success Criteria** (what must be TRUE):
+  1. Existe una respuesta LIVE cruda de `getVotacion_Detalle` guardada en R2 como fixture autoritativo (dos namespaces caracterizados)
+  2. Un test fija el mapeo `OpcionVoto Valor → Selección` (1→sí, 0→no) y verifica explícitamente Abstención/Pareo/Dispensado contra la fuente — no asumido
+  3. El cross-check de totales cuadra: la suma voto-a-voto == `TotalSi/TotalNo/…` del boletín; un mismatch falla RUIDOSO (gate zod)
+  4. Si el endpoint NO está UP a escala, queda registrado el fallback honesto (agregados `getVotaciones_Boletin`) y un re-plan del bloque VOTO
+**Plans**: TBD
+**Research**: yes (SPIKE — opendata UP-a-escala-hoy es MEDIUM; códigos Abstención/Pareo nunca confirmados live)
+
+### Phase 65: VOTO P3b — Golden set DIPID→maestra (gate fail-closed pre-backfill)
+**Goal**: Garantizar que el cruce DIPID→id_maestra es correcto para los diputados vigentes ANTES de escalar — un voto mal atribuido es difamatorio y verificable como falso.
+**Depends on**: Phase 64
+**Requirements**: VOTO-03
+**Componentes**: EJECUCIÓN (golden set) · `reconciliar-camara.ts::reconciliarVotosCamara` y `EnlaceConfirmado` branded YA-EXISTEN
+**Success Criteria** (what must be TRUE):
+  1. Existe un golden set DIPID→id_maestra validado para los ~155 diputados vigentes (los DIPID se reciclan entre legislaturas — la trampa está cubierta)
+  2. El cruce de voto es DIPID-determinista PUNTO: no aparece name-match ni `normalizarNombre` ni LLM en el camino de votos (verificable en el diff)
+  3. Un DIPID fuera de la maestra queda `no_confirmado` con `parlamentario_id=null` — jamás se atribuye a la persona equivocada
+  4. El FK del voto sigue siendo `EnlaceConfirmado | null` branded (un string crudo no compila)
+**Plans**: TBD
+
+### Phase 66: VOTO P3c — Wire dos-etapas Cámara + backfill a escala (funde DEBT-01)
+**Goal**: Poblar el voto individual de Cámara a escala por la ingesta de dos etapas fuente→R2→Supabase — el mismo wire mata la deuda de dos-etapas Y cumple el requisito de P3.
+**Depends on**: Phase 65
+**Requirements**: VOTO-01, DEBT-01 (parcial — votos)
+**Componentes**: MODIFICADO (wiring net-new: `run-camara-votos` enruta por BaseConnector; hoy 0 snapshots R2) · modelo `voto` (0019) YA-EXISTE
+**Success Criteria** (what must be TRUE):
+  1. La ingesta de votos de Cámara escribe PRIMERO crudo content-addressed a R2 y LUEGO R2→Supabase, re-ejecutables por separado (`--from-r2` replay)
+  2. El ciudadano ve cómo votó individualmente cada diputado en una votación de sala (sí/no/abstención/pareo/ausente) con fuente, fecha y enlace
+  3. El voto individual se puebla a escala acotado por `--boletines`/`limite` respetando rate-limit 2-3s (WAF); backfill masivo LOCAL reanudable, paginando PostgREST `.range()`
+  4. El % `confirmado` NO baja al escalar (ningún name-match entró); la cobertura confirmado/no_confirmado queda medida
+**Plans**: TBD
+
+### Phase 67: VOTO P3d — Paridad Senado (voto individual por nombre)
+**Goal**: Cerrar el voto individual del Senado a escala, degradando fail-closed donde solo hay nombre — sin fabricar FK.
+**Depends on**: Phase 66
+**Requirements**: VOTO-01 (Senado)
+**Componentes**: MODIFICADO (ejecución) · `connector-senado.ts` + `reconciliar-senado.ts` YA-EXISTEN
+**Success Criteria** (what must be TRUE):
+  1. El voto individual del Senado se puebla a escala vía `votaciones.php` con dos etapas R2 (`--from-r2`)
+  2. El vínculo Senado es por nombre normalizado → `probable/no_confirmado` con `fuente_voter_id = seq:<n>`; nunca fabrica un FK confirmado
+  3. `runIngest` degrada fail-closed sin provider Senado — no inventa votos del Senado
+  4. La UI solo muestra como atribuido lo `confirmado`; lo demás no se presenta como voto de la persona
+**Plans**: TBD
+
+### Phase 68: VOTO P3e — Superficies de voto + linter anti-insinuación + cobertura + gate BrowserOS
+**Goal**: Cerrar el 360 del voto en la ficha del parlamentario — descriptivo, nunca "alineamiento/disciplina/rebeldía" — con cobertura honesta y comprensión validada.
+**Depends on**: Phase 67
+**Requirements**: VOTO-02, VOTO-04, VOTO-05
+**Componentes**: MODIFICADO (montaje + gate) · RPCs `votos_de_parlamentario`/`rebeldias_de_parlamentario` y componentes (`votos-chart`, `voto-detalle`, `votos-por-parlamentario`) YA-EXISTEN
+**Success Criteria** (what must be TRUE):
+  1. El ciudadano ve, en la ficha del parlamentario, su historial de votos individuales por sesión/proyecto — con enlace a la votación y al proyecto; nunca como "alineamiento" ni "rebeldía"
+  2. Cada superficie de voto lleva leyenda anti-insinuación ("un voto es un hecho observable; ausente/pareo ≠ en contra; no medimos disciplina ni motivo") + provenance inline; pareo/ausente en slate neutro, nunca fundidos con "en contra"
+  3. El linter anti-vocabulario-insinuante corre TAMBIÉN sobre los componentes de voto nuevos; no existe vista "parlamentarios que votan como X" ni matriz de similitud
+  4. La cobertura del voto individual está DECLARADA (N/M sesiones cubiertas, techo por causa) en la UI y en `pnpm freshness`; el veredicto BrowserOS es "comprensible"
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 69: DINERO P5a — RUT-01 backfill a la maestra (CHECKPOINT OPERADOR, bloqueante duro)
+**Goal**: Poblar físicamente el RUT en la maestra — DATO bloqueante de TODO P5; sin RUT presente, cualquier cruce de dinero rinde `null` (o, peor, falso por name-match).
+**Depends on**: Nothing de P5 (arranca P5); paralelizable con P3
+**Requirements**: RUT-01
+**Componentes**: EJECUCIÓN (checkpoint operador, write remoto vía db-url) · `harvest-rut.ts`/`runBackfillRut` YA-EXISTEN
+**Success Criteria** (what must be TRUE):
+  1. La maestra `entidad_tercero`/`parlamentario` tiene RUT backfilleado para las entidades cruzables (Track B seed curado como default + Track A SERVEL como corroboración), con DV-gate módulo-11 y provenance NOT NULL
+  2. La cobertura de RUT DV-válido está MEDIDA y DECLARADA como techo honesto (N/M); "sin dato de RUT" ≠ "sin vínculos"
+  3. Un name-match NUNCA escribe el `rut` de la maestra (name-uniqueness ≠ RUT-ownership); solo corrobora un RUT presente o encola a revisión humana — guard CI lo enforça
+  4. El RUT nunca cruza al LLM ni a una tabla/ruta pública (minimización, RLS deny-by-default)
+**Plans**: TBD
+
+### Phase 70: DINERO P5b — Wire dos-etapas ChileCompra por RUT (funde DEBT-01, SPIKE cuota)
+**Goal**: Poblar los contratos del Estado por RUT exacto vía ingesta de dos etapas — construido detrás del flag, con el mismo wire que mata la deuda de dos-etapas para ChileCompra.
+**Depends on**: Phase 69
+**Requirements**: MONEY-01, DEBT-01 (parcial — dinero)
+**Componentes**: MODIFICADO (wire R2; `ingest-run` hoy marca "R2 BLOQUEADO") · `connector-chilecompra.ts` + `reconciliar-contrato.ts` + tablas `contrato/contratista` (0023) YA-EXISTEN
+**Success Criteria** (what must be TRUE):
+  1. ChileCompra ingesta fuente→R2→Supabase re-ejecutable (`--from-r2`), serial por RUT respetando 2-3s, ticket `CHILECOMPRA_TICKET` redactado en logs
+  2. Detrás de `MONEY_PUBLIC_ENABLED` OFF, existen los contratos del Estado de empresas ligadas por RUT exacto con fuente/fecha/enlace (monto VERBATIM string)
+  3. La rama de persona jurídica reconcilia SOLO por RUT exacto fail-closed — nunca `correrPipeline`/LLM/name-match
+  4. Si el universo excede la cuota (10k/día), el crawl se parte en varios días (LOCAL reanudable); freshness cubre ChileCompra con staleness
+**Plans**: TBD
+**Research**: yes (SPIKE — cuota ChileCompra por universo de diputados; bulk OCDS mecánica no documentada)
+
+### Phase 71: DINERO P5c — SERVEL LOCAL (.xlsx artesanal, funde DEBT-01)
+**Goal**: Poblar el financiamiento electoral declarado (aportes/gastos) por RUT — conector artesanal frágil, LOCAL por elección, con frescura declarada.
+**Depends on**: Phase 69 (RUT-01); paralelizable con Phase 70
+**Requirements**: MONEY-02, DEBT-01 (parcial — servel)
+**Componentes**: MODIFICADO (wire R2) · `connector-servel.ts` (exceljs) + `reconciliar-aporte.ts` + tabla `aporte` (0024) YA-EXISTEN
+**Success Criteria** (what must be TRUE):
+  1. El operador deja el `.xlsx` correcto en R2 y el pipeline re-corre SIN volver a tocar la fuente (dos etapas; SERVEL LOCAL, no cron)
+  2. Detrás del flag OFF, existen los aportes/gastos SERVEL asociados por RUT con fuente/fecha/enlace
+  3. La fecha de corte y qué elección/período cubre el dato SERVEL están VISIBLES por dato (nunca dato viejo presentado como actual)
+  4. `ServelBloqueadaError` degrada ESA elección sin abortar la corrida; SERVEL aparece en `pnpm freshness` con staleness
+**Plans**: TBD
+
+### Phase 72: DINERO P5d — Extender materializador `cruce_senal` con `lobby_sector_aporte`
+**Goal**: Sumar la señal de aporte por sector a la capa de cruces como conteo factual — el token ya está reservado para esta fase.
+**Depends on**: Phase 70, Phase 71
+**Requirements**: MONEY-03
+**Componentes**: MODIFICADO (migración aditiva) · `cruces.materializar_cruces()` (0039, token `lobby_sector_aporte` RESERVADO) YA-EXISTE
+**Success Criteria** (what must be TRUE):
+  1. `cruce_senal` incluye la señal de aporte por sector vía RUT de empresas ligadas, como CONTEO factual con evidencia jsonb (enlaces de fuente), NUNCA un score de correlación
+  2. La migración es aditiva (nuevo CHECK del token + rama del insert) y el materializador es FULL REBUILD transaccional (patrón existente)
+  3. La señal solo cuenta parlamentarios con RUT presente (depende de RUT-01); sin RUT rinde vacío honesto, no falso
+  4. Ninguna afirmación causal ("financió su voto") aparece en la señal ni en su etiqueta
+**Plans**: TBD
+
+### Phase 73: DINERO P5e — Superficies MONEY gated OFF + linter + GATE LEGAL humano
+**Goal**: Montar todas las superficies de dinero detrás del gate deny-by-default; el agente construye hasta el gate, el encendido es acto humano (sign-off 21.719).
+**Depends on**: Phase 72
+**Requirements**: MONEY-04, MONEY-05
+**Componentes**: MODIFICADO (montaje + gate) · `money-gate.ts::moneyPublicEnabled` + superficies (`contratos-de-parlamentario`, `financiamiento-de-parlamentario`, `aportes/contratos-por-contraparte`) YA-EXISTEN
+**Success Criteria** (what must be TRUE):
+  1. Todas las superficies MONEY se renderizan SOLO a través de `moneyPublicEnabled(process.env)` (fail-closed, literal `"true"`) — OFF por defecto; ninguna ruta lee la env cruda
+  2. Toda superficie de dinero lleva procedencia inline + leyenda anti-insinuación; el vínculo "empresa ligada" se afirma solo con base RUT-exacta, nunca por name-match/LLM; conteos factuales, nunca "empresa ligada a"
+  3. Un guard CI impide que un commit de agente cambie el flag/default a `"true"`; el flip requiere `signoff: approved` en el dossier legal 13 (acto humano exclusivo, el operador lo provee)
+  4. El veredicto BrowserOS de comprensión sobre las superficies MONEY (en modo gated-preview) es "comprensible"
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 74: DEUDA — Cursor leylobby + `CLOUDFLARE_API_TOKEN` CI + round-robin cron leyes-weekly
+**Goal**: Cerrar la deuda de ingesta independiente de P3/P5 — que los crons corran verdes y la frescura no se diluya.
+**Depends on**: Nothing (paralelizable en cualquier momento)
+**Requirements**: DEBT-02, DEBT-03, DEBT-04
+**Componentes**: MODIFICADO (conectores/CI/cron existentes) · independientes de votos/dinero
+**Success Criteria** (what must be TRUE):
+  1. El conector leylobby usa cursor incremental — no re-scrapea todo el histórico en cada corrida
+  2. `CLOUDFLARE_API_TOKEN` está cargado en CI → los crons de novedades corren verdes en GitHub Actions sin fallback local manual
+  3. El cron `leyes-weekly` rota round-robin sobre el corpus 3.657 (lotes acotados incrementales L–V) → ningún proyecto queda indefinidamente sin refrescar; MONEY/SERVEL fuera del cron mientras gated
+  4. La frescura por fuente (`pnpm freshness`) refleja la rotación sin regresionar los conectores v6.0 (leyes/lobby/probidad)
+**Plans**: TBD
+
+### Phase 75: DEUDA — Typography island `.net-*` + rotar DB password (operador)
+**Goal**: Cerrar la deuda cosmética/operacional restante — alinear la typography fuera de contrato y rotar la credencial expuesta.
+**Depends on**: Nothing (paralelizable)
+**Requirements**: DEBT-05, DEBT-06
+**Componentes**: MODIFICADO (frontend `.net-*`) + EJECUCIÓN (checkpoint operador para B26)
+**Success Criteria** (what must be TRUE):
+  1. La typography del island `.net-*` queda alineada al design system (hoy fuera de contrato: nombre 15px, banda 13px)
+  2. El DB password de Supabase (B26) queda rotado por el operador en el dashboard, con la acción documentada
+  3. El cambio de typography no regresiona el layout radial de `/red` (F18 LOCKED intacto)
+**Plans**: TBD
+**UI hint**: yes
 
 ## Phases
 
@@ -743,6 +935,20 @@ Plans:
 | 59. AUTOR — Autoría ingest + ficha de proyecto (F48) | v6.0 | 3/3 | Complete   | 2026-07-09 |
 | 60. BRAND — Ícono/identidad visual gov-map | v6.0 | 1/1 | Complete   | 2026-07-09 |
 | 61. COMP — Comprensión de visualizaciones (loop BrowserOS) | v6.0 | 4/4 | Complete   | 2026-07-09 |
+| 62. RED — /red ego-network radial legible | v6.1 | 4/4 | Complete   | 2026-07-11 |
+| 63. BUSQ — Búsqueda sobre corpus completo declarado | v6.1 | 3/3 | Complete   | 2026-07-11 |
+| 64. VOTO P3a — Validar/caracterizar opendata.camara.cl LIVE (SPIKE) | v7.0 | 0/? | Not started | - |
+| 65. VOTO P3b — Golden set DIPID→maestra (gate pre-backfill) | v7.0 | 0/? | Not started | - |
+| 66. VOTO P3c — Wire dos-etapas Cámara + backfill a escala | v7.0 | 0/? | Not started | - |
+| 67. VOTO P3d — Paridad Senado (voto individual por nombre) | v7.0 | 0/? | Not started | - |
+| 68. VOTO P3e — Superficies de voto + linter + cobertura + BrowserOS | v7.0 | 0/? | Not started | - |
+| 69. DINERO P5a — RUT-01 backfill (checkpoint operador, bloqueante) | v7.0 | 0/? | Not started | - |
+| 70. DINERO P5b — Wire dos-etapas ChileCompra por RUT (SPIKE cuota) | v7.0 | 0/? | Not started | - |
+| 71. DINERO P5c — SERVEL LOCAL (.xlsx artesanal) | v7.0 | 0/? | Not started | - |
+| 72. DINERO P5d — Extender materializador cruce_senal (lobby_sector_aporte) | v7.0 | 0/? | Not started | - |
+| 73. DINERO P5e — Superficies MONEY gated OFF + linter + gate legal | v7.0 | 0/? | Not started | - |
+| 74. DEUDA — Cursor leylobby + CF token CI + round-robin cron | v7.0 | 0/? | Not started | - |
+| 75. DEUDA — Typography .net-* + rotar DB password (operador) | v7.0 | 0/? | Not started | - |
 
 ## ✅ v4.0 — De datos a cruces verificables
 

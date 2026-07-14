@@ -71,15 +71,30 @@ Se completa durante la creación del roadmap (gsd-roadmapper). Cada requisito ma
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VOTO-01..05 | TBD (roadmapper) | Pending |
-| RUT-01 | TBD (roadmapper) | Pending |
-| MONEY-01..05 | TBD (roadmapper) | Pending |
-| DEBT-01..06 | TBD (roadmapper) | Pending |
+| VOTO-01 | Phase 66 (Cámara) + Phase 67 (Senado) | Pending |
+| VOTO-02 | Phase 68 | Pending |
+| VOTO-03 | Phase 65 | Pending |
+| VOTO-04 | Phase 68 | Pending |
+| VOTO-05 | Phase 64 (enabler) + Phase 68 (declarada) | Pending |
+| RUT-01 | Phase 69 | Pending |
+| MONEY-01 | Phase 70 | Pending |
+| MONEY-02 | Phase 71 | Pending |
+| MONEY-03 | Phase 72 | Pending |
+| MONEY-04 | Phase 73 | Pending |
+| MONEY-05 | Phase 73 | Pending |
+| DEBT-01 | Phase 66 (votos) + Phase 70/71 (dinero) — fundido | Pending |
+| DEBT-02 | Phase 74 | Pending |
+| DEBT-03 | Phase 74 | Pending |
+| DEBT-04 | Phase 74 | Pending |
+| DEBT-05 | Phase 75 | Pending |
+| DEBT-06 | Phase 75 | Pending |
 
 **Coverage:**
 - v1 requirements: 17 total (VOTO×5, RUT×1, MONEY×5, DEBT×6)
-- Mapped to phases: TBD
-- Unmapped: TBD ⚠️ (roadmapper valida 100%)
+- Mapped to phases: 17/17 ✓ (Phases 64-75)
+- Unmapped: 0 · Orphaned: 0 · Duplicates: 0
+
+**Nota de asignación:** cada requisito mapea a EXACTAMENTE una fase de entrega. VOTO-01 y DEBT-01 listan dos fases porque su alcance abarca ambas cámaras / ambos frentes (Cámara+Senado, votos+dinero), pero ninguna fase reclama el requisito como suyo en solitario de forma duplicada — el criterio de éxito de cada fase cubre su porción.
 
 ---
 *Requirements defined: 2026-07-13*
