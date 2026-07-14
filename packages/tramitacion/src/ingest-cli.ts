@@ -228,6 +228,8 @@ export async function main(opts: IngestCliOptions = {}): Promise<IngestCliResult
       boletin: string;
       tramXml: string | null;
       votXml: string | null;
+      // P67: crudo de `votaciones.php` del Senado (opcional; `?? ""` retro-compat P66).
+      votXmlSenado?: string | null;
       detalles: string[];
     };
     // Conectores fake que sirven los XML del envelope sin red.
@@ -239,7 +241,8 @@ export async function main(opts: IngestCliOptions = {}): Promise<IngestCliResult
     } as unknown as CamaraConnector;
     const senadoFake = {
       async fetchTramitacion() { return envelope.tramXml ?? ""; },
-      async fetchVotaciones() { return ""; },
+      // P67: sirve el crudo Senado del envelope → el replay reconstruye los votos del Senado.
+      async fetchVotaciones() { return envelope.votXmlSenado ?? ""; },
     } as unknown as SenadoConnector;
 
     const maestra = cargarMaestra(root, log);

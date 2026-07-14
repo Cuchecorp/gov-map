@@ -193,6 +193,9 @@ export async function runCamaraVotos(
       boletin: string;
       tramXml: string | null;
       votXml: string | null;
+      // P67: crudo de `votaciones.php` del Senado. Opcional (`?? ""`) para retro-compat con
+      // envelopes viejos (P66) que no lo guardaban → sin él, 0 votos Senado (sin lanzar).
+      votXmlSenado?: string | null;
       detalles: string[];
     };
     // Conectores fake que sirven los XML del envelope sin red (mismo shape que ingest-cli.ts).
@@ -213,7 +216,9 @@ export async function runCamaraVotos(
         return envelope.tramXml ?? "";
       },
       async fetchVotaciones() {
-        return "";
+        // P67: sirve el crudo de `votaciones.php` del envelope → el replay reconstruye los votos
+        // del Senado (antes devolvía "", descartándolos). `?? ""` = retro-compat con envelopes P66.
+        return envelope.votXmlSenado ?? "";
       },
     } as unknown as SenadoConnector;
 

@@ -257,8 +257,57 @@ interface Envelope {
   boletin: string;
   tramXml: string | null;
   votXml: string | null;
+  /**
+   * Crudo de `votaciones.php` del Senado (P67 / VOTO-01). Sin este campo, el replay `--from-r2`
+   * DESCARTABA los votos del Senado (el gap real de la fase). Opcional (`?? ""`) para
+   * retro-compat con envelopes viejos sin el campo.
+   */
+  votXmlSenado?: string | null;
   detalles: string[];
 }
+
+/**
+ * Fixture `votaciones.php` del Senado (shape REAL: `<votaciones><votacion>` con
+ * `<DETALLE_VOTACION><VOTO><PARLAMENTARIO>` + `<SELECCION>`). Dos votos:
+ *   - "Coloma C., Juan Antonio" → único en la maestra Senado → determinista → confirmado
+ *   - "Fantasma F., Nadie"      → ausente de la maestra → no_confirmado (fail-closed)
+ */
+const SENADO_VOT_XML = `<votaciones>
+  <votacion>
+    <SESION>47/372</SESION>
+    <FECHA>27/08/2024</FECHA>
+    <TEMA>Boletín N° 14.309-04</TEMA>
+    <SI>1</SI><NO>0</NO><ABSTENCION>0</ABSTENCION><PAREO>0</PAREO>
+    <TIPOVOTACION>Discusión general</TIPOVOTACION>
+    <ETAPA>Segundo trámite</ETAPA>
+    <QUORUM>Mayoría simple</QUORUM>
+    <DETALLE_VOTACION>
+      <VOTO><PARLAMENTARIO>Coloma C., Juan Antonio</PARLAMENTARIO><SELECCION>Si</SELECCION></VOTO>
+      <VOTO><PARLAMENTARIO>Fantasma F., Nadie</PARLAMENTARIO><SELECCION>No</SELECCION></VOTO>
+    </DETALLE_VOTACION>
+  </votacion>
+</votaciones>`;
+
+/** Maestra Senado con un único "Coloma" (determinista) para el fixture de votaciones.php. */
+function maestraSenado(): Parlamentario[] {
+  const base = {
+    nombre_normalizado: "antonio coloma juan",
+    nombres: "Juan Antonio",
+    apellido_paterno: "Coloma",
+    apellido_materno: "Correa",
+    camara: "senado" as const,
+    periodo: "senado-vigente-2026",
+    region: null,
+    distrito: null,
+    circunscripcion: null,
+    partido: null,
+    rut: null,
+    parlid_senado: null,
+    id_diputado_camara: null,
+  };
+  return [{ ...base, id: "S00500" } as Parlamentario];
+}
+
 
 /**
  * Fake in-memory de `R2Store`. Registra el ORDEN de cada `putImmutable` contra un contador
@@ -515,5 +564,99 @@ describe("runCamaraVotos — wire dos-etapas (P66 / DEBT-01)", () => {
     // El boletín quedó registrado como error de Etapa 1 (re-correr lo recupera).
     expect(res.errores.length).toBeGreaterThan(0);
     expect(res.errores.some((e) => e.boletin === "14309-04" && e.etapa === "r2-etapa1")).toBe(true);
+  });
+});
+
+// ── P67: replay --from-r2 reconstruye los votos del SENADO desde votXmlSenado ─────────────
+describe("runCamaraVotos — replay Senado desde votXmlSenado (P67 / VOTO-01)", () => {
+  it("Test F: --from-r2 con votXmlSenado reconstruye ≥1 voto Senado con seq:<n> SIN fetch", async () => {
+    const envelope: Envelope = {
+      boletin: "14309-04",
+      tramXml: null,
+      votXml: null, // sin votos de Cámara en este envelope: solo Senado
+      votXmlSenado: SENADO_VOT_XML,
+      detalles: [],
+    };
+    let counter = 0;
+    const r2 = new FakeR2Store(() => ++counter, envelope);
+    const writer = new InMemoryTramitacionWriter();
+
+    // Conectores LANZAN si se tocan → el test prueba 0 fetch a la fuente (el replay usa el
+    // senadoFake interno que sirve envelope.votXmlSenado, no el conector inyectado).
+    const res = await runCamaraVotos({
+      fromR2: "tramitacion/14309-04/2026-08-27/senado.json",
+      camara: camaraQueLanza(),
+      senado: senadoQueLanza(),
+      writer,
+      maestra: maestraSenado(),
+      r2Store: r2 as unknown as R2Store,
+    });
+
+    // Se reconstruyeron los votos del Senado (antes del fix: 0 — el senadoFake devolvía "").
+    expect(res.votos).toBeGreaterThanOrEqual(1);
+    const votos = [...writer.votos.values()];
+    expect(votos.length).toBeGreaterThanOrEqual(1);
+    // fuente_voter_id del Senado = seq:<n> (nunca un FK fabricado).
+    expect(votos.every((v) => /^seq:\d+$/.test(v.fuente_voter_id))).toBe(true);
+  });
+
+  it("Test G (D-A1 ambos lados): único→confirmado (FK poblado), homónimo/ausente→no_confirmado (FK null)", async () => {
+    const envelope: Envelope = {
+      boletin: "14309-04",
+      tramXml: null,
+      votXml: null,
+      votXmlSenado: SENADO_VOT_XML,
+      detalles: [],
+    };
+    let counter = 0;
+    const r2 = new FakeR2Store(() => ++counter, envelope);
+    const writer = new InMemoryTramitacionWriter();
+
+    await runCamaraVotos({
+      fromR2: "tramitacion/14309-04/2026-08-27/senado.json",
+      camara: camaraQueLanza(),
+      senado: senadoQueLanza(),
+      writer,
+      maestra: maestraSenado(),
+      r2Store: r2 as unknown as R2Store,
+    });
+
+    const votos = [...writer.votos.values()];
+    // Coloma (único en la maestra) → determinista → confirmado + parlamentario_id poblado (D-A1).
+    const coloma = votos.find((v) => v.mencion_nombre.startsWith("Coloma"))!;
+    expect(coloma.estado_vinculo).toBe("confirmado");
+    expect(coloma.parlamentario_id).toBe("S00500");
+    expect(coloma.seleccion).toBe("si");
+    // Fantasma (ausente de la maestra) → NUNCA confirmado; FK null (guarda LOCKED IDENT-12).
+    const fantasma = votos.find((v) => v.mencion_nombre.startsWith("Fantasma"))!;
+    expect(["probable", "no_confirmado"]).toContain(fantasma.estado_vinculo);
+    expect(fantasma.estado_vinculo).not.toBe("confirmado");
+    expect(fantasma.parlamentario_id).toBeNull();
+  });
+
+  it("Test H (retro-compat): envelope SIN votXmlSenado no lanza y reconstruye 0 votos Senado", async () => {
+    // Envelope viejo (P66) sin el campo votXmlSenado → el replay no rompe; solo no hay votos Senado.
+    const envelope: Envelope = {
+      boletin: "14309-04",
+      tramXml: null,
+      votXml: null,
+      detalles: [],
+    };
+    let counter = 0;
+    const r2 = new FakeR2Store(() => ++counter, envelope);
+    const writer = new InMemoryTramitacionWriter();
+
+    const res = await runCamaraVotos({
+      fromR2: "tramitacion/14309-04/2026-08-27/viejo.json",
+      camara: camaraQueLanza(),
+      senado: senadoQueLanza(),
+      writer,
+      maestra: maestraSenado(),
+      r2Store: r2 as unknown as R2Store,
+    });
+
+    expect(res.errores.length).toBe(0);
+    expect(res.votos).toBe(0);
+    expect(writer.votos.size).toBe(0);
   });
 });

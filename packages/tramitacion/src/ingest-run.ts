@@ -169,6 +169,9 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
     // Acumula los XML crudos para el envelope R2 (Etapa 1).
     let tramXmlCrudo: string | null = null;
     let votXmlCrudo: string | null = null;
+    // P67: crudo de `votaciones.php` del Senado (análogo a votXmlCrudo de Cámara). Sin él, un
+    // replay `--from-r2` DESCARTA los votos del Senado (el derivado sería irreconstruible).
+    let votXmlSenadoCrudo: string | null = null;
     const detallesCrudos: string[] = [];
 
     // 2. Senado tramitación → Proyecto + eventos (la ficha lee el descripcion de aquí).
@@ -226,8 +229,11 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
     }
 
     // 4. Senado votaciones nominales (puede venir vacío — Pitfall 2, no error).
+    //    Captura el crudo ANTES del parse (P67): así un fallo de parse/reconciliación no pierde
+    //    el crudo del envelope R2 → el replay `--from-r2` sigue siendo reconstruible.
     try {
       const senVotXml = await opts.senado.fetchVotaciones(base);
+      votXmlSenadoCrudo = senVotXml;
       const senVotaciones = parseSenadoVotaciones(senVotXml, boletinKey);
       for (const sv of senVotaciones) {
         votacionesBoletin.push(sv.votacion);
@@ -281,7 +287,7 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
     // vez que R2 esté sano (los upserts son idempotentes). El sub-bloque de source_snapshot
     // (bookkeeping de provenance) SÍ es best-effort/no-fatal — solo el put del crudo gatea.
     if (opts.r2Store) {
-      const envelope = { boletin: boletinFull, tramXml: tramXmlCrudo, votXml: votXmlCrudo, detalles: detallesCrudos };
+      const envelope = { boletin: boletinFull, tramXml: tramXmlCrudo, votXml: votXmlCrudo, votXmlSenado: votXmlSenadoCrudo, detalles: detallesCrudos };
       const bytes = new TextEncoder().encode(JSON.stringify(envelope));
       const sha = await sha256Hex(bytes);
       const today = new Date().toISOString().slice(0, 10);
