@@ -48,6 +48,17 @@ export type {
 export { runBackfillEntidad, buildWriterFromEnv, loadEnv as loadEnvEntidad } from "./backfill-entidad-cli";
 export type { BackfillEntidadOptions, BackfillEntidadResult } from "./backfill-entidad-cli";
 
+// Invariante TIPADO del RUT escribible (RUT-01, CR-01): factory única `corroborarRutFila`
+// + tipo branded `FilaRutCorroborada`. El `unique symbol` NO se exporta (Pitfall 2): el
+// ÚNICO camino a un RUT escribible es el DV-gate → el compilador rechaza un RUT name-only.
+export { corroborarRutFila } from "./rut-corroborado";
+export type {
+  FilaRutCandidata,
+  FilaRutCorroborada,
+  RazonRechazoRut,
+  ResultadoCorroboracion,
+} from "./rut-corroborado";
+
 // Backfill del RUT interno (IDENT-10): DV-gate (isRutValido) + provenance + updateRut.
 // NUNCA fabrica un RUT — un DV inválido o sin provenance se rechaza a revisión.
 export { aceptarRutBackfill, runBackfillRut } from "./backfill-rut";
