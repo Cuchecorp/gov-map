@@ -198,7 +198,7 @@ function renderCoberturaVoto(results: CoberturaResult[]): string {
   ].join("\n");
 }
 
-// ─── Cobertura de RUT DV-válido (RUT-01) ──────────────────────────────────────
+// ─── Cobertura de RUT presente (RUT-01) ───────────────────────────────────────
 
 /**
  * Sub-tabla N/M de una maestra (parlamentario o entidad_tercero). Espejo de
@@ -248,9 +248,10 @@ function renderCoberturaRut(
   entidad: CoberturaResult[],
 ): string {
   return [
-    "Cobertura de RUT DV-válido (RUT-01):",
+    "Cobertura de RUT presente (RUT-01):",
     "  (techo honesto — 'sin dato de RUT' ≠ 'sin vínculos'; el RUT es interno, nunca público.",
-    "   El % mide presencia de RUT no vacío; la DV-validez la resuelve la capa de identidad.)",
+    "   El % mide PRESENCIA de RUT no vacío (no DV-validez); la DV-validez (módulo-11) es un",
+    "   sub-techo que resuelve la capa de identidad (isRutValido), no esta cifra.)",
     "",
     renderCoberturaRutTabla("Parlamentarios (maestra cruzable):", parlamentario),
     "",
@@ -330,7 +331,7 @@ async function main(): Promise<void> {
     COBERTURA_VOTO_SENALES,
   );
 
-  // Cobertura N/M del RUT DV-válido (RUT-01): señal SEPARADA (dos maestras, dos
+  // Cobertura N/M del RUT presente (RUT-01): señal SEPARADA (dos maestras, dos
   // denominadores), APPEND — no reemplaza corpus ni voto. Cada maestra se evalúa con
   // su propio array (evaluateCobertura toma un solo denominador). Solo counts, nunca rut.
   const coberturaRutCounts = queryCoberturaRut(env["SUPABASE_DB_URL"]!);

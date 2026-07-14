@@ -192,7 +192,8 @@ function runCoberturaSenales(
 }
 
 /**
- * Lee los counts de cobertura del RUT DV-válido (RUT-01) — señal SEPARADA del corpus/voto.
+ * Lee los counts de cobertura del RUT presente (RUT-01) — señal SEPARADA del corpus/voto.
+ * (Presencia de RUT no vacío; la DV-validez es un sub-techo de la capa de identidad, no aquí.)
  *
  * Mide AMBAS maestras (RESEARCH A1): `parlamentario` (estado confirmado, universo cruzable)
  * y `entidad_tercero` (tipo_entidad juridica, cruzable por RUT exacto). Cada maestra tiene

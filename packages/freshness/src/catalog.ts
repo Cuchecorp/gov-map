@@ -137,7 +137,13 @@ export const COBERTURA_VOTO_SENALES: CoberturaSenalConfig[] = [
 ];
 
 /**
- * Cobertura del RUT DV-válido (RUT-01) — techo HONESTO de identificación por RUT.
+ * Cobertura del RUT PRESENTE (RUT-01) — techo HONESTO de identificación por RUT.
+ *
+ * WR-05 (honestidad): el numerador mide PRESENCIA de RUT (`rut IS NOT NULL AND rut <> ''`),
+ * NO validez de dígito verificador (módulo-11). Por eso la etiqueta dice "con RUT presente
+ * (no vacío)", no "DV-válido": un `rut='xxx'` malformado cuenta como presente pero NO es
+ * DV-válido. La DV-validez es un SUB-techo, computado en la capa de identidad
+ * (`isRutValido`) y declarado por separado en el CLI, NUNCA afirmado por esta cifra.
  *
  * Señal SEPARADA (dos arrays con denominador PROPIO), igual que COBERTURA_VOTO_SENALES:
  * NO toca el denominador único del corpus (COBERTURA_SENALES = `proyecto`) ni el del voto
@@ -173,7 +179,7 @@ export const COBERTURA_RUT_PARLAMENTARIO_SENALES: CoberturaSenalConfig[] = [
   },
   {
     senal: "parl_con_rut",
-    etiqueta: "con RUT DV-válido",
+    etiqueta: "con RUT presente (no vacío)",
     // Numerador: mismos + RUT presente (no nulo, no vacío). DV-validez = sub-techo (CLI).
     sql:
       "SELECT count(*) FROM parlamentario " +
@@ -192,7 +198,7 @@ export const COBERTURA_RUT_ENTIDAD_SENALES: CoberturaSenalConfig[] = [
   },
   {
     senal: "ent_con_rut",
-    etiqueta: "con RUT DV-válido",
+    etiqueta: "con RUT presente (no vacío)",
     // Numerador: mismas + RUT presente (no nulo, no vacío). DV-validez = sub-techo (CLI).
     sql:
       "SELECT count(*) FROM entidad_tercero " +
