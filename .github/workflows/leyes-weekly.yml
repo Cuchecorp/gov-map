@@ -1,19 +1,22 @@
 name: leyes-weekly
 
-# Ingesta SEMANAL incremental de PROYECTOS DE LEY (tramitación + votaciones + votos + timeline)
-# contra PROD. Cadencia "sweet spot": un pase los VIERNES, al cierre de la semana parlamentaria,
-# captura los votos de la semana + cambios de etapa + proyectos nuevos sin ser diario.
+# Ingesta DIARIA incremental de PROYECTOS DE LEY (tramitación + votaciones + votos + timeline)
+# contra PROD. Cadencia L-V 20:00 UTC (~16:00 CL, cierre de jornada parlamentaria):
+# captura votos del mismo día laboral + cambios de etapa + proyectos nuevos.
+#
+# La máquina round-robin (Phase 74) rota una ventana del corpus con offset persistido en
+# leyes_rotacion_estado → cada corrida diaria cubre agenda fresca + rebanada nueva del corpus;
+# el corpus completo rota más rápido que con una sola corrida semanal. Sin cambio de CLI.
 #
 # Refresca el conjunto de boletines que la plataforma YA referencia (proyecto + agenda de
 # comisiones + tabla de sala) — ver run-tramitacion-prod-cli. Idempotente (upsert por clave
 # natural). Mismo orden LOCKED de @obs/ingest (allowlist→robots→rate-limit 2-3s→fetch). Fuentes:
 # opendata.camara.cl (WS abierto) + web-back/tramitacion del Senado (XML) — sin WAF, fetch nativo.
-#
-# Schedule: viernes 20:00 UTC (~16:00 CL). También manual (workflow_dispatch).
+# Repo público Cuchecorp/gov-map = minutos GH Actions ilimitados → cadencia diaria autorizada.
 
 on:
   schedule:
-    - cron: "0 20 * * 5" # viernes 20:00 UTC
+    - cron: "0 20 * * 1-5" # lunes a viernes 20:00 UTC (repo público, minutos ilimitados)
   workflow_dispatch:
     inputs:
       limite:
