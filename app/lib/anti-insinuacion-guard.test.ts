@@ -38,6 +38,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { LEYENDA_ANTI_INSINUACION_MONEY } from "@/lib/money-presentacion";
 
 // ---------------------------------------------------------------------------
 // Helpers (espejo verbatim de lockdown-guard.test.ts)
@@ -91,6 +92,22 @@ const SUPERFICIES_VOTO: string[] = [
 ];
 
 /**
+ * Superficies MONEY (MONEY-04, 73-UI-SPEC §Linter). Las 4 superficies de dinero
+ * (contratos/financiamiento por ficha; contratos/aportes por contraparte) + la
+ * página `/contraparte`. `app/parlamentario/[id]/page.tsx` NO se duplica aquí: ya
+ * está en `SUPERFICIES_VOTO` (monta las secciones MONEY gated). Se conserva el
+ * corte voto/dinero en arrays separados por legibilidad (RESEARCH §Pattern 3 (b));
+ * el bucle del guard escanea `[...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY]`.
+ */
+const SUPERFICIES_MONEY: string[] = [
+  "components/contratos-de-parlamentario.tsx",
+  "components/financiamiento-de-parlamentario.tsx",
+  "components/contratos-por-contraparte.tsx",
+  "components/aportes-por-contraparte.tsx",
+  "app/contraparte/[id]/page.tsx",
+];
+
+/**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
  * texto RENDERIZADO (post-strip de comentarios), con límite de palabra en español
  * para no cazar identificadores snake_case: `rebeldias_de_parlamentario` (nombre de
@@ -124,6 +141,29 @@ const TERMINOS_PROHIBIDOS: string[] = [
   "mediana de su cámara",
   "financió su voto",
   "a cambio de",
+  // --- Carril MONEY (MONEY-04, 73-UI-SPEC §Linter) — causalidad dinero→decisión
+  //     e insinuación. TILDES EXACTAS (Pitfall 2: buildTermRegex NO es
+  //     accent-insensitive). "empresa ligada a" bloquea la construcción
+  //     insinuante (con la preposición `a`); el HECHO "Enlazado por RUT" /
+  //     "ligada por RUT" / el identificador `empresa_ligada_por_rut` NO disparan
+  //     por el límite de palabra (Pitfall 3). "a cambio de" ya viene por el carril
+  //     de voto y cubre "a cambio de un contrato".
+  "financió",
+  "a cambio del voto",
+  "compró",
+  "compró su voto",
+  "pagó por",
+  "soborno",
+  "coima",
+  "corrupción",
+  "favoreció",
+  "empresa ligada a",
+  "conflicto de interés",
+  "influencia",
+  "captura",
+  "lobby a cambio",
+  "contrato a dedo",
+  "direccionado",
 ];
 
 /**
@@ -134,6 +174,11 @@ const TERMINOS_PROHIBIDOS: string[] = [
  */
 const NEGACIONES_LOCKED: string[] = [
   "Un voto es un hecho observable. Ausente o pareo no equivalen a votar en contra. No medimos disciplina ni motivo.",
+  // Leyenda MONEY (single-source en money-presentacion.ts). NIEGA "influencia"/
+  // "intención"/"irregularidad" y usa "compre una decisión" → sin restarla el
+  // guard se auto-cazaría sobre la propia superficie que la renderiza (Pitfall 1).
+  // Importada verbatim para no re-tipearla (si el copy cambia, cambia aquí solo).
+  LEYENDA_ANTI_INSINUACION_MONEY,
 ];
 
 /**
@@ -183,7 +228,7 @@ function detectarInsinuaciones(rawContent: string): string[] {
 // (1) Guard — CERO términos de insinuación en el render de las superficies de voto
 // ---------------------------------------------------------------------------
 
-describe("(1) Guard — ninguna superficie de voto insinúa (texto renderizado)", () => {
+describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto renderizado)", () => {
   it("sanity: al menos escanea votos-por-parlamentario.tsx (existe y es legible)", () => {
     const principal = path.join(
       APP_ROOT,
@@ -195,7 +240,7 @@ describe("(1) Guard — ninguna superficie de voto insinúa (texto renderizado)"
 
   it("ningún término prohibido aparece en el texto renderizado (post-strip de comentarios)", () => {
     const offenders: string[] = [];
-    for (const rel of SUPERFICIES_VOTO) {
+    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY]) {
       const full = path.join(APP_ROOT, rel);
       let raw: string;
       try {
