@@ -88,6 +88,7 @@ export function SearchBox({
     <div>
       <form
         role="search"
+        aria-label="Buscar proyectos de ley"
         action="/buscar"
         method="get"
         onSubmit={handleSubmit}

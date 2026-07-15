@@ -4,13 +4,13 @@
  * Geometry from 60-SELECTION.md (C — Capas que se cruzan, LOCKED).
  * Two overlapping diamonds; solid intersection. Flat petrol, no gradients.
  *
- * Default color: petrol #2A5859 (--accent-product). Pass `color="currentColor"`
- * for mono/inherited contexts.
+ * Default color: currentColor (hereda color del contexto). Pass an explicit color
+ * when the caller needs a specific token (e.g. color="hsl(var(--accent-product))").
  */
 interface BrandIconProps {
   /** Pixel size (both width and height). Default 24. */
   size?: number;
-  /** SVG stroke/fill color. Default: petrol #2A5859. */
+  /** SVG stroke/fill color. Default: currentColor (hereda color del contexto). */
   color?: string;
   /** Additional className for the <svg> element. */
   className?: string;
@@ -20,7 +20,7 @@ interface BrandIconProps {
 
 export function BrandIcon({
   size = 24,
-  color = "#2A5859",
+  color = "currentColor",
   className,
   "aria-hidden": ariaHidden = true,
 }: BrandIconProps) {

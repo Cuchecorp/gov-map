@@ -33,6 +33,18 @@
 }
 
 .dark {
+  /*
+   * Par dark de --camara/--senado: necesario para la barra cívica 3px de
+   * actualidad-module.tsx (bg-[var(--camara)] / bg-[var(--senado)]).
+   * Mismos hues 213/355 que light; L elevada para separarse del fondo
+   * dark card (222 24% 12%). Valores PROVISIONALES — pendientes de
+   * verificación visual de contraste ≥3:1 (WCAG 1.4.11 non-text) en
+   * Phase 81 (BrowserOS). NO se afirma cumplimiento WCAG en esta ola.
+   * CRÍTICO: el wrapper hsl() está HORNEADO en el valor (consumidor usa
+   * bg-[var(--camara)] sin envolver en hsl()) — NO cambiar a triplet crudo.
+   */
+  --camara: hsl(213 90% 62%);
+  --senado: hsl(355 70% 62%);
   --camara-muted: hsl(213 50% 15%);
   --camara-muted-foreground: hsl(213 60% 70%);
   --senado-muted: hsl(355 40% 14%);
