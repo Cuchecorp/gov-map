@@ -250,7 +250,14 @@ Plans:
   3. Un guard CI impide que un commit de agente cambie el flag/default a `"true"`; el flip requiere `signoff: approved` en el dossier legal 13 (acto humano exclusivo, el operador lo provee)
   4. El veredicto BrowserOS de comprensión sobre las superficies MONEY (en modo gated-preview) es "comprensible"
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+
+- [ ] 73-01-PLAN.md — Wave 0: constante única LEYENDA_ANTI_INSINUACION_MONEY + guard anti-flip (3 vectores: fail-closed `=== "true"`, .env.example=false, no-raw-env-en-ruta) con mutation self-check
+- [ ] 73-02-PLAN.md — Montaje de la leyenda MONEY 1× por estado en las 4 superficies + RTL (leyenda por estado + distinción RUT-vs-nombre no conflada)
+- [ ] 73-03-PLAN.md — Extensión del linter anti-insinuación a las 4 superficies MONEY + /contraparte (blocklist causal con tildes + leyenda restada + mutation self-check MONEY)
+- [ ] 73-04-PLAN.md — Dossier legal 13 completado/reafirmado (signoff: pending conservado) + checkpoint operador BrowserOS gated-preview + sign-off + flip (deuda humana)
 **UI hint**: yes
 
 ### Phase 74: DEUDA — Cursor leylobby + `CLOUDFLARE_API_TOKEN` CI + round-robin cron leyes-weekly
