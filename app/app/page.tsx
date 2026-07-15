@@ -1,7 +1,12 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { SearchBox, type ExampleChip } from "@/components/search-box";
-import { ActualidadModule } from "@/components/actualidad-module";
+import {
+  VotadoEstaSemana,
+  UrgenciasVigentes,
+  UltimaActualizacion,
+} from "@/components/actualidad-module";
 import { BentoGrid } from "@/components/bento/bento-grid";
 import { BentoTile } from "@/components/bento/bento-tile";
 import { BrandIcon } from "@/components/brand-icon";
@@ -25,6 +30,19 @@ export const dynamic = "force-dynamic";
  * SIN claims de marketing, SIN foto/partido. La cursiva petróleo usa `--accent-product`.
  * Accent tile cuerpo = fórmula /sobre "El principio"; NUNCA el mockup de correlaciones.
  */
+
+// Skeleton honesto de tile (estado de carga: NO afirma dato alguno).
+function BloqueSkeleton({ span }: { span: 2 | 4 | 6 }) {
+  return (
+    <BentoTile variant="default" span={span} aria-hidden="true">
+      <div className="p-6">
+        <div className="h-5 w-1/2 rounded bg-muted" />
+        <div className="mt-4 h-4 w-full rounded bg-muted" />
+        <div className="mt-2 h-4 w-3/4 rounded bg-muted" />
+      </div>
+    </BentoTile>
+  );
+}
 
 // Pills LOCKED (UI-SPEC §6, copy fijo): 3 ideas semánticas + 1 boletín en Mono.
 const EXAMPLE_CHIPS: readonly ExampleChip[] = [
@@ -164,15 +182,20 @@ export default function Home() {
               </BentoTile>
             ))}
           </nav>
+
+          {/* ── Tiles de actualidad: votado→urgencias→frescura (Phase 78-01, BENTO-03) ── */}
+          {/* Orden DOM = orden visual al colapsar (≤md). Cada uno bajo su Suspense. */}
+          <Suspense fallback={<BloqueSkeleton span={4} />}>
+            <VotadoEstaSemana />
+          </Suspense>
+          <Suspense fallback={<BloqueSkeleton span={2} />}>
+            <UrgenciasVigentes />
+          </Suspense>
+          <Suspense fallback={<BloqueSkeleton span={6} />}>
+            <UltimaActualizacion />
+          </Suspense>
         </BentoGrid>
       </div>
-
-      {/*
-        Módulo de actualidad (SC4, 52-UI-SPEC §SC4) — BAJO el bento grid, dentro de
-        <main>. Tres bloques server-rendered que degradan honesto e independiente;
-        el hero (pills/copy) queda LOCKED e intacto. Cero JS cliente nuevo.
-      */}
-      <ActualidadModule />
     </main>
   );
 }
