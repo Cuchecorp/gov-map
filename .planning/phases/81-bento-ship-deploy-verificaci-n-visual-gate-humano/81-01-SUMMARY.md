@@ -85,3 +85,17 @@ None — no new network surface introduced; same worker endpoint as prior deploy
 - SUMMARY file: present at `.planning/phases/81-bento-ship-deploy-verificaci-n-visual-gate-humano/81-01-SUMMARY.md`
 - Version ID `8ad839b3-497d-4824-913c-ac4b710a0e08` confirmed in wrangler output
 - HTTP checks: all pass
+
+## Redeploy (fix anchors)
+
+**Trigger:** CSS-only fix for anchor link visibility (`a` color override in `globals.css`, commit `32284b2`).
+
+**Version ID:** `fb88c8a4-dd05-4b9a-a017-0c373d0f185f`
+
+**Assets uploaded:** 2 new (`/BUILD_ID` + `/_next/static/chunks/3x_ng_-6ds3a6.css`); 53 already cached
+
+**HTTP check:** / → 200
+
+**Method:** Same Docker Linux build runbook as above. Key deviation from prior attempt: output volume (`obs-build-out`) was empty because the build script writes to `/build/app/.open-next` not to the volume mount path. Fixed by mounting host directory `C:/Temp/obs-build/app/.open-next` directly as `/open-next-out` and running `cp -r /build/app/.open-next/. /open-next-out/` at end of build script inline.
+
+**Completed:** 2026-07-15
