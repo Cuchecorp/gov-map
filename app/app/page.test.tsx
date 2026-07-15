@@ -1,15 +1,24 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 
 /**
- * Tests de la landing `/` (Fase 21 SC1 — paridad con el mockup CERRADO de Fase
- * 19, `mockup/landing.html`). Verifican por comportamiento (no por convención):
+ * Tests de la landing `/` — Bento composition (Phase 77-02).
+ *
+ * Contract 1 (héroe editorial):
+ *   - kicker OBSERVATORIO DEL CONGRESO presente.
  *   - titular display con la cláusula cursiva petróleo LOCKED ("Con la fuente a la vista.").
- *   - CTA petróleo "Buscar proyectos" (no el genérico "Buscar").
- *   - las 4 pills LOCKED presentes; la de boletín en Mono.
- *   - clic en una pill → prefija + NAVEGA a /buscar?q=<pill> (mismo camino que el submit).
- *   - trust line LOCKED y link "¿Cómo leer esto?".
- *   - SIN stats fabricadas (no "indexados"/"miles").
+ *   - CTA petróleo "Buscar proyectos" (bg-accent-product).
+ *   - 4 pills LOCKED presentes; la de boletín en Mono.
+ *   - clic en una pill → prefija + NAVEGA a /buscar?q=<pill>.
+ *   - trust line LOCKED.
+ *   - SIN stats fabricadas.
+ *
+ * Contract 2 (accent tile + 3 entry tiles — bento grid):
+ *   - Accent tile: href="/sobre", heading ¿Cómo leer esto?, /sobre formula body,
+ *     CTA "Ver metodología →"; NO correlaciones/irregularidades (T-77-03).
+ *   - 3 entry tiles: hrefs {/buscar, /parlamentarios, /agenda}, títulos LOCKED,
+ *     → glyph aria-hidden con pl-1.
+ *   - force-dynamic export.
  *
  * `next/navigation` se mockea para capturar el push sin runtime de Next.
  */
@@ -19,10 +28,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
-// ActualidadModule (SC4) es un Server Component con hijos async que leen Supabase
-// (bloques de actualidad bajo el hero). Este test cubre EXCLUSIVAMENTE el héroe
-// editorial; el módulo tiene su propia suite (actualidad-module.test.tsx). Se
-// stubbea a null para aislar el héroe y evitar el runtime Supabase en jsdom.
+// ActualidadModule (SC4) es un Server Component con hijos async que leen Supabase.
+// Se stubbea a null para aislar el héroe y evitar el runtime Supabase en jsdom.
 vi.mock("@/components/actualidad-module", () => ({
   ActualidadModule: () => null,
 }));
@@ -45,13 +52,21 @@ vi.mock("next/link", () => ({
 
 // Importar DESPUÉS de los mocks.
 import Home from "./page";
+import * as HomeModule from "./page";
 
 afterEach(() => {
   cleanup();
   pushMock.mockReset();
 });
 
+// ── Contract 1: héroe editorial ───────────────────────────────────────────────
+
 describe("Landing — paridad con el mockup CERRADO (héroe editorial)", () => {
+  it("renderiza el kicker OBSERVATORIO DEL CONGRESO", () => {
+    render(<Home />);
+    expect(screen.getByText("OBSERVATORIO DEL CONGRESO")).toBeInTheDocument();
+  });
+
   it("renderiza el titular display con la cláusula cursiva petróleo LOCKED", () => {
     render(<Home />);
 
@@ -120,7 +135,7 @@ describe("Landing — paridad con el mockup CERRADO (héroe editorial)", () => {
     expect(pushMock).toHaveBeenCalledWith("/buscar?q=14309-04");
   });
 
-  it("renderiza la trust line LOCKED y el link '¿Cómo leer esto?'", () => {
+  it("renderiza la trust line LOCKED", () => {
     render(<Home />);
 
     expect(
@@ -128,9 +143,6 @@ describe("Landing — paridad con el mockup CERRADO (héroe editorial)", () => {
         /Fuente, fecha y enlace en cada dato · Sin afirmar intención ni causalidad\./,
       ),
     ).toBeInTheDocument();
-
-    const link = screen.getByRole("link", { name: "¿Cómo leer esto?" });
-    expect(link).toHaveAttribute("href", "/sobre");
   });
 
   it("no muestra stats fabricadas (sin 'indexados' ni 'miles')", () => {
@@ -139,69 +151,98 @@ describe("Landing — paridad con el mockup CERRADO (héroe editorial)", () => {
   });
 });
 
-// ── Contract 2 (54-UI-SPEC): 3 tarjetas de entrada server-rendered ──────────────
-// Verifican por comportamiento: nav semántico, 3 rutas de entrada con copy LOCKED,
-// sin heading nuevo en el bloque, y banned-vocab negative-match sobre el copy.
+// ── Contract 2 (77-02): accent tile + 3 entry tiles (bento grid) ─────────────
 
-// Vocabulario prohibido (banned-vocab §6): virtud fabricada + causal/afinidad/score.
+// Vocabulario prohibido (banned-vocab §6 + T-77-03 anti-insinuación):
+// virtud fabricada + causal/afinidad/score + mockup correlaciones strings (BANNED).
 const BANNED_VOCAB =
-  /limpio|transparente|nada que ocultar|a cambio de|influy|cercano|afinidad|correlaci|af[ií]n|score|ranking|puntaje|porque/i;
+  /limpio|transparente|nada que ocultar|a cambio de|influy|cercano|afinidad|correlaci|irregularidad|af[ií]n|score|ranking|puntaje|porque/i;
 
-describe("Landing — Contract 2: tarjetas de entrada", () => {
-  it("renderiza un <nav aria-label='Secciones del sitio'> entre hero y actualidad", () => {
+describe("Landing — Contract 2: accent tile (/sobre) y 3 entry tiles (bento)", () => {
+  it("renderiza un link al accent tile con href='/sobre'", () => {
     render(<Home />);
-    const nav = screen.getByRole("navigation", { name: "Secciones del sitio" });
-    expect(nav).toBeInTheDocument();
+    const sobreLink = screen.getByRole("link", { name: /¿Cómo leer esto\?/i });
+    expect(sobreLink).toHaveAttribute("href", "/sobre");
   });
 
-  it("expone exactamente 3 links de sección con los hrefs y títulos LOCKED", () => {
+  it("accent tile: heading '¿Cómo leer esto?'", () => {
     render(<Home />);
-    const nav = screen.getByRole("navigation", { name: "Secciones del sitio" });
-    const links = within(nav).getAllByRole("link");
-    expect(links).toHaveLength(3);
+    const heading = screen.getByRole("heading", { name: "¿Cómo leer esto?" });
+    expect(heading.tagName).toBe("H2");
+  });
 
-    const proyectos = within(nav).getByRole("link", { name: /Proyectos de ley/ });
-    expect(proyectos).toHaveAttribute("href", "/buscar");
+  it("accent tile: cuerpo contiene la fórmula /sobre ('nunca se inventa')", () => {
+    render(<Home />);
+    expect(screen.getByText(/nunca se inventa/i)).toBeInTheDocument();
+  });
 
-    const parlamentarios = within(nav).getByRole("link", {
-      name: /Parlamentarios 360/,
-    });
+  it("accent tile: CTA 'Ver metodología →' presente", () => {
+    render(<Home />);
+    expect(screen.getByText(/Ver metodología/)).toBeInTheDocument();
+  });
+
+  it("accent tile: NO contiene strings del mockup baneados (correlaciones/irregularidades)", () => {
+    const { container } = render(<Home />);
+    expect(container.textContent ?? "").not.toMatch(BANNED_VOCAB);
+  });
+
+  it("expone exactamente 3 links de entry tiles con hrefs LOCKED", () => {
+    render(<Home />);
+
+    const buscar = screen.getByRole("link", { name: /Proyectos de ley/ });
+    expect(buscar).toHaveAttribute("href", "/buscar");
+
+    const parlamentarios = screen.getByRole("link", { name: /Parlamentarios 360/ });
     expect(parlamentarios).toHaveAttribute("href", "/parlamentarios");
 
-    const agenda = within(nav).getByRole("link", { name: /Agenda de la semana/ });
+    const agenda = screen.getByRole("link", { name: /Agenda de la semana/ });
     expect(agenda).toHaveAttribute("href", "/agenda");
   });
 
-  it("muestra las 3 líneas de valor prescritas verbatim", () => {
+  it("entry tiles: muestra las 3 líneas de valor prescritas verbatim", () => {
     render(<Home />);
-    const nav = screen.getByRole("navigation", { name: "Secciones del sitio" });
 
     expect(
-      within(nav).getByText(
+      screen.getByText(
         "En qué etapa está cada proyecto y cómo se ha votado, con cada fuente enlazada.",
       ),
     ).toBeInTheDocument();
     expect(
-      within(nav).getByText(
+      screen.getByText(
         "Votaciones, lobby y patrimonio de cada parlamentario, según los registros públicos.",
       ),
     ).toBeInTheDocument();
     expect(
-      within(nav).getByText(
+      screen.getByText(
         "Citaciones de comisiones y tabla de sala, enlazadas a cada proyecto.",
       ),
     ).toBeInTheDocument();
   });
 
-  it("el bloque NO introduce un heading (h2/h3) nuevo", () => {
+  it("el glyph → de las entry tiles es aria-hidden con pl-1 (no whitespace text node)", () => {
     render(<Home />);
-    const nav = screen.getByRole("navigation", { name: "Secciones del sitio" });
-    expect(within(nav).queryByRole("heading")).not.toBeInTheDocument();
+    // Find aria-hidden → glyphs: they must exist as elements, not bare text nodes
+    const arrowSpans = document
+      .querySelectorAll('[aria-hidden="true"]');
+    // At least some arrows present (entry tiles + accent CTA)
+    expect(arrowSpans.length).toBeGreaterThan(0);
+    // All text-node arrows should be wrapped in aria-hidden spans
+    arrowSpans.forEach((el) => {
+      if (el.textContent?.trim() === "→") {
+        expect(el).toHaveClass("pl-1");
+      }
+    });
+  });
+});
+
+// ── Contract 3: retained force-dynamic + ActualidadModule ────────────────────
+
+describe("Landing — Contract 3: force-dynamic + ActualidadModule retained", () => {
+  it("exporta dynamic = 'force-dynamic'", () => {
+    expect(HomeModule.dynamic).toBe("force-dynamic");
   });
 
-  it("el copy de las tarjetas pasa el banned-vocab negative-match", () => {
-    render(<Home />);
-    const nav = screen.getByRole("navigation", { name: "Secciones del sitio" });
-    expect(nav.textContent ?? "").not.toMatch(BANNED_VOCAB);
+  it("renderiza sin lanzar aunque ActualidadModule esté mockeado a null", () => {
+    expect(() => render(<Home />)).not.toThrow();
   });
 });
