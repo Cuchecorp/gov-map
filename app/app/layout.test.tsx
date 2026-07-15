@@ -75,4 +75,34 @@ describe("layout — footer global (SC8)", () => {
     expect(LAYOUT_SRC).toContain("PUBLIC_INDEXABLE");
     expect(LAYOUT_SRC).toContain("generateMetadata");
   });
+
+  // ── SC4 (76-02): footer sin fondo + contenedor 1120px ────────────────────────
+  it("Test 6 (no-bg-muted): footer NO tiene bg-muted/40 (76-02 SC4)", () => {
+    expect(LAYOUT_SRC).not.toMatch(/bg-muted\/40/);
+  });
+
+  it("Test 7 (container-1120): footer contenedor es max-w-[1120px] (76-02 SC4)", () => {
+    expect(LAYOUT_SRC).toContain("max-w-[1120px]");
+  });
+
+  // ── SC5 (76-02): sin <main> global — cada página trae el suyo ────────────────
+  it("Test 8 (no-main-global): layout NO envuelve {children} en <main> (76-02 SC5)", () => {
+    expect(LAYOUT_SRC).not.toMatch(/<main/);
+  });
+
+  // ── SC4 (76-02): strings LOCKED byte-idénticos ───────────────────────────────
+  it("Test 9 (locked-licencia): string de licencia CC BY LOCKED intacto (76-02 SC4)", () => {
+    expect(LAYOUT_SRC).toContain(
+      "atribución a Observatorio del Congreso 360. Esta licencia cubre la",
+    );
+    expect(LAYOUT_SRC).toContain(
+      "compilación propia; cada fuente conserva sus propios términos, indicados",
+    );
+  });
+
+  it("Test 10 (locked-trust): trust line LOCKED byte-idéntica (76-02 SC4)", () => {
+    expect(LAYOUT_SRC).toContain(
+      "Fuente, fecha y enlace en cada dato · Sin afirmar intención ni causalidad.",
+    );
+  });
 });
