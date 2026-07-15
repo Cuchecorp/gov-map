@@ -219,6 +219,15 @@ describe("Landing — Contract 2: accent tile (/sobre) y 3 entry tiles (bento)",
     ).toBeInTheDocument();
   });
 
+  it("entry tiles: envueltas en <nav aria-label='Secciones del sitio'> (landmark WR-01)", () => {
+    render(<Home />);
+    const nav = screen.getByRole("navigation", { name: "Secciones del sitio" });
+    expect(nav).toBeInTheDocument();
+    // Los 3 links de entrada deben estar dentro del landmark.
+    const buscar = screen.getByRole("link", { name: /Proyectos de ley/ });
+    expect(nav).toContainElement(buscar);
+  });
+
   it("el glyph → de las entry tiles es aria-hidden con pl-1 (no whitespace text node)", () => {
     render(<Home />);
     // Find aria-hidden → glyphs: they must exist as elements, not bare text nodes

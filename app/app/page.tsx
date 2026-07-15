@@ -91,7 +91,7 @@ export default function Home() {
 
               {/* La caja de búsqueda es la protagonista (héroe): CTA petróleo + pills. */}
               <div className="mt-10">
-                <SearchBox autoFocus variant="hero" exampleChips={EXAMPLE_CHIPS} />
+                <SearchBox variant="hero" exampleChips={EXAMPLE_CHIPS} />
               </div>
 
               {/* Trust line LOCKED (UI-SPEC §6) — muted, separada por bullet. */}
@@ -128,39 +128,42 @@ export default function Home() {
           </BentoTile>
 
           {/* ── 3 Entry tiles: span-2 cada una ───────────────────────────── */}
-          {ENTRY_CARDS.map((card) => (
-            <BentoTile key={card.href} variant="default" span={2} asChild>
-              <Link href={card.href} className="p-6 flex flex-col">
-                <div className="flex items-center justify-between">
-                  {/* Single-diamond marker (petróleo via currentColor, aria-hidden) */}
-                  <svg
-                    width={16}
-                    height={16}
-                    viewBox="0 0 16 16"
-                    aria-hidden="true"
-                    className="text-accent-product"
-                  >
-                    <path
-                      d="M8 2 L14 8 L8 14 L2 8 Z"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M8 5.5 L10.5 8 L8 10.5 L5.5 8 Z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  <span aria-hidden="true" className="pl-1 text-muted-foreground">
-                    →
-                  </span>
-                </div>
-                <span className="mt-3 text-lg font-semibold">{card.title}</span>
-                <p className="mt-1 text-sm text-muted-foreground">{card.value}</p>
-              </Link>
-            </BentoTile>
-          ))}
+          {/* nav className="contents" = transparente al CSS grid (WR-01 fix).   */}
+          <nav aria-label="Secciones del sitio" className="contents">
+            {ENTRY_CARDS.map((card) => (
+              <BentoTile key={card.href} variant="default" span={2} asChild>
+                <Link href={card.href} className="p-6 flex flex-col">
+                  <div className="flex items-center justify-between">
+                    {/* Single-diamond marker (petróleo via currentColor, aria-hidden) */}
+                    <svg
+                      width={16}
+                      height={16}
+                      viewBox="0 0 16 16"
+                      aria-hidden="true"
+                      className="text-accent-product"
+                    >
+                      <path
+                        d="M8 2 L14 8 L8 14 L2 8 Z"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M8 5.5 L10.5 8 L8 10.5 L5.5 8 Z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    <span aria-hidden="true" className="pl-1 text-muted-foreground">
+                      →
+                    </span>
+                  </div>
+                  <span className="mt-3 text-lg font-semibold">{card.title}</span>
+                  <p className="mt-1 text-sm text-muted-foreground">{card.value}</p>
+                </Link>
+              </BentoTile>
+            ))}
+          </nav>
         </BentoGrid>
       </div>
 
