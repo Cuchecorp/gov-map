@@ -274,7 +274,13 @@ Plans:
   3. El cron `leyes-weekly` rota round-robin sobre el corpus 3.657 (lotes acotados incrementales L–V) → ningún proyecto queda indefinidamente sin refrescar; MONEY/SERVEL fuera del cron mientras gated
   4. La frescura por fuente (`pnpm freshness`) refleja la rotación sin regresionar los conectores v6.0 (leyes/lobby/probidad)
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 74-01-PLAN.md — Cursor incremental leylobby (migración 0053 marcador + lógica pura de avance + wire ingest-cli/writer; hash-check y degradación preservados) [DEBT-02]
+- [ ] 74-02-PLAN.md — Round-robin leyes-weekly: fix cap 1k (.order().range() paginado) + cursor de rotación (migración 0054) + MONEY/SERVEL excluidos + fail-loud [DEBT-04]
+- [ ] 74-03-PLAN.md — DEBT-03 verificar referencia CF token + nota de operador + señal freshness de edad-mínima (MIN) sin regresionar MAX v6.0 + checkpoint operador [DEBT-03]
 
 ### Phase 75: DEUDA — Typography island `.net-*` + rotar DB password (operador)
 
