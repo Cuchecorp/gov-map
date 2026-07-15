@@ -298,7 +298,7 @@ Plans:
 
 Plans:
 
-- [ ] 75-01-PLAN.md — Pixel-preserving swap `.net-*` font-size → design-system `--text-*` tokens (16→base/14→sm/12→xs; `.net-chip` 11px preservado) + guard test source-level [DEBT-05]
+- [x] 75-01-PLAN.md — Pixel-preserving swap `.net-*` font-size → design-system `--text-*` tokens (16→base/14→sm/12→xs; `.net-chip` 11px preservado) + guard test source-level [DEBT-05]
 - [ ] 75-02-PLAN.md — Nota de operador rotación DB password (75-DB-PASSWORD-ROTATION-OPERATOR-NOTE.md, zero-credential-values, blast-radius `SUPABASE_DB_URL`) + checkpoint operador [DEBT-06]
 
 **UI hint**: yes
@@ -1047,7 +1047,7 @@ Plans:
 | 72. DINERO P5d — Extender materializador cruce_senal (lobby_sector_aporte) | v7.0 | 2/2 | Complete   | 2026-07-15 |
 | 73. DINERO P5e — Superficies MONEY gated OFF + linter + gate legal | v7.0 | 4/4 | Complete   | 2026-07-15 |
 | 74. DEUDA — Cursor leylobby + CF token CI + round-robin cron | v7.0 | 3/3 | Complete   | 2026-07-15 |
-| 75. DEUDA — Typography .net-* + rotar DB password (operador) | v7.0 | 0/? | Not started | - |
+| 75. DEUDA — Typography .net-* + rotar DB password (operador) | v7.0 | 1/2 | In Progress|  |
 
 ## ✅ v4.0 — De datos a cruces verificables
 

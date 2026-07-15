@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: — Votos, dinero y cierre técnico
-status: verifying
+status: executing
 stopped_at: Completed 74-02-PLAN.md (rotación round-robin leyes-weekly + corpus paginado; 0054 no aplicada a PROD)
-last_updated: "2026-07-15T03:39:59.989Z"
+last_updated: "2026-07-15T04:08:38.462Z"
 last_activity: 2026-07-15
 progress:
   total_phases: 12
   completed_phases: 9
-  total_plans: 31
-  completed_plans: 29
+  total_plans: 33
+  completed_plans: 30
   percent: 75
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 74 — DEUDA — cursor leylobby + CF token CI + round-robin cron
+**Current focus:** Phase 75 — DEUDA — typography .net-* + rotar DB password
 
 ## Current Position
 
-Phase: 74 (DEUDA — cursor leylobby + CF token CI + round-robin cron) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 75 (DEUDA — typography .net-* + rotar DB password) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-07-15
 
 Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shipped)
@@ -105,6 +105,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 74-02: leyes-weekly lee corpus COMPLETO paginado (.range) cap 1k resuelto; cursor singleton leyes_rotacion_estado (0054) round-robin wrap-around; agenda-prioridad, MONEY/SERVEL excluidos, fail-loud; 0054 NO aplicada a PROD (validada local begin/rollback)
 - [Phase ?]: DEBT-03: CF token es concern de deploy; deuda de operador cargar el valor, no cablearlo en crons de ingesta
 - [Phase ?]: Freshness: señal MIN-edad de leyes (leyes-min-edad, MIN fecha_captura, umbral 45) revela la cola sin rotar sin regresionar las señales MAX v6.0 (FuenteConfig.agregado default MAX)
+- [Phase ?]: DEBT-05: .net-* font-size migrado a tokens var(--text-*) pixel-identico; .net-chip 0.6875rem preservado; guard source-scan bloquea rem ad-hoc; /red F18 diferida a ui-review+operador
 
 ### Pending Todos
 
@@ -142,7 +143,7 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-15T03:38:23.099Z
+Last session: 2026-07-15T04:08:25.920Z
 Stopped at: Completed 74-02-PLAN.md (rotación round-robin leyes-weekly + corpus paginado; 0054 no aplicada a PROD)
 Resume file: None
 
