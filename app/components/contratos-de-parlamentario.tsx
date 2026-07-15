@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { createServerSupabase } from "@/lib/supabase";
 import { moneyPublicEnabled } from "@/lib/money-gate";
+import { LEYENDA_ANTI_INSINUACION_MONEY } from "@/lib/money-presentacion";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { fechaCorta } from "@/lib/format";
 import { sourceLabel, type ContratoRpcRow } from "@/lib/types";
@@ -89,6 +90,18 @@ export interface ContratosViewData {
 function buildHref(id: string, page: number): string {
   const qs = new URLSearchParams({ contratosPage: String(page) }).toString();
   return `/parlamentario/${id}?${qs}#dinero`;
+}
+
+// ── Leyenda anti-insinuación MONEY (MONEY-04, UI-SPEC §Leyenda) ─────────────────
+// Primer hijo de CADA rama de estado, ENCIMA del Intro: el marco honesto precede a
+// cualquier dato. Constante ÚNICA importada (nunca inline duplicada). Tratamiento
+// LOCKED: rail petróleo `border-l-[3px] border-[--primary] pl-2.5 mb-4`, sobrio.
+function LeyendaMoney() {
+  return (
+    <p className="text-sm text-muted-foreground border-l-[3px] border-[--primary] pl-2.5 mb-4">
+      {LEYENDA_ANTI_INSINUACION_MONEY}
+    </p>
+  );
 }
 
 // ── Intro honesta (frame + atribución ChileCompra "mención de la fuente") ───────
@@ -195,6 +208,7 @@ export function ContratosView({ data }: { data: ContratosViewData }) {
   if (estado === "no_consultado") {
     return (
       <>
+        <LeyendaMoney />
         <Intro />
         <p className="text-sm text-muted-foreground">
           Aún no hemos consultado ChileCompra para el RUT de este parlamentario.
@@ -212,6 +226,7 @@ export function ContratosView({ data }: { data: ContratosViewData }) {
       : "la fecha de corte";
     return (
       <>
+        <LeyendaMoney />
         <Intro />
         <p className="text-sm text-muted-foreground">
           Consultamos ChileCompra por el RUT de este parlamentario (corte al{" "}
@@ -225,6 +240,7 @@ export function ContratosView({ data }: { data: ContratosViewData }) {
   // Estado — Enlazado: conteo neutro + lista paginada.
   return (
     <div>
+      <LeyendaMoney />
       <Intro />
 
       {/* Conteo NEUTRO (único agregado permitido) — sin suma de montos, sin ranking. */}

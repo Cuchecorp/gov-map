@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { createServerSupabase } from "@/lib/supabase";
 import { moneyPublicEnabled } from "@/lib/money-gate";
+import { LEYENDA_ANTI_INSINUACION_MONEY } from "@/lib/money-presentacion";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { fechaCorta } from "@/lib/format";
 import { sourceLabel, type AporteRpcRow } from "@/lib/types";
@@ -128,6 +129,19 @@ function encabezadoEleccion(eleccion: string): string {
 function buildHref(id: string, page: number): string {
   const qs = new URLSearchParams({ financiamientoPage: String(page) }).toString();
   return `/parlamentario/${id}?${qs}#financiamiento`;
+}
+
+// ── Leyenda anti-insinuación MONEY (MONEY-04, UI-SPEC §Leyenda) ─────────────────
+// Primer hijo de CADA rama de estado, ENCIMA del Intro. Constante ÚNICA importada
+// (nunca inline duplicada) — la misma leyenda de las 4 superficies MONEY. Base NOMBRE
+// aquí: el enlace del aporte JAMÁS se rotula "por RUT" (eso vive sólo en la leyenda
+// general, que habla del "vínculo por RUT" como concepto — no del enlace de ESTE aporte).
+function LeyendaMoney() {
+  return (
+    <p className="text-sm text-muted-foreground border-l-[3px] border-[--primary] pl-2.5 mb-4">
+      {LEYENDA_ANTI_INSINUACION_MONEY}
+    </p>
+  );
 }
 
 // ── Intro honesta (frame + atribución SERVEL "términos por verificar") ──────────
@@ -323,6 +337,7 @@ export function FinanciamientoView({ data }: { data: FinanciamientoViewData }) {
   if (estado === "no_ingestado") {
     return (
       <>
+        <LeyendaMoney />
         <Intro />
         <p className="text-sm text-muted-foreground">
           Aún no hemos ingerido los aportes de campaña de este candidato desde
@@ -341,6 +356,7 @@ export function FinanciamientoView({ data }: { data: FinanciamientoViewData }) {
       : "la fecha de corte";
     return (
       <>
+        <LeyendaMoney />
         <Intro />
         <p className="text-sm text-muted-foreground">
           Consultamos SERVEL por este candidato (corte al{" "}
@@ -355,6 +371,7 @@ export function FinanciamientoView({ data }: { data: FinanciamientoViewData }) {
   const grupos = agruparPorEleccion(aportes, eleccionActual);
   return (
     <div>
+      <LeyendaMoney />
       <Intro />
 
       {/* Conteo NEUTRO (único agregado permitido) — sin suma de montos, sin ranking. */}

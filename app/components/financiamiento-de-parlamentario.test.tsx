@@ -7,6 +7,7 @@ import {
   type AporteRow,
 } from "./financiamiento-de-parlamentario";
 import { moneyPublicEnabled } from "@/lib/money-gate";
+import { LEYENDA_ANTI_INSINUACION_MONEY } from "@/lib/money-presentacion";
 
 afterEach(cleanup);
 
@@ -16,6 +17,15 @@ const HEADING = "Aportes de campaña registrados en SERVEL";
 
 // La frase EXACTA de la asociación al candidato (A1: por NOMBRE, nunca por RUT).
 const ASOCIACION = "Asociado por nombre confirmado al candidato.";
+
+// La leyenda MONEY (constante única) habla del "vínculo por RUT" COMO CONCEPTO
+// genérico y lo NIEGA ("no es una afirmación de irregularidad"). Es legítima en TODA
+// superficie. Los asserts anti-"por RUT" de ESTE archivo verifican que el enlace de
+// ESTE aporte (base NOMBRE) nunca se rotule "por RUT" — así que restamos la leyenda
+// del texto antes de matchear, para no cazar el término dentro de la propia leyenda.
+function sinLeyenda(texto: string): string {
+  return texto.split(LEYENDA_ANTI_INSINUACION_MONEY).join("");
+}
 
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 function makeAporte(overrides: Partial<AporteRow> = {}): AporteRow {
@@ -88,6 +98,45 @@ describe("FinanciamientoSection — gate de exposición (UI-SPEC §Exposure Gate
   });
 });
 
+// ── Leyenda anti-insinuación MONEY (MONEY-04): 1× por estado, base NOMBRE ────────
+describe("FinanciamientoView — leyenda anti-insinuación MONEY (MONEY-04)", () => {
+  const estados: ReadonlyArray<[string, Partial<FinanciamientoViewData>]> = [
+    ["no_ingestado", { estado: "no_ingestado", aportes: [], totalAportes: 0, fechaCorte: null }],
+    ["verificado_sin_aportes", { estado: "verificado_sin_aportes", aportes: [], totalAportes: 0, fechaCorte: "2026-06-15T00:00:00Z" }],
+    ["enlazado", {}],
+  ];
+
+  it.each(estados)(
+    "renderiza la leyenda MONEY EXACTAMENTE 1× en el estado %s (constante única, no duplicada por fila)",
+    (_nombre, overrides) => {
+      render(<FinanciamientoView data={makeViewData(overrides)} />);
+      expect(
+        screen.getAllByText(LEYENDA_ANTI_INSINUACION_MONEY).length,
+      ).toBe(1);
+    },
+  );
+
+  it("con múltiples filas la leyenda sigue 1× y el enlace es por NOMBRE, nunca 'por RUT'", () => {
+    const { container } = render(
+      <FinanciamientoView
+        data={makeViewData({
+          aportes: [
+            makeAporte({ fila_id: "A1" }),
+            makeAporte({ fila_id: "A2" }),
+          ],
+          totalAportes: 2,
+        })}
+      />,
+    );
+    expect(screen.getAllByText(LEYENDA_ANTI_INSINUACION_MONEY).length).toBe(1);
+    // Base NOMBRE: el enlace del aporte es "Asociado por nombre confirmado", NUNCA
+    // rotulado "por RUT" (RUT-vs-nombre no conflado). La leyenda genérica se resta.
+    expect(screen.getAllByText(ASOCIACION).length).toBe(2);
+    const texto = sinLeyenda(container.textContent ?? "");
+    expect(texto).not.toMatch(/por RUT/i);
+  });
+});
+
 // ── Redacción (LOCKED): asociado por NOMBRE confirmado, NUNCA "por RUT" ──────────
 describe("FinanciamientoView — honestidad del enlace (A1: por nombre, no por RUT)", () => {
   it("el intro enmarca los aportes como asociados al candidato por su NOMBRE, no por RUT", () => {
@@ -95,8 +144,9 @@ describe("FinanciamientoView — honestidad del enlace (A1: por nombre, no por R
     expect(
       screen.getByText(/asociados a este candidato por su nombre/i),
     ).toBeInTheDocument();
-    const texto = container.textContent ?? "";
-    // NUNCA afirma "por RUT" en ninguna copy (intro/asociación/corte).
+    const texto = sinLeyenda(container.textContent ?? "");
+    // NUNCA afirma "por RUT" en ninguna copy propia (intro/asociación/corte); la
+    // leyenda MONEY genérica se restó — su "vínculo por RUT" conceptual no cuenta.
     expect(texto).not.toMatch(/por RUT/i);
     // Sin posesivos prohibidos sobre el aporte.
     expect(texto).not.toMatch(/sus aportes|aporte del (diputado|senador|parlamentario)/i);
@@ -106,8 +156,9 @@ describe("FinanciamientoView — honestidad del enlace (A1: por nombre, no por R
     const { container } = render(<FinanciamientoView data={makeViewData()} />);
     // La frase exacta está presente.
     expect(screen.getByText(ASOCIACION)).toBeInTheDocument();
-    // "por RUT" está AUSENTE de toda la copy de asociación del candidato.
-    const texto = container.textContent ?? "";
+    // "por RUT" está AUSENTE de toda la copy de asociación del candidato (la leyenda
+    // MONEY genérica se resta: su "vínculo por RUT" conceptual no es el enlace del aporte).
+    const texto = sinLeyenda(container.textContent ?? "");
     expect(texto).not.toMatch(/por RUT/i);
   });
 
@@ -137,9 +188,11 @@ describe("FinanciamientoView — tres estados honestos textualmente distintos", 
     ).toBeInTheDocument();
     // Los otros dos estados NO se muestran.
     expect(screen.queryByText(/no se registran\s+aportes asociados/i)).toBeNull();
-    expect(screen.queryByText(/aporte registrado|aportes registrados/i)).toBeNull();
-    // Un vacío NUNCA se lee como virtud/limpieza.
-    const texto = container.textContent ?? "";
+    // La LÍNEA DE CONTEO ("{N} aporte(s) registrado(s).") no aparece. El patrón exige
+    // el dígito líder para no cazar la leyenda MONEY ("un aporte registrado es un hecho…").
+    expect(screen.queryByText(/\d+ aportes? registrados?\./i)).toBeNull();
+    // Un vacío NUNCA se lee como virtud/limpieza (la leyenda MONEY se resta antes de matchear).
+    const texto = sinLeyenda(container.textContent ?? "");
     expect(texto).not.toMatch(/limpio|impecable|sin aportes ✓|no tiene aportes|✓/i);
   });
 
@@ -217,9 +270,11 @@ describe("FinanciamientoView — donante como sujeto (sin posesivo, sin RUT dona
         })}
       />,
     );
-    const texto = container.textContent ?? "";
+    const texto = sinLeyenda(container.textContent ?? "");
     // Patrón de RUT chileno (12.345.678-9 / 12345678-K). Debe estar AUSENTE.
     expect(texto).not.toMatch(/\b\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]\b/);
+    // La palabra "RUT" no aparece en la copy propia de la fila (la leyenda MONEY,
+    // que la menciona conceptualmente, se restó).
     expect(texto).not.toMatch(/RUT/i);
   });
 });

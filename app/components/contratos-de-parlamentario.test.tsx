@@ -7,6 +7,7 @@ import {
   type ContratoRow,
 } from "./contratos-de-parlamentario";
 import { moneyPublicEnabled } from "@/lib/money-gate";
+import { LEYENDA_ANTI_INSINUACION_MONEY } from "@/lib/money-presentacion";
 
 afterEach(cleanup);
 
@@ -84,6 +85,46 @@ describe("ContratosSection — gate de exposición (UI-SPEC §Exposure Gate)", (
     const { container } = renderGated({ MONEY_PUBLIC_ENABLED: "true" });
     expect(screen.getByText(HEADING)).toBeInTheDocument();
     expect(container.querySelector("#dinero")).not.toBeNull();
+  });
+});
+
+// ── Leyenda anti-insinuación MONEY (MONEY-04): 1× por estado, constante única ────
+describe("ContratosView — leyenda anti-insinuación MONEY (MONEY-04)", () => {
+  const estados: ReadonlyArray<[string, Partial<ContratosViewData>]> = [
+    ["no_consultado", { estado: "no_consultado", contratos: [], totalContratos: 0, fechaCorte: null }],
+    ["consultado_sin_contratos", { estado: "consultado_sin_contratos", contratos: [], totalContratos: 0, fechaCorte: "2026-06-15T00:00:00Z" }],
+    ["enlazado", {}],
+  ];
+
+  it.each(estados)(
+    "renderiza la leyenda MONEY EXACTAMENTE 1× en el estado %s (constante única, no duplicada por fila)",
+    (_nombre, overrides) => {
+      render(<ContratosView data={makeViewData(overrides)} />);
+      // Presente en este estado y exactamente una vez (caza duplicación por fila).
+      expect(
+        screen.getAllByText(LEYENDA_ANTI_INSINUACION_MONEY).length,
+      ).toBe(1);
+    },
+  );
+
+  it("con múltiples filas la leyenda sigue apareciendo 1× (no por fila)", () => {
+    render(
+      <ContratosView
+        data={makeViewData({
+          contratos: [
+            makeContrato({ codigo_orden: "C1" }),
+            makeContrato({ codigo_orden: "C2" }),
+            makeContrato({ codigo_orden: "C3" }),
+          ],
+          totalContratos: 3,
+        })}
+      />,
+    );
+    expect(screen.getAllByText(LEYENDA_ANTI_INSINUACION_MONEY).length).toBe(1);
+    // Base RUT: la leyenda coexiste con el enlace "Enlazado por RUT" (contratos).
+    expect(
+      screen.getAllByText("Enlazado por RUT al parlamentario.").length,
+    ).toBe(3);
   });
 });
 
