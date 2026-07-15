@@ -49,4 +49,17 @@ describe("GlobalHeader — brand lockup (60 BRAND-02)", () => {
   it("Test 4 (nav-intact): <HeaderNav /> is still rendered", () => {
     expect(SRC).toMatch(/<HeaderNav/);
   });
+
+  // ── SC3 (76-02): sticky header + contenedor 1120px ────────────────────────────
+  it("Test 5 (sticky): header tiene clase sticky (76-02 chrome global)", () => {
+    expect(SRC).toMatch(/sticky/);
+  });
+
+  it("Test 6 (top-0): header tiene clase top-0 (76-02 chrome global)", () => {
+    expect(SRC).toMatch(/top-0/);
+  });
+
+  it("Test 7 (container-1120): contenedor es max-w-[1120px] (76-02 chrome global)", () => {
+    expect(SRC).toContain("max-w-[1120px]");
+  });
 });
