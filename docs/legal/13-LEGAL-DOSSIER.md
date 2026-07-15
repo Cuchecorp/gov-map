@@ -115,9 +115,15 @@ se enlaza a una persona del padron salvo confirmacion, y el **RPC publico nunca 
 `[VERIFIED — supabase/migrations/0021_lobby.sql y 0022_probidad.sql leidas: RLS habilitada,
 cero policies a anon, revoke all from anon/authenticated]`.
 
-**MONEY hereda esta postura:** las sub-maestras de contratistas/donantes que se construyan en
-Phases 14-16 nacen deny-by-default; el donante/lobista se trata por minimizacion; solo se
-expone lo que la fuente ya publica, **sin enriquecer ni inferir**.
+**MONEY hereda esta postura — YA CONSTRUIDA gated OFF:** las superficies de contratos y
+aportes **ya estan ejecutadas** detras del gate deny-by-default: **Phase 70** ingiere
+contratos ChileCompra enlazados por **RUT exacto** al parlamentario; **Phase 71** ingiere
+aportes SERVEL asociados por **nombre confirmado** (la fuente NO trae RUT); **Phase 72**
+materializa la senal `lobby_sector_aporte` (`cruce_senal`) como **conteo factual**
+(empty-honest hoy: si no hay coincidencias, se dice "sin coincidencias", no se infiere). El
+donante/lobista se trata por minimizacion; solo se expone lo que la fuente ya publica,
+**sin enriquecer ni inferir**. Toda esta construccion vive con `MONEY_PUBLIC_ENABLED` OFF
+(no expuesta publicamente hasta el sign-off).
 
 **Pregunta para el asesor (PENDIENTE DE VALIDACION LEGAL):** la postura de minimizacion +
 deny-by-default heredada de lobby/probidad es suficiente para el tratamiento de donantes y
@@ -139,14 +145,55 @@ para la revision:
   `[VERIFIED — packages/llm/src/data-routing.ts leido]`.
 - **Candado de DATOS:** RLS deny-by-default + `revoke all from anon, authenticated` sobre las
   tablas sensibles (migraciones 0018_piso_pii.sql, 0021_lobby.sql, 0022_probidad.sql). Las
-  tablas MONEY de Phases 14-16 heredan esta convencion.
+  tablas MONEY de Phases 70-72 heredan esta convencion (ingesta/enlace bajo el gate apagado).
 - **Candado de PRESENTACION:** flag server-only `MONEY_PUBLIC_ENABLED` (default `false`,
-  fail-closed) en `app/lib/money-gate.ts` (introducido en 13-01); oculta las secciones MONEY
-  de la ficha y del RPC publico mientras no se encienda.
+  fail-closed, `=== "true"`) en `app/lib/money-gate.ts` (introducido en 13-01); oculta las
+  secciones MONEY de la ficha y del RPC publico mientras no se encienda. Con el gate OFF, la
+  ficha muestra el carril "Financiamiento y contratos del Estado — Pendiente de revision legal
+  (Ley 21.719) antes de publicarse", nunca silencio.
+- **Guard anti-flip (Phase 73 plan 01):** `app/lib/money-antiflip-guard.test.ts` es un test CI
+  que **congela** el gate deny-by-default en tres vectores — (1) el chokepoint sigue
+  `=== "true"` (ni `Boolean(...)` laxo ni `!== "false"`), (2) `.env.example` sigue `=false`,
+  (3) ninguna ruta lee `MONEY_PUBLIC_ENABLED` crudo fuera del unico chokepoint permitido — con
+  una auto-verificacion por mutacion en memoria. Un commit de agente que relaje el default o
+  filtre el env crudo hace fallar CI.
 
 El doble candado (datos + presentacion) es defensa en profundidad: la RLS protege el dato
 aunque el flag se encienda por error; el flag protege la presentacion aunque una policy RLS
-se relaje por error.
+se relaje por error; el guard anti-flip protege el propio default del flag contra una
+relajacion accidental por codigo.
+
+### Mitigaciones anti-insinuacion sobre las superficies (Phase 73 plan 02/03) — YA IMPLEMENTADAS
+
+Las 4 superficies MONEY (`contratos-de-parlamentario`, `financiamiento-de-parlamentario`,
+`contratos-por-contraparte`, `aportes-por-contraparte`) ya llevan, tras las superficies detras
+del gate:
+
+- **Leyenda anti-insinuacion MONEY (single-source, LOCKED):** montada 1x por estado como
+  primer hijo de cada rama, desde la constante `LEYENDA_ANTI_INSINUACION_MONEY`
+  (`app/lib/money-presentacion.ts`): *"Un contrato o un aporte registrado es un hecho publico
+  observable. Un vinculo por RUT es una coincidencia exacta de identificador, no una afirmacion
+  de irregularidad. No medimos influencia ni intencion, ni afirmamos que un aporte compre una
+  decision."*
+- **RUT-vs-nombre NO conflado (verificado por RTL):** contratos rotula "Enlazado por RUT al
+  parlamentario" (base RUT-exacto, solo ChileCompra/Phase 70); aportes rotula "Asociado por
+  nombre confirmado al candidato" y **jamas** dice "por RUT" (base nombre, SERVEL/Phase 71, sin
+  RUT). "Empresa ligada" solo aparece sobre base RUT-exacta.
+- **Procedencia + monto verbatim:** `ProvenanceBadge` por fila (fuente + `fecha_captura` +
+  enlace); monto **verbatim** (`monto ?? "No publicado"`, `font-mono`) — nunca "$0", nunca
+  reformateado; frescura por dato (corte de contrato / eleccion / corte SERVEL). Sin
+  rojo/verde de severidad.
+- **Linter anti-insinuacion extendido (Phase 73 plan 03):** el linter de Phase 68
+  (`app/lib/anti-insinuacion-guard.test.ts`) ahora escanea tambien las 4 superficies MONEY + la
+  pagina `/contraparte`, con una blocklist causal/insinuante de tildes exactas (`financio`,
+  `a cambio del voto`, `soborno`, `coima`, `corrupcion`, `empresa ligada a`, `conflicto de
+  interes`, `contrato a dedo`, `direccionado`, etc.); la leyenda se resta de `NEGACIONES_LOCKED`
+  para que la propia regla no se auto-cace; una mutation self-check prueba que el linter muerde
+  sin falso-positivar sobre la copia factual "Enlazado por RUT".
+
+En suma: **procedencia inline, RUT-vs-nombre no conflado, cero causalidad enforzada por
+linter, y doble candado gate+RLS mas el guard anti-flip estan IMPLEMENTADOS.** El bloqueo
+restante para encender MONEY es **puramente el sign-off legal humano 21.719** (seccion 9).
 
 ---
 
@@ -255,9 +302,44 @@ atribucion exigida. *A confirmar por el asesor.*
   (`app/lib/money-gate.ts`, default `false`) **depende de `signoff: approved`** en este
   archivo. La dependencia es **verificable por inspeccion** del YAML: mientras `signoff` no
   sea `approved`, el operador no debe encender el flag.
-- **Reversibilidad:** la construccion de Phases 14-16 (ingesta, esquema DB, conector, cruce
-  RUT interno, tests) es reversible y puede avanzar bajo el gate apagado; la **exposicion** no
-  se enciende sin sign-off.
+- **Reversibilidad:** la construccion (ingesta, esquema DB, conector, cruce RUT interno,
+  superficies, tests) YA avanzo bajo el gate apagado; la **exposicion** no se enciende sin
+  sign-off.
+
+### 9.1 Estado ejecutado a la fecha de este dossier (todo gated OFF)
+
+Al momento de completar este dossier, la construccion MONEY esta **ejecutada y verde en CI**,
+con `MONEY_PUBLIC_ENABLED` **apagado** (nada expuesto publicamente):
+
+| Item ejecutado | Estado | Enforcement |
+|----------------|--------|-------------|
+| Phase 70 — contratos ChileCompra por **RUT exacto** | ingerido, enlazado, superficie montada gated OFF | RLS deny-by-default; monto verbatim; procedencia por fila |
+| Phase 71 — aportes SERVEL por **nombre confirmado** (sin RUT) | ingerido, asociado, superficie montada gated OFF | nunca rotulado "por RUT"; RTL lo verifica |
+| Phase 72 — senal `lobby_sector_aporte` (`cruce_senal`) | conteo factual empty-honest gated OFF | sin causalidad; "sin coincidencias" cuando vacio |
+| Phase 73 plan 01 — guard anti-flip | verde en CI | congela `=== "true"` + `.env.example=false` + no-raw-env |
+| Phase 73 plan 02 — leyenda anti-insinuacion en las 4 superficies | montada 1x por estado | RTL: leyenda-una-vez + RUT-vs-nombre |
+| Phase 73 plan 03 — linter anti-insinuacion extendido a MONEY | verde en CI | blocklist causal tildes exactas + mutation self-check |
+| RUT-01 write remoto (backfill de identidad) | **deuda de operador** | fuera de la corrida autonoma |
+
+**Consecuencia:** el bloqueo restante para encender la exposicion publica de MONEY es
+**exclusivamente el sign-off legal humano 21.719** — las mitigaciones tecnicas de superficie ya
+estan implementadas y bajo enforcement de CI.
+
+### 9.2 Actos humanos exclusivos del operador ANTES del flip (fuera de la corrida autonoma)
+
+Ninguno de estos actos lo ejecuta el agente; se registran aqui como deuda de operador:
+
+1. **Cold-read de comprension BrowserOS (gated-preview):** encender el flag SOLO en preview
+   local/operador (nunca prod), correr la lectura fria CDP sobre las 4 superficies MONEY segun
+   el patron de 68-BROWSEROS-GATE.md, verificar los 6 puntos del UI-SPEC §Gate de comprension
+   (hecho no acusacion; "por RUT exacto" distinto de "por nombre confirmado"; monto verbatim /
+   "No publicado" != "$0"; cero verbo causal / cero rojo-verde; frescura por dato visible;
+   enlace a la fuente por fila; con gate OFF el carril "Pendiente de revision legal"), y
+   **apagar el flag** tras el cold-read.
+2. **Sign-off legal 21.719:** revisar este dossier con el asesor externo; SOLO el operador setea
+   `signoff: approved` + `asesor` + `fecha_signoff` + `observaciones` en el front-matter.
+3. **Flip a prod:** SOLO tras `signoff: approved`, el operador pone `MONEY_PUBLIC_ENABLED=true`
+   en el `.env` de **prod**. Acto humano exclusivo; el agente jamas lo ejecuta ni lo prepara.
 
 ---
 
