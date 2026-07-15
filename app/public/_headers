@@ -1,0 +1,14 @@
+# Cabeceras de seguridad HTTP para assets estáticos servidos por Cloudflare Assets (WR-01).
+# Las rutas dinámicas (SSR) reciben las mismas cabeceras vía next.config.ts async headers().
+# Este archivo es complementario: cubre el path estático (/_next/static/*, /icon-*.png, etc.).
+#
+# Referencia: https://developers.cloudflare.com/pages/configuration/headers/
+# Cloudflare Workers Assets respeta este archivo al servir assets del directorio .open-next/assets.
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Content-Security-Policy-Report-Only: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
