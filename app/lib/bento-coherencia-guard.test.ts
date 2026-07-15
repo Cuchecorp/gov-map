@@ -73,12 +73,16 @@ function detectarViolaciones(
     });
   }
 
-  // (B) EXCLUSION /red: red/page.tsx debe conservar su ancho propio max-w-3xl.
-  if (!contenidoRed.includes("max-w-3xl")) {
+  // (B) EXCLUSION /red: AMBOS <main> deben conservar max-w-3xl (count >= 2).
+  // La verificacion de presencia simple no detecta una regresion parcial (un solo
+  // <main> revertido a max-w-5xl/max-w-2xl mientras el otro sigue en max-w-3xl).
+  const N_RED_MAINS = 2; // red/page.tsx L82 (picker/honest) + L163 (grafo)
+  const count = (contenidoRed.match(/max-w-3xl/g) ?? []).length;
+  if (count < N_RED_MAINS) {
     offenders.push({
       eje: "EXCLUSION-RED",
       descripcion:
-        "red/page.tsx NO contiene `max-w-3xl` — la exclusion de /red del contenedor bento exige que mantenga su ancho propio (invariante 4).",
+        `red/page.tsx tiene ${count}/${N_RED_MAINS} <main> en max-w-3xl — ambos deben conservarlo (invariante 4).`,
     });
   }
 
@@ -127,7 +131,9 @@ describe("(A) Guard bento-coherencia — archivos reales: 0 offenders", () => {
 // ---------------------------------------------------------------------------
 
 describe("(B) Mutation self-check — el detector muerde por ambos ejes", () => {
-  // Card limpio (sin bento) y red limpio (con max-w-3xl, sin 1120px)
+  // Card limpio (sin bento) y red limpio con DOS <main> en max-w-3xl —
+  // refleja la estructura real: rama picker/honest L82 + rama grafo L163.
+  // Un fixture de un solo <main> daria falsa confianza: count >= 2 no se ejerceria.
   const cardLimpio = `
 import * as React from "react";
 const Card = () => (
@@ -138,9 +144,17 @@ export { Card };
 
   const redLimpio = `
 export default async function RedPage() {
+  const mostrarGrafo = true;
+  if (!mostrarGrafo) {
+    return (
+      <main className="max-w-3xl mx-auto px-4 py-8">
+        <h1>Relaciones (picker)</h1>
+      </main>
+    );
+  }
   return (
     <main className="max-w-3xl mx-auto px-4 py-8">
-      <h1>Relaciones</h1>
+      <h1>Relaciones (grafo)</h1>
     </main>
   );
 }
