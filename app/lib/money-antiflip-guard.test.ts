@@ -7,12 +7,15 @@
  * invariantes del gate y FALLA (la suite se pone roja) ante cualquiera de estas mutaciones:
  *
  *   (Vector 1 — fail-closed) `money-gate.ts` enciende SOLO con el literal `"true"`
- *     (`=== "true"`, sin `Boolean(...)` laxo ni `!== "false"`).
+ *     (`=== "true"`, sin `Boolean(...)` laxo ni `!== "false"`) y esa comparación es el
+ *     ÚNICO camino de encendido: sin `||`, sin segunda comparación del flag, sin
+ *     `NODE_ENV`/`==` laxo/`.trim()` que abra una rama de preview/CI/'1' (CR-01).
  *   (Vector 2 — nada `=true` committeado) `.env.example` trae `MONEY_PUBLIC_ENABLED=false`,
  *     jamás `=true`.
- *   (Vector 3 — no raw env en ruta) NINGÚN archivo fuente de `app/` (excepto el chokepoint
- *     `lib/money-gate.ts`) nombra `MONEY_PUBLIC_ENABLED`: toda ruta MONEY lee el flag SOLO
- *     vía `moneyPublicEnabled()`, nunca `process.env.MONEY_PUBLIC_ENABLED` crudo.
+ *   (Vector 3 — no raw env en ruta) NINGÚN archivo fuente de `app/` NI de `packages/`
+ *     (.ts/.tsx/.mjs/.cjs/.js; excepto el chokepoint `lib/money-gate.ts`) nombra
+ *     `MONEY_PUBLIC_ENABLED`: toda ruta MONEY lee el flag SOLO vía `moneyPublicEnabled()`,
+ *     nunca `process.env.MONEY_PUBLIC_ENABLED` crudo (WR-03/WR-04).
  *
  * Molde: `packages/dinero/src/servel-frozen-guard.test.ts §(5)` (vectores 1+2) +
  * `app/lib/lockdown-guard.test.ts` (walkSourceFiles / SKIP_DIRS / stripTsComments, para el
@@ -36,6 +39,7 @@ import { describe, expect, it } from "vitest";
 // ---------------------------------------------------------------------------
 const APP_ROOT = process.cwd(); // app/
 const REPO_ROOT = path.resolve(APP_ROOT, ".."); // raíz del monorepo
+const PACKAGES_ROOT = path.join(REPO_ROOT, "packages"); // workspaces del monorepo (WR-03)
 const MONEY_GATE = path.join(APP_ROOT, "lib", "money-gate.ts");
 const ENV_EXAMPLE = path.join(REPO_ROOT, ".env.example");
 
@@ -61,8 +65,8 @@ function stripTsComments(content: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// walkSourceFiles + SKIP_DIRS (espejo verbatim de lockdown-guard.test.ts) — recorre .ts/.tsx
-// del árbol, saltando build/deps; EXCLUYE *.test.ts / *.test.tsx (los tests que legítimamente
+// walkSourceFiles + SKIP_DIRS (espejo de lockdown-guard.test.ts, extendido WR-04) — recorre
+// .ts/.tsx/.mjs/.cjs/.js del árbol, saltando build/deps; EXCLUYE *.test.* (los tests que legítimamente
 // inyectan `{ MONEY_PUBLIC_ENABLED: "true" }` para probar el gate — money-gate.test.ts, los RTL
 // de superficie, este mismo archivo — no se escanean, por construcción del walker).
 // ---------------------------------------------------------------------------
@@ -96,7 +100,13 @@ function walkSourceFiles(dir: string): string[] {
     if (st.isDirectory()) {
       if (SKIP_DIRS.has(entry)) continue;
       out.push(...walkSourceFiles(full));
-    } else if (/\.(ts|tsx)$/.test(entry) && !/\.test\.(ts|tsx)$/.test(entry)) {
+    } else if (
+      // WR-04: además de .ts/.tsx, escanear .mjs/.cjs/.js — un config/helper
+      // (p.ej. eslint.config.mjs, un middleware o instrumentación) que leyera el
+      // flag crudo NO debe escapar el scan. Se siguen excluyendo los *.test.*.
+      /\.(ts|tsx|mjs|cjs|js)$/.test(entry) &&
+      !/\.test\.(ts|tsx|mjs|cjs|js)$/.test(entry)
+    ) {
       out.push(full);
     }
   }
@@ -162,6 +172,41 @@ export function detectarRelajacionGate({ gateSrc, envSrc }: FuentesGate): string
     );
   }
 
+  // (V1d — CR-01) La comparación estricta debe ser el ÚNICO camino de encendido, no
+  //   *un* camino entre varios. V1a/V1b/V1c sólo cazan la AUSENCIA del `=== "true"` o
+  //   formas laxas puntuales; un mutante que CONSERVA el `=== "true"` pero AÑADE una
+  //   segunda rama OR (`|| ... === "1"`, `|| env.NODE_ENV === "preview"`) pasaba las tres.
+  //   Aquí afirmamos la ESTRUCTURA de la línea de encendido: la expresión `return` que
+  //   nombra el flag debe ser EXACTAMENTE la única comparación estricta `=== "true"`,
+  //   sin `||`, sin segunda comparación del flag, sin `NODE_ENV`, sin `==` laxo, sin
+  //   `.trim()`/wrapper que ensanche el literal. (El gate legítimo es un one-liner
+  //   `return env.MONEY_PUBLIC_ENABLED === "true";`.)
+  const enableLine =
+    gateSrc.match(/return[^;]*MONEY_PUBLIC_ENABLED[^;]*;/)?.[0] ?? "";
+  if (enableLine) {
+    const comparaciones = (enableLine.match(/MONEY_PUBLIC_ENABLED/g) ?? []).length;
+    // Cualquier `.trim()`/`.toLowerCase()`/wrapper aplicado al flag ensancha el literal.
+    const flagConWrapper =
+      /MONEY_PUBLIC_ENABLED\s*\??\s*\./.test(enableLine) ||
+      /MONEY_PUBLIC_ENABLED\s*\)/.test(enableLine);
+    // `==` laxo (no `===`) sobre el flag: aceptaría coerciones.
+    const igualdadLaxa = /MONEY_PUBLIC_ENABLED\s*(?<!!)={2}(?!=)/.test(enableLine);
+    if (
+      comparaciones > 1 ||
+      /\|\|/.test(enableLine) ||
+      /NODE_ENV/.test(enableLine) ||
+      flagConWrapper ||
+      igualdadLaxa
+    ) {
+      offenders.push(
+        "V1: money-gate.ts tiene MÁS DE UN camino de encendido (|| , segunda comparación, " +
+          "NODE_ENV, `==` laxo o `.trim()`/wrapper) — el gate debe encender SOLO con la " +
+          "única comparación estricta `MONEY_PUBLIC_ENABLED === \"true\"`, sin ramas extra " +
+          "(preview/CI/'1'). El flip es acto HUMANO (21.719), no una segunda ruta de código.",
+      );
+    }
+  }
+
   // (V2a) .env.example trae `MONEY_PUBLIC_ENABLED=false` (OFF por defecto).
   if (!/^MONEY_PUBLIC_ENABLED\s*=\s*false\s*$/m.test(envSrc)) {
     offenders.push(
@@ -200,6 +245,14 @@ describe("(1) Vector 1 — el gate enciende SOLO con el literal \"true\" (fail-c
     expect(/Boolean\s*\(\s*[^)]*MONEY_PUBLIC_ENABLED/.test(gate)).toBe(false);
     expect(/MONEY_PUBLIC_ENABLED\s*!==\s*["']false["']/.test(gate)).toBe(false);
   });
+
+  it("money-gate.ts REAL: la comparación estricta es el ÚNICO camino de encendido (CR-01)", () => {
+    // Corre el detector completo contra el archivo real: 0 offenders = el gate enciende
+    // SOLO con `=== "true"`, sin segunda rama (||, NODE_ENV, '1', .trim(), == laxo).
+    const gate = readFileSync(MONEY_GATE, "utf-8");
+    const env = readFileSync(ENV_EXAMPLE, "utf-8");
+    expect(detectarRelajacionGate({ gateSrc: gate, envSrc: env })).toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -218,6 +271,11 @@ describe("(2) Vector 2 — .env.example trae MONEY_PUBLIC_ENABLED=false", () => 
 // ---------------------------------------------------------------------------
 describe("(3) Vector 3 — MONEY_PUBLIC_ENABLED crudo SOLO en el chokepoint money-gate.ts", () => {
   const sourceFiles = walkSourceFiles(APP_ROOT);
+  // WR-03: además de app/, escanear packages/ (el monorepo tiene packages/dinero). El
+  // ÚNICO chokepoint allowlisted vive en app/lib/money-gate.ts; NINGÚN archivo fuente de
+  // packages/ puede nombrar el flag crudo. Si una fase futura mueve un render/lector de
+  // MONEY a un package, este walk lo caza en vez de dejar un punto ciego por diseño.
+  const packageFiles = walkSourceFiles(PACKAGES_ROOT);
 
   it("sanity: el walker encontró archivos fuente (no es un escaneo vacío)", () => {
     expect(sourceFiles.length).toBeGreaterThan(10);
@@ -237,6 +295,30 @@ describe("(3) Vector 3 — MONEY_PUBLIC_ENABLED crudo SOLO en el chokepoint mone
       "Ruta(s) que leen MONEY_PUBLIC_ENABLED crudo (bypassean el chokepoint server-only): " +
         `[${offenders.join("; ")}]. Toda ruta MONEY debe leer el flag vía moneyPublicEnabled(), ` +
         "nunca process.env.MONEY_PUBLIC_ENABLED. El único archivo que puede nombrarlo es lib/money-gate.ts.",
+    ).toHaveLength(0);
+  });
+
+  it("WR-03: sanity — el walker de packages/ encontró archivos (no es un escaneo vacío)", () => {
+    // packages/dinero existe hoy; si el escaneo diera 0 el punto ciego volvería silencioso.
+    expect(packageFiles.length).toBeGreaterThan(0);
+  });
+
+  it("WR-03: ningún archivo fuente de packages/ nombra MONEY_PUBLIC_ENABLED crudo", () => {
+    const offenders: string[] = [];
+    for (const file of packageFiles) {
+      // rel POSIX relativo al repo (p.ej. packages/dinero/src/x.ts) — packages/ NO tiene
+      // chokepoint allowlisted, así que CUALQUIER mención cruda tras strip es offender.
+      const rel = path.relative(REPO_ROOT, file).split(path.sep).join("/");
+      const src = readFileSync(file, "utf-8");
+      if (detectarRawEnvEnRuta(src, rel)) {
+        offenders.push(rel);
+      }
+    }
+    expect(
+      offenders,
+      "Archivo(s) de packages/ que nombran MONEY_PUBLIC_ENABLED crudo: " +
+        `[${offenders.join("; ")}]. El flag vive SOLO en app/lib/money-gate.ts; una ruta ` +
+        "MONEY en un package debe leerlo vía moneyPublicEnabled(), nunca la env cruda.",
     ).toHaveLength(0);
   });
 
@@ -277,6 +359,52 @@ describe("(4) Mutation self-check — el guard MUERDE ante cada relajación", ()
       envSrc: ENV_VALIDO,
     });
     expect(offenders.some((o) => o.startsWith("V1"))).toBe(true);
+  });
+
+  // Self-check A' (CR-01) — camino de encendido ADITIVO: conserva `=== "true"` PERO añade
+  //   una segunda rama. V1a/V1b/V1c pasarían (el literal estricto sigue presente); V1d
+  //   debe MORDER porque `=== "true"` ya no es el ÚNICO encendido.
+  it("A' MUERDE (CR-01): gate con `|| ... === \"1\"` (segunda rama de valor)", () => {
+    const offenders = detectarRelajacionGate({
+      gateSrc:
+        'return env.MONEY_PUBLIC_ENABLED === "true" || env.MONEY_PUBLIC_ENABLED === "1";',
+      envSrc: ENV_VALIDO,
+    });
+    expect(offenders.some((o) => o.startsWith("V1"))).toBe(true);
+  });
+
+  it("A' MUERDE (CR-01): gate con `|| env.NODE_ENV === \"preview\"` (rama de entorno)", () => {
+    const offenders = detectarRelajacionGate({
+      gateSrc:
+        'return env.MONEY_PUBLIC_ENABLED === "true" || env.NODE_ENV === "preview";',
+      envSrc: ENV_VALIDO,
+    });
+    expect(offenders.some((o) => o.startsWith("V1"))).toBe(true);
+  });
+
+  it("A' MUERDE (CR-01): gate con `.trim() === \"true\"` (wrapper que ensancha el literal)", () => {
+    const offenders = detectarRelajacionGate({
+      gateSrc: 'return env.MONEY_PUBLIC_ENABLED.trim() === "true";',
+      envSrc: ENV_VALIDO,
+    });
+    expect(offenders.some((o) => o.startsWith("V1"))).toBe(true);
+  });
+
+  it("A' MUERDE (CR-01): gate con `== \"true\"` laxo (coerción, no `===`)", () => {
+    const offenders = detectarRelajacionGate({
+      // `== "true"` NO contiene `=== "true"` → V1a también dispara; V1d refuerza.
+      gateSrc: 'return env.MONEY_PUBLIC_ENABLED == "true";',
+      envSrc: ENV_VALIDO,
+    });
+    expect(offenders.some((o) => o.startsWith("V1"))).toBe(true);
+  });
+
+  it("A' NO reporta (CR-01): el gate REAL de un-solo-camino `=== \"true\"` sigue verde", () => {
+    // El gate legítimo actual — la única comparación estricta — NO debe ser offender.
+    expect(
+      detectarRelajacionGate({ gateSrc: GATE_VALIDO, envSrc: ENV_VALIDO }),
+    ).toEqual([]);
+    // …y verificado contra el archivo REAL (no un fixture) en el bloque (1).
   });
 
   // Self-check B — .env.example mutado a =true.
