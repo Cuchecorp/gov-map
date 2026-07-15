@@ -36,7 +36,7 @@ Requirements de este milestone. Cada uno mapea a una fase del roadmap.
 - [x] **DEBT-03**: `CLOUDFLARE_API_TOKEN` cargado en CI → crons de novedades verdes en GitHub Actions sin fallback local manual.
 - [x] **DEBT-04**: El cron `leyes-weekly` rota round-robin sobre el corpus 3.657 para no diluir la frescura (hoy 80/sem sobre 3.657 deja proyectos sin refrescar).
 - [x] **DEBT-05**: La typography del island `.net-*` queda alineada al design system (fuera de contrato hoy: nombre 15px, banda 13px).
-- [ ] **DEBT-06**: DB password de Supabase rotado (B26) — acción de operador en el dashboard, documentada.
+- [x] **DEBT-06**: DB password de Supabase rotado (B26) — acción de operador en el dashboard, documentada.
 
 ## v2 Requirements
 
@@ -87,7 +87,7 @@ Se completa durante la creación del roadmap (gsd-roadmapper). Cada requisito ma
 | DEBT-03 | Phase 74 | Complete |
 | DEBT-04 | Phase 74 | Complete |
 | DEBT-05 | Phase 75 | Complete |
-| DEBT-06 | Phase 75 | Pending |
+| DEBT-06 | Phase 75 | Complete |
 
 **Coverage:**
 

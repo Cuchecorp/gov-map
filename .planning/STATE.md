@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: — Votos, dinero y cierre técnico
-status: executing
-stopped_at: Completed 74-02-PLAN.md (rotación round-robin leyes-weekly + corpus paginado; 0054 no aplicada a PROD)
-last_updated: "2026-07-15T04:08:38.462Z"
+status: verifying
+stopped_at: Completed 75-02-PLAN.md (operator note; rotation PENDING operator checkpoint)
+last_updated: "2026-07-15T04:12:05.545Z"
 last_activity: 2026-07-15
 progress:
   total_phases: 12
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 33
-  completed_plans: 30
-  percent: 75
+  completed_plans: 31
+  percent: 83
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 75 (DEUDA — typography .net-* + rotar DB password) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-15
 
 Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shipped)
@@ -68,6 +68,7 @@ Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shi
 | Phase 73 P03 | 10 | 2 tasks | 1 files |
 | Phase 73 P04 | 15 | 1 tasks | 2 files |
 | Phase 74 P01 | 40 | 2 tasks | 7 files |
+| Phase 75 P02 | ~8 min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: DEBT-03: CF token es concern de deploy; deuda de operador cargar el valor, no cablearlo en crons de ingesta
 - [Phase ?]: Freshness: señal MIN-edad de leyes (leyes-min-edad, MIN fecha_captura, umbral 45) revela la cola sin rotar sin regresionar las señales MAX v6.0 (FuenteConfig.agregado default MAX)
 - [Phase ?]: DEBT-05: .net-* font-size migrado a tokens var(--text-*) pixel-identico; .net-chip 0.6875rem preservado; guard source-scan bloquea rem ad-hoc; /red F18 diferida a ui-review+operador
+- [Phase ?]: DEBT-06: rotación del DB password de Supabase (B26) documentada como runbook de operador zero-credential-values (75-DB-PASSWORD-ROTATION-OPERATOR-NOTE.md); el agente NO rota (acto exclusivo de operador). Radio de impacto solo SUPABASE_DB_URL; CI + sitio usan SUPABASE_SECRET_KEY por REST (no afectados).
 
 ### Pending Todos
 
@@ -125,6 +127,7 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 - 72-02 PENDIENTE operador-LOCAL (checkpoint blocking-human): aplicar la migracion aditiva 0052 al remoto PROD por `PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" --single-transaction -f supabase/migrations/0052_cruce_senal_lobby_sector_aporte.sql` (NUNCA supabase db push; BOM esquivado; UNA vez), verificar el constraint cruce_senal_tipo_senal_check contra pg_constraint ANTES del drop, correr el pgTAP `supabase/tests/0052_...test.sql` contra el schema APLICADO (7/7 ok, 0 not ok), y confirmar `count(*) where tipo_senal='lobby_sector_aporte'` = 0 HOY (vacio honesto: arista empresa->sector ausente + RUT-01/backfill pendientes, NO un bug). El agente NO toco PROD. MONEY_PUBLIC_ENABLED OFF hasta el flip legal de Phase 73. Resume-signal: "aplicado" (con pgTAP + count=0) o describir el fallo. Ver 72-APPLY-RUNBOOK.md
 - 71-03 PENDIENTE operador-LOCAL (checkpoint human-action blocking-human): poblar SERVEL POR ELECCION — obtener el .xlsx de financiamiento electoral a mano desde SERVEL, colocarlo en R2 content-addressed servel/<eleccion>/<fecha_corte>/<sha>.xlsx (Etapa 1 = acto humano), y correr run-servel-local-cli.ts --eleccion <slug> --r2-path <r2Path> [--anio YYYY] (Etapa 2, lee de R2, 0 fetch). SERVEL NO trae RUT (cruce por NOMBRE determinista) -> RUT-01 NO es prerrequisito. MONEY-02 NO cerrado; MONEY_PUBLIC_ENABLED OFF hasta flip legal Phase 73. Ver 71-BACKFILL-SERVEL-RUNBOOK.md
 - MONEY (Phase 73) gated OFF pendiente de 3 actos de operador exclusivos (deuda F13): (1) cold-read BrowserOS comprensible en gated-preview; (2) sign-off legal 21.719 -> signoff: approved en docs/legal/13-LEGAL-DOSSIER.md; (3) flip MONEY_PUBLIC_ENABLED=true en prod SOLO tras approved. El agente no firma ni flipea.
+- Operador: rotar DB password Supabase (B26) en Dashboard; re-cargar SUPABASE_DB_URL en .env local + revisar *_DB_URL en Cuchecorp/gov-map; confirmar url-vieja-falla + url-nueva-funciona + CI/sitio verdes. Checkpoint BLOCKING plan 75-02 (agente NO rota).
 
 ### Quick Tasks Completed
 
@@ -143,8 +146,8 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-15T04:08:25.920Z
-Stopped at: Completed 74-02-PLAN.md (rotación round-robin leyes-weekly + corpus paginado; 0054 no aplicada a PROD)
+Last session: 2026-07-15T04:12:05.534Z
+Stopped at: Completed 75-02-PLAN.md (operator note; rotation PENDING operator checkpoint)
 Resume file: None
 
 ## Operator Next Steps
