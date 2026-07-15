@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: — Votos, dinero y cierre técnico
 status: executing
-stopped_at: "Completed 72-02-PLAN.md (runbook operador-LOCAL 72-APPLY-RUNBOOK.md: apply 0052 a PROD por psql --db-url --single-transaction + pgTAP contra schema aplicado; vacio honesto por arista ausente + RUT/backfill pendientes; MONEY OFF hasta Phase 73). Apply PROD = checkpoint blocking-human PENDIENTE."
-last_updated: "2026-07-15T01:30:00.000Z"
+stopped_at: "Completed 68-02-PLAN.md (cobertura del voto individual N/M en pnpm freshness: COBERTURA_VOTO_SENALES + renderCoberturaVoto; Camara confirmado / Senado por nombre). Phase 68 P2 de 4."
+last_updated: "2026-07-15T01:52:41.023Z"
 last_activity: 2026-07-15
 progress:
   total_phases: 12
-  completed_phases: 6
-  total_plans: 24
-  completed_plans: 22
-  percent: 50
+  completed_phases: 7
+  total_plans: 28
+  completed_plans: 23
+  percent: 58
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 72 — DINERO P5d — cruce_senal lobby_sector_aporte
+**Current focus:** Phase 73 — DINERO P5e — Superficies MONEY gated + GATE LEGAL
 
 ## Current Position
 
-Phase: 72 (DINERO P5d — cruce_senal lobby_sector_aporte) — EXECUTING
-Plan: 2 of 2 (72-02 doc complete; apply PROD = checkpoint operador PENDIENTE)
-Status: Runbook entregado — apply 0052 a PROD blocking-human
+Phase: 73 (DINERO P5e — Superficies MONEY gated + GATE LEGAL) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-07-15
 
 Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shipped)
@@ -131,7 +131,7 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-15T01:10:23.756Z
+Last session: 2026-07-15T01:52:41.012Z
 Stopped at: Completed 68-02-PLAN.md (cobertura del voto individual N/M en pnpm freshness: COBERTURA_VOTO_SENALES + renderCoberturaVoto; Camara confirmado / Senado por nombre). Phase 68 P2 de 4.
 Resume file: None
 
