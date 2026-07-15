@@ -36,7 +36,7 @@ export function GlobalHeader() {
           href="/"
           className="inline-flex min-h-11 items-center gap-2 text-base font-semibold leading-tight tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
         >
-          <BrandIcon size={26} color="#2A5859" aria-hidden="true" />
+          <BrandIcon size={26} color="hsl(var(--accent-product))" aria-hidden="true" />
           gov-map
         </Link>
 
