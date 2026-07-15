@@ -95,10 +95,10 @@ function buildHref(id: string, page: number): string {
 // ── Leyenda anti-insinuación MONEY (MONEY-04, UI-SPEC §Leyenda) ─────────────────
 // Primer hijo de CADA rama de estado, ENCIMA del Intro: el marco honesto precede a
 // cualquier dato. Constante ÚNICA importada (nunca inline duplicada). Tratamiento
-// LOCKED: rail petróleo `border-l-[3px] border-[--primary] pl-2.5 mb-4`, sobrio.
+// LOCKED: rail petróleo `border-l-[3px] border-[var(--primary)] pl-2.5 mb-4`, sobrio.
 function LeyendaMoney() {
   return (
-    <p className="text-sm text-muted-foreground border-l-[3px] border-[--primary] pl-2.5 mb-4">
+    <p className="text-sm text-muted-foreground border-l-[3px] border-[var(--primary)] pl-2.5 mb-4">
       {LEYENDA_ANTI_INSINUACION_MONEY}
     </p>
   );

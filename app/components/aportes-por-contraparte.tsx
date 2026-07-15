@@ -120,7 +120,7 @@ function buildHref(id: string, page: number): string {
 // rotula "por RUT" (la leyenda general habla del "vínculo por RUT" como concepto).
 function LeyendaMoney() {
   return (
-    <p className="text-sm text-muted-foreground border-l-[3px] border-[--primary] pl-2.5 mb-4">
+    <p className="text-sm text-muted-foreground border-l-[3px] border-[var(--primary)] pl-2.5 mb-4">
       {LEYENDA_ANTI_INSINUACION_MONEY}
     </p>
   );

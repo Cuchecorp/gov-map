@@ -25,11 +25,11 @@ function classify(value: string | null): CamaraKind {
 const STYLES: Record<"diputados" | "senado", { label: string; className: string }> = {
   diputados: {
     label: "Cámara",
-    className: "bg-[--camara-muted] text-[--camara-muted-foreground]",
+    className: "bg-[var(--camara-muted)] text-[var(--camara-muted-foreground)]",
   },
   senado: {
     label: "Senado",
-    className: "bg-[--senado-muted] text-[--senado-muted-foreground]",
+    className: "bg-[var(--senado-muted)] text-[var(--senado-muted-foreground)]",
   },
 };
 
@@ -50,7 +50,7 @@ export function CamaraChip({ camara }: { camara: string | null }) {
 /** Token de color del dot del rail del timeline, por cámara. */
 export function camaraDotColor(camara: string | null): string {
   const kind = classify(camara);
-  if (kind === "senado") return "bg-[--senado]";
-  if (kind === "diputados") return "bg-[--camara]";
+  if (kind === "senado") return "bg-[var(--senado)]";
+  if (kind === "diputados") return "bg-[var(--camara)]";
   return "bg-muted-foreground";
 }

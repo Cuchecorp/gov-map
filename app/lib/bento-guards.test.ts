@@ -23,7 +23,7 @@
  * sin el strip, un hex en JSDoc daría falso positivo y una URL truncaría la línea.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, globSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -423,5 +423,114 @@ describe("(B) Mutation self-check tipografía — el detector muerde", () => {
       offenders,
       "min-w-[1120px] fue suprimido por la whitelist de w-[1120px] — el matching debe ser exacto (WR-02)",
     ).toContain("min-w-[1120px]");
+  });
+});
+
+// ===========================================================================
+// GUARD (III): CERO-BARE-VAR-SHORTHAND (D2 — Phase 84)
+// ===========================================================================
+//
+// Patrón prohibido: `-[--varname]` (shorthand arbitrary-var Tailwind v3).
+// En Tailwind v4 (repo en 4.3.1) esto compila a `property: --varname;` — un
+// valor bare inválido que el browser descarta → el elemento queda sin color.
+// Patrón correcto: `-[var(--varname)]`.
+//
+// Este guard escanea TODO app/components/** (no solo las superficies bento)
+// porque el defecto ha reaparecido 3 veces: identity-marker (CR-01), tile
+// (CR-01 Phase 76), chips/badges (IN-02 Phase 76 → defecto real en vivo).
+// Ámbito amplio a costo cero: es un scan de texto, no un compilador.
+//
+// Nota: los archivos *.test.* se excluyen del scan (pueden contener el patrón
+// en strings de fixture/comentario sin que sea un defecto de producción).
+
+// ---------------------------------------------------------------------------
+// Detector puro cero-bare-var-shorthand
+// ---------------------------------------------------------------------------
+
+/**
+ * Detecta el shorthand `-[--varname]` (sin `var()`) en el contenido fuente.
+ * Permite `-[var(--…)]` (correcto en Tailwind v4).
+ *
+ * Retorna las matches encontradas (vacío = sin offenders).
+ */
+function detectarBareVarShorthand(contenido: string): string[] {
+  // Patrón: una utilidad Tailwind terminada en -[--identifier]
+  // NO debe capturar -[var(--...)] porque `var(` NO es el patrón prohibido.
+  const regex = /(?<![\w-])[a-z][\w-]*-\[--[\w-]+\]/g;
+  return contenido.match(regex) ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// (A) Cero-bare-var-shorthand — app/components/** (excluye *.test.*)
+// ---------------------------------------------------------------------------
+
+describe("(A) cero-bare-var-shorthand — app/components/** sin tests", () => {
+  const componentsDir = path.join(APP_ROOT, "components");
+  // Recopilar todos los .tsx/.ts excluyendo archivos de test
+  const files = globSync("**/*.{tsx,ts}", { cwd: componentsDir })
+    .filter((f: string) => !f.includes(".test."))
+    .map((f: string) => path.join(componentsDir, f));
+
+  for (const fullPath of files) {
+    const rel = path.relative(APP_ROOT, fullPath);
+    it(`${rel} no usa shorthand -[--var] (usar -[var(--var)] en Tailwind v4)`, () => {
+      const contenido = stripTsComments(readFileSync(fullPath, "utf-8"));
+      const offenders = detectarBareVarShorthand(contenido);
+      expect(
+        offenders,
+        `Shorthand bare var en ${rel}: [${offenders.join(", ")}]. ` +
+          `En Tailwind v4, bg-[--token] compila a 'background-color: --token;' (inválido). ` +
+          `Usar bg-[var(--token)] o registrar el token en @theme inline.`,
+      ).toHaveLength(0);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// (B) Mutation self-check cero-bare-var-shorthand — el detector muerde
+// ---------------------------------------------------------------------------
+
+describe("(B) Mutation self-check cero-bare-var-shorthand — el detector muerde", () => {
+  it("fixture con `bg-[--camara]` → detectado como offender", () => {
+    const mutado = `<div className="bg-[--camara]">chip cívico</div>`;
+    const offenders = detectarBareVarShorthand(stripTsComments(mutado));
+    expect(
+      offenders,
+      "El detector NO cazó bg-[--camara] — el guard sería un no-op",
+    ).toContain("bg-[--camara]");
+  });
+
+  it("fixture con `border-[--primary]` → detectado como offender", () => {
+    const mutado = `<p className="border-l-[3px] border-[--primary] pl-2.5">texto</p>`;
+    const offenders = detectarBareVarShorthand(stripTsComments(mutado));
+    expect(offenders).toContain("border-[--primary]");
+  });
+
+  it("fixture correcto `bg-[var(--camara)]` → 0 offenders (permitido)", () => {
+    const correcto = `<div className="bg-[var(--camara)] border-[var(--provenance-border)]">chip</div>`;
+    const offenders = detectarBareVarShorthand(stripTsComments(correcto));
+    expect(
+      offenders,
+      "El detector cazó bg-[var(--camara)] como offender — los var() deben ser permitidos",
+    ).toHaveLength(0);
+  });
+
+  it("fixture con `text-[--provenance-fg]` → detectado como offender", () => {
+    const mutado = `<span className="text-[--provenance-fg]">Cámara</span>`;
+    const offenders = detectarBareVarShorthand(stripTsComments(mutado));
+    expect(offenders).toContain("text-[--provenance-fg]");
+  });
+
+  it("patrón en comentario → 0 offenders tras strip (anti-falso-positivo)", () => {
+    // El strip elimina el comentario antes de buscar el patrón
+    const conComentario = `
+      // Antes usaba bg-[--camara] (v3 shorthand, ahora prohibido)
+      export function Chip() { return <div className="bg-[var(--camara)]" />; }
+    `;
+    const offenders = detectarBareVarShorthand(stripTsComments(conComentario));
+    expect(
+      offenders,
+      "El detector cazó el patrón en un comentario — falso positivo",
+    ).toHaveLength(0);
   });
 });

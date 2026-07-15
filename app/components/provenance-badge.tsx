@@ -40,12 +40,12 @@ export function ProvenanceBadge({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-sm",
-        "border-[--provenance-border] bg-[--provenance-bg] text-[--provenance-fg]",
+        "border-[var(--provenance-border)] bg-[var(--provenance-bg)] text-[var(--provenance-fg)]",
         stale && "text-amber-700 border-amber-400"
       )}
     >
       <span
-        className="w-1.5 h-1.5 rounded-full bg-[--provenance-fg] opacity-60"
+        className="w-1.5 h-1.5 rounded-full bg-[var(--provenance-fg)] opacity-60"
         aria-hidden="true"
       />
       {capturedAt !== null ? (

@@ -635,7 +635,7 @@ export function VotosView({
           PRIMER hijo del detalle, ANTES de cualquier dato — el marco honesto
           precede al voto. Nota sobria (borde-izquierdo petróleo), nunca banner
           alarmista. Aparece 1× por superficie, jamás repetida por arco/fila. */}
-      <p className="text-sm text-muted-foreground border-l-[3px] border-[--accent-product] pl-2.5">
+      <p className="text-sm text-muted-foreground border-l-[3px] border-[var(--accent-product)] pl-2.5">
         {LEYENDA_ANTI_INSINUACION}
       </p>
 

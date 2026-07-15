@@ -43,7 +43,7 @@ export function VotoDetalle({ votos }: { votos: VotoRowData[] }) {
               nivel de la VOTACIÓN, sobre la lista voto-a-voto, para que el marco honesto
               preceda al desglose. Reusa la constante compartida (byte-idéntica a la ficha
               del parlamentario) y el tratamiento sobrio (borde-izquierdo petróleo). */}
-          <p className="text-sm text-muted-foreground border-l-[3px] border-[--accent-product] pl-2.5">
+          <p className="text-sm text-muted-foreground border-l-[3px] border-[var(--accent-product)] pl-2.5">
             {LEYENDA_ANTI_INSINUACION}
           </p>
           <ul className="mt-3 max-h-96 overflow-y-auto divide-y divide-border">
