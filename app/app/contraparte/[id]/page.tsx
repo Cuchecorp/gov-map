@@ -61,7 +61,7 @@ export default async function ContrapartePage({
   }
 
   return (
-    <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
+    <main className="max-w-[1120px] mx-auto px-4 md:px-8 py-8 md:py-16">
       <Suspense fallback={<HeaderSkeleton />}>
         <HeaderSection id={id} />
       </Suspense>

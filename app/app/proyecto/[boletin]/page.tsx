@@ -62,7 +62,7 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
     (Array.isArray(sp.urgencias) ? sp.urgencias[0] : sp.urgencias)?.trim() || null;
 
   return (
-    <main className="max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-16">
+    <main className="max-w-[1120px] mx-auto px-4 md:px-8 py-8 md:py-16">
       {/*
         53-03 (UX-01, 53-UI-SPEC §(b)) — Breadcrumb ligero: primer hijo del
         container, ANTES del grid. El crumb NO necesita datos: el `boletin` es route
@@ -99,7 +99,7 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
             datos existentes, omitiendo cada línea no derivable. Superficie
             --background, no petróleo; no compone con otros dominios.
           */}
-          <section id="estado" className="mt-12 scroll-mt-6">
+          <section id="estado" className="mt-12">
             <Suspense fallback={<EstadoActualSkeleton />}>
               <EstadoActualBlock boletin={boletin} />
             </Suspense>
@@ -112,7 +112,7 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
             (TimelineView, con el mecanismo ?urgencias operando dentro). Ningún hito
             se pierde: sólo se resume en capa-1.
           */}
-          <section id="timeline" className="mt-12 scroll-mt-6">
+          <section id="timeline" className="mt-12">
             <Suspense fallback={<TimelineSkeleton />}>
               <TramitacionSection
                 boletin={boletin}
@@ -121,7 +121,7 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
             </Suspense>
           </section>
 
-          <section id="votaciones" className="mt-12 scroll-mt-6">
+          <section id="votaciones" className="mt-12">
             <h2 className="text-xl font-semibold mb-4">Votaciones</h2>
             <Suspense fallback={<VotacionesSkeleton />}>
               <VotacionesSection boletin={boletin} />
@@ -136,7 +136,7 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
             Ejecutivo (línea honesta), o null (ausente del DOM — moción sin datos).
             El wrapper mt-12 preserva la frontera aunque AutoresSection retorne null.
           */}
-          <section id="autores" className="mt-12 scroll-mt-6">
+          <section id="autores" className="mt-12">
             <h2 className="text-xl font-semibold mb-4">
               ¿Quién presentó este proyecto?
             </h2>
@@ -155,7 +155,7 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
             retorna null y NO deja heading huérfano; el wrapper mt-12 preserva la
             frontera aunque el contenido esté ausente (frontier rule).
           */}
-          <section id="lobby-tramitacion" className="mt-12 scroll-mt-6">
+          <section id="lobby-tramitacion" className="mt-12">
             <Suspense fallback={<LobbyTramitacionSkeleton />}>
               <LobbyEnTramitacionSection boletin={boletin} />
             </Suspense>
@@ -175,21 +175,21 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
             lobby sigue texto plano (52-03), dentro del propio componente.
           */}
           {crucesPublicEnabled(process.env) && (
-            <section id="cruces" className="mt-12 scroll-mt-6">
+            <section id="cruces" className="mt-12">
               <Suspense fallback={<CrucesSkeleton />}>
                 <CrucesSection boletin={boletin} />
               </Suspense>
             </section>
           )}
 
-          <section id="idea-matriz" className="mt-12 scroll-mt-6">
+          <section id="idea-matriz" className="mt-12">
             <h2 className="text-xl font-semibold mb-4">Idea matriz</h2>
             <Suspense fallback={<IdeaMatrizSkeleton />}>
               <IdeaMatrizSection boletin={boletin} />
             </Suspense>
           </section>
 
-          <section id="cuerpos-legales" className="mt-12 scroll-mt-6">
+          <section id="cuerpos-legales" className="mt-12">
             <h2 className="text-xl font-semibold mb-4">
               Cuerpos legales afectados
             </h2>
@@ -198,7 +198,7 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
             </Suspense>
           </section>
 
-          <section id="similares" className="mt-12 scroll-mt-6">
+          <section id="similares" className="mt-12">
             <h2 className="text-xl font-semibold mb-4">Proyectos similares</h2>
             <Suspense fallback={<SimilaresSkeleton />}>
               <ProyectosSimilares boletin={boletin} />

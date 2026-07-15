@@ -394,7 +394,10 @@ describe("/parlamentario/[id] — invariantes de fuente (UXCOG 55-03)", () => {
     // propios source-scan). Aquí: la página SÍ los importa (son sus children).
     expect(PAGE_SRC).toContain("VotosSection");
     expect(PAGE_SRC).toContain("DetalleColapsable");
-    // La frontera mt-12 + scroll-mt-6 se conserva en cada carril.
-    expect(PAGE_SRC).toContain("mt-12 scroll-mt-6");
+    // La frontera mt-12 se conserva en cada carril; scroll-mt-6 removido (Phase 79-02):
+    // el offset de ancla aplica desde globals.css (scroll-margin-top: 5rem = 80px, Phase 76).
+    // El offset real vs. header se valida en Phase 81 (BrowserOS deploy real; jsdom no tiene layout).
+    expect(PAGE_SRC).toContain("mt-12");
+    expect(PAGE_SRC).not.toContain("scroll-mt-6");
   });
 });

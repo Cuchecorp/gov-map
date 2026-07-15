@@ -43,7 +43,7 @@ import type { ParlamentarioPublicoRow } from "@/lib/types";
  * (default CERRADO): el estado por defecto baja de ~28.000px a un orden de
  * ~5.000px SIN perder ningún dato (todo accesible al expandir).
  *
- * Cada carril sigue siendo su propia `<section className="mt-12 scroll-mt-6">`
+ * Cada carril sigue siendo su propia `<section className="mt-12">`
  * HERMANA — el `mt-12` es la frontera anti-insinuación LOCKED (DESIGN-SYSTEM
  * §3/§8), NUNCA se mueve al wrapper ni se colapsa. JAMÁS dos dominios en una
  * misma unidad; la capa-1 vive FUERA del disclosure, solo el detalle colapsa.
@@ -138,7 +138,7 @@ export default async function ParlamentarioPage({
   }
 
   return (
-    <main className="max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-16">
+    <main className="max-w-[1120px] mx-auto px-4 md:px-8 py-8 md:py-16">
       {/*
         UXCOG 55-03 (variante B "Informe con rail"): grid de 2 columnas en md+ —
         rail sticky (13rem) + contenido (1fr). En < md el rail colapsa a una barra
@@ -263,12 +263,12 @@ export async function CarrilesSection({
   return (
     <>
       {/*
-        Cada carril = su propia <section id className="mt-12 scroll-mt-6"> HERMANA.
+        Cada carril = su propia <section id className="mt-12"> HERMANA.
         El mt-12 es la frontera anti-insinuación LOCKED (DESIGN-SYSTEM §3/§8); NO se
-        mueve al DetalleColapsable. `scroll-mt-6` compensa el salto del rail. La
+        mueve al DetalleColapsable. El offset de ancla aplica desde globals.css (scroll-margin-top: 5rem = 80px, Phase 76). La
         capa-1 vive FUERA del disclosure; solo el detalle colapsa (default cerrado).
       */}
-      <section id="votos" className="mt-12 scroll-mt-6">
+      <section id="votos" className="mt-12">
         <CarrilHeader titulo="Votaciones" conteo={conteoLabel(conteos.votos)} />
         <VotosCapa1
           breakdown={conteos.votosBreakdown}
@@ -293,7 +293,7 @@ export async function CarrilesSection({
         la frontera de carril (anti-insinuación §9.1). Una reunión de lobby y un
         voto JAMÁS comparten un <article>/<Card>/<li>.
       */}
-      <section id="lobby" className="mt-12 scroll-mt-6">
+      <section id="lobby" className="mt-12">
         <CarrilHeader
           titulo="Reuniones de lobby"
           conteo={conteoLabel(conteos.lobby)}
@@ -325,7 +325,7 @@ export async function CarrilesSection({
         <article>/<Card>/<li>/<tr>. Comparación SOLO-datos sin veredicto dentro del
         detalle (INT-04/05).
       */}
-      <section id="patrimonio" className="mt-12 scroll-mt-6">
+      <section id="patrimonio" className="mt-12">
         <CarrilHeader
           titulo="Declaraciones de patrimonio e intereses"
           conteo={conteoLabel(conteos.patrimonio)}
@@ -360,13 +360,13 @@ export async function CarrilesSection({
         = Phase 39 (firma legal).
       */}
       {crucesPublicEnabled(process.env) && (
-        <section id="cruces" className="mt-12 scroll-mt-6">
+        <section id="cruces" className="mt-12">
           <CrucesCapa1
             sectores={conteos.crucesSectores}
             conteo={conteoLabel(conteos.cruces)}
           />
           {conteos.cruces.tipo === "dato" && (
-            <div id="cruces-detalle" className="mt-4 scroll-mt-6">
+            <div id="cruces-detalle" className="mt-4">
               <DetalleColapsable
                 n={conteos.cruces.n}
                 triggerVariant="primary"
@@ -391,7 +391,7 @@ export async function CarrilesSection({
         colapsa el detalle, y cuando no, la sección muestra su empty-state honesto.
       */}
       {moneyPublicEnabled(process.env) && (
-        <section id="dinero" className="mt-12 scroll-mt-6">
+        <section id="dinero" className="mt-12">
           <CarrilHeader
             titulo="Contratos del Estado asociados al RUT"
             conteo={conteoLabel(conteos.dineroContratos)}
@@ -418,7 +418,7 @@ export async function CarrilesSection({
         candidato es por NOMBRE confirmado (SERVEL no trae RUT), nunca por RUT.
       */}
       {moneyPublicEnabled(process.env) && (
-        <section id="financiamiento" className="mt-12 scroll-mt-6">
+        <section id="financiamiento" className="mt-12">
           <CarrilHeader
             titulo="Aportes de campaña registrados en SERVEL"
             conteo={conteoLabel(conteos.dineroAportes)}
@@ -456,7 +456,7 @@ export async function CarrilesSection({
       {!moneyPublicEnabled(process.env) && (
         <section
           id="financiamiento-pendiente"
-          className="mt-12 scroll-mt-6 opacity-60"
+          className="mt-12 opacity-60"
         >
           <h2 className="text-xl font-semibold mb-2">
             Financiamiento y contratos del Estado

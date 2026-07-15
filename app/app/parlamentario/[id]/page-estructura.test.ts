@@ -7,7 +7,7 @@
  * estilo de `lib/lockdown-guard.test.ts`). Strip de comentarios para no contar
  * prosa (mismo helper que el guard). Falla si una regresión:
  *
- *   1. (mt-12)      quita el `mt-12`/`scroll-mt-6` de un carril o lo mueve fuera de su <section>.
+ *   1. (mt-12)      quita el `mt-12` de un carril o lo mueve fuera de su <section>. `scroll-mt-6` fue removido en Phase 79-02 (offset global 80px aplica desde globals.css).
  *   2. (disclosure) vuelve al CarrilAccordion F45 / agrupa dominios en un Accordion.Root.
  *   3. (gates)      elimina un gate cruces/money que envuelve una <section> entera.
  *   4. (rail+capa-1) quita el rail (FichaRail/construirChips) o mete una capa-1 dentro del disclosure.
@@ -86,8 +86,10 @@ describe("page-estructura — invariantes LOCKED del re-layout (LEG-01/LEG-03)",
       expect(sectionIds).toContain(id);
     }
 
-    // CADA <section> de carril lleva mt-12 (frontera) + scroll-mt-6 (ancla del
-    // rail) en SU className (no en un wrapper).
+    // CADA <section> de carril lleva mt-12 (frontera) en SU className (no en un wrapper).
+    // scroll-mt-6 fue removido en Phase 79-02: el offset de ancla aplica desde
+    // globals.css (scroll-margin-top: 5rem = 80px, Phase 76). El offset real vs. header
+    // se valida en Phase 81 (BrowserOS deploy real; jsdom no tiene layout).
     for (const s of sections) {
       const clases = s.className.split(/\s+/);
       expect(
@@ -96,8 +98,8 @@ describe("page-estructura — invariantes LOCKED del re-layout (LEG-01/LEG-03)",
       ).toContain("mt-12");
       expect(
         clases,
-        `la <section id="${s.id}"> debe llevar scroll-mt-6 (salto del rail)`,
-      ).toContain("scroll-mt-6");
+        `la <section id="${s.id}"> NO debe llevar scroll-mt-6 (removido Phase 79-02; aplica offset global 80px)`,
+      ).not.toContain("scroll-mt-6");
     }
 
     // El número de fronteras mt-12 cubre al menos los carriles renderizados.

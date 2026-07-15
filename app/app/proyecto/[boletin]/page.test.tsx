@@ -161,10 +161,12 @@ function countOccurrences(haystack: string, needle: string): number {
 }
 
 describe("/proyecto/[boletin] — shell rail + grid (UXCOG 55-04)", () => {
-  it("monta el grid de 2 columnas (max-w-5xl) con las 6 secciones hermanas mt-12 scroll-mt-6", async () => {
+  it("monta el grid de 2 columnas (max-w-[1120px]) con las 6 secciones hermanas mt-12 (sin scroll-mt-6 — Phase 79-02)", async () => {
     const html = renderToStaticMarkup(await ProyectoPage(makeProps()));
 
-    expect(html).toContain("max-w-5xl");
+    // container 1120px (Phase 79-02: max-w-5xl → max-w-[1120px])
+    expect(html).toContain("max-w-[1120px]");
+    expect(html).not.toContain("max-w-5xl");
     expect(html).toContain("md:grid-cols-[13rem_1fr]");
 
     for (const id of [
@@ -177,9 +179,12 @@ describe("/proyecto/[boletin] — shell rail + grid (UXCOG 55-04)", () => {
     ]) {
       expect(html).toContain(`id="${id}"`);
     }
-    // Frontera anti-insinuación LOCKED + ancla scrollspy en cada sección hermana.
-    expect(countOccurrences(html, "scroll-mt-6")).toBeGreaterThanOrEqual(6);
+    // Frontera anti-insinuación LOCKED: mt-12 intacto.
     expect(html).toContain("mt-12");
+    // scroll-mt-6 removido (Phase 79-02): offset de ancla aplica desde globals.css
+    // (scroll-margin-top: 5rem = 80px, Phase 76). El offset real vs. header se valida
+    // en Phase 81 (BrowserOS deploy real; jsdom no tiene layout).
+    expect(html).not.toContain("scroll-mt-6");
     // Breadcrumb F53 preservado.
     expect(html).toContain('aria-label="Ruta de navegación"');
     expect(notFoundMock).not.toHaveBeenCalled();
