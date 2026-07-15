@@ -24,7 +24,13 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 **Modo de trabajo (directiva del operador):** Fable (main loop) planifica/dirime/controla; ejecución delegada a agentes Sonnet o menores; BrowserOS como gate de comprensión de cada superficie nueva; fases muy granulares; corrida autónoma tras contexto limpio (ver `.planning/PROMPT-v7.0-build-autonomo.md`).
 
-## Current State: v6.1 shipped (2026-07-11)
+## Current State: v8.0 shipped (2026-07-15)
+
+**Shipped v8.0 — Rediseño Bento.** La home (y el chrome de todo el sitio) vive en el estilo bento del mockup del operador: `BentoGrid`/`BentoTile` (spans 2/4/6, variants default/accent), tokens `--radius-tile` 16px / `--radius-control` 11px (el `--radius` shadcn intacto — D4), contenedor 1120px, header sticky, footer border-top. Hero con kicker mono + copy LOCKED byte-idéntico (D1); tile accent "¿Cómo leer esto?" con fórmula /sobre y tokens AA nuevos; actualidad (votado/urgencias/frescura) migrada a tiles con queries idénticas y empty states honestos; coherencia acotada a 8 rutas interiores (D3) con /red EXCLUIDO y pixel-idéntico (gate visual fase 75 CERRADO: `.net-chip` 11px por getComputedStyle en deploy). 3 candados de régimen mordiendo (cero-hex, tipografía whitelist, linter home). Deploy `fb88c8a4` (incluye fix de anchors hallado por el gate). Suite 918 app + 1103 packages. Audit: PASSED (7/7, 0 blockers). Gate lectura fría = handoff (`phases/81-*/81-BROWSEROS-GATE.md`). Detalle: `milestones/v8.0-*.md`.
+
+**Deuda de operador viva:** sign-off lectura fría bento (81-BROWSEROS-GATE) + gates v7.0 (`HANDOFF-v7.0-operator-gates.md`).
+
+## Previous State: v6.1 shipped (2026-07-11)
 
 **Shipped v6.1 — Entendible y completo.** Las dos quejas del operador (2026-07-09) quedaron resueltas y en PROD (deploy `af1cfcaf`): (1) `/red` es ENTENDIBLE — ego-network radial determinista (seed + ≤24 vecinos alfabéticos, "Ver N más" honesto, lista móvil <48rem, borde institucional por cámara, leyenda "posición = orden alfabético, no cercanía"; F18 LOCKED intacto), validado por lectura fría BrowserOS ("comprensible") y aprobado por el operador; (2) la búsqueda es COMPLETA — corpus 156→3.657 proyectos (legislatura 2022-2026, enumeración WSLegislativo + backfill LOCAL R2-first reanudable), 3.100 embeddings (84,6% cobertura semántica), ideas matrices 60→1.504, techo honesto 565 por causa (478 RUT-guard LOCKED + 87 schema-fail), y la cobertura DECLARADA en /buscar ("Busca sobre 3100 proyectos…") + señal N/M en `pnpm freshness`. Audit: tech_debt (0 gaps, 6/6 reqs). Detalle: `milestones/v6.1-*.md`.
 
@@ -214,4 +220,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-13 — Milestone v7.0 (Votos, dinero y cierre técnico) arrancado. Frentes P3 (voto individual, opendata.camara.cl) → P5 (dinero SERVEL/ChileCompra, prereq RUT-01) → deuda técnica. Gates pre-aprobados por el operador; RUT-01 + revisión legal 21.719 = prerrequisitos reales. Quick 260713-izo (rediseño /red layout B) resolvió P1-F53 móvil + WR-06.*
+*Last updated: 2026-07-15 — v8.0 Rediseño Bento SHIPPED (corrida autónoma 76-81, 1 día). Antes: Milestone v7.0 (Votos, dinero y cierre técnico) arrancado. Frentes P3 (voto individual, opendata.camara.cl) → P5 (dinero SERVEL/ChileCompra, prereq RUT-01) → deuda técnica. Gates pre-aprobados por el operador; RUT-01 + revisión legal 21.719 = prerrequisitos reales. Quick 260713-izo (rediseño /red layout B) resolvió P1-F53 móvil + WR-06.*
