@@ -47,7 +47,7 @@ export default function RootLayout({
           y en /metodologia — por eso el footer global NO nombra esos datasets.
         */}
         <footer className="mt-16 border-t">
-          <div className="max-w-[1120px] mx-auto px-4 md:px-8 py-8 text-sm text-muted-foreground">
+          <div className="max-w-[1120px] mx-auto px-6 py-8 text-sm text-muted-foreground">
             <p className="leading-relaxed">
               Datos de fuentes públicas del Congreso de Chile, con fuente, fecha y
               enlace en cada dato.
