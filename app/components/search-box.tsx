@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
  * `/buscar?q=`.
  *
  * Variantes (Fase 21 SC1 — paridad con el mockup de la landing, UI-SPEC §11.1):
- *  - `variant="hero"`: CTA petróleo "Buscar proyectos", input 52px +
+ *  - `variant="hero"`: CTA petróleo "Buscar" (Phase 82), input 52px +
  *    `rounded-[var(--radius-control)]` (sizing introducido en Phase 77-01).
  *    `variant="default"`: barra persistente "Buscar", h-12 + `rounded-md`.
  *  - `exampleChips`: las 4 pills LOCKED bajo la caja; al clicar prefijan + envían
@@ -41,7 +41,7 @@ export interface SearchBoxProps {
   /** Autofocus en la landing (la caja es el hero). */
   autoFocus?: boolean;
   /**
-   * `"hero"` = landing (CTA petróleo "Buscar proyectos"); `"default"` = barra
+   * `"hero"` = landing (CTA petróleo "Buscar", Phase 82); `"default"` = barra
    * persistente de `/buscar` ("Buscar"). Por defecto `"default"`.
    */
   variant?: "default" | "hero";
@@ -110,7 +110,7 @@ export function SearchBox({
             onChange={(e) => setValue(e.target.value)}
             placeholder={
               isHero
-                ? "Escribe una idea (p. ej. protección de datos personales) o un boletín…"
+                ? "Escribe una idea o un número de boletín…"
                 : "Busca por idea o número de boletín…"
             }
             aria-label="Buscar proyectos de ley"
@@ -130,7 +130,7 @@ export function SearchBox({
               : "h-12 bg-accent-product text-background hover:bg-accent-product/90"
           }
         >
-          {isHero ? "Buscar proyectos" : "Buscar"}
+          {isHero ? "Buscar" : "Buscar"}
         </Button>
       </form>
 

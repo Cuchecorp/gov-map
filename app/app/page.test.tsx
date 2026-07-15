@@ -2,19 +2,19 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 
 /**
- * Tests de la landing `/` — Bento composition (Phase 77-02).
+ * Tests de la landing `/` — Bento composition (Phase 77-02 / Phase 82 copy).
  *
  * Contract 1 (héroe editorial):
  *   - kicker OBSERVATORIO DEL CONGRESO presente.
- *   - titular display con la cláusula cursiva petróleo LOCKED ("Con la fuente a la vista.").
- *   - CTA petróleo "Buscar proyectos" (bg-accent-product).
+ *   - h1 LOCKED (decisión operador 2026-07-15 anula h1 anterior de Phase 77-02):
+ *     "Busca cualquier proyecto de ley por tema o número de boletín"
+ *   - CTA petróleo "Buscar" en variante hero (Phase 82; aria-label del form intacto).
  *   - 4 pills LOCKED presentes; la de boletín en Mono.
  *   - clic en una pill → prefija + NAVEGA a /buscar?q=<pill>.
- *   - trust line LOCKED.
  *   - SIN stats fabricadas.
  *
  * Contract 2 (accent tile + 3 entry tiles — bento grid):
- *   - Accent tile: href="/sobre", heading ¿Cómo leer esto?, /sobre formula body,
+ *   - Accent tile: href="/sobre", heading ¿Cómo leer esto?, copy mockup linter-safe,
  *     CTA "Ver metodología →"; NO correlaciones/irregularidades (T-77-03).
  *   - 3 entry tiles: hrefs {/buscar, /parlamentarios, /agenda}, títulos LOCKED,
  *     → glyph aria-hidden con pl-1.
@@ -70,30 +70,23 @@ describe("Landing — paridad con el mockup CERRADO (héroe editorial)", () => {
     expect(screen.getByText("OBSERVATORIO DEL CONGRESO")).toBeInTheDocument();
   });
 
-  it("renderiza el titular display con la cláusula cursiva petróleo LOCKED", () => {
+  // h1 LOCKED — decisión operador 2026-07-15 anula h1 anterior ("Qué pasó con…").
+  it("renderiza el h1 del mockup LOCKED (Phase 82)", () => {
     render(<Home />);
 
-    // Línea 1 del titular (foreground).
     expect(
-      screen.getByText(/Qué pasó con cada proyecto de ley y cada parlamentario\./),
+      screen.getByText(/Busca cualquier proyecto de ley por tema o número de boletín/),
     ).toBeInTheDocument();
 
-    // Línea 2: cursiva petróleo (--accent-product) — el <em> acento del héroe.
-    const acento = screen.getByText("Con la fuente a la vista.");
-    expect(acento.tagName).toBe("EM");
-    expect(acento).toHaveClass("italic");
-    expect(acento).toHaveClass("text-accent-product");
+    // La cursiva anterior y el subtítulo fueron retirados (no existen en el mockup).
+    expect(screen.queryByText("Con la fuente a la vista.")).not.toBeInTheDocument();
   });
 
-  it("usa el CTA petróleo 'Buscar proyectos' (no el genérico 'Buscar')", () => {
+  it("usa el CTA petróleo 'Buscar' en variante hero (Phase 82; aria-label del form intacto)", () => {
     render(<Home />);
 
-    const cta = screen.getByRole("button", { name: "Buscar proyectos" });
+    const cta = screen.getByRole("button", { name: /^Buscar$/ });
     expect(cta).toHaveClass("bg-accent-product");
-    // El CTA genérico de la barra persistente NO aparece en la landing.
-    expect(
-      screen.queryByRole("button", { name: /^Buscar$/ }),
-    ).not.toBeInTheDocument();
   });
 
   it("muestra las 4 pills LOCKED; la de boletín en Mono", () => {
@@ -138,14 +131,17 @@ describe("Landing — paridad con el mockup CERRADO (héroe editorial)", () => {
     expect(pushMock).toHaveBeenCalledWith("/buscar?q=14309-04");
   });
 
-  it("renderiza la trust line LOCKED", () => {
+  // La trust line fue retirada del hero en Phase 82 (el mockup no la tiene; vive en footer).
+  it("la trust line ya NO aparece en el hero (retirada en Phase 82)", () => {
     render(<Home />);
-
+    // La trust line puede aparecer en el footer (fuera de este render mockeado),
+    // pero el hero ya no la renderiza. El footer real vive en layout.tsx (no en Home).
+    // Este assert verifica que page.tsx no la incluye.
     expect(
-      screen.getByText(
-        /Fuente, fecha y enlace en cada dato · Sin afirmar intención ni causalidad\./,
+      screen.queryByText(
+        /Sin afirmar intención ni causalidad/,
       ),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
   });
 
   it("no muestra stats fabricadas (sin 'indexados' ni 'miles')", () => {
@@ -174,9 +170,10 @@ describe("Landing — Contract 2: accent tile (/sobre) y 3 entry tiles (bento)",
     expect(heading.tagName).toBe("H2");
   });
 
-  it("accent tile: cuerpo contiene la fórmula /sobre ('nunca se inventa')", () => {
+  // Copy del mockup adoptado en Phase 82 (decisión operador 2026-07-15).
+  it("accent tile: cuerpo contiene copy del mockup linter-safe (Phase 82)", () => {
     render(<Home />);
-    expect(screen.getByText(/nunca se inventa/i)).toBeInTheDocument();
+    expect(screen.getByText(/La coincidencia temporal no implica relación/i)).toBeInTheDocument();
   });
 
   it("accent tile: CTA 'Ver metodología →' presente", () => {

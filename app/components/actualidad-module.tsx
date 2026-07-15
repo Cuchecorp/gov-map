@@ -209,7 +209,7 @@ export function VotadoEstaSemanaView({ items }: { items: VotadoItem[] }) {
                         rel="noopener noreferrer"
                         className="mt-1 inline-flex min-h-11 items-center text-[13px] underline underline-offset-2 text-accent-product"
                       >
-                        Ver fuente oficial ↗
+                        Fuente ↗
                       </a>
                     ) : (
                       <Link

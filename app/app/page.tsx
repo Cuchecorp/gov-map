@@ -22,13 +22,13 @@ export const dynamic = "force-dynamic";
  * Landing `/` — Bento composition (Phase 77-02, UI-SPEC §11.1, BENTO-02).
  *
  * Fila 1-2: BentoGrid 6 col con 5 tiles:
- *   - Hero span-4: kicker + LOCKED h1/cursiva/subtítulo/SearchBox/trust
- *   - Accent tile span-2: /sobre con fórmula "El principio" (no mockup)
+ *   - Hero span-4: kicker + h1 mockup + SearchBox (Phase 82 copy)
+ *   - Accent tile span-2: primera frase mockup + variante linter-safe (Phase 82)
  *   - 3 entry tiles span-2: /buscar, /parlamentarios, /agenda (LOCKED copy)
  *
  * Anti-insinuación / honestidad (UI-SPEC §6/§8/§11.1): SIN stats fabricadas,
- * SIN claims de marketing, SIN foto/partido. La cursiva petróleo usa `--accent-product`.
- * Accent tile cuerpo = fórmula /sobre "El principio"; NUNCA el mockup de correlaciones.
+ * SIN claims de marketing, SIN foto/partido.
+ * Accent tile cuerpo = copy del mockup con variante linter-safe (Phase 82, decisión operador 2026-07-15).
  */
 
 // Skeleton honesto de tile (estado de carga: NO afirma dato alguno).
@@ -94,29 +94,15 @@ export default function Home() {
                 OBSERVATORIO DEL CONGRESO
               </p>
 
-              {/* Titular display: sobrio + EXACTAMENTE una cláusula cursiva petróleo. */}
+              {/* Titular display: copy verbatim del mockup (Phase 82, decisión operador 2026-07-15). */}
               <h1 className="mt-3 text-4xl font-semibold leading-tight md:text-5xl">
-                Qué pasó con cada proyecto de ley y cada parlamentario.
-                <em className="mt-2 block italic text-accent-product">
-                  Con la fuente a la vista.
-                </em>
+                Busca cualquier proyecto de ley por tema o número de boletín
               </h1>
 
-              <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground">
-                Busca por una idea o por un número de boletín. Cada dato que verás
-                lleva su fuente, su fecha y el enlace al documento oficial.
-              </p>
-
               {/* La caja de búsqueda es la protagonista (héroe): CTA petróleo + pills. */}
-              <div className="mt-10">
+              <div className="mt-8">
                 <SearchBox variant="hero" exampleChips={EXAMPLE_CHIPS} />
               </div>
-
-              {/* Trust line LOCKED (UI-SPEC §6) — muted, separada por bullet. */}
-              <p className="mt-8 text-sm text-muted-foreground">
-                Fuente, fecha y enlace en cada dato · Sin afirmar intención ni
-                causalidad.
-              </p>
             </section>
           </BentoTile>
 
@@ -132,8 +118,8 @@ export default function Home() {
                 </h2>
                 <p className="mt-2 text-sm text-accent-product-foreground">
                   Cada dato lleva su fuente, su fecha y el enlace al documento
-                  oficial. Cuando un dato no está disponible, se dice de forma
-                  explícita; nunca se inventa.
+                  oficial. La coincidencia temporal no implica relación: analiza
+                  cada dato con cuidado.
                 </p>
               </div>
               <span className="mt-6 text-sm font-semibold text-accent-product-foreground">

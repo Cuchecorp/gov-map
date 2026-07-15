@@ -97,8 +97,8 @@ describe("VotadoEstaSemanaView", () => {
     const monos = container.querySelectorAll("span.font-mono");
     const monoText = Array.from(monos).map((m) => m.textContent);
     expect(monoText).toContain("58–81");
-    // Enlace de fuente oficial.
-    const link = screen.getByRole("link", { name: /Ver fuente oficial/ });
+    // Enlace de fuente oficial (Phase 82: label "Fuente ↗" — decisión operador 2026-07-15).
+    const link = screen.getByRole("link", { name: /Fuente/ });
     expect(link).toHaveAttribute("href", "https://camara.cl/votacion/1");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");

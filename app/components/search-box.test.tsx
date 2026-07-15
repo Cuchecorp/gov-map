@@ -37,9 +37,10 @@ describe("SearchBox — Contract 5a: botón no-hero al token petróleo", () => {
     expect(boton.className).not.toContain("font-semibold");
   });
 
-  it("la rama hero queda byte-identical (petróleo + font-semibold + label 'Buscar proyectos')", () => {
+  // Phase 82: hero CTA es "Buscar" (decisión operador 2026-07-15; aria-label del form intacto).
+  it("la rama hero usa petróleo + font-semibold + label 'Buscar' (Phase 82)", () => {
     render(<SearchBox variant="hero" />);
-    const boton = screen.getByRole("button", { name: "Buscar proyectos" });
+    const boton = screen.getByRole("button", { name: "Buscar" });
     expect(boton.className).toContain("bg-accent-product");
     expect(boton.className).toContain("font-semibold");
     expect(boton.className).toContain("text-background");
@@ -57,7 +58,7 @@ describe("SearchBox — 77-01: hero 52px + radius-control; /buscar aislado", () 
 
   it("hero button → h-[52px] y rounded-[var(--radius-control)] además de petróleo+semibold", () => {
     render(<SearchBox variant="hero" />);
-    const boton = screen.getByRole("button", { name: "Buscar proyectos" });
+    const boton = screen.getByRole("button", { name: "Buscar" });
     expect(boton.className).toContain("h-[52px]");
     expect(boton.className).toContain("rounded-[var(--radius-control)]");
     expect(boton.className).toContain("bg-accent-product");
