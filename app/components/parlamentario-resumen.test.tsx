@@ -69,10 +69,13 @@ describe("ResumenView — chips ancla por carril (LEG-02)", () => {
     expect(screen.getByText("Declaraciones de patrimonio")).toBeInTheDocument();
   });
 
-  it("el contenedor es un <nav> con etiqueta accesible de índice", () => {
+  it("el contenedor es un <nav> con etiqueta accesible de navegación de secciones", () => {
     render(<ResumenView chips={makeChips()} />);
+    // WR-02: aria-label reetiquetado a "Secciones de la ficha" (antes "Índice de
+    // secciones") para no disparar el término ranking-sinónimo "índice" del linter
+    // anti-insinuación; sigue siendo el landmark de navegación (tabla de contenidos).
     expect(
-      screen.getByRole("navigation", { name: /índice de secciones/i }),
+      screen.getByRole("navigation", { name: /secciones de la ficha/i }),
     ).toBeInTheDocument();
   });
 });
