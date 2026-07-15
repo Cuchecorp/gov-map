@@ -120,6 +120,13 @@ Plans:
   3. `/red`: o queda excluido del contenedor nuevo (documentado en SUMMARY) o se ajusta CON verificación `getComputedStyle` en deploy (método del gate 75); `red-graph.test.tsx` y `.net-chip` 11px verdes en ambos casos
   4. Suite completa verde; guard tipográfico verde; capturas BrowserOS antes/después por ruta archivadas (solo debe cambiar radio/contenedor)
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 79-01-PLAN.md — Swap container 1120px + radio bento (--radius-tile) en tarjetas de primer nivel de /buscar, /parlamentarios, /agenda, /sobre, /metodologia (+ call sites SearchResultCard/DirectoryRow); interiores byte-idénticos, card.tsx firewall
+- [ ] 79-02-PLAN.md — Container 1120px en las 3 fichas + reconciliar scroll-mt-6 local con el header sticky de 80px; cero swap de radio (interiores byte-idénticos)
+- [ ] 79-03-PLAN.md — Guard source-scan del firewall D3 + exclusión /red (max-w-3xl, .net-chip 11px) con mutation self-check; gate de suite completa + SUMMARY que documenta la exclusión de /red
+
 ### Phase 80: BENTO-GUARDS — Responsive + a11y + dark + candados de régimen
 
 **Goal**: El bento no se degrada en móvil, en dark, ni con el tiempo.
