@@ -1,0 +1,52 @@
+name: ci
+
+# Guard PII + TypeScript gate (D1 — 85-SUPABASE-SEC.md).
+# Bloquea merges/pushes que rompan el guard de lockdown (service_role bypassea RLS;
+# el guard es la única red de PII) o que introduzcan errores de tipo.
+#
+# Runs: on push to master + on pull_request (any branch → master).
+# Scope: pnpm test (vitest run — incluye lockdown-guard, anti-insinuación, bento-guards)
+#        + tsc --noEmit (compila tipos sin emitir artefactos).
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.4.0
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install deps
+        # --ignore-scripts: evita ERR_PNPM_IGNORED_BUILDS (gate pnpm 11).
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Test (guard PII + bento-guards + anti-insinuación)
+        # pnpm test corre vitest run en el workspace app — incluye:
+        #   - lockdown-guard.test.ts (Bloque A: migraciones; Bloque B: escaneo app/)
+        #   - anti-insinuacion.test.ts y bento-guards.test.ts si existen
+        # Sin secrets de DB: los guards son estáticos (leen src, no la red).
+        run: pnpm --filter ./app test -- --run
+
+      - name: TypeScript (tsc --noEmit)
+        run: pnpm --filter ./app exec tsc --noEmit
