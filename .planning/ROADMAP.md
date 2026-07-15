@@ -234,7 +234,7 @@ Plans:
 
 Plans:
 
-- [ ] 72-01-PLAN.md — Migración aditiva 0052 (ampliar CHECK a `lobby_sector_aporte` + re-emitir `materializar_cruces()` con la rama lobby verbatim + rama aporte: contratos ChileCompra por parlamentario_id confirmado × sector de lobby, evidencia PII-safe, sin rut/partido en el cuerpo) + pgTAP espejo de 0039 (CHECK/happy/vacío-honesto/PII-safe/cuerpo-no-PII/lobby-preservado)
+- [ ] 72-01-PLAN.md — Migración aditiva 0052 (ampliar CHECK a `lobby_sector_aporte` + re-emitir `materializar_cruces()` con la rama lobby verbatim + rama aporte como STUB estructural correcto-por-construcción: cruce dinero×sector keyed por el RUT de la EMPRESA contratista contra la arista `<company-rut → sector>` AUSENTE — 0 filas honestas, NUNCA por parlamentario_id/persona-nivel; evidencia PII-safe, sin rut/partido en el cuerpo) + pgTAP espejo de 0039 (CHECK/lobby-preservado/empty-honest/PII-safe/cuerpo-no-PII/anon-42501)
 - [ ] 72-02-PLAN.md — Runbook operador-LOCAL de aplicación de 0052 a PROD (psql --db-url, pgTAP, vacío honesto hoy, MONEY OFF) + checkpoint blocking-human (el agente NO aplica el DDL)
 
 ### Phase 73: DINERO P5e — Superficies MONEY gated OFF + linter + GATE LEGAL humano
