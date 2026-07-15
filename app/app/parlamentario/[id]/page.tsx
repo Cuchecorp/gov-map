@@ -138,7 +138,7 @@ export default async function ParlamentarioPage({
   }
 
   return (
-    <main className="max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-16">
+    <main className="max-w-[1120px] mx-auto px-4 md:px-8 py-8 md:py-16">
       {/*
         UXCOG 55-03 (variante B "Informe con rail"): grid de 2 columnas en md+ —
         rail sticky (13rem) + contenido (1fr). En < md el rail colapsa a una barra

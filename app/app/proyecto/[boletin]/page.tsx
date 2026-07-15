@@ -62,7 +62,7 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
     (Array.isArray(sp.urgencias) ? sp.urgencias[0] : sp.urgencias)?.trim() || null;
 
   return (
-    <main className="max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-16">
+    <main className="max-w-[1120px] mx-auto px-4 md:px-8 py-8 md:py-16">
       {/*
         53-03 (UX-01, 53-UI-SPEC §(b)) — Breadcrumb ligero: primer hijo del
         container, ANTES del grid. El crumb NO necesita datos: el `boletin` es route
