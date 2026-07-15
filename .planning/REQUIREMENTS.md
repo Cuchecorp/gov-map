@@ -32,7 +32,7 @@ Requirements de este milestone. Cada uno mapea a una fase del roadmap.
 ### DEUDA — Cierre técnico + hardening (backlog v6.x)
 
 - [x] **DEBT-01**: Los conectores restantes cumplen las dos etapas LOCKED — `source_snapshot` a R2 crudo content-addressed — y soportan `--from-r2` (replay a Supabase sin volver a molestar la fuente). (Se funde con VOTO/MONEY: votos y dinero son precisamente los conectores hoy sin snapshot R2.)
-- [ ] **DEBT-02**: El conector leylobby usa cursor incremental (no re-scrapea todo el histórico en cada corrida).
+- [x] **DEBT-02**: El conector leylobby usa cursor incremental (no re-scrapea todo el histórico en cada corrida).
 - [ ] **DEBT-03**: `CLOUDFLARE_API_TOKEN` cargado en CI → crons de novedades verdes en GitHub Actions sin fallback local manual.
 - [ ] **DEBT-04**: El cron `leyes-weekly` rota round-robin sobre el corpus 3.657 para no diluir la frescura (hoy 80/sem sobre 3.657 deja proyectos sin refrescar).
 - [ ] **DEBT-05**: La typography del island `.net-*` queda alineada al design system (fuera de contrato hoy: nombre 15px, banda 13px).
@@ -83,7 +83,7 @@ Se completa durante la creación del roadmap (gsd-roadmapper). Cada requisito ma
 | MONEY-04 | Phase 73 | Complete |
 | MONEY-05 | Phase 73 | Complete |
 | DEBT-01 | Phase 66 (votos) + Phase 70/71 (dinero) — fundido | Complete |
-| DEBT-02 | Phase 74 | Pending |
+| DEBT-02 | Phase 74 | Complete |
 | DEBT-03 | Phase 74 | Pending |
 | DEBT-04 | Phase 74 | Pending |
 | DEBT-05 | Phase 75 | Pending |
