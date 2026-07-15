@@ -78,8 +78,11 @@ export function ResumenView({
           votaciones
         </p>
       )}
+      {/* WR-02: aria-label de navegación (tabla de contenidos), NO una métrica. Se evita
+          el token "Índice" porque el linter anti-insinuación lo caza como sinónimo de
+          score/ranking; "Secciones de la ficha" es equivalente en significado accesible. */}
       <nav
-        aria-label="Índice de secciones"
+        aria-label="Secciones de la ficha"
         className="mt-3 flex flex-wrap gap-2"
       >
       {chips.map((ch) => (

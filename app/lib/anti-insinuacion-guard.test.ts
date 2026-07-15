@@ -98,12 +98,19 @@ const SUPERFICIES_VOTO: string[] = [
  * está en `SUPERFICIES_VOTO` (monta las secciones MONEY gated). Se conserva el
  * corte voto/dinero en arrays separados por legibilidad (RESEARCH §Pattern 3 (b));
  * el bucle del guard escanea `[...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY]`.
+ *
+ * WR-02: `components/parlamentario-resumen.tsx` renderiza los LABELS de los chips
+ * MONEY gated (`construirChips` → "Contratos del Estado" / "Aportes de campaña" /
+ * "Financiamiento y contratos" tras `moneyPublicEnabled(env)`). Esos labels ciudadanos
+ * viven en el componente, NO en `page.tsx`, así que se agregan explícitamente aquí para
+ * que cualquier label insinuante futuro se lintee (hoy son factuales → superficie limpia).
  */
 const SUPERFICIES_MONEY: string[] = [
   "components/contratos-de-parlamentario.tsx",
   "components/financiamiento-de-parlamentario.tsx",
   "components/contratos-por-contraparte.tsx",
   "components/aportes-por-contraparte.tsx",
+  "components/parlamentario-resumen.tsx",
   "app/contraparte/[id]/page.tsx",
 ];
 
