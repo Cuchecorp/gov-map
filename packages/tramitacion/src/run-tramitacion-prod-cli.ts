@@ -34,6 +34,11 @@ import {
   type CreateSupabaseClient,
 } from "@obs/ingest";
 import { main as ingestMain, findWorkspaceRoot } from "./ingest-cli";
+import {
+  leerCorpusPaginado,
+  seleccionarRotado,
+  type ClienteCorpus,
+} from "./rotacion-leyes";
 
 /**
  * Adapta el `createClient` de supabase-js a la factory estructural que `SupabaseSnapshotStore`
@@ -81,13 +86,20 @@ function loadEnv(root: string): Record<string, string> {
   return out;
 }
 
-/** Filtro de boletín bien formado `NNNNN-NN` (defensa: no mandamos basura al WS). */
-const BOLETIN_RE = /^\d{3,6}-\d{1,3}$/;
 
 /**
- * Junta los boletines a refrescar desde el Supabase remoto: unión de los referenciados por
- * proyecto + agenda (citaciones de comisión + tabla de sala). Prioriza los de AGENDA (actividad
- * reciente) sobre los ya ingeridos, dedup, y recorta a `limite`. Devuelve [] si la DB está vacía.
+ * Junta los boletines a refrescar desde el Supabase remoto con ROTACIÓN round-robin (DEBT-04):
+ *   - AGENDA (citacion_punto + sesion_tabla_item) tiene PRIORIDAD absoluta (actividad reciente).
+ *   - El CORPUS (`proyecto`) se lee COMPLETO vía `leerCorpusPaginado` (.order().range()) → resuelve
+ *     el cap ~1000 de PostgREST que antes truncaba 3.657 a ~1000 silenciosamente.
+ *   - La COLA (corpus menos agenda) se recorre desde un `offset_rotacion` persistido en el
+ *     marcador singleton `leyes_rotacion_estado` (id=1) con WRAP-AROUND → cada corrida cubre una
+ *     rebanada DISTINTA, garantizando cobertura de TODO el corpus a lo largo de las semanas sin
+ *     tocar la cadencia del cron. Tras seleccionar, upserta el `nuevoOffset` (id=1).
+ *
+ * fail-loud PRESERVADO: un error de lectura LANZA (no devuelve []) para que el cron salga != 0
+ * visible en vez de un no-op verde. Solo se propaga `error.message` (nunca la service key).
+ * MONEY/SERVEL EXCLUIDOS: solo se leen `citacion_punto`/`sesion_tabla_item`/`proyecto`.
  */
 async function boletinesARefrescar(
   url: string,
@@ -97,40 +109,71 @@ async function boletinesARefrescar(
 ): Promise<string[]> {
   const sb = createClient(url, serviceKey, { auth: { persistSession: false } });
 
-  const vistos = new Set<string>();
-  const ordenados: string[] = [];
-  const push = (b: unknown) => {
-    if (typeof b === "string" && BOLETIN_RE.test(b) && !vistos.has(b)) {
-      vistos.add(b);
-      ordenados.push(b);
-    }
-  };
-
   // Un fallo de lectura (red/RLS/transitorio) NO debe parecer "DB vacía": se LANZA para que
   // el cron salga != 0 (visible) en vez de un no-op verde silencioso.
   type BoletinRow = { boletin: string | null };
-  const leer = async (tabla: string, soloNoNull: boolean): Promise<BoletinRow[]> => {
-    let q = sb.from(tabla).select("boletin");
-    if (soloNoNull) q = q.not("boletin", "is", null);
-    const { data, error } = await q;
+  const leerAgenda = async (tabla: string): Promise<string[]> => {
+    const { data, error } = await sb
+      .from(tabla)
+      .select("boletin")
+      .not("boletin", "is", null);
     if (error) throw new Error(`boletinesARefrescar: ${tabla}: ${error.message}`);
-    return (data as BoletinRow[] | null) ?? [];
+    const filas = (data as BoletinRow[] | null) ?? [];
+    return filas
+      .map((r) => r.boletin)
+      .filter((b): b is string => typeof b === "string");
   };
 
   // 1. Agenda PRIMERO (actividad reciente: comisiones + sala de esta/próximas semanas).
-  for (const r of await leer("citacion_punto", true)) push(r.boletin);
-  for (const r of await leer("sesion_tabla_item", true)) push(r.boletin);
+  const agenda = [
+    ...(await leerAgenda("citacion_punto")),
+    ...(await leerAgenda("sesion_tabla_item")),
+  ];
 
-  const agendaCount = ordenados.length;
+  // 2. Corpus COMPLETO ya ingerido, paginado (.order('boletin').range()) → cap 1k resuelto.
+  const corpus = await leerCorpusPaginado(sb as unknown as ClienteCorpus, "proyecto");
 
-  // 2. Proyectos ya ingeridos (mantenerlos al día). Se piden DESPUÉS → quedan tras los de agenda.
-  for (const r of await leer("proyecto", false)) push(r.boletin);
+  // 3. Offset de rotación actual (0 si aún no hay fila del cursor singleton).
+  const { data: estadoRow, error: estadoErr } = await sb
+    .from("leyes_rotacion_estado")
+    .select("offset_rotacion")
+    .eq("id", 1)
+    .maybeSingle();
+  if (estadoErr) {
+    throw new Error(`boletinesARefrescar: leyes_rotacion_estado: ${estadoErr.message}`);
+  }
+  const offset =
+    typeof estadoRow?.offset_rotacion === "number" ? estadoRow.offset_rotacion : 0;
+
+  // 4. Selección round-robin pura: agenda + ventana rotada de la cola desde el offset.
+  const { seleccion, nuevoOffset } = seleccionarRotado({
+    agenda,
+    corpus,
+    offset,
+    limite,
+  });
+
+  // 5. Persistir el nuevo offset (upsert singleton id=1) → la próxima corrida rota la ventana.
+  const ultimoBoletin = seleccion.length > 0 ? seleccion[seleccion.length - 1]! : null;
+  const { error: upsertErr } = await sb.from("leyes_rotacion_estado").upsert(
+    {
+      id: 1,
+      offset_rotacion: nuevoOffset,
+      ultimo_boletin: ultimoBoletin,
+      fecha_captura: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
+  if (upsertErr) {
+    throw new Error(`boletinesARefrescar: leyes_rotacion_estado upsert: ${upsertErr.message}`);
+  }
 
   log(
-    `tramitacion-prod: ${ordenados.length} boletines candidatos ` +
-      `(${agendaCount} de agenda + ${ordenados.length - agendaCount} ya ingeridos)`,
+    `tramitacion-prod: ${seleccion.length} boletines candidatos ` +
+      `(agenda ${agenda.length} refs + corpus ${corpus.length} paginado; ` +
+      `offset ${offset}→${nuevoOffset} round-robin)`,
   );
-  return ordenados.slice(0, limite);
+  return seleccion;
 }
 
 async function run(): Promise<void> {
