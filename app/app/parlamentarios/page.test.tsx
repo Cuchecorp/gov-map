@@ -116,9 +116,26 @@ describe("/parlamentarios — DirectoryList", () => {
     expect(html).not.toMatch(/falló|error/i);
   });
 
+  it("BENTO-04: honest-empty box lleva rounded-[var(--radius-tile)]", async () => {
+    rpcMock.mockResolvedValue({ data: makeRows(10), error: null });
+    const el = await DirectoryList({ q: "nadie-coincide-zzz" });
+    const html = renderToStaticMarkup(el);
+    expect(html).toContain("rounded-[var(--radius-tile)]");
+  });
+
   it("error real de RPC → THROW (#34), NO 'sin resultados'", async () => {
     rpcMock.mockResolvedValue({ data: null, error: { message: "boom" } });
     await expect(DirectoryList({ q: "" })).rejects.toThrow(/boom/);
+  });
+
+  it("BENTO-04: fila de directorio lleva rounded-[var(--radius-tile)]", async () => {
+    const rows = makeRows(3);
+    rpcMock.mockResolvedValue({ data: rows, error: null });
+    const el = await DirectoryList({ q: "" });
+    const html = renderToStaticMarkup(el);
+    expect(html).toContain("rounded-[var(--radius-tile)]");
+    // Defensivo: rounded-lg sigue presente en interiores (inputs de filtro); no exigir ausencia global.
+    // Pero la tarjeta de directorio (Link root) lleva la clase bento.
   });
 
   it("ninguna fila renderiza partido/rut/email/foto", async () => {

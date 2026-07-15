@@ -72,6 +72,18 @@ describe("BuscarPage — banner de cobertura (BUSQ-03)", () => {
   });
 });
 
+describe("BuscarPage — container BENTO-04 (79-01)", () => {
+  beforeEach(() => {
+    contarCoberturaBusquedaMock.mockReset();
+  });
+
+  it("el <main> usa max-w-[1120px] (no max-w-3xl)", async () => {
+    const html = await render(10);
+    expect(html).toContain("max-w-[1120px]");
+    expect(html).not.toContain("max-w-3xl");
+  });
+});
+
 describe("clampPage (WR-03: `page` acotada 1..MAX_PAGE)", () => {
   it("clampa por ARRIBA: page gigantesco → MAX_PAGE (no un matchCount monstruoso al RPC)", () => {
     expect(clampPage("999999999999")).toBe(MAX_PAGE);
