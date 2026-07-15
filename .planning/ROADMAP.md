@@ -67,8 +67,8 @@ Lineal a propósito: cada fase deja el sitio deployable. Sin dependencia dura de
 
 Plans:
 
-- [ ] 76-01-PLAN.md — Tokens de radio (--radius-tile/--radius-control) + scroll-mt global + primitivas BentoGrid/BentoTile (cva) con tests de estructura
-- [ ] 76-02-PLAN.md — Chrome global: GlobalHeader sticky + contenedor 1120px + footer border-top sin fondo (CC BY LOCKED byte-idéntico) + tests source-scan extendidos
+- [x] 76-01-PLAN.md — Tokens de radio (--radius-tile/--radius-control) + scroll-mt global + primitivas BentoGrid/BentoTile (cva) con tests de estructura
+- [x] 76-02-PLAN.md — Chrome global: GlobalHeader sticky + contenedor 1120px + footer border-top sin fondo (CC BY LOCKED byte-idéntico) + tests source-scan extendidos
 
 ### Phase 77: BENTO-HOME-SUPERIOR — Hero + tile acento + tarjetas de entrada
 
