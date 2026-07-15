@@ -49,3 +49,26 @@ describe("globals.css — tokens de radio + scroll-mt (76-01 SC1)", () => {
     expect(SRC).toContain("scroll-margin-top");
   });
 });
+
+describe("globals.css — tokens accent-foreground + bento-accent-fill (77-01)", () => {
+  it("Test 5 (accent-product-foreground value): triple HSL correcto presente", () => {
+    expect(SRC).toContain("--accent-product-foreground: 183 30% 96%");
+  });
+
+  it("Test 6 (bento-accent-fill value): triple HSL petróleo presente", () => {
+    expect(SRC).toContain("--bento-accent-fill: 183 38% 26%");
+  });
+
+  it("Test 7 (accent-product-foreground en :root Y .dark): token dark-stable aparece ≥2 veces", () => {
+    // Raw source (sin stripComments) para contar ocurrencias en ambos bloques
+    const raw = readFileSync(GLOBALS_CSS, "utf8");
+    const matches = raw.match(/--accent-product-foreground:/g) ?? [];
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("Test 8 (bento-accent-fill en :root Y .dark): token dark-stable aparece ≥2 veces", () => {
+    const raw = readFileSync(GLOBALS_CSS, "utf8");
+    const matches = raw.match(/--bento-accent-fill:/g) ?? [];
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+  });
+});

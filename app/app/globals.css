@@ -33,6 +33,11 @@
    * #2A5859=--accent-product  #5C6373≈--muted-foreground */
   --radius-tile: 16px;      /* esquina de tile bento (v8, D4) */
   --radius-control: 11px;   /* input/botón bento; off-step, mockup-exact */
+  /* Bento v8 Phase 77-01 — accent tile tokens (dark-stable).
+   * Valores IDÉNTICOS en :root y .dark para que el tile acento NO adopte el
+   * mid-teal claro .dark (183 34% 46%) donde blanco cae a 3.30:1 FAIL (Pattern 3a). */
+  --accent-product-foreground: 183 30% 96%; /* ≈#EAF2F1; ≥7:1 sobre petróleo fill */
+  --bento-accent-fill: 183 38% 26%;         /* petróleo pinned; NUNCA lightens en dark */
 }
 
 .dark {
@@ -56,6 +61,11 @@
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
   --ring: 224.3 76.3% 48%;
+  /* Bento v8 Phase 77-01 — accent tile tokens (dark-stable, idénticos a :root).
+   * Ancla el fill del tile acento al petróleo original: el mid-teal .dark predeterminado
+   * (183 34% 46%) rompería el contraste con texto claro (3.30:1, FAIL WCAG AA). */
+  --accent-product-foreground: 183 30% 96%;
+  --bento-accent-fill: 183 38% 26%;
 }
 
 /* Civic semantic tokens (unique to this project) — UI-SPEC §1.1 */

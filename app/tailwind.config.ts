@@ -44,6 +44,10 @@ const config: Config = {
         // como text-/border-/decoration-accent-product para el subrayado activo del
         // GlobalHeader. No reemplaza --accent (shadcn lo consume); es token aparte.
         "accent-product": "hsl(var(--accent-product))",
+        // Phase 77-01: foreground legible sobre tile acento (dark-stable ≥7:1).
+        "accent-product-foreground": "hsl(var(--accent-product-foreground))",
+        // Phase 77-01: fill pinned del tile acento — NO lightens en dark mode.
+        "bento-accent-fill": "hsl(var(--bento-accent-fill))",
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
