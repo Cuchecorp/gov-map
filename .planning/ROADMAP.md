@@ -294,7 +294,13 @@ Plans:
   2. El DB password de Supabase (B26) queda rotado por el operador en el dashboard, con la acción documentada
   3. El cambio de typography no regresiona el layout radial de `/red` (F18 LOCKED intacto)
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+
+- [ ] 75-01-PLAN.md — Pixel-preserving swap `.net-*` font-size → design-system `--text-*` tokens (16→base/14→sm/12→xs; `.net-chip` 11px preservado) + guard test source-level [DEBT-05]
+- [ ] 75-02-PLAN.md — Nota de operador rotación DB password (75-DB-PASSWORD-ROTATION-OPERATOR-NOTE.md, zero-credential-values, blast-radius `SUPABASE_DB_URL`) + checkpoint operador [DEBT-06]
+
 **UI hint**: yes
 
 ## Phases
