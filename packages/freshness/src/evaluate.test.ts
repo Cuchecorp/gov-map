@@ -225,6 +225,89 @@ describe("staleness de SERVEL (MONEY-02)", () => {
   });
 });
 
+describe("señal de edad-mínima de leyes (SC#4 — rotación visible)", () => {
+  // SC#4: `leyes` (MAX) se pone verde con UN solo refresh, ocultando que la cola de
+  // ~3.657 proyectos puede llevar meses sin tocar (dilución del plan 74-02). La señal
+  // `leyes-min-edad` usa MIN(fecha_captura) → el proyecto MÁS VIEJO sin refrescar revela
+  // si la rotación round-robin cubrió la cola. `evaluate` se reusa TAL CUAL: la fila
+  // MIN se evalúa con la MISMA regla stale (null|días>umbral → stale, fail-closed).
+  // makeRow inyecta el `ultimoUpsert` que el runner leería como MIN(fecha_captura).
+  const minEdad = () => CATALOG.filter((c) => c.fuente === "leyes-min-edad");
+
+  it("la entrada leyes-min-edad existe sobre proyecto.fecha_captura con agregado MIN, umbral generoso", () => {
+    const cfg = CATALOG.find((c) => c.fuente === "leyes-min-edad");
+    expect(cfg).toBeDefined();
+    expect(cfg!.tabla).toBe("proyecto");
+    expect(cfg!.columna).toBe("fecha_captura");
+    expect(cfg!.agregado).toBe("MIN");
+    expect(cfg!.umbralDias).toBe(45);
+    expect(cfg!.overrideEnv).toBe("FRESHNESS_UMBRAL_LEYES_MIN_EDAD");
+    expect(cfg!.workflowYml).toBe("leyes-weekly.yml");
+  });
+
+  it("MIN por encima del umbral (proyecto más viejo 60d > 45) → stale (dilución visible)", () => {
+    // La cola NO rotó: el proyecto más viejo lleva 60 días sin refrescar.
+    const rows: QueryRow[] = [makeRow("leyes-min-edad", 60)];
+    const results = evaluate(rows, minEdad(), NOW);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.fuente).toBe("leyes-min-edad");
+    expect(results[0]!.diasDesdeUpsert).toBe(60);
+    expect(results[0]!.stale).toBe(true);
+  });
+
+  it("toda la cola fresca (proyecto más viejo 30d <= 45) → no stale (rotación al día)", () => {
+    const rows: QueryRow[] = [makeRow("leyes-min-edad", 30)];
+    const results = evaluate(rows, minEdad(), NOW);
+    expect(results[0]!.diasDesdeUpsert).toBe(30);
+    expect(results[0]!.stale).toBe(false);
+  });
+
+  it("MIN nulo/ilegible → stale (fail-closed, degradación honesta preservada)", () => {
+    const nulo: QueryRow[] = [makeRow("leyes-min-edad", null)];
+    expect(evaluate(nulo, minEdad(), NOW)[0]!.stale).toBe(true);
+    const ilegible: QueryRow[] = [
+      { fuente: "leyes-min-edad", ultimoUpsert: "no-es-fecha", ghRun: "n/d", r2Snapshot: "n/d" },
+    ];
+    const r = evaluate(ilegible, minEdad(), NOW)[0]!;
+    expect(r.diasDesdeUpsert).toBeNull();
+    expect(r.stale).toBe(true);
+  });
+
+  it("respeta el override FRESHNESS_UMBRAL_LEYES_MIN_EDAD (baja a 20 → 30d ahora es stale)", () => {
+    const rows: QueryRow[] = [makeRow("leyes-min-edad", 30)];
+    const results = evaluate(rows, minEdad(), NOW, { FRESHNESS_UMBRAL_LEYES_MIN_EDAD: "20" });
+    expect(results[0]!.umbralDias).toBe(20);
+    expect(results[0]!.stale).toBe(true);
+  });
+
+  it("NO-REGRESIÓN: la entrada leyes original conserva agregado MAX (default) y umbral 7", () => {
+    const leyes = CATALOG.find((c) => c.fuente === "leyes");
+    expect(leyes).toBeDefined();
+    // `leyes` NO declara agregado → default MAX (queryFreshness usa cfg.agregado ?? "MAX").
+    expect(leyes!.agregado).toBeUndefined();
+    expect(leyes!.umbralDias).toBe(7);
+    expect(leyes!.overrideEnv).toBe("FRESHNESS_UMBRAL_LEYES");
+    // leyes (MAX) y leyes-min-edad (MIN) coexisten: misma tabla/columna, agregados distintos.
+    const minEdadCfg = CATALOG.find((c) => c.fuente === "leyes-min-edad");
+    expect(minEdadCfg!.tabla).toBe(leyes!.tabla);
+    expect(minEdadCfg!.columna).toBe(leyes!.columna);
+    expect(minEdadCfg!.agregado).toBe("MIN");
+  });
+
+  it("NO-REGRESIÓN: ninguna señal MAX v6.0 cambió de agregado (todas MAX = agregado undefined)", () => {
+    // Las señales MAX de los conectores v6.0 + los marcadores no declaran `agregado`
+    // (→ MAX por default). SOLO leyes-min-edad usa MIN. Se afirma explícitamente para
+    // congelar que la señal MIN es ADITIVA y no viró el agregado de las demás.
+    const soloMin = CATALOG.filter((c) => c.agregado === "MIN").map((c) => c.fuente);
+    expect(soloMin).toEqual(["leyes-min-edad"]);
+    for (const fuente of ["leyes", "agenda", "lobby-camara", "lobby-leylobby", "probidad", "fichas"]) {
+      const cfg = CATALOG.find((c) => c.fuente === fuente);
+      expect(cfg, `falta ${fuente}`).toBeDefined();
+      expect(cfg!.agregado, `${fuente} no debe declarar agregado (MAX default)`).toBeUndefined();
+    }
+  });
+});
+
 describe("evaluateCobertura (BUSQ-03)", () => {
   function counts(map: Record<string, number | null>): CoberturaCount[] {
     return COBERTURA_SENALES.map((c) => ({ senal: c.senal, count: c.senal in map ? map[c.senal]! : null }));
