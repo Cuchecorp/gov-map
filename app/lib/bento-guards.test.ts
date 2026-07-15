@@ -79,7 +79,7 @@ const SUPERFICIES_CERO_HEX: string[] = [
  *
  * Decisión de scope: brand-icon.tsx NO entra en el scan tipográfico porque sus
  * atributos SVG (width/height como JSX props numéricas) no son utilidades Tailwind
- * y el regex `(text|gap|…)-\[…\]` no los captura de todas formas; no genera ruido,
+ * y el regex genérico no los captura de todas formas; no genera ruido,
  * pero tampoco aporta cobertura tipográfica real (el SVG no usa arbitrary Tailwind).
  * Se mantiene SOLO en el array cero-hex donde sí aporta protección al fix 80-01.
  */
@@ -101,11 +101,23 @@ const SUPERFICIES_TIPOGRAFIA: string[] = [
 /**
  * Detecta literales hex hardcodeados en el contenido fuente (post-strip de comentarios).
  *
+ * WR-03: excluye fragmentos que NO son colores antes de buscar hex:
+ *  - `href="#abc123"` → stripped a `href=""`
+ *  - `url(#abc123)` (SVG fill/clipPath) → stripped a `url()`
+ * Tras el strip, el lookbehind `(?<![\w#])` evita falsos positivos por
+ * identificadores hexadecimales continuos.
+ *
  * @param contenido  Texto fuente ya pasado por stripTsComments
  * @returns Array de matches hex encontrados (vacío = sin offenders)
  */
 function detectarHexHardcodeado(contenido: string): string[] {
-  return contenido.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
+  // WR-03: pre-strip href="#..." (anchor fragments) y url(#...) (SVG refs)
+  // antes de buscar hex. Estos no son literales de color y causarían falsos positivos.
+  const cleaned = contenido
+    .replace(/\bhref="(#[^"]*)"/g, 'href=""')
+    .replace(/\bhref='(#[^']*)'/g, "href=''")
+    .replace(/url\(#[^)]*\)/g, "url()");
+  return cleaned.match(/(?<![\w#])#[0-9a-fA-F]{3,8}\b/g) ?? [];
 }
 
 // ---------------------------------------------------------------------------
@@ -143,7 +155,7 @@ describe("(B) Mutation self-check cero-hex — el detector muerde", () => {
   });
 
   it("fixture con hex dentro de comentario → 0 offenders tras strip (anti-falso-positivo T-80-04)", () => {
-    // El strip elimina el comentario ANTES de buscar hex → no debe cazar el hex del JSDoc.
+    // El strip elimina el comentario ANTES de buscar hex — no debe cazar el hex del JSDoc.
     const conComentario = `
       // color #2A5859 (documentado, no renderizado)
       export function BrandIcon({ color = "currentColor" }: Props) {
@@ -153,7 +165,7 @@ describe("(B) Mutation self-check cero-hex — el detector muerde", () => {
     const offenders = detectarHexHardcodeado(stripTsComments(conComentario));
     expect(
       offenders,
-      "El detector cazó hex en comentario → falso positivo; verificar strip",
+      "El detector cazó hex en comentario — falso positivo; verificar strip",
     ).toHaveLength(0);
   });
 
@@ -175,6 +187,36 @@ describe("(B) Mutation self-check cero-hex — el detector muerde", () => {
     const offenders = detectarHexHardcodeado(stripTsComments(mutado));
     expect(offenders).toContain("#fff");
   });
+
+  // WR-03: anti-falso-positivo — fragmentos de anchor/url NO son colores
+  it('href="#abc" (fragmento de anchor, 3 dígitos hex) → 0 offenders (WR-03)', () => {
+    const conAnchor = `<a href="#abc">enlace interno</a>`;
+    const offenders = detectarHexHardcodeado(stripTsComments(conAnchor));
+    expect(
+      offenders,
+      'href="#abc" fue reportado como hex hardcodeado — falso positivo de fragmento anchor (WR-03)',
+    ).toHaveLength(0);
+  });
+
+  it("url(#abcdef) (fragmento SVG, 6 dígitos hex) → 0 offenders (WR-03)", () => {
+    const conUrlFragment = `<svg><use xlinkHref="url(#abcdef)" /></svg>`;
+    const offenders = detectarHexHardcodeado(stripTsComments(conUrlFragment));
+    expect(
+      offenders,
+      "url(#abcdef) fue reportado como hex hardcodeado — falso positivo de fragmento SVG url() (WR-03)",
+    ).toHaveLength(0);
+  });
+
+  it("fixture mezclado — anchor inocuo + hex real → solo el hex real es reportado (WR-03)", () => {
+    // href="#a1b2c3" es inocuo; "#FF0000" en style es un offender real.
+    const mezclado = `
+      <a href="#a1b2c3">ver sección</a>
+      <div style={{ color: "#FF0000" }}>rojo hardcodeado</div>
+    `;
+    const offenders = detectarHexHardcodeado(stripTsComments(mezclado));
+    expect(offenders).toContain("#FF0000");
+    expect(offenders).not.toContain("#a1b2c3");
+  });
 });
 
 // ===========================================================================
@@ -192,14 +234,21 @@ describe("(B) Mutation self-check cero-hex — el detector muerde", () => {
  * Regla:
  *  - PERMITIR siempre `[var(--…)]` (tokens CSS — no son magic numbers).
  *  - PERMITIR los valores de esta lista (off-steps intencionales del mockup).
- *  - FALLAR ante cualquier OTRO arbitrary value de las categorías escaneadas.
+ *  - FALLAR ante cualquier OTRO arbitrary value capturado por el detector genérico.
  *
- * Categorías escaneadas: text, gap, gap-x, gap-y, px, py, w, h, max-w, tracking, rounded.
- * Categorías NO escaneadas: grid-auto-rows y similares de layout (fuera del scope tipográfico).
+ * El detector genérico (WR-01 + WR-02) captura CUALQUIER utilidad Tailwind con
+ * arbitrary value (p. ej. pt-[9px], leading-[1.2], min-w-[200px], size-[52px]).
+ * Las entradas de esta whitelist son comparadas contra la utilidad COMPLETA
+ * (no substring), por lo que min-w-[200px] no suprime w-[200px].
+ *
+ * Nota IN-01: h-[52px] y w-[1120px] están whitelisted aunque sus usos actuales
+ * estén en search-box.tsx / layout.tsx (fuera de SUPERFICIES_TIPOGRAFIA). Se
+ * mantienen como documentación de off-steps sancionados; si se añaden esas
+ * superficies al scan en el futuro, serán protegidas automáticamente.
  */
 const WHITELIST_ARBITRARIOS: Set<string> = new Set([
   "text-[11px]",       // kicker (page.tsx:93) + chip mono (actualidad-module.tsx:309) — sub-caption/chip
-  "text-[13px]",       // desenlace/ver fuente/strip ×3 (actualidad-module.tsx) — body compacto 12/14 scale
+  "text-[13px]",       // desenlace/ver fuente/strip x3 (actualidad-module.tsx) — body compacto 12/14 scale
   "text-[15px]",       // título votado (actualidad-module.tsx:178) — entre text-sm y text-base
   "tracking-[0.08em]", // kicker (page.tsx:93) — letter-spacing mono off-step
   "gap-[14px]",        // grid bento (bento-grid.tsx:25) + lista votados (actualidad-module.tsx:164) — mockup gap
@@ -208,8 +257,8 @@ const WHITELIST_ARBITRARIOS: Set<string> = new Set([
   "py-[18px]",         // strip frescura (actualidad-module.tsx:439) — padding vertical strip
   "w-[3px]",           // barra cívica (actualidad-module.tsx:170) — ancho barra 3px off-step
   "rounded-[2px]",     // barra cívica (actualidad-module.tsx:170) — radio barra pequeña
-  "h-[52px]",          // input/botón hero SearchBox (search-box.tsx:118,128) — altura input mockup
-  "w-[1120px]",        // contenedor bento (page.tsx, layout.tsx) — ancho contenedor mockup
+  "h-[52px]",          // input/botón hero SearchBox (search-box.tsx:118,128) — altura input mockup [IN-01: fuera de scope actual]
+  "w-[1120px]",        // contenedor bento (layout.tsx) — ancho contenedor mockup [IN-01: fuera de scope actual]
   "max-w-[1120px]",    // contenedor bento (page.tsx:87, layout.tsx) — max-width contenedor mockup
 ]);
 
@@ -220,21 +269,27 @@ const WHITELIST_ARBITRARIOS: Set<string> = new Set([
 /**
  * Detecta arbitrary values Tailwind NO sancionados en el contenido bento.
  *
- * Categorías escaneadas: text, gap, gap-x, gap-y, px, py, w, h, max-w, tracking, rounded.
+ * Detector genérico (WR-01 + WR-02): captura CUALQUIER utilidad Tailwind con
+ * arbitrary value, usando un lookbehind negativo para anclar el inicio de clase
+ * (evita que `min-w-[200px]` sea reportado como `w-[200px]`).
+ *
  * Permite: [var(--…)] (tokens CSS) y los valores enumerados en WHITELIST_ARBITRARIOS.
+ * La comparación contra la whitelist es sobre la utilidad COMPLETA (no substring).
  *
  * @param contenido  Texto fuente ya pasado por stripTsComments
  * @returns Array de offenders (valores no sancionados encontrados)
  */
 function detectarArbitrarioNoSancionado(contenido: string): string[] {
-  const regex =
-    /(text|gap-x|gap-y|gap|px|py|max-w|tracking|rounded|w|h)-\[[^\]]+\]/g;
+  // WR-01 + WR-02: detector genérico con boundary negativo.
+  // (?<![\w-]) asegura que el match comienza en un límite de clase (no en el
+  // interior de una utilidad más larga como `min-w-[…]` — captura entera).
+  const regex = /(?<![\w-])[a-z][\w-]*-\[[^\]]+\]/g;
   const matches = contenido.match(regex) ?? [];
   const offenders: string[] = [];
   for (const match of matches) {
     // Permitir tokens CSS (var(--…)) — no son magic numbers
     if (match.includes("var(--")) continue;
-    // Permitir off-steps sancionados del mockup
+    // Permitir off-steps sancionados del mockup (comparación exacta de la utilidad completa)
     if (WHITELIST_ARBITRARIOS.has(match)) continue;
     offenders.push(match);
   }
@@ -271,7 +326,7 @@ describe("(B) Mutation self-check tipografía — el detector muerde", () => {
     const offenders = detectarArbitrarioNoSancionado(stripTsComments(mutado));
     expect(
       offenders,
-      "El detector NO cazó text-[17px] no sancionado → el guard sería un no-op",
+      "El detector NO cazó text-[17px] no sancionado — el guard sería un no-op",
     ).toContain("text-[17px]");
   });
 
@@ -286,7 +341,7 @@ describe("(B) Mutation self-check tipografía — el detector muerde", () => {
     const offenders = detectarArbitrarioNoSancionado(stripTsComments(limpio));
     expect(
       offenders,
-      "El detector cazó rounded-[var(--radius-tile)] como offender → falso positivo; los tokens deben ser permitidos",
+      "El detector cazó rounded-[var(--radius-tile)] como offender — falso positivo; los tokens deben ser permitidos",
     ).toHaveLength(0);
   });
 
@@ -315,5 +370,58 @@ describe("(B) Mutation self-check tipografía — el detector muerde", () => {
       offenders,
       "El detector reportó falsos positivos sobre clases Tailwind estándar",
     ).toHaveLength(0);
+  });
+
+  // WR-01: familias omitidas por el regex anterior — ahora deben ser capturadas
+  it("fixture con `pl-[9px]` (padding direccional, no sancionado) → offender detectado (WR-01)", () => {
+    const mutado = `<div className="pl-[9px]">contenido</div>`;
+    const offenders = detectarArbitrarioNoSancionado(stripTsComments(mutado));
+    expect(
+      offenders,
+      "El detector NO cazó pl-[9px] — la familia pt/pb/pl/pr debe ser cubierta (WR-01)",
+    ).toContain("pl-[9px]");
+  });
+
+  it("fixture con `leading-[1.2]` (interlineado, no sancionado) → offender detectado (WR-01)", () => {
+    const mutado = `<p className="leading-[1.2] text-sm">texto</p>`;
+    const offenders = detectarArbitrarioNoSancionado(stripTsComments(mutado));
+    expect(
+      offenders,
+      "El detector NO cazó leading-[1.2] — la utilidad leading- debe ser cubierta (WR-01)",
+    ).toContain("leading-[1.2]");
+  });
+
+  it("fixture con `mt-[7px]` (margin-top, no sancionado) → offender detectado (WR-01)", () => {
+    const mutado = `<div className="mt-[7px]">bloque</div>`;
+    const offenders = detectarArbitrarioNoSancionado(stripTsComments(mutado));
+    expect(
+      offenders,
+      "El detector NO cazó mt-[7px] — la familia mt/mb/ml/mr debe ser cubierta (WR-01)",
+    ).toContain("mt-[7px]");
+  });
+
+  // WR-02: anchoring — min-w-[200px] debe reportarse completo, no como w-[200px]
+  it("fixture con `min-w-[200px]` — reportado completo, no como w-[200px] (WR-02)", () => {
+    const mutado = `<div className="min-w-[200px]">contenedor</div>`;
+    const offenders = detectarArbitrarioNoSancionado(stripTsComments(mutado));
+    expect(
+      offenders,
+      "min-w-[200px] no fue detectado como offender",
+    ).toContain("min-w-[200px]");
+    expect(
+      offenders,
+      "El detector capturó w-[200px] en lugar de min-w-[200px] completo — fallo de anchoring (WR-02)",
+    ).not.toContain("w-[200px]");
+  });
+
+  // WR-02: la whitelist de w-[1120px] no debe suprimir min-w-[1120px] (diferente utilidad)
+  it("fixture con `min-w-[1120px]` — la whitelist de w-[1120px] no debe suprimirla (WR-02)", () => {
+    // w-[1120px] está en la whitelist, pero min-w-[1120px] es una utilidad distinta.
+    const mutado = `<div className="min-w-[1120px]">layout</div>`;
+    const offenders = detectarArbitrarioNoSancionado(stripTsComments(mutado));
+    expect(
+      offenders,
+      "min-w-[1120px] fue suprimido por la whitelist de w-[1120px] — el matching debe ser exacto (WR-02)",
+    ).toContain("min-w-[1120px]");
   });
 });
