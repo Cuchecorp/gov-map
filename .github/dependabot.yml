@@ -10,9 +10,10 @@ updates:
       - "dependencies"
       - "github-actions"
 
-  # npm/pnpm (app)
+  # npm/pnpm — directory raíz del workspace (el pnpm-lock.yaml vive en /, no en /app;
+  # con /app dependabot bumpea package.json sin poder actualizar el lockfile → CI rojo)
   - package-ecosystem: "npm"
-    directory: "/app"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
