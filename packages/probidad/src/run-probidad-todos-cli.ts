@@ -13,8 +13,8 @@
 //
 // Uso: tsx packages/probidad/src/run-probidad-todos-cli.ts [--dry-run] [--limit N]
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, existsSync } from "node:fs";
+import { join, resolve, dirname } from "node:path";
 import {
   Fetcher,
   HostRateLimiter,
@@ -76,6 +76,25 @@ function loadEnv(root: string): Record<string, string> {
   return out;
 }
 
+/**
+ * Resuelve la raíz del workspace subiendo desde `start` hasta hallar `pnpm-workspace.yaml`.
+ * Necesario porque `pnpm --filter <pkg> exec` pone el cwd en el directorio del paquete,
+ * no en la raíz — idéntico al patrón de run-tramitacion-prod-cli.ts (RC-1 fix).
+ */
+function findWorkspaceRoot(start: string): string {
+  let dir = resolve(start);
+  for (;;) {
+    if (existsSync(resolve(dir, "pnpm-workspace.yaml"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) {
+      throw new Error(
+        `findWorkspaceRoot: no se encontró pnpm-workspace.yaml subiendo desde ${start}`,
+      );
+    }
+    dir = parent;
+  }
+}
+
 function cargarMaestra(root: string): Parlamentario[] {
   return JSON.parse(
     readFileSync(join(root, "supabase", "seeds", "parlamentario.seed.json"), "utf8"),
@@ -83,7 +102,7 @@ function cargarMaestra(root: string): Parlamentario[] {
 }
 
 async function main(): Promise<void> {
-  const root = process.cwd();
+  const root = findWorkspaceRoot(process.cwd());
   const dryRun = process.argv.includes("--dry-run");
   const limitRaw = flagValue("--limit");
   const limite = limitRaw != null ? Number.parseInt(limitRaw, 10) : undefined;
