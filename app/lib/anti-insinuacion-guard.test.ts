@@ -124,6 +124,23 @@ const SUPERFICIES_MONEY: string[] = [
 ];
 
 /**
+ * Superficies HOME (BENTO-06, 80-02). El copy de la home roza la lectura de datos:
+ * el tile "¿Cómo leer esto?" usa la fórmula /sobre ("Cada dato lleva su fuente…
+ * nunca se inventa") y el módulo de actualidad describe hechos de votaciones/urgencias.
+ * Este guard es PREVENTIVO para copy FUTURO — el copy actual ya pasa (A2, research 80-02
+ * §Pattern 3).
+ *
+ * Nota: `app/page.tsx` es la home (`/`), distinto de
+ * `app/parlamentario/[id]/page.tsx` que ya está en SUPERFICIES_VOTO.
+ * Si una ruta no existiera, el guard la salta sin fallar (misma tolerancia que las otras
+ * superficies ante archivos borrados).
+ */
+const SUPERFICIES_HOME: string[] = [
+  "app/page.tsx",
+  "components/actualidad-module.tsx",
+];
+
+/**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
  * texto RENDERIZADO (post-strip de comentarios), con límite de palabra en español
  * para no cazar identificadores snake_case: `rebeldias_de_parlamentario` (nombre de
@@ -274,7 +291,7 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
 
   it("ningún término prohibido aparece en el texto renderizado (post-strip de comentarios)", () => {
     const offenders: string[] = [];
-    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY]) {
+    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME]) {
       const full = path.join(APP_ROOT, rel);
       let raw: string;
       try {
