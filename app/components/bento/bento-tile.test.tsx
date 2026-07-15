@@ -23,12 +23,16 @@ const TILE_SRC = readFileSync(
 );
 
 describe("BentoTile — variants default/accent + span (76-01 SC2)", () => {
-  it("variant=default → clases bg-card, border-border, rounded-[--radius-tile]", () => {
+  it("variant=default → clases bg-card, border-border, rounded-[var(--radius-tile)]", () => {
     const { container } = render(<BentoTile variant="default">content</BentoTile>);
     const tile = container.firstElementChild as HTMLElement;
     expect(tile).toHaveClass("bg-card");
     expect(tile).toHaveClass("border-border");
-    expect(tile).toHaveClass("rounded-[--radius-tile]");
+    // CR-01 fix: must use var() form — bare [--var] shorthand is invalid in Tailwind v4
+    expect(tile).toHaveClass("rounded-[var(--radius-tile)]");
+    // Negative guard (WR-01): ensure the v3 bare shorthand is NOT present
+    // (mirrors identity-marker.test.tsx convention)
+    expect(tile.className).not.toMatch(/rounded-\[\s*--[a-z-]+\s*\]/);
   });
 
   it("variant=accent → clase bg-accent-product", () => {
@@ -75,5 +79,11 @@ describe("BentoTile — variants default/accent + span (76-01 SC2)", () => {
 
   it("(soft) source de bento-tile.tsx NO contiene literal hex #RRGGBB", () => {
     expect(TILE_SRC).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+  });
+
+  it("(guard WR-01) source de bento-tile.tsx NO usa sintaxis arbitrary-var v3 bare [--var]", () => {
+    // Detects rounded-[--var], bg-[--var], etc. — all invalid in Tailwind v4.
+    // Must use var() form: rounded-[var(--var)] or registered theme token.
+    expect(TILE_SRC).not.toMatch(/\[\s*--[a-z-]+\s*\]/);
   });
 });
