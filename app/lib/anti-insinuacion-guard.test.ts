@@ -14,6 +14,15 @@
  * cámara"/score/ranking/etc. Una insinuación en el render es difamación/
  * editorialización — el riesgo #1 del proyecto.
  *
+ * ALCANCE HONESTO (WR-01): este linter es un TRIPWIRE de idioms conocidos — una
+ * denylist EXACTA de frases/tokens. NO previene la insinuación (una denylist no puede
+ * ser exhaustiva: paráfrasis, sinónimos, yuxtaposición temporal e inglés se le escapan
+ * por construcción). Sólo REDUCE la superficie cazando los idioms obvios. Las garantías
+ * REALES contra difamación son (1) el sign-off legal HUMANO del copy (Ley 21.719) y
+ * (2) el gate anti-flip MONEY (`money-antiflip-guard.test.ts`), que mantiene las
+ * superficies MONEY OFF hasta ese sign-off. No confiar en este linter para atrapar
+ * editorialización que estructuralmente no puede ver.
+ *
  * DOS piezas críticas heredadas del molde:
  *
  * (1) `stripTsComments` — quita `/* *\/` y `// …` ANTES de aplicar los regex.
@@ -171,6 +180,24 @@ const TERMINOS_PROHIBIDOS: string[] = [
   "lobby a cambio",
   "contrato a dedo",
   "direccionado",
+  // --- WR-01: paráfrasis insinuantes de alta frecuencia que la denylist exacta
+  //     dejaba pasar (verificadas como falsos-negativos en la review). Se cierran
+  //     los idioms obvios; NO es exhaustivo (ver JSDoc del detector abajo).
+  "influencias", // plural: "tráfico de influencias" (la denylist tenía sólo "influencia")
+  "tráfico de influencias",
+  "vinculado a irregularidades",
+  "vinculado a",
+  "ligado a",
+  "beneficiado por",
+  "beneficiado",
+  "favores",
+  "puerta giratoria",
+  "puertas giratorias",
+  "recibió aportes y luego votó",
+  "a dedo",
+  "direccionamiento",
+  "quid pro quo",
+  "kickback",
 ];
 
 /**
@@ -334,6 +361,31 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
   it("MONEY: caza 'contrato a dedo' inyectado (idiom singular del término)", () => {
     const hits = detectarInsinuaciones(`<p>fue un contrato a dedo</p>`);
     expect(hits).toContain("contrato a dedo");
+  });
+
+  it("MONEY (WR-01): caza paráfrasis antes-omitidas (tráfico de influencias / beneficiado por / vinculado a / a dedo)", () => {
+    const hits = detectarInsinuaciones(
+      `<p>tráfico de influencias: beneficiado por el contrato, vinculado a
+        irregularidades y adjudicado a dedo</p>`,
+    );
+    expect(hits).toEqual(
+      expect.arrayContaining([
+        "tráfico de influencias",
+        "influencias",
+        "beneficiado por",
+        "vinculado a",
+        "a dedo",
+      ]),
+    );
+  });
+
+  it("MONEY (WR-01): caza inglés y puertas giratorias (quid pro quo / kickback / puerta giratoria)", () => {
+    const hits = detectarInsinuaciones(
+      `<p>quid pro quo evidente: un kickback y una puerta giratoria</p>`,
+    );
+    expect(hits).toEqual(
+      expect.arrayContaining(["quid pro quo", "kickback", "puerta giratoria"]),
+    );
   });
 });
 
