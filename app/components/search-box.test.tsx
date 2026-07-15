@@ -46,3 +46,38 @@ describe("SearchBox — Contract 5a: botón no-hero al token petróleo", () => {
     expect(boton.className).toContain("hover:bg-accent-product/90");
   });
 });
+
+describe("SearchBox — 77-01: hero 52px + radius-control; /buscar aislado", () => {
+  it("hero input → h-[52px] y rounded-[var(--radius-control)]", () => {
+    render(<SearchBox variant="hero" />);
+    const input = screen.getByRole("searchbox");
+    expect(input.className).toContain("h-[52px]");
+    expect(input.className).toContain("rounded-[var(--radius-control)]");
+  });
+
+  it("hero button → h-[52px] y rounded-[var(--radius-control)] además de petróleo+semibold", () => {
+    render(<SearchBox variant="hero" />);
+    const boton = screen.getByRole("button", { name: "Buscar proyectos" });
+    expect(boton.className).toContain("h-[52px]");
+    expect(boton.className).toContain("rounded-[var(--radius-control)]");
+    expect(boton.className).toContain("bg-accent-product");
+    expect(boton.className).toContain("font-semibold");
+    expect(boton.className).toContain("text-background");
+    expect(boton.className).toContain("hover:bg-accent-product/90");
+  });
+
+  it("default input → h-12, sin h-[52px] ni rounded-[var(--radius-control)] (aislado)", () => {
+    render(<SearchBox />);
+    const input = screen.getByRole("searchbox");
+    expect(input.className).toContain("h-12");
+    expect(input.className).not.toContain("h-[52px]");
+    expect(input.className).not.toContain("rounded-[var(--radius-control)]");
+  });
+
+  it("default button → h-12 sin font-semibold (aislado)", () => {
+    render(<SearchBox />);
+    const boton = screen.getByRole("button", { name: "Buscar" });
+    expect(boton.className).toContain("h-12");
+    expect(boton.className).not.toContain("font-semibold");
+  });
+});

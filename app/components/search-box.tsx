@@ -112,7 +112,11 @@ export function SearchBox({
                 : "Busca por idea o número de boletín…"
             }
             aria-label="Buscar proyectos de ley"
-            className="h-12 pl-9 text-base"
+            className={
+              isHero
+                ? "h-[52px] rounded-[var(--radius-control)] pl-9 text-base"
+                : "h-12 pl-9 text-base"
+            }
             autoFocus={autoFocus}
           />
         </div>
@@ -120,7 +124,7 @@ export function SearchBox({
           type="submit"
           className={
             isHero
-              ? "h-12 whitespace-nowrap bg-accent-product px-6 font-semibold text-background hover:bg-accent-product/90"
+              ? "h-[52px] rounded-[var(--radius-control)] whitespace-nowrap bg-accent-product px-6 font-semibold text-background hover:bg-accent-product/90"
               : "h-12 bg-accent-product text-background hover:bg-accent-product/90"
           }
         >
