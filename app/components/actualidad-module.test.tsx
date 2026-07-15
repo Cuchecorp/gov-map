@@ -25,6 +25,7 @@ function makeVotado(overrides: Partial<VotadoItem> = {}): VotadoItem {
     totalNo: 81,
     fecha: new Date("2026-07-02T00:00:00Z"),
     enlace: "https://camara.cl/votacion/1",
+    camara: "diputados",
     ...overrides,
   };
 }
@@ -76,10 +77,11 @@ describe("VotadoEstaSemanaView", () => {
     const monos = container.querySelectorAll("span.font-mono");
     const monoText = Array.from(monos).map((m) => m.textContent);
     expect(monoText).toContain("58–81");
-    expect(screen.getByText(/Votación del/)).toBeInTheDocument();
     // Enlace de fuente oficial.
     const link = screen.getByRole("link", { name: /Ver fuente oficial/ });
     expect(link).toHaveAttribute("href", "https://camara.cl/votacion/1");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   it("resultado null → OMITE 'El proyecto fue …' pero conserva 'Votación del {fecha}'", () => {
@@ -108,24 +110,62 @@ describe("VotadoEstaSemanaView", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  // ── Barra cámara ──────────────────────────────────────────────────────────
+  it("camara='diputados' → barra bg-[var(--camara)] aria-hidden + meta '· Cámara'", () => {
+    const { container } = render(
+      <VotadoEstaSemanaView items={[makeVotado({ camara: "diputados" })]} />,
+    );
+    const barra = container.querySelector('[class*="var(--camara)"]');
+    expect(barra).not.toBeNull();
+    expect(barra).toHaveAttribute("aria-hidden", "true");
+    // Meta should include "· Cámara"
+    expect(container.textContent).toMatch(/·\s*Cámara/);
+  });
+
+  it("camara='senado' → barra bg-[var(--senado)] aria-hidden + meta '· Senado'", () => {
+    const { container } = render(
+      <VotadoEstaSemanaView items={[makeVotado({ camara: "senado" })]} />,
+    );
+    const barra = container.querySelector('[class*="var(--senado)"]');
+    expect(barra).not.toBeNull();
+    expect(barra).toHaveAttribute("aria-hidden", "true");
+    expect(container.textContent).toMatch(/·\s*Senado/);
+  });
+
+  it("camara=null → NO existe marcador de barra y meta es 'Votación del {fecha}' sin suffix", () => {
+    const { container } = render(
+      <VotadoEstaSemanaView items={[makeVotado({ camara: null })]} />,
+    );
+    expect(container.querySelector('[class*="var(--camara)"]')).toBeNull();
+    expect(container.querySelector('[class*="var(--senado)"]')).toBeNull();
+    expect(container.textContent).toMatch(/Votación del/);
+    expect(container.textContent).not.toMatch(/·\s*Cámara/);
+    expect(container.textContent).not.toMatch(/·\s*Senado/);
+  });
 });
 
 // ── BLOQUE 2 — "Urgencias vigentes" ─────────────────────────────────────────────
 describe("UrgenciasVigentesView", () => {
-  it("con datos: título + urgencia {tipo} + fecha Mono + boletín Mono + link ficha", () => {
+  it("con datos: chip pill con tipo verbatim + bg-accent-product-soft + font-mono text-[11px]", () => {
     const { container } = render(
       <UrgenciasVigentesView items={[makeUrgencia()]} />,
     );
     expect(
       screen.getByRole("heading", { name: "Urgencias vigentes" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Reforma a la salud — urgencia Suma vigente desde el/),
-    ).toBeInTheDocument();
+    // Chip with tipo verbatim
+    const chip = container.querySelector(".bg-accent-product-soft");
+    expect(chip).not.toBeNull();
+    expect(chip).toHaveClass("font-mono");
+    expect(chip).toHaveClass("text-[11px]");
+    expect(chip?.textContent).toBe("Suma");
+    // "desde {fecha}" in font-mono
     const monos = Array.from(container.querySelectorAll(".font-mono")).map(
       (m) => m.textContent,
     );
-    expect(monos).toContain("16284-07");
+    expect(monos.some((t) => t?.includes("jul"))).toBe(true);
+    // link
     const link = screen.getByRole("link", { name: /Ver proyecto/ });
     expect(link).toHaveAttribute("href", "/proyecto/16284-07");
   });
@@ -140,7 +180,7 @@ describe("UrgenciasVigentesView", () => {
 
 // ── BLOQUE 3 — "Última actualización de datos" ──────────────────────────────────
 describe("UltimaActualizacionView", () => {
-  it("con datos: una línea por fuente '{fuente}: actualizada el {fecha}.' (fecha Mono)", () => {
+  it("con datos: label + dot petróleo + fuente + fecha mono por item", () => {
     const { container } = render(
       <UltimaActualizacionView
         items={[
@@ -149,40 +189,33 @@ describe("UltimaActualizacionView", () => {
         ]}
       />,
     );
-    expect(
-      screen.getByRole("heading", { name: "Última actualización de datos" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Votaciones: actualizada el/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Proyectos de ley: actualizada el/),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Última actualización de datos")).toBeInTheDocument();
+    // fuente labels present
+    expect(screen.getByText("Votaciones")).toBeInTheDocument();
+    expect(screen.getByText("Proyectos de ley")).toBeInTheDocument();
+    // 2 font-mono date spans
     expect(container.querySelectorAll("span.font-mono").length).toBe(2);
   });
 
-  it("0 datos → su empty-state honesto propio", () => {
-    render(<UltimaActualizacionView items={[]} />);
-    expect(
-      screen.getByText("Aún no hay registros de actualización disponibles."),
-    ).toBeInTheDocument();
+  it("0 datos → strip no renderiza contenido (null — OMITIR)", () => {
+    const { container } = render(<UltimaActualizacionView items={[]} />);
+    // When 0 items, the component returns null → container is empty
+    expect(container.textContent).toBe("");
   });
 });
 
-// ── Empty-states independientes (3 strings DISTINTOS) ───────────────────────────
+// ── Empty-states independientes (2 strings DISTINTOS — frescura ahora omite) ────
 describe("empty-states honestos independientes", () => {
-  it("los 3 empties son strings distintos entre sí", () => {
+  it("los 2 empties de votado y urgencias son strings distintos", () => {
     const e1 = "Sin votaciones registradas esta semana en las fuentes consultadas.";
     const e2 = "No hay urgencias vigentes registradas esta semana.";
-    const e3 = "Aún no hay registros de actualización disponibles.";
-    expect(new Set([e1, e2, e3]).size).toBe(3);
+    expect(e1).not.toBe(e2);
 
     const { container: c1 } = render(<VotadoEstaSemanaView items={[]} />);
     expect(c1.textContent).toContain(e1);
     cleanup();
     const { container: c2 } = render(<UrgenciasVigentesView items={[]} />);
     expect(c2.textContent).toContain(e2);
-    cleanup();
-    const { container: c3 } = render(<UltimaActualizacionView items={[]} />);
-    expect(c3.textContent).toContain(e3);
   });
 });
 

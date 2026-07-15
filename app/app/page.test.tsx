@@ -28,10 +28,13 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
-// ActualidadModule (SC4) es un Server Component con hijos async que leen Supabase.
+// Los 3 fetchers tile de actualidad son Server Components con hijos async que leen Supabase.
 // Se stubbea a null para aislar el héroe y evitar el runtime Supabase en jsdom.
+// ActualidadModule (wrapper lineal retirado en Phase 78) ya no se exporta.
 vi.mock("@/components/actualidad-module", () => ({
-  ActualidadModule: () => null,
+  VotadoEstaSemana: () => null,
+  UrgenciasVigentes: () => null,
+  UltimaActualizacion: () => null,
 }));
 
 // next/link → <a> simple en jsdom.
@@ -244,14 +247,24 @@ describe("Landing — Contract 2: accent tile (/sobre) y 3 entry tiles (bento)",
   });
 });
 
-// ── Contract 3: retained force-dynamic + ActualidadModule ────────────────────
+// ── Contract 3: force-dynamic + retiro de ActualidadModule lineal + montaje de tiles ─
 
-describe("Landing — Contract 3: force-dynamic + ActualidadModule retained", () => {
+describe("Landing — Contract 3: force-dynamic + retiro del módulo lineal + tiles en BentoGrid", () => {
   it("exporta dynamic = 'force-dynamic'", () => {
     expect(HomeModule.dynamic).toBe("force-dynamic");
   });
 
-  it("renderiza sin lanzar aunque ActualidadModule esté mockeado a null", () => {
+  it("renderiza sin lanzar aunque los fetchers estén mockeados a null", () => {
     expect(() => render(<Home />)).not.toThrow();
+  });
+
+  it("NO renderiza el wrapper lineal ActualidadModule (aria-label='Actualidad' / max-w-5xl retirados)", () => {
+    const { container } = render(<Home />);
+    // El wrapper lineal tenía aria-label="Actualidad"
+    expect(
+      container.querySelector('[aria-label="Actualidad"]'),
+    ).toBeNull();
+    // Y max-w-5xl era su clase de contenedor
+    expect(container.querySelector(".max-w-5xl")).toBeNull();
   });
 });
