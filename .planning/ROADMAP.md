@@ -235,7 +235,7 @@ Plans:
 Plans:
 
 - [x] 72-01-PLAN.md — Migración aditiva 0052 (ampliar CHECK a `lobby_sector_aporte` + re-emitir `materializar_cruces()` con la rama lobby verbatim + rama aporte como STUB estructural correcto-por-construcción: cruce dinero×sector keyed por el RUT de la EMPRESA contratista contra la arista `<company-rut → sector>` AUSENTE — 0 filas honestas, NUNCA por parlamentario_id/persona-nivel; evidencia PII-safe, sin rut/partido en el cuerpo) + pgTAP espejo de 0039 (CHECK/lobby-preservado/empty-honest/PII-safe/cuerpo-no-PII/anon-42501)
-- [ ] 72-02-PLAN.md — Runbook operador-LOCAL de aplicación de 0052 a PROD (psql --db-url, pgTAP, vacío honesto hoy, MONEY OFF) + checkpoint blocking-human (el agente NO aplica el DDL)
+- [x] 72-02-PLAN.md — Runbook operador-LOCAL de aplicación de 0052 a PROD (psql --db-url, pgTAP, vacío honesto hoy, MONEY OFF) + checkpoint blocking-human (el agente NO aplica el DDL)
 
 ### Phase 73: DINERO P5e — Superficies MONEY gated OFF + linter + GATE LEGAL humano
 
@@ -1024,7 +1024,7 @@ Plans:
 | 69. DINERO P5a — RUT-01 backfill (checkpoint operador, bloqueante) | v7.0 | 3/3 | Complete   | 2026-07-14 |
 | 70. DINERO P5b — Wire dos-etapas ChileCompra por RUT (SPIKE cuota) | v7.0 | 3/3 | Complete   | 2026-07-14 |
 | 71. DINERO P5c — SERVEL LOCAL (.xlsx artesanal) | v7.0 | 3/3 | Complete   | 2026-07-14 |
-| 72. DINERO P5d — Extender materializador cruce_senal (lobby_sector_aporte) | v7.0 | 1/2 | In Progress|  |
+| 72. DINERO P5d — Extender materializador cruce_senal (lobby_sector_aporte) | v7.0 | 2/2 | Complete   | 2026-07-15 |
 | 73. DINERO P5e — Superficies MONEY gated OFF + linter + gate legal | v7.0 | 0/? | Not started | - |
 | 74. DEUDA — Cursor leylobby + CF token CI + round-robin cron | v7.0 | 0/? | Not started | - |
 | 75. DEUDA — Typography .net-* + rotar DB password (operador) | v7.0 | 0/? | Not started | - |
