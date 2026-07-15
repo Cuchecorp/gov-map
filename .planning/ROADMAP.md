@@ -84,6 +84,11 @@ Plans:
   4. Hero sigue server component; `SearchBox` único island; `force-dynamic` conservado
   5. Tests de home actualizados (estructura, hrefs, pills verbatim); suite verde; anti-insinuación verde
 
+Plans:
+
+- [ ] 77-01-PLAN.md — Tokens accent-foreground + bento-accent-fill (globals.css + tailwind.config), fix variante accent (foreground/hover/fill dark-stable) y reestilo hero SearchBox (52px + radius-control), aislando /buscar
+- [ ] 77-02-PLAN.md — Reescritura de page.tsx al bento (hero span-4 + tile acento span-2 + 3 entradas span-2), migración de page.test.tsx (nav→grid) y gate suite+tsc+anti-insinuación
+
 ### Phase 78: BENTO-HOME-ACTUALIDAD — Votado/urgencias/frescura como tiles
 
 **Goal**: La actualidad vive como tiles del grid con los datos reales de hoy — presentación nueva, datos idénticos.
