@@ -86,8 +86,8 @@ Plans:
 
 Plans:
 
-- [ ] 77-01-PLAN.md — Tokens accent-foreground + bento-accent-fill (globals.css + tailwind.config), fix variante accent (foreground/hover/fill dark-stable) y reestilo hero SearchBox (52px + radius-control), aislando /buscar
-- [ ] 77-02-PLAN.md — Reescritura de page.tsx al bento (hero span-4 + tile acento span-2 + 3 entradas span-2), migración de page.test.tsx (nav→grid) y gate suite+tsc+anti-insinuación
+- [x] 77-01-PLAN.md — Tokens accent-foreground + bento-accent-fill (globals.css + tailwind.config), fix variante accent (foreground/hover/fill dark-stable) y reestilo hero SearchBox (52px + radius-control), aislando /buscar
+- [x] 77-02-PLAN.md — Reescritura de page.tsx al bento (hero span-4 + tile acento span-2 + 3 entradas span-2), migración de page.test.tsx (nav→grid) y gate suite+tsc+anti-insinuación
 
 ### Phase 78: BENTO-HOME-ACTUALIDAD — Votado/urgencias/frescura como tiles
 
