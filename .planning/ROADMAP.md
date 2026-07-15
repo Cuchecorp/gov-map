@@ -63,6 +63,13 @@ Lineal a propósito: cada fase deja el sitio deployable. Sin dependencia dura de
   5. Ninguna página cambió de layout interno (diff visual esperado: solo ancho de contenedor de header/footer + sticky); si el contenedor global amenaza el ancho de `/red`, `/red` queda EXCLUIDO en esta fase y se difiere a 79 documentado
   6. Suite completa verde + tsc limpio; anti-insinuación y guard tipográfico intactos
 
+**Plans**: 2 plans
+
+Plans:
+
+- [ ] 76-01-PLAN.md — Tokens de radio (--radius-tile/--radius-control) + scroll-mt global + primitivas BentoGrid/BentoTile (cva) con tests de estructura
+- [ ] 76-02-PLAN.md — Chrome global: GlobalHeader sticky + contenedor 1120px + footer border-top sin fondo (CC BY LOCKED byte-idéntico) + tests source-scan extendidos
+
 ### Phase 77: BENTO-HOME-SUPERIOR — Hero + tile acento + tarjetas de entrada
 
 **Goal**: La mitad superior de la home es el bento del mockup, con el copy firmado intacto.
