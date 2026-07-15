@@ -142,6 +142,13 @@ Plans:
   4. Candado cero-hex: test-fuente sobre `components/bento/` (regex hex) que FALLA en rojo con mutation self-check; guard tipográfico extendido a tiles (solo tokens/escala TW)
   5. Linter anti-insinuación cubre `app/page.tsx` + tile cómo-leer si el copy roza votos/dinero; suite completa verde (~840+ esperados)
 
+**Plans**: 2 plans
+
+Plans:
+
+- [ ] 80-01-PLAN.md — Fixes a11y/dark/candado (aria-label SearchBox, BrandIcon→currentColor, par dark barra cívica) + test estructural home (colapso ≤md/orden DOM/landmarks) [BENTO-05]
+- [ ] 80-02-PLAN.md — 3 candados de régimen con mutation self-check: cero-hex + guard tipográfico (bento-guards.test.ts) + linter anti-insinuación extendido a home (SUPERFICIES_HOME) [BENTO-06]
+
 ### Phase 81: BENTO-SHIP — Deploy + verificación visual + gate humano
 
 **Goal**: Bento EN VIVO, verificado visualmente contra el mockup, con el gate humano documentado.
