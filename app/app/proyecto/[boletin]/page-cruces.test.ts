@@ -23,8 +23,10 @@ const PAGE_SRC = readFileSync(
 );
 
 describe("/proyecto/[boletin] — cableado del carril #cruces (SURF-02)", () => {
-  it("la <section id=\"cruces\"> está presente con mt-12 scroll-mt-6", () => {
-    expect(PAGE_SRC).toContain('<section id="cruces" className="mt-12 scroll-mt-6"');
+  it("la <section id=\"cruces\"> está presente con mt-12 (sin scroll-mt-6 — Phase 79-02)", () => {
+    // scroll-mt-6 removido; el offset de ancla aplica desde globals.css (80px, Phase 76).
+    // El offset real vs. header se valida en Phase 81 (BrowserOS deploy real; jsdom no tiene layout).
+    expect(PAGE_SRC).toContain('<section id="cruces" className="mt-12"');
   });
 
   it("placement DOM: #cruces entre #lobby-tramitacion y #idea-matriz", () => {
