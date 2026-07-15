@@ -6,6 +6,8 @@ import {
   within,
   fireEvent,
 } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 import { RedGraph, type Subgrafo } from "./red-graph";
 
@@ -629,5 +631,72 @@ describe("RedGraph — leyenda anti-insinuación", () => {
     expect(container.textContent ?? "").toMatch(
       /en pantallas angostas las líneas se omiten/i,
     );
+  });
+});
+
+// ── DEBT-05: guard source-scan de tipografía del island .net-* ───────────────
+//
+// El island .net-* debe expresar el font-size a través de los tokens del design
+// system (var(--text-base|--text-sm|--text-xs) — pasos por defecto de Tailwind v4,
+// SIN override de fontSize en tailwind.config.ts), NO como literales rem ad-hoc.
+// Este guard lee globals.css, aísla la región .net-* y falla si reaparece un
+// font-size con literal rem crudo — salvo el ÚNICO valor off-step intencional:
+// .net-chip 0.6875rem (11px, sub-caption; redondearlo a --text-xs/12px agrandaría
+// cada chip y desplazaría el wrap de la fila).
+//
+// ⚠ ALCANCE (jsdom-blind): este guard SOLO impide que la deuda "font-size ad-hoc"
+// regrese a nivel de FUENTE. NO prueba la no-regresión de layout de /red: jsdom
+// devuelve getBoundingClientRect()=0 para todo, así que el cambio real de píxel
+// (que movería la geometría de drawConn, F18 LOCKED) es invisible aquí. Esa
+// no-regresión visual se difiere a ui-review + operador (getComputedStyle en
+// deploy real, checkpoint del Plan 02). NO falsear una aserción de layout.
+describe("DEBT-05: .net-* typography consume tokens del design system", () => {
+  // vitest corre desde app/ (vitest.config.ts vive ahí) → process.cwd() === app/.
+  // Idiom source-scan del repo (carril-accordion.test.tsx). NO usar
+  // `new URL(import.meta.url)`+readFileSync: rompe bajo jsdom (gotcha memoria).
+  const CSS_SRC = readFileSync(
+    path.join(process.cwd(), "app", "globals.css"),
+    "utf8",
+  );
+
+  // Aísla la región del island: del marcador estable de apertura del bloque
+  // (comentario "NET — isla del diagrama") al cierre del @layer components.
+  function regionNet(css: string): string {
+    const start = css.indexOf("/* ── NET — isla del diagrama de relaciones");
+    const end = css.indexOf("} /* ── fin @layer components (island .net-*) ── */");
+    expect(start).toBeGreaterThanOrEqual(0); // el marcador de apertura existe
+    expect(end).toBeGreaterThan(start); // el marcador de cierre existe y va después
+    return css.slice(start, end);
+  }
+
+  it("todo font-size en .net-* es var(--text-*) salvo el .net-chip 0.6875rem intencional", () => {
+    const region = regionNet(CSS_SRC);
+    // Extrae cada valor de font-size declarado en la región del island.
+    const valores = [...region.matchAll(/font-size:\s*([^;]+);/g)].map((m) =>
+      m[1].trim(),
+    );
+    // Debe haber declaraciones (si 0, el aislamiento de región falló).
+    expect(valores.length).toBeGreaterThan(0);
+
+    // Whitelist: token del design system O el único off-step intencional (chip 11px).
+    const CHIP_INTENCIONAL = "0.6875rem";
+    const esTokenSistema = (v: string) => v.startsWith("var(--text-");
+
+    const infractores = valores.filter(
+      (v) => !esTokenSistema(v) && v !== CHIP_INTENCIONAL,
+    );
+
+    // Mensaje que NOMBRA el valor infractor → un futuro diff que reintroduzca un
+    // rem ad-hoc (p.ej. 0.875rem) se cae aquí con el valor exacto que lo violó.
+    expect(
+      infractores,
+      `font-size ad-hoc (rem crudo) reintroducido en .net-* — usar var(--text-base|--text-sm|--text-xs); ` +
+        `único literal permitido es .net-chip ${CHIP_INTENCIONAL}. Infractores: ${JSON.stringify(infractores)}`,
+    ).toEqual([]);
+
+    // Auto-check de mutación (documentado, sin harness aparte): si se revierte un
+    // token a rem crudo, ese valor cae en `infractores` y la aserción se pone roja.
+    // Sanidad: el chip intencional SÍ está presente en la región del island.
+    expect(valores).toContain(CHIP_INTENCIONAL);
   });
 });
