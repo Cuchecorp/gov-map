@@ -247,6 +247,139 @@ describe("Landing — Contract 2: accent tile (/sobre) y 3 entry tiles (bento)",
   });
 });
 
+// ── BENTO-05: colapso ≤md / orden DOM / landmarks / form a11y (estructural, jsdom-safe) ──
+
+/**
+ * Asserts estructurales de la home (BENTO-05 — Phase 80-01).
+ *
+ * RESTRICCIÓN JSDOM: getComputedStyle/getBoundingClientRect devuelven 0 en jsdom.
+ * Todos los asserts fijan CLASES (toHaveClass/className) o estructura DOM,
+ * NUNCA píxeles. La verificación visual de layout y contraste dark es Phase 81.
+ *
+ * RESTRICCIÓN MOCKS: VotadoEstaSemana/UrgenciasVigentes/UltimaActualizacion están
+ * mockeados a () => null en este archivo (líneas ~34-38). Los headings
+ * "Votado esta semana"/"Urgencias vigentes" viven DENTRO de esos componentes y NO
+ * se renderizan en jsdom bajo estos mocks. Por eso (b) y (e) NO pueden asertar
+ * por texto de esos componentes — se anclan a la estructura estable de page.tsx
+ * (BentoGrid container, nav, hrefs LOCKED) que sí está en el DOM.
+ * Los wrappers <Suspense> de page.tsx no generan elementos DOM propios; sus hijos
+ * mockeados a null no renderizan nada, por lo que el orden de los tiles de
+ * actualidad se documenta en comentario y se ancla a los wrappers contenedores
+ * del BentoGrid que sí existen.
+ */
+describe("BENTO-05 — colapso/orden/landmarks (estructural, jsdom-safe)", () => {
+  // (a) COLAPSO: ningún tile del grid tiene col-span-N sin prefijo md:
+  // Cada col-span en el DOM debe ser md:col-span-N (colapso a 1 columna en móvil).
+  it("(a) ningún elemento tiene col-span-N sin prefijo md: (colapso ≤md garantizado)", () => {
+    const { container } = render(<Home />);
+    // El BentoGrid tiene grid-cols-1 y md:grid-cols-6.
+    const grid = container.querySelector(".grid-cols-1.md\\:grid-cols-6, .grid-cols-1");
+    // Verificar que el grid tiene el clase de colapso.
+    const gridWrapper = container.querySelector(".grid-cols-1");
+    expect(gridWrapper).not.toBeNull();
+    expect(gridWrapper).toHaveClass("md:grid-cols-6");
+
+    // Ningún elemento debe tener col-span-N sin el prefijo md: (rompería el colapso).
+    const colSpanEls = container.querySelectorAll("[class*='col-span']");
+    colSpanEls.forEach((el) => {
+      const cls = el.className ?? "";
+      // Buscar ocurrencias de col-span-N NO precedidas de md:
+      // Patrón: col-span seguido de - y dígito(s) que NO esté precedido de md:
+      const bareColSpan = cls.match(/(?<![a-z-])col-span-\d+/g);
+      if (bareColSpan) {
+        // Filtrar: descartar matches que forman parte de 'md:col-span-N'
+        const problematicos = bareColSpan.filter(
+          (m) => !cls.includes(`md:${m}`),
+        );
+        expect(
+          problematicos,
+          `Elemento con clase "${cls}" tiene col-span sin prefijo md:`,
+        ).toHaveLength(0);
+      }
+    });
+  });
+
+  // (b) ORDEN DOM = orden visual — ancla a hrefs LOCKED de page.tsx.
+  // Los tiles de actualidad están mockeados a null: su orden DOM se ancla
+  // a la estructura del BentoGrid (ver restricción de mocks arriba).
+  // Se asertan: hero (h1 presente) → /sobre → 3 entry tiles LOCKED en orden.
+  it("(b) orden DOM: hero → /sobre → entry tiles /buscar → /parlamentarios → /agenda", () => {
+    const { container } = render(<Home />);
+    const links = Array.from(container.querySelectorAll("a[href]"));
+    const hrefs = links.map((l) => l.getAttribute("href"));
+
+    // /sobre debe aparecer antes que las 3 entradas.
+    const iSobre = hrefs.indexOf("/sobre");
+    const iBuscar = hrefs.indexOf("/buscar");
+    const iParlamentarios = hrefs.indexOf("/parlamentarios");
+    const iAgenda = hrefs.indexOf("/agenda");
+
+    expect(iSobre).toBeGreaterThanOrEqual(0);
+    expect(iBuscar).toBeGreaterThanOrEqual(0);
+    expect(iParlamentarios).toBeGreaterThanOrEqual(0);
+    expect(iAgenda).toBeGreaterThanOrEqual(0);
+
+    // Orden DOM: /sobre antes de /buscar, /buscar < /parlamentarios < /agenda.
+    expect(iSobre).toBeLessThan(iBuscar);
+    expect(iBuscar).toBeLessThan(iParlamentarios);
+    expect(iParlamentarios).toBeLessThan(iAgenda);
+
+    // El hero (h1) aparece antes de /sobre en el DOM.
+    const h1 = container.querySelector("h1");
+    expect(h1).not.toBeNull();
+    const sobreLink = links[iSobre];
+    // h1 debe preceder al link /sobre en el DOM.
+    const pos =
+      // eslint-disable-next-line no-bitwise
+      sobreLink.compareDocumentPosition(h1!) & Node.DOCUMENT_POSITION_PRECEDING;
+    expect(pos, "h1 debe preceder al link /sobre").toBeTruthy();
+  });
+
+  // (c) LANDMARK único: un solo <main> (el de page.tsx); <nav> con aria-label.
+  it("(c) landmark único: exactamente un <main> y <nav> con aria-label", () => {
+    const { container } = render(<Home />);
+    const mains = container.querySelectorAll("main");
+    expect(mains).toHaveLength(1);
+
+    // El <nav> tiene aria-label (WR-01 — ya existe, confirmado por Contract 2).
+    const nav = screen.getByRole("navigation", { name: "Secciones del sitio" });
+    expect(nav).toBeInTheDocument();
+  });
+
+  // (d) FORM a11y: getByRole("search", { name: /buscar/i }) encuentra el form
+  // con el aria-label añadido en Task 1 (search-box.tsx).
+  it("(d) form a11y: role=search tiene nombre accesible /buscar/i", () => {
+    render(<Home />);
+    const searchForm = screen.getByRole("search", { name: /buscar/i });
+    expect(searchForm).toBeInTheDocument();
+  });
+
+  // (e) SECCIONES: los tiles del BentoGrid tienen estructura de secciones.
+  // VotadoEstaSemana/UrgenciasVigentes están mockeados a null — sus <h2> internos
+  // NO renderizan bajo estos mocks (ver restricción arriba). Se asertan los
+  // wrappers de sección que SÍ existen en el DOM de page.tsx:
+  //   - La sección hero (BentoTile asChild = <section>) con heading h1.
+  //   - La sección /sobre con heading h2 "¿Cómo leer esto?".
+  // Los boundaries <Suspense> de actualidad no generan elementos DOM — el orden
+  // DOM de los tiles de actualidad está garantizado por la posición en el JSX
+  // de page.tsx (no hay reordenamiento CSS) y se documenta aquí sin poder
+  // asertar el contenido de los componentes mockeados.
+  it("(e) secciones: section hero con h1 y tile /sobre con h2 presentes en DOM", () => {
+    const { container } = render(<Home />);
+
+    // La sección hero: BentoTile asChild renderiza como <section> con un <h1>.
+    const sections = container.querySelectorAll("section");
+    expect(sections.length).toBeGreaterThanOrEqual(1);
+    const heroSection = sections[0];
+    const h1 = heroSection.querySelector("h1");
+    expect(h1, "La sección hero debe contener un h1").not.toBeNull();
+
+    // El tile /sobre tiene el h2 "¿Cómo leer esto?" (está en page.tsx, no mockeado).
+    const sobreH2 = screen.getByRole("heading", { name: "¿Cómo leer esto?" });
+    expect(sobreH2.tagName).toBe("H2");
+  });
+});
+
 // ── Contract 3: force-dynamic + retiro de ActualidadModule lineal + montaje de tiles ─
 
 describe("Landing — Contract 3: force-dynamic + retiro del módulo lineal + tiles en BentoGrid", () => {
