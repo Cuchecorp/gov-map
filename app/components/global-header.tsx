@@ -30,8 +30,8 @@ export function GlobalHeader() {
   const showRed = netPublicEnabled(process.env);
 
   return (
-    <header className="border-b border-border bg-background">
-      <div className="mx-auto flex min-h-14 max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 md:px-8">
+    <header className="sticky top-0 z-40 border-b border-border bg-background">
+      <div className="mx-auto flex min-h-14 max-w-[1120px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-3">
         <Link
           href="/"
           className="inline-flex min-h-11 items-center gap-2 text-base font-semibold leading-tight tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
