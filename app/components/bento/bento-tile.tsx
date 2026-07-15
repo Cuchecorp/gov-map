@@ -26,7 +26,8 @@ const bentoTileVariants = cva(
     variants: {
       variant: {
         default: "bg-card border border-border hover:border-accent-product",
-        accent: "bg-accent-product text-primary-foreground",
+        // dark-stable fill (--bento-accent-fill pinned a petróleo); text-accent-product-foreground ≥7:1; hover derivado (warning #2)
+        accent: "bg-bento-accent-fill text-accent-product-foreground hover:bg-bento-accent-fill/90",
       },
       span: {
         2: "md:col-span-2",

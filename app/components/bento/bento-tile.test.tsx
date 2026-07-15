@@ -35,10 +35,24 @@ describe("BentoTile — variants default/accent + span (76-01 SC2)", () => {
     expect(tile.className).not.toMatch(/rounded-\[\s*--[a-z-]+\s*\]/);
   });
 
-  it("variant=accent → clase bg-accent-product", () => {
+  it("variant=accent → usa dark-stable fill bg-bento-accent-fill (no bg-accent-product que lightens en dark)", () => {
     const { container } = render(<BentoTile variant="accent">content</BentoTile>);
     const tile = container.firstElementChild as HTMLElement;
-    expect(tile).toHaveClass("bg-accent-product");
+    expect(tile).toHaveClass("bg-bento-accent-fill");
+    expect(tile.className).not.toContain("bg-accent-product");
+  });
+
+  it("variant=accent → texto legible text-accent-product-foreground (no text-primary-foreground)", () => {
+    const { container } = render(<BentoTile variant="accent">content</BentoTile>);
+    const tile = container.firstElementChild as HTMLElement;
+    expect(tile).toHaveClass("text-accent-product-foreground");
+    expect(tile.className).not.toContain("text-primary-foreground");
+  });
+
+  it("variant=accent → hover derivado hover:bg-bento-accent-fill/90 (warning #2)", () => {
+    const { container } = render(<BentoTile variant="accent">content</BentoTile>);
+    const tile = container.firstElementChild as HTMLElement;
+    expect(tile).toHaveClass("hover:bg-bento-accent-fill/90");
   });
 
   it("span={4} → clase md:col-span-4", () => {
