@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: — Votos, dinero y cierre técnico
 status: executing
-stopped_at: Completed 73-04-PLAN.md (dossier ready for human review; sign-off + flip = operator debt)
-last_updated: "2026-07-15T03:18:46.953Z"
+stopped_at: Completed 74-02-PLAN.md (rotación round-robin leyes-weekly + corpus paginado; 0054 no aplicada a PROD)
+last_updated: "2026-07-15T03:30:55.271Z"
 last_activity: 2026-07-15
 progress:
   total_phases: 12
   completed_phases: 8
   total_plans: 31
-  completed_plans: 27
+  completed_plans: 28
   percent: 67
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 74 (DEUDA — cursor leylobby + CF token CI + round-robin cron) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-07-15
 
@@ -102,6 +102,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 73-02: leyenda MONEY (constante unica) contiene 'vinculo por RUT' como concepto NEGADO, valida en superficies by-name; invariante RUT-vs-nombre se preserva restando la leyenda (sinLeyenda) antes de asserts anti-'por RUT', no suprimiendola
 - [Phase ?]: 73-03: linter anti-insinuación extendido a las 4 superficies MONEY + /contraparte; leyenda MONEY restada de NEGACIONES_LOCKED; 'empresa ligada a' bloqueado, 'Enlazado por RUT' permitido.
 - [Phase ?]: 74-01: cursor leylobby deny-by-default; avanza solo con datos
+- [Phase ?]: 74-02: leyes-weekly lee corpus COMPLETO paginado (.range) cap 1k resuelto; cursor singleton leyes_rotacion_estado (0054) round-robin wrap-around; agenda-prioridad, MONEY/SERVEL excluidos, fail-loud; 0054 NO aplicada a PROD (validada local begin/rollback)
 
 ### Pending Todos
 
@@ -139,8 +140,8 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-15T03:18:35.367Z
-Stopped at: Completed 73-04-PLAN.md (dossier ready for human review; sign-off + flip = operator debt)
+Last session: 2026-07-15T03:30:55.261Z
+Stopped at: Completed 74-02-PLAN.md (rotación round-robin leyes-weekly + corpus paginado; 0054 no aplicada a PROD)
 Resume file: None
 
 ## Operator Next Steps
