@@ -58,6 +58,13 @@ describe("SearchResultCard — trazabilidad y enlace a la ficha", () => {
   });
 });
 
+describe("SearchResultCard — BENTO-04 radius primer nivel (79-01)", () => {
+  it("la tarjeta de primer nivel lleva rounded-[var(--radius-tile)]", () => {
+    const { container } = render(<SearchResultCard {...makeProps()} />);
+    expect(container.innerHTML).toContain("rounded-[var(--radius-tile)]");
+  });
+});
+
 describe("SearchResultCard — sin score (UI-SPEC §5)", () => {
   it("NO renderiza ningún número de similitud / distancia / % match", () => {
     const { container } = render(<SearchResultCard {...makeProps()} />);

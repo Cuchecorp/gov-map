@@ -36,7 +36,7 @@ export function SearchResultCard({
   provenance,
 }: SearchResultCardProps) {
   return (
-    <Card>
+    <Card className="rounded-[var(--radius-tile)]">
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center gap-2">
           <EtapaBadge estado={estado} />

@@ -1,4 +1,5 @@
-import { describe, it, expect, afterEach, vi } from "vitest";
+import { describe, it, expect, afterEach, vi, beforeAll } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
 import { render, screen, cleanup, within } from "@testing-library/react";
 
 import type { CitacionRow } from "@/lib/agenda-types";
@@ -26,8 +27,12 @@ const builder = {
 vi.mock("@/lib/supabase", () => ({
   createServerSupabase: () => builder,
 }));
+vi.mock("next/navigation", () => ({
+  redirect: () => { throw new Error("redirect"); },
+}));
 
 import { CitacionesSection } from "./page";
+import AgendaPage from "./page";
 
 afterEach(cleanup);
 
@@ -124,5 +129,19 @@ describe("CitacionesSection — UX-03 día→comisión colapsable (55-05)", () =
       name: /Ver proyecto Boletín N°12345-07/,
     });
     expect(link).toHaveAttribute("href", "/proyecto/12345-07");
+  });
+});
+
+describe("AgendaPage — container BENTO-04 (79-01)", () => {
+  beforeAll(() => {
+    queryResult = { data: [], error: null };
+  });
+
+  it("el <main> usa max-w-[1120px] (no max-w-3xl)", async () => {
+    const el = await AgendaPage({ searchParams: Promise.resolve({}) });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const html = renderToStaticMarkup(el as any);
+    expect(html).toContain("max-w-[1120px]");
+    expect(html).not.toContain("max-w-3xl");
   });
 });

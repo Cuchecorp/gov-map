@@ -31,7 +31,7 @@ export function ParlamentarioDirectoryRow({
   return (
     <Link
       href={`/parlamentario/${p.id}`}
-      className="block rounded-lg border border-border bg-card px-4 py-3 hover:border-foreground/20 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="block rounded-[var(--radius-tile)] border border-border bg-card px-4 py-3 hover:border-foreground/20 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex flex-wrap items-center gap-2">
         <CamaraChip camara={p.camara} />

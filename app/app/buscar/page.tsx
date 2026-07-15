@@ -57,7 +57,7 @@ export default async function BuscarPage({ searchParams }: PageProps) {
   const cobertura = await contarCoberturaBusqueda();
 
   return (
-    <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
+    <main className="max-w-[1120px] mx-auto px-4 md:px-8 py-8 md:py-16">
       <h1 className="sr-only">Buscar proyectos de ley</h1>
       <SearchBox initialQuery={q} />
       {cobertura !== null && cobertura > 0 && (
@@ -90,7 +90,7 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
     // GEMINI_API_KEY ausente o 429 era invisible sin esto.
     console.error(`buscarProyectos("${q}") falló:`, err);
     return (
-      <div className="mt-6 border border-destructive/20 bg-destructive/5 rounded-lg p-4 text-sm">
+      <div className="mt-6 border border-destructive/20 bg-destructive/5 rounded-[var(--radius-tile)] p-4 text-sm">
         Ocurrió un error al realizar la búsqueda. Vuelve a intentarlo en unos
         momentos.
       </div>
@@ -102,7 +102,7 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
 
   if (pageSlice.length === 0) {
     return (
-      <div className="mt-6 rounded-lg border border-border bg-muted/40 px-6 py-8 text-center text-sm text-muted-foreground">
+      <div className="mt-6 rounded-[var(--radius-tile)] border border-border bg-muted/40 px-6 py-8 text-center text-sm text-muted-foreground">
         <p className="font-semibold text-foreground">Sin resultados</p>
         <p className="mt-1">
           No se encontraron proyectos para &ldquo;{q}&rdquo;. Prueba con otras
@@ -136,7 +136,7 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
   if (proyectosError) {
     console.error(`hidratación de proyectos falló ("${q}"):`, proyectosError);
     return (
-      <div className="mt-6 border border-destructive/20 bg-destructive/5 rounded-lg p-4 text-sm">
+      <div className="mt-6 border border-destructive/20 bg-destructive/5 rounded-[var(--radius-tile)] p-4 text-sm">
         Ocurrió un error al realizar la búsqueda. Vuelve a intentarlo en unos
         momentos.
       </div>

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function SobrePage() {
   return (
-    <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
+    <main className="max-w-[1120px] mx-auto px-4 md:px-8 py-8 md:py-16">
       <h1 className="text-3xl font-semibold leading-tight">Sobre el proyecto</h1>
 
       <p className="mt-6 text-base leading-relaxed text-muted-foreground">
