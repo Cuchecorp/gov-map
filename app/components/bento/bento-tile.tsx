@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
  * verbatim de app/components/ui/button.tsx.
  *
  * Tokens de color: CERO hex hardcodeado — todo por token existente (D4 regla;
- * candado formal Phase 80). rounded-[--radius-tile] consume el token definido en
+ * candado formal Phase 80). rounded-[var(--radius-tile)] consume el token definido en
  * globals.css en este mismo plan.
  *
  * Polimorfismo asChild: tile puede envolver un <Link> full-card (Phase 77-78)
@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
  */
 
 const bentoTileVariants = cva(
-  "rounded-[--radius-tile] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-11",
+  "rounded-[var(--radius-tile)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-11",
   {
     variants: {
       variant: {
