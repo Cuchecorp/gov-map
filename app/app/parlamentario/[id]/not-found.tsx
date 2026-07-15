@@ -7,7 +7,7 @@ import Link from "next/link";
  */
 export default function ParlamentarioNotFound() {
   return (
-    <main className="max-w-3xl mx-auto px-4 md:px-8 py-16 text-center">
+    <main className="max-w-[1120px] mx-auto px-4 md:px-8 py-16 text-center">
       <h1 className="text-xl font-semibold">Parlamentario no encontrado</h1>
       <p className="text-base leading-relaxed text-muted-foreground mt-4">
         No encontramos a este parlamentario en el registro. Es posible que el

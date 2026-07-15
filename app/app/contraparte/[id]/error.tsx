@@ -22,7 +22,7 @@ export default function ContraparteError({
   }, [error]);
 
   return (
-    <main className="max-w-3xl mx-auto px-4 md:px-8 py-16 text-center">
+    <main className="max-w-[1120px] mx-auto px-4 md:px-8 py-16 text-center">
       <h1 className="text-xl font-semibold">No pudimos cargar esta contraparte</h1>
       <p className="text-base leading-relaxed text-muted-foreground mt-4">
         Ocurrió un error al consultar los datos. Esto es una falla técnica, no una

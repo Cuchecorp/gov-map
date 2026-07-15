@@ -10,7 +10,7 @@ import Link from "next/link";
  */
 export default function ContraparteNotFound() {
   return (
-    <main className="max-w-3xl mx-auto px-4 md:px-8 py-16 text-center">
+    <main className="max-w-[1120px] mx-auto px-4 md:px-8 py-16 text-center">
       <h1 className="text-xl font-semibold">Contraparte no encontrada</h1>
       <p className="text-base leading-relaxed text-muted-foreground mt-4">
         No encontramos esta página. Es posible que el identificador sea incorrecto.
