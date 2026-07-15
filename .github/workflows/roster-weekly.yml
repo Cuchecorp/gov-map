@@ -1,0 +1,73 @@
+name: roster-weekly
+
+# Refresco del ROSTER de parlamentarios en la DB (Phase 83 — RC-3).
+#
+# Problema: el chip "Actualizado 20 jun · Senado" de las fichas lee `parlamentario.fecha_captura`
+# (RPC parlamentario_publico → ParlamentarioHeader → ProvenanceBadge). Ese campo solo lo escribe
+# el seeder con SUPABASE_LOCAL_SERVICE_KEY (seed-cli.ts:216). backup-parlamentario.yml NO la pasa
+# (solo commitea el snapshot git, no escribe la DB) → el roster quedó congelado ~20 jun 2026.
+#
+# Este workflow corre `seed:live --preserve-estado` CON la service key remota:
+#   - Regenera el roster desde los catálogos oficiales (Senado XML + Cámara XML, rate-limit 2-3s).
+#   - `--preserve-estado`: mantiene `confirmado` del snapshot git (compuerta humana ID-01 intacta).
+#   - SIN `--promote`: la promoción es siempre revisión humana, nunca automática.
+#   - Guard fail-loud: si el seeder escribe 0 filas o falla, exit 1 visible.
+#
+# ESTRENO GATED: workflow_dispatch SOLO (sin schedule). Validar con corrida manual VERDE.
+# Recién después de validación se añade el schedule (lunes 10:00 UTC, después del backup-parlamentario
+# del domingo).
+#
+# SUPABASE_LOCAL_SERVICE_KEY mapeado desde el secret SUPABASE_SECRET_KEY (misma credencial;
+# el seeder la espera bajo ese nombre específico — seed-cli.ts:216).
+#
+# Secrets requeridos (ya cargados en Cuchecorp/gov-map):
+#   SUPABASE_SECRET_KEY   → mapeado a SUPABASE_LOCAL_SERVICE_KEY (escritura a DB)
+#   SUPABASE_API_URL      → endpoint remoto
+
+on:
+  workflow_dispatch: {}
+  # schedule:
+  #   - cron: "0 10 * * 1"  # lunes 10:00 UTC — añadir SOLO tras corrida manual VERDE
+
+permissions:
+  contents: read
+
+concurrency:
+  group: roster-weekly
+  cancel-in-progress: false
+
+jobs:
+  roster:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install deps
+        # --ignore-scripts: tsx trae su propio esbuild; evita ERR_PNPM_IGNORED_BUILDS (gate pnpm 11).
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Refrescar roster en DB (preservando compuerta humana ID-01)
+        # seed:live con SUPABASE_LOCAL_SERVICE_KEY → escribe fecha_captura fresca a DB remota.
+        # --preserve-estado: mergea estado='confirmado' del snapshot git; NUNCA revierte.
+        # SIN --promote: la promoción confirmado es siempre humana (ID-01).
+        # Rate-limit 2-3s y UA identificatorio aplicados por el seeder (@obs/identity).
+        env:
+          SUPABASE_LOCAL_SERVICE_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
+        run: |
+          OUT=$(pnpm --filter @obs/identity run seed:live -- --preserve-estado 2>&1)
+          echo "$OUT"
+          # Guard fail-loud: el seeder imprime "seed: maestra real -> N filas" (seed-cli.ts:231).
+          # Si N=0 o el CLI falla antes de imprimir, el cron sale != 0 (visible, no silencioso).
+          echo "$OUT" | grep -qE 'maestra real -> [1-9][0-9]* filas' \
+            || { echo "roster-weekly: 0 filas en maestra — posible error fatal"; exit 1; }
