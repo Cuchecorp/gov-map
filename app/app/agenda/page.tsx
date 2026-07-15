@@ -73,7 +73,7 @@ export default async function AgendaPage({ searchParams }: PageProps) {
   const buscando = q.length > 0;
 
   return (
-    <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16">
+    <main className="max-w-[1120px] mx-auto px-4 md:px-8 py-8 md:py-16">
       <h1 className="text-3xl font-semibold leading-tight">Agenda legislativa</h1>
 
       {/* Buscador de citaciones (SSR-first: el form GET funciona sin JS; no embebe). */}
@@ -188,7 +188,7 @@ async function ResultadosBusqueda({
   } catch {
     // Error = el RPC falló (grant/RLS/red/DB). Distinto de "sin resultados".
     return (
-      <div className="mt-6 border border-destructive/20 bg-destructive/5 rounded-lg p-4 text-sm">
+      <div className="mt-6 border border-destructive/20 bg-destructive/5 rounded-[var(--radius-tile)] p-4 text-sm">
         Ocurrió un error al buscar en la agenda. Vuelve a intentarlo en unos momentos.
       </div>
     );
@@ -196,7 +196,7 @@ async function ResultadosBusqueda({
 
   if (filas.length === 0) {
     return (
-      <div className="mt-6 rounded-lg border border-border bg-muted/40 px-6 py-8 text-center text-sm text-muted-foreground">
+      <div className="mt-6 rounded-[var(--radius-tile)] border border-border bg-muted/40 px-6 py-8 text-center text-sm text-muted-foreground">
         <p className="font-semibold text-foreground">Sin resultados</p>
         <p className="mt-1">
           No se encontraron citaciones para &ldquo;{q}&rdquo;. Prueba con otra comisión,
@@ -235,7 +235,7 @@ async function ResultadosBusqueda({
             <Separator className="mt-1" />
             <ul className="mt-3 space-y-3">
               {items.map((c) => (
-                <li key={c.id} className="rounded-lg border bg-card p-4">
+                <li key={c.id} className="rounded-[var(--radius-tile)] border bg-card p-4">
                   <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                     <span className="rounded-full border border-border px-2 py-0.5 text-xs">
                       {camaraLabel(c.camara)}

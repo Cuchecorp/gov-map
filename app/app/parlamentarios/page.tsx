@@ -40,7 +40,7 @@ export default async function ParlamentariosPage({ searchParams }: PageProps) {
   const q = (typeof sp.q === "string" ? sp.q : "").trim().slice(0, MAX_QUERY_CHARS);
 
   return (
-    <main className="max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-16">
+    <main className="max-w-[1120px] mx-auto px-4 md:px-8 py-8 md:py-16">
       <h1 className="text-3xl font-semibold leading-tight">Parlamentarios</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Directorio de diputadas, diputados y senadores en ejercicio. Cada ficha
@@ -125,7 +125,7 @@ export async function DirectoryList({
   if (rows.length === 0) {
     // honest-empty: un filtro sin resultados, distinto del banner de error.
     return (
-      <div className="mt-8 rounded-lg border border-border bg-muted/40 px-6 py-8 text-center text-sm text-muted-foreground">
+      <div className="mt-8 rounded-[var(--radius-tile)] border border-border bg-muted/40 px-6 py-8 text-center text-sm text-muted-foreground">
         <p className="font-semibold text-foreground">
           Sin parlamentarios para este filtro.
         </p>
