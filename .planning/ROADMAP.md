@@ -105,7 +105,7 @@ Plans:
 
 Plans:
 
-- [ ] 78-01-PLAN.md — Migrar los 3 bloques de ActualidadModule a tiles del BentoGrid (Votado span-4 con barra civic por token + camara al select, Urgencias span-2 chip pill, strip Frescura span-6 omitido-si-vacio), retirar Panel/wrapper, montar fetchers en page.tsx, migrar tests + GATE 9.1
+- [x] 78-01-PLAN.md — Migrar los 3 bloques de ActualidadModule a tiles del BentoGrid (Votado span-4 con barra civic por token + camara al select, Urgencias span-2 chip pill, strip Frescura span-6 omitido-si-vacio), retirar Panel/wrapper, montar fetchers en page.tsx, migrar tests + GATE 9.1
 
 ### Phase 79: BENTO-COHERENCIA — Propagación acotada a rutas interiores
 
