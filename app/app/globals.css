@@ -101,8 +101,9 @@
   }
 
   /* Anchors + sticky header: evita que el header sticky tape el target ancla (riesgo #2).
-   * 5rem = 80px ≥ altura header sticky ~56px + aire. Ajuste fino por ruta: Phase 79/81. */
-  :where(h1, h2, h3)[id] {
+   * 5rem = 80px ≥ altura header sticky ~69px + aire. Cubre TODO elemento con id — las
+   * fichas anclan en <section id=…>, no solo headings (hallazgo gate 81 getComputedStyle). */
+  :where([id]) {
     scroll-margin-top: 5rem;
   }
 }

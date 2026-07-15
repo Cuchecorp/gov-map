@@ -48,6 +48,11 @@ describe("globals.css — tokens de radio + scroll-mt (76-01 SC1)", () => {
   it("Test 4 (scroll-margin-top): regla global de anchors vs sticky header", () => {
     expect(SRC).toContain("scroll-margin-top");
   });
+
+  it("Test 4b (selector de anchors): cubre TODO [id], no solo headings (gate 81 — fichas anclan en <section id>)", () => {
+    expect(SRC).toContain(":where([id])");
+    expect(SRC).not.toMatch(/:where\(h1, h2, h3\)\[id\]/);
+  });
 });
 
 describe("globals.css — tokens accent-foreground + bento-accent-fill (77-01)", () => {
