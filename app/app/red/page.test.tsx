@@ -199,3 +199,34 @@ describe("/red — gate a nivel de página (candado B, LOCKED)", () => {
     expect(notFoundMock).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// No-regresion de ancho de /red (invariante 4, BENTO-04 Plan 79-03)
+//
+// /red queda EXCLUIDO del contenedor bento de 1120px. Su <main> debe mantener
+// max-w-3xl (layout B aprobado 2026-07-13; cambiar el ancho del grafo requiere
+// decision propia, no heredar la coherencia bento). La isla .net-* es pixel-
+// intocable (DEBT-05).
+//
+// Assert a nivel de SOURCE/CLASE — cero jsdom (jsdom no ve px). La no-regresion
+// de PIXELES reales (getComputedStyle) se valida en Phase 81 (gate 75).
+// ---------------------------------------------------------------------------
+
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+describe("/red — no-regresion de ancho (invariante 4, BENTO-04)", () => {
+  const RED_SOURCE = readFileSync(
+    path.join(process.cwd(), "app", "red", "page.tsx"),
+    "utf-8",
+  );
+
+  it("red/page.tsx mantiene max-w-3xl en su <main> (ancho propio, no ensanchado)", () => {
+    expect(RED_SOURCE).toContain("max-w-3xl");
+  });
+
+  it("red/page.tsx NO contiene max-w-[1120px] (excluido del contenedor bento)", () => {
+    // Nota: la no-regresion de px reales (getComputedStyle) se confirma en Phase 81.
+    expect(RED_SOURCE).not.toContain("max-w-[1120px]");
+  });
+});
