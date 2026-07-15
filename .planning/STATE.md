@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: — Votos, dinero y cierre técnico
 status: executing
-stopped_at: "Completed 68-02-PLAN.md (cobertura del voto individual N/M en pnpm freshness: COBERTURA_VOTO_SENALES + renderCoberturaVoto; Camara confirmado / Senado por nombre). Phase 68 P2 de 4."
-last_updated: "2026-07-15T02:04:20.478Z"
+stopped_at: Completed 73-03-PLAN.md
+last_updated: "2026-07-15T02:13:24.726Z"
 last_activity: 2026-07-15
 progress:
   total_phases: 12
   completed_phases: 7
   total_plans: 28
-  completed_plans: 24
+  completed_plans: 25
   percent: 58
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 73 (DINERO P5e — Superficies MONEY gated + GATE LEGAL) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-15
 
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shi
 | Phase 70 P02 | ~6 min | 2 tasks | 3 files |
 | Phase 72 P01 | 22min | 2 tasks | 2 files |
 | Phase 73 P02 | ~25m | 2 tasks | 8 files |
+| Phase 73 P03 | 10 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: Phase 72-01: senal lobby_sector_aporte = STUB ESTRUCTURAL correcto-por-construccion (0052): cruce dinero x sector por RUT de la EMPRESA contratista (contrato->contratista->CTE empresa_sector 'where false' = arista company-rut->sector ausente => 0 filas honestas), NUNCA por parlamentario_id (yuxtaposicion persona-nivel rechazada); rama lobby_sector byte-identica (0039), un delete, evidencia PII-safe, cuerpo sin partido/rut (rut_proveedor no cuenta), sin causalidad; pgTAP 7/7 validado en vivo contra scratch DB; apply PROD + RUT-01 + backfill ChileCompra = Plan 02 operador; MONEY OFF (flip=Phase 73).
 - [Phase ?]: Phase 72-02: runbook operador-LOCAL apply 0052 (72-APPLY-RUNBOOK.md, espeja 69/70/71): psql --db-url --single-transaction + PGCLIENTENCODING=UTF8 + BOM esquivado, NUNCA supabase db push; precondicion verifica cruce_senal_tipo_senal_check contra pg_constraint antes del drop (Pitfall A1); pgTAP 0052 contra schema APLICADO (7/7 ok, build/typecheck falso positivo); aplicar UNA vez (Bloque1 drop+add no re-ejecutable). Vacio honesto (0 filas) documentado por DOS razones: arista company-rut->sector ausente (stub, sustancia diferida = columna sector_id en la empresa + clasificador) + RUT-01 0%/backfill pendiente. MONEY_PUBLIC_ENABLED OFF (flip=Phase 73). Rollback aditivo. El agente NO aplico a PROD (checkpoint blocking-human PENDIENTE).
 - [Phase ?]: 73-02: leyenda MONEY (constante unica) contiene 'vinculo por RUT' como concepto NEGADO, valida en superficies by-name; invariante RUT-vs-nombre se preserva restando la leyenda (sinLeyenda) antes de asserts anti-'por RUT', no suprimiendola
+- [Phase ?]: 73-03: linter anti-insinuación extendido a las 4 superficies MONEY + /contraparte; leyenda MONEY restada de NEGACIONES_LOCKED; 'empresa ligada a' bloqueado, 'Enlazado por RUT' permitido.
 
 ### Pending Todos
 
@@ -133,8 +135,8 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-15T02:04:07.034Z
-Stopped at: Completed 68-02-PLAN.md (cobertura del voto individual N/M en pnpm freshness: COBERTURA_VOTO_SENALES + renderCoberturaVoto; Camara confirmado / Senado por nombre). Phase 68 P2 de 4.
+Last session: 2026-07-15T02:13:24.530Z
+Stopped at: Completed 73-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

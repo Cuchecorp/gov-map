@@ -256,7 +256,7 @@ Plans:
 
 - [x] 73-01-PLAN.md — Wave 0: constante única LEYENDA_ANTI_INSINUACION_MONEY + guard anti-flip (3 vectores: fail-closed `=== "true"`, .env.example=false, no-raw-env-en-ruta) con mutation self-check
 - [x] 73-02-PLAN.md — Montaje de la leyenda MONEY 1× por estado en las 4 superficies + RTL (leyenda por estado + distinción RUT-vs-nombre no conflada)
-- [ ] 73-03-PLAN.md — Extensión del linter anti-insinuación a las 4 superficies MONEY + /contraparte (blocklist causal con tildes + leyenda restada + mutation self-check MONEY)
+- [x] 73-03-PLAN.md — Extensión del linter anti-insinuación a las 4 superficies MONEY + /contraparte (blocklist causal con tildes + leyenda restada + mutation self-check MONEY)
 - [ ] 73-04-PLAN.md — Dossier legal 13 completado/reafirmado (signoff: pending conservado) + checkpoint operador BrowserOS gated-preview + sign-off + flip (deuda humana)
 
 **UI hint**: yes
@@ -1033,7 +1033,7 @@ Plans:
 | 70. DINERO P5b — Wire dos-etapas ChileCompra por RUT (SPIKE cuota) | v7.0 | 3/3 | Complete   | 2026-07-14 |
 | 71. DINERO P5c — SERVEL LOCAL (.xlsx artesanal) | v7.0 | 3/3 | Complete   | 2026-07-14 |
 | 72. DINERO P5d — Extender materializador cruce_senal (lobby_sector_aporte) | v7.0 | 2/2 | Complete   | 2026-07-15 |
-| 73. DINERO P5e — Superficies MONEY gated OFF + linter + gate legal | v7.0 | 2/4 | In Progress|  |
+| 73. DINERO P5e — Superficies MONEY gated OFF + linter + gate legal | v7.0 | 3/4 | In Progress|  |
 | 74. DEUDA — Cursor leylobby + CF token CI + round-robin cron | v7.0 | 0/? | Not started | - |
 | 75. DEUDA — Typography .net-* + rotar DB password (operador) | v7.0 | 0/? | Not started | - |
 
