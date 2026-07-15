@@ -144,3 +144,34 @@ configuración sea auditable y versionada en el repo. Hoy corre vía Default Set
 Las deudas D2/D3/D4/WR-03 están documentadas con dueño y disparador; ninguna bloquea el gate.
 
 _Fixes: 2026-07-15 — Claude (gsd-code-fixer)_
+
+---
+
+## Deploy v8.1
+
+**Fecha:** 2026-07-15
+**Version ID:** `3563ecc9-50b3-43d7-8093-fee96dbeff9f`
+**Worker:** https://observatorio-congreso.thevalis.workers.dev
+**Assets subidos:** 5 nuevos (BUILD_ID + 4 chunks JS/CSS); 57 ya cacheados
+**Bundle:** 7053.10 KiB / gzip 1493.47 KiB
+**Worker startup:** 60 ms
+
+### Verificacion HTTP
+
+| Check | Resultado |
+|-------|-----------|
+| `GET /` → 200 | OK |
+| Copy nuevo "Busca cualquier proyecto de ley por tema o numero de boletin" en `/` | PRESENTE (SSR) |
+| `x-content-type-options: nosniff` | PRESENTE |
+| `x-frame-options: DENY` | PRESENTE |
+| `strict-transport-security` | PRESENTE |
+| `referrer-policy` | PRESENTE |
+| `permissions-policy` | PRESENTE |
+| `content-security-policy-report-only` | PRESENTE |
+| `GET /parlamentario/S1110` → 200 | OK |
+
+### Metodo (identico al redeploy de 81-01)
+
+Build: Docker `node:22-slim`, mount `C:/Temp/obs-build:/host` + `C:/Temp/obs-build/app/.open-next:/open-next-out`, `cp -r /build/app/.open-next/. /open-next-out/` inline al final del build. Deploy: `node C:/Users/Carlo/AppData/Roaming/npm/node_modules/wrangler/bin/wrangler.js deploy --config wrangler.jsonc` desde `C:/Temp/obs-build/app/`.
+
+_Deploy: 2026-07-15 — Claude (gsd-execute-phase)_
