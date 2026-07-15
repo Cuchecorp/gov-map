@@ -35,7 +35,7 @@ import type { ParlamentarioPublicoRow } from "@/lib/types";
 /**
  * /parlamentario/[id] — la ficha del parlamentario (VOTE-03/04/05 + UXCOG 55-03).
  *
- * Variante B "Informe con rail" (UXCOG): grid `max-w-5xl` de dos columnas —
+ * Variante B "Informe con rail" (UXCOG): grid `max-w-[1120px]` de dos columnas —
  * rail sticky (`FichaRail`, 13rem) + contenido (1fr). El rail concentra la
  * cabecera compacta + el índice gate-aware + el caveat anti-causal 1×. Cada
  * carril de dominio muestra su capa-1 (resumen PREATENTIVO) SIEMPRE visible fuera

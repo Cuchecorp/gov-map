@@ -9,7 +9,7 @@ import path from "node:path";
  * COMPORTAMIENTO (HTML renderizado), espejo del scaffold de la ficha
  * /parlamentario/[id]:
  *
- *   - el shell monta el grid de 2 columnas (max-w-5xl) con las 6 secciones hermanas
+ *   - el shell monta el grid de 2 columnas (max-w-[1120px]) con las 6 secciones hermanas
  *     (mt-12 scroll-mt-6);
  *   - ProyectoRail arma las 6 entradas de nav + caveat 1× + conteo honesto;
  *   - TramitacionSection eleva el stepper (capa-1) FUERA del disclosure y mete el
