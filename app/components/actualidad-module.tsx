@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { Suspense } from "react";
 
 import { createServerSupabase } from "@/lib/supabase";
 import { fechaCorta, conteoVotacion } from "@/lib/format";
 import { safeExternalHref } from "@/lib/utils";
-import { sourceLabel } from "@/lib/types";
 import { urgenciaVigente } from "@/components/estado-actual-block";
+import { BentoTile } from "@/components/bento/bento-tile";
 import type {
   ProyectoRow,
   TramitacionEventoRow,
@@ -13,18 +12,17 @@ import type {
 } from "@/lib/types";
 
 /**
- * ActualidadModule — módulo de actualidad del home `/` (SC4, 52-UI-SPEC §SC4).
+ * ActualidadModule — 3 bloques de actualidad del home `/` como BentoTile (Phase 78).
  *
- * Tres bloques compactos server-rendered BAJO el hero que convierten la portada
- * de "solo buscador" en razón de retorno diario (diagnóstico §2.5):
- *   1. "Votado esta semana"          — últimas votaciones con desenlace factual.
- *   2. "Urgencias vigentes"          — urgencias en vigor (REUSA `urgenciaVigente`).
- *   3. "Última actualización de datos" — `max(fecha_captura)` por fuente NO-PII.
+ * Migrados desde el módulo lineal (Phase 52/53) a tiles del BentoGrid:
+ *   1. "Votado esta semana"          span-4 — barra cívica por cámara
+ *   2. "Urgencias vigentes"          span-2 — chip pill del tipo
+ *   3. "Última actualización de datos" span-6 — strip frescura (omitido si 0 items)
  *
  * ┌───────────────────────────────────────────────────────────────────────────┐
  * │ REGLAS DURAS (52-UI-SPEC §SC4 / §Anti-insinuación)                          │
  * │  A. Cada bloque degrada a SU empty-state honesto propio e independiente;    │
- * │     el módulo NUNCA se oculta entero (T-52-15).                             │
+ * │     la barra cívica se OMITE si camara es null (nunca se adivina cámara).   │
  * │  B. CONTEO NEUTRO: tallies en Mono en-dash (`conteoVotacion`); CERO         │
  * │     ranking / score / "los más …" / porcentaje-como-veredicto / "quién     │
  * │     ganó" (T-52-13).                                                        │
@@ -44,8 +42,6 @@ import type {
  */
 
 // ── Inicio de la semana ISO (lunes 00:00 local) ────────────────────────────────
-// "Votado esta semana" filtra por la semana ISO vigente (lunes → hoy), no por una
-// ventana rodante arbitraria: el ciudadano lee "esta semana" como la semana natural.
 export function inicioSemanaIso(hoy: Date = new Date()): Date {
   const d = new Date(hoy);
   d.setHours(0, 0, 0, 0);
@@ -62,15 +58,13 @@ function fechaValida(raw: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-// ── Panel `--card` compartido por los 3 sub-bloques ─────────────────────────────
-function Panel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-6">{children}</div>
-  );
+// ── Helper: label legible de cámara (diputados → "Cámara", senado → "Senado") ───
+function camaraLabel(c: "diputados" | "senado"): string {
+  return c === "diputados" ? "Cámara" : "Senado";
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// BLOQUE 1 — "Votado esta semana"
+// BLOQUE 1 — "Votado esta semana" (span-4)
 // ════════════════════════════════════════════════════════════════════════════
 
 export interface VotadoItem {
@@ -84,68 +78,85 @@ export interface VotadoItem {
   fecha: Date;
   /** Enlace a la fuente oficial de la votación. */
   enlace: string | null;
+  /** Cámara que votó; null → barra omitida honestamente (nunca se adivina). */
+  camara: "diputados" | "senado" | null;
 }
 
 export function VotadoEstaSemanaView({ items }: { items: VotadoItem[] }) {
   return (
-    <Panel>
-      <h2 className="text-xl font-semibold mb-4">Votado esta semana</h2>
-      {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Sin votaciones registradas esta semana en las fuentes consultadas.
-        </p>
-      ) : (
-        <ul className="space-y-4">
-          {items.map((it, idx) => {
-            // Traza: enlace externo seguro; si falta, cae a la ficha interna (la
-            // traza nunca se pierde — SC7 / §Anti-insinuación 7).
-            const href = safeExternalHref(it.enlace);
-            return (
-              <li
-                key={`${it.boletin}-${idx}`}
-                className="border-t pt-4 first:border-t-0 first:pt-0"
-              >
-                <h3 className="text-base font-semibold leading-snug">
-                  {it.titulo ?? (
-                    <span className="font-mono">{it.boletin}</span>
+    <BentoTile variant="default" span={4} asChild>
+      <section className="p-6">
+        <h2 className="text-lg font-semibold mb-4">Votado esta semana</h2>
+        {items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Sin votaciones registradas esta semana en las fuentes consultadas.
+          </p>
+        ) : (
+          <ul>
+            {items.map((it, idx) => {
+              const href = safeExternalHref(it.enlace);
+              return (
+                <li
+                  key={`${it.boletin}-${idx}`}
+                  className="flex gap-[14px] items-start border-t border-border pt-4 first:border-t-0 first:pt-0"
+                >
+                  {/* Barra cívica 3px — provenance de cámara (omitida si unknown) */}
+                  {it.camara && (
+                    <span
+                      aria-hidden="true"
+                      className={`w-[3px] self-stretch rounded-[2px] ${
+                        it.camara === "diputados"
+                          ? "bg-[var(--camara)]"
+                          : "bg-[var(--senado)]"
+                      }`}
+                    />
                   )}
-                </h3>
-                {/* Desenlace factual — se OMITE si `resultado` es null; nunca "quién ganó". */}
-                {it.resultado && (
-                  <p className="mt-1 text-sm">
-                    El proyecto fue {it.resultado}{" "}
-                    <span className="font-mono">
-                      {conteoVotacion(it.totalSi, it.totalNo)}
-                    </span>
-                    .
-                  </p>
-                )}
-                <p className="mt-1 font-mono text-sm text-muted-foreground">
-                  Votación del {fechaCorta(it.fecha)}
-                </p>
-                {href ? (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-flex min-h-11 items-center text-sm underline underline-offset-2 text-accent-product"
-                  >
-                    Ver fuente oficial ↗
-                  </a>
-                ) : (
-                  <Link
-                    href={`/proyecto/${it.boletin}`}
-                    className="mt-1 inline-flex min-h-11 items-center text-sm underline underline-offset-2 text-accent-product"
-                  >
-                    Ver proyecto →
-                  </Link>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </Panel>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-[15px] font-semibold leading-snug">
+                      {it.titulo ?? (
+                        <span className="font-mono">{it.boletin}</span>
+                      )}
+                    </h3>
+                    {/* Desenlace factual — se OMITE si `resultado` es null */}
+                    {it.resultado && (
+                      <p className="mt-1 text-[13px]">
+                        El proyecto fue {it.resultado}{" "}
+                        <span className="font-mono">
+                          {conteoVotacion(it.totalSi, it.totalNo)}
+                        </span>
+                        .
+                      </p>
+                    )}
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">
+                      {it.camara
+                        ? `${fechaCorta(it.fecha)} · ${camaraLabel(it.camara)}`
+                        : `Votación del ${fechaCorta(it.fecha)}`}
+                    </p>
+                    {href ? (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex min-h-11 items-center text-[13px] underline underline-offset-2 text-accent-product"
+                      >
+                        Ver fuente oficial ↗
+                      </a>
+                    ) : (
+                      <Link
+                        href={`/proyecto/${it.boletin}`}
+                        className="mt-1 inline-flex min-h-11 items-center text-[13px] underline underline-offset-2 text-accent-product"
+                      >
+                        Ver proyecto →
+                      </Link>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+    </BentoTile>
   );
 }
 
@@ -155,7 +166,7 @@ export async function VotadoEstaSemana() {
   // Bounded: votaciones de la semana ISO vigente, más recientes primero.
   const { data, error } = await sb
     .from("votacion")
-    .select("boletin, resultado, total_si, total_no, fecha, enlace")
+    .select("boletin, resultado, total_si, total_no, fecha, enlace, camara")
     .gte("fecha", inicioSemanaIso().toISOString())
     .order("fecha", { ascending: false })
     .limit(6);
@@ -168,7 +179,7 @@ export async function VotadoEstaSemana() {
   const votaciones =
     (data as Pick<
       VotacionRow,
-      "boletin" | "resultado" | "total_si" | "total_no" | "fecha" | "enlace"
+      "boletin" | "resultado" | "total_si" | "total_no" | "fecha" | "enlace" | "camara"
     >[] | null) ?? [];
 
   // Lookup de títulos (NO-PII) por boletín; título ausente → se muestra el boletín.
@@ -189,6 +200,7 @@ export async function VotadoEstaSemana() {
         totalNo: v.total_no,
         fecha,
         enlace: v.enlace,
+        camara: v.camara ?? null,
       };
     })
     .filter((x): x is VotadoItem => x !== null);
@@ -197,7 +209,7 @@ export async function VotadoEstaSemana() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// BLOQUE 2 — "Urgencias vigentes" (REUSA `urgenciaVigente` de estado-actual-block)
+// BLOQUE 2 — "Urgencias vigentes" span-2 (REUSA `urgenciaVigente`)
 // ════════════════════════════════════════════════════════════════════════════
 
 export interface UrgenciaItem {
@@ -209,49 +221,51 @@ export interface UrgenciaItem {
 
 export function UrgenciasVigentesView({ items }: { items: UrgenciaItem[] }) {
   return (
-    <Panel>
-      <h2 className="text-xl font-semibold mb-4">Urgencias vigentes</h2>
-      {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No hay urgencias vigentes registradas esta semana.
-        </p>
-      ) : (
-        <ul className="space-y-4">
-          {items.map((it, idx) => (
-            <li
-              key={`${it.boletin}-${idx}`}
-              className="border-t pt-4 first:border-t-0 first:pt-0"
-            >
-              <p className="text-sm leading-snug">
-                {it.titulo ?? (
-                  <span className="font-mono">{it.boletin}</span>
-                )}{" "}
-                — urgencia {it.tipo} vigente desde el{" "}
-                <span className="font-mono">{fechaCorta(it.desde)}</span>.
-              </p>
-              <p className="mt-1 font-mono text-sm text-muted-foreground">
-                {it.boletin}
-              </p>
-              <Link
-                href={`/proyecto/${it.boletin}`}
-                className="mt-1 inline-flex min-h-11 items-center text-sm underline underline-offset-2 text-accent-product"
+    <BentoTile variant="default" span={2} asChild>
+      <section className="p-6">
+        <h2 className="text-lg font-semibold mb-4">Urgencias vigentes</h2>
+        {items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No hay urgencias vigentes registradas esta semana.
+          </p>
+        ) : (
+          <ul>
+            {items.map((it, idx) => (
+              <li
+                key={`${it.boletin}-${idx}`}
+                className="border-t border-border pt-3 first:border-t-0 first:pt-0"
               >
-                Ver proyecto →
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Panel>
+                {/* Chip pill del tipo verbatim */}
+                <span className="inline-flex items-center px-[9px] py-0.5 font-mono text-[11px] font-medium text-accent-product bg-accent-product-soft rounded-full">
+                  {it.tipo}
+                </span>
+                <h3 className="mt-1 text-sm font-semibold leading-snug">
+                  {it.titulo ?? (
+                    <span className="font-mono">{it.boletin}</span>
+                  )}
+                </h3>
+                <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                  desde {fechaCorta(it.desde)}
+                </p>
+                <Link
+                  href={`/proyecto/${it.boletin}`}
+                  className="mt-1 inline-flex min-h-11 items-center text-sm underline underline-offset-2 text-accent-product"
+                >
+                  Ver proyecto →
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </BentoTile>
   );
 }
 
 export async function UrgenciasVigentes() {
   const sb = createServerSupabase();
 
-  // Bounded: eventos de urgencia (hace presente / retira) más recientes. Se lee un
-  // subconjunto acotado; `urgenciaVigente` deriva por boletín el último "hace
-  // presente" sin "retira" posterior dentro de la ventana.
+  // Bounded: eventos de urgencia más recientes.
   const { data, error } = await sb
     .from("tramitacion_evento")
     .select("*")
@@ -282,7 +296,7 @@ export async function UrgenciasVigentes() {
     if (urg) vigentes.push({ boletin, tipo: urg.tipo, desde: urg.desde });
   }
 
-  // Más recientes primero; acotado a un puñado (no es un ranking, es un corte).
+  // Más recientes primero; acotado a un puñado.
   vigentes.sort((a, b) => b.desde.getTime() - a.desde.getTime());
   const top = vigentes.slice(0, 6);
 
@@ -302,7 +316,7 @@ export async function UrgenciasVigentes() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// BLOQUE 3 — "Última actualización de datos" (max fecha_captura por fuente NO-PII)
+// BLOQUE 3 — "Última actualización de datos" strip span-6
 // ════════════════════════════════════════════════════════════════════════════
 
 export interface FrescuraItem {
@@ -311,24 +325,29 @@ export interface FrescuraItem {
 }
 
 export function UltimaActualizacionView({ items }: { items: FrescuraItem[] }) {
+  // OMITIR el tile cuando no hay datos (decisión Phase 78 — "condicional si no hay datos")
+  if (items.length === 0) return null;
+
   return (
-    <Panel>
-      <h2 className="text-xl font-semibold mb-4">Última actualización de datos</h2>
-      {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Aún no hay registros de actualización disponibles.
-        </p>
-      ) : (
-        <ul className="space-y-2 text-sm">
-          {items.map((it) => (
-            <li key={it.fuente}>
-              {it.fuente}: actualizada el{" "}
-              <span className="font-mono">{fechaCorta(it.fecha)}</span>.
-            </li>
-          ))}
-        </ul>
-      )}
-    </Panel>
+    <BentoTile variant="default" span={6} asChild>
+      <section className="py-[18px] px-6 flex items-center flex-wrap gap-y-2.5 gap-x-[22px]">
+        <span className="text-[13px] font-semibold text-foreground mr-1.5">
+          Última actualización de datos
+        </span>
+        {items.map((it) => (
+          <span key={it.fuente} className="inline-flex items-center gap-2">
+            <span
+              className="w-1.5 h-1.5 rounded-full bg-accent-product"
+              aria-hidden="true"
+            />
+            <span className="text-[13px] text-muted-foreground">{it.fuente}</span>
+            <span className="font-mono text-[13px] text-foreground">
+              {fechaCorta(it.fecha)}
+            </span>
+          </span>
+        ))}
+      </section>
+    </BentoTile>
   );
 }
 
@@ -373,8 +392,6 @@ export async function UltimaActualizacion() {
 }
 
 // ── Lookup de títulos de proyecto por boletín (tabla NO-PII) ────────────────────
-// Devuelve un Map boletín → título. Un error real se lanza (#34); un boletín sin
-// fila queda ausente del Map (el bloque muestra el boletín en su lugar).
 async function leerTitulos(
   sb: ReturnType<typeof createServerSupabase>,
   boletines: string[],
@@ -398,49 +415,4 @@ async function leerTitulos(
     if (t) mapa.set(r.boletin, t);
   }
   return mapa;
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// MÓDULO — compone los 3 bloques bajo el hero (grid stacked-en-móvil)
-// ════════════════════════════════════════════════════════════════════════════
-
-// Skeleton acotado por bloque (estado de carga honesto: NO afirma dato alguno).
-function BloqueSkeleton() {
-  return (
-    <div
-      className="rounded-lg border border-border bg-card p-6"
-      aria-hidden="true"
-    >
-      <div className="h-5 w-1/2 rounded bg-muted" />
-      <div className="mt-4 h-4 w-full rounded bg-muted" />
-      <div className="mt-2 h-4 w-3/4 rounded bg-muted" />
-    </div>
-  );
-}
-
-/**
- * Módulo de actualidad. Cada sub-bloque va bajo su propio `<Suspense>` para que
- * un bloque lento no bloquee a los otros (streaming independiente); cada uno
- * degrada a su empty-state honesto propio. Sin intro editorial: los 3 headings
- * (h2) se sostienen solos (52-UI-SPEC §SC4).
- */
-export function ActualidadModule() {
-  return (
-    <section
-      aria-label="Actualidad"
-      className="mx-auto max-w-5xl px-4 pb-16 md:px-8 md:pb-24"
-    >
-      <div className="grid gap-6 md:grid-cols-3">
-        <Suspense fallback={<BloqueSkeleton />}>
-          <VotadoEstaSemana />
-        </Suspense>
-        <Suspense fallback={<BloqueSkeleton />}>
-          <UrgenciasVigentes />
-        </Suspense>
-        <Suspense fallback={<BloqueSkeleton />}>
-          <UltimaActualizacion />
-        </Suspense>
-      </div>
-    </section>
-  );
 }

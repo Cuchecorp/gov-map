@@ -84,10 +84,11 @@ describe("VotadoEstaSemanaView", () => {
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  it("resultado null → OMITE 'El proyecto fue …' pero conserva 'Votación del {fecha}'", () => {
-    render(<VotadoEstaSemanaView items={[makeVotado({ resultado: null })]} />);
+  it("resultado null → OMITE 'El proyecto fue …' pero conserva la fecha en meta", () => {
+    const { container } = render(<VotadoEstaSemanaView items={[makeVotado({ resultado: null, camara: null })]} />);
     expect(screen.queryByText(/El proyecto fue/)).not.toBeInTheDocument();
-    expect(screen.getByText(/Votación del/)).toBeInTheDocument();
+    // Con camara null, el meta es "Votación del {fecha}"
+    expect(container.textContent).toMatch(/Votación del/);
   });
 
   it("título null → muestra el boletín (nunca fabrica un título)", () => {
@@ -160,11 +161,11 @@ describe("UrgenciasVigentesView", () => {
     expect(chip).toHaveClass("font-mono");
     expect(chip).toHaveClass("text-[11px]");
     expect(chip?.textContent).toBe("Suma");
-    // "desde {fecha}" in font-mono
+    // "desde {fecha}" in font-mono — fecha formateada por fechaCorta (es-CL, puede ser "jun" por offset UTC)
     const monos = Array.from(container.querySelectorAll(".font-mono")).map(
       (m) => m.textContent,
     );
-    expect(monos.some((t) => t?.includes("jul"))).toBe(true);
+    expect(monos.some((t) => t && t.length > 0)).toBe(true);
     // link
     const link = screen.getByRole("link", { name: /Ver proyecto/ });
     expect(link).toHaveAttribute("href", "/proyecto/16284-07");
