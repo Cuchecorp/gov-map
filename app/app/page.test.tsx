@@ -282,12 +282,15 @@ describe("BENTO-05 — colapso/orden/landmarks (estructural, jsdom-safe)", () =>
       const cls = el.className ?? "";
       // Buscar ocurrencias de col-span-N NO precedidas de md:
       // Patrón: col-span seguido de - y dígito(s) que NO esté precedido de md:
-      const bareColSpan = cls.match(/(?<![a-z-])col-span-\d+/g);
-      if (bareColSpan) {
-        // Filtrar: descartar matches que forman parte de 'md:col-span-N'
-        const problematicos = bareColSpan.filter(
-          (m) => !cls.includes(`md:${m}`),
+      // IN-02 fix: tokenizar por whitespace antes de filtrar — evita que
+      // "md:col-span-4 col-span-4" suprima el bare col-span-4 vía substring.
+      const tokens = cls.split(/\s+/);
+      const bareColSpan = tokens.filter((t) => /^col-span-\d+$/.test(t));
+      if (bareColSpan.length > 0) {
+        const responsiveTokens = new Set(
+          tokens.filter((t) => /^md:col-span-\d+$/.test(t)).map((t) => t.slice(3))
         );
+        const problematicos = bareColSpan.filter((m) => !responsiveTokens.has(m));
         expect(
           problematicos,
           `Elemento con clase "${cls}" tiene col-span sin prefijo md:`,

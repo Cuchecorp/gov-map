@@ -264,9 +264,13 @@ function escapeRegex(s: string): string {
  */
 function detectarInsinuaciones(rawContent: string): string[] {
   let texto = stripTsComments(rawContent);
+  // IN-03 fix: normalizar whitespace antes de restar negaciones LOCKED,
+  // para que JSX line-wrapping / espacios extra no impidan la sustracción.
+  texto = texto.replace(/\s+/g, " ");
   for (const neg of NEGACIONES_LOCKED) {
-    // Restar cada aparición literal de la negación LOCKED.
-    texto = texto.split(neg).join(" ");
+    // Restar cada aparición de la negación LOCKED (post-normalización).
+    const negNorm = neg.replace(/\s+/g, " ");
+    texto = texto.split(negNorm).join(" ");
   }
   const hits: string[] = [];
   for (const term of TERMINOS_PROHIBIDOS) {
