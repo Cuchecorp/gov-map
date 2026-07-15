@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: — Votos, dinero y cierre técnico
-status: executing
-stopped_at: Completed 73-03-PLAN.md
-last_updated: "2026-07-15T02:13:24.726Z"
+status: verifying
+stopped_at: Completed 73-04-PLAN.md (dossier ready for human review; sign-off + flip = operator debt)
+last_updated: "2026-07-15T02:19:35.616Z"
 last_activity: 2026-07-15
 progress:
   total_phases: 12
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 28
-  completed_plans: 25
-  percent: 58
+  completed_plans: 26
+  percent: 67
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 73 (DINERO P5e — Superficies MONEY gated + GATE LEGAL) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-15
 
 Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shipped)
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shi
 | Phase 72 P01 | 22min | 2 tasks | 2 files |
 | Phase 73 P02 | ~25m | 2 tasks | 8 files |
 | Phase 73 P03 | 10 | 2 tasks | 1 files |
+| Phase 73 P04 | 15 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,7 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 - 70-03 PENDIENTE operador-LOCAL (checkpoint human-action bloqueante): correr el backfill LIVE de ChileCompra por RUT (cuota 10k/día, ticket MERCADOPUBLICO_TICKET solo en .env, rate-limit 2-3s, partición multi-día reanudable vía --ruts-file/--dia + replay --from-r2). BLOQUEANTE DURO: RUT-01 (Phase 69) debe estar poblado primero (sin RUTs no hay universo). MONEY_PUBLIC_ENABLED se queda OFF hasta el flip legal de Phase 73. MONEY-01 NO cerrado. Ver 70-BACKFILL-CHILECOMPRA-RUNBOOK.md + 70-SPIKE-CUOTA-OCDS.md
 - 72-02 PENDIENTE operador-LOCAL (checkpoint blocking-human): aplicar la migracion aditiva 0052 al remoto PROD por `PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" --single-transaction -f supabase/migrations/0052_cruce_senal_lobby_sector_aporte.sql` (NUNCA supabase db push; BOM esquivado; UNA vez), verificar el constraint cruce_senal_tipo_senal_check contra pg_constraint ANTES del drop, correr el pgTAP `supabase/tests/0052_...test.sql` contra el schema APLICADO (7/7 ok, 0 not ok), y confirmar `count(*) where tipo_senal='lobby_sector_aporte'` = 0 HOY (vacio honesto: arista empresa->sector ausente + RUT-01/backfill pendientes, NO un bug). El agente NO toco PROD. MONEY_PUBLIC_ENABLED OFF hasta el flip legal de Phase 73. Resume-signal: "aplicado" (con pgTAP + count=0) o describir el fallo. Ver 72-APPLY-RUNBOOK.md
 - 71-03 PENDIENTE operador-LOCAL (checkpoint human-action blocking-human): poblar SERVEL POR ELECCION — obtener el .xlsx de financiamiento electoral a mano desde SERVEL, colocarlo en R2 content-addressed servel/<eleccion>/<fecha_corte>/<sha>.xlsx (Etapa 1 = acto humano), y correr run-servel-local-cli.ts --eleccion <slug> --r2-path <r2Path> [--anio YYYY] (Etapa 2, lee de R2, 0 fetch). SERVEL NO trae RUT (cruce por NOMBRE determinista) -> RUT-01 NO es prerrequisito. MONEY-02 NO cerrado; MONEY_PUBLIC_ENABLED OFF hasta flip legal Phase 73. Ver 71-BACKFILL-SERVEL-RUNBOOK.md
+- MONEY (Phase 73) gated OFF pendiente de 3 actos de operador exclusivos (deuda F13): (1) cold-read BrowserOS comprensible en gated-preview; (2) sign-off legal 21.719 -> signoff: approved en docs/legal/13-LEGAL-DOSSIER.md; (3) flip MONEY_PUBLIC_ENABLED=true en prod SOLO tras approved. El agente no firma ni flipea.
 
 ### Quick Tasks Completed
 
@@ -135,8 +137,8 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-15T02:13:24.530Z
-Stopped at: Completed 73-03-PLAN.md
+Last session: 2026-07-15T02:19:35.604Z
+Stopped at: Completed 73-04-PLAN.md (dossier ready for human review; sign-off + flip = operator debt)
 Resume file: None
 
 ## Operator Next Steps
