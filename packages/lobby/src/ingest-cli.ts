@@ -27,6 +27,12 @@ import {
 } from "./ingest-run";
 import type { ReconciliarSujetoOpts } from "./reconciliar-sujeto";
 import type { DriftStore } from "@obs/ingest";
+import {
+  avanzarCursor as avanzarCursorPuro,
+  cursorInicial,
+  deriveTarea,
+  type CursorLeylobby,
+} from "./cursor-leylobby";
 
 const DEFAULT_INSTITUCION = "AA001";
 
@@ -138,10 +144,6 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
     "";
 
   const institucion = opts.institucion ?? DEFAULT_INSTITUCION;
-  const anio = opts.anio ?? new Date().getFullYear();
-  const nPaginas = opts.paginas ?? 1; // corrida ACOTADA por defecto
-  const pages = Array.from({ length: nPaginas }, (_v, i) => i + 1);
-  const tareas: TareaInstitucion[] = [{ institucionCodigo: institucion, year: anio, pages }];
 
   const dryRun = opts.dryRun === true || serviceKey.length === 0 || url.length === 0;
   if (opts.dryRun !== true && (serviceKey.length === 0 || url.length === 0)) {
@@ -192,6 +194,29 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
     if (!opts.writer) log(`ingest-lobby: writer Supabase (${url}) — upsert idempotente`);
   }
 
+  // Derivación de tareas (DEBT-02):
+  //   * Override explícito (--anio/--paginas): corrida DIRIGIDA del operador → NO consulta el cursor.
+  //   * Sin override + writer real (no dry-run): LEE el cursor durable (leylobby_cursor_estado) y
+  //     deriva la tarea de UNA página; tras corrida exitosa AVANZA + persiste (más abajo).
+  //   * Sin override + dry-run: default histórico (año actual, página 1) sin tocar el cursor.
+  const overrideExplicito = opts.anio !== undefined || opts.paginas !== undefined;
+  const usaCursor = !overrideExplicito && !dryRun;
+
+  let tareas: TareaInstitucion[];
+  let cursorPrevio: CursorLeylobby | null = null;
+  if (usaCursor) {
+    cursorPrevio = (await writer.leerCursor(institucion)) ?? cursorInicial(institucion);
+    tareas = [deriveTarea(cursorPrevio)];
+    log(
+      `ingest-lobby: cursor ${institucion} → año ${cursorPrevio.anio} pág ${cursorPrevio.pagina}`,
+    );
+  } else {
+    const anio = opts.anio ?? new Date().getFullYear();
+    const nPaginas = opts.paginas ?? 1; // corrida ACOTADA por defecto
+    const pages = Array.from({ length: nPaginas }, (_v, i) => i + 1);
+    tareas = [{ institucionCodigo: institucion, year: anio, pages }];
+  }
+
   const res = await runIngestLobby({
     conector,
     writer,
@@ -210,6 +235,26 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
   );
   for (const e of res.errores) log(`ingest-lobby: ERROR [${e.fuente}/${e.clave}]: ${e.mensaje}`);
   for (const d of res.degradaciones) log(`ingest-lobby: DEGRADA [${d.fuente}]: ${d.motivo}`);
+
+  // Avance del cursor (DEBT-02, Pitfall 4 / T-74-02): SOLO en modo cursor (no override, no dry-run)
+  // y DESPUÉS de una corrida exitosa. `huboDatos = res.audiencias > 0` → una corrida que degrada
+  // (403/503 → degradaciones, audiencias===0) NO avanza el cursor (avanzarCursorPuro devuelve el
+  // mismo cursor cuando huboDatos=false, así que no se persiste un avance falso).
+  if (usaCursor && cursorPrevio) {
+    const huboDatos = res.audiencias > 0;
+    const siguiente = avanzarCursorPuro(cursorPrevio, { huboDatos });
+    if (huboDatos) {
+      await writer.avanzarCursor(siguiente);
+      log(
+        `ingest-lobby: cursor avanzado → año ${siguiente.anio} pág ${siguiente.pagina}`,
+      );
+    } else {
+      log(
+        `ingest-lobby: cursor NO avanza (sin datos: ${res.degradaciones.length} degradaciones) — ` +
+          `permanece en año ${cursorPrevio.anio} pág ${cursorPrevio.pagina}`,
+      );
+    }
+  }
 
   return {
     ...res,

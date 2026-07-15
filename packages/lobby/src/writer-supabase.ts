@@ -17,6 +17,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { LobbyWriter } from "./writer";
 import type { AudienciaParaEscribir } from "./reconciliar-sujeto";
+import type { CursorLeylobby } from "./cursor-leylobby";
 
 export interface SupabaseLobbyWriterOptions {
   /** URL de Supabase (remoto sa-east-1 o local). */
@@ -120,5 +121,31 @@ export class SupabaseLobbyWriter implements LobbyWriter {
         .upsert(lote, { onConflict: "parlamentario_id", ignoreDuplicates: false });
       if (error) throw new Error(`upsert lobby_ingesta_estado falló: ${error.message}`);
     }
+  }
+
+  async leerCursor(institucionCodigo: string): Promise<CursorLeylobby | null> {
+    const { data, error } = await this.client
+      .from("leylobby_cursor_estado")
+      .select("institucion_codigo, anio, pagina")
+      .eq("institucion_codigo", institucionCodigo)
+      .maybeSingle();
+    // error.message de PostgREST NUNCA contiene la service key (T-07-06 / T-74-03).
+    if (error) throw new Error(`leer leylobby_cursor_estado falló: ${error.message}`);
+    if (!data) return null;
+    const row = data as { institucion_codigo: string; anio: number; pagina: number };
+    return { institucionCodigo: row.institucion_codigo, anio: row.anio, pagina: row.pagina };
+  }
+
+  async avanzarCursor(cursor: CursorLeylobby): Promise<void> {
+    const fila = {
+      institucion_codigo: cursor.institucionCodigo,
+      anio: cursor.anio,
+      pagina: cursor.pagina,
+    };
+    const { error } = await this.client
+      .from("leylobby_cursor_estado")
+      .upsert(fila, { onConflict: "institucion_codigo", ignoreDuplicates: false });
+    // Solo error.message (nunca la service key — T-07-06 / T-74-03).
+    if (error) throw new Error(`upsert leylobby_cursor_estado falló: ${error.message}`);
   }
 }
