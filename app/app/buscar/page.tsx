@@ -208,7 +208,7 @@ function ResultadosSkeleton() {
   return (
     <div className="mt-6 space-y-4" aria-hidden="true">
       {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
+        <Card key={i} className="rounded-[var(--radius-tile)]">
           <CardHeader className="pb-2">
             <div className="flex gap-2">
               <Skeleton className="h-5 w-20 rounded-full" />
