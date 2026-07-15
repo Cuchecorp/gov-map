@@ -32,6 +32,14 @@ export interface FuenteConfig {
   umbralDias: number;
   overrideEnv: string;
   workflowYml: string;
+  /**
+   * Agregado SQL de la señal de último upsert. Default MAX (última ingesta) — TODAS las
+   * fuentes v6.0 lo OMITEN → conservan MAX sin cambio. Solo `leyes-min-edad` usa "MIN"
+   * (proyecto MÁS VIEJO sin refrescar) para revelar la rotación/dilución (SC#4). El campo
+   * es opcional y aditivo: `queryFreshness` construye la SQL con `cfg.agregado ?? "MAX"`,
+   * por lo que agregarlo NO regresiona ninguna entrada existente.
+   */
+  agregado?: "MAX" | "MIN";
 }
 
 /**
@@ -216,6 +224,31 @@ export const CATALOG: FuenteConfig[] = [
     umbralDias: 7,
     overrideEnv: "FRESHNESS_UMBRAL_LEYES",
     workflowYml: "leyes-weekly.yml",
+  },
+  {
+    // leyes-min-edad (SC#4) — señal de EDAD-MÍNIMA del corpus de proyectos.
+    //
+    // POR QUÉ MIN y no MAX: la entrada `leyes` de arriba mide MAX(fecha_captura) → el
+    // ÚLTIMO upsert. Un solo refresh del cron leyes-weekly la pone verde, aunque ~3.657
+    // proyectos lleven MESES sin tocar (T-74-11: cobertura falsa). MIN(fecha_captura)
+    // mide el proyecto MÁS VIEJO sin refrescar → si la rotación round-robin del plan
+    // 74-02 (cursor leyes_rotacion_estado) NO cubrió la cola, esta señal se pone stale y
+    // la dilución se hace VISIBLE. Un solo refresh NO puede ponerla verde: hay que rotar
+    // el corpus entero para que el proyecto más viejo entre en umbral.
+    //
+    // umbral 45d GENEROSO: la rotación cubre la cola en ceil(cola/porRonda) corridas
+    // semanales; 45d (~6-7 semanas) da margen para una vuelta completa sin declarar
+    // stale de más. Override por FRESHNESS_UMBRAL_LEYES_MIN_EDAD.
+    //
+    // ADITIVA: reusa el mismo pipeline evaluate() (stale = null|días>umbral, fail-closed).
+    // MIN nulo/ilegible → stale (misma regla honesta). NO toca la entrada `leyes` (MAX).
+    fuente: "leyes-min-edad",
+    tabla: "proyecto",
+    columna: "fecha_captura",
+    umbralDias: 45,
+    overrideEnv: "FRESHNESS_UMBRAL_LEYES_MIN_EDAD",
+    workflowYml: "leyes-weekly.yml",
+    agregado: "MIN",
   },
   {
     fuente: "agenda",

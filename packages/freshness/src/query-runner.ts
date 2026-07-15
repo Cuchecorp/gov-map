@@ -129,8 +129,13 @@ function r2SnapshotSignal(dbUrl: string, fuente: string): string {
 
 export async function queryFreshness(dbUrl: string): Promise<QueryRow[]> {
   return CATALOG.map((cfg) => {
-    // (a) Último upsert en Supabase
-    const sql = `SELECT MAX(${cfg.columna}) FROM ${cfg.tabla};`;
+    // (a) Último upsert en Supabase. Agregado por entrada: MAX (default, último upsert)
+    // salvo `leyes-min-edad` que usa MIN (proyecto más viejo sin refrescar → SC#4). El
+    // valor sale del enum cerrado FuenteConfig.agregado ("MAX"|"MIN"), NO de input externo
+    // → sin superficie de inyección (T-68-03 preservado). `cfg.agregado ?? "MAX"` deja las
+    // entradas existentes IDÉNTICAS (todas omiten `agregado`).
+    const agregado = cfg.agregado ?? "MAX";
+    const sql = `SELECT ${agregado}(${cfg.columna}) FROM ${cfg.tabla};`;
     const raw = psql(dbUrl, sql);
     const ultimoUpsert =
       !raw || raw === "" || raw.toLowerCase() === "null" ? null : raw;
