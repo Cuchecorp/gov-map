@@ -6,6 +6,7 @@ import {
   type ContratosPorContraparteViewData,
   type ContratoContraparteRow,
 } from "./contratos-por-contraparte";
+import { LEYENDA_ANTI_INSINUACION_MONEY } from "@/lib/money-presentacion";
 
 afterEach(cleanup);
 
@@ -52,6 +53,39 @@ function makeViewData(
     ...overrides,
   };
 }
+
+// ── Leyenda anti-insinuación MONEY (MONEY-04): 1× por estado, constante única ────
+describe("ContratosPorContraparteView — leyenda anti-insinuación MONEY (MONEY-04)", () => {
+  const estados: ReadonlyArray<[string, Partial<ContratosPorContraparteViewData>]> = [
+    ["no_consultado", { estado: "no_consultado", contratos: [], totalContratos: 0 }],
+    ["con_contratos", {}],
+  ];
+
+  it.each(estados)(
+    "renderiza la leyenda MONEY EXACTAMENTE 1× en el estado %s (no duplicada por fila)",
+    (_nombre, overrides) => {
+      render(<ContratosPorContraparteView data={makeViewData(overrides)} />);
+      expect(
+        screen.getAllByText(LEYENDA_ANTI_INSINUACION_MONEY).length,
+      ).toBe(1);
+    },
+  );
+
+  it("con múltiples filas la leyenda sigue 1× al tope del carril (no por fila)", () => {
+    render(
+      <ContratosPorContraparteView
+        data={makeViewData({
+          contratos: [
+            makeContrato({ codigo_orden: "C1" }),
+            makeContrato({ codigo_orden: "C2" }),
+          ],
+          totalContratos: 2,
+        })}
+      />,
+    );
+    expect(screen.getAllByText(LEYENDA_ANTI_INSINUACION_MONEY).length).toBe(1);
+  });
+});
 
 // ── (a) Conteo neutral + filas (estado con_contratos) ───────────────────────────
 describe("ContratosPorContraparteView — conteo neutral + filas", () => {

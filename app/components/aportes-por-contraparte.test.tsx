@@ -6,6 +6,7 @@ import {
   type AportesPorContraparteViewData,
   type AporteContraparteRow,
 } from "./aportes-por-contraparte";
+import { LEYENDA_ANTI_INSINUACION_MONEY } from "@/lib/money-presentacion";
 
 afterEach(cleanup);
 
@@ -18,6 +19,14 @@ const CAUSAL_RE =
 // RUT que NUNCA debe aparecer (el donante AQUÍ es la empresa = sujeto de página; su
 // RUT no se proyecta — disciplina Ley 21.719).
 const DONANTE_RUT = "77999888-1";
+
+// La leyenda MONEY (constante única) menciona "vínculo por RUT" COMO CONCEPTO
+// genérico y lo NIEGA; es legítima en TODA superficie. El invariante de ESTA página
+// (base NOMBRE) es que NINGÚN dato propio rotule el enlace "por RUT" — restamos la
+// leyenda del texto antes de matchear /RUT/ para no cazar el término dentro de ella.
+function sinLeyenda(texto: string): string {
+  return texto.split(LEYENDA_ANTI_INSINUACION_MONEY).join("");
+}
 
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 function makeAporte(
@@ -53,6 +62,42 @@ function makeViewData(
     ...overrides,
   };
 }
+
+// ── Leyenda anti-insinuación MONEY (MONEY-04): 1× por estado, base NOMBRE ────────
+describe("AportesPorContraparteView — leyenda anti-insinuación MONEY (MONEY-04)", () => {
+  const estados: ReadonlyArray<[string, Partial<AportesPorContraparteViewData>]> = [
+    ["no_consultado", { estado: "no_consultado", aportes: [], totalAportes: 0 }],
+    ["con_aportes", {}],
+  ];
+
+  it.each(estados)(
+    "renderiza la leyenda MONEY EXACTAMENTE 1× en el estado %s (no duplicada por fila)",
+    (_nombre, overrides) => {
+      render(<AportesPorContraparteView data={makeViewData(overrides)} />);
+      expect(
+        screen.getAllByText(LEYENDA_ANTI_INSINUACION_MONEY).length,
+      ).toBe(1);
+    },
+  );
+
+  it("con múltiples filas la leyenda sigue 1×; la copy propia no rotula 'por RUT' (base nombre)", () => {
+    const { container } = render(
+      <AportesPorContraparteView
+        data={makeViewData({
+          aportes: [
+            makeAporte({ fila_id: "a1" }),
+            makeAporte({ fila_id: "a2" }),
+          ],
+          totalAportes: 2,
+        })}
+      />,
+    );
+    expect(screen.getAllByText(LEYENDA_ANTI_INSINUACION_MONEY).length).toBe(1);
+    // Base NOMBRE: restada la leyenda genérica, la copy propia no rotula "por RUT".
+    const texto = sinLeyenda(container.textContent ?? "");
+    expect(texto).not.toMatch(/por RUT/i);
+  });
+});
 
 // ── (a) Conteo neutral + filas + agrupación por elección ─────────────────────────
 describe("AportesPorContraparteView — conteo neutral + agrupación", () => {
@@ -116,8 +161,10 @@ describe("AportesPorContraparteView — provenance por fila", () => {
 describe("AportesPorContraparteView — el RUT del donante NUNCA aparece", () => {
   it("no renderiza el RUT del donante (Ley 21.719)", () => {
     const { container } = render(<AportesPorContraparteView data={makeViewData()} />);
-    const texto = container.textContent ?? "";
+    const texto = sinLeyenda(container.textContent ?? "");
     expect(texto).not.toContain(DONANTE_RUT);
+    // "RUT" no aparece en la copy propia de la página (la leyenda MONEY genérica,
+    // que lo menciona conceptualmente, se restó): base NOMBRE, nunca conflada con RUT.
     expect(texto).not.toMatch(/RUT/i);
   });
 });

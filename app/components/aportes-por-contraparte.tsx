@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { createServerSupabase } from "@/lib/supabase";
 import { moneyPublicEnabled } from "@/lib/money-gate";
+import { LEYENDA_ANTI_INSINUACION_MONEY } from "@/lib/money-presentacion";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { fechaCorta } from "@/lib/format";
 import {
@@ -111,6 +112,18 @@ function encabezadoEleccion(eleccion: string): string {
 function buildHref(id: string, page: number): string {
   const qs = new URLSearchParams({ aportesPage: String(page) }).toString();
   return `/contraparte/${encodeURIComponent(id)}?${qs}#aportes`;
+}
+
+// ── Leyenda anti-insinuación MONEY (MONEY-04, UI-SPEC §Leyenda) ─────────────────
+// Primer hijo de CADA rama de estado del carril, ENCIMA del Intro. Constante ÚNICA
+// importada (nunca inline duplicada). Base NOMBRE: el enlace del aporte JAMÁS se
+// rotula "por RUT" (la leyenda general habla del "vínculo por RUT" como concepto).
+function LeyendaMoney() {
+  return (
+    <p className="text-sm text-muted-foreground border-l-[3px] border-[--primary] pl-2.5 mb-4">
+      {LEYENDA_ANTI_INSINUACION_MONEY}
+    </p>
+  );
 }
 
 // ── Intro honesta (frame + atribución SERVEL "términos de uso por verificar") ───
@@ -229,6 +242,7 @@ export function AportesPorContraparteView({
   if (estado === "no_consultado") {
     return (
       <>
+        <LeyendaMoney />
         <Intro />
         <p className="text-sm text-muted-foreground">
           Aún no hemos consolidado los aportes de SERVEL para esta empresa. Esto no
@@ -242,6 +256,7 @@ export function AportesPorContraparteView({
   const grupos = agruparPorEleccion(aportes);
   return (
     <div>
+      <LeyendaMoney />
       <Intro />
 
       {/* Conteo NEUTRAL (único agregado permitido) — sin suma de montos, sin ranking. */}

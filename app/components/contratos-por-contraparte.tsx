@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { createServerSupabase } from "@/lib/supabase";
 import { moneyPublicEnabled } from "@/lib/money-gate";
+import { LEYENDA_ANTI_INSINUACION_MONEY } from "@/lib/money-presentacion";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { fechaCorta } from "@/lib/format";
 import {
@@ -100,6 +101,17 @@ function buildHref(id: string, page: number): string {
   return `/contraparte/${encodeURIComponent(id)}?${qs}#contratos`;
 }
 
+// ── Leyenda anti-insinuación MONEY (MONEY-04, UI-SPEC §Leyenda) ─────────────────
+// Primer hijo de CADA rama de estado del carril, ENCIMA del Intro. Constante ÚNICA
+// importada (nunca inline duplicada). Tratamiento LOCKED del rail petróleo.
+function LeyendaMoney() {
+  return (
+    <p className="text-sm text-muted-foreground border-l-[3px] border-[--primary] pl-2.5 mb-4">
+      {LEYENDA_ANTI_INSINUACION_MONEY}
+    </p>
+  );
+}
+
 // ── Intro honesta (frame + atribución ChileCompra "mención de la fuente") ───────
 function Intro() {
   return (
@@ -185,6 +197,7 @@ export function ContratosPorContraparteView({
   if (estado === "no_consultado") {
     return (
       <>
+        <LeyendaMoney />
         <Intro />
         <p className="text-sm text-muted-foreground">
           Aún no hemos consolidado los contratos de ChileCompra para esta empresa.
@@ -197,6 +210,7 @@ export function ContratosPorContraparteView({
   // Estado — Con contratos: conteo neutral + lista paginada.
   return (
     <div>
+      <LeyendaMoney />
       <Intro />
 
       {/* Conteo NEUTRAL (único agregado permitido) — sin suma de montos, sin ranking. */}
