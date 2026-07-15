@@ -20,8 +20,9 @@ import { Button } from "@/components/ui/button";
  * `/buscar?q=`.
  *
  * Variantes (Fase 21 SC1 — paridad con el mockup de la landing, UI-SPEC §11.1):
- *  - `variant="hero"`: CTA petróleo "Buscar proyectos", input alto, foco petróleo
- *    (la caja ES el héroe). `variant="default"`: barra persistente "Buscar".
+ *  - `variant="hero"`: CTA petróleo "Buscar proyectos", input 52px +
+ *    `rounded-[var(--radius-control)]` (sizing introducido en Phase 77-01).
+ *    `variant="default"`: barra persistente "Buscar", h-12 + `rounded-md`.
  *  - `exampleChips`: las 4 pills LOCKED bajo la caja; al clicar prefijan + envían
  *    la consulta reutilizando el MISMO camino de navegación (no hay router.push
  *    paralelo). La pill de boletín se renderiza en Mono (UI-SPEC §6).
