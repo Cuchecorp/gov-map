@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: — Rediseño Bento
 status: Scaffolding listo; arrancar con /gsd-autonomous --from 76 --to 81 (PROMPT-v8.0-build-autonomo.md)
-stopped_at: Phase 79 complete (verified 5/5, review fixed, ui 24/24, capturas archivadas)
-last_updated: "2026-07-15T17:52:29.935Z"
+stopped_at: Phase 80 complete (verified 5/5, guards endurecidos, 917 tests)
+last_updated: "2026-07-15T18:52:44.846Z"
 last_activity: 2026-07-15
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
-  percent: 67
+  completed_phases: 5
+  total_plans: 10
+  completed_plans: 10
+  percent: 83
 ---
 
 # Project State
@@ -147,8 +147,8 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-15T17:52:29.919Z
-Stopped at: Phase 79 complete (verified 5/5, review fixed, ui 24/24, capturas archivadas)
+Last session: 2026-07-15T18:52:44.815Z
+Stopped at: Phase 80 complete (verified 5/5, guards endurecidos, 917 tests)
 Resume file: .planning/ROADMAP.md
 
 ## Operator Next Steps
