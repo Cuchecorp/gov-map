@@ -23,7 +23,7 @@
  * sin el strip, un hex en JSDoc daría falso positivo y una URL truncaría la línea.
  */
 
-import { readFileSync, globSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -466,10 +466,21 @@ function detectarBareVarShorthand(contenido: string): string[] {
 
 describe("(A) cero-bare-var-shorthand — app/components/** sin tests", () => {
   const componentsDir = path.join(APP_ROOT, "components");
-  // Recopilar todos los .tsx/.ts excluyendo archivos de test
-  const files = globSync("**/*.{tsx,ts}", { cwd: componentsDir })
-    .filter((f: string) => !f.includes(".test."))
-    .map((f: string) => path.join(componentsDir, f));
+  // Recopilar todos los .tsx/.ts excluyendo archivos de test (recursive walk)
+  function walkTsx(dir: string): string[] {
+    const entries = readdirSync(dir);
+    const result: string[] = [];
+    for (const entry of entries) {
+      const full = path.join(dir, entry);
+      if (statSync(full).isDirectory()) {
+        result.push(...walkTsx(full));
+      } else if (/\.(tsx|ts)$/.test(entry) && !entry.includes(".test.")) {
+        result.push(full);
+      }
+    }
+    return result;
+  }
+  const files = walkTsx(componentsDir);
 
   for (const fullPath of files) {
     const rel = path.relative(APP_ROOT, fullPath);

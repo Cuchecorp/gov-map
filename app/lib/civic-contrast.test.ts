@@ -84,7 +84,7 @@ function contrastRatio(l1: number, l2: number): number {
  */
 function parseDarkHsl(css: string, tokenName: string): [number, number, number] {
   // Aislar el contenido del bloque .dark { … }
-  const darkMatch = css.match(/\.dark\s*\{([^}]+)\}/s);
+  const darkMatch = css.match(/\.dark\s*\{([\s\S]+?)\}/);
   if (!darkMatch) throw new Error("Bloque .dark no encontrado en el CSS");
   const darkBlock = darkMatch[1];
 
@@ -105,7 +105,7 @@ function parseDarkHsl(css: string, tokenName: string): [number, number, number] 
  * ya que la variable se usa como `hsl(var(--card))`.
  */
 function parseDarkCardHsl(globalsContent: string): [number, number, number] {
-  const darkMatch = globalsContent.match(/\.dark\s*\{([^}]+)\}/s);
+  const darkMatch = globalsContent.match(/\.dark\s*\{([\s\S]+?)\}/);
   if (!darkMatch) throw new Error("Bloque .dark no encontrado en globals.css");
   const darkBlock = darkMatch[1];
 
