@@ -1,0 +1,37 @@
+# Requirements — v8.1 "Demo perfecto"
+
+**Defined:** 2026-07-15 · **Origen:** lectura fría del operador sobre v8.0 ("no está exactamente igual, los textos son distintos… problemas con el cron… revisión completa… elimina deuda técnica… listo para mostrarlo, de modo perfecto y con los cron bien (son ilimitados porque el repo es público). revisa seguridad también.")
+
+## Decisión del operador (2026-07-15) — ANULA D1 de v8.0
+
+- **Los textos de la home ADOPTAN el mockup** (respuesta explícita "Adoptar textos del mockup" vía AskUserQuestion): h1 "Busca cualquier proyecto de ley por tema o número de boletín" + subtítulo del mockup + botón "Buscar". El copy firmado anterior ("Qué pasó con cada proyecto…") queda ARCHIVADO como decisión histórica.
+- **Excepción dura:** el texto del tile verde del mockup ("Las correlaciones no son indicativas de irregularidades…") está PROHIBIDO por el linter anti-insinuación (términos "correlaciones"/"irregularidades") → se usa variante linter-safe equivalente. El operador fue informado de esta excepción al decidir.
+
+## v8.1 Requirements
+
+- [ ] **DEMO-01**: La home usa los textos del mockup (h1, subtítulo, botón "Buscar", tile verde con variante linter-safe); tests de copy actualizados al nuevo copy firmado; linter anti-insinuación verde; el resto del layout bento intacto.
+- [ ] **DEMO-02**: Todos los crons quedan sanos y los datos frescos: (a) `lobby-camara-weekly` y `probidad-weekly` reparados o convertidos en fail-loud documentado con runbook local si la fuente bloquea CI; (b) votaciones/tramitación con cadencia diaria L-V (minutos ilimitados — repo público); (c) la fuente que deja "Actualizado 20 jun" en fichas Senado identificada y con refresco programado; (d) toda fuente visible en el sitio tiene su refresco mapeado (matriz fuente→workflow→cadencia en docs).
+- [ ] **DEMO-03**: Deuda técnica registrada eliminada o convertida en test: tech debt del audit v8.0 (contraste dark barra cívica con test de ratio), deuda P3 de /red si es code-side barata, y hallazgos de la revisión completa del sitio (rutas, estados vacíos, textos) — cada ítem cerrado o documentado con razón.
+- [ ] **DEMO-04**: Revisión de seguridad completa sin hallazgos críticos abiertos (superficie pública Supabase/RLS posture, headers del worker, secrets en workflows/logs, CodeQL al día) + deploy final verde con verificación visual y suite completa.
+
+## Out of Scope (v8.1)
+
+| Feature | Reason |
+|---------|--------|
+| Gates legales/operador v7.0 (RUT-01 write, flip MONEY) | Son decisiones legales del operador — `HANDOFF-v7.0-operator-gates.md` |
+| Datos inventados en "Votado esta semana" | El tile se llena con la cadencia diaria real; jamás con placeholders |
+| Re-layout de rutas interiores | v9 |
+
+## Traceability (v8.1)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| DEMO-01 | Phase 82 | Pending |
+| DEMO-02 | Phase 83 | Pending |
+| DEMO-03 | Phase 84 | Pending |
+| DEMO-04 | Phase 85 | Pending |
+
+**Coverage:** 4/4 mapped (Phases 82-85)
+
+---
+*v8.1 requirements defined: 2026-07-15 (decisión copy-mockup del operador incluida)*
