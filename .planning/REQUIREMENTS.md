@@ -111,13 +111,13 @@ Se completa durante la creación del roadmap (gsd-roadmapper). Cada requisito ma
 
 ## v8 Requirements
 
-- [ ] **BENTO-01**: Existen las primitivas bento (`BentoGrid` 6-col gap 14px, `BentoTile` variants default/accent con spans 2/4/6, tokens `--radius-tile` 16px + `--radius-control` 11px) y el chrome global del mockup (header sticky con contenedor 1120px, footer border-top sin fondo) — sin cambiar aún el layout interno de ninguna página.
-- [ ] **BENTO-02**: La mitad superior de la home es el bento del mockup: hero span-4 (kicker Geist Mono uppercase + copy LOCKED intacto + SearchBox reestilada + pills LOCKED a 44px), tile acento teal "¿Cómo leer esto?" span-2 (copy alineado a /sobre, CTA a metodología), y 3 tarjetas de entrada span-2 con marcador diamante + flecha →.
-- [ ] **BENTO-03**: La actualidad vive como tiles del grid: "Votado esta semana" span-4 (barra 3px por cámara con civic tokens, tally mono, "Fuente ↗" por ítem), "Urgencias vigentes" span-2 (chip pill tipo suma/simple), strip "Última actualización" span-6 — mismas queries/RPCs de hoy, empty states honestos, el ActualidadModule lineal viejo retirado.
-- [ ] **BENTO-04**: Las rutas interiores reciben coherencia ACOTADA (contenedor 1120px + `--radius-tile` en tarjetas de primer nivel) sin re-layout interno; `/red` tratado como decisión consciente con verificación visual propia si el ancho cambia.
-- [ ] **BENTO-05**: El bento es responsive (colapso ≤md a 1 columna con orden definido), accesible (focus-visible, contraste AA en tile acento, 44px touch targets, landmarks) y tiene par dark derivado de los tokens dark existentes.
-- [ ] **BENTO-06**: Candados de régimen verdes y mordiendo (mutation self-check): cero-hex-hardcodeado en componentes bento, guard tipográfico extendido a tiles, linter anti-insinuación cubre el copy nuevo de home si roza votos/dinero.
-- [ ] **BENTO-07**: El bento está EN VIVO (deploy Docker+wrangler) con verificación visual BrowserOS archivada (home desktop/móvil vs mockup, 1 ruta interior por tipo, `/red` no-regresión) y el gate humano de lectura fría queda documentado como handoff si el operador no está presente.
+- [x] **BENTO-01**: Existen las primitivas bento (`BentoGrid` 6-col gap 14px, `BentoTile` variants default/accent con spans 2/4/6, tokens `--radius-tile` 16px + `--radius-control` 11px) y el chrome global del mockup (header sticky con contenedor 1120px, footer border-top sin fondo) — sin cambiar aún el layout interno de ninguna página.
+- [x] **BENTO-02**: La mitad superior de la home es el bento del mockup: hero span-4 (kicker Geist Mono uppercase + copy LOCKED intacto + SearchBox reestilada + pills LOCKED a 44px), tile acento teal "¿Cómo leer esto?" span-2 (copy alineado a /sobre, CTA a metodología), y 3 tarjetas de entrada span-2 con marcador diamante + flecha →.
+- [x] **BENTO-03**: La actualidad vive como tiles del grid: "Votado esta semana" span-4 (barra 3px por cámara con civic tokens, tally mono, "Fuente ↗" por ítem), "Urgencias vigentes" span-2 (chip pill tipo suma/simple), strip "Última actualización" span-6 — mismas queries/RPCs de hoy, empty states honestos, el ActualidadModule lineal viejo retirado.
+- [x] **BENTO-04**: Las rutas interiores reciben coherencia ACOTADA (contenedor 1120px + `--radius-tile` en tarjetas de primer nivel) sin re-layout interno; `/red` tratado como decisión consciente con verificación visual propia si el ancho cambia.
+- [x] **BENTO-05**: El bento es responsive (colapso ≤md a 1 columna con orden definido), accesible (focus-visible, contraste AA en tile acento, 44px touch targets, landmarks) y tiene par dark derivado de los tokens dark existentes.
+- [x] **BENTO-06**: Candados de régimen verdes y mordiendo (mutation self-check): cero-hex-hardcodeado en componentes bento, guard tipográfico extendido a tiles, linter anti-insinuación cubre el copy nuevo de home si roza votos/dinero.
+- [x] **BENTO-07**: El bento está EN VIVO (deploy Docker+wrangler) con verificación visual BrowserOS archivada (home desktop/móvil vs mockup, 1 ruta interior por tipo, `/red` no-regresión) y el gate humano de lectura fría queda documentado como handoff si el operador no está presente.
 
 ## Decisiones D1-D4 (RESUELTAS por delegación del operador, 2026-07-15 — "corra entero de modo autónomo")
 
@@ -140,13 +140,13 @@ Se completa durante la creación del roadmap (gsd-roadmapper). Cada requisito ma
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BENTO-01 | Phase 76 | Pending |
-| BENTO-02 | Phase 77 | Pending |
-| BENTO-03 | Phase 78 | Pending |
-| BENTO-04 | Phase 79 | Pending |
-| BENTO-05 | Phase 80 | Pending |
-| BENTO-06 | Phase 80 | Pending |
-| BENTO-07 | Phase 81 | Pending |
+| BENTO-01 | Phase 76 | Complete |
+| BENTO-02 | Phase 77 | Complete |
+| BENTO-03 | Phase 78 | Complete |
+| BENTO-04 | Phase 79 | Complete |
+| BENTO-05 | Phase 80 | Complete |
+| BENTO-06 | Phase 80 | Complete |
+| BENTO-07 | Phase 81 | Complete |
 
 **Coverage:** 7/7 mapped (Phases 76-81) · Unmapped: 0 · Orphaned: 0
 
