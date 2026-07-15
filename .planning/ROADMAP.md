@@ -146,8 +146,8 @@ Plans:
 
 Plans:
 
-- [ ] 80-01-PLAN.md — Fixes a11y/dark/candado (aria-label SearchBox, BrandIcon→currentColor, par dark barra cívica) + test estructural home (colapso ≤md/orden DOM/landmarks) [BENTO-05]
-- [ ] 80-02-PLAN.md — 3 candados de régimen con mutation self-check: cero-hex + guard tipográfico (bento-guards.test.ts) + linter anti-insinuación extendido a home (SUPERFICIES_HOME) [BENTO-06]
+- [x] 80-01-PLAN.md — Fixes a11y/dark/candado (aria-label SearchBox, BrandIcon→currentColor, par dark barra cívica) + test estructural home (colapso ≤md/orden DOM/landmarks) [BENTO-05]
+- [x] 80-02-PLAN.md — 3 candados de régimen con mutation self-check: cero-hex + guard tipográfico (bento-guards.test.ts) + linter anti-insinuación extendido a home (SUPERFICIES_HOME) [BENTO-06]
 
 ### Phase 81: BENTO-SHIP — Deploy + verificación visual + gate humano
 
