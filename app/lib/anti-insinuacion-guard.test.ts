@@ -296,6 +296,38 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
       ]),
     );
   });
+
+  it("MONEY: caza causalidad dinero→voto inyectada (financió / a cambio de)", () => {
+    const fixtureMoney = `
+      <p>esta empresa financió su voto a cambio de un contrato</p>
+    `;
+    const hits = detectarInsinuaciones(fixtureMoney);
+    expect(
+      hits,
+      "El detector NO cazó causalidad de dinero inyectada → el guard MONEY sería un no-op",
+    ).toEqual(
+      expect.arrayContaining(["financió", "financió su voto", "a cambio de"]),
+    );
+  });
+
+  it("MONEY: caza insinuación patrimonial inyectada (empresa ligada a / corrupción / conflicto de interés)", () => {
+    const fixtureMoney = `
+      <p>empresa ligada a un caso de corrupción; conflicto de interés evidente</p>
+    `;
+    const hits = detectarInsinuaciones(fixtureMoney);
+    expect(hits).toEqual(
+      expect.arrayContaining([
+        "empresa ligada a",
+        "corrupción",
+        "conflicto de interés",
+      ]),
+    );
+  });
+
+  it("MONEY: caza 'contrato a dedo' inyectado (idiom singular del término)", () => {
+    const hits = detectarInsinuaciones(`<p>fue un contrato a dedo</p>`);
+    expect(hits).toContain("contrato a dedo");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -339,5 +371,33 @@ describe("(3) Sin falsos positivos — strip de comentarios, límites de palabra
       "similar a",
     );
     expect(detectarInsinuaciones(`<p>proyectos similares</p>`)).toEqual([]);
+  });
+
+  // --- MONEY: el HECHO factual NO se conflaciona con la insinuación (Pitfall 3) ---
+
+  it("MONEY: el HECHO `Enlazado por RUT al parlamentario.` NO dispara (RUT-exacto es hecho)", () => {
+    const factual = `<p className="muted">Enlazado por RUT al parlamentario.</p>`;
+    expect(detectarInsinuaciones(factual)).toEqual([]);
+  });
+
+  it("MONEY: `Asociado por nombre confirmado al candidato.` NO dispara", () => {
+    const factual = `<p className="muted">Asociado por nombre confirmado al candidato.</p>`;
+    expect(detectarInsinuaciones(factual)).toEqual([]);
+  });
+
+  it("MONEY: el identificador snake_case `empresa_ligada_por_rut` en `.rpc()` NO dispara", () => {
+    // `empresa ligada a` está bloqueado, pero el token snake_case con `_` a los
+    // lados no es palabra renderizada → no caza por el límite de palabra.
+    const conRpc = `const r = sb.rpc("empresa_ligada_por_rut", {});`;
+    expect(detectarInsinuaciones(conRpc)).toEqual([]);
+  });
+
+  it("MONEY: la leyenda anti-insinuación MONEY completa (que NIEGA 'influencia'/'irregularidad') NO es offender", () => {
+    // Restada en NEGACIONES_LOCKED (Pitfall 1): montar la leyenda verbatim → [].
+    const conLeyenda = `
+      const LEYENDA = ${JSON.stringify(LEYENDA_ANTI_INSINUACION_MONEY)};
+      export const M = <p>{LEYENDA}</p>;
+    `;
+    expect(detectarInsinuaciones(conLeyenda)).toEqual([]);
   });
 });
