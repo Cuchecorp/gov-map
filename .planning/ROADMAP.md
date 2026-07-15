@@ -280,7 +280,7 @@ Plans:
 
 - [x] 74-01-PLAN.md — Cursor incremental leylobby (migración 0053 marcador + lógica pura de avance + wire ingest-cli/writer; hash-check y degradación preservados) [DEBT-02]
 - [x] 74-02-PLAN.md — Round-robin leyes-weekly: fix cap 1k (.order().range() paginado) + cursor de rotación (migración 0054) + MONEY/SERVEL excluidos + fail-loud [DEBT-04]
-- [ ] 74-03-PLAN.md — DEBT-03 verificar referencia CF token + nota de operador + señal freshness de edad-mínima (MIN) sin regresionar MAX v6.0 + checkpoint operador [DEBT-03]
+- [x] 74-03-PLAN.md — DEBT-03 verificar referencia CF token + nota de operador + señal freshness de edad-mínima (MIN) sin regresionar MAX v6.0 + checkpoint operador [DEBT-03]
 
 ### Phase 75: DEUDA — Typography island `.net-*` + rotar DB password (operador)
 
@@ -1040,7 +1040,7 @@ Plans:
 | 71. DINERO P5c — SERVEL LOCAL (.xlsx artesanal) | v7.0 | 3/3 | Complete   | 2026-07-14 |
 | 72. DINERO P5d — Extender materializador cruce_senal (lobby_sector_aporte) | v7.0 | 2/2 | Complete   | 2026-07-15 |
 | 73. DINERO P5e — Superficies MONEY gated OFF + linter + gate legal | v7.0 | 4/4 | Complete   | 2026-07-15 |
-| 74. DEUDA — Cursor leylobby + CF token CI + round-robin cron | v7.0 | 2/3 | In Progress|  |
+| 74. DEUDA — Cursor leylobby + CF token CI + round-robin cron | v7.0 | 3/3 | Complete   | 2026-07-15 |
 | 75. DEUDA — Typography .net-* + rotar DB password (operador) | v7.0 | 0/? | Not started | - |
 
 ## ✅ v4.0 — De datos a cruces verificables

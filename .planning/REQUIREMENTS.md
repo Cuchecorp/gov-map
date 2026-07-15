@@ -33,7 +33,7 @@ Requirements de este milestone. Cada uno mapea a una fase del roadmap.
 
 - [x] **DEBT-01**: Los conectores restantes cumplen las dos etapas LOCKED — `source_snapshot` a R2 crudo content-addressed — y soportan `--from-r2` (replay a Supabase sin volver a molestar la fuente). (Se funde con VOTO/MONEY: votos y dinero son precisamente los conectores hoy sin snapshot R2.)
 - [x] **DEBT-02**: El conector leylobby usa cursor incremental (no re-scrapea todo el histórico en cada corrida).
-- [ ] **DEBT-03**: `CLOUDFLARE_API_TOKEN` cargado en CI → crons de novedades verdes en GitHub Actions sin fallback local manual.
+- [x] **DEBT-03**: `CLOUDFLARE_API_TOKEN` cargado en CI → crons de novedades verdes en GitHub Actions sin fallback local manual.
 - [x] **DEBT-04**: El cron `leyes-weekly` rota round-robin sobre el corpus 3.657 para no diluir la frescura (hoy 80/sem sobre 3.657 deja proyectos sin refrescar).
 - [ ] **DEBT-05**: La typography del island `.net-*` queda alineada al design system (fuera de contrato hoy: nombre 15px, banda 13px).
 - [ ] **DEBT-06**: DB password de Supabase rotado (B26) — acción de operador en el dashboard, documentada.
@@ -84,7 +84,7 @@ Se completa durante la creación del roadmap (gsd-roadmapper). Cada requisito ma
 | MONEY-05 | Phase 73 | Complete |
 | DEBT-01 | Phase 66 (votos) + Phase 70/71 (dinero) — fundido | Complete |
 | DEBT-02 | Phase 74 | Complete |
-| DEBT-03 | Phase 74 | Pending |
+| DEBT-03 | Phase 74 | Complete |
 | DEBT-04 | Phase 74 | Complete |
 | DEBT-05 | Phase 75 | Pending |
 | DEBT-06 | Phase 75 | Pending |
