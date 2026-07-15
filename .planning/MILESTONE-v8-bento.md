@@ -2,7 +2,7 @@
 
 **Preparado:** 2026-07-15
 **Referencia de diseño:** `C:\Users\Carlo\Downloads\Rediseño página estilo bento\Home Bento.dc.html` (mockup DesignCanvas, preview 1200px)
-**Estado:** PROPUESTA — arrancar con `/gsd:new-milestone` cuando el operador cierre los gates de v7.0 (o decida correr v8 en paralelo, son ortogonales: v7 = datos/gates, v8 = presentación)
+**Estado:** SCAFFOLDING LISTO 2026-07-15 — fases 76-81 en ROADMAP.md, reqs BENTO-01..07 en REQUIREMENTS.md §v8, mockup copiado a `.planning/design/bento/home-bento.dc.html`, prompt de corrida en `PROMPT-v8.0-build-autonomo.md`. **D1-D4 RESUELTAS por delegación del operador** ("corra entero de modo autónomo"): D1 = copy LOCKED se conserva (+kicker mono), D2 = diamante, D3 = propagación acotada, D4 = token nuevo `--radius-tile`. Arranque: `/clear` + `/gsd-autonomous --from 76 --to 81`. (v7.0 queda code-complete con gates de operador abiertos — ortogonal.)
 **Alcance de una frase:** llevar la home (y por coherencia, el chrome de todo el sitio) al estilo bento del mockup — grid de tiles con spans variados, radio 16px, contenedor 1120px, header sticky — sin romper copy LOCKED, gates fail-closed, linter anti-insinuación, ni la geometría del island `/red`.
 
 ---

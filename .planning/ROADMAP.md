@@ -11,9 +11,129 @@
 - ✅ **v5.0 — De datos a comprensión (legibilidad + análisis)** — Phases 44-55 (acordeones/navegación, gráficos descriptivos patrimonio/votos/ausencias, cruces nuevos, rediseño cognitivo 3 capas) — shipped 2026-07-08 (`74e3ad0f`); **F48 (autoría) DIFERIDA a milestone de ingesta** por gap de datos (autores 0/136). Audit `tech_debt`: milestones/v5.0-MILESTONE-AUDIT.md
 - ✅ **v6.0 — Confiabilidad y comprensión** — Phases 56-61 (ingesta E2E confiable, autores F48, ícono, comprensión BrowserOS) — shipped 2026-07-09
 - ✅ **v6.1 — Entendible y completo** — Phases 62-63 (/red ego-network radial + búsqueda corpus completo declarado) — shipped 2026-07-11
-- 🚧 **v7.0 — Votos, dinero y cierre técnico** — Phases 64-75 (voto individual P3 → dimensión dinero P5 prereq RUT-01 → cierre de deuda técnica; deny-by-default, gates pre-aprobados) — en curso, arrancado 2026-07-13
+- 🔒 **v7.0 — Votos, dinero y cierre técnico** — Phases 64-75 — CODE-COMPLETE 2026-07-15 (suite 820/820); NO archivado: gates de operador abiertos, checklist en `.planning/HANDOFF-v7.0-operator-gates.md`
+- 🚧 **v8.0 — Rediseño Bento** — Phases 76-81 (home bento + primitivas tile + chrome global + guards + ship; 100% presentación, ortogonal a los gates de v7.0) — scaffolding listo 2026-07-15, arrancar con `/gsd-autonomous --from 76 --to 81`
 
-## 🚧 v7.0 — Votos, dinero y cierre técnico (En curso)
+## 🚧 v8.0 — Rediseño Bento (Próximo — listo para corrida autónoma)
+
+**Milestone Goal:** Llevar la home (y el chrome de todo el sitio) al estilo bento del mockup del operador — grid de tiles con spans variados, radio 16px, contenedor 1120px, header sticky — sin romper copy LOCKED, gates fail-closed, linter anti-insinuación ni la geometría del island `/red`.
+
+**Documento rector:** `.planning/MILESTONE-v8-bento.md` (mapeo mockup↔tokens, invariantes, riesgos). **Mockup en repo:** `.planning/design/bento/home-bento.dc.html` (preview 1200px).
+
+**Mode:** yolo · **Granularity:** normal · **Numbering:** continúa desde v7.0 (Phase 75 fue la última) → v8.0 arranca en **Phase 76**.
+
+**HALLAZGO RECTOR (verificado por conversión HSL):** el mockup está dibujado SOBRE la paleta y tipografía actuales (#2A5859 = petróleo `--accent-product`, crema = `--background`, #2D6299/#A0343E = civic tokens `--camara`/`--senado`, Geist ya cargada vía next/font). v8.0 NO es migración de colores ni tipografías: es **LAYOUT + PRIMITIVAS** (BentoGrid/BentoTile, `--radius-tile`, contenedor, sticky). Regla dura: **cero hex nuevos en componentes** — todo color referencia tokens existentes (candado en Phase 80). Se RECHAZA cualquier plan que redefina paleta o copie hex/copy/datos placeholder del mockup.
+
+**Decisiones D1-D4 RESUELTAS por delegación del operador (2026-07-15):** D1 = copy LOCKED se conserva (+ kicker mono); D2 = marcador diamante; D3 = propagación acotada (chrome+radios, sin re-layout interior); D4 = token nuevo `--radius-tile` (el `--radius` shadcn NO se toca). Detalle en REQUIREMENTS.md §v8.
+
+### Coverage (v8)
+
+- v8 requirements: 7 (BENTO-01..07)
+- Mapped to phases (76-81): 7/7 ✓ · Orphaned: 0 · Duplicates: 0
+
+### Build order
+
+```
+76 (primitivas+chrome) ─► 77 (home superior) ─► 78 (home actualidad) ─► 79 (coherencia acotada) ─► 80 (guards) ─► 81 (ship+gate visual)
+```
+
+Lineal a propósito: cada fase deja el sitio deployable. Sin dependencia dura de los gates v7.0 ("Votado esta semana" funciona vacío-honesto sin los backfills 66/67). La fase 81 puede cerrar de paso el gate visual `/red` pendiente de la fase 75 (mismo deploy + misma sesión BrowserOS).
+
+### Phases
+
+- [ ] **Phase 76: BENTO-BASE — Primitivas bento + chrome global** — tokens `--radius-tile`/`--radius-control`, `BentoGrid`/`BentoTile` (default/accent, spans, colapso responsive), header sticky 1120px, footer border-top; NINGUNA página cambia de layout interno aún
+- [ ] **Phase 77: BENTO-HOME-SUPERIOR — Hero + tile acento + tarjetas de entrada** — hero span-4 con kicker mono + copy LOCKED + SearchBox reestilada + pills 44px; tile teal "¿Cómo leer esto?" span-2; 3 entradas span-2 con diamante + →
+- [ ] **Phase 78: BENTO-HOME-ACTUALIDAD — Votado/urgencias/frescura como tiles** — votado span-4 (barra civic 3px, tally mono, Fuente ↗), urgencias span-2 (chip pill), strip frescura span-6; mismas queries, empty honesto, ActualidadModule lineal retirado
+- [ ] **Phase 79: BENTO-COHERENCIA — Propagación acotada a rutas interiores** — contenedor 1120px + radios de primer nivel en /buscar, /parlamentarios, /agenda, /sobre, /metodologia y paneles exteriores de fichas; /red = decisión consciente con verificación visual propia o exclusión documentada
+- [ ] **Phase 80: BENTO-GUARDS — Responsive + a11y + dark + candados de régimen** — colapso ≤md, focus/contraste AA/landmarks, par dark de tiles, candados: cero-hex en bento, guard tipográfico extendido, linter anti-insinuación sobre copy nuevo de home (mutation self-check)
+- [ ] **Phase 81: BENTO-SHIP — Deploy + verificación visual + gate humano** — build Docker+wrangler, BrowserOS en deploy real (home desktop/móvil vs mockup, ruta interior, /red no-regresión — cierra también el gate 75 pendiente), lectura fría del operador documentada como handoff
+
+### Phase 76: BENTO-BASE — Primitivas bento + chrome global
+
+**Goal**: Existir las piezas con las que se arma cualquier bento y el chrome del mockup, sin cambiar aún el layout interno de ninguna página.
+**Depends on:** — (arranque del milestone)
+**Requirements:** BENTO-01
+**Autonomy:** autónomo; CERO DDL, CERO flags, CERO cambios de datos.
+**Success Criteria** (what must be TRUE):
+
+  1. `globals.css` define `--radius-tile: 16px` y `--radius-control: 11px` (con par dark si aplica); `--radius` shadcn (0.5rem) INTACTO (D4); comentario del token documenta el mapeo mockup→tokens
+  2. `components/bento/` contiene `BentoGrid` (6 col, gap 14px, `grid-auto-rows:minmax(0,auto)`) y `BentoTile` (variants default = card+border+radius-tile, accent = petróleo invertido; prop `span` 2/4/6; ≤md colapsa a span completo con orden DOM = orden visual) con tests de estructura
+  3. `GlobalHeader` es sticky (top-0, z sobre contenido) con contenedor `max-w-[1120px]`; nav actual intacta (5 ítems, Red gated por `netPublicEnabled`); `scroll-margin-top` global en headings ancla para que el sticky no tape anchors
+  4. Footer sin `bg-muted/40`, border-top, contenedor 1120px, contenido CC BY LOCKED byte-idéntico
+  5. Ninguna página cambió de layout interno (diff visual esperado: solo ancho de contenedor de header/footer + sticky); si el contenedor global amenaza el ancho de `/red`, `/red` queda EXCLUIDO en esta fase y se difiere a 79 documentado
+  6. Suite completa verde + tsc limpio; anti-insinuación y guard tipográfico intactos
+
+### Phase 77: BENTO-HOME-SUPERIOR — Hero + tile acento + tarjetas de entrada
+
+**Goal**: La mitad superior de la home es el bento del mockup, con el copy firmado intacto.
+**Depends on:** Phase 76
+**Requirements:** BENTO-02
+**Autonomy:** autónomo (D1/D2 ya resueltas). CERO strings del mockup copiados a producción sin pasar por los invariantes.
+**Success Criteria**:
+
+  1. Home renderiza `BentoGrid` con: hero span-4 (kicker Geist Mono uppercase "OBSERVATORIO DEL CONGRESO" + h1 LOCKED "Qué pasó con cada proyecto de ley y cada parlamentario." + cursiva LOCKED + SearchBox variante hero reestilada: input 52px radio `--radius-control`, botón petróleo + pills LOCKED verbatim con touch target 44px y radio 999px) + trust line LOCKED
+  2. Tile acento span-2 "¿Cómo leer esto?": variante accent, BrandIcon en claro, copy alineado con la fórmula existente de /sobre (pasa linter anti-insinuación), CTA "Ver metodología →" (destino decidido en plan: /sobre o /metodologia, consistente con el link actual)
+  3. 3 tarjetas de entrada span-2 (Buscar/Parlamentarios/Agenda): marcador diamante (D2) + flecha →, títulos/descripciones/destinos actuales sin cambio de copy
+  4. Hero sigue server component; `SearchBox` único island; `force-dynamic` conservado
+  5. Tests de home actualizados (estructura, hrefs, pills verbatim); suite verde; anti-insinuación verde
+
+### Phase 78: BENTO-HOME-ACTUALIDAD — Votado/urgencias/frescura como tiles
+
+**Goal**: La actualidad vive como tiles del grid con los datos reales de hoy — presentación nueva, datos idénticos.
+**Depends on:** Phase 77
+**Requirements:** BENTO-03
+**Autonomy:** autónomo; CERO cambios en queries/RPCs (solo presentación).
+**Success Criteria**:
+
+  1. "Votado esta semana" tile span-4: barra 3px por cámara vía `--camara`/`--senado` (NUNCA hex del mockup), desenlace + tally Geist Mono en-dash (formato existente), fecha+cámara mono 12px, "Fuente ↗" por ítem (`safeExternalHref`), "Ver todo →"; empty state honesto ("Sin votaciones registradas esta semana")
+  2. "Urgencias vigentes" tile span-2: chip pill del tipo (suma/simple) con fondo derivado de `--accent-product-soft`, "desde {fecha}" mono; fuente = `urgenciaVigente()` existente
+  3. Strip "Última actualización de datos" span-6: dot 6px petróleo + fuente + fecha mono, flex-wrap, mismas fuentes no-PII, condicional sin datos
+  4. `ActualidadModule` lineal viejo RETIRADO (los bloques migran, no se duplican); sus tests migrados a los tiles incluyendo empty states
+  5. Suite verde; cero cambios en la capa de datos (presentación pura)
+
+### Phase 79: BENTO-COHERENCIA — Propagación acotada a rutas interiores
+
+**Goal**: Salir de la home no se siente como cambiar de sitio — sin re-layoutear ninguna página interior.
+**Depends on:** Phase 76 (78 recomendado para comparar coherencia real)
+**Requirements:** BENTO-04
+**Autonomy:** autónomo dentro del alcance D3; `/red` con tratamiento explícito.
+**Success Criteria**:
+
+  1. /buscar, /parlamentarios, /agenda, /sobre, /metodologia: contenedor 1120px + `--radius-tile` en tarjetas de primer nivel (swap de clase, sin re-layout)
+  2. /parlamentario/[id], /proyecto/[boletin], /contraparte/[id]: solo contenedor + radios de paneles exteriores; acordeones/charts/tablas internas byte-idénticas
+  3. `/red`: o queda excluido del contenedor nuevo (documentado en SUMMARY) o se ajusta CON verificación `getComputedStyle` en deploy (método del gate 75); `red-graph.test.tsx` y `.net-chip` 11px verdes en ambos casos
+  4. Suite completa verde; guard tipográfico verde; capturas BrowserOS antes/después por ruta archivadas (solo debe cambiar radio/contenedor)
+
+### Phase 80: BENTO-GUARDS — Responsive + a11y + dark + candados de régimen
+
+**Goal**: El bento no se degrada en móvil, en dark, ni con el tiempo.
+**Depends on:** Phases 77-78 (superficies bento completas)
+**Requirements:** BENTO-05, BENTO-06
+**Autonomy:** autónomo.
+**Success Criteria**:
+
+  1. ≤md el grid colapsa a 1 columna (orden: hero → cómo-leer → entradas → votado → urgencias → frescura); sticky header verificado en móvil (CSS 390px inyectado, gotcha BrowserOS)
+  2. A11y: focus-visible en tiles-link, contraste AA del tile accent (body ≥4.5:1), aria-label del form de búsqueda, un solo main + secciones con heading
+  3. Dark: variantes dark de BentoTile derivadas de tokens dark existentes, con test de estructura
+  4. Candado cero-hex: test-fuente sobre `components/bento/` (regex hex) que FALLA en rojo con mutation self-check; guard tipográfico extendido a tiles (solo tokens/escala TW)
+  5. Linter anti-insinuación cubre `app/page.tsx` + tile cómo-leer si el copy roza votos/dinero; suite completa verde (~840+ esperados)
+
+### Phase 81: BENTO-SHIP — Deploy + verificación visual + gate humano
+
+**Goal**: Bento EN VIVO, verificado visualmente contra el mockup, con el gate humano documentado.
+**Depends on:** Phase 80
+**Requirements:** BENTO-07
+**Autonomy:** deploy AUTORIZADO (precedente 2026-07-06 + corridas v6/v7); el sign-off de lectura fría es del operador — si no está presente, queda como handoff con evidencia lista.
+**Success Criteria**:
+
+  1. Deploy Cloudflare verde vía runbook Docker (node:22-slim, robocopy a C:/Temp, `pnpm config set dangerouslyAllowAllBuilds true` antes del install, wrangler local OAuth)
+  2. Verificación BrowserOS en deploy real archivada en la fase: home desktop 1200px lado-a-lado con el mockup, home móvil 390px, 1 ruta interior por tipo, `/red` no-regresión (getComputedStyle) — esto CIERRA el gate visual pendiente de fase 75
+  3. Lectura fría: veredicto "comprensible/se ve como el mockup" del agente + checklist de gate humano para el operador (formato 68-BROWSEROS-GATE) como handoff
+  4. Suite verde post-deploy; tag y push a Cuchecorp/gov-map
+
+---
+
+## 🔒 v7.0 — Votos, dinero y cierre técnico (Code-complete; gates de operador abiertos)
 
 **Milestone Goal:** Completar los dos frentes de datos que aún faltaban del producto —cómo vota individualmente cada parlamentario, y el dinero que lo rodea (financiamiento electoral + contratos del Estado)— y cerrar la deuda técnica de ingesta acumulada; en fases MUY GRANULARES, deny-by-default, con trazabilidad a la fuente y sin afirmar causalidad.
 

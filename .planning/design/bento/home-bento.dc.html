@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F9F6F0; color: #0F1729; font-family: "Geist", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: #2A5859; text-decoration: none; }
+  a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  ::placeholder { color: #9A9689; }
+</style>
+</helmet>
+
+<div style="min-height:100%;background:#F9F6F0;padding-bottom:56px;">
+
+  <header style="border-bottom:1px solid #E3DDD3;background:#F9F6F0;position:sticky;top:0;z-index:5;">
+    <div style="max-width:1120px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 24px;">
+      <a href="#" style="display:inline-flex;align-items:center;gap:9px;font-size:16px;font-weight:600;letter-spacing:-0.01em;color:#0F1729;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M8.8 4.5 L15 12 L8.8 19.5 L2.6 12 Z" fill="none" stroke="#2A5859" strokeWidth="2" strokeLinejoin="round"></path>
+          <path d="M15.2 4.5 L21.4 12 L15.2 19.5 L9 12 Z" fill="none" stroke="#2A5859" strokeWidth="2" strokeLinejoin="round"></path>
+          <path d="M12 8.35 L15 12 L12 15.65 L9 12 Z" fill="#2A5859"></path>
+        </svg>
+        gov-map
+      </a>
+      <nav aria-label="Navegación principal">
+        <ul style="display:flex;align-items:center;gap:4px;list-style:none;margin:0;padding:0;">
+          <li><a href="#" style="display:inline-flex;align-items:center;padding:8px 12px;font-size:14px;font-weight:500;color:rgba(15,23,41,0.8);border-radius:8px;">Buscar</a></li>
+          <li><a href="#" style="display:inline-flex;align-items:center;padding:8px 12px;font-size:14px;font-weight:500;color:rgba(15,23,41,0.8);border-radius:8px;">Parlamentarios</a></li>
+          <li><a href="#" style="display:inline-flex;align-items:center;padding:8px 12px;font-size:14px;font-weight:500;color:rgba(15,23,41,0.8);border-radius:8px;">Agenda</a></li>
+          <li><a href="#" style="display:inline-flex;align-items:center;padding:8px 12px;font-size:14px;font-weight:500;color:rgba(15,23,41,0.8);border-radius:8px;">Red</a></li>
+          <li><a href="#" style="display:inline-flex;align-items:center;padding:8px 12px;font-size:14px;font-weight:500;color:rgba(15,23,41,0.8);border-radius:8px;">Sobre</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width:1120px;margin:0 auto;padding:28px 24px 0;">
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;grid-auto-rows:minmax(0,auto);">
+
+      <!-- HERO / BUSCADOR -->
+      <section style="grid-column:span 4;background:#FDFBF7;border:1px solid #E3DDD3;border-radius:16px;padding:34px;display:flex;flex-direction:column;justify-content:center;">
+        <p style="margin:0 0 14px;font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#5C6373;">OBSERVATORIO DEL CONGRESO</p>
+        <h1 style="margin:0;font-size:38px;line-height:1.1;font-weight:600;letter-spacing:-0.02em;max-width:15ch;">
+          Busca cualquier proyecto de ley por tema o número de boletín
+          
+        </h1>
+        <form role="search" onSubmit="{{ onSubmit }}" style="margin-top:26px;display:flex;gap:10px;">
+          <div style="position:relative;flex:1;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" stroke="#9A9689" strokeWidth="2"></circle>
+              <path d="M20 20 L16.5 16.5" stroke="#9A9689" strokeWidth="2" strokeLinecap="round"></path>
+            </svg>
+            <input type="search" name="q" value="{{ query }}" onInput="{{ onQuery }}" placeholder="Escribe una idea o un número de boletín…" aria-label="Buscar proyectos de ley" style="width:100%;height:52px;padding:0 16px 0 42px;font-size:16px;font-family:inherit;color:#0F1729;background:#F9F6F0;border:1px solid #E3DDD3;border-radius:11px;outline:none;" style-focus="border-color:#2A5859;box-shadow:0 0 0 3px rgba(42,88,89,0.15);">
+          </div>
+          <button type="submit" style="height:52px;padding:0 24px;font-size:15px;font-weight:600;font-family:inherit;color:#F9F6F0;background:#2A5859;border:none;border-radius:11px;cursor:pointer;white-space:nowrap;" style-hover="background:#234A4B;">Buscar</button>
+        </form>
+        <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;">
+          <sc-for list="{{ pills }}" as="pill" hint-placeholder-count="4">
+            <button type="button" onClick="{{ pill.pick }}" style="display:inline-flex;align-items:center;min-height:38px;padding:6px 14px;font-size:13px;font-family:inherit;color:#0F1729;background:#F0ECE4;border:1px solid #E3DDD3;border-radius:999px;cursor:pointer;" style-hover="border-color:#2A5859;color:#2A5859;">{{ pill.label }}</button>
+          </sc-for>
+        </div>
+      </section>
+
+      <!-- TILE ACENTO: CÓMO LEER ESTO -->
+      <a href="#" style="grid-column:span 2;background:#2A5859;border:1px solid #234A4B;border-radius:16px;padding:26px;display:flex;flex-direction:column;justify-content:space-between;color:#EAF2F1;text-decoration:none;" style-hover="background:#234A4B;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M8.8 4.5 L15 12 L8.8 19.5 L2.6 12 Z" fill="none" stroke="#EAF2F1" strokeWidth="1.6" strokeLinejoin="round"></path>
+          <path d="M15.2 4.5 L21.4 12 L15.2 19.5 L9 12 Z" fill="none" stroke="#EAF2F1" strokeWidth="1.6" strokeLinejoin="round"></path>
+          <path d="M12 8.35 L15 12 L12 15.65 L9 12 Z" fill="#EAF2F1"></path>
+        </svg>
+        <div>
+          <h2 style="margin:22px 0 8px;font-size:21px;font-weight:600;line-height:1.15;color:#FFFFFF;">¿Cómo leer esto?</h2><p style="margin:0;font-size:14px;line-height:1.5;color:rgba(234,242,241,0.85);">Cada dato lleva su fuente, su fecha y el enlace al documento oficial. Las correlaciones no son indicativas de irregularidades: analízalas con cuidado.&nbsp;</p>
+          
+        </div>
+        <span style="margin-top:22px;display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:#FFFFFF;">Ver metodología →</span>
+      </a>
+
+      <!-- TARJETAS DE ENTRADA -->
+      <sc-for list="{{ entries }}" as="card" hint-placeholder-count="3">
+        <a href="#" style="grid-column:span 2;background:#FDFBF7;border:1px solid #E3DDD3;border-radius:16px;padding:24px;display:flex;flex-direction:column;text-decoration:none;color:#0F1729;" style-hover="border-color:#2A5859;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <sc-if value="{{ markerNumber }}" hint-placeholder-val="{{ false }}">
+              <span style="font-family:'Geist Mono',monospace;font-size:13px;color:#2A5859;font-weight:500;">{{ card.num }}</span>
+            </sc-if>
+            <sc-if value="{{ markerDiamond }}" hint-placeholder-val="{{ true }}">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 3 L21 12 L12 21 L3 12 Z" fill="none" stroke="#2A5859" strokeWidth="1.6" strokeLinejoin="round"></path>
+                <path d="M12 8 L16 12 L12 16 L8 12 Z" fill="#2A5859"></path>
+              </svg>
+            </sc-if>
+            <span aria-hidden="true" style="font-size:18px;color:#5C6373;">→</span>
+          </div>
+          <h3 style="margin:18px 0 6px;font-size:18px;font-weight:600;line-height:1.2;">{{ card.title }}</h3>
+          <p style="margin:0;font-size:14px;line-height:1.5;color:#5C6373;">{{ card.value }}</p>
+        </a>
+      </sc-for>
+
+      <!-- VOTADO ESTA SEMANA -->
+      <section style="grid-column:span 4;background:#FDFBF7;border:1px solid #E3DDD3;border-radius:16px;padding:26px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;">
+          <h2 style="margin:0;font-size:18px;font-weight:600;">Votado esta semana</h2>
+          <a href="#" style="font-size:13px;font-weight:500;">Ver todo →</a>
+        </div>
+        <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;">
+          <sc-for list="{{ votado }}" as="v" hint-placeholder-count="3">
+            <li style="display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-top:1px solid #EFE9DF;">
+              <span style="flex:0 0 3px;align-self:stretch;border-radius:2px;background:{{ v.camaraColor }};margin-top:2px;"></span>
+              <div style="flex:1;min-width:0;">
+                <h3 style="margin:0;font-size:15px;font-weight:600;line-height:1.3;">{{ v.titulo }}</h3>
+                <p style="margin:4px 0 0;font-size:13px;line-height:1.5;color:#3A4150;">{{ v.desenlace }} <span style="font-family:'Geist Mono',monospace;color:#0F1729;">{{ v.tally }}</span></p>
+                <p style="margin:5px 0 0;font-family:'Geist Mono',monospace;font-size:12px;color:#5C6373;">{{ v.fecha }} · {{ v.camara }}</p>
+              </div>
+              <a href="#" style="flex:0 0 auto;font-size:13px;font-weight:500;white-space:nowrap;">Fuente ↗</a>
+            </li>
+          </sc-for>
+        </ul>
+      </section>
+
+      <!-- URGENCIAS VIGENTES -->
+      <section style="grid-column:span 2;background:#FDFBF7;border:1px solid #E3DDD3;border-radius:16px;padding:26px;">
+        <h2 style="margin:0 0 16px;font-size:18px;font-weight:600;">Urgencias vigentes</h2>
+        <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;">
+          <sc-for list="{{ urgencias }}" as="u" hint-placeholder-count="2">
+            <li style="padding:12px 0;border-top:1px solid #EFE9DF;">
+              <span style="display:inline-flex;align-items:center;padding:2px 9px;font-family:'Geist Mono',monospace;font-size:11px;font-weight:500;color:#2A5859;background:#E3F0EF;border-radius:999px;">{{ u.tipo }}</span>
+              <h3 style="margin:8px 0 0;font-size:14px;font-weight:600;line-height:1.3;">{{ u.titulo }}</h3>
+              <p style="margin:4px 0 0;font-family:'Geist Mono',monospace;font-size:12px;color:#5C6373;">desde {{ u.desde }}</p>
+            </li>
+          </sc-for>
+        </ul>
+      </section>
+
+      <!-- ÚLTIMA ACTUALIZACIÓN (STRIP) -->
+      <sc-if value="{{ showFrescura }}" hint-placeholder-val="{{ true }}">
+      <section style="grid-column:span 6;background:#FDFBF7;border:1px solid #E3DDD3;border-radius:16px;padding:18px 26px;display:flex;align-items:center;flex-wrap:wrap;gap:10px 22px;">
+        <span style="font-size:13px;font-weight:600;color:#0F1729;margin-right:6px;">Última actualización de datos</span>
+        <sc-for list="{{ frescura }}" as="f" hint-placeholder-count="6">
+          <span style="display:inline-flex;align-items:center;gap:7px;font-size:13px;color:#5C6373;">
+            <span style="width:6px;height:6px;border-radius:999px;background:#2A5859;"></span>
+            {{ f.fuente }} <span style="font-family:'Geist Mono',monospace;color:#0F1729;">{{ f.fecha }}</span>
+          </span>
+        </sc-for>
+      </section>
+      </sc-if>
+
+    </div>
+
+    <footer style="margin-top:40px;padding-top:24px;border-top:1px solid #E3DDD3;">
+      <p style="margin:0;font-size:13px;line-height:1.6;color:#5C6373;max-width:70ch;">Datos de fuentes públicas del Congreso de Chile, con fuente, fecha y enlace en cada dato. Contenido bajo <a href="#">CC BY 4.0</a> — atribución a Observatorio del Congreso 360.</p>
+      <nav style="margin-top:12px;display:flex;flex-wrap:wrap;gap:20px;">
+        <a href="#" style="font-size:13px;">Metodología</a>
+        <a href="#" style="font-size:13px;">Sobre el proyecto</a>
+        <a href="#" style="font-size:13px;">Contacto</a>
+      </nav>
+    </footer>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1200},&quot;entryMarker&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Diamante&quot;,&quot;Número&quot;],&quot;default&quot;:&quot;Diamante&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Diseño&quot;},&quot;showFrescura&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Diseño&quot;}}">
+class Component extends DCLogic {
+  state = { query: "" };
+
+  renderVals() {
+    const marker = this.props.entryMarker ?? "Diamante";
+    const pillLabels = [
+      "protección de datos personales",
+      "delitos económicos y medio ambiente",
+      "40 horas / jornada laboral",
+      "14309-04",
+    ];
+    return {
+      query: this.state.query,
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      onSubmit: (e) => e.preventDefault(),
+      markerDiamond: marker === "Diamante",
+      markerNumber: marker === "Número",
+      showFrescura: this.props.showFrescura ?? true,
+      pills: pillLabels.map((label) => ({
+        label,
+        pick: () => this.setState({ query: label }),
+      })),
+      entries: [
+        { num: "01", title: "Proyectos de ley", value: "En qué etapa está cada proyecto y cómo se ha votado, con la fuente enlazada." },
+        { num: "02", title: "Parlamentarios 360", value: "Votaciones, lobby y patrimonio, según los registros públicos." },
+        { num: "03", title: "Agenda de la semana", value: "Citaciones de comisiones y tabla de sala, enlazadas a cada proyecto." },
+      ],
+      votado: [
+        { titulo: "Protección de datos personales", desenlace: "Aprobado en general", tally: "98 – 12", fecha: "08 jul 2026", camara: "Cámara", camaraColor: "#2D6299" },
+        { titulo: "Royalty a la gran minería", desenlace: "Rechazada la indicación", tally: "71 – 68", fecha: "07 jul 2026", camara: "Senado", camaraColor: "#A0343E" },
+        { titulo: "Reforma al sistema de pensiones", desenlace: "Aprobado el artículo 1º", tally: "84 – 61", fecha: "05 jul 2026", camara: "Cámara", camaraColor: "#2D6299" },
+      ],
+      urgencias: [
+        { tipo: "suma", titulo: "Reforma de pensiones", desde: "06 jul 2026" },
+        { tipo: "simple", titulo: "Ley de presupuestos 2027", desde: "05 jul 2026" },
+      ],
+      frescura: [
+        { fuente: "Votaciones", fecha: "12 jul" },
+        { fuente: "Proyectos", fecha: "12 jul" },
+        { fuente: "Tramitación", fecha: "11 jul" },
+        { fuente: "Citaciones", fecha: "12 jul" },
+        { fuente: "Lobby", fecha: "10 jul" },
+        { fuente: "Fichas", fecha: "09 jul" },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

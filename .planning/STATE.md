@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v7.0
-milestone_name: — Votos, dinero y cierre técnico
-status: verifying
-stopped_at: Completed 75-02-PLAN.md (operator note; rotation PENDING operator checkpoint)
-last_updated: "2026-07-15T04:12:05.545Z"
+milestone: v8.0
+milestone_name: — Rediseño Bento
+status: ready
+stopped_at: Scaffolding v8.0 listo (ROADMAP 76-81 + REQUIREMENTS BENTO-01..07 + PROMPT); v7.0 code-complete con gates de operador abiertos (HANDOFF-v7.0-operator-gates.md)
+last_updated: "2026-07-15T13:30:00.000Z"
 last_activity: 2026-07-15
 progress:
-  total_phases: 12
-  completed_phases: 10
-  total_plans: 33
-  completed_plans: 31
-  percent: 83
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 75 — DEUDA — typography .net-* + rotar DB password
+**Current focus:** v8.0 Rediseño Bento — Phase 76 (BENTO-BASE) lista para planificar. Documento rector: MILESTONE-v8-bento.md; decisiones D1-D4 RESUELTAS por delegación (REQUIREMENTS.md §v8).
 
 ## Current Position
 
-Phase: 75 (DEUDA — typography .net-* + rotar DB password) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
+Phase: 76 (BENTO-BASE — primitivas bento + chrome global) — NOT STARTED
+Plan: —
+Status: Scaffolding listo; arrancar con /gsd-autonomous --from 76 --to 81 (PROMPT-v8.0-build-autonomo.md)
 Last activity: 2026-07-15
 
-Progress: [░░░░░░░░░░] 0% (v7.0: 0/12 fases; v1.0–v6.1 shipped)
+Progress: [░░░░░░░░░░] 0% (v8.0: 0/6 fases; v1.0–v6.1 shipped; v7.0 code-complete con gates de operador abiertos — HANDOFF-v7.0-operator-gates.md)
 
 ## Performance Metrics
 
@@ -153,4 +153,5 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Plan Phase 64 con /gsd:plan-phase 64 (o corrida autónoma vía PROMPT-v7.0-build-autonomo.md)
+- v8.0: `/clear` + pegar el prompt de `.planning/PROMPT-v8.0-build-autonomo.md` (corrida autónoma 76-81)
+- v7.0 (paralelo, cuando quieras): gates de operador según `.planning/HANDOFF-v7.0-operator-gates.md`; al cerrarlos, `/gsd:audit-milestone` → `/gsd:complete-milestone v7.0`

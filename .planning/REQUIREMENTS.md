@@ -100,3 +100,55 @@ Se completa durante la creación del roadmap (gsd-roadmapper). Cada requisito ma
 ---
 *Requirements defined: 2026-07-13*
 *Last updated: 2026-07-13 after v7.0 research synthesis*
+
+---
+
+# Requirements — Milestone v8.0 (Rediseño Bento)
+
+**Defined:** 2026-07-15 · **Documento rector:** `.planning/MILESTONE-v8-bento.md` · **Mockup:** `.planning/design/bento/home-bento.dc.html`
+
+> **Hallazgo rector:** el mockup está dibujado SOBRE la paleta y tipografía actuales del sitio (petróleo `--accent-product`, crema `--background`, civic tokens, Geist vía next/font — verificado por conversión HSL). v8.0 es **layout y primitivas** (grid bento, tiles radio 16px, contenedor 1120px, header sticky), NO migración de colores. Regla: cero hex nuevos en componentes; todo color referencia tokens existentes.
+
+## v8 Requirements
+
+- [ ] **BENTO-01**: Existen las primitivas bento (`BentoGrid` 6-col gap 14px, `BentoTile` variants default/accent con spans 2/4/6, tokens `--radius-tile` 16px + `--radius-control` 11px) y el chrome global del mockup (header sticky con contenedor 1120px, footer border-top sin fondo) — sin cambiar aún el layout interno de ninguna página.
+- [ ] **BENTO-02**: La mitad superior de la home es el bento del mockup: hero span-4 (kicker Geist Mono uppercase + copy LOCKED intacto + SearchBox reestilada + pills LOCKED a 44px), tile acento teal "¿Cómo leer esto?" span-2 (copy alineado a /sobre, CTA a metodología), y 3 tarjetas de entrada span-2 con marcador diamante + flecha →.
+- [ ] **BENTO-03**: La actualidad vive como tiles del grid: "Votado esta semana" span-4 (barra 3px por cámara con civic tokens, tally mono, "Fuente ↗" por ítem), "Urgencias vigentes" span-2 (chip pill tipo suma/simple), strip "Última actualización" span-6 — mismas queries/RPCs de hoy, empty states honestos, el ActualidadModule lineal viejo retirado.
+- [ ] **BENTO-04**: Las rutas interiores reciben coherencia ACOTADA (contenedor 1120px + `--radius-tile` en tarjetas de primer nivel) sin re-layout interno; `/red` tratado como decisión consciente con verificación visual propia si el ancho cambia.
+- [ ] **BENTO-05**: El bento es responsive (colapso ≤md a 1 columna con orden definido), accesible (focus-visible, contraste AA en tile acento, 44px touch targets, landmarks) y tiene par dark derivado de los tokens dark existentes.
+- [ ] **BENTO-06**: Candados de régimen verdes y mordiendo (mutation self-check): cero-hex-hardcodeado en componentes bento, guard tipográfico extendido a tiles, linter anti-insinuación cubre el copy nuevo de home si roza votos/dinero.
+- [ ] **BENTO-07**: El bento está EN VIVO (deploy Docker+wrangler) con verificación visual BrowserOS archivada (home desktop/móvil vs mockup, 1 ruta interior por tipo, `/red` no-regresión) y el gate humano de lectura fría queda documentado como handoff si el operador no está presente.
+
+## Decisiones D1-D4 (RESUELTAS por delegación del operador, 2026-07-15 — "corra entero de modo autónomo")
+
+- **D1 = conservar copy LOCKED** (h1 "Qué pasó con cada proyecto…", cursiva "Con la fuente a la vista.", trust line, 4 pills). El h1 del mockup NO entra. Se AÑADE el kicker mono "OBSERVATORIO DEL CONGRESO".
+- **D2 = marcador diamante** (default del mockup).
+- **D3 = propagación acotada**: chrome global + contenedor + radios de primer nivel; re-layout interior de /buscar//parlamentarios//agenda/fichas queda FUERA (v9).
+- **D4 = token nuevo `--radius-tile`**: `--radius` shadcn (8px) NO se toca; cero regresión de forma en rutas interiores.
+
+## Out of Scope (v8)
+
+| Feature | Reason |
+|---------|--------|
+| Re-layout interno de rutas interiores | D3: solo chrome+radios; v9 si se quiere |
+| Rediseño del grafo /red | Layout B recién aprobado 2026-07-13; island `.net-*` pixel-intocable |
+| Animaciones del grid | El mockup no las define |
+| Cambios de datos/RPCs/schema | v8 es 100% presentación |
+| Copy o datos placeholder del mockup en producción | Datos de ejemplo inventados (tallies, títulos) — riesgo de fabricación |
+
+## Traceability (v8)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| BENTO-01 | Phase 76 | Pending |
+| BENTO-02 | Phase 77 | Pending |
+| BENTO-03 | Phase 78 | Pending |
+| BENTO-04 | Phase 79 | Pending |
+| BENTO-05 | Phase 80 | Pending |
+| BENTO-06 | Phase 80 | Pending |
+| BENTO-07 | Phase 81 | Pending |
+
+**Coverage:** 7/7 mapped (Phases 76-81) · Unmapped: 0 · Orphaned: 0
+
+---
+*v8 requirements defined: 2026-07-15 (delegación D1-D4 incluida)*
