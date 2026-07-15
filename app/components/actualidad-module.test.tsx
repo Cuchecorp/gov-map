@@ -44,21 +44,41 @@ function makeFrescura(overrides: Partial<FrescuraItem> = {}): FrescuraItem {
   return { fuente: "Votaciones", fecha: new Date("2026-07-05T00:00:00Z"), ...overrides };
 }
 
-// ── inicioSemanaIso — lunes 00:00 de la semana vigente ──────────────────────────
+// ── inicioSemanaIso — lunes 00:00 America/Santiago (WR-01) ──────────────────────
+// Chile invierno (junio/julio) = CLT = UTC-4 → midnight Santiago = 04:00 UTC.
 describe("inicioSemanaIso", () => {
-  it("un jueves → devuelve el lunes 00:00 de esa semana", () => {
-    // 2026-07-02 es jueves.
-    const lunes = inicioSemanaIso(new Date("2026-07-02T15:30:00"));
-    expect(lunes.getDay()).toBe(1); // lunes
-    expect(lunes.getHours()).toBe(0);
-    expect(lunes.getMinutes()).toBe(0);
+  it("jueves en Santiago → devuelve el lunes de esa semana como midnight CLST", () => {
+    // 2026-07-02T15:30:00Z = jueves 11:30 CLST (UTC-4).
+    // Lunes de esa semana en Santiago = 2026-06-29.
+    // Midnight Santiago (UTC-4) = 2026-06-29T04:00:00Z.
+    const lunes = inicioSemanaIso(new Date("2026-07-02T15:30:00Z"));
+    expect(lunes.toISOString()).toBe("2026-06-29T04:00:00.000Z");
   });
 
-  it("un domingo → devuelve el lunes anterior (no el siguiente)", () => {
-    // 2026-07-05 es domingo → el lunes de su semana ISO es 2026-06-29.
-    const lunes = inicioSemanaIso(new Date("2026-07-05T10:00:00"));
-    expect(lunes.getDay()).toBe(1);
-    expect(lunes.getDate()).toBe(29);
+  it("domingo en Santiago → devuelve el lunes ANTERIOR (semana ISO correcta)", () => {
+    // 2026-07-05T10:00:00Z = domingo 06:00 CLST (UTC-4).
+    // Lunes de esa semana ISO en Santiago = 2026-06-29.
+    const lunes = inicioSemanaIso(new Date("2026-07-05T10:00:00Z"));
+    expect(lunes.toISOString()).toBe("2026-06-29T04:00:00.000Z");
+  });
+
+  it("lunes en Santiago → la semana empieza ese mismo lunes", () => {
+    // 2026-07-06T15:00:00Z = lunes 11:00 CLST (UTC-4).
+    // Lunes de esa semana = 2026-07-06 → midnight CLST = 2026-07-06T04:00:00Z.
+    const lunes = inicioSemanaIso(new Date("2026-07-06T15:00:00Z"));
+    expect(lunes.toISOString()).toBe("2026-07-06T04:00:00.000Z");
+  });
+
+  it("el resultado es efectivamente medianoche en America/Santiago", () => {
+    const lunes = inicioSemanaIso(new Date("2026-07-02T15:30:00Z"));
+    const horaEnSantiago = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "America/Santiago",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(lunes);
+    expect(horaEnSantiago).toBe("00:00:00");
   });
 });
 
@@ -89,6 +109,24 @@ describe("VotadoEstaSemanaView", () => {
     expect(screen.queryByText(/El proyecto fue/)).not.toBeInTheDocument();
     // Con camara null, el meta es "Votación del {fecha}"
     expect(container.textContent).toMatch(/Votación del/);
+  });
+
+  // WR-03: tally 0–0 nunca se muestra cuando totales son cero (fabricación anti-honesta)
+  it("totalSi=0, totalNo=0 con resultado → omite tally, NO muestra '0–0'", () => {
+    const { container } = render(
+      <VotadoEstaSemanaView
+        items={[makeVotado({ totalSi: 0, totalNo: 0, resultado: "aprobado" })]}
+      />,
+    );
+    // El desenlace se muestra
+    expect(screen.getByText(/El proyecto fue aprobado/)).toBeInTheDocument();
+    // Pero el tally 0–0 no aparece en ningún span.font-mono
+    const monoText = Array.from(container.querySelectorAll("span.font-mono")).map(
+      (m) => m.textContent,
+    );
+    expect(monoText).not.toContain("0–0");
+    // Y la cadena "0–0" no aparece en ningún lugar del DOM
+    expect(container.textContent).not.toMatch(/0[–-]0/);
   });
 
   it("título null → muestra el boletín (nunca fabrica un título)", () => {
@@ -161,11 +199,17 @@ describe("UrgenciasVigentesView", () => {
     expect(chip).toHaveClass("font-mono");
     expect(chip).toHaveClass("text-[11px]");
     expect(chip?.textContent).toBe("Suma");
-    // "desde {fecha}" in font-mono — fecha formateada por fechaCorta (es-CL, puede ser "jun" por offset UTC)
+    // "desde {fecha}" en font-mono — fecha formateada por fechaCorta (es-CL, America/Santiago).
+    // El fixture es 2026-07-01T00:00:00Z = 30 jun en CLST (UTC-4) → "30 jun".
+    // Pero si el runtime corre en UTC-3 (horario de verano) sería "1 jul".
+    // Anclamos al texto que debe contener la abreviatura del mes en español.
     const monos = Array.from(container.querySelectorAll(".font-mono")).map(
       (m) => m.textContent,
     );
-    expect(monos.some((t) => t && t.length > 0)).toBe(true);
+    const desdeText = monos.find((t) => t?.startsWith("desde "));
+    expect(desdeText).toBeDefined();
+    // El formato es "desde D mes" — debe contener al menos el día y algún texto de mes
+    expect(desdeText).toMatch(/desde \d{1,2} [a-záéíóúñ]{3}/i);
     // link
     const link = screen.getByRole("link", { name: /Ver proyecto/ });
     expect(link).toHaveAttribute("href", "/proyecto/16284-07");

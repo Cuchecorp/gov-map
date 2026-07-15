@@ -41,14 +41,74 @@ import type {
  * carrusel, cero RPC nueva. Las vistas puras (`*View`) son testeables con fixtures.
  */
 
-// ── Inicio de la semana ISO (lunes 00:00 local) ────────────────────────────────
+// ── Formateadores Chile (patrón DIA_CALENDARIO_CHILE de estado-actual-block.tsx) ──
+/** Devuelve "YYYY-MM-DD" en hora de Chile. */
+const FECHA_CHILE = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Santiago",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+/** Devuelve "Mon"/"Tue"/…/"Sun" en hora de Chile. */
+const DOW_CHILE = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Santiago",
+  weekday: "short",
+});
+
+/**
+ * Inicio de la semana ISO (lunes 00:00) anclado a **America/Santiago**.
+ *
+ * `setHours`/`getDay` operan en el huso del servidor (UTC en producción),
+ * produciendo una frontera de semana errónea para Chile (domingo 20:00 CLST).
+ * Resolvemos derivando la fecha calendario en Santiago con Intl, hallando el
+ * lunes, y calculando el instante UTC equivalente a "ese lunes 00:00 CLST"
+ * con el mismo truco offset que usa `estado-actual-block.tsx`.
+ */
 export function inicioSemanaIso(hoy: Date = new Date()): Date {
-  const d = new Date(hoy);
-  d.setHours(0, 0, 0, 0);
-  const dow = d.getDay(); // 0=domingo … 6=sábado
-  const diff = dow === 0 ? 6 : dow - 1; // días desde el lunes
-  d.setDate(d.getDate() - diff);
-  return d;
+  // 1. Día de la semana en Santiago: "Mon"=1 … "Sun"=7
+  const DOW_MAP: Record<string, number> = {
+    Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7,
+  };
+  const dowStr = DOW_CHILE.format(hoy);
+  const dow = DOW_MAP[dowStr] ?? 1;
+  const diffDias = dow - 1; // días desde el lunes ISO
+
+  // 2. Fecha calendario en Santiago, p.ej. "2026-07-02"
+  const fechaChile = FECHA_CHILE.format(hoy); // "YYYY-MM-DD"
+  const [anio, mes, dia] = fechaChile.split("-").map(Number);
+
+  // 3. Fecha del lunes en Santiago (calendario, sin hora)
+  const lunesDia = dia - diffDias;
+
+  // 4. Instante UTC correspondiente a "lunes 00:00:00 America/Santiago".
+  //    Técnica: tomamos el "mediodía UTC del lunes calendario en Santiago" y
+  //    le restamos el offset local (diferencia instante-UTC − instante-CLST)
+  //    más 12 h para llegar a 00:00 CLST.
+  //    Obtenemos el offset midiendo la diferencia entre el mediodía UTC y su
+  //    representación local en Santiago parseada como si fuera UTC.
+  // Instante de referencia: mediodía UTC del lunes calendario en Santiago.
+  // (El mediodía garantiza que seguimos en el mismo día calendario en Santiago.)
+  const mediodia = Date.UTC(anio, mes - 1, lunesDia, 12);
+
+  // Hora local (Santiago) cuando el reloj UTC marca el mediodía.
+  // Formato "sv-SE" devuelve "YYYY-MM-DD HH:MM:SS" — parseamos hora/min/seg.
+  const fmt = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "America/Santiago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date(mediodia)); // p.ej. "2026-06-29 08:00:00" si UTC-4
+  // fmt = "YYYY-MM-DD HH:MM:SS"; extraemos la parte horaria.
+  const [, timePart] = fmt.split(" ");
+  const [hh, mm, ss] = timePart.split(":").map(Number);
+  const localNoonMs = (hh * 3600 + mm * 60 + ss) * 1000;
+  // Lunes 00:00 Santiago expresado en UTC:
+  //   UTC = mediodia − localNoonMs   (restar las horas locales para llegar al midnight)
+  return new Date(mediodia - localNoonMs);
 }
 
 // ── Fecha ISO parseable → Date válida, o null (nunca "Invalid Date") ────────────
@@ -62,6 +122,9 @@ function fechaValida(raw: string | null | undefined): Date | null {
 function camaraLabel(c: "diputados" | "senado"): string {
   return c === "diputados" ? "Cámara" : "Senado";
 }
+
+/** Cantidad máxima de ítems mostrados por bloque de actualidad (IN-03). */
+const MAX_ITEMS_ACTUALIDAD = 6;
 
 // ════════════════════════════════════════════════════════════════════════════
 // BLOQUE 1 — "Votado esta semana" (span-4)
@@ -117,13 +180,20 @@ export function VotadoEstaSemanaView({ items }: { items: VotadoItem[] }) {
                         <span className="font-mono">{it.boletin}</span>
                       )}
                     </h3>
-                    {/* Desenlace factual — se OMITE si `resultado` es null */}
+                    {/* Desenlace factual — se OMITE si `resultado` es null.
+                        El tally se suprime cuando ambos totales son 0 para no
+                        mostrar "0–0" como si fuera un recuento real (WR-03). */}
                     {it.resultado && (
                       <p className="mt-1 text-[13px]">
-                        El proyecto fue {it.resultado}{" "}
-                        <span className="font-mono">
-                          {conteoVotacion(it.totalSi, it.totalNo)}
-                        </span>
+                        El proyecto fue {it.resultado}
+                        {it.totalSi + it.totalNo > 0 && (
+                          <>
+                            {" "}
+                            <span className="font-mono">
+                              {conteoVotacion(it.totalSi, it.totalNo)}
+                            </span>
+                          </>
+                        )}
                         .
                       </p>
                     )}
@@ -169,7 +239,7 @@ export async function VotadoEstaSemana() {
     .select("boletin, resultado, total_si, total_no, fecha, enlace, camara")
     .gte("fecha", inicioSemanaIso().toISOString())
     .order("fecha", { ascending: false })
-    .limit(6);
+    .limit(MAX_ITEMS_ACTUALIDAD);
 
   // #34: un error real de lectura ≠ "sin votaciones". Se lanza (nunca `?? []`).
   if (error) {
@@ -265,13 +335,49 @@ export function UrgenciasVigentesView({ items }: { items: UrgenciaItem[] }) {
 export async function UrgenciasVigentes() {
   const sb = createServerSupabase();
 
-  // Bounded: eventos de urgencia más recientes.
+  // Paso 1 — boletines candidatos: los MAX_URGENCIAS_BOLETIN más recientes con
+  // mención de urgencia. Acotamos a nivel de boletín, NUNCA a nivel de evento,
+  // para no truncar la historia intra-boletín que `urgenciaVigente` necesita.
+  // (WR-02: limit(N) global pre-agrupación podía dejar una historia parcial y
+  //  derivar una vigencia incorrecta.)
+  const MAX_URGENCIAS_BOLETIN = 30; // cap de boletines candidatos, no de eventos
+  const { data: candidatoData, error: candidatoError } = await sb
+    .from("tramitacion_evento")
+    .select("boletin")
+    .ilike("descripcion", "%urgencia%")
+    .order("fecha", { ascending: false })
+    .limit(MAX_URGENCIAS_BOLETIN * 10); // margen para duplicados de boletín
+
+  // #34: un error real de lectura ≠ "sin urgencias". Se lanza (nunca `?? []`).
+  if (candidatoError) {
+    throw new Error(
+      `UrgenciasVigentes: no se pudo leer tramitacion_evento (candidatos): ${candidatoError.message}`,
+    );
+  }
+
+  // Deduplicar boletines preservando orden de recencia.
+  const boletinesCandidatos: string[] = [];
+  const seen = new Set<string>();
+  for (const r of (candidatoData ?? []) as { boletin: string }[]) {
+    if (!seen.has(r.boletin)) {
+      seen.add(r.boletin);
+      boletinesCandidatos.push(r.boletin);
+      if (boletinesCandidatos.length >= MAX_URGENCIAS_BOLETIN) break;
+    }
+  }
+
+  if (boletinesCandidatos.length === 0) {
+    return <UrgenciasVigentesView items={[]} />;
+  }
+
+  // Paso 2 — historia COMPLETA de esos boletines (sin limit intra-boletín).
+  // Una segunda .from() a la MISMA tabla no-PII es aceptable aquí porque no
+  // existe RPC ni vista auxiliar, y la primera query solo trae boletines.
   const { data, error } = await sb
     .from("tramitacion_evento")
     .select("*")
-    .ilike("descripcion", "%urgencia%")
-    .order("fecha", { ascending: false })
-    .limit(120);
+    .in("boletin", boletinesCandidatos)
+    .order("fecha", { ascending: true }); // cronológico para urgenciaVigente
 
   // #34: un error real de lectura ≠ "sin urgencias". Se lanza (nunca `?? []`).
   if (error) {
@@ -298,7 +404,7 @@ export async function UrgenciasVigentes() {
 
   // Más recientes primero; acotado a un puñado.
   vigentes.sort((a, b) => b.desde.getTime() - a.desde.getTime());
-  const top = vigentes.slice(0, 6);
+  const top = vigentes.slice(0, MAX_ITEMS_ACTUALIDAD);
 
   const titulos = await leerTitulos(
     sb,
