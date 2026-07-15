@@ -27,7 +27,12 @@
   --border: 40 16% 86%;
   --input: 214.3 31.8% 91.4%;
   --ring: 183 38% 26%;
-  --radius: 0.5rem;
+  --radius: 0.5rem;         /* shadcn — INTACTO (D4 LOCKED) */
+  /* Bento v8 — radio tokens (D4). Mapa mockup→tokens existentes:
+   * #F9F6F0≈--background  #FDFBF7≈--card  #E3DDD3≈--border
+   * #2A5859=--accent-product  #5C6373≈--muted-foreground */
+  --radius-tile: 16px;      /* esquina de tile bento (v8, D4) */
+  --radius-control: 11px;   /* input/botón bento; off-step, mockup-exact */
 }
 
 .dark {
@@ -83,6 +88,12 @@
     font-family: var(--font-geist-sans), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Anchors + sticky header: evita que el header sticky tape el target ancla (riesgo #2).
+   * 5rem = 80px ≥ altura header sticky ~56px + aire. Ajuste fino por ruta: Phase 79/81. */
+  :where(h1, h2, h3)[id] {
+    scroll-margin-top: 5rem;
   }
 }
 
