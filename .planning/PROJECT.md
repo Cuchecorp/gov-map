@@ -216,6 +216,7 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 | Alcance histórico de búsqueda = legislatura vigente completa (2022-2026), no "todo el archivo" | Valor de búsqueda decae con antigüedad; ~20h ingesta + ~12h pipeline es el costo real; alcance declarado honesto en la UI | ✓ v6.1 (3.657 proyectos, cobertura declarada) |
 | Techo honesto en vez de fabricar: 565 fichas en `estado='error'` con causa (478 RUT-guard, 87 schema-fail) | El guard RUT es LOCKED (nunca PII a LLM) y el gate zod no acepta salidas malformadas; mejor cobertura declarada 84,6% que 100% inventado | ✓ v6.1 |
 | Seed de fichas como paso propio (`seedFichasPendientes` ON CONFLICT DO NOTHING) | Root cause BUSQ-01: `runIngest` escribe `proyecto` pero el pipeline solo ve `proyecto_ficha` — sin seed, 82→1.643 proyectos invisibles; paginar lecturas PostgREST (cap 1k) fue imprescindible a escala | ✓ v6.1 |
+| Partido político + bio oficial del cargo electo se muestran DIRECTO y se correlacionan en todas las superficies (revierte la retención de `partido` en 0020) | Decisión del operador 2026-07-21: la militancia y la biografía oficial de un político electo son datos públicos esenciales para accountability ("¡son políticos!"); siempre con fuente+fecha, partido≠comité, militancia histórica vs actual. La minimización 21.719 sigue PLENA para terceros/familiares/RUT | v9.0 (en curso) |
 
 ## Evolution
 
