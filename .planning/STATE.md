@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Robustez de productos estrella + seguridad final
-status: planning
+status: ready
 last_updated: "2026-07-21T22:37:39.122Z"
 last_activity: 2026-07-21
 progress:
-  total_phases: 0
+  total_phases: 11
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** v8.0 Rediseño Bento — Phase 76 (BENTO-BASE) lista para planificar. Documento rector: MILESTONE-v8-bento.md; decisiones D1-D4 RESUELTAS por delegación (REQUIREMENTS.md §v8).
+**Current focus:** v9.0 Robustez de productos estrella + seguridad final — Phase 86 (BÚSQUEDA P1a — SPIKE retrieval híbrido + golden set) lista para planificar. Roadmap: ROADMAP.md §v9.0 (tres pasadas 86-89 / 90-94 / 95-96). Decisión operador: partido/bio oficial DIRECTO (REQUIREMENTS.md §v9.0).
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-07-21 — Milestone v9.0 started
+Phase: 86 — BÚSQUEDA P1a — SPIKE retrieval híbrido + golden set congelado (Not started)
+Plan: — (roadmap complete; ready for /gsd:plan-phase 86)
+Status: Ready — roadmap approved, 27/27 requisitos mapeados (fases 86-96)
+Last activity: 2026-07-21 — Roadmap v9.0 creado (11 fases, tres pasadas)
 
 ## Performance Metrics
 
@@ -144,11 +144,12 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-15T19:56:28.397Z
-Stopped at: Phase 81 complete — bento LIVE fb88c8a4, gate 75 cerrado, handoff lectura fría
-Resume file: .planning/ROADMAP.md
+Last session: 2026-07-21
+Stopped at: Roadmap v9.0 creado — 11 fases (86-96) en tres pasadas; 27/27 requisitos mapeados; listo para /gsd:plan-phase 86
+Resume file: .planning/ROADMAP.md (§v9.0)
 
 ## Operator Next Steps
 
-- v8.0: `/clear` + pegar el prompt de `.planning/PROMPT-v8.0-build-autonomo.md` (corrida autónoma 76-81)
+- v9.0: `/gsd:plan-phase 86` para descomponer el SPIKE de retrieval híbrido; luego `/clear` + prompt de pasada en `.planning/PROMPT-v9.0-build-autonomo.md` (pasada 1 = fases 86-89)
+- v9.0 checkpoints de operador (no los flipea el agente): sign-off de deep-links/agenda (gate BrowserOS 89/94), rotación DB password B26 (Phase 96, SEC-04)
 - v7.0 (paralelo, cuando quieras): gates de operador según `.planning/HANDOFF-v7.0-operator-gates.md`; al cerrarlos, `/gsd:audit-milestone` → `/gsd:complete-milestone v7.0`

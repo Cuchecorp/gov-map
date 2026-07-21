@@ -81,10 +81,39 @@
 
 ## Traceability
 
-Filled by roadmapper.
+Cobertura 100 por ciento: 27/27 requisitos mapeados a fases 86-96 (sin huérfanos, sin duplicados).
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| RETR-01 | Phase 87 | Pending |
+| RETR-02 | Phase 87 | Pending |
+| RETR-03 | Phase 86 | Pending |
+| RETR-04 | Phase 86 | Pending |
+| RETR-05 | Phase 87 | Pending |
+| RANK-01 | Phase 88 | Pending |
+| FILT-01 | Phase 88 | Pending |
+| FILT-02 | Phase 88 | Pending |
+| FILT-03 | Phase 88 | Pending |
+| TRACE-01 | Phase 89 | Pending |
+| TRACE-02 | Phase 89 | Pending |
+| TRACE-03 | Phase 89 | Pending |
+| BIO-01 | Phase 90 | Pending |
+| BIO-02 | Phase 91 | Pending |
+| BIO-03 | Phase 91 | Pending |
+| BIO-04 | Phase 91 | Pending |
+| BIO-05 | Phase 90 | Pending |
+| LOB-01 | Phase 92 | Pending |
+| LOB-02 | Phase 92 | Pending |
+| LOB-03 | Phase 92 | Pending |
+| CIT-01 | Phase 93 | Pending |
+| CIT-02 | Phase 94 | Pending |
+| CIT-03 | Phase 94 | Pending |
+| CIT-04 | Phase 94 | Pending |
+| CIT-05 | Phase 94 | Pending |
+| SEC-01 | Phase 95 | Pending |
+| SEC-02 | Phase 96 | Pending |
+| SEC-03 | Phase 96 | Pending |
+| SEC-04 | Phase 96 | Pending |
 
 ---
 *Requirements defined: 2026-07-21*

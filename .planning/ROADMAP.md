@@ -14,6 +14,235 @@
 - 🔒 **v7.0 — Votos, dinero y cierre técnico** — Phases 64-75 — CODE-COMPLETE 2026-07-15 (suite 820/820); NO archivado: gates de operador abiertos, checklist en `.planning/HANDOFF-v7.0-operator-gates.md`
 - ✅ **v8.0 — Rediseño Bento** — Phases 76-81 (home bento + primitivas + chrome + coherencia + candados + ship) — shipped 2026-07-15 (`fb88c8a4`); gate lectura fría = handoff (`phases/81-*/81-BROWSEROS-GATE.md`); archivo: milestones/v8.0-ROADMAP.md
 - ✅ **v8.1 — Demo perfecto** — Phases 82-85 — shipped 2026-07-15 (`3563ecc9`); archivo: milestones/v8.1-ROADMAP.md
+- 🚧 **v9.0 — Robustez de productos estrella + seguridad final** — Phases 86-96 (ACTIVA) — tres pasadas autónomas: P1 búsqueda/PL (86-89) → P2 personas/agenda (90-94) → P3 seguridad (95-96); ciclo diseño→BrowserOS→rediseño→validación por producto — arrancada 2026-07-21
+
+## 🚧 v9.0 — Robustez de productos estrella + seguridad final (ACTIVA)
+
+**Milestone Goal:** Los 6 productos de cara al ciudadano quedan robustos y validados empíricamente —retrieval de PL que nunca falla lo obvio, ranking+filtros, trazabilidad al punto exacto de la fuente oficial, parlamentario 360 con bio oficial cruzada, lobby legible y enlazado a PLs, citaciones completas (sala+comisiones, ambas cámaras)— cerrando con validación final de seguridad del sitio (repo público) y de Supabase. Máxima legalidad, defensa robusta.
+
+**Mode:** yolo · **Granularity:** fine (fases MUY granulares) · **Numbering:** continúa desde v8.1 (Phase 85 fue la última) → v9.0 arranca en **Phase 86**.
+
+**Estructura LOCKED: TRES PASADAS autónomas** (con `/clear` entre pasadas; prompt por pasada en `.planning/PROMPT-v9.0-build-autonomo.md`). **Ciclo por producto LOCKED:** diseño → prueba empírica BrowserOS → rediseño → validación empírica + de seguridad. **Modo:** Fable (main loop) planifica/dirime/controla; ejecución delegada a Sonnet; BrowserOS como gate empírico de cada superficie; gates humanos/legales JAMÁS los flipea un agente.
+
+**HALLAZGO RECTOR (research HIGH):** v9.0 NO es greenfield — es un pase de robustez sobre un sistema en producción (Next.js 16 + Supabase, `service_role` + RPC allowlist, anon muerta, dos-etapas R2). El bug del producto estrella es que la búsqueda es SOLO-semántica sobre embeddings de ficha → un ciudadano que escribe palabras LITERALES del título o pega un boletín puede recibir "sin resultados". El fix es 100% Postgres nativo (FTS `spanish` + `unaccent` + `pg_trgm` fundidos con pgvector kNN vía RRF, patrón oficial Supabase) + short-circuit determinista de boletín — **CERO librerías runtime nuevas** para el core. Cada nuevo camino público enhebra la MISMA aguja: **migración (>0044, cero `grant … to anon`) + RPC security-definer PII-safe + entrada en `PUBLIC_RPC_ALLOWLIST` + `service_role .rpc()`**. El riesgo dominante NO es técnico sino legal/correctitud: golden gate antes del swap, allowlist de campos en el parser de bio, enlace lobby→PL solo por boletín explícito.
+
+### Decisión rectora del operador (2026-07-21)
+
+**Partido político + bio oficial del cargo electo se muestran DIRECTO y se correlacionan en todas las superficies** (ficha, filtros, cruces) — revierte la retención de `partido` de 0020. La militancia y la biografía oficial de un político electo son datos públicos esenciales para accountability. Siempre con **fuente+fecha** ("según fuente al [fecha]"), **partido≠comité** (Senado), **militancia histórica vs actual**. La minimización de la Ley 21.719 sigue PLENA para **terceros/familiares/RUT** — la apertura de BIO-03 aplica SOLO a datos oficiales del cargo electo. **NO es un gate legal para el agente:** con esta decisión del operador, el partido oficial NO queda deny-by-default como MONEY/NET; se muestra directo con procedencia. La minimización de PII de terceros/familiares se mantiene a nivel de parser (allowlist de campos, PII cruda solo en R2).
+
+### Coverage
+
+- v9.0 requirements: 27 (RETR×5, RANK×1, FILT×3, TRACE×3, BIO×5, LOB×3, CIT×5, SEC×4)
+- Mapped to phases (86-96): 27/27 ✓
+- Orphaned: 0 · Duplicates: 0
+
+### Build order (tres pasadas, gates duros de la investigación)
+
+```
+PASADA 1 — Búsqueda/PL:
+  86 (SPIKE retrieval híbrido + golden set congelado — NO schema hasta elegir algoritmo empíricamente) ──GATE──► 87 (RPC híbrida buscar_proyectos_hibrido + migración tsvector STORED es_unaccent + GIN + trgm + boletín short-circuit + allowlist + rewire buscar.ts + golden gate en CI) ──► 88 (ranking explicable + filtros client-side island + estado-bucket normalizer) ──► 89 (deep-links de validación por boletín + persistir prmID/idNorma + fecha captura + snapshot R2 + gate BrowserOS)
+
+  /clear ▼
+
+PASADA 2 — Personas/Agenda:
+  90 (conector bio oficial dos-etapas: WSCamaraDiputados getDiputados + SPIKE BCN SPARQL senadores + membresía de comisiones BIO-05) ──GATE──► 91 (ficha bio + PARTIDO DIRECTO + cross-links factuales)
+  92 (lobby legible materia completa + audiencia→PL fail-closed por boletín explícito)
+  93 (AUDITORÍA de cobertura de citaciones — gate duro ANTES de UI) ──GATE──► 94 (/agenda por día + filtros periodista + gate BrowserOS)
+
+  /clear ▼
+
+PASADA 3 — Seguridad:
+  95 (guards extendidos sobre RPCs nuevas + bounded RPCs) ──► 96 (audit final: git-history secrets + CSP enforce + Splinter + DB viva + allowlist re-derivación + pgvector ≥0.8.2 + B26 operador)
+```
+
+**Gates duros:** 86 gatea 87 (algoritmo elegido por SPIKE antes de escribir schema); 90 gatea 91 (sin columna de bio, no hay header de bio); 93 gatea 94 ("antes de tocar UI" es LOCKED — un calendario parcial mostrado como completo engaña a la prensa). Los deep-links (89) y /agenda (94) llevan gate BrowserOS empírico. `source_snapshot`/`--from-r2` dos-etapas se FUNDE con el conector de bio (90) y el backfill de citaciones (93), no es fase aparte.
+
+### Phases
+
+- [ ] **Phase 86: BÚSQUEDA P1a — SPIKE retrieval híbrido + golden set congelado (GATE de 87)** — golden set ≥30 queries (título literal, paráfrasis NL, normas, todos los formatos de boletín, ñ/acentos/topónimos) + baseline medido FTS-solo vs semántico-solo vs RRF + merge/rank elegido; NO se escribe schema hasta elegir el algoritmo empíricamente
+- [ ] **Phase 87: BÚSQUEDA P1b — RPC híbrida `buscar_proyectos_hibrido` + rewire (fix del bug estrella)** — migración `00NN_proyecto_search` (tsvector STORED `es_unaccent` + GIN + trgm), RPC con boletín short-circuit fuera del RRF + pesos A/B/C, allowlist, rewire `buscar.ts`; golden set como test de regresión permanente en CI (RPC vieja tras flag hasta que la nueva domine)
+- [ ] **Phase 88: BÚSQUEDA P1c — Ranking explicable + filtros client-side island** — normalizador de estado (texto libre → buckets enum), island `buscar-filtros.tsx` (año/iniciativa/estado/cámara/partido) que reordena/filtra lo YA obtenido sin re-buscar, chips con counts honestos "de estos N", facetas vacías deshabilitadas, NULLs como bucket "sin dato"; ranking mensaje>moción + recencia por reglas declaradas, nunca ML opaco
+- [ ] **Phase 89: BÚSQUEDA P1d — Deep-links de validación por boletín + gate BrowserOS** — deep-link a la parte precisa de la fuente (Senado `?boletin_ini=`, Cámara `prmID`+`prmBOLETIN` requiere persistir `prmID`, BCN `idNorma`) + fecha de captura visible + acceso al snapshot R2; validado EMPÍRICAMENTE (HTTP 200 + content-match, gate BrowserOS), nunca buildId ni URL de sesión
+- [ ] **Phase 90: PERSONAS P2a — Conector bio oficial dos-etapas + membresía de comisiones (GATE de 91)** — conector dos-etapas fuente→R2→Supabase (WSCamaraDiputados `getDiputados` XML GET diputados + SPIKE BCN SPARQL senadores), allowlist de campos en el parser (PII de terceros/familiares queda en R2, jamás en tablas servidas), membresía de comisiones ingerida y modelada (hoy NO existe; prerequisito de bio/cross-links/citaciones)
+- [ ] **Phase 91: PERSONAS P2b — Ficha bio + partido directo + cross-links factuales** — la ficha muestra bio oficial (región/distrito, períodos, profesión, comisiones) con fuente+fecha+enlace + PARTIDO DIRECTO ("según fuente al [fecha]", partido≠comité, histórico vs actual, correlacionado en filtros/cruces) + cross-links factuales (mismo partido/región/comisión, co-autoría) jamás afinidad inferida
+- [ ] **Phase 92: PERSONAS P2c — Lobby legible + audiencia→PL fail-closed** — el título/materia COMPLETO de cada audiencia visible y legible (falla presentacional, el dato ya está entero) + audiencia→PL enlazada SOLO por mención explícita de boletín (reusa `lobby_en_tramitacion`, leyenda anti-causal, nunca regex de keywords) + navegación bidireccional audiencia↔PL↔parlamentario
+- [ ] **Phase 93: AGENDA P2d — AUDITORÍA de cobertura de citaciones (GATE duro de 94)** — qué se scrapea hoy vs qué publica cada fuente (sala+comisiones × Cámara+Senado) con N/M declarado; endpoints candidatos verificados con curl-first (WAF); backfill de lo faltante por dos-etapas/`--from-r2` LOCAL; hallazgos previos a confirmar (Senado comisiones forward-only, Cámara sala thin PDF→DeepSeek)
+- [ ] **Phase 94: AGENDA P2e — /agenda por día + filtros periodista + gate BrowserOS** — /agenda estructurada POR DÍA (tz America/Santiago) distinguiendo sala vs comisiones y Cámara vs Senado + filtros (cámara, comisión, rango de fechas, boletín mencionado, "esta semana") + sesiones canceladas/reagendadas modeladas honestamente; cobertura parcial declarada, nunca calendario parcial como completo; gate BrowserOS
+- [ ] **Phase 95: SEGURIDAD P3a — Guards extendidos sobre RPCs nuevas + bounded RPCs** — lockdown/allowlist, PII, anti-insinuación y pgTAP re-corridos y extendidos sobre las RPCs y superficies NUEVAS de P1/P2; toda RPC nueva acotada (LIMIT, `statement_timeout`, cap de `match_count`) contra DoS
+- [ ] **Phase 96: SEGURIDAD P3b — Audit final sitio + Supabase (net-new, no duplicativo)** — scan de secretos sobre TODO el historial git, `.env.example` sin valores reales, errores genéricos, headers verificados, CSP Report-Only → enforced; Splinter + grants/RLS sobre la DB VIVA, re-derivación del allowlist con lo nuevo, pgvector ≥0.8.2, `pnpm audit` limpio; rotación DB password (B26, checkpoint operador — el agente no rota)
+
+## Phase Details (v9.0)
+
+### Phase 86: BÚSQUEDA P1a — SPIKE retrieval híbrido + golden set congelado (GATE de 87)
+
+**Goal**: Elegir la estrategia de retrieval híbrido por prueba empírica ANTES de escribir cualquier schema — el bug del producto estrella (falla con palabras literales del título) no se arregla asumiendo un algoritmo, se mide.
+**Depends on**: Nothing (primera de v9.0; sistema en producción)
+**Requirements**: RETR-03, RETR-04
+**Componentes**: EJECUCIÓN (SPIKE empírico) · `app/lib/buscar.ts::buscarProyectos` + RPC `match_proyectos` (0011) YA-EXISTEN (semántico-solo)
+**Success Criteria** (what must be TRUE):
+
+  1. Existe un golden set CONGELADO de ≥30 queries que cubre título literal, paráfrasis NL, normas/cuerpos legales, TODOS los formatos de boletín (`14309-04`, `14309`, `14.309-04`) y casos ñ/acentos/topónimos ("Ñuñoa", "Aysén", "medio ambiente")
+  2. Cada estrategia candidata (FTS-solo, semántico-solo, RRF) queda MEDIDA sobre el golden set con un baseline reproducible; la estrategia de merge/rank (pesos, `rrf_k`, límite de candidatos para ESTE corpus) queda elegida por evidencia, no asumida
+  3. El golden set queda como test de regresión permanente en CI: la búsqueda NL/semántica y "proyectos similares" NO deben regresionar cuando entre la híbrida
+  4. Se registra la decisión: qué algoritmo, qué pesos, y que la RPC vieja se conserva tras un flag hasta que la nueva domine el golden set
+
+**Plans**: TBD
+**Research**: yes (SPIKE — el scoring del golden set ES la investigación; pesos RRF/`rrf_k`/límite de candidatos desconocidos hasta medir sobre este corpus)
+
+### Phase 87: BÚSQUEDA P1b — RPC híbrida `buscar_proyectos_hibrido` + rewire (fix del bug estrella)
+
+**Goal**: Implementar la decisión del SPIKE — el ciudadano que escribe un boletín o palabras literales del título SIEMPRE encuentra el proyecto, sin regresionar la búsqueda semántica.
+**Depends on**: Phase 86 (algoritmo elegido)
+**Requirements**: RETR-01, RETR-02, RETR-05
+**Componentes**: MODIFICADO (nueva migración + RPC + rewire `buscar.ts`) · reusa el patrón `0032_agenda_search` (FTS spanish) + `match_proyectos` (0011) para "similares"
+**Success Criteria** (what must be TRUE):
+
+  1. El ciudadano que escribe un número de boletín en cualquier formato (`14309-04`, `14309`, `14.309-04`) SIEMPRE encuentra el proyecto como resultado #1 — short-circuit determinista FUERA del RRF
+  2. El ciudadano que escribe un fragmento LITERAL del título/nombre SIEMPRE lo encuentra — FTS `spanish` + `unaccent` sobre título/materia, tsvector STORED con config `es_unaccent` custom + GIN + trgm; se consulta con la MISMA config (nunca `to_tsquery` crudo — siempre `websearch_to_tsquery`)
+  3. La búsqueda por idea matriz y normas/cuerpos legales en lenguaje natural opera con pesos declarados (A título / B idea matriz / C normas), fusionada por RRF sobre RANK (no suma ponderada de scores)
+  4. La nueva RPC `buscar_proyectos_hibrido` está en `PUBLIC_RPC_ALLOWLIST` y devuelve boletín+rank; `buscar.ts` recableado; el golden set en CI pasa y no regresiona NL/similares (RPC vieja tras flag hasta que la nueva domine)
+
+**Plans**: TBD
+
+### Phase 88: BÚSQUEDA P1c — Ranking explicable + filtros client-side island
+
+**Goal**: Operar sobre lo que el retrieval ya devolvió — reordenar/filtrar sin re-buscar — con ranking explicable y counts honestos.
+**Depends on**: Phase 87
+**Requirements**: RANK-01, FILT-01, FILT-02, FILT-03
+**Componentes**: MODIFICADO (island cliente net-new `components/buscar-filtros.tsx`) · reusa el contrato de island FichaRail (jamás toca Supabase)
+**Success Criteria** (what must be TRUE):
+
+  1. Existe un normalizador de estado de tramitación (texto libre → buckets enum) definido, testeado y reusable (`proyecto.estado`/`etapa` son texto libre hoy)
+  2. Los filtros reordenan/filtran los resultados YA obtenidos SIN re-buscar: año, mensaje/moción, estado (archivado/en tramitación), cámara de origen, partido de autores (cuando BIO-03 esté poblado)
+  3. Los chips llevan counts honestos ("de estos N resultados", nunca presentados como globales), las facetas vacías quedan deshabilitadas y los NULLs son un bucket explícito "sin dato"
+  4. El ranking prioriza mensajes (Ejecutivo) sobre mociones y lo reciente sobre lo antiguo por reglas explicables y declaradas — nunca ML opaco ni score de parlamentarios
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 89: BÚSQUEDA P1d — Deep-links de validación por boletín + gate BrowserOS
+
+**Goal**: Que cada ficha de boletín lleve al ciudadano al punto PRECISO de la fuente oficial para validar el dato — respaldo de trazabilidad, no solo un enlace genérico.
+**Depends on**: Phase 87 (fichas alimentadas por el retrieval)
+**Requirements**: TRACE-01, TRACE-02, TRACE-03
+**Componentes**: MODIFICADO (plumbing de datos: persistir `prmID`/`idNorma`/`link_mensaje_mocion` + UI de ficha) · patrones de URL verificados live 2026-07-21
+**Success Criteria** (what must be TRUE):
+
+  1. Cada ficha de boletín lleva deep-link a la página oficial PRECISA: Senado (`?boletin_ini=` con boletín completo), Cámara (`prmID`+`prmBOLETIN`, requiere persistir `prmID` en ingesta), BCN (`idNorma`)
+  2. Los deep-links se validan EMPÍRICAMENTE (HTTP 200 + content-match); nunca rutas con buildId ni URLs de sesión; el veredicto BrowserOS es "valida el dato"
+  3. La fecha de captura es visible junto al link + acceso al snapshot R2 correspondiente ("esto decía la fuente ese día") como respaldo de verificación
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 90: PERSONAS P2a — Conector bio oficial dos-etapas + membresía de comisiones (GATE de 91)
+
+**Goal**: Poblar la biografía oficial del Congreso por ingesta de dos etapas con allowlist de campos — sin columna de bio ni membresía de comisiones, la ficha no puede montar el header de 91.
+**Depends on**: Nothing de P2 (arranca la pasada 2 tras `/clear`)
+**Requirements**: BIO-01, BIO-05
+**Componentes**: MODIFICADO (conector net-new `@obs/bio` dos-etapas + columna/tabla de bio + modelo de comisiones) · reusa `fetch`+`fast-xml-parser`/`cheerio` del repo
+**Success Criteria** (what must be TRUE):
+
+  1. El conector de bio oficial es dos-etapas fuente→R2→Supabase: WSCamaraDiputados `getDiputados` (XML GET) para diputados + fuente Senado/BCN para senadores (SPIKE SPARQL BCN, con degradación honesta a ficha Senado si el endpoint es inestable)
+  2. El parser aplica un ALLOWLIST de campos (nombre/partido/comité/cámara/región/prosa vetada): la PII de TERCEROS/familiares queda en R2 crudo, JAMÁS en tablas servidas por Supabase
+  3. La membresía de comisiones queda ingerida y modelada (hoy NO existe) — prerequisito de BIO-02/BIO-04 y CIT-04
+  4. Solo se puebla identidad `confirmado`/`determinista` (fail-closed); rate-limit 2-3s + curl-first ante WAF; backfill masivo LOCAL
+
+**Plans**: TBD
+**Research**: yes (SPIKE — estabilidad del endpoint BCN SPARQL es MEDIUM; forma del conector aún no escrita; allowlist de campos requiere criterio de minimización)
+
+### Phase 91: PERSONAS P2b — Ficha bio + partido directo + cross-links factuales
+
+**Goal**: Montar el titular de la pasada 2 — parlamentario 360 con bio oficial y partido directo, cruzado con las demás variables — sin insinuar afinidad.
+**Depends on**: Phase 90 (conector + columnas + comisiones)
+**Requirements**: BIO-02, BIO-03, BIO-04
+**Componentes**: MODIFICADO (montaje en ficha + RPC cross-link PII-safe) · decisión operador: partido DIRECTO (no gate)
+**Success Criteria** (what must be TRUE):
+
+  1. La ficha muestra la biografía oficial del Congreso (región/distrito, períodos, profesión, comisiones, demás campos de la bio) con fuente+fecha+enlace
+  2. El partido político se muestra DIRECTO y se correlaciona en todas las superficies (ficha, filtros, cruces): "según fuente al [fecha]", distinguiendo partido vs comité (Senado) y militancia histórica vs actual
+  3. Los cross-links entre parlamentarios son factuales: mismo partido, misma región/distrito, misma comisión, co-autoría — relaciones DECLARADAS u observables, JAMÁS afinidad inferida (anti-insinuación LOCKED)
+  4. Ningún dato de terceros/familiares/RUT aparece en la superficie pública (minimización 21.719 intacta fuera del cargo electo)
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 92: PERSONAS P2c — Lobby legible + audiencia→PL fail-closed
+
+**Goal**: Hacer legible el lobby (la materia ya está entera en DB — la falla es presentacional) y enlazar audiencia→PL solo por evidencia dura, con leyenda anti-causal.
+**Depends on**: Nothing duro de P2 (paralelizable con 90/91; consume la ficha del parlamentario)
+**Requirements**: LOB-01, LOB-02, LOB-03
+**Componentes**: MODIFICADO (presentacional + link fail-closed) · reusa `lobby_en_tramitacion` + `lobby-de-parlamentario.tsx`
+**Success Criteria** (what must be TRUE):
+
+  1. El título/materia COMPLETO de cada audiencia de lobby es visible y legible en la ficha del parlamentario (el dato ya está entero en DB)
+  2. Audiencia→PL enlazada SOLO por mención explícita de boletín en la materia (fail-closed, reusa `lobby_en_tramitacion`), con leyenda anti-causal — NUNCA regex de keywords ni "coincidencia temática" afirmada
+  3. Navegación bidireccional fácil para ciudadano/periodista: audiencia → ficha del PL en movimiento → parlamentario, con links específicos
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 93: AGENDA P2d — AUDITORÍA de cobertura de citaciones (GATE duro de 94)
+
+**Goal**: Medir qué se scrapea hoy vs qué publica cada fuente ANTES de tocar UI — un calendario parcial mostrado como completo engaña a la prensa; la auditoría es discovery, no se asume.
+**Depends on**: Nothing duro (arranca el sub-bloque agenda; gatea 94)
+**Requirements**: CIT-01
+**Componentes**: EJECUCIÓN (auditoría de cobertura + backfill) · reusa `pnpm freshness` + conectores Cámara/Senado + `--from-r2` LOCAL
+**Success Criteria** (what must be TRUE):
+
+  1. Queda declarado, con N/M, qué se scrapea hoy vs qué publica cada fuente (sala+comisiones × Cámara+Senado); los hallazgos previos quedan CONFIRMADOS o refutados con medición (Senado comisiones forward-only, Cámara sala thin PDF→DeepSeek)
+  2. Los endpoints candidatos quedan verificados con curl-first ante WAF (Senado PHP `?mo=comisiones&ac=citacionesComision` sin buildId, Cámara `citaciones_semana.aspx?prmSemana=` + `getComisiones_Vigentes`); comisiones unidas/especiales revisadas
+  3. El backfill de lo faltante corre por dos-etapas y rate-limit LOCKED (`--from-r2` LOCAL), sin volver a molestar la fuente para re-ingestar
+  4. La cobertura parcial queda DECLARADA (nunca presentada como completa) — insumo directo del gate de 94
+
+**Plans**: TBD
+**Research**: yes (discovery — el estado exacto de Cámara-sala DeepSeek y el gap forward-only del Senado se miden, no se asumen)
+
+### Phase 94: AGENDA P2e — /agenda por día + filtros periodista + gate BrowserOS
+
+**Goal**: Entregar la agenda navegable por día con filtros de periodista — solo después de la auditoría, reusando el modelo existente, con estado de cancelación honesto.
+**Depends on**: Phase 93 (cobertura auditada y declarada)
+**Requirements**: CIT-02, CIT-03, CIT-04, CIT-05
+**Componentes**: MODIFICADO (página `/agenda` + filtros) · reusa `citacion`/`sesion_tabla_item`/`buscar_citaciones`
+**Success Criteria** (what must be TRUE):
+
+  1. El scraping/backfill de lo faltante (identificado en 93) queda ingerido por dos-etapas y rate-limit LOCKED, con endpoints verificados por curl primero (WAF)
+  2. /agenda está estructurada POR DÍA (tz America/Santiago), distinguiendo sala vs comisiones y Cámara vs Senado, fácil de navegar
+  3. Los filtros para periodistas/ciudadanos operan: cámara, comisión, rango de fechas, boletín mencionado, vista "esta semana"
+  4. Las sesiones canceladas/reagendadas quedan modeladas honestamente (nunca mostradas como vigentes); cobertura parcial declarada; el veredicto BrowserOS es "comprensible"
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 95: SEGURIDAD P3a — Guards extendidos sobre RPCs nuevas + bounded RPCs
+
+**Goal**: Cada RPC/superficie nueva de P1/P2 amplió la superficie de ataque bajo service_role — los guards existentes deben cubrirla y las RPCs caras deben quedar acotadas.
+**Depends on**: Nothing duro (arranca la pasada 3 tras `/clear`; requiere que las RPCs de P1/P2 existan)
+**Requirements**: SEC-01
+**Componentes**: MODIFICADO (extender guards existentes, no duplicar) · lockdown-guard, PII-guard, anti-insinuación, pgTAP YA-EXISTEN
+**Success Criteria** (what must be TRUE):
+
+  1. Los guards existentes (lockdown/allowlist, PII, anti-insinuación, pgTAP) quedan re-corridos y EXTENDIDOS sobre las RPCs y superficies nuevas de P1/P2 (búsqueda híbrida, bio, cross-links, lobby, agenda)
+  2. Toda RPC nueva queda acotada contra DoS: `LIMIT`, `statement_timeout`, cap de `match_count`
+  3. El allowlist de RPCs no tiene drift: toda RPC nueva está enumerada y ninguna RPC servida queda fuera del allowlist
+  4. Los guards muerden (mutation self-check) sobre las superficies nuevas — no pasan por vacío
+
+**Plans**: TBD
+
+### Phase 96: SEGURIDAD P3b — Audit final sitio + Supabase (net-new, no duplicativo)
+
+**Goal**: Los guards revisan las migraciones; el audit final revisa la DB VIVA y el repo público con modelo de amenaza de sujetos hostiles — más la rotación de credencial arrastrada.
+**Depends on**: Phase 95
+**Requirements**: SEC-02, SEC-03, SEC-04
+**Componentes**: EJECUCIÓN (audit sobre DB viva + repo + checkpoint operador B26) · Splinter/`pnpm audit`/secret-scan nativos
+**Success Criteria** (what must be TRUE):
+
+  1. Audit del sitio/repo público: scan de secretos sobre TODO el historial git (rotar cualquiera jamás commiteado), `.env.example` sin valores reales, mensajes de error genéricos, headers de seguridad verificados, CSP Report-Only → ENFORCED
+  2. Audit de Supabase: Splinter + revisión de grants/RLS sobre la DB VIVA (no solo migraciones), re-derivación del RPC allowlist incluyendo lo nuevo, pgvector ≥0.8.2 confirmado, `pnpm audit` limpio
+  3. La rotación del DB password (B26, arrastrada de v7) queda documentada como checkpoint de operador — el agente NO rota
+  4. El golden gate de identidad se re-verifica (la correctitud ES la defensa legal)
+
+**Plans**: TBD
 
 ## 🔒 v7.0 — Votos, dinero y cierre técnico (Code-complete; gates de operador abiertos)
 
