@@ -1,195 +1,322 @@
 # Feature Research
 
-**Domain:** Observatorio legislativo ciudadano — voto individual (P3) + dimensión dinero (P5)
-**Researched:** 2026-07-13
-**Confidence:** HIGH (votos: TheyWorkForYou/GovTrack documentan explícitamente su postura anti-insinuación; dinero: OpenSecrets/SERVEL/ChileCompra bien documentados. LOW en cobertura exacta de SERVEL/opendata.camara.cl porque son fuentes frágiles no validadas aún.)
+**Domain:** Legislative-transparency web platform (civic tech) — Chile Congress; ciudadanos + prensa
+**Researched:** 2026-07-21
+**Confidence:** HIGH (comparables directos: Congress.gov, GovTrack, OpenStates, TheyWorkForYou, OpenParliament.ca, InfoLobby.cl, Vota Inteligente)
 
-> **Nota:** este archivo reemplaza la versión de research v2.0. Alcance = SOLO las features NUEVAS de v7.0. Lo ya construido (timeline, votaciones AGREGADAS, ficha 360, lobby, patrimonio, `cruce_senal`, `/red`, búsqueda semántica, `/agenda`) NO se re-investiga.
+> Scope: v9.0 "robustez de productos estrella" — retrieval de PL, ranking+filtros client-side, deep-link de validación, ficha de parlamentario con bio oficial cruzada, lobby legible, citaciones completas. Todo lo de abajo respeta **anti-insinuación LOCKED** (nunca causalidad/intención, nunca score de afinidad política) y el principio rector **fuente+fecha+enlace**. Complejidad y dependencias sobre superficies YA construidas se anotan por fila.
 >
-> **Regla rectora que gobierna TODO lo de abajo:** cada dato lleva fuente + fecha + enlace original; el sistema describe el HECHO (cómo votó, cuánto recibió, qué contrato existe) y NUNCA infiere motivo, intención, causalidad ni "afinidad". Cada feature está redactada como "el ciudadano puede X" y probada contra la regla anti-causalidad. Los dos riesgos existenciales del proyecto — (#1) identidad que falla en silencio, (#2) "máquina de sospechas" — son el marco de aceptación de cada feature.
+> NOTA: este archivo reemplaza la versión de v7.0 (votos/dinero, 2026-07-13). v9.0 = robustez de los 6 productos de cara al ciudadano.
 
 ---
 
-## FRENTE P3 — Cómo vota el Congreso (voto individual)
+## Área 1 — Búsqueda de proyectos de ley (retrieval)
 
-### Table Stakes (el ciudadano espera que existan)
+Comparables clave: **Congress.gov** (exact-match por `cite:`, relevancia + sort por fecha/acción/número/título), **GovTrack** (bill number `HR 123`, comillas para frase exacta), **OpenStates** (full-text + tags), **hybrid search / RRF** (Reciprocal Rank Fusion) como estado del arte para combinar keyword+semántico.
 
-| Feature | Por qué se espera | Complejidad | Notas de implementación |
-|---------|-------------------|-------------|-------------------------|
-| **"Cómo votó X en esta votación"** — por cada votación nominal, lista de a favor / en contra / abstención / pareo / ausente, con nombre de parlamentario | Es la unidad atómica de todo observatorio de votos (GovTrack, TheyWorkForYou, VotaInteligente). Sin esto no hay P3. | MEDIUM | Fuente = `opendata.camara.cl` (SIN VALIDAR — bloqueante histórico). Reconciliar cada nombre contra la maestra de identidad **fail-closed** (riesgo #1). Guarda UI: solo enlazar a la ficha si `confirmado`. Senado ya trae voto por PARLID en `votaciones.php`. |
-| **Historial de votos de un parlamentario** — en su ficha 360, "así votó" ordenado por fecha/sesión, cada fila enlaza a la votación y al proyecto | Espejo del anterior desde el eje persona. GovTrack "Voting Record", TheyWorkForYou "Votes" por MP. | MEDIUM | Ya existe VIZ-VOTOS agregado ("cuándo votó por trimestre"); esto es el detalle nominal por debajo. Paginar (PostgREST cap 1k — GOTCHA conocido del proyecto). |
-| **Tasa de asistencia / ausencia a votaciones** — "votó en N de M votaciones (X%)" | GovTrack publica "Missed Votes" como report card estándar; es la métrica de rendición de cuentas más pedida. | LOW-MEDIUM | Conteo factual puro. **CAVEAT OBLIGATORIO en UI** (copiar a TheyWorkForYou): las ausencias pueden deberse a licencia médica, maternidad o pareo; NO etiquetar "flojo". Ya hay VIZ-COMP (comparativo de ausencias vs mediana de cámara) — extenderlo con el detalle nominal. |
-| **Desglose de una votación** — totales por opción + resultado (aprobado/rechazado) + quórum, con desglose por bancada/cámara | Contexto mínimo para entender el resultado; TheyWorkForYou muestra "party-by-party breakdown" por división. | LOW | El agregado ya existe (votaciones AGREGADAS v1.0); aquí se añade la capa nominal debajo del agregado. |
-| **Trazabilidad por voto** — fuente + fecha + enlace a la votación oficial en cada fila | Regla rectora del proyecto; también estándar (TheyWorkForYou enlaza al Hansard/debate). | LOW | Patrón ya establecido en todas las superficies del proyecto. |
+### Table Stakes (usuarios lo asumen)
+
+| Feature | Why Expected | Complexity | Notes / dependencias |
+|---------|--------------|------------|-------|
+| **Cero-fallo en número de boletín exacto** (`14309-04`, con o sin guion) | Un buscador legislativo que no encuentra el boletín exacto se siente roto. Congress.gov lo garantiza con `cite:` | LOW | Match determinista literal ANTES del vector. Debe surgir #1 siempre. Es la queja HOY (falla con literales). Depende de /buscar existente |
+| **Cero-fallo en fragmento LITERAL del título/nombre** | "modifica el Código del Trabajo" debe traer los proyectos cuyo título contiene esa frase, no solo semánticamente parecidos | MEDIUM | Full-text (Postgres FTS `spanish`, ya usado en `buscar_citaciones`) sobre título/nombre. Es el gap explícito del milestone: "HOY falla con palabras LITERALES del título" |
+| **Retrieval híbrido: keyword ∪ semántico, fusionados** | Estado del arte 2026 (RRF). Keyword da precisión de término exacto; vector da recall conceptual. Ninguno solo basta | HIGH | Fusionar FTS + pgvector kNN (`match_proyectos` existe) por RRF o unión con reglas. Elegido por SPIKE empírico con golden queries (ya en el plan). Reusa embeddings 768-dim |
+| **Búsqueda por lenguaje natural / idea matriz** | Ciudadano no sabe jerga; escribe "proyecto para bajar el precio de los remedios" | LOW (ya existe) | Ya vive vía embeddings asimétricos + idea matriz. Mantener; solo integrarlo al híbrido |
+| **Búsqueda por norma/cuerpo legal afectado** | "qué proyectos tocan la Ley 21.719" | MEDIUM | Ya se extraen cuerpos legales; exponerlos como campo buscable |
+| **Cobertura declarada honesta** | Prensa exige saber el universo ("busca sobre 3.100 proyectos 2022-2026") | LOW (ya existe) | Banner en /buscar ya presente. Mantener N/M |
+| **Suite de golden queries (test) para retrieval** | Regresión: cada release debe pasar consultas obvias (número, título literal, tema) | MEDIUM | Fixtures versionadas; gate en CI. El milestone ya lo pide como criterio de SPIKE |
 
 ### Differentiators (ventaja competitiva)
 
-| Feature | Propuesta de valor | Complejidad | Notas de implementación |
-|---------|--------------------|-------------|-------------------------|
-| **Alineamiento con la propia bancada — DESCRIPTIVO** — "en estas votaciones, X votó igual que la mayoría de su bancada el N% de las veces" | TheyWorkForYou tiene "party-alignment score" (distancia entre el voto del miembro y la proporción de su partido). Diferenciador real y muy usado por prensa. | MEDIUM-HIGH | **RIESGO ALTO de insinuación.** Solo el HECHO estadístico: "coincidió con el voto mayoritario de su bancada en N/M votaciones". NUNCA "leal/rebelde/disidente" como juicio, NUNCA inferir presión de partido. TheyWorkForYou advierte explícitamente que NO tiene datos de instrucción de voto (whip) y que el score ≠ rebeldía. Requiere linter de texto anti-insinuante (ya existe en el proyecto). Considerar diferir a un flag hasta sign-off legal. |
-| **"Se apartó de la mayoría de su bancada" (rebeldías) — como HECHO enumerado** | Prensa lo busca activamente; es señal noticiable. | MEDIUM | Solo enumerar las votaciones donde el voto difirió de la mayoría de su bancada, con enlace. Palabra neutra ("difirió", "votó distinto a la mayoría de su bancada"), NUNCA "traicionó/rebelde/quebró la línea". Es un caso especial del alineamiento; mismo gate. |
-| **Voto × tema/sector** — agrupar votaciones por materia (salud, pensiones, etc.) y mostrar cómo votó el parlamentario en ese grupo | GovTrack agrupa por "subject"; VotaInteligente por eje temático. Conecta con la búsqueda semántica y `cruce_senal` (etiquetado de sector por LLM ya existe). | HIGH | Reusa el etiquetado de sector del LLM (con su eval propio, NO el de extracción literal). Riesgo: agregación temática puede insinuar postura ideológica → mantener descriptivo ("en votaciones de materia X votó A a favor, B en contra"). TheyWorkForYou usa "consistently voted for/against" — es la línea roja; nosotros nos quedamos en el conteo, sin la etiqueta cualitativa. |
-| **Comparativo entre parlamentarios en la MISMA votación** — "en esta votación, quiénes de tal comisión/bancada votaron cómo" | Herramienta de prensa; ya hay precedente con VIZ-COMP y `/red`. | MEDIUM | Descriptivo, mismo eje temporal. No rankear "el más X". |
-| **Cruce voto × proyecto que el parlamentario presentó** — "presentó este proyecto y así votó en sus votaciones" | Diferenciador del producto (frente proyectos + frente parlamentario ya integrados; F48 autoría ya existe). | MEDIUM | Une autoría (763 autores ya poblados) con voto nominal. Puro hecho. |
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Ranking transparente y explicable** (mensaje Ejecutivo > moción, recencia, cámara de origen) | El usuario ve *por qué* un resultado está arriba, sin caja negra. Encaja con trazabilidad rectora | MEDIUM | Reglas explícitas, no ML opaco. Mensajes del Ejecutivo suelen avanzar más → prior legítimo de relevancia institucional (NO de mérito político) |
+| **"Proyectos similares" kNN desde una ficha** | Descubrimiento lateral que Congress.gov no da bien | LOW (ya existe) | Ya construido. Reusar |
+| **Idea matriz como snippet de resultado** | Muestra el "qué hace" en una línea, extraído literal (no resumen editorial) | LOW | Ya se extrae; mostrar en el hit |
 
-### Anti-Features (parecen buenas, crean problemas)
+### Anti-Features
 
-| Feature | Por qué se pide | Por qué es problemática | Alternativa |
-|---------|-----------------|-------------------------|-------------|
-| **Score de "lealtad", "consistencia" o "coherencia" ideológica** (tipo GovTrack ideology/leadership score) | Resume en un número; muy compartible | GovTrack mismo advierte que su score "puede estar midiendo otra cosa", fluctúa por azar del proceso legislativo, y NO garantiza relación con ideología. Un número-juicio ES insinuación de intención → viola la regla rectora y alimenta la "máquina de sospechas". | Conteos factuales sin etiqueta cualitativa ("coincidió con su bancada en N/M"). Nunca colapsar a un rótulo. |
-| **Etiquetas cualitativas de postura** ("consistentemente votó a favor de X", "pro-Y") | Legible, así lo hace TheyWorkForYou | Requiere que el sistema AFIRME una postura política del parlamentario → prohibido por la regla rectora (no afirmar intención). Es exactamente la línea que TheyWorkForYou cruza y nosotros no podemos. | Mostrar los votos individuales agrupados por tema y dejar que el ciudadano lea el patrón. El sistema cuenta, no califica. |
-| **Ranking "los más ausentes / los más rebeldes"** | Titular fácil | Un ranking implica juicio de valor y descontextualiza (ausencia = licencia/pareo). GOTCHA del proyecto: "ranking implícito en ORDER BY". | Métrica individual con contexto + comparación explícita contra la mediana de cámara (VIZ-COMP ya lo hace bien), sin tabla de "peores". |
-| **Inferir presión de partido / "votó así porque el partido lo obligó"** | Explica el comportamiento | El sistema NO tiene datos de whip (TheyWorkForYou lo dice explícitamente) y afirmar la causa es intención pura. | Solo el hecho: "votó igual que la mayoría de su bancada". Sin el "porque". |
-| **Marcar ausencias como negativas / "flojo"** | Rendición de cuentas | Sesga; ignora licencia médica/maternidad/pareo (advertencia literal de TheyWorkForYou). | Mostrar asistencia como conteo neutro + caveat de contexto obligatorio + registrar el pareo como categoría propia (no como "ausente"). |
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **Ranking "por importancia política" o por polémica** | "mostrar lo relevante" | Implica juicio editorial/afinidad → viola anti-insinuación | Ranking por señales factuales neutras (recencia, tipo de iniciativa, etapa) |
+| **Autocompletar que "adivina intención"** | UX moderna | Puede sesgar hacia interpretaciones | Autocompletar solo sobre número/título literal + temas del corpus |
+| **Solo-semántico (tirar el keyword)** | "IA moderna" | Falla en número/título exacto (el bug actual) | Híbrido con keyword como piso duro |
 
 ---
 
-## FRENTE P5 — Dimensión dinero (SERVEL + ChileCompra por RUT)
+## Área 2 — Filtros client-side (reordenan/filtran resultados YA obtenidos)
 
-> **Prerrequisito duro REAL (no un flag): RUT-01** — los RUT deben estar backfilleados en la maestra `entidad_tercero` ANTES de que cualquier cruce por RUT sea posible. Es dato, no autorización. Flag `MONEY_PUBLIC_ENABLED` OFF hasta encendido humano (Ley 21.719, plena vigencia 2026-12-01).
+Comparables: OpenStates (state/session/subject/type/chamber/updated), GovTrack advanced (subject, status, sponsor, chamber), Congress.gov (source/collection, sort). Patrón UX dominante: **facet chips + count por faceta + sort dropdown**, aplicados sin re-query cuando el conjunto ya está en cliente.
 
-### Table Stakes (el ciudadano espera que existan)
+### Table Stakes
 
-| Feature | Por qué se espera | Complejidad | Notas de implementación |
-|---------|-------------------|-------------|-------------------------|
-| **"Quién financió a X, cuánto y cuándo"** — aportes recibidos por el parlamentario en su campaña (aportante, monto, fecha), desde SERVEL | Es la unidad atómica de todo observatorio de dinero (OpenSecrets, FollowTheMoney). Table stake absoluto de P5. | HIGH | **SERVEL es conector artesanal frágil, NO API REST** (manual por elección/período; PROJECT.md lo marca como riesgo). Aportante persona natural → RUT es dato sensible (uso interno para identidad; publicar solo lo que SERVEL ya publica). Ley 19.884 exige nombre + RUT del aportante; verificar qué es público vs. reservado por tramo. |
-| **Gastos declarados de campaña** — total y desglose que el parlamentario declaró a SERVEL | Contraparte del aporte; SERVEL publica "gastos declarados". | MEDIUM | Conteo factual con fuente/fecha/enlace a SERVEL. |
-| **Contratos del Estado de empresas ligadas por RUT** — "empresas con este RUT tienen N contratos con el Estado por $X" (ChileCompra) | Diferenciador declarado del producto; ChileCompra es dato abierto. | HIGH | Cruce SOLO por **RUT exacto** de persona jurídica (NUNCA LLM para jurídicas — regla del proyecto). Depende 100% de RUT-01. "Ligada" debe definirse con precisión trazable (¿aportante? ¿proveedor? ¿director declarado en patrimonio?) — la relación tiene que ser un hecho verificable, no una inferencia. |
-| **Trazabilidad total por dato de dinero** — fuente (SERVEL/ChileCompra) + fecha + enlace + atribución CC BY 4.0 donde aplique | Regla rectora + marco legal del proyecto. | LOW | Patrón establecido. ChileCompra/InfoProbidad bajo CC BY 4.0 → atribución visible. |
-| **Caveat de contexto en TODA superficie de dinero** | Mitigación del riesgo #2, estándar de OpenSecrets | LOW | OpenSecrets: *"is impossible to know the motivation for each individual giver, [but] the patterns of contributions provide critical information."* Nuestro equivalente: leyenda fija "esto son montos y fechas declarados; el sistema no afirma relación entre financiamiento y decisiones". Reusar el patrón "Cómo leer esto" ya existente (v6.0). |
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Filtro por estado de tramitación** (en trámite / archivado / publicado como ley) | El filtro #1 que todos esperan; separa "vivo" de "muerto" | LOW | Client-side sobre resultados. Dato ya en el modelo |
+| **Filtro por tipo de iniciativa** (mensaje Ejecutivo / moción parlamentaria) | Distinción legislativa básica en Chile; alto valor para prensa | LOW | Campo ya disponible |
+| **Filtro por año / legislatura** | Acotar temporalmente | LOW | Facet estándar |
+| **Filtro por cámara de origen** (Cámara / Senado) | Estructura bicameral | LOW | Dato existente |
+| **Filtro por etapa/urgencia** | "qué está por votarse" | MEDIUM | Etapa ya en timeline; urgencia puede requerir campo |
+| **Chips removibles + "limpiar filtros"** | UX esperada de faceted search | LOW | Patrón chip estándar; el sitio ya usa chips cívicos (v8.1) |
+| **Count por faceta** ("En trámite (42)") | Estándar faceted; orienta antes de clickear | LOW | Contar sobre el set ya obtenido |
+| **Manejo de faceta vacía** (deshabilitar, no ocultar) | Evita confusión "¿dónde fue el filtro?" | LOW | Deshabilitar chip con count 0 |
 
-### Differentiators (ventaja competitiva)
+### Differentiators
 
-| Feature | Propuesta de valor | Complejidad | Notas de implementación |
-|---------|--------------------|-------------|-------------------------|
-| **Cruce dinero × sector × lobby** — "recibió aportes de entidades del sector X; se reunió (lobby) con entidades del sector X; hay N proyectos/votaciones del sector X" | ES el diferenciador central del producto (los tres carriles conectados). Reusa `cruce_senal` (ya `parlamentario↔sector`, conteos sin score). | HIGH | Extiende `cruce_senal` con la dimensión dinero. **Conteos factuales, NUNCA score de correlación** (decisión LOCKED del proyecto, 17-LEGAL-DOSSIER §2). Deny-by-default detrás de `MONEY_PUBLIC_ENABLED`. Máximo riesgo reputacional → sign-off legal obligatorio. |
-| **Ficha de una entidad (aportante/proveedor) 360** — "esta empresa aportó a estos parlamentarios y tiene estos contratos" | OpenSecrets tiene perfiles de industria/organización. Da el eje "entidad" además del eje "parlamentario". | HIGH | Requiere `entidad_tercero` poblada (v4.0) + RUT-01. Solo hechos enumerados. |
-| **Línea de tiempo dinero × tramitación** — aportes/contratos ubicados temporalmente junto a la tramitación de proyectos del sector | Contexto temporal (que la regla rectora SÍ permite: "correlaciones con contexto temporal y fuente"). | HIGH | **Máxima tentación de insinuar causalidad** por la yuxtaposición temporal. La proximidad temporal en un timeline PUEDE leerse como "compró el voto". Requiere caveat reforzado y probablemente diferir hasta sign-off. Es el punto donde más fácilmente se convierte en "máquina de sospechas". |
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Filtro por partido del autor** | Prensa filtra "mociones RN sobre pensiones" — factual, no valorativo | MEDIUM | Requiere autoría poblada (F48 ya LIVE) + partido (ver Área 4). Dependencia dura |
+| **Filtro por tema/materia** | Navegación por policy area (como Congress.gov subjects) | MEDIUM | Requiere etiquetado de tema (ya existe sector/tema por LLM en cruces) |
+| **Reordenar sin re-query** (recencia ↔ relevancia ↔ nº boletín) | Fluidez; el milestone lo pide explícito | LOW | Sort client-side sobre el array ya en memoria |
 
-### Anti-Features (parecen buenas, crean problemas)
+### Anti-Features
 
-| Feature | Por qué se pide | Por qué es problemática | Alternativa |
-|---------|-----------------|-------------------------|-------------|
-| **"Compró su voto" / cualquier afirmación aporte→voto** | Titular explosivo | Afirma causalidad e intención → viola frontalmente la regla rectora, es el riesgo existencial #2, y expone a responsabilidad legal (Ley 21.719, riesgo "máquina de sospechas"). | Mostrar aporte y voto como HECHOS separados con contexto temporal; el ciudadano conecta, el sistema NO. FollowTheMoney/OpenSecrets nunca afirman el vínculo causal. |
-| **Score de corrupción / índice de conflicto de interés / "riesgo"** | Resume, rankea, es compartible | Un score de sospecha ES una acusación cuantificada sin sentencia; jurídicamente indefendible; destruye la trazabilidad-sobre-interpretación. | Conteos factuales por parlamentario (N aportes, $X, N contratos ligados por RUT). Sin agregarlo a un índice. |
-| **Ranking "los más financiados / más contratos"** | Titular fácil | Ranking = juicio implícito + descontextualiza (monto alto puede ser campaña legítima grande). GOTCHA "ranking implícito en ORDER BY". | Cifra individual + comparación neutra contra mediana si acaso, sin tabla de "peores". |
-| **Publicar RUT y datos de familiares** | "Máxima transparencia" | Prohibido por diseño del proyecto (minimización; RUT es uso INTERNO para reconciliar identidad). Ley 21.719: "fuente de acceso público" no exime cumplimiento; el dato DERIVADO del cruce queda protegido. | Publicar solo lo que la fuente ya publica; RUT nunca al LLM ni a la UI pública; guarda RUT-guard LOCKED (ya existe, 478 fichas bloqueadas por él). |
-| **Inferir "conflicto de interés" de un cruce dinero×voto** | Parece el propósito del cruce | "Conflicto de interés" es una calificación jurídica que el sistema no puede emitir. | Enumerar los hechos coincidentes (aportó del sector X, votó en materia X) y dejar la calificación al lector/prensa/autoridad. |
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **Filtro "por polémica / más comentados"** | engagement | Editorializa; anti-insinuación | Filtrar por señales factuales (urgencia, movimiento reciente) |
+| **Filtro por "alineamiento" del autor** | análisis rápido | Score de afinidad = anti-feature LOCKED | Solo partido declarado (dato oficial), sin agregación valorativa |
+| **Re-query en cada click de filtro** | "simplicidad" | Latencia + carga al backend; contradice "sin re-buscar" del milestone | Filtrado/orden 100% client-side sobre el set traído |
+
+---
+
+## Área 3 — Deep-link de validación a la fuente oficial
+
+Comparables: Congress.gov (link al texto oficial y al status), OpenParliament.ca y TheyWorkForYou (permalink a Hansard por sección), InfoLobby (link a la audiencia registrada). Estándar del dominio: **cada dato lleva "ver en el sitio oficial" al punto más preciso posible**.
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Enlace a la página oficial del boletín** (Cámara/Senado según origen) | Es el principio rector del producto; ya existe a nivel dato | LOW | Ya se guarda fuente+fecha+enlace. Consolidar el link "canónico" por boletín |
+| **Deep-link al punto preciso** (tramitación específica, no solo home de la fuente) | El milestone lo pide: "a la parte precisa de la página oficial" | MEDIUM | Construir URL profunda por boletín/etapa. Cuidado: portal Senado Next.js con `buildId` volátil (leer `__NEXT_DATA__`, NO hardcodear) |
+| **Fecha de captura visible** ("según fuente al DD/MM/AAAA") | Trazabilidad temporal; ya es convención del sitio | LOW | Ya presente vía `fecha_captura` |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Enlace al crudo archivado en R2** (snapshot inmutable) | Defensa jurídica: "esto es lo que la fuente decía ese día", aunque la fuente cambie | MEDIUM | R2 content-addressed ya existe (dos-etapas LOCKED). Exponer link al snapshot como respaldo. ALTO valor legal para un repo público |
+| **Indicador de frescura por dato** | Prensa sabe si el dato es de hoy o de hace un mes | LOW | `pnpm freshness` ya calcula; superficializar |
+
+### Anti-Features
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **Cachear/servir el contenido oficial como propio sin atribución** | velocidad | Riesgo legal + rompe atribución CC BY | Link + snapshot atribuido con fecha |
+| **Deep-link con `buildId` hardcodeado (Senado)** | simplicidad | Rompe silenciosamente en cada deploy del portal | Autodetectar `__NEXT_DATA__.buildId` |
+
+---
+
+## Área 4 — Ficha de parlamentario (bio oficial cruzada)
+
+Comparables: TheyWorkForYou (votos recientes + discursos + comités + register of interests), OpenParliament.ca (partido, riding, comités, cross-link debates↔bills), Vota Inteligente (historial de votos, asistencia, comisiones, gastos). Campos bio estándar del dominio: **nacimiento, región/distrito, partido, periodos servidos, profesión, comités**.
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Partido político (oficial, declarado)** | Campo #1 esperado; hoy la ficha no lo trae bien | LOW-MEDIUM | Del sitio oficial del Congreso. Dato factual, no valorativo |
+| **Bio oficial: región/distrito o circunscripción** | Ubicación de representación, base de "mi parlamentario" | LOW | Del perfil oficial. Ya hay directorio /parlamentarios |
+| **Periodos servidos** | Antigüedad/continuidad, factual | LOW | Perfil oficial |
+| **Profesión / formación** | Contexto biográfico neutro | LOW | Perfil oficial |
+| **Membresías de comisiones** | Todos los comparables lo muestran; clave para prensa | MEDIUM | Puede requerir ingesta nueva (fuente de comisiones). Verificar cobertura antes de UI |
+| **Los carriles ya construidos** (votos, lobby, patrimonio, cruces, autoría) | Ya son el diferenciador; la bio los enmarca | — | Ya LIVE (v5.0 acordeones). v9.0 = enriquecer encabezado bio |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Cross-links entre parlamentarios** (mismo partido / misma comisión / misma región) | Navegación lateral; el milestone lo pide ("relaciones entre parlamentarios"). Factual, no de afinidad | MEDIUM | Derivar de campos declarados (partido, comité, distrito). Reusa /red pero como cross-link textual, no grafo |
+| **Co-autoría de proyectos** (quién co-firma con quién) | Relación factual verificable, muy usada por prensa | MEDIUM | Autoría ya poblada (F48). Co-autoría = firmas compartidas en el mismo boletín. NUNCA presentar como "alianza" |
+| **Header bio above-fold + acordeones** | Lectura de 3 capas ya existe (v5.0) | LOW | Extender el resumen preatentivo con bio |
+
+### Anti-Features
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **"Voting summaries" que agrupan votos en una postura política** (estilo TheyWorkForYou "voted strongly for X") | Muy popular en UK | Es exactamente la insinuación LOCKED-prohibida: infiere postura desde votos | Mostrar votos individuales con fuente; NUNCA agregarlos en un juicio |
+| **Score/ranking de parlamentarios** (asistencia como "buen/mal diputado") | comparación rápida | Editorializa mérito | Métrica descriptiva vs mediana de cámara, sin juicio (VIZ-COMP ya lo hace bien) |
+| **"Con quién se alía"** derivado de co-voto/co-lobby | análisis de redes atractivo | Afinidad inferida = anti-feature existencial #2 | Solo relaciones DECLARADAS (mismo partido/comité), conteos factuales |
+| **Foto/datos de familiares** | completar la ficha | Ley 21.719; PII de terceros | Solo lo que la fuente pública ya publica del parlamentario |
+
+---
+
+## Área 5 — Lobby / audiencias legibles
+
+Comparable directo: **InfoLobby.cl** (busca por autoridad o por empresa/lobbista; muestra fecha, asistentes, temas tratados, viajes, regalos). El gap del producto: el "asunto solicitado" hoy no se lee bien y no se enlaza a PLs.
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Título/materia completa de la audiencia** (no truncado) | InfoLobby lo muestra; el milestone dice "título completo de lo solicitado" | LOW-MEDIUM | Verificar que el crudo trae la materia completa (auditoría de campo antes de UI) |
+| **Asistentes / contraparte legible** | Quién pidió la reunión | LOW | Ya vive en `lobby_contraparte`; identidad de terceros (v4.0) |
+| **Fecha + link a la audiencia oficial** | Trazabilidad | LOW | Enlace a leylobby.gob.cl |
+| **Búsqueda/navegación por parlamentario** | Patrón InfoLobby | LOW (ya existe) | Ya en la ficha (carril lobby) |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Enlace audiencia → PL en movimiento** | El milestone lo pide explícito; NADIE en Chile lo hace bien. Alto valor periodístico | HIGH | Matching materia-audiencia ↔ boletín. Riesgoso: NO afirmar que la reunión "causó" el movimiento del PL. Presentar como "materia mencionada", con fuente, sin causalidad |
+| **Materia normalizada/temática** | Agrupar audiencias por tema | MEDIUM | Etiquetado tipo cruces; eval propio |
+| **Carril lobby × tramitación** (temporal, descriptivo) | Ya existe (v5.0 CRUCE2) | LOW | Reusar; reforzar leyenda anti-causal |
+
+### Anti-Features
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **"Este lobby influyó en este voto/proyecto"** | narrativa atractiva | Causalidad inventada = riesgo existencial #2 | "Audiencia sobre materia X el DD/MM; el boletín Y trata materia X" — coincidencia factual, leyenda "no implica causa" |
+| **Contar audiencias como "score de influencia"** | ranking | Score de correlación prohibido | Conteo factual con fuente, sin agregación valorativa |
+
+---
+
+## Área 6 — Citaciones / calendario legislativo completo
+
+Comparables: House "Bills This Week" / floor.docs.house.gov (por semana, filtrable por comité), Congress.gov floor calendars, GovTrack alerts por comité/tema. Workflow periodista: **"¿qué se discute HOY / esta semana y qué boletines se mueven?"**. El milestone exige **auditoría de cobertura de scraping ANTES de tocar UI** (sala + comisiones, ambas cámaras).
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Cobertura completa: sala + comisiones, ambas cámaras** | Hoy /agenda es parcial (sala Cámara PDF + Senado). Falta comisiones | HIGH | Auditoría de scraping primero (el milestone lo ordena). Puede requerir conectores nuevos. Dependencia dura antes de UI |
+| **Estructura por día** | Calendario legible | LOW-MEDIUM | Reagrupar /agenda existente por fecha |
+| **Distinción sala vs comisión** | Estructura básica del trabajo legislativo | LOW | Etiqueta de tipo de sesión |
+| **Boletines mencionados por sesión, enlazados** | Prensa quiere saltar del ítem al PL | MEDIUM | Ya hay `sesion_tabla_item`/`citacion_punto` con boletín; enlazar a ficha |
+| **Buscador FTS de citaciones** | Ya existe | LOW (ya existe) | `buscar_citaciones` (mig 0032). Mantener |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Filtros: cámara / comisión / rango de fecha / boletín mencionado** | Workflow periodista directo del milestone | MEDIUM | Client-side sobre el set del rango cargado (mismo patrón que Área 2) |
+| **Vista "esta semana" / "hoy"** | El uso #1 de prensa | LOW-MEDIUM | Default temporal a la semana en curso |
+| **"Qué boletines se mueven" (agenda → tramitación)** | Cruce agenda × timeline; alto valor | MEDIUM | Reusa timeline cross-cámara existente |
+
+### Anti-Features
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **UI de agenda antes de auditar cobertura** | ganas de mostrar | Muestra calendario incompleto como si fuera completo → engaña a prensa | Auditar scraping (sala+comisiones×2 cámaras) PRIMERO; declarar cobertura honesta (patrón v6.1) |
+| **Predicción "este proyecto se aprobará"** | engagement | Especulación, no fuente | Solo lo agendado, factual, con enlace oficial |
 
 ---
 
 ## Feature Dependencies
 
 ```
-P3 — VOTO INDIVIDUAL
-  opendata.camara.cl VALIDADO (bloqueante histórico)
-      └──requires──> conector 2-etapas fuente→R2→Supabase (hash-check, idempotente)
-             └──requires──> reconciliación voto↔maestra identidad (FAIL-CLOSED, riesgo #1)
-                    ├──enables──> "cómo votó X" + historial por parlamentario (table stakes)
-                    ├──enables──> asistencia/ausencia (+ caveat contexto)
-                    └──enables──> alineamiento con bancada / rebeldías (DIFF, gate anti-insinuación)
-  voto × tema ──requires──> etiquetado de sector LLM (ya existe en cruce_senal)
-  voto × proyecto propio ──requires──> F48 autoría (ya poblada, 763 autores)
+[Retrieval híbrido (Área 1)]
+    └──requires──> [FTS spanish sobre título/nombre]  (existe idiom vía buscar_citaciones)
+    └──requires──> [match determinista de nº boletín]  (nuevo, LOW)
+    └──enhances──> [Ranking (Área 1b)] ──feeds──> [Filtros/sort client-side (Área 2)]
 
-P5 — DINERO
-  RUT-01 backfill a entidad_tercero (PRERREQUISITO DURO REAL, es DATO)
-      ├──requires──> entidad_tercero poblada (v4.0, ya existe)
-      └──enables──> contratos ChileCompra por RUT (table stakes)
-                    └──enables──> cruce dinero × sector × lobby (DIFF, extiende cruce_senal)
-  SERVEL aportes/gastos ──requires──> conector artesanal manual por elección (frágil)
-      └──enables──> "quién financió a X" (table stakes)
+[Filtro por partido del autor (Área 2)]
+    └──requires──> [Partido en ficha (Área 4)]  +  [Autoría F48 (LIVE)]
 
-GATE TRANSVERSAL (ambos frentes):
-  cualquier superficie sensible ──gated-by──> flag *_PUBLIC_ENABLED OFF
-      └──unblocked-by──> sign-off legal humano (Ley 21.719) — NUNCA un agente
-  todo texto ──gated-by──> linter anti-insinuación (ya existe)
+[Cross-links entre parlamentarios (Área 4)]
+    └──requires──> [Bio oficial: partido/comité/distrito (Área 4 table stakes)]
+
+[Co-autoría (Área 4)] ──requires──> [Autoría poblada F48 (LIVE)]
+
+[Enlace audiencia → PL (Área 5)]
+    └──requires──> [Materia completa de audiencia (auditoría de campo)]
+    └──requires──> [Boletines enlazables (existe)]
+
+[UI de citaciones (Área 6)]
+    └──requires──> [Auditoría de cobertura scraping sala+comisiones×2]  (GATE antes de UI)
+
+[Deep-link preciso (Área 3)] ──enhances──> todas las fichas
+    └──conflicts──> [buildId hardcodeado del portal Senado]
 ```
 
 ### Dependency Notes
 
-- **P3 entero depende de validar `opendata.camara.cl`:** es el bloqueante histórico literal del milestone. Hasta caracterizar ese endpoint (formato, campos, estabilidad), ninguna feature de voto individual de la Cámara es construible. El Senado (`votaciones.php`) ya trae voto por PARLID → P3 puede empezar por el Senado mientras se valida Cámara.
-- **Reconciliación fail-closed es el cuello de botella de calidad de P3:** un voto atribuido al parlamentario equivocado = "afirmación falsa y creíble" (riesgo existencial #1). El voto individual debe pasar por la maestra de identidad con las MISMAS garantías que el resto (golden set, revisión humana, guarda UI `confirmado`).
-- **P5 entero depende de RUT-01, que es DATO no flag:** sin RUT en `entidad_tercero` no hay cruce posible por RUT. El roadmap debe secuenciar RUT-01 como fase de datos ANTES de cualquier superficie de dinero.
-- **El alineamiento-con-bancada (P3) y el cruce dinero×voto (P5) son los dos puntos de máximo riesgo de insinuación** → ambos detrás de flag + sign-off + caveat reforzado. Son diferenciadores, pero NO table stakes: el producto es válido sin ellos si el sign-off no llega.
+- **Filtro por partido (Área 2) requiere partido en ficha (Área 4):** por eso el milestone ordena búsqueda/PL en Pasada 1 pero el filtro por partido puede quedar detrás de la bio de Pasada 2, o adelantarse solo el dato partido.
+- **UI de citaciones (Área 6) bloqueada por auditoría de cobertura:** LOCKED en el milestone — no tocar UI hasta saber qué falta (sala+comisiones, ambas cámaras).
+- **Enlace audiencia→PL (Área 5) es el de mayor riesgo anti-causal:** debe presentarse como coincidencia de materia con fuente, jamás como influencia.
+- **Retrieval (Área 1) es prerrequisito de todo lo demás de Pasada 1:** ranking y filtros operan sobre lo que el retrieval trae.
 
 ---
 
-## MVP Definition (para v7.0)
+## MVP Definition (para v9.0, sobre app ya existente)
 
-### Launch With (P3 primero, deny-by-default)
+### Launch With (Pasada 1 — Búsqueda/PL)
 
-- [ ] **Voto individual nominal (Cámara vía opendata + Senado)** reconciliado fail-closed — sin esto no hay P3.
-- [ ] **Historial de votos en la ficha del parlamentario** con enlace a votación y proyecto — es el 360 real.
-- [ ] **Asistencia/ausencia con caveat de contexto obligatorio** (pareo como categoría propia, no "ausente").
-- [ ] **Desglose nominal bajo el agregado ya existente** — la capa que faltaba.
-- [ ] **Leyenda anti-insinuación en cada superficie de voto** (reusar "Cómo leer esto").
+- [ ] Retrieval híbrido con **cero-fallo en número de boletín y fragmento literal de título** — es el bug del producto estrella; inaceptable no resolverlo
+- [ ] Suite de **golden queries** como gate (número, título literal, tema, NL)
+- [ ] **Ranking explicable** (mensaje > moción, recencia) — no ML opaco
+- [ ] **Filtros/sort client-side** sobre resultados ya obtenidos (estado, tipo iniciativa, año, cámara) con chips + counts + faceta-vacía deshabilitada
+- [ ] **Deep-link de validación** por boletín al punto preciso oficial + fecha de captura (+ snapshot R2 como respaldo)
 
-### Add After Validation / behind gate (P5, MONEY_PUBLIC_ENABLED OFF hasta sign-off)
+### Launch With (Pasada 2 — Personas/Agenda)
 
-- [ ] **RUT-01 backfill** — prerrequisito duro, construir aunque el resto quede gated.
-- [ ] **SERVEL aportes/gastos "quién financió a X"** — conector frágil, construir hasta el gate.
-- [ ] **ChileCompra contratos por RUT exacto** — jurídicas nunca por LLM.
-- [ ] **Alineamiento con bancada (P3) descriptivo** — diferenciador, detrás de gate anti-insinuación.
+- [ ] **Bio oficial en ficha**: partido, región/distrito, periodos, profesión, comisiones
+- [ ] **Cross-links factuales** (mismo partido/comité/región) + co-autoría — sin afinidad inferida
+- [ ] **Lobby legible**: materia completa + enlace audiencia→PL como coincidencia de materia (leyenda anti-causal)
+- [ ] **Auditoría de cobertura de citaciones** (sala+comisiones×2) → luego calendario por día con filtros (cámara/comité/fecha/boletín) y vista "esta semana"
 
-### Future Consideration / diferir (v7.x+)
+### Add After Validation (v9.x)
 
-- [ ] **Cruce dinero × sector × lobby en `cruce_senal`** — máximo impacto reputacional; solo tras sign-off legal explícito.
-- [ ] **Timeline dinero × tramitación** — máxima tentación de causalidad; diferir hasta que el marco legal (21.719 vigente 2026-12-01) y el sign-off estén resueltos.
-- [ ] **Ficha de entidad 360 (aportante/proveedor)** — depende de `entidad_tercero` + RUT-01 maduros.
+- [ ] Filtro por tema/materia normalizada (retrieval + agenda)
+- [ ] Indicador de frescura por-dato superficializado en cada carril
+- [ ] Alertas/seguimiento por boletín o parlamentario (patrón GovTrack/Vota Inteligente) — futuro milestone
+
+### Future Consideration (v10+)
+
+- [ ] Grafo de influencia P6 (fuera de scope; ego-network /red ya cubre lo legible)
+- [ ] Notificaciones push pre-votación (Vota Inteligente) — requiere cuentas de usuario
 
 ---
 
 ## Feature Prioritization Matrix
 
-| Feature | Valor ciudadano | Costo impl. | Riesgo insinuación | Prioridad |
-|---------|-----------------|-------------|--------------------|-----------|
-| Voto individual nominal (table stake P3) | HIGH | MEDIUM | BAJO | P1 |
-| Historial de votos en ficha | HIGH | MEDIUM | BAJO | P1 |
-| Asistencia/ausencia + caveat | HIGH | LOW-MED | MEDIO (mitigado con caveat) | P1 |
-| Desglose nominal de votación | MEDIUM | LOW | BAJO | P1 |
-| Voto × proyecto propio | MEDIUM | MEDIUM | BAJO | P2 |
-| Voto × tema/sector | HIGH | HIGH | MEDIO | P2 |
-| Alineamiento con bancada (descriptivo) | HIGH | MED-HIGH | ALTO | P2 (gated) |
-| RUT-01 backfill | HIGH (habilitador) | HIGH | N/A (dato interno) | P1 (para P5) |
-| SERVEL aportes "quién financió a X" | HIGH | HIGH | MEDIO | P2 (gated) |
-| ChileCompra contratos por RUT | HIGH | HIGH | MEDIO | P2 (gated) |
-| Cruce dinero×sector×lobby | HIGH | HIGH | ALTO | P3 (sign-off) |
-| Timeline dinero×tramitación | MEDIUM | HIGH | MUY ALTO | P3 (sign-off) |
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| Cero-fallo nº boletín + título literal (híbrido) | HIGH | MEDIUM | P1 |
+| Golden queries gate | HIGH | MEDIUM | P1 |
+| Filtros/sort client-side (estado/tipo/año/cámara) | HIGH | LOW | P1 |
+| Deep-link validación preciso + snapshot R2 | HIGH | MEDIUM | P1 |
+| Bio oficial en ficha (partido/distrito/comités) | HIGH | MEDIUM | P1 |
+| Auditoría cobertura citaciones → calendario+filtros | HIGH | HIGH | P1 |
+| Lobby: materia completa + enlace a PL | HIGH | HIGH | P1 |
+| Ranking explicable (mensaje>moción, recencia) | MEDIUM | MEDIUM | P1 |
+| Cross-links parlamentarios + co-autoría | MEDIUM | MEDIUM | P2 |
+| Filtro por partido del autor | MEDIUM | MEDIUM | P2 |
+| Filtro por tema/materia | MEDIUM | MEDIUM | P2 |
+| Frescura por-dato superficial | LOW | LOW | P3 |
 
-**Clave de prioridad:** P1 = table stakes de v7.0, deny-by-default construible ya · P2 = diferenciador o dinero, detrás de flag hasta gate · P3 = máximo riesgo reputacional, solo tras sign-off legal humano.
+**Priority key:** P1 = must-have v9.0 · P2 = should-have si datos alcanzan · P3 = nice-to-have.
 
 ---
 
 ## Competitor Feature Analysis
 
-| Feature | GovTrack (US) | TheyWorkForYou (UK) | OpenSecrets/FollowTheMoney (US $) | Nuestro enfoque |
-|---------|---------------|---------------------|-----------------------------------|-----------------|
-| Voto individual por votación | Sí, "Voting Record" | Sí, división por MP + breakdown por partido | N/A | Sí (table stake), reconciliado fail-closed |
-| Asistencia/ausencia | Sí, "Missed Votes" report cards | NO cuenta ausencias en summaries (no sabe interpretarlas) | N/A | Sí, PERO con caveat literal de TheyWorkForYou (licencia/maternidad/pareo) |
-| Alineamiento con partido | "votes with party" | "party-alignment score" (distancia al voto del partido) | N/A | Conteo factual sin etiqueta cualitativa; gated |
-| Etiqueta cualitativa de postura | ideology/leadership **score** | "consistently voted for/against" | N/A | **NO lo hacemos** — es la línea roja que ambos cruzan y nosotros no |
-| Score ideológico | Sí (con auto-advertencia) | No | N/A | **Anti-feature** (prohibido) |
-| Financiamiento por industria/sector | N/A | N/A | Sí, perfil por industria | Sí, como conteo por sector; sin implicar motivo |
-| Caveat de no-motivación | — | "no data on whipping…a vote may not represent personal opinion" | "impossible to know the motivation…patterns provide critical information" | Leyenda fija en cada superficie; linter anti-insinuación |
-| Score de corrupción/riesgo | No | No | No | **Anti-feature** (prohibido) |
+| Feature | Congress.gov / GovTrack | TheyWorkForYou / OpenParliament.ca | InfoLobby.cl / Vota Inteligente | Our Approach |
+|---------|-------------------------|-------------------------------------|----------------------------------|--------------|
+| Búsqueda por nº/cita exacta | `cite:` zero-miss; `HR 123` | permalink por sección | básica | **Match determinista literal #1 + híbrido RRF** |
+| Ranking | relevancia + sort (fecha/acción/nº/título) | por fecha | simple | **Reglas explicables (mensaje>moción, recencia), no ML** |
+| Filtros | subject/status/chamber/sponsor/session | comité/partido | autoridad/empresa | **Client-side chips+counts sobre set ya traído** |
+| Deep-link a fuente | texto oficial + status | Hansard permalink | link a audiencia | **Boletín→punto preciso + snapshot R2 (defensa legal)** |
+| Ficha legislador | perfil + votos + comités | votos+discursos+**voting summaries** | votos+asistencia+comisiones+gastos | **Bio oficial + carriles factuales; SIN voting summaries (anti-insinuación)** |
+| Relaciones entre legisladores | — | co-firma, comités | — | **Solo declaradas (partido/comité) + co-autoría factual; jamás afinidad** |
+| Lobby/audiencias | (N/A) | — | fecha/asistentes/temas/viajes | **Materia completa + enlace a PL como coincidencia, leyenda anti-causal** |
+| Calendario | Bills This Week, filtro comité | agenda de debates | — | **Sala+comisiones×2 (tras auditoría), por día, filtros periodista** |
 
-**Lección clave de los tres:** los observatorios más respetados (a) muestran el voto/aporte como hecho enlazado a la fuente, (b) publican explícitamente sus caveats de no-interpretación, y (c) donde agregan (party-alignment, industria) lo hacen como estadística descriptiva declarada, NUNCA como juicio. La línea que TheyWorkForYou SÍ cruza — la etiqueta cualitativa "consistently voted for X" — es precisamente la que nuestra regla rectora nos prohíbe: nosotros contamos, no calificamos.
-
----
+**Nota rectora:** el mayor riesgo importado de los comparables es el patrón **"voting summaries"** de TheyWorkForYou ("voted strongly for X") — es justo la insinuación que este proyecto tiene LOCKED-prohibida. Adoptamos su UX de trazabilidad (permalinks, links a fuente) pero NUNCA su agregación valorativa de votos.
 
 ## Sources
 
-- [TheyWorkForYou — Voting information](https://www.theyworkforyou.com/voting-information/) — caveats literales sobre whip, ausencias (licencia/maternidad), pareo, "un voto puede no representar la opinión personal" — HIGH
-- [TheyWorkForYou Votes — Help & About](https://votes.theyworkforyou.com/help/about) — party-alignment score (distancia al voto del partido), campos por división, "score ≠ rebeldía", release experimental — HIGH
-- [The Constitution Unit — Should we see MPs' voting records?](https://constitution-unit.com/2021/12/20/should-we-be-allowed-to-see-mps-voting-records/) — riesgos de mala interpretación de historiales de voto (ausencias tildadas de pereza, screenshots sin contexto) — MEDIUM
-- [GovTrack — Analysis Methodology](https://www.govtrack.us/about/analysis) — ideology/leadership score, auto-advertencias ("puede medir otra cosa", fluctúa por azar, no publicado con <10 proyectos) — HIGH
-- [GovTrack — Missed Votes report cards 2024](https://www.govtrack.us/congress/members/report-cards/2024/house/missed-votes) — asistencia/ausencia como métrica estándar — HIGH
-- [OpenSecrets — Members of Congress profiles](https://www.opensecrets.org/members-of-congress) / [Industry methodology](https://www.opensecrets.org/industries/methodology) — perfil de financiamiento por industria, caveat "impossible to know motivation…patterns provide critical information" — HIGH
-- [Demos — Empirical evidence money in politics](https://www.demos.org/blog/empirical-evidence-money-politics-matters) — "correlation does not imply causality — near impossible to prove dollars sway votes" — MEDIUM
-- [SERVEL — Aportes](https://www.servel.cl/aportes/) / [Datos abiertos](https://www.servel.cl/2017/11/24/estadisticas-de-datos-abiertos/) / [Campañas electorales](https://www.servel.cl/campanas-electorales-elecciones-presidencial-y-parlamentarias/) — aportes recibidos, gastos declarados, Ley 19.884 (nombre+RUT del aportante, plazo 3 días); no es API REST — MEDIUM
-- [Fundación Ciudadano Inteligente](https://ciudadaniai.org/timeline) / [VotaInteligente](https://votainteligente.cl/) — referencia chilena: monitoreo de cómo legisla cada parlamentario, cumplimiento de compromisos, casos de financiamiento ilegal — MEDIUM
-- PROJECT.md / CLAUDE.md (Observatorio del Congreso 360) — regla rectora, riesgos existenciales #1/#2, RUT-01 como dato, cruce_senal sin score, flags *_PUBLIC_ENABLED, Ley 21.719 — HIGH
+- [GovTrack — General User Guide](https://www.govtrack.us/how-to-use) — bill number `HR 123`, comillas para frase exacta, advanced search — HIGH
+- [Congress.gov — Introduction to Search](https://www.congress.gov/help/search-intro) / [Search Tools](https://www.congress.gov/help/search-tools-overview) — `cite:` para nº exacto, relevancia + sort (fecha/acción/nº/título/law) — HIGH
+- [Congress.gov — Find Bills by Subject and Policy Area](https://www.congress.gov/help/find-bills-by-subject) — facetas por subject/policy area — HIGH
+- [Open States — API v2 examples](https://docs.openstates.org/api-v2/examples/) / [Find Your Legislators](https://openstates.org/) — filtros state/session/subject/type/chamber/sponsor/updated — HIGH
+- [TheyWorkForYou — Voting information](https://www.theyworkforyou.com/voting-information/) / [voting summaries update Jul 2026](https://www.mysociety.org/2026/07/01/theyworkforyou-voting-summaries-update-july-2026/) — votos individuales + summaries agrupados (ANTI-feature aquí) + comités — HIGH
+- [OpenParliament.ca — About](https://openparliament.ca/about/) / [GitHub michaelmulley/openparliament](https://github.com/michaelmulley/openparliament) — MP bio, riding, comités, cross-link debates↔bills — MEDIUM
+- [InfoLobby.cl](https://www.infolobby.cl/) / [Ley del Lobby](https://www.leylobby.gob.cl/) — búsqueda por autoridad/empresa; fecha, asistentes, temas, viajes, regalos — HIGH
+- [Fundación Ciudadano Inteligente — Vota Inteligente](https://en.wikipedia.org/wiki/Fundaci%C3%B3n_Ciudadano_Inteligente) — bills en lenguaje simple, historial votos, asistencia, comisiones, gastos, alertas — MEDIUM
+- [Bills This Week — docs.house.gov/floor](https://docs.house.gov/floor/) / [Floor Calendars — Congress.gov](https://www.congress.gov/calendars-and-schedules) — calendario semanal filtrable por comité — HIGH
+- [Modern Search: Semantic, Hybrid, Faceted, Vector](https://medium.com/@linz07m/modern-search-what-is-semantic-hybrid-faceted-and-vector-search-7c68231d8179) / [How to Create Hybrid Search](https://oneuptime.com/blog/post/2026-01-30-hybrid-search/view) — RRF, keyword+semántico, faceted pairing — MEDIUM
 
 ---
-*Feature research for: observatorio legislativo — voto individual (P3) + dimensión dinero (P5)*
-*Researched: 2026-07-13*
+*Feature research for: legislative-transparency platform (Chile Congress — ciudadanos + prensa)*
+*Researched: 2026-07-21*

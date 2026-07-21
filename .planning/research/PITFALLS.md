@@ -1,290 +1,376 @@
-# Pitfalls Research — v7.0 "Votos, dinero y cierre técnico"
+# Pitfalls Research — v9.0 "Robustez de productos estrella + seguridad final"
 
-**Domain:** Datos públicos del Congreso de Chile — agregar voto individual (P3) y dimensión dinero (P5) a Observatorio del Congreso 360.
-**Researched:** 2026-07-13
-**Confidence:** HIGH (fundado en el código real del repo: `@obs/votos`, `@obs/dinero`, `@obs/identity`, `parse-camara-votacion.ts`, `money-gate.ts`, `backfill-rut.ts`, `reconciliar-contrato.ts`)
+**Domain:** Civic-transparency web app (Chile Congress) — adding hybrid search, client-side filters, official deep-links, official bios, lobby→bill linking, committee calendars, and final security validation to an existing production system (Observatorio del Congreso 360).
+**Researched:** 2026-07-21
+**Confidence:** HIGH (FTS/RRF/deep-link mechanics verified against Supabase docs + Postgres docs; project-specific rules from PROJECT.md/CLAUDE.md/MEMORY.md)
 
-## Contexto crítico que cambia la naturaleza de estos pitfalls
-
-**La mayoría de P3 y P5 ya existe como CÓDIGO** (v2.0 "parlamentarios 360" quedó code-complete; era source-limited/gated, no unbuilt). Existen y ya son fail-closed:
-
-- `packages/votos/` — `runCamaraVotos` cruza DIPID→maestra DETERMINISTA, fail-closed, provenance por fila, idempotente por `(votacion_id, fuente_voter_id)`. Fue corrido source-limited (2 boletines del MVP).
-- `parse-camara-votacion.ts` — YA modela las **5 opciones** (`si/no/abstencion/pareo/ausente`) y maneja los **dos namespaces/shapes** de opendata (`getVotaciones_Boletin` vs `retornarVotacionDetalle`).
-- `app/lib/voto-presentacion.ts` — `pareo`/`ausente` en slate (color neutro), nunca fundidos con "en contra".
-- `packages/dinero/` — connector SERVEL (xlsx Azure Blob) + ChileCompra (por RUT + ticket), `reconciliar-contrato.ts` (jurídica solo por RUT exacto, natural por RUT/nombre con cola humana), `harvest-rut.ts`, `money-gate.ts` (fail-closed, solo literal `"true"`).
-- `packages/identity/` — `entidad_tercero`, `backfill-rut.ts` (DV módulo-11, provenance NOT NULL, RUT nunca a LLM ni a tabla pública).
-
-**Implicación para el roadmapper:** El pitfall #1 de v7.0 NO es "construir mal", es **REGRESIONAR patrones fail-closed ya correctos** al escalarlos, y **saltarse los prerrequisitos del mundo real** (validar opendata, RUT-01 físico, sign-off 21.719). Los pitfalls abajo priorizan eso.
+**Scope note:** These are pitfalls specific to ADDING v9.0's six features + final hardening to THIS system, not generic advice. Each maps to a Pass (P1 búsqueda/PL · P2 personas/agenda · P3 seguridad) and phase (numbering continues from 86). The system already has LOCKED rules — most pitfalls below are about *violating a LOCKED rule while chasing a new feature*.
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Atribuir un voto a la persona equivocada (riesgo existencial #1 amplificado)
+### Pitfall 1: Swapping in hybrid search without golden queries → silent regression of what already works
 
 **What goes wrong:**
-Un voto individual mal reconciliado imputa a un parlamentario un "sí/no" que no emitió. A diferencia de un lobby o un patrimonio mal cruzado, **un voto mal atribuido es directamente difamatorio y verificable como falso** por la propia fuente. Es el peor caso del riesgo #1.
+Today's search "falla con palabras LITERALES del título" (PROJECT.md) — that's the whole reason for the feature. But the current semantic search *does* work for paraphrase/NL queries and "proyectos similares" (kNN). Bolting on FTS and swapping the RPC without a frozen baseline means you fix the literal-title case and silently break the NL case (or the boletín-number case, or "similares"), and nobody notices until a journalist does.
 
 **Why it happens:**
-Al escalar de 2 boletines a toda la Leg-58, la tentación es aflojar el fail-closed: aceptar un DIPID que no está en la maestra "para no perder el voto", o cruzar por nombre cuando el DIPID no matchea. El código actual **no** hace esto (cruza por `Diputado/Id` determinista y deja `no_confirmado` lo que no matchea), pero un ejecutor Sonnet que "mejora cobertura" puede introducir un name-match o un fallback silencioso.
+Hybrid search is tuned by feel ("this query looks better now"). Without a fixed golden set scored BEFORE the swap, "better" is anecdote. RRF weights, `rrf_k`, FTS config, and candidate `limit` all interact; each tweak that helps one query class can hurt another.
 
 **How to avoid:**
-- El cruce de voto es **DIPID→maestra determinista, punto**. NUNCA name-match para votos (el nombre es puente para menciones libres, no para roll-calls que ya traen ID). Un DIPID fuera de la maestra → `no_confirmado`, la fila del voto se guarda con `parlamentario_id=null` y NO se muestra como atribuido.
-- El FK del voto sigue siendo `EnlaceConfirmado | null` (branded): un string crudo no compila. Preservar ese tipo.
-- Golden set de reconciliación DIPID→maestra ANTES del backfill masivo: verificar que el mapeo DIPID↔id_maestra es correcto para los ~155 diputados vigentes (los DIPID cambian entre legislaturas; un DIPID reciclado de una legislatura anterior es la trampa más peligrosa).
-- La UI solo muestra el voto si `confirmado` (mismo guard que el link de identidad en `/proyecto`).
+Freeze a golden query set (≥30 queries spanning: literal title words, idea-matriz paraphrase, norma afectada, boletín number in all formats, plain NL, and "proyectos similares" seeds) with expected top-K hits BEFORE writing any hybrid code. The SPIKE (PROJECT.md P1a: retrieval design "elegido por SPIKE empírico con golden queries") scores candidates against this set. No swap ships unless it dominates the baseline on literal-title AND does not regress the other classes. Keep the old RPC live behind a flag until the golden gate passes.
 
 **Warning signs:**
-- Cobertura de votos "sube" pero el % `confirmado` baja → se está imputando ruido.
-- Aparece `correrPipeline`/LLM o `normalizarNombre` en el camino de votos (no debe existir ahí).
-- Un DIPID con dos nombres distintos entre boletines, o un voto atribuido a un parlamentario de otra cámara.
+"It feels better." No numeric before/after per query class. A single blended score tuned by hand.
 
-**Phase to address:**
-Fase de **modelo de voto reconciliado** (P3c). Golden set DIPID→maestra como gate ANTES del backfill masivo (P3b).
+**Phase to address:** Pass 1, first phase (SPIKE + golden gate) — BEFORE the hybrid RPC is written.
 
 ---
 
-### Pitfall 2: opendata.camara.cl sin validar/caracterizar → rompe en silencio o cambia semántica
+### Pitfall 2: Spanish FTS config mismatch between index and query (accents, ñ, unaccent immutability)
 
 **What goes wrong:**
-opendata.camara.cl es el **bloqueante histórico declarado** de P3 (por eso P3 estuvo out-of-scope hasta v7). Es un WS ASP.NET (.asmx) con **dos endpoints, dos namespaces y dos shapes** (`getVotaciones_Boletin` bajo `tempuri.org`; `retornarVotacionDetalle` bajo `camaradiputados/v1`), con códigos de opción numéricos (`Valor 1=Afirmativo`, `0=En Contra`) que si se invierten producen el voto opuesto — silenciosamente correcto en forma, falso en fondo.
+Three compounding failures unique to Spanish civic text:
+1. The `'spanish'` stemmer stems unpredictably — searching "política" succeeds on `poli`/`polit`/`politica` but *fails* on `politi`/`politic` (verified Postgres bug threads). Users typing partial words get empty results on the flagship product.
+2. `unaccent()` is **STABLE, not IMMUTABLE**, so it cannot appear in an index expression. If the generated `tsvector` applies `unaccent` but query-time `websearch_to_tsquery` does not (or vice-versa), the index is bypassed or returns nothing — "medioambiente" vs "medio ambiente", "Ñuñoa", "Aysén" break asymmetrically.
+3. If the index uses `to_tsvector('spanish', ...)` but a query uses `to_tsvector(col)` (no config), Postgres **won't use the index** — silently slow or empty (verified Postgres docs).
 
 **Why it happens:**
-Se asume que el endpoint es estable y bien documentado como el `doGet.asmx`. No lo es: fue explícitamente marcado "SIN VALIDAR" en PROJECT.md. Escribir el conector antes de caracterizar el endpoint contra respuestas reales lleva a un parser que funciona con el fixture y falla (o miente) en producción.
+Copy-paste of the Supabase hybrid-search example, which uses `'english'` and no unaccent. Spanish + Chilean proper nouns (Ñuñoa, Aysén, Bío-Bío) are exactly where accent/ñ handling matters, and it's invisible until someone searches a specific place/name.
 
 **How to avoid:**
-- **Fase 1 de P3 = validar/caracterizar el endpoint contra respuestas LIVE reales** ANTES de escribir el conector de producción. Guardar respuestas crudas en R2 como fixtures autoritativos. Ya existe `run-camara-votos.live.test.ts` (gated por `VOTOS_LIVE=1`) — usarlo como gate de caracterización.
-- Bloquear el mapeo `OpcionVoto Valor → Seleccion` con un test que fije 1→si, 0→no, y verifique explícitamente pareo/abstención/dispensado contra la fuente (no asumir el orden).
-- Validar cada `Votacion`/`Voto` con `VotacionSchema` (zod) antes de escribir — el gate de contrato ya existe; que un cambio de shape del WS falle RUIDOSO, no que se cargue basura.
-- Cross-check de totales: el detalle voto-a-voto debe sumar a los `TotalSi/TotalNo/…` del boletín estructurado. Si no cuadra, la votación está incompleta → no publicar como total.
+- Build a custom text-search config chaining `unaccent` + `spanish_stem` into one dictionary, and store a **generated `tsvector` column** (`GENERATED ALWAYS AS (to_tsvector('config_es_unaccent', coalesce(titulo,'')||' '||coalesce(idea_matriz,''))) STORED`). This bakes unaccent into the stored expression (immutable at write time) — the STABLE trap disappears.
+- Query with the **exact same config**: `col_fts @@ websearch_to_tsquery('config_es_unaccent', $1)`.
+- Use `websearch_to_tsquery` (never raw `to_tsquery`) so input like `presupuesto OR "medio ambiente"` doesn't throw (see Pitfall 3).
+- Put accent/ñ/place-name cases (Ñuñoa, Aysén, "medio ambiente") IN the golden set from Pitfall 1.
 
 **Warning signs:**
-- El parser depende de un solo fixture; no hay respuesta LIVE guardada en R2.
-- Sumas de votos individuales ≠ totales reportados por la fuente.
-- 404/500/HTML de error del WS parseado como "0 votos" en vez de como fallo.
+Search works for one accented term, empty for another. `EXPLAIN` shows a seq scan on the FTS column. Query works in psql with explicit config but not from the app.
 
-**Phase to address:**
-**Fase 1 de P3 (validación de endpoint)** — bloqueante duro, antes del conector. El mapeo de opción y el cross-check de totales, en la fase de parseo/modelo.
+**Phase to address:** Pass 1, hybrid-search build phase.
 
 ---
 
-### Pitfall 3: Inferir "alineamiento", "rebeldía" o "disciplina de voto" (riesgo existencial #2)
+### Pitfall 3: Raw user input into `to_tsquery` → syntax errors; and naive score-mixing instead of RRF
 
 **What goes wrong:**
-El voto individual es el dato que MÁS invita a la "máquina de sospechas": comparar votos entre parlamentarios sugiere afinidad; señalar un voto contra el bloque sugiere "rebeldía"; agrupar votos sugiere causalidad política. Cualquiera de estos cruza de descriptivo a interpretativo/causal.
+- `to_tsquery` requires operator syntax; feeding it a user string with a stray `&`, `:`, `!`, unbalanced quote, or bare hyphen (very common in Spanish: "sub-secretaría", boletín "16733-07") throws `syntax error in tsquery` — a 500 on the search box.
+- Separately: mixing pgvector cosine distance (`<=>`, ~0–2) and `ts_rank_cd` (unbounded, corpus-dependent) by adding/averaging requires arbitrary scaling that shifts as the 3.657-project corpus grows. One runaway `ts_rank` compresses everything else.
 
 **Why it happens:**
-Es la visualización "obvia" y periodísticamente atractiva. Pero co-votación fue EXPLÍCITAMENTE excluida del MVP (`17-LEGAL-DOSSIER §2`, señales de voto OFF hasta sign-off). La tentación de "solo mostrar quién votó igual que quién" reintroduce co_votacion por la puerta de atrás.
+`to_tsquery` looks like the obvious function. "Just add the two scores" looks reasonable until you realize they're on incompatible, moving scales.
 
 **How to avoid:**
-- Superficies de voto **descriptivas por parlamentario × tema/sesión**, NUNCA comparativas entre parlamentarios como señal de afinidad. Ya hay precedente correcto: "Cuándo votó por trimestre" (VIZ-VOTOS) y comparativo de ausencias **vs mediana de cámara** (VIZ-COMP) — comparar contra una mediana agregada es factual; comparar par-a-par insinúa.
-- El **linter anti-insinuación debe cubrir las superficies de voto** (mismo linter que cruces): prohibir vocabulario "alineado con", "se rebeló", "leal a", "en contra de su bloque", "díscolo".
-- Leyenda "Cómo leer esto" anti-causal en toda superficie de voto (patrón ya establecido en cruces/charts v6.0).
-- co_votación / clustering de votos permanece OFF y detrás de sign-off legal — no es un flag que un agente inventa ni enciende.
+- Always `websearch_to_tsquery('config_es_unaccent', $userInput)` — sanitizes operators/quotes.
+- Combine rankings with **Reciprocal Rank Fusion (RRF)**, not weighted score sum. RRF fuses on rank position (`1/(k+rank)`), needs no normalization, and is robust to moving BM25/cosine scales. Use the Supabase `hybrid_search` RRF pattern (`rrf_k` ~50–60, `full_text_weight`/`semantic_weight` as knobs scored on the golden set). Boletín exact match should be a *pre-filter/short-circuit*, not left to RRF (Pitfall 4).
 
 **Warning signs:**
-- Aparece una vista "parlamentarios que votan como X" o una matriz de similitud de votos.
-- Texto generado (labels, tooltips) que atribuye motivo o postura política.
-- El linter anti-insinuación NO corre sobre los componentes de voto nuevos.
+Intermittent 500s on odd search strings. A single float being sorted. Ranking quality drifting after a corpus re-ingest.
 
-**Phase to address:**
-Fase de **superficies de análisis de voto** (P3d). El linter debe extenderse a esas superficies en esa misma fase; verificación por loop BrowserOS (gate de comprensión) como en v6.0.
+**Phase to address:** Pass 1, hybrid-search build phase.
 
 ---
 
-### Pitfall 4: Cruzar dinero por RUT antes de que RUT-01 exista físicamente
+### Pitfall 4: Boletín format chaos ("16733-07" vs "16733" vs dígito)
 
 **What goes wrong:**
-Cruzar SERVEL/ChileCompra por RUT contra una maestra donde `parlamentario.rut` está mayormente NULL produce: (a) cero matches (cruce vacío presentado como "sin vínculos") o, peor, (b) matches falsos si se rellena el gap con name-match. RUT-01 es un **prerrequisito de DATOS, no un flag** — el gate PROJECT.md es explícito: "RUT-01 debe existir físicamente antes de cruzar".
+A boletín is the primary cross-key of the whole system. Users type it many ways: `16733-07`, `16733`, `16.733-07`. If search routes the boletín through FTS/embeddings, an exact boletín query ranks *below* fuzzy title matches — the one query type that should be a guaranteed bullseye becomes lossy. The `-07` suffix is a chamber/materia code, not a check digit; stripping/keeping it inconsistently between ingest and query splits one project into "two."
 
 **Why it happens:**
-El flag `MONEY_PUBLIC_ENABLED` y el gate legal enmascaran que la precondición real es DATO: la maestra necesita RUTs backfilleados. Un agente puede "completar P5" construyendo todo el pipeline y encolando el cruce, sin notar que la maestra tiene RUTs vacíos → el cruce corre pero cuenta mal. HALLAZGO decisivo del research (verificado LIVE 2026-06-18): **ningún catálogo oficial expone el RUT** (Senado no lo trae; Cámara `WSDiputado` lo trae vacío) → RUT entra solo por Track A (SERVEL, frágil) o Track B (seed curado `parlamentario-rut.seed.json`).
+Treating the boletín as just another token in the hybrid pipeline; not normalizing format at both write and read time.
 
 **How to avoid:**
-- **RUT-01 como fase BLOQUEANTE explícita y secuenciada ANTES de cualquier cruce de dinero.** No es una casilla; es backfill real a `parlamentario.rut` vía `runBackfillRut` (Track B seed curado como default garantizado; Track A SERVEL como corroboración).
-- Medir cobertura de RUT en la maestra (N/M con RUT DV-válido) y DECLARARLA como techo honesto — igual que la cobertura de embeddings en v6.1. Un cruce de dinero solo cubre los parlamentarios con RUT presente; el resto se muestra como "sin dato de RUT", no como "sin vínculos".
-- El `reconciliar-contrato.ts` ya es correcto aquí: un name-match NUNCA escribe el `rut` de la maestra (name-uniqueness ≠ RUT-ownership); solo corrobora un RUT ya presente, o encola a revisión humana. Preservar esa separación de canales.
+Detect boletín patterns with a strict regex at query time; if the input *is* a boletín, **short-circuit to an exact/normalized lookup** and return that project first, bypassing RRF. Store a canonical normalized boletín (decide once: keep full `NNNNN-NN`, strip dots) and normalize identically on ingest and query. Include all format variants in the golden set. This is a fail-obvious case — the flagship must never miss a correctly-typed boletín.
 
 **Warning signs:**
-- Cruce de dinero corre pero `parlamentario.rut` está NULL para la mayoría.
-- Cobertura de RUT no está medida ni declarada.
-- Un RUT nuevo se escribe a la maestra derivado de un match por nombre.
+"16733-07" returns the right project but "16733" doesn't (or ranks 4th). Two ficha rows for one project. Golden set has no boletín-format cases.
 
-**Phase to address:**
-**Fase RUT-01 (backfill)** — bloqueante, secuenciada como prerrequisito duro ANTES de la fase de cruce de dinero. Verificación: cobertura de RUT medida y declarada; gate CI que impide que un name-match escriba `parlamentario.rut`.
+**Phase to address:** Pass 1, hybrid-search build phase.
 
 ---
 
-### Pitfall 5: Encender MONEY_PUBLIC_ENABLED sin sign-off legal 21.719 (o que un agente lo flipee)
+### Pitfall 5: Client-side filters presenting facet counts / results from a TRUNCATED server set as if global
 
 **What goes wrong:**
-El cruce dinero↔parlamentario es "el de mayor impacto reputacional" (PROJECT.md). Exponerlo sin la pasada de asesoría legal 21.719 (plena vigencia 2026-12-01) es el riesgo jurídico-existencial del producto. "Fuente de acceso público" NO exime cumplimiento; el dato DERIVADO del cruce queda protegido por la ley.
+PROJECT.md P1b is explicit: filters "reordenan/filtran resultados YA obtenidos sin re-buscar." The trap: the server returns top-K (say 30 via RRF `limit`). The UI shows "Partido: UDI (4), RN (2)…" as if global — but those are counts within the 30 shown. Users read "only 4 UDI projects match" when there are 40. Worse: a filter silently triggers a re-query (breaking the "no re-buscar" contract) and counts change under the user.
 
 **Why it happens:**
-El operador PRE-APROBÓ encender flags "cuando cada fase llegue a su gate con la suite verde" (2026-07-13). Un agente autónomo puede malinterpretar esto como autorización para flipear el flag él mismo. NO lo es: el sign-off legal es un **acto humano real** que el operador provee; su aprobación autoriza el flip, no lo reemplaza.
+Faceting is normally a server aggregate. Reusing the truncated result array for facet counts is the path of least resistance and looks correct in a demo where K > total matches.
 
 **How to avoid:**
-- Construir TODO hasta el gate **deny-by-default**. `money-gate.ts` ya es fail-closed (solo el literal `"true"`; ausencia = OFF, no error). NO tocar esa semántica.
-- El flip de `MONEY_PUBLIC_ENABLED` requiere `signoff: approved` en `docs/legal/13-LEGAL-DOSSIER.md` (deuda F13) — es acción exclusivamente humana. **Un agente NUNCA flipea `MONEY/NET/cruces`.**
-- Guard CI: que ningún commit de agente cambie `MONEY_PUBLIC_ENABLED` a `"true"` ni añada un default distinto de OFF.
-- Chokepoint único: toda ruta pública MONEY pasa por `moneyPublicEnabled(process.env)`, nunca leyendo la env cruda.
+- Be honest about scope: facet counts describe **the loaded result set**, labeled as such ("de estos N resultados"), never implied-global. Matches the system's existing honesty pattern (freshness N/M, "Busca sobre 3.100 proyectos").
+- Filters operate purely on the already-fetched array — pure client transform, zero network. If a filter needs data outside the fetched set, that's a search change, not a filter, and must be surfaced.
+- NULL facet values (an author with no `partido`) must render as an explicit "Sin partido / no informado" bucket, NEVER folded into a zero or an arbitrary party. Some authors legitimately lack `partido` (independientes, missing data) — showing "0 for RN" when it's "unknown" is a factual misstatement in a transparency product.
 
 **Warning signs:**
-- Un PR/commit de agente toca el flag o el default del gate.
-- Rutas MONEY que leen `process.env.MONEY_PUBLIC_ENABLED` directo en vez del gate.
-- El dossier legal 13 no tiene `signoff: approved` pero las rutas MONEY renderizan.
+Facet count sum ≠ visible results. A filter click shows a network request. A "0" for a party that has projects. Independents vanishing from buckets.
 
-**Phase to address:**
-Fase de **superficies de dinero (deny-by-default)** construye todo detrás del gate OFF. El encendido es una fase-gate humana separada (sign-off F13), fuera del alcance del agente.
+**Phase to address:** Pass 1, ranking+filters phase.
 
 ---
 
-### Pitfall 6: Afirmar "empresa ligada al parlamentario" sin base sólida de vínculo (difamación)
+### Pitfall 6: Deep-links to government sites that rot (buildId/session URLs) or point to search results, not canonical pages
 
 **What goes wrong:**
-Decir "empresa X, ligada al diputado Y, recibió contratos del Estado" cuando el vínculo es débil (homonimia, coincidencia de nombre, inferencia) es difamatorio. Persona jurídica name-linkeada a un parlamentario es el error más grave: **la empresa no es el parlamentario**.
+PROJECT.md P1c wants a deep-link "a la parte precisa de la página oficial" per boletín. Three rot modes specific to these sources:
+1. Senado's portal is Next.js with a `buildId` that **changes every deploy** (CLAUDE.md, MEMORY.md) — any URL containing `/_next/data/<buildId>/…` breaks silently on the next senado.cl deploy.
+2. Linking to a *search-results* URL ("buscar boletín X") instead of the canonical tramitación page — search UIs change params and rot.
+3. Session/`__VIEWSTATE`-based Cámara URLs are not stable, shareable, or bookmarkable.
 
 **Why it happens:**
-El impulso de "conectar los carriles" empuja a afirmar vínculos que la fuente no establece. Un LLM que clasifica "empresa relacionada" inventa una relación que no existe en el dato.
+The URL that works in the browser *right now* gets hardcoded. buildId-bearing data routes look canonical but aren't.
 
 **How to avoid:**
-- **LOCKED: persona jurídica SOLO por RUT exacto, fail-closed. Nunca LLM, nunca name-match.** `reconciliar-contrato.ts` ya lo enforça: jurídica → `matchDeterministaEntidad` por RUT exacto, nunca `correrPipeline`. Preservar esta rama intacta.
-- Persona natural puede cruzar por nombre determinista (finalidad del dato: enlazar un funcionario público es el pipeline confirmado/auditado), pero un confirmado-por-nombre prueba que el contrato está asociado a alguien confirmado como ese parlamentario — NO que el RUT del proveedor SEA el del parlamentario. La UI no debe colapsar ese matiz.
-- Presentar como **conteos factuales con provenance** ("N contratos con proveedores cuyo RUT/nombre coincide con el parlamentario, según ChileCompra, fecha, enlace"), NUNCA como "empresa ligada a" ni score de correlación.
-- El linter anti-insinuación cubre las superficies de dinero.
+- Link only to **canonical, parameter-stable public pages**: Senado tramitación by `?boletin=`, Cámara project detail by its stable id, BCN/LeyChile by `idNorma`. Never a data route with a buildId; never a session URL.
+- **Verify empirically, don't assume:** for a sample of boletines, fetch the target link server-side and assert HTTP 200 AND that the page content actually mentions that boletín (content match, not just status). This is the BrowserOS/empirical gate the milestone already mandates ("validación empírica"). A 200 rendering "proyecto no encontrado" is a dead link that passed a naive check.
+- Store the link-construction rule (a template per source), not the resolved URL, and re-derive at render time.
 
 **Warning signs:**
-- Aparece `correrPipeline`/LLM en la rama de persona jurídica.
-- Texto "empresa vinculada/ligada/asociada al parlamentario" sin RUT exacto.
-- Un score de correlación dinero↔parlamentario en vez de un conteo.
+Links contain a hash/buildId segment. Link verification checks status only, not content. Links tested once at build, never re-probed.
 
-**Phase to address:**
-Fase de **cruce de dinero** (preservar la rama jurídica RUT-only) + fase de **superficies de dinero** (linter + provenance inline + fraseo factual).
+**Phase to address:** Pass 1, deep-link phase (+ periodic link-health probe thereafter).
 
 ---
 
-### Pitfall 7: SERVEL manual/desactualizado presentado como live
+### Pitfall 7: Scraping official bios that carry PII beyond what we may republish (Ley 21.719 minimización)
 
 **What goes wrong:**
-SERVEL es "conector artesanal frágil, no API REST" (xlsx en Azure Blob, por elección/manual). Presentar datos de financiamiento de una elección pasada como si fueran actuales, sin fecha de corte visible, engaña sobre la vigencia del dato.
+Official Congress bio pages include birth date, family, education, address-adjacent data. Scraping wholesale and republishing pulls in PII the product has no basis to publish. Ley 21.719 (plena vigencia 2026-12-01) applies even to "fuente de acceso público" (PROJECT.md) — "the source published it" is NOT a defense. This directly contradicts the LOCKED minimización rule and "RUT/PII never public."
 
 **Why it happens:**
-El conector SERVEL degrada honestamente ante 403/503/429 (`ServelBloqueadaError`) pero la UI puede no reflejar CUÁNDO se capturó el dato ni que la elección es antigua.
+Scrapers grab the whole page; whitelisting fields is extra work; "it's already public" feels like cover.
 
 **How to avoid:**
-- Fecha de corte / fecha de captura VISIBLE en toda superficie de financiamiento (principio rector: fuente + fecha + enlace por dato).
-- `pnpm freshness` debe cubrir SERVEL y ChileCompra con señal de staleness (patrón v6.0).
-- Declarar explícitamente qué elección/período cubre el dato de financiamiento.
+- **Field allowlist, not blocklist:** ingest ONLY the bio fields the product will show (name, current party/comité, cámara, región/circunscripción, official bio prose vetted for PII, links). Everything else is dropped at the parser, never stored. Birth date / family / personal contact = excluded by default; keep raw bio in R2 crudo (immutable source of truth) but do not surface or load PII columns into Supabase-served tables.
+- Keep the two-stage rule: raw bio → R2, then a *minimizing* R2→Supabase load projecting only allowlisted fields.
+- Flag as a legal-review item (human sign-off), consistent with the milestone's legal gates.
 
 **Warning signs:**
-- Superficie de financiamiento sin fecha de corte.
-- Freshness no cubre SERVEL/ChileCompra.
+Bio ingest schema has `fecha_nacimiento`/`conyuge`/`hijos`. "We'll filter in the UI" (data already stored = already a risk). No allowlist in the parser.
 
-**Phase to address:**
-Fase de **superficies de dinero** (fecha de corte visible) + extender `freshness` a las fuentes de dinero (fase de hardening/deuda).
+**Phase to address:** Pass 2, bio phase — allowlist at parser + legal sign-off.
+
+---
+
+### Pitfall 8: Asserting CURRENT party from STALE/historical militancia; conflating comité with partido (Senado)
+
+**What goes wrong:**
+Party affiliation changes over time (renuncias, cambios de bancada). Scraping a bio once and asserting "Partido: X" as present-tense, when the person switched months ago, is a false statement about a hostile-capable subject — defamation-adjacent and a correctness failure. In the Senado, senators sit in **comités** (parliamentary groups) that are NOT the same as **partido**; showing comité as partido (or vice-versa) is wrong. Cross-links grouping parlamentarios by shared party can imply political alignment — anti-insinuación risk (existential risk #2).
+
+**Why it happens:**
+Bio pages show current affiliation without a timestamp; the scraper snapshots it and the UI renders it tenseless. comité and partido look interchangeable at a glance.
+
+**How to avoid:**
+- Always attach **fecha de captura + fuente + enlace** to party data (rector principle) and phrase as "según [fuente] al [fecha]", never bare present tense.
+- Model party as time-stamped, ideally a history if the source supports it; if only a snapshot exists, say so.
+- Keep **partido and comité as distinct fields** with distinct labels; never map one to the other. For the Senado, show comité as comité.
+- Any "relaciones entre parlamentarios" cross-link (PROJECT.md P2d) must be factual co-occurrence with the anti-causal/anti-insinuación legend already used across the product — never framed as "aligned/allied."
+
+**Warning signs:**
+Party rendered without a date. Same field for partido and comité. A cross-link labeled "misma línea"/"aliados." A senator's comité shown as "Partido."
+
+**Phase to address:** Pass 2, bio/ficha phase.
+
+---
+
+### Pitfall 9: Lobby→bill linking by regex over free-text materia → false links + insinuación
+
+**What goes wrong:**
+PROJECT.md P2e wants lobby audiencias linked "con PLs en movimiento con links específicos." The trap: regex-matching the free-text `materia` of an audiencia to a boletín. A materia that *mentions* a law ("modernización del Código de Aguas") is not the specific bill; matching by keyword produces false links. Worse, asserting a **meeting was ABOUT a bill** when the link is wrong is exactly the insinuación the product is legally built to avoid ("la reunión fue sobre el proyecto X" → implied influence). This fuses existential risk #1 (false-but-credible claim) with risk #2 (insinuación).
+
+**Why it happens:**
+Free-text materia often contains law-ish words; regex "works" on the demo cases; the linkage feels valuable so the evidence bar drops.
+
+**How to avoid:**
+- **Fail-closed linking, explicit-pattern only:** link an audiencia to a boletín ONLY when the materia (or a structured field) contains an explicit boletín number pattern. No boletín number → no link. Mirrors the identity fail-closed rule (never name-match to an FK).
+- Never render the relationship as causal/topical ("sobre el proyecto"); render it as "esta audiencia menciona el boletín NNNNN-NN" with the source text, letting the reader judge.
+- Run the anti-insinuación text linter (already in the codebase) over any generated link copy.
+
+**Warning signs:**
+Lobby links generated from keyword/fuzzy materia matching. Copy says "reunión sobre el proyecto." Link count suspiciously high. No explicit boletín pattern gate.
+
+**Phase to address:** Pass 2, lobby-legible phase.
+
+---
+
+### Pitfall 10: Committee-calendar completeness gaps shown as certainty; cancelled/rescheduled shown as upcoming; timezone drift
+
+**What goes wrong:**
+PROJECT.md P2f mandates a **coverage audit of scraping BEFORE touching UI** (sala + comisiones, both chambers). Pitfalls:
+- Sources publish comisión citaciones incompletely or late; showing the scraped set as "the complete agenda" misleads journalists who trust it. comisiones unidas / especiales are edge cases the scraper often misses.
+- A session cancelled or rescheduled at the source, still shown as "próxima," sends a journalist to a meeting that isn't happening.
+- Grouping "por día" (P2f) in UTC instead of **America/Santiago** buckets a 21:00 Santiago session into the next day (Chile is UTC−3/−4 with DST) — the daily agenda is silently wrong at the edges.
+
+**Why it happens:**
+Coverage is assumed, not measured. Postgres/JS default to UTC. Cancelled-state isn't modeled; only "scheduled" rows exist.
+
+**How to avoid:**
+- Do the coverage audit first and **declare coverage honestly** (the system's N/M pattern): which chambers/commissions/date-range are covered, and what's known-missing. comisiones unidas/especiales explicitly checked.
+- Model session status (programada/modificada/cancelada); never render a cancelled/rescheduled session as a plain upcoming item — show the change with source+date.
+- Group and display all dates in `America/Santiago` (store timestamptz, convert at the day-bucketing boundary). Verify with a session near midnight Santiago.
+- **Probe any new endpoint with curl first** — the WAF blocks Node/bot UAs on camara.cl (MEMORY.md: "WAF camara.cl bloquea Node fetch → curl OK"). Don't assume a new comisiones endpoint is reachable like the existing ones.
+
+**Warning signs:**
+Agenda presented as complete with no coverage statement. A day boundary that shifts sessions. No cancelled state in the schema. New endpoint tested only from Node.
+
+**Phase to address:** Pass 2, citaciones phase (coverage audit gates the UI work).
+
+---
+
+### Pitfall 11: Identity fail-closed silently loosened while wiring bios/lobby/committees (existential risk #1)
+
+**What goes wrong:**
+Every new P2 feature wants to attach data to a parlamentario. The pressure to "link more" tempts name-matching (bio → maestra, lobby contraparte → parlamentario, comité member → maestra) instead of the confirmed identity pipeline. A single wrong match = a false, credible claim attributed to a real, possibly-hostile person. This is documented existential risk #1.
+
+**Why it happens:**
+The identity pipeline is stricter (fail-closed) and yields fewer links; a feature "looks more complete" with loose matching. Temptation is highest when the new source uses a full name that "obviously" matches.
+
+**How to avoid:**
+- Re-verify fail-closed at every new join: bio, lobby, and committee data attach to the maestra ONLY via confirmed identity (golden set ≥0.95 gate), never a fresh name-match to an FK. If unconfirmed, show the datum unlinked (the system already does "link solo si confirmado" in UI).
+- Treat every new person-linking edge as subject to the existing identity audit trail.
+
+**Warning signs:**
+A new `.rpc`/join that resolves a person by name string. Link coverage jumping without new confirmed identities. Bio/lobby rows FK'd to parlamentario without an adjudication record.
+
+**Phase to address:** Pass 2, all person-linking phases (verification gate).
+
+---
+
+### Pitfall 12: Final security pass treats the PUBLIC repo + hostile subjects as ordinary web security
+
+**What goes wrong:**
+PROJECT.md P3 is "validación final de seguridad." The threat model is unusual: the repo is **public on GitHub** and the *subjects* (parlamentarios) may be motivated to find leaks or defame-back. Ordinary "we have RLS, we're fine" misses: secrets committed in git *history* (not just current tree), `.env.example` shipping real-looking values, error messages leaking schema/table names, RPC allowlist drift (a new RPC added in P1/P2 not in the allowlist — under the service_role model anon is dead but service_role bypasses RLS), CSP stuck in Report-Only forever (MEMORY.md: "CSP solo Report-Only"), dependency alerts (Dependabot), and expensive unbounded RPCs (the new hybrid_search / faceting) as a cheap DoS.
+
+**Why it happens:**
+Security is treated as a generic OWASP checklist. The public-repo + service_role-bypass + hostile-subject combination is specific to this project and easy to under-scope. New RPCs from P1/P2 silently expand attack surface after the earlier lockdown (Camino A).
+
+**How to avoid:**
+- **Git history scan** (gitleaks/trufflehog over full history), not just current files. Rotate anything ever committed (the DB password was already flagged as exposed — confirm rotation, B26).
+- Assert `.env.example` contains only placeholders; add a CI check.
+- Ensure error responses never echo Postgres error text/schema to the client (generic message + server-side log).
+- **Re-derive the RPC allowlist** including every RPC added in P1/P2; the guard CI (already scans `app/` for `.from` PII + non-allowlisted `.rpc`) must cover the new hybrid_search / bio / lobby / agenda RPCs. Under service_role (RLS bypassed by design), each new RPC is the security boundary — verify each is PII-safe.
+- **Bound the new expensive RPCs:** hybrid_search and faceting must have a hard `LIMIT` + `statement_timeout` and cap `match_count` so a crafted query can't pin the Pro-plan DB. Supabase RPCs can time out; an unbounded RRF over 3.657 rows + HNSW is cheap, but a pathological `websearch_to_tsquery` or huge `match_count` is not.
+- **Flip CSP from Report-Only to enforced** (with a tested policy) — Report-Only forever = no protection.
+- Correctness-as-defamation-defense: re-run the identity golden gate and confirm every publicly-shown person-linked datum traces to a confirmed identity + source + date. Data correctness IS the legal defense here.
+
+**Warning signs:**
+Secret scan runs on HEAD only. `.env.example` has real hostnames/keys. 500s show `relation "x" does not exist`. A new RPC not in the allowlist. CSP still Report-Only at ship. hybrid_search has no LIMIT/timeout.
+
+**Phase to address:** Pass 3, security phase.
 
 ---
 
 ## Technical Debt Patterns
 
-Shortcuts que parecen razonables pero crean problemas al tocar los conectores existentes.
-
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Escribir el conector de votos contra un fixture sin caracterizar opendata LIVE | Avanza rápido | Parser que miente en prod (namespaces/códigos de opción); rompe silencioso | **Nunca** — validar endpoint es fase 1 de P3 |
-| Name-match para llenar votos sin DIPID en la maestra | +cobertura aparente | Voto difamatorio (riesgo #1) | **Nunca** para votos (roll-calls traen ID) |
-| Correr cruce de dinero antes de RUT-01 físico | "P5 completo" | Cruce vacío o falso; cuenta mal | **Nunca** — RUT-01 es prerreq de datos |
-| Escribir `rut` a la maestra desde un name-match | RUT "cosechado" | name-uniqueness ≠ RUT-ownership → RUT falso | **Nunca** — solo corroborar RUT presente o cola humana |
-| Editar el allowlist SSRF para agregar un host de dinero al default | Menos fricción | Amplía SSRF a todo el tenant (Azure/ChileCompra) | **Nunca** — usar `extraHosts` scoped al conector |
-| Tocar `runIngest`/`SnapshotWriter` compartido para "mejorar" votos | Reuso | Regresiona la ingesta que ya funciona (leyes/lobby/probidad) | Solo con suite verde de TODOS los consumidores + snapshot dos-etapas intacto |
-| Saltarse el paso R2 (fuente→R2) al agregar votos/dinero | Menos código | Rompe la regla LOCKED de dos etapas; no re-ingestable sin molestar la fuente | **Nunca** — dos etapas es LOCKED |
+| Facet counts from truncated top-K set | No server aggregate to build | Misleading counts in a transparency product; credibility hit | Never — label "de estos N resultados" if truly client-only |
+| Weighted score sum instead of RRF | One less concept | Re-tuning as corpus grows; scale-mismatch bugs | Only after golden set shows it beats RRF for this corpus |
+| Hardcode a government URL that "works now" | Ships the deep-link fast | Rots on next senado.cl deploy (buildId) | Never — store the template, re-derive |
+| Scrape whole bio, filter in UI | Faster ingest | PII stored = Ley 21.719 exposure even before display | Never — allowlist at parser |
+| Keyword-match lobby materia → boletín | More links, "richer" ficha | False links = false influence claims (insinuación) | Never — explicit boletín pattern only |
+| Group agenda by day in UTC | No tz code | Edge sessions on wrong day | Never — America/Santiago at bucketing |
+| Ship hybrid search without golden gate | Feels done | Silent regression of NL/similares | Never — golden gate is the SPIKE's whole point |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| opendata.camara.cl (votos) | Asumir un solo shape/namespace | DOS endpoints, DOS namespaces (`tempuri.org` vs `camaradiputados/v1`), códigos `Valor 1=si/0=no` — fijar el mapeo con test |
-| opendata.camara.cl DIPID | Reusar DIPID entre legislaturas | DIPID puede reciclarse; golden set DIPID→maestra por legislatura vigente |
-| Cámara vs Senado (votos) | Un solo esquema para ambas cámaras | Esquemas distintos: Cámara (opendata XML voto-a-voto) vs Senado (`votaciones.php` XML). `runIngest` degrada fail-closed sin provider Senado — no fabricar votos del Senado |
-| ChileCompra | Asumir GET anónimo como SERVEL | ChileCompra requiere ticket/secreto por request; SERVEL es GET anónimo — no confundir el patrón de auth |
-| SERVEL (Azure Blob) | Agregar el host a `DEFAULT_ALLOWED_SUFFIXES` | `extraHosts` EXACTO scoped al conector + assert `protocol==="https:"` (extraHosts admite http) |
-| SERVEL bloqueo (403/503/429) | Abortar la corrida completa | `ServelBloqueadaError` degrada ESA elección, la corrida sigue (espejo `ChileCompraBloqueadaError`) |
-| RUT → LLM | Incrustar RUT en prompt/jsonb de revisión | `assertNoRutInLlmInput` dentro de `correrPipeline`; RUT viaja solo por canal de auditoría interno, nunca a `revision_*` |
-| PostgREST al backfill masivo | Leer >1000 filas sin paginar | Cap 1k de PostgREST: paginar `.order().range()` SIEMPRE (gotcha ya cazado en v6.1) |
+| Postgres Spanish FTS | Reuse `'english'` example; unaccent in index expr (STABLE → fails) | Custom `unaccent+spanish` config in a STORED generated tsvector; same config at query |
+| pgvector + FTS fusion | Add cosine + ts_rank scores | RRF on rank position (`rrf_k` ~50–60); tune weights on golden set |
+| User input → tsquery | Raw `to_tsquery` → syntax errors | `websearch_to_tsquery` always |
+| senado.cl Next.js portal | Link to `/_next/data/<buildId>/…` | Canonical `?boletin=` page; read buildId dynamically only for scraping, never for public links |
+| camara.cl new endpoint | Probe with Node fetch | Probe with curl first (WAF blocks bot UAs); rate-limit 2–3s |
+| Bio/lobby/committee → maestra | Name-match to FK | Confirmed-identity pipeline only (fail-closed) |
+| Supabase RPC under service_role | Assume RLS protects | RLS bypassed by service_role → each RPC is the boundary; allowlist + PII-safe |
+
+## Performance Traps
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Unbounded hybrid_search / faceting RPC | Slow queries, DB CPU spikes | Hard `LIMIT` + `statement_timeout`; cap `match_count` | Crafted large `match_count` / pathological tsquery (DoS on Pro plan) |
+| `ts_rank_cd` over large WHERE set | Slow ranking | Rank only rows matching the FTS `WHERE` (small set), per Supabase RRF pattern | If FTS predicate is too broad |
+| PostgREST 1k row cap on facet source | Facets computed on 1000 rows silently | Paginate `.order().range()` (MEMORY.md LOCKED lesson) | Result set > 1000 (already bit this project) |
+| HNSW recall vs candidate limit too low | Good query, missing obvious hit | Fetch `limit * 2` candidates per arm before RRF (Supabase pattern) | Sparse embedding coverage (84.6% today) |
 
 ## Security Mistakes
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Exponer RUT en tabla/ruta pública | Violación 21.719 + PII; minimización rota | RUT es PII interna (`parlamentario.rut`, RLS deny-by-default); nunca a tabla pública ni LLM |
-| Encender flag MONEY sin sign-off | Riesgo jurídico-existencial | `money-gate.ts` fail-closed; flip = acto humano con dossier `signoff: approved`; guard CI |
-| RUT crudo al pipeline LLM (subencargado) | RUT sale del perímetro interno | `assertNoRutInLlmInput`; data-routing: solo el nombre al LLM, RUT solo al matcher determinista en memoria |
-| Ampliar allowlist SSRF por un host de dinero | SSRF a todo tenant Azure/gob | `extraHosts` exacto scoped, nunca al default; assert https |
-| Filtrar ticket ChileCompra en errores/logs | Secreto expuesto | Errores de bloqueo NUNCA incluyen el ticket (patrón `ServelBloqueadaError` que declara "sin secretos") |
+| Secret scan on HEAD only, not git history | Leaked key in public repo history | gitleaks/trufflehog full history; rotate ever-committed secrets |
+| `.env.example` with real-ish values | Copy-paste leaks / recon | CI asserts placeholders only |
+| Postgres error text to client | Schema/table disclosure to hostile subject | Generic error + server-side log |
+| New P1/P2 RPC not in allowlist | PII/expensive endpoint exposed under service_role | Re-derive allowlist; guard CI covers new RPCs |
+| CSP Report-Only forever | No injection protection despite appearance | Flip to enforced with tested policy |
+| Expensive RPC without limits | Cheap DoS on Pro-plan DB | LIMIT + statement_timeout + match_count cap |
+| Publishing an unconfirmed identity link | False, defamatory claim about hostile subject | Identity golden gate re-verified; unlinked if unconfirmed |
+| Bio PII stored "for later" | Ley 21.719 breach even pre-display | Parser allowlist; PII stays in R2 crudo only |
 
 ## UX Pitfalls
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Mostrar "ausente" como "en contra" | Afirmación falsa sobre el voto | 5 opciones separadas; pareo/ausente en slate neutro (`voto-presentacion.ts` ya lo hace) — no fundir |
-| Comparar votos par-a-par | Insinúa afinidad política (riesgo #2) | Comparar contra mediana de cámara (agregado factual), como VIZ-COMP |
-| Financiamiento sin fecha de corte | Dato viejo parece actual | Fecha de captura + período electoral visible por dato |
-| "Empresa ligada a X" | Difamación por vínculo débil | Conteo factual con provenance; jurídica solo por RUT exacto |
-| Cruce de dinero sin declarar cobertura de RUT | "Sin vínculos" confundido con "sin datos" | Declarar N/M con RUT; "sin dato de RUT" ≠ "sin vínculos" |
+| Facet counts implied global | User under/over-counts matches | Label "de estos N resultados"; honest scope |
+| NULL partido shown as 0 for a party | Misreads independents/missing as absence | Explicit "Sin partido / no informado" bucket |
+| Party shown tenseless | Reads stale affiliation as current | "según [fuente] al [fecha]" |
+| Cancelled session shown as upcoming | Journalist attends non-event | Model status; show change with source+date |
+| Dead deep-link (200 but "no encontrado") | Loss of trust in traceability | Content-match verification, not status-only |
+| Lobby link framed "reunión sobre X" | Implies influence (insinuación) | "menciona el boletín N"; reader judges |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Conector de votos:** Corre contra el fixture — verifica que hay respuesta LIVE de opendata guardada en R2 y que los totales voto-a-voto cuadran con los totales del boletín.
-- [ ] **Reconciliación de voto:** % `confirmado` no bajó al escalar — verifica que ningún name-match entró al camino de votos.
-- [ ] **Mapeo de opción:** `Valor 1→si, 0→no` — verifica con test explícito, no asumido; pareo/abstención/dispensado mapeados.
-- [ ] **RUT-01:** El backfill "corrió" — verifica cobertura N/M de RUT DV-válido en la maestra ANTES de habilitar cruce de dinero.
-- [ ] **Cruce jurídica:** "cruza empresas" — verifica que la rama jurídica NUNCA llama `correrPipeline` (solo RUT exacto).
-- [ ] **money-gate:** "gated OFF" — verifica que ningún commit cambió el default ni añadió lectura cruda de la env.
-- [ ] **Linter anti-insinuación:** "cubre cruces" — verifica que corre TAMBIÉN sobre superficies de voto y de dinero nuevas.
-- [ ] **Dos etapas:** conector nuevo "ingesta" — verifica fuente→R2 (crudo content-addressed) Y R2→Supabase, re-ejecutables por separado.
-- [ ] **Freshness:** "monitoreado" — verifica que SERVEL/ChileCompra/votos aparecen en `pnpm freshness` con staleness.
+- [ ] **Hybrid search:** Often missing golden-set regression proof — verify literal-title AND NL AND boletín AND "similares" all scored before/after swap
+- [ ] **Spanish FTS:** Often missing unaccent parity — verify Ñuñoa/Aysén/"medio ambiente" return correctly via the STORED generated tsvector
+- [ ] **Boletín search:** Often missing format normalization — verify "16733", "16733-07", "16.733-07" all bullseye the same project
+- [ ] **Filters:** Often missing NULL-partido bucket and truthful facet scope — verify counts sum to loaded set and independents appear
+- [ ] **Deep-links:** Often missing content match — verify HTTP 200 AND page mentions the boletín, on a sample, and no URL carries a buildId
+- [ ] **Bios:** Often missing PII allowlist — verify no birth/family/contact columns exist in Supabase-served tables
+- [ ] **Party data:** Often missing timestamp + comité/partido separation — verify "según fuente al fecha" and comité rendered as comité
+- [ ] **Lobby links:** Often missing explicit-boletín gate — verify zero links from keyword-only materia matches
+- [ ] **Agenda:** Often missing coverage statement + tz — verify N/M coverage declared, America/Santiago bucketing, cancelled state modeled
+- [ ] **Security:** Often missing history scan + RPC allowlist drift + CSP enforcement — verify full-history secret scan, new RPCs allowlisted+bounded, CSP enforced
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Voto mal atribuido publicado | HIGH (reputacional/legal) | Re-reconciliar desde R2 (no re-scrapear); corregir DIPID→maestra; audit inmutable de la corrección; el crudo en R2 permite reconstruir sin tocar la fuente |
-| Cruce de dinero corrido antes de RUT-01 | MEDIUM | Los datos son derivados reconstruibles: backfillar RUT-01, re-correr `reconciliar-contrato` desde R2, re-materializar; el crudo no se re-descarga |
-| Flag MONEY encendido por error | HIGH | Revertir a OFF de inmediato (fail-closed); el gate hace que ausencia=OFF; auditar qué se expuso |
-| RUT falso escrito a la maestra por name-match | MEDIUM | La maestra tiene respaldo externo (snapshot git autoritativo); revertir; el canal de revisión humana debió interceptarlo |
-| opendata cambió shape y cargó basura | LOW-MEDIUM | El gate zod debió fallar ruidoso; si pasó, re-parsear desde R2 con el parser corregido (fuente no se toca) |
+| Hybrid swap regressed NL search | LOW | Flag-flip back to old RPC (kept live); re-score golden set; re-tune RRF |
+| unaccent/config mismatch | MEDIUM | Rebuild STORED generated tsvector + reindex; align query config |
+| Rotted deep-links (buildId) | LOW | Re-derive from canonical template; add periodic link-health probe |
+| Bio PII already stored | HIGH | Drop PII columns; purge R2-derived Supabase rows; re-run minimizing load; legal note |
+| False lobby→bill links published | HIGH (reputational/legal) | Take down links; restrict to explicit-boletín; audit all issued links; correction |
+| Secret in git history | HIGH | Rotate credential immediately; document; (history rewrite optional — rotation is the real fix) |
+| Wrong identity link shipped | HIGH (defamation) | Unpublish; re-adjudicate via golden pipeline; audit-trail entry; correction |
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| #2 opendata sin validar | **Fase 1 P3 — validar/caracterizar endpoint** (bloqueante, antes del conector) | Respuesta LIVE en R2; totales cuadran; mapeo de opción con test |
-| #1 voto mal atribuido (riesgo #1) | Fase P3 — modelo de voto reconciliado + golden set DIPID→maestra | % confirmado estable al escalar; cero name-match en votos |
-| #3 alineamiento/rebeldía (riesgo #2) | Fase P3 — superficies de análisis de voto | Linter anti-insinuación corre sobre voto; BrowserOS gate; sin co_votación |
-| #4 cruzar dinero sin RUT-01 | **Fase RUT-01 (backfill)** — bloqueante, ANTES del cruce de dinero | Cobertura RUT N/M declarada; guard CI anti name-match→rut |
-| #6 empresa ligada / jurídica name-match | Fase P5 — cruce de dinero (rama jurídica RUT-only intacta) | Jurídica nunca llama `correrPipeline`; provenance inline |
-| #7 SERVEL desactualizado | Fase P5 — superficies de dinero + freshness | Fecha de corte visible; SERVEL/ChileCompra en freshness |
-| #5 flag MONEY sin sign-off (legal) | Fase-gate humana separada (F13) — fuera del agente | `signoff: approved` en dossier 13; guard CI anti-flip; chokepoint `moneyPublicEnabled()` |
-
-## Deuda técnica / operacional al tocar conectores existentes
-
-**Regla rectora:** los conectores de leyes/lobby/probidad YA funcionan end-to-end (v6.0). Agregar votos/dinero NO debe regresionarlos.
-
-- **`source_snapshot` / dos etapas LOCKED:** todo conector nuevo (votos, ChileCompra si falta) escribe PRIMERO crudo content-addressed a R2 (`fuente/recurso/fecha/sha256.ext`, PUT `If-None-Match: *`, 412=ya-existía=éxito) y LUEGO R2→Supabase. Reusar `SnapshotWriter`/`base-connector`, no forkar. Verificar que las dos etapas son re-ejecutables por separado.
-- **`--from-r2` (replay):** el backfill de votos/dinero debe poder re-correr DESDE R2 sin molestar la fuente (regla LOCKED: re-ingestar a Supabase se hace SIEMPRE desde R2). Patrón ya presente en lobby/probidad — extenderlo, no reinventar.
-- **Hash-check ANTES de descargar:** votos y dinero comprueban sha256/ETag/If-Modified-Since antes de re-bajar; salir temprano sin novedades.
-- **Rotación del cron sin perder frescura:** agregar votos/dinero al scheduling round-robin (dilución ya identificada en el cron leyes-weekly sobre corpus 3.657). No sobrecargar un solo día; lotes acotados incrementales L–V; MONEY/SERVEL FUERA del cron mientras estén gated.
-- **Backfill masivo = LOCAL (operador), NO GitHub Actions** (minimizar minutos), idempotente/reanudable — patrón v6.1.
-- **PostgREST cap 1k:** paginar `.order().range()` SIEMPRE en el backfill masivo (gotcha recurrente v6.1).
+| 1 Golden-set regression | P1 SPIKE (first phase) | Before/after scores per query class; old RPC behind flag |
+| 2 Spanish FTS config/unaccent | P1 hybrid build | Ñuñoa/Aysén/"medio ambiente" golden cases pass; EXPLAIN uses index |
+| 3 tsquery input + score mixing | P1 hybrid build | `websearch_to_tsquery` used; RRF (not sum) in RPC |
+| 4 Boletín formats | P1 hybrid build | All formats bullseye; short-circuit exact match |
+| 5 Facet/filter honesty + NULLs | P1 ranking+filters | Facet sum = loaded set; NULL-partido bucket; no re-query on filter |
+| 6 Deep-link rot | P1 deep-link + probe | Content-match 200; no buildId in URL; periodic probe |
+| 7 Bio PII minimización | P2 bio (parser allowlist) | No PII columns; legal sign-off |
+| 8 Stale party / comité conflation | P2 bio/ficha | Timestamped party; comité≠partido; anti-insinuación cross-links |
+| 9 Lobby→bill false links | P2 lobby | Explicit-boletín-only links; linter passes copy |
+| 10 Agenda coverage/tz/cancelled | P2 citaciones (audit gates UI) | Coverage N/M declared; Santiago tz; status modeled; curl-probed |
+| 11 Identity fail-closed loosening | P2 (all person joins) | Every new join via confirmed identity ≥0.95; unlinked if not |
+| 12 Public-repo/hostile security | P3 security | History scan; allowlist re-derived+bounded; CSP enforced; identity re-verified |
 
 ## Sources
 
-- Código del repo (verificación directa, HIGH): `packages/votos/src/run-camara-votos.ts`, `run-votos-masivo-cli.ts`, `run-camara-votos.live.test.ts`; `packages/tramitacion/src/parse-camara-votacion.ts`; `app/lib/voto-presentacion.ts`; `app/lib/money-gate.ts`; `packages/dinero/src/reconciliar-contrato.ts`, `connector-servel.ts`; `packages/identity/src/backfill-rut.ts`.
-- `.planning/PROJECT.md` (HIGH) — riesgos existenciales #1/#2, milestone v7.0, gates, RUT-01 como prereq de datos, 21.719, opendata "sin validar".
-- `CLAUDE.md` (HIGH) — dos etapas LOCKED, WAF/rate-limit, jurídica RUT-only fail-closed, "qué NO usar", allowlist SSRF, PostgREST cap 1k.
-- `docs/legal/13-LEGAL-DOSSIER.md` / `17-LEGAL-DOSSIER-NET.md` (referenciados) — sign-off MONEY/NET, co_votación excluida del MVP §2.
-- MEMORY (contexto de corridas previas, HIGH) — gotchas v6.1 (paginación PostgREST, backfill local, linter/cascada).
+- [Supabase — Hybrid search (RRF pattern, websearch_to_tsquery, ts_rank_cd)](https://supabase.com/docs/guides/ai/hybrid-search) — Context7 `/websites/supabase` — HIGH
+- [Supabase — Full text search (websearch_to_tsquery)](https://supabase.com/docs/guides/database/full-text-search) — HIGH
+- [PostgreSQL — Controlling Text Search / index-query config match](https://www.postgresql.org/docs/current/textsearch-controls.html) — HIGH
+- [PostgreSQL bug thread — Spanish dictionary stemming misses (politi/politic)](https://postgresql.org/message-id/20151020110857.3017.63066%40wrigleys.postgresql.org) — MEDIUM
+- [PostgreSQL — Full text index without accents / unaccent STABLE not IMMUTABLE](https://www.postgresql.org/message-id/1216889206.5112.11.camel%40tambre) — HIGH
+- [Reciprocal Rank Fusion vs weighted sum — scale mismatch (cosine vs BM25)](https://www.paradedb.com/learn/search-concepts/reciprocal-rank-fusion) — MEDIUM
+- [OpenSearch — Introducing RRF for hybrid search](https://opensearch.org/blog/introducing-reciprocal-rank-fusion-hybrid-search/) — MEDIUM
+- PROJECT.md / CLAUDE.md / MEMORY.md (Observatorio) — LOCKED rules: identity fail-closed, anti-insinuación, two-stage R2, WAF/curl, service_role+RPC allowlist, buildId volatility, Ley 21.719, PostgREST 1k cap, CSP Report-Only — HIGH (project ground truth)
 
 ---
-*Pitfalls research for: agregar voto individual (P3) + dimensión dinero (P5) a Observatorio del Congreso 360 — milestone v7.0*
-*Researched: 2026-07-13*
+*Pitfalls research for: civic-transparency app — v9.0 robustez + security hardening*
+*Researched: 2026-07-21*
