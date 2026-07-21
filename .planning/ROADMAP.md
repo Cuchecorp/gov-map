@@ -86,7 +86,12 @@ PASADA 3 — Seguridad:
   3. El golden set queda como test de regresión permanente en CI: la búsqueda NL/semántica y "proyectos similares" NO deben regresionar cuando entre la híbrida
   4. Se registra la decisión: qué algoritmo, qué pesos, y que la RPC vieja se conserva tras un flag hasta que la nueva domine el golden set
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [ ] 86-01-PLAN.md — Núcleo offline: golden set ≥30 frozen + detector boletín 3 formatos + merge RRF + scorer hit@1/hit@5/MRR (todo puro, sin DB)
+- [ ] 86-02-PLAN.md — Harness read-only: wrapper psql SELECT-only + embed-query (RETRIEVAL_QUERY/768/L2) + cache vectores + 3 estrategias (FTS-solo/semántico-solo/RRF)
+- [ ] 86-03-PLAN.md — CLI de scoring + live regression test env-gated + configs vitest + corrida LIVE (checkpoint) + decisión registrada (algoritmo/pesos/rrf_k/flag/gate-87)
+
 **Research**: yes (SPIKE — el scoring del golden set ES la investigación; pesos RRF/`rrf_k`/límite de candidatos desconocidos hasta medir sobre este corpus)
 
 ### Phase 87: BÚSQUEDA P1b — RPC híbrida `buscar_proyectos_hibrido` + rewire (fix del bug estrella)
