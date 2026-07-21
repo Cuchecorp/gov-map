@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v8.0
-milestone_name: — Rediseño Bento
-status: Scaffolding listo; arrancar con /gsd-autonomous --from 76 --to 81 (PROMPT-v8.0-build-autonomo.md)
-stopped_at: Phase 81 complete — bento LIVE fb88c8a4, gate 75 cerrado, handoff lectura fría
-last_updated: "2026-07-15T19:56:28.411Z"
-last_activity: 2026-07-15
+milestone: v9.0
+milestone_name: Robustez de productos estrella + seguridad final
+status: planning
+last_updated: "2026-07-21T22:37:39.122Z"
+last_activity: 2026-07-21
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 11
-  completed_plans: 12
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,12 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 ## Current Position
 
-Phase: 76 (BENTO-BASE — primitivas bento + chrome global) — NOT STARTED
+Phase: Not started (defining requirements)
 Plan: —
-Status: Scaffolding listo; arrancar con /gsd-autonomous --from 76 --to 81 (PROMPT-v8.0-build-autonomo.md)
-Last activity: 2026-07-15
-
-Progress: [░░░░░░░░░░] 0% (v8.0: 0/6 fases; v1.0–v6.1 shipped; v7.0 code-complete con gates de operador abiertos — HANDOFF-v7.0-operator-gates.md)
+Status: Defining requirements
+Last activity: 2026-07-21 — Milestone v9.0 started
 
 ## Performance Metrics
 

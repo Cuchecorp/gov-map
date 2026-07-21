@@ -8,7 +8,21 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato mostrado lleva fuente, fecha y enlace original, sin afirmar nunca intención ni causalidad.
 
-## Current Milestone: v7.0 — Votos, dinero y cierre técnico
+## Current Milestone: v9.0 — Robustez de productos estrella + seguridad final
+
+**Goal:** Los 6 productos de cara al ciudadano quedan robustos y validados empíricamente —retrieval de PL que nunca falla lo obvio, ranking+filtros, trazabilidad al punto exacto de la fuente oficial, parlamentario 360 con bio oficial cruzada, lobby legible y enlazado a PLs, citaciones completas (sala+comisiones, ambas cámaras)— cerrando con validación final de seguridad del sitio (repo público) y de Supabase. Máxima legalidad, defensa robusta.
+
+**Estructura: TRES PASADAS autónomas** (con `/clear` entre pasadas, prompt por pasada en `.planning/PROMPT-v9.0-build-autonomo.md`):
+
+1. **Pasada 1 — Búsqueda/PL (productos 1-3):** (a) retrieval híbrido de proyectos de ley (título/nombre, idea matriz, normas afectadas, número de boletín, lenguaje natural) elegido por SPIKE empírico con golden queries — HOY falla con palabras LITERALES del título, eso es inaceptable en el producto estrella; (b) ranking (mensajes del Ejecutivo > mociones, recencia) + filtros client-side que reordenan/filtran resultados YA obtenidos sin re-buscar (año, mensaje/moción, partido, archivado/en tramitación, …); (c) deep-link de validación por boletín a la parte precisa de la página oficial.
+2. **Pasada 2 — Personas/Agenda (productos 4-6):** (d) ficha de parlamentario con partido político + biografía oficial del Congreso, cruzada con las demás variables (p.ej. relaciones entre parlamentarios); (e) lobby legible: título completo de lo solicitado + relación con PLs en movimiento con links específicos; (f) citaciones COMPLETAS: auditoría de cobertura de scraping (sala + comisiones, ambas cámaras) antes de tocar UI, estructuradas por día con filtros para periodistas/ciudadanos.
+3. **Pasada 3 — Seguridad (productos 7-8):** validación final de seguridad del sitio y de Supabase.
+
+**Ciclo por producto (LOCKED para este milestone):** diseño → prueba empírica BrowserOS → rediseño → validación empírica + de seguridad.
+
+**Modo de trabajo:** Fable (main loop) planifica/dirime/controla; ejecución delegada a agentes Sonnet o menores; BrowserOS como gate empírico de cada superficie; fases muy granulares; numbering continúa desde 85 → v9.0 arranca en **Phase 86**. Gates humanos/legales jamás los flipea un agente.
+
+## Current Milestone (history): v7.0 — Votos, dinero y cierre técnico (code-complete 2026-07-15; gates de operador abiertos — HANDOFF-v7.0-operator-gates.md)
 
 **Goal:** Completar los dos frentes de datos que aún faltaban del producto —cómo vota individualmente cada parlamentario, y el dinero que lo rodea (financiamiento electoral + contratos del Estado)— y cerrar la deuda técnica de ingesta acumulada; todo en fases MUY GRANULARES, deny-by-default, con trazabilidad a la fuente y sin afirmar causalidad.
 
@@ -133,7 +147,8 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 ### Active
 
-- [ ] **v7.0 — votos, dinero y cierre técnico** (en curso, arrancado 2026-07-13): P3 voto individual (opendata.camara.cl) → P5 dimensión dinero (SERVEL + ChileCompra por RUT, prereq RUT-01) → deuda técnica/hardening. Gates pre-aprobados por el operador; RUT-01 y revisión legal 21.719 siguen como prerrequisitos reales.
+- [ ] **v9.0 — robustez de productos estrella + seguridad final** (arrancado 2026-07-21): tres pasadas autónomas — P1 búsqueda/PL (retrieval híbrido + ranking/filtros + deep-link de validación), P2 personas/agenda (bio oficial cruzada + lobby legible + citaciones completas), P3 seguridad final (sitio + Supabase). Ciclo por producto: diseño → BrowserOS → rediseño → validación empírica+seguridad.
+- [~] **v7.0 — votos, dinero y cierre técnico** (code-complete 2026-07-15, gates de operador abiertos — HANDOFF-v7.0-operator-gates.md): P3 voto individual (opendata.camara.cl) → P5 dimensión dinero (SERVEL + ChileCompra por RUT, prereq RUT-01) → deuda técnica/hardening. Gates pre-aprobados por el operador; RUT-01 y revisión legal 21.719 siguen como prerrequisitos reales.
 - [x] **v6.1 — entendible y completo** (shipped 2026-07-11): /red ego-network radial legible + búsqueda sobre corpus completo declarado (3.657 proyectos, techo honesto).
 - [x] **v6.0 — confiabilidad y comprensión** (shipped 2026-07-09): crons/ingesta E2E perfecta (R2 dos-etapas, hash-check, monitoreo de frescura) · autoría de proyectos (desbloquea F48) · ícono/identidad visual gov-map · visualización comprensible con loop BrowserOS.
 - [ ] **Pendiente de operador (fuera de v6):** RUT-01 backfill + ChileCompra/SERVEL (Phase 40) · sign-offs F13/MONEY + cierre F17/NET (Phase 39) · rotar DB password (B26).
@@ -220,4 +235,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-15 — v8.0 Rediseño Bento SHIPPED (corrida autónoma 76-81, 1 día). Antes: Milestone v7.0 (Votos, dinero y cierre técnico) arrancado. Frentes P3 (voto individual, opendata.camara.cl) → P5 (dinero SERVEL/ChileCompra, prereq RUT-01) → deuda técnica. Gates pre-aprobados por el operador; RUT-01 + revisión legal 21.719 = prerrequisitos reales. Quick 260713-izo (rediseño /red layout B) resolvió P1-F53 móvil + WR-06.*
+*Last updated: 2026-07-21 — Milestone v9.0 (Robustez de productos estrella + seguridad final) arrancado: tres pasadas autónomas (búsqueda/PL → personas/agenda → seguridad), ciclo diseño→BrowserOS→rediseño→validación por producto, phases desde 86. Antes: v8.1 Demo perfecto shipped 2026-07-15 (`3563ecc9`); v7.0 code-complete con gates de operador abiertos.*
