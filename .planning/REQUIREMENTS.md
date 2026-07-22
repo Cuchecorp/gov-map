@@ -28,7 +28,7 @@
 
 ### TRACE — Trazabilidad al punto oficial
 
-- [ ] **TRACE-01**: Cada ficha de boletín lleva deep-link a la página oficial PRECISA para validar el dato: Senado (`?boletin_ini=` con boletín completo), Cámara (`prmID` + `prmBOLETIN` — requiere persistir `prmID` en ingesta), BCN (`idNorma`)
+- [x] **TRACE-01**: Cada ficha de boletín lleva deep-link a la página oficial PRECISA para validar el dato: Senado (`?boletin_ini=` con boletín completo), Cámara (`prmID` + `prmBOLETIN` — requiere persistir `prmID` en ingesta), BCN (`idNorma`)
 - [ ] **TRACE-02**: Los deep-links se validan EMPÍRICAMENTE (HTTP 200 + content-match, gate BrowserOS); nunca rutas con buildId ni URLs de sesión
 - [ ] **TRACE-03**: Fecha de captura visible junto al link + acceso al snapshot R2 correspondiente ("esto decía la fuente ese día") como respaldo de verificación
 
@@ -94,7 +94,7 @@ Cobertura 100 por ciento: 27/27 requisitos mapeados a fases 86-96 (sin huérfano
 | FILT-01 | Phase 88 | Complete |
 | FILT-02 | Phase 88 | Complete |
 | FILT-03 | Phase 88 | Complete |
-| TRACE-01 | Phase 89 | Pending |
+| TRACE-01 | Phase 89 | Complete |
 | TRACE-02 | Phase 89 | Pending |
 | TRACE-03 | Phase 89 | Pending |
 | BIO-01 | Phase 90 | Pending |

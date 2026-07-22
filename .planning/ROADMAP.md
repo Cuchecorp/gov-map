@@ -155,9 +155,11 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 89-01-PLAN.md — Plumbing prmID: migración 0058 aditiva + parser emite {boletin,prmId} + CLI backfill LOCAL dos-etapas (apply PROD + correr backfill = checkpoint operador)
+
+- [x] 89-01-PLAN.md — Plumbing prmID: migración 0058 aditiva + parser emite {boletin,prmId} + CLI backfill LOCAL dos-etapas (apply PROD + correr backfill = checkpoint operador)
 - [ ] 89-02-PLAN.md — UI trazabilidad: sección validacion-fuente (deep-links fail-honest Senado/Cámara, BCN omitido) + fecha + respaldo R2 sin descarga + script curl validar-deeplinks
 - [ ] 89-03-PLAN.md — Deploy Cloudflare (pasada 1 LIVE) + gate BrowserOS empírico sobre deploy real + evidencia commiteada (89-BROWSEROS-GATE.md)
+
 **UI hint**: yes
 
 ### Phase 90: PERSONAS P2a — Conector bio oficial dos-etapas + membresía de comisiones (GATE de 91)
