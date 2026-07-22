@@ -182,7 +182,7 @@ describe("BuscarFiltros — leyendas exactas", () => {
     render(<BuscarFiltros slice={FIXTURE} />);
     expect(
       screen.getByText(
-        "Orden por relevancia de la búsqueda; en empates se priorizan los mensajes del Ejecutivo y lo más reciente.",
+        "Orden por relevancia de la búsqueda. Opciones: más recientes primero · mensajes del Ejecutivo primero.",
       ),
     ).toBeInTheDocument();
   });
@@ -435,7 +435,9 @@ describe("BuscarFiltros — faceta partido ausente cuando no hay partido", () =>
     expect(legends).toHaveLength(0);
   });
 
-  it("sí renderiza la faceta Partido si al menos una fila tiene partido", () => {
+  it("NO renderiza la faceta Partido aunque haya filas con partido (P2 pending — chips reales en BIO-03)", () => {
+    // Fix 88-UI-REVIEW #2: el placeholder '(disponible próximamente)' fue eliminado.
+    // El grupo partido no se renderiza hasta que P2/BIO-03 añada chips funcionales.
     const fixtureConPartido: BuscarSliceRow[] = [
       ...FIXTURE_PEQUENO,
       {
@@ -450,8 +452,9 @@ describe("BuscarFiltros — faceta partido ausente cuando no hay partido", () =>
       },
     ];
     render(<BuscarFiltros slice={fixtureConPartido} />);
-    // Con partido presente debe aparecer la legend/sección
-    expect(screen.getByText("Partido")).toBeInTheDocument();
+    // El grupo partido no debe aparecer — ni legend ni placeholder
+    const legends = screen.queryAllByText("Partido");
+    expect(legends).toHaveLength(0);
   });
 });
 

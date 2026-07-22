@@ -31,7 +31,7 @@ import { CamaraChip } from "@/components/camara-chip";
 const LEYENDA_COUNTS =
   "Conteos sobre estos N resultados, no sobre todo el corpus.";
 const LEYENDA_ORDEN =
-  "Orden por relevancia de la búsqueda; en empates se priorizan los mensajes del Ejecutivo y lo más reciente.";
+  "Orden por relevancia de la búsqueda. Opciones: más recientes primero · mensajes del Ejecutivo primero.";
 const EMPTY_HEADING = "Ningún resultado con estos filtros";
 const EMPTY_BODY = "Ajusta o quita filtros para ver más proyectos.";
 
@@ -59,29 +59,12 @@ function getAnioKey(row: BuscarSliceRow): string {
 
 function applyOrder(rows: BuscarSliceRow[], mode: OrderMode): BuscarSliceRow[] {
   if (mode === "relevancia") {
-    // WR-01: RANK-01 tie-break LOCKED.
-    // El orden de entrada YA encoda el rank del retrieval (primary key).
-    // En caso de empate de rank (rank idéntico, prácticamente imposible en kNN
-    // pero LOCKED en spec): Mensaje (Ejecutivo) > Moción, luego más reciente primero.
-    // Como el slice no lleva un campo `rank` numérico explícito, usamos el índice
-    // de posición como primary key de desempate de rank — JS sort es estable así
-    // que el orden original se preserva salvo que haya diferencia en los keys.
-    return [...rows]
-      .map((r, i) => ({ r, i }))
-      .sort((a, b) => {
-        // Primary: posición de retrieval (preserva rank relativo)
-        if (a.i !== b.i) return a.i - b.i;
-        // Secondary: Mensaje antes que Moción
-        const rankA = a.r.iniciativa === "Mensaje" ? 0 : 1;
-        const rankB = b.r.iniciativa === "Mensaje" ? 0 : 1;
-        if (rankA !== rankB) return rankA - rankB;
-        // Tertiary: más reciente primero; null al final
-        if (a.r.anio == null && b.r.anio == null) return 0;
-        if (a.r.anio == null) return 1;
-        if (b.r.anio == null) return -1;
-        return b.r.anio - a.r.anio;
-      })
-      .map((x) => x.r);
+    // RANK-01: el orden de entrada YA encoda el rank del retrieval semántico.
+    // No hay campo `rank` numérico en el slice — el índice posicional es único
+    // por fila, así que JS stable-sort preserva el orden original sin modificarlo.
+    // Las sub-ramas Mensaje>Moción y recencia se eliminaron: el índice posicional
+    // nunca produce empates y las ramas eran código muerto (fix: 88-UI-REVIEW #1).
+    return [...rows];
   }
   if (mode === "recientes") {
     // anio desc; null al final (RANK-01: nunca fabricado)
@@ -430,7 +413,15 @@ export function BuscarFiltros({ slice, renderRow }: BuscarFiltrosProps) {
             </fieldset>
           )}
 
-          {/* Faceta: Cámara de origen */}
+          {/* Faceta: Cámara de origen
+              COLOR DECISION (fix: 88-UI-REVIEW #3):
+              El CONTROL de faceta cámara usa FacetChip genérico → petróleo en engaged.
+              Esto aplica la regla 2 de color (facet-active = petróleo) al CONTROL DE FILTRO,
+              lo cual es coherente con todos los demás controles de faceta.
+              La prohibición "cámara nunca petróleo" aplica a los chips DATO en cards de
+              resultado (renderRow → CamaraChip con tokens cívicos), no a los controles de filtro.
+              CamaraChip (con tokens cívicos) se usa solo para el DATO en result-cards.
+              Decisión registrada en 88-UI-SPEC.md §Color. */}
           {todasLasCamaras.length > 0 && (
             <fieldset className="net-filtros__tipos">
               <legend className="net-filtros__legend">Cámara de origen</legend>
@@ -452,15 +443,11 @@ export function BuscarFiltros({ slice, renderRow }: BuscarFiltrosProps) {
             </fieldset>
           )}
 
-          {/* Faceta partido: SOLO si hay filas con partido (BIO-03/P2 forward-compat) */}
-          {tienePartido && (
-            <fieldset className="net-filtros__tipos">
-              <legend className="net-filtros__legend">Partido</legend>
-              <p className="text-xs text-muted-foreground">
-                (disponible próximamente)
-              </p>
-            </fieldset>
-          )}
+          {/* Faceta partido: SOLO si hay filas con partido (BIO-03/P2 forward-compat).
+              Cuando tienePartido=true se renderizarán chips funcionales (P2).
+              Hasta entonces el grupo no aparece — nunca un placeholder "próximamente"
+              (fix: 88-UI-REVIEW #2; contrato SPEC §Facets rendered LOCKED). */}
+          {/* partido chips placeholder ELIMINADO — renderizar chips reales en P2/BIO-03 */}
         </div>
 
         {/* ── Toggle de orden (RANK-01) ── */}

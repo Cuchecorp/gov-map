@@ -91,6 +91,9 @@ Existing 60/30/10 split (DESIGN-SYSTEM §1.1 LOCKED). Values are HSL triplets be
 - Filling chips by cámara or partido (anti-insinuación LOCKED — `.net-chip` rule: no political/cámara fill ever). Cámara chips keep their civic institutional token border (`--camara-muted-foreground` / `--senado-muted-foreground`), never petróleo.
 - Counts, legends, or the `sin dato` bucket.
 
+**Cámara color — CONTROL vs DATO (decision recorded 2026-07-21, fix 88-UI-REVIEW #3):**
+The "cámara never petróleo" prohibition applies to the DATO surface: result-card cámara chips rendered via `CamaraChip` (`search-result-card.tsx`) always keep civic institutional tokens. The FILTER CONTROL (cámara facet chip in `buscar-filtros.tsx`) reuses the generic `FacetChip`, so it adopts petróleo when engaged — this is intentional and correct under rule 2 (facet-active petróleo). Rule 2 supersedes the cámara prohibition for controls because the control is a UI state affordance, not a data label. `CamaraChip` is NOT used for filter controls.
+
 **Facet-value chip colors (reuse existing components, no new tokens):**
 - Estado buckets → `EtapaBadge` (`app/components/etapa-badge.tsx`): existing keyword→Tailwind-palette variants (`bg-emerald-100 text-emerald-800`, `bg-blue-100 text-blue-800`, `bg-slate-100 text-slate-600`, etc.). These are Tailwind palette utilities (not hex) → pass cero-hex. The `sin_dato` bucket uses the neutral slate variant (`bg-slate-100 text-slate-500`, existing "Estado desconocido" style) — visible, never hidden.
 - Cámara facet → `CamaraChip` (`app/components/camara-chip.tsx`): civic institutional muted tokens.
