@@ -4,14 +4,14 @@ milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
 status: verifying
 stopped_at: Completed 94-03-PLAN.md
-last_updated: "2026-07-22T22:30:12.177Z"
+last_updated: "2026-07-22T23:02:31.848Z"
 last_activity: 2026-07-22
 progress:
   total_phases: 11
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 29
-  completed_plans: 28
-  percent: 73
+  completed_plans: 29
+  percent: 82
 ---
 
 # Project State
@@ -136,6 +136,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 93-03: backfill acotado Cámara W20-W24 (34→164 citaciones, 2→6 semanas ISO) por dos-etapas; Etapa 1 R2 crudo content-addressed cableada en ingest-run step 1 (espejo sala-PDF)
 - [Phase ?]: 93-03: --from-r2 para citaciones NO existe hoy; SC#3 satisfecha por runbook operador-LOCAL, no por esta fase; solo la mitad fuente→R2 está viva
 - [Phase ?]: 94-03: sesion_sala sin columna semana_iso; semana ISO derivada en TS (Chile tz) en la ficha
+- [Phase ?]: 94-04: deploy Cloudflare 9aba6a1a live (OpenNext Docker Linux + wrangler OAuth); gate BrowserOS COMPRENSIBLE sobre el deploy real; SC#1 cerrado por 93; cold-read humano = HANDOFF
 
 ### Pending Todos
 
@@ -178,7 +179,7 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-22T22:30:12.164Z
+Last session: 2026-07-22T23:02:10.566Z
 Stopped at: Completed 94-03-PLAN.md
 Resume file: None
 
