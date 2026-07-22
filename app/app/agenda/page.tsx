@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase";
 import { WeekNav } from "@/components/week-nav";
 import { CitacionCard } from "@/components/citacion-card";
+import {
+  AgendaCobertura,
+  type CoberturaCamaraMetrica,
+} from "@/components/agenda-cobertura";
 import { CarrilAccordion } from "@/components/carril-accordion";
 import {
   SalaTableSection,
@@ -54,6 +58,19 @@ interface PageProps {
 function parseCamaraFiltro(v: unknown): "camara" | "senado" | undefined {
   return v === "camara" || v === "senado" ? v : undefined;
 }
+
+/**
+ * Día calendario YYYY-MM-DD en Chile (en-CA emite ISO; DST-safe vía tzdb).
+ * Idiom reutilizado de `estado-actual-block.tsx:92-98`. NÚCLEO DE LA FASE:
+ * la agrupación por día JAMÁS usa UTC — una citación de las 21:00 CL almacenada
+ * a medianoche UTC cae en el día-Chile correcto (no en el siguiente).
+ */
+const DIA_CALENDARIO_CHILE = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Santiago",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 
 export default async function AgendaPage({ searchParams }: PageProps) {
   const sp = await searchParams;
@@ -112,6 +129,12 @@ export default async function AgendaPage({ searchParams }: PageProps) {
         </section>
       ) : (
         <>
+          {/* Banner de cobertura DECLARADA (CIT-05) bajo el <h1> y ANTES del
+              WeekNav (contexto antes de navegar). Solo en la vista semanal. */}
+          <Suspense fallback={<CoberturaSkeleton />}>
+            <CoberturaBanner />
+          </Suspense>
+
           <div className="mt-6">
             <WeekNav year={year} week={week} />
           </div>
@@ -218,7 +241,7 @@ async function ResultadosBusqueda({
     weekday: "long",
     day: "numeric",
     month: "long",
-    timeZone: "UTC",
+    timeZone: "America/Santiago",
   });
   const camaraLabel = (c: "camara" | "senado") =>
     c === "camara" ? "Cámara" : "Senado";
@@ -271,6 +294,96 @@ async function ResultadosBusqueda({
   );
 }
 
+// ── Banner de cobertura declarada (métrica Cámara derivada, sin cap 1k) ──────
+/**
+ * Deriva la métrica de cobertura de comisiones×Cámara SIN traer todas las filas
+ * (plan-checker MINOR 4): conteo exacto vía `count: "exact", head: true` (no
+ * transporta filas), y min/max fecha vía `.order(...).limit(1)`. El nº de
+ * semanas ISO se DERIVA del rango min→max (no un count(distinct) exacto — se
+ * declara como rango). Las tres celdas estructurales son texto fijo (banner).
+ */
+async function derivarMetricaCamara(): Promise<CoberturaCamaraMetrica> {
+  const sb = createServerSupabase();
+
+  const [countRes, minRes, maxRes] = await Promise.all([
+    sb
+      .from("citacion")
+      .select("*", { count: "exact", head: true })
+      .eq("camara", "camara"),
+    sb
+      .from("citacion")
+      .select("fecha")
+      .eq("camara", "camara")
+      .not("fecha", "is", null)
+      .order("fecha", { ascending: true })
+      .limit(1),
+    sb
+      .from("citacion")
+      .select("fecha")
+      .eq("camara", "camara")
+      .not("fecha", "is", null)
+      .order("fecha", { ascending: false })
+      .limit(1),
+  ]);
+
+  // #34: frontera de error honesta — un fallo real de DB/red se lanza; NUNCA se
+  // fabrica un banner con métricas cero silenciosas.
+  if (countRes.error) {
+    throw new Error(`cobertura Cámara (count) falló: ${countRes.error.message}`);
+  }
+  if (minRes.error) {
+    throw new Error(`cobertura Cámara (min fecha) falló: ${minRes.error.message}`);
+  }
+  if (maxRes.error) {
+    throw new Error(`cobertura Cámara (max fecha) falló: ${maxRes.error.message}`);
+  }
+
+  const minFecha = (minRes.data as { fecha: string }[] | null)?.[0]?.fecha ?? null;
+  const maxFecha = (maxRes.data as { fecha: string }[] | null)?.[0]?.fecha ?? null;
+  const camaraMin = minFecha ? DIA_CALENDARIO_CHILE.format(new Date(minFecha)) : null;
+  const camaraMax = maxFecha ? DIA_CALENDARIO_CHILE.format(new Date(maxFecha)) : null;
+
+  return {
+    camaraN: countRes.count ?? 0,
+    camaraSemanas: semanasEntre(camaraMin, camaraMax),
+    camaraMin,
+    camaraMax,
+  };
+}
+
+/**
+ * Nº de semanas ISO abarcadas por el rango min→max de fecha (derivado, no exacto).
+ * Se cuenta la cantidad de lunes-Chile distintos entre ambas fechas, inclusive.
+ * Si falta algún extremo → 0.
+ */
+function semanasEntre(min: string | null, max: string | null): number {
+  if (!min || !max) return 0;
+  const d0 = new Date(`${min}T12:00:00Z`);
+  const d1 = new Date(`${max}T12:00:00Z`);
+  const dias = Math.floor((d1.getTime() - d0.getTime()) / 86_400_000);
+  if (dias < 0) return 0;
+  return Math.floor(dias / 7) + 1;
+}
+
+async function CoberturaBanner() {
+  const metrica = await derivarMetricaCamara();
+  return <AgendaCobertura metrica={metrica} />;
+}
+
+function CoberturaSkeleton() {
+  return (
+    <div
+      className="mt-6 rounded-lg border border-border bg-muted/40 px-6 py-4 space-y-2"
+      aria-hidden="true"
+    >
+      <Skeleton className="h-6 w-56" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-4 w-2/3" />
+    </div>
+  );
+}
+
 // ── Citaciones (ambas cámaras, agrupadas por día) ────────────────────────────
 // Exportada (named) para poder testear el empty-state con RTL, igual que
 // `Resultados` en /buscar. Next.js solo trata el default export como la página.
@@ -314,20 +427,24 @@ export async function CitacionesSection({ year, week }: ISOWeek) {
     );
   }
 
-  // Agrupar por día (clave = fecha YYYY-MM-DD; las sin fecha van a un grupo aparte).
-  const grupos = new Map<string, CitacionRow[]>();
+  // Agrupar por DÍA-CALENDARIO DE CHILE (America/Santiago), NUNCA por día UTC.
+  // `dayKey` deriva de `DIA_CALENDARIO_CHILE.format(new Date(c.fecha))` (no de
+  // `c.fecha.slice(0,10)`, que es el día UTC almacenado). Se guarda además una
+  // Date representativa del grupo para rotular en tz Chile sin re-inyectar UTC.
+  const grupos = new Map<string, { rows: CitacionRow[]; fechaRef: Date | null }>();
   for (const c of citaciones) {
-    const dayKey = c.fecha ? c.fecha.slice(0, 10) : "sin-fecha";
-    const arr = grupos.get(dayKey) ?? [];
-    arr.push(c);
-    grupos.set(dayKey, arr);
+    const fechaRef = c.fecha ? new Date(c.fecha) : null;
+    const dayKey = fechaRef ? DIA_CALENDARIO_CHILE.format(fechaRef) : "sin-fecha";
+    const grupo = grupos.get(dayKey) ?? { rows: [], fechaRef };
+    grupo.rows.push(c);
+    grupos.set(dayKey, grupo);
   }
 
   const diaFmt = new Intl.DateTimeFormat("es-CL", {
     weekday: "long",
     day: "numeric",
     month: "long",
-    timeZone: "UTC",
+    timeZone: "America/Santiago",
   });
 
   // Jerarquía cognitiva (UX-03): la semana se lee día → comisión con bloques
@@ -339,11 +456,13 @@ export async function CitacionesSection({ year, week }: ISOWeek) {
 
   return (
     <div className="mt-4 space-y-4">
-      {dias.map(([dayKey, items], index) => {
+      {dias.map(([dayKey, { rows: items, fechaRef }], index) => {
+        // Rótulo del día en tz Chile desde la Date representativa del grupo
+        // (NUNCA desde `${dayKey}T00:00:00Z`, que re-introduce UTC).
         const dayLabel =
-          dayKey === "sin-fecha"
+          dayKey === "sin-fecha" || !fechaRef
             ? "Sin fecha asignada"
-            : capitalizarPrimera(diaFmt.format(new Date(`${dayKey}T00:00:00Z`)));
+            : capitalizarPrimera(diaFmt.format(fechaRef));
 
         // Sub-agrupamiento PRESENTACIONAL por comisión DENTRO del día (Assumption
         // A4: cero query nueva; se agrupa sobre las filas ya leídas). El Map
@@ -382,6 +501,7 @@ export async function CitacionesSection({ year, week }: ISOWeek) {
                         sala={c.sala}
                         materia={c.materia}
                         camara={c.camara}
+                        estado={c.estado}
                         invitados={(c.citacion_invitado ?? []).map((inv) => ({
                           nombre: inv.nombre,
                           calidad: inv.calidad,
