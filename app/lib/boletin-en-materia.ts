@@ -43,9 +43,14 @@
 //     (separador de miles) o plana; el sufijo es 1-2 dígitos. `\b` delimita palabra.
 const BOLETIN_CON_SUFIJO = /\b(\d{1,3}(?:\.\d{3})*|\d{3,6})-(\d{1,2})\b/g;
 
-// (b) Número SIN sufijo (no seguido de otro dígito, punto o guion → excluye montos,
-//     versiones y el propio sufijo ya capturado por (a)).
-const NUMERO_SIN_SUFIJO = /(\d{1,3}(?:\.\d{3})*|\d{3,6})(?![\d.-])/g;
+// (b) Número SIN sufijo. El lookahead rechaza SOLO la continuación que lo volvería
+//     otro token: otro dígito (`\d`), un punto-de-miles/decimal (`.` seguido de dígito),
+//     o el guion de sufijo (`-` seguido de dígito, ya capturado por (a)). CRÍTICO
+//     (WR-01): NO rechaza un punto de FIN DE ORACIÓN ("boletín 14309." → sí matchea),
+//     que es puntuación común en `materia` de texto libre y que el regex SQL de la RPC
+//     (branch b, `\M(?!-[[:digit:]])`) ya acepta. Rechazar `.`/`-` incondicionalmente
+//     (regla vieja `(?![\d.-])`) producía un falso-negativo TS vs el SQL.
+const NUMERO_SIN_SUFIJO = /(\d{1,3}(?:\.\d{3})*|\d{3,6})(?![\d]|\.\d|-\d)/g;
 
 // Gatillo léxico que legitima un número pelado como mención de boletín.
 const GATILLO = /(bolet[ií]n|bol\.)/i;
