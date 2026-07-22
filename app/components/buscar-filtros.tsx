@@ -22,8 +22,8 @@ import { useCallback, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ETIQUETA_BUCKET, type EstadoBucket } from "@/lib/estado-bucket";
 import type { BuscarSliceRow } from "@/lib/types";
-import { Badge } from "@/components/ui/badge";
-import { CamaraChip } from "@/components/camara-chip";
+import { sourceLabel } from "@/lib/types";
+import { SearchResultCard } from "@/components/search-result-card";
 
 // ---------------------------------------------------------------------------
 // Constantes de copy LOCKED (UI-SPEC §Copywriting)
@@ -162,16 +162,13 @@ export interface BuscarFiltrosProps {
   /**
    * Slice serializado YA obtenido por el server. El island NUNCA re-consulta.
    * Partido es opcional — BIO-03/P2 forward-compat; ausente → no renderiza faceta.
+   * Card data (materia, estado, fecha_captura, origen, enlace) embebido en cada fila
+   * (CR-01 fix: renderRow eliminado — función no serializable en RSC streaming).
    */
   slice: BuscarSliceRow[];
-  /**
-   * Slot de render de cada resultado filtrado.
-   * Si no se pasa, el island solo muestra el panel de filtros (modo embebido).
-   */
-  renderRow?: (row: BuscarSliceRow, index: number) => React.ReactNode;
 }
 
-export function BuscarFiltros({ slice, renderRow }: BuscarFiltrosProps) {
+export function BuscarFiltros({ slice }: BuscarFiltrosProps) {
   // ------------------------------------------------------------------
   // Estado de facetas (cada dimensión es un Set de valores activos)
   // ------------------------------------------------------------------
@@ -480,50 +477,23 @@ export function BuscarFiltros({ slice, renderRow }: BuscarFiltrosProps) {
         </div>
       ) : (
         <div className="space-y-4">
-          {listaVisible.map((row, i) => {
-            if (renderRow) return renderRow(row, i);
-            // Render mínimo de referencia (sin diseño completo — plan 03 monta la card)
-            return (
-              <article
-                key={row.boletin}
-                className="rounded-md border border-border bg-card p-4"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-sm text-muted-foreground">
-                    {row.boletin}
-                  </span>
-                  {row.iniciativa && (
-                    <Badge
-                      variant="outline"
-                      className="border-transparent bg-muted text-muted-foreground"
-                    >
-                      {row.iniciativa}
-                    </Badge>
-                  )}
-                  {row.anio != null && (
-                    <Badge
-                      variant="outline"
-                      className="border-transparent bg-muted text-muted-foreground"
-                    >
-                      {row.anio}
-                    </Badge>
-                  )}
-                  {row.anio == null && (
-                    <Badge
-                      variant="outline"
-                      className="border-transparent bg-muted text-muted-foreground"
-                    >
-                      Sin dato
-                    </Badge>
-                  )}
-                  <CamaraChip camara={row.camaraOrigen ?? null} />
-                </div>
-                <p className="mt-2 text-base font-semibold text-foreground">
-                  {row.titulo}
-                </p>
-              </article>
-            );
-          })}
+          {listaVisible.map((row) => (
+            <SearchResultCard
+              key={row.boletin}
+              boletin={row.boletin}
+              titulo={row.titulo}
+              materia={row.materia ?? null}
+              estado={row.estado ?? null}
+              camaraOrigen={row.camaraOrigen}
+              iniciativa={row.iniciativa}
+              anio={row.anio}
+              provenance={{
+                capturedAt: row.fecha_captura ? new Date(row.fecha_captura) : null,
+                sourceName: sourceLabel(row.origen ?? null),
+                sourceUrl: row.enlace ?? null,
+              }}
+            />
+          ))}
         </div>
       )}
     </div>

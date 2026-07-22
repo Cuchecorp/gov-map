@@ -340,7 +340,9 @@ describe("BuscarFiltros — modos de orden", () => {
     const articles = screen.getAllByRole("article");
     const boletinosDeTodos = articles.map((a) => {
       const mono = a.querySelector(".font-mono");
-      return mono?.textContent ?? "";
+      // SearchResultCard renders "Boletín N°{boletin}" — extraer solo el número
+      const raw = mono?.textContent ?? "";
+      return raw.replace(/^Bolet[ií]n N°/, "").trim();
     });
     // El proyecto con anio null (9001-07) debe estar al final
     const lastIndex = boletinosDeTodos.lastIndexOf("9001-07");

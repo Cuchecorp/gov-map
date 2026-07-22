@@ -145,6 +145,16 @@ export interface BuscarSliceRow {
    * Campo ausente (`undefined`) = funcionalidad no habilitada aún (P2).
    */
   partido?: string | null;
+  /** Materia resumida del proyecto. `null` = sin dato disponible. */
+  materia?: string | null;
+  /** Estado literal de la fuente (no normalizado). `null` = sin dato. */
+  estado?: string | null;
+  /** ISO string de fecha de captura del snapshot. `null` = sin snapshot. */
+  fecha_captura?: string | null;
+  /** Nombre de la fuente de datos (e.g. "senado-wspublico"). `null` = desconocido. */
+  origen?: string | null;
+  /** URL de la fuente para provenance badge. `null` = sin enlace. */
+  enlace?: string | null;
 }
 
 /**

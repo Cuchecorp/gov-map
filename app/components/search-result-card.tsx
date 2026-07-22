@@ -50,7 +50,7 @@ export function SearchResultCard({
   anio,
 }: SearchResultCardProps) {
   return (
-    <Card className="rounded-[var(--radius-tile)]">
+    <Card className="rounded-[var(--radius-tile)]" role="article">
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center gap-2">
           <EtapaBadge estado={estado} />

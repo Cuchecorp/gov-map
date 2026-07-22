@@ -5,10 +5,9 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase";
 import { contarCoberturaBusqueda, ALCANCE_COBERTURA } from "@/lib/coverage";
 import { buscarProyectos, BOLETIN_RE, MAX_QUERY_CHARS } from "@/lib/buscar";
-import { sourceLabel, type ProyectoRow, type TramitacionEventoRow, type BuscarSliceRow } from "@/lib/types";
+import { type ProyectoRow, type TramitacionEventoRow, type BuscarSliceRow } from "@/lib/types";
 import { estadoBucket, deriveAnio } from "@/lib/estado-bucket";
 import { SearchBox } from "@/components/search-box";
-import { SearchResultCard } from "@/components/search-result-card";
 import { BuscarFiltros } from "@/components/buscar-filtros";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -207,8 +206,11 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
 
   // Construir BuscarSliceRow[] preservando el orden rank del retrieval (RANK-01).
   // Advisory #3: fallback truthy-trim estado→etapa antes de estadoBucket.
+  // CR-01 fix: card data embebido en sliceEnriquecido (serializable) en vez de renderRow
+  // (función no serializable server→client en RSC — rompe el streaming).
   const sliceEnriquecido: BuscarSliceRow[] = ordenados.map((p) => {
     const estadoInput = p.estado?.trim() || p.etapa?.trim() || null;
+    const raw = porBoletin.get(p.boletin);
     return {
       boletin: p.boletin,
       titulo: p.titulo,
@@ -217,6 +219,12 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
       estadoBucket: estadoBucket(estadoInput),
       camaraOrigen: p.camara_origen,
       fecha: minFechaPorBoletin.get(p.boletin) ?? null,
+      // Card data (serializable — no función):
+      materia: raw?.materia ?? null,
+      estado: raw?.estado ?? null,
+      fecha_captura: raw?.fecha_captura ?? null,
+      origen: raw?.origen ?? null,
+      enlace: raw?.enlace ?? null,
     };
   });
 
@@ -230,30 +238,10 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
   return (
     <>
       <p className="text-sm text-muted-foreground mt-4">{countCopy}</p>
-      {/* CR-01: renderRow slot wires the island to SearchResultCard;
-           static section removed so filtering/reordering affects the visible cards. */}
+      {/* CR-01: BuscarFiltros recibe slice serializable con card data embebido;
+           renderRow eliminado (función no serializable en RSC — bug 960768f2). */}
       <BuscarFiltros
         slice={sliceEnriquecido}
-        renderRow={(p) => {
-          const raw = porBoletin.get(p.boletin);
-          return (
-            <SearchResultCard
-              key={p.boletin}
-              boletin={p.boletin}
-              titulo={p.titulo}
-              materia={raw?.materia ?? null}
-              estado={raw?.estado ?? null}
-              camaraOrigen={p.camaraOrigen}
-              iniciativa={p.iniciativa}
-              anio={p.anio}
-              provenance={{
-                capturedAt: raw?.fecha_captura ? new Date(raw.fecha_captura) : null,
-                sourceName: sourceLabel(raw?.origen ?? null),
-                sourceUrl: raw?.enlace ?? null,
-              }}
-            />
-          );
-        }}
       />
 
       {(page > 1 || hayMas) && (
