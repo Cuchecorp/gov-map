@@ -2,6 +2,7 @@ import { createServerSupabase } from "@/lib/supabase";
 import { fechaCorta, relativeTimeEs } from "@/lib/format";
 import { sourceLabel } from "@/lib/types";
 import type { ProyectoRow, TramitacionEventoRow } from "@/lib/types";
+import { isoWeekOf, semanaIsoKey } from "@/lib/week-utils";
 
 /**
  * EstadoActualBlock — "¿Dónde está hoy?" (SC2, UI-SPEC §SC2).
@@ -42,11 +43,34 @@ export interface EstadoActual {
   urgenciaFuente?: { origen: string; fechaCaptura: Date };
   /** SC3 (Phase 52): citación vigente/futura más próxima (fecha >= hoy). */
   citacionVigente?: { comision: string; fecha: Date };
+  /**
+   * Gap #1 (Phase 94, CIT-05): citaciones PASADAS (fecha < hoy-Chile) del boletín,
+   * orden DESC (más reciente primero), acotadas a ~5. Contexto temporal NEUTRO para
+   * prensa que revisa un proyecto histórico — NUNCA fabrica vigencia. Ausente si 0.
+   */
+  citacionesPasadas?: { comision: string; fecha: Date }[];
+  /**
+   * Gap #2 (Phase 94, CIT-04): apariciones del boletín en `sesion_tabla_item`, con
+   * su cámara, fecha y semana ISO (para el link a /agenda?semana=). Orden DESC.
+   * Ausente si 0 (omit-when-not-derivable; NUNCA "no está en tabla" fabricado).
+   */
+  enTablaSala?: { camara: "camara" | "senado"; fecha: Date; semanaIso: string }[];
 }
 
 /** Fila cruda de citación aplanada desde el embed `citacion_punto × citacion`. */
 export interface CitacionCruda {
   comision: string | null;
+  fecha: string | null;
+}
+
+/**
+ * Fila cruda de tabla de sala aplanada desde el embed
+ * `sesion_tabla_item × sesion_sala`. `semana_iso` NO existe como columna en
+ * `sesion_sala` (0010: solo `fecha` timestamptz) → la semana ISO se deriva de la
+ * fecha en TS (Chile tz), espejando la convención de navegación de /agenda.
+ */
+export interface TablaSalaCruda {
+  camara: "camara" | "senado" | null;
   fecha: string | null;
 }
 
@@ -134,6 +158,73 @@ export function citacionVigente(
 }
 
 /**
+ * Citaciones PASADAS del boletín (gap #1, CIT-05 — omit-when-not-derivable). Espejo
+ * de `citacionVigente` pero con predicado ESTRICTO `fecha < hoy-Chile` (una citación
+ * de HOY sigue siendo vigente, la trae `citacionVigente`, NO se duplica aquí). Orden
+ * DESC (más reciente primero), acotado a 5. Descarta las sin comisión o fecha válida.
+ * Devuelve `[]` si ninguna es derivable → el campo se omite (la línea no se renderiza;
+ * NUNCA "no fue citado" fabricado). La marca "(sesión pasada)" es contexto temporal
+ * neutro: jamás inventa vigencia para una pasada.
+ */
+export function citacionesPasadas(
+  citaciones: CitacionCruda[],
+  hoy: Date = new Date(),
+): { comision: string; fecha: Date }[] {
+  const hoyChile = DIA_CALENDARIO_CHILE.format(hoy); // YYYY-MM-DD
+
+  return citaciones
+    .map((c) => ({ c, d: fechaValida(c.fecha) }))
+    .filter(
+      (x): x is { c: CitacionCruda; d: Date } =>
+        x.d !== null &&
+        !!x.c.comision?.trim() &&
+        x.d.toISOString().slice(0, 10) < hoyChile,
+    )
+    .sort((a, b) => b.d.getTime() - a.d.getTime()) // DESC: más reciente primero
+    .slice(0, 5)
+    .map((x) => ({ comision: x.c.comision!.trim(), fecha: x.d }));
+}
+
+/**
+ * Semana ISO ("YYYY-Www") de una fecha en el día calendario de CHILE — la clave de
+ * navegación de /agenda. `sesion_sala` NO guarda `semana_iso` (0010): solo `fecha`
+ * timestamptz. Espejamos la convención SQL de /agenda
+ * (`to_char(fecha at time zone 'America/Santiago', 'IYYY"-W"IW')`): se toma el DÍA
+ * calendario chileno de la fecha y se calcula su semana ISO sobre ese día (a
+ * medianoche UTC, para que `isoWeekOf` — que opera en UTC — no cruce de huso).
+ */
+function semanaIsoChile(fecha: Date): string {
+  const diaChile = DIA_CALENDARIO_CHILE.format(fecha); // YYYY-MM-DD (Chile)
+  const [y, m, d] = diaChile.split("-").map(Number);
+  const { year, week } = isoWeekOf(new Date(Date.UTC(y, m - 1, d)));
+  return semanaIsoKey(year, week);
+}
+
+/**
+ * Apariciones del boletín en la tabla de sala (gap #2, CIT-04 —
+ * omit-when-not-derivable). De las filas crudas `sesion_tabla_item × sesion_sala`,
+ * mapea `{ camara, fecha, semanaIso }`, descarta las sin cámara o fecha válida, y
+ * ordena DESC (más reciente primero). Devuelve `[]` si ninguna es derivable → el
+ * campo se omite (línea no renderizada; NUNCA "no está en tabla" fabricado).
+ */
+export function enTablaSala(
+  filas: TablaSalaCruda[],
+): { camara: "camara" | "senado"; fecha: Date; semanaIso: string }[] {
+  return filas
+    .map((f) => ({ f, d: fechaValida(f.fecha) }))
+    .filter(
+      (x): x is { f: TablaSalaCruda; d: Date } =>
+        x.d !== null && (x.f.camara === "camara" || x.f.camara === "senado"),
+    )
+    .sort((a, b) => b.d.getTime() - a.d.getTime()) // DESC: más reciente primero
+    .map((x) => ({
+      camara: x.f.camara as "camara" | "senado",
+      fecha: x.d,
+      semanaIso: semanaIsoChile(x.d),
+    }));
+}
+
+/**
  * Deriva las líneas del bloque, omitiendo cada una cuando el dato no es
  * derivable. PURO y exportado para test. CERO fabricación. `citaciones`/`hoy` son
  * opcionales → la firma previa (2 args) sigue compilando.
@@ -143,6 +234,7 @@ export function derivarEstadoActual(
   eventos: TramitacionEventoRow[],
   citaciones: CitacionCruda[] = [],
   hoy: Date = new Date(),
+  tablaSala: TablaSalaCruda[] = [],
 ): EstadoActual {
   const est: EstadoActual = {};
 
@@ -195,6 +287,14 @@ export function derivarEstadoActual(
   // SC3: citación vigente/futura más próxima; si no derivable, se omite.
   const cit = citacionVigente(citaciones, hoy);
   if (cit) est.citacionVigente = cit;
+
+  // Gap #1 (CIT-05): citaciones pasadas; si 0, el campo se omite.
+  const pasadas = citacionesPasadas(citaciones, hoy);
+  if (pasadas.length > 0) est.citacionesPasadas = pasadas;
+
+  // Gap #2 (CIT-04): tabla de sala; si 0, el campo se omite.
+  const sala = enTablaSala(tablaSala);
+  if (sala.length > 0) est.enTablaSala = sala;
 
   return est;
 }

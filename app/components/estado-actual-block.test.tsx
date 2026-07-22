@@ -6,9 +6,12 @@ import { render, screen, cleanup } from "@testing-library/react";
 import {
   derivarEstadoActual,
   citacionVigente,
+  citacionesPasadas,
+  enTablaSala,
   EstadoActualView,
   type EstadoActual,
   type CitacionCruda,
+  type TablaSalaCruda,
 } from "./estado-actual-block";
 import type { ProyectoRow, TramitacionEventoRow } from "@/lib/types";
 
@@ -403,6 +406,138 @@ describe("EstadoActualView — render honesto", () => {
     const PROHIBIDO =
       /porque|a cambio de|afinidad|puntaje|score|ranking|sospechos|pol[eé]mic|traici|conflicto de inter|mejor|peor|urgente de verdad|estancad/i;
     expect(texto).not.toMatch(PROHIBIDO);
+  });
+});
+
+// ── citacionesPasadas — Gap #1 (CIT-05), pasadas visibles omit-when-empty ────
+describe("citacionesPasadas — deriva las citaciones con fecha < hoy-Chile", () => {
+  const HOY = new Date("2026-07-22T12:00:00Z");
+
+  it("18193-06-like: 1 citación 2026-07-21 (ayer) → 1 pasada; citacionVigente null", () => {
+    const cits: CitacionCruda[] = [
+      { comision: "de Economía", fecha: "2026-07-21T00:00:00Z" },
+    ];
+    const pasadas = citacionesPasadas(cits, HOY);
+    expect(pasadas).toHaveLength(1);
+    expect(pasadas[0].comision).toBe("de Economía");
+    expect(pasadas[0].fecha.toISOString().slice(0, 10)).toBe("2026-07-21");
+    // el mismo insumo NO produce vigente (la fecha ya pasó).
+    expect(citacionVigente(cits, HOY)).toBeNull();
+  });
+
+  it("orden DESC (más reciente primero) y máx 5", () => {
+    const cits: CitacionCruda[] = [
+      { comision: "A", fecha: "2026-01-10T00:00:00Z" },
+      { comision: "B", fecha: "2026-06-10T00:00:00Z" },
+      { comision: "C", fecha: "2026-03-10T00:00:00Z" },
+      { comision: "D", fecha: "2026-05-10T00:00:00Z" },
+      { comision: "E", fecha: "2026-02-10T00:00:00Z" },
+      { comision: "F", fecha: "2026-04-10T00:00:00Z" },
+    ];
+    const pasadas = citacionesPasadas(cits, HOY);
+    expect(pasadas).toHaveLength(5); // acotado
+    // la más reciente (2026-06-10, "B") primero.
+    expect(pasadas[0].comision).toBe("B");
+    // orden estrictamente descendente.
+    for (let i = 1; i < pasadas.length; i++) {
+      expect(pasadas[i - 1].fecha.getTime()).toBeGreaterThanOrEqual(
+        pasadas[i].fecha.getTime(),
+      );
+    }
+  });
+
+  it("una citación de HOY NO cuenta como pasada (la lleva citacionVigente)", () => {
+    const cits: CitacionCruda[] = [
+      { comision: "Hoy", fecha: "2026-07-22T00:00:00Z" },
+    ];
+    expect(citacionesPasadas(cits, HOY)).toHaveLength(0);
+    expect(citacionVigente(cits, HOY)).not.toBeNull();
+  });
+
+  it("descarta sin comisión o sin fecha válida; sin pasadas → [] (omitida)", () => {
+    const cits: CitacionCruda[] = [
+      { comision: null, fecha: "2026-05-01T00:00:00Z" },
+      { comision: "Mala fecha", fecha: "no-es-fecha" },
+    ];
+    expect(citacionesPasadas(cits, HOY)).toEqual([]);
+    expect(citacionesPasadas([], HOY)).toEqual([]);
+  });
+});
+
+// ── enTablaSala — Gap #2 (CIT-04), lectura sesion_tabla_item omit-when-empty ──
+describe("enTablaSala — deriva las apariciones en la tabla de sala", () => {
+  it("13665-07-like: 2 filas de sala W28/W29 (Senado) → 2 entradas, DESC, con semana ISO", () => {
+    const filas: TablaSalaCruda[] = [
+      { camara: "senado", fecha: "2026-07-07T00:00:00Z" }, // W28
+      { camara: "senado", fecha: "2026-07-14T00:00:00Z" }, // W29
+    ];
+    const sala = enTablaSala(filas);
+    expect(sala).toHaveLength(2);
+    // DESC: la más reciente (W29 = 2026-07-14) primero.
+    expect(sala[0].fecha.toISOString().slice(0, 10)).toBe("2026-07-14");
+    expect(sala[0].semanaIso).toBe("2026-W29");
+    expect(sala[1].semanaIso).toBe("2026-W28");
+    expect(sala[0].camara).toBe("senado");
+  });
+
+  it("descarta cámara inválida / fecha inválida; sin filas → [] (omitida)", () => {
+    const filas: TablaSalaCruda[] = [
+      { camara: null, fecha: "2026-07-07T00:00:00Z" },
+      { camara: "senado", fecha: "no-es-fecha" },
+    ];
+    expect(enTablaSala(filas)).toEqual([]);
+    expect(enTablaSala([])).toEqual([]);
+  });
+});
+
+// ── derivarEstadoActual — integra los nuevos campos sin romper 88/89 ──────────
+describe("derivarEstadoActual — Gap #1/#2 sin regresión de firma", () => {
+  const HOY = new Date("2026-07-22T12:00:00Z");
+
+  it("18193-06-like: pasada presente, vigente ausente (3 args)", () => {
+    const est = derivarEstadoActual(
+      makeProyecto(),
+      [],
+      [{ comision: "de Economía", fecha: "2026-07-21T00:00:00Z" }],
+      HOY,
+    );
+    expect(est.citacionesPasadas).toBeDefined();
+    expect(est.citacionesPasadas).toHaveLength(1);
+    expect(est.citacionVigente).toBeUndefined();
+    expect(est.enTablaSala).toBeUndefined();
+  });
+
+  it("13665-07-like: enTablaSala presente vía 5º arg; pasadas/vigente ausentes", () => {
+    const est = derivarEstadoActual(
+      makeProyecto(),
+      [],
+      [],
+      HOY,
+      [
+        { camara: "senado", fecha: "2026-07-07T00:00:00Z" },
+        { camara: "senado", fecha: "2026-07-14T00:00:00Z" },
+      ],
+    );
+    expect(est.enTablaSala).toBeDefined();
+    expect(est.enTablaSala).toHaveLength(2);
+    expect(est.enTablaSala![0].semanaIso).toBe("2026-W29");
+    expect(est.citacionesPasadas).toBeUndefined();
+    expect(est.citacionVigente).toBeUndefined();
+  });
+
+  it("firma vieja (2 args) sigue compilando y NO fabrica pasadas/sala", () => {
+    const est = derivarEstadoActual(makeProyecto(), []);
+    expect(est.citacionesPasadas).toBeUndefined();
+    expect(est.enTablaSala).toBeUndefined();
+  });
+
+  it("firma de 3 args (con citaciones, sin sala) sigue funcionando", () => {
+    const est = derivarEstadoActual(makeProyecto(), [], [
+      { comision: "de Economía", fecha: "2026-07-21T00:00:00Z" },
+    ]);
+    // sin `hoy` fijo el default es new Date() — no aseveramos vigente/pasada,
+    // solo que la firma de 3 args compila y enTablaSala queda ausente.
+    expect(est.enTablaSala).toBeUndefined();
   });
 });
 
