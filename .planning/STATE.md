@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
 status: verifying
-stopped_at: Completed 93-03-PLAN.md (auditoría citaciones cerrada, gate de 94 listo)
-last_updated: "2026-07-22T22:01:05.803Z"
+stopped_at: Completed 94-03-PLAN.md
+last_updated: "2026-07-22T22:10:36.883Z"
 last_activity: 2026-07-22
 progress:
   total_phases: 11
   completed_phases: 8
   total_plans: 29
-  completed_plans: 26
+  completed_plans: 27
   percent: 73
 ---
 
@@ -80,6 +80,7 @@ Last activity: 2026-07-22
 | Phase 93 P01 | ~20min | 2 tasks | 2 files |
 | Phase 93 P02 | ~7min | 2 tasks | 1 files |
 | Phase 93 P03 | 35min | 2 tasks | 6 files |
+| Phase 94 P03 | 35min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase 93] 93-02: auditoría de WIRING de citaciones sobre PROD (fa4d4369) con BrowserOS DOM real → 93-WIRING-EVIDENCIA.md. DOS gaps de WIRING CONFIRMADOS con DOM (no análisis de código). gap #1 = citacionVigente forward-only (estado-actual-block.tsx:122-129, filtro fecha>=hoy) oculta citaciones PASADAS en la ficha — sujeto 18193-06 (cita 2026-07-21) "Citado"=0 ocurrencias; control positivo 11929-13 (cita HOY) SÍ muestra "Citado en de Trabajo…" → aísla que el gap es el filtro, no la query (:311-315 trae todas sin filtro fecha). gap #2 = sesion_tabla_item NO se lee en la ficha (EstadoActualBlock :290-315 no lo consulta; interface EstadoActual :21-45 sin campo sala) — sujeto 13665-07 en sala W28/W29 pero ficha "tabla de sala"=0; contraste /agenda?semana=2026-W28 muestra la fila | 5 | N°13665-07 | … | ORDEN DEL DÍA |. /agenda citaciones NO es forward-only (navega por semana_iso): W26 = 53 pasadas ambas cámaras (acordeón 12+19+22) → refuta sesgo a futuro en /agenda; W30 degrada honesto (Cámara PDF, Senado sin tabla) = gap DATOS. Nota A3 resuelta: token urgencia 260722-eia live pero filtro forward-only NO tocado. Sujetos deterministas por psql; cero fix (fixes = 94). CIT-01 NO completo (declaración + backfill = Plan 03).
 - [Phase ?]: 93-03: backfill acotado Cámara W20-W24 (34→164 citaciones, 2→6 semanas ISO) por dos-etapas; Etapa 1 R2 crudo content-addressed cableada en ingest-run step 1 (espejo sala-PDF)
 - [Phase ?]: 93-03: --from-r2 para citaciones NO existe hoy; SC#3 satisfecha por runbook operador-LOCAL, no por esta fase; solo la mitad fuente→R2 está viva
+- [Phase ?]: 94-03: sesion_sala sin columna semana_iso; semana ISO derivada en TS (Chile tz) en la ficha
 
 ### Pending Todos
 
@@ -175,8 +177,8 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-22T22:01:05.792Z
-Stopped at: Completed 93-03-PLAN.md (auditoría citaciones cerrada, gate de 94 listo)
+Last session: 2026-07-22T22:10:36.872Z
+Stopped at: Completed 94-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

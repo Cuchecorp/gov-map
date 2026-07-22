@@ -270,7 +270,7 @@ Plans:
 
 - [x] 94-01-PLAN.md — /agenda por día tz America/Santiago (fix bug UTC) + banner de cobertura declarada + estado de cancelación honesto en la card
 - [ ] 94-02-PLAN.md — Island agenda-filtros (cámara/comisión/rango/boletín, counts honestos, FichaRail) + serialización del slice + linter extendido
-- [ ] 94-03-PLAN.md — Fixes de wiring de la ficha (citaciones pasadas + tabla de sala) sin romper tests 88/89; cross-link comisión→membresía diferido
+- [x] 94-03-PLAN.md — Fixes de wiring de la ficha (citaciones pasadas + tabla de sala) sin romper tests 88/89; cross-link comisión→membresía diferido
 - [ ] 94-04-PLAN.md — Deploy Cloudflare + gate BrowserOS comprensible (4 sujetos LOCKED, evidencia DOM); SC#1 declarado cerrado por 93
 
 **UI hint**: yes
