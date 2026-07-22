@@ -175,7 +175,14 @@ Plans:
   3. La membresía de comisiones queda ingerida y modelada (hoy NO existe) — prerequisito de BIO-02/BIO-04 y CIT-04
   4. Solo se puebla identidad `confirmado`/`determinista` (fail-closed); rate-limit 2-3s + curl-first ante WAF; backfill masivo LOCAL
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 90-01-PLAN.md — Scaffold @obs/bio + model.ts allowlist (sin PII) + migración 0059 (4 tablas deny-by-default) + pgTAP (offline)
+- [ ] 90-02-PLAN.md — Parsers allowlist (diputados XML + BCN senadores spike + comisiones Open Q1 degradación honesta) + writer idempotente + orquestador dos-etapas fail-closed
+- [ ] 90-03-PLAN.md — CLI run-bio-cli + apply 0059 a PROD + pgTAP contra schema aplicado + corrida LIVE acotada + cobertura declarada en ledger
+
 **Research**: yes (SPIKE — estabilidad del endpoint BCN SPARQL es MEDIUM; forma del conector aún no escrita; allowlist de campos requiere criterio de minimización)
 
 ### Phase 91: PERSONAS P2b — Ficha bio + partido directo + cross-links factuales
