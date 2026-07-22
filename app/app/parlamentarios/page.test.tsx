@@ -10,7 +10,8 @@ import { renderToStaticMarkup } from "react-dom/server";
  *   - `[]` genuino tras filtro → honest-empty ("Sin parlamentarios para este filtro."),
  *     NUNCA un banner de error.
  *   - error real de RPC → THROW (#34), NO "sin resultados".
- *   - ninguna fila renderiza partido/rut/email/foto.
+ *   - BIO-03: la fila SÍ puede renderizar el PartidoChip (reversión LEGAL-03,
+ *     decisión operador 2026-07-21); rut/email/foto siguen PROHIBIDOS.
  *
  * `createServerSupabase` se mockea para inyectar el resultado del RPC sin tocar DB.
  */
@@ -32,6 +33,10 @@ type Row = {
   distrito: string | null;
   circunscripcion: string | null;
   periodo: string | null;
+  // BIO-03 (super-set v2): partido de la militancia vigente + provenance. null = honesto.
+  partido: string | null;
+  partido_fecha_captura: string | null;
+  partido_origen: string | null;
 };
 
 function makeRows(n: number): Row[] {
@@ -45,6 +50,10 @@ function makeRows(n: number): Row[] {
       distrito: senado ? null : `${i}`,
       circunscripcion: senado ? `${i}` : null,
       periodo: "2022-2026",
+      // Default honesto: sin militancia vigente (el chip se omite) salvo override.
+      partido: null,
+      partido_fecha_captura: null,
+      partido_origen: null,
     } satisfies Row;
   });
 }
@@ -88,10 +97,11 @@ describe("/parlamentarios — DirectoryList", () => {
   });
 
   it("filtro q por nombre → solo coincidencias (case-insensitive)", async () => {
+    const sinPartido = { partido: null, partido_fecha_captura: null, partido_origen: null };
     const rows: Row[] = [
-      { id: "D1", nombre: "María González", camara: "diputados", region: null, distrito: "1", circunscripcion: null, periodo: "2022-2026" },
-      { id: "D2", nombre: "Juan Pérez", camara: "diputados", region: null, distrito: "2", circunscripcion: null, periodo: "2022-2026" },
-      { id: "S3", nombre: "Ana GONZALEZ-Vera", camara: "senado", region: "X", distrito: null, circunscripcion: "3", periodo: "2022-2026" },
+      { id: "D1", nombre: "María González", camara: "diputados", region: null, distrito: "1", circunscripcion: null, periodo: "2022-2026", ...sinPartido },
+      { id: "D2", nombre: "Juan Pérez", camara: "diputados", region: null, distrito: "2", circunscripcion: null, periodo: "2022-2026", ...sinPartido },
+      { id: "S3", nombre: "Ana GONZALEZ-Vera", camara: "senado", region: "X", distrito: null, circunscripcion: "3", periodo: "2022-2026", ...sinPartido },
     ];
     rpcMock.mockResolvedValue({ data: rows, error: null });
 
@@ -138,11 +148,33 @@ describe("/parlamentarios — DirectoryList", () => {
     // Pero la tarjeta de directorio (Link root) lleva la clase bento.
   });
 
-  it("ninguna fila renderiza partido/rut/email/foto", async () => {
-    const rows = makeRows(12);
+  it("BIO-03: la fila con partido renderiza el PartidoChip; rut/email/foto siguen prohibidos", async () => {
+    const rows = makeRows(3);
+    // Una fila con militancia vigente → chip visible con fuente+fecha.
+    rows[0] = {
+      ...rows[0],
+      partido: "Partido Demócrata",
+      partido_fecha_captura: "2026-07-21",
+      partido_origen: "camara-bio-diputados",
+    };
     rpcMock.mockResolvedValue({ data: rows, error: null });
     const el = await DirectoryList({ q: "" });
     const html = renderToStaticMarkup(el);
-    expect(html).not.toMatch(/partido|\brut\b|email|<img/i);
+
+    // Reversión LEGAL-03: el partido de la fila con dato SÍ aparece.
+    expect(html).toContain("Partido Demócrata");
+    // El aria-label del chip expone partido + fuente (según fuente al [fecha]).
+    expect(html).toMatch(/aria-label="Partido: Partido Demócrata/);
+    // Piso de PII dura intacto: NUNCA rut/email/foto.
+    expect(html).not.toMatch(/\brut\b|email|<img/i);
+  });
+
+  it("BIO-03: fila sin militancia vigente (partido null) OMITE el chip (honesto)", async () => {
+    const rows = makeRows(2); // todas con partido null por default
+    rpcMock.mockResolvedValue({ data: rows, error: null });
+    const el = await DirectoryList({ q: "" });
+    const html = renderToStaticMarkup(el);
+    // Sin partido → el chip no se renderiza (no "Sin partido", no data-slot).
+    expect(html).not.toContain('data-slot="partido-chip"');
   });
 });

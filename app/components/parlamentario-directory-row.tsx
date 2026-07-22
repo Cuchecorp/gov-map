@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { CamaraChip } from "@/components/camara-chip";
+import { PartidoChip } from "@/components/partido-chip";
 import { formatNombre } from "@/lib/format";
 import type { ParlamentarioListadoRow } from "@/lib/types";
 
@@ -10,10 +11,12 @@ import type { ParlamentarioListadoRow } from "@/lib/types";
  * `ParlamentarioHeader` (distrito/circunscripción/región) + `CamaraChip`,
  * envuelto en un `<Link href="/parlamentario/{id}">` para enlazar a la ficha.
  *
- * Consume `ParlamentarioListadoRow` (las 7 columnas seguras del RPC
- * `parlamentarios_publico`), NO `ParlamentarioPublicoRow`. SIN foto, SIN partido
- * (LEGAL-03): el tipo no trae `partido`/`rut`/`email` ni URL de foto, así que la
- * fila no puede renderizarlos ni por accidente. El enlace usa el id D####/S####.
+ * Consume `ParlamentarioListadoRow` (RPC `parlamentarios_publico_v2`, super-set de
+ * 0060). BIO-03: REVIERTE la omisión LEGAL-03 del partido (decisión operador
+ * 2026-07-21) — la fila muestra el PartidoChip NEUTRO (partido/fecha/origen de la
+ * militancia vigente, omitido honestamente si null). El row-type NO trae `rut`/
+ * `email` ni URL de foto, así que la fila no puede renderizarlos ni por accidente.
+ * El enlace usa el id D####/S####. Sin foto.
  */
 export function ParlamentarioDirectoryRow({
   parlamentario: p,
@@ -36,6 +39,11 @@ export function ParlamentarioDirectoryRow({
       <div className="flex flex-wrap items-center gap-2">
         <CamaraChip camara={p.camara} />
         <span className="text-base font-semibold">{formatNombre(p.nombre)}</span>
+        <PartidoChip
+          partido={p.partido}
+          fechaCaptura={p.partido_fecha_captura}
+          origen={p.partido_origen}
+        />
       </div>
       {cargoPartes.length > 0 && (
         <p className="mt-1 text-sm font-normal text-muted-foreground">

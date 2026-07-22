@@ -3,16 +3,23 @@ import { Suspense } from "react";
 import { createServerSupabase } from "@/lib/supabase";
 import { MAX_QUERY_CHARS } from "@/lib/buscar";
 import type { ParlamentarioListadoRow } from "@/lib/types";
-import { ParlamentarioDirectoryRow } from "@/components/parlamentario-directory-row";
+import { ParlamentariosFiltro } from "@/components/parlamentarios-filtro";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * /parlamentarios — directorio de parlamentarios (SC2). Server Component.
  *
  * Cierra la brecha de descubrimiento: hoy solo `/parlamentario/[id]` por id
- * directo. El listado lee el RPC público `parlamentarios_publico()` (0026,
- * security definer) — el ÚNICO canal anon a la maestra deny-by-default; NUNCA
- * trae partido/rut/email (LEGAL-03). Filtra por cámara y por nombre server-side.
+ * directo. El listado lee el RPC público `parlamentarios_publico_v2()` (0060,
+ * security definer) — el ÚNICO canal anon a la maestra deny-by-default. BIO-03:
+ * el super-set v2 emite `partido`/`partido_fecha_captura`/`partido_origen` de la
+ * militancia vigente (revierte la retención LEGAL-03, decisión operador 2026-07-21);
+ * NUNCA trae rut/email. Filtra por cámara y por nombre server-side (grueso).
+ *
+ * FILT-01 personas: el filtro por PARTIDO es una faceta CLIENT (island
+ * `ParlamentariosFiltro`, contrato FichaRail — cero Supabase) que afina EN MEMORIA
+ * el slice ya renderizado por el server. Los filtros SSR (cámara/q) y el client
+ * (partido) son ortogonales y componibles.
  *
  * `searchParams.camara`/`q` son input NO confiable (Next 16: SIEMPRE Promise):
  *   - `camara` se whitelist a {diputados,senado}; cualquier otro valor se descarta.
@@ -107,10 +114,10 @@ export async function DirectoryList({
   q: string;
 }) {
   const sb = createServerSupabase();
-  const { data, error } = await sb.rpc("parlamentarios_publico");
+  const { data, error } = await sb.rpc("parlamentarios_publico_v2");
   if (error) {
     // #34: un fallo real de DB/red es un ERROR, nunca "Sin parlamentarios".
-    throw new Error(`parlamentarios_publico falló: ${error.message}`);
+    throw new Error(`parlamentarios_publico_v2 falló: ${error.message}`);
   }
 
   let rows = (data as ParlamentarioListadoRow[] | null) ?? [];
@@ -123,7 +130,8 @@ export async function DirectoryList({
   }
 
   if (rows.length === 0) {
-    // honest-empty: un filtro sin resultados, distinto del banner de error.
+    // honest-empty: un filtro sin resultados (server, cámara/q), distinto del banner
+    // de error. El empty por filtro CLIENT (partido) lo maneja el island.
     return (
       <div className="mt-8 rounded-[var(--radius-tile)] border border-border bg-muted/40 px-6 py-8 text-center text-sm text-muted-foreground">
         <p className="font-semibold text-foreground">
@@ -134,21 +142,12 @@ export async function DirectoryList({
     );
   }
 
+  // FILT-01 personas: el island client afina por partido EN MEMORIA sobre el slice
+  // ya filtrado grueso (cámara/q). El island NUNCA re-consulta Supabase (FichaRail).
   return (
-    <>
-      <p className="mt-6 text-sm text-muted-foreground">
-        {rows.length === 1
-          ? "1 parlamentario"
-          : `${rows.length} parlamentarios`}
-      </p>
-      <ul className="mt-4 space-y-3">
-        {rows.map((r) => (
-          <li key={r.id}>
-            <ParlamentarioDirectoryRow parlamentario={r} />
-          </li>
-        ))}
-      </ul>
-    </>
+    <div className="mt-6">
+      <ParlamentariosFiltro slice={rows} />
+    </div>
   );
 }
 
