@@ -2,24 +2,29 @@ import { describe, expect, it } from "vitest";
 
 import { busquedaHibridaEnabled } from "./busqueda-hibrida-gate";
 
-describe("busquedaHibridaEnabled (RETR-05, candado búsqueda híbrida)", () => {
-  it("var ausente -> false (default fail-closed)", () => {
-    expect(busquedaHibridaEnabled({})).toBe(false);
+/**
+ * Gate flippeado a default ON tras dominancia confirmada (Plan 87-03, 2026-07-22).
+ * Rollback: setear BUSQUEDA_HIBRIDA_ENABLED=false → OFF inmediato (sin redeploy de código).
+ * Solo el literal "false" apaga el flag.
+ */
+describe("busquedaHibridaEnabled (RETR-05, default ON post-gate)", () => {
+  it("var ausente -> true (default ON — RPC domina)", () => {
+    expect(busquedaHibridaEnabled({})).toBe(true);
   });
 
-  it('"false" -> false', () => {
-    expect(busquedaHibridaEnabled({ BUSQUEDA_HIBRIDA_ENABLED: "false" })).toBe(false);
-  });
-
-  it('"1" -> false (sin truthiness laxa)', () => {
-    expect(busquedaHibridaEnabled({ BUSQUEDA_HIBRIDA_ENABLED: "1" })).toBe(false);
-  });
-
-  it('"TRUE" -> false (case-sensitive: solo el literal "true")', () => {
-    expect(busquedaHibridaEnabled({ BUSQUEDA_HIBRIDA_ENABLED: "TRUE" })).toBe(false);
-  });
-
-  it('"true" -> true (unico valor que enciende)', () => {
+  it('"true" -> true', () => {
     expect(busquedaHibridaEnabled({ BUSQUEDA_HIBRIDA_ENABLED: "true" })).toBe(true);
+  });
+
+  it('"1" -> true (cualquier valor distinto de "false" → ON)', () => {
+    expect(busquedaHibridaEnabled({ BUSQUEDA_HIBRIDA_ENABLED: "1" })).toBe(true);
+  });
+
+  it('"FALSE" -> true (case-sensitive: solo el literal "false" apaga)', () => {
+    expect(busquedaHibridaEnabled({ BUSQUEDA_HIBRIDA_ENABLED: "FALSE" })).toBe(true);
+  });
+
+  it('"false" -> false (rollback explícito)', () => {
+    expect(busquedaHibridaEnabled({ BUSQUEDA_HIBRIDA_ENABLED: "false" })).toBe(false);
   });
 });
