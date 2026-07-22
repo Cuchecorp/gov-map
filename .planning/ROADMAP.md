@@ -107,7 +107,12 @@ PASADA 3 — Seguridad:
   3. La búsqueda por idea matriz y normas/cuerpos legales en lenguaje natural opera con pesos declarados (A título / B idea matriz / C normas), fusionada por RRF sobre RANK (no suma ponderada de scores)
   4. La nueva RPC `buscar_proyectos_hibrido` está en `PUBLIC_RPC_ALLOWLIST` y devuelve boletín+rank; `buscar.ts` recableado; el golden set en CI pasa y no regresiona NL/similares (RPC vieja tras flag hasta que la nueva domine)
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 87-01-PLAN.md — Migración 0055 (unaccent + es_unaccent + GIN título + RPC buscar_proyectos_hibrido short-circuit/FTS A·B·C/RRF) + pgTAP post-apply + aplicación a PROD + ledger
+- [ ] 87-02-PLAN.md — Rewire app: flag BUSQUEDA_HIBRIDA_ENABLED + buscar.ts camino híbrido + detectarBoletin punteado + allowlist entry + tests offline
+- [ ] 87-03-PLAN.md — Gate de dominancia: harness runRpcHibrida + corrida LIVE vs baseline 86 + decisión de flip default + golden live test al camino real
 
 ### Phase 88: BÚSQUEDA P1c — Ranking explicable + filtros client-side island
 
