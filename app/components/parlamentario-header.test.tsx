@@ -7,10 +7,11 @@ import type { ParlamentarioPublicoRow } from "@/lib/types";
 afterEach(cleanup);
 
 /**
- * Tests de `ParlamentarioHeader` (LEG2 §2.1). Cubren: enriquecimiento con
+ * Tests de `ParlamentarioHeader` (LEG2 §2.1 + 91-02). Cubren: enriquecimiento con
  * "Período {periodo}" (Mono) cuando el RPC lo trae, omisión honesta cuando es
- * null, y la invariante LEGAL-03 dura — NUNCA partido/afiliación en el DOM.
- * Sólo se usan campos de `ParlamentarioPublicoRow` (el RPC no emite otros).
+ * null, y la REVERSIÓN LEGAL-03 (decisión operador 2026-07-21): el partido del
+ * cargo electo SÍ se muestra (PartidoChip neutro con fuente+fecha), se OMITE si es
+ * null, y el piso de PII dura se conserva — NUNCA rut/email en el DOM.
  */
 
 // ── Fixture ──────────────────────────────────────────────────────────────────
@@ -62,19 +63,38 @@ describe("ParlamentarioHeader — período (LEG2 §2.1)", () => {
   });
 });
 
-// ── LEGAL-03: ningún campo PII/afiliación llega al DOM ────────────────────────
-describe("ParlamentarioHeader — LEGAL-03 (sin PII/afiliación)", () => {
-  it("el DOM NO contiene referencia a partido/afiliación", () => {
-    const { container } = render(<ParlamentarioHeader parlamentario={make()} />);
-    const texto = container.textContent ?? "";
-    expect(texto).not.toMatch(/partido|afiliaci|bancada|militancia/i);
+// ── 91-02: reversión LEGAL-03 — partido público, PII dura intacta ─────────────
+describe("ParlamentarioHeader — partido (reversión LEGAL-03, 2026-07-21)", () => {
+  it("con partido presente renderiza el PartidoChip (nombre + aria-label con fuente+fecha)", () => {
+    const { container } = render(
+      <ParlamentarioHeader
+        parlamentario={make({
+          partido: "Partido Socialista",
+          partido_fecha_captura: "2026-07-21T00:00:00Z",
+          partido_origen: "camara",
+        })}
+      />,
+    );
+    expect((container.textContent ?? "")).toContain("Partido Socialista");
+    const chip = screen.getByLabelText(/Partido: Partido Socialista/);
+    expect(chip.getAttribute("aria-label") ?? "").toContain("según Cámara");
   });
 
-  it("no renderiza rut ni email aunque el nombre/valores sean legibles", () => {
-    const { container } = render(<ParlamentarioHeader parlamentario={make()} />);
+  it("con partido null OMITE el chip (no 'Sin partido' ni placeholder)", () => {
+    const { container } = render(
+      <ParlamentarioHeader parlamentario={make({ partido: null })} />,
+    );
+    expect(container.textContent ?? "").not.toMatch(/sin partido/i);
+    expect(screen.queryByLabelText(/^Partido:/)).not.toBeInTheDocument();
+  });
+
+  it("no renderiza rut ni email (piso de PII dura intacto)", () => {
+    const { container } = render(
+      <ParlamentarioHeader
+        parlamentario={make({ partido: "Partido X", partido_origen: "senado" })}
+      />,
+    );
     const texto = container.textContent ?? "";
-    // El fixture ni siquiera trae rut/email (el RPC no los emite); el header
-    // jamás debe introducir esas etiquetas.
     expect(texto).not.toMatch(/\brut\b|correo|e-?mail/i);
   });
 });

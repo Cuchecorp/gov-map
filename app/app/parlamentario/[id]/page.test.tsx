@@ -18,7 +18,8 @@ import path from "node:path";
  *     `cruces_de_parlamentario` NUNCA se invoca (prueba load-bearing).
  *
  * El test NO toca PROD/DB real: `@/lib/cruces-gate` y `@/lib/supabase` se mockean.
- * El mock de Supabase tolera los RPC de la página (`parlamentario_publico`,
+ * El mock de Supabase tolera los RPC de la página (`parlamentario_publico_v2`,
+ * `comisiones_de_parlamentario`, `militancias_de_parlamentario`,
  * `votos_de_parlamentario`) devolviendo fixtures mínimos.
  */
 
@@ -61,7 +62,10 @@ vi.mock("next/navigation", () => ({
  * un thenable que TAMBIÉN expone `.maybeSingle()` para servir ambos patrones.
  */
 const rpcMock = vi.fn((name: string) => {
-  if (name === "parlamentario_publico") {
+  // 91-02: la cabecera migró a `parlamentario_publico_v2` (super-set 0060 con
+  // partido). El payload trae los 3 campos nuevos (null: sin militancia vigente →
+  // el PartidoChip se omite, coherente con el resto de las aserciones de la ficha).
+  if (name === "parlamentario_publico_v2") {
     const payload = {
       data: {
         id: "P00001",
@@ -71,6 +75,12 @@ const rpcMock = vi.fn((name: string) => {
         distrito: "1",
         circunscripcion: null,
         periodo: "2022-2026",
+        origen: "camara",
+        fecha_captura: "2026-01-15T00:00:00Z",
+        enlace: "https://www.camara.cl/diputado/1",
+        partido: null,
+        partido_fecha_captura: null,
+        partido_origen: null,
       },
       error: null,
     };
@@ -78,6 +88,15 @@ const rpcMock = vi.fn((name: string) => {
       maybeSingle: () => Promise.resolve(payload),
       then: (res: (v: typeof payload) => unknown) => Promise.resolve(payload).then(res),
     };
+  }
+  // 91-02: bio oficial (comisiones) + militancias — awaited directo, devuelven []
+  // (vacío honesto: HeaderSection pinta la leyenda empty; MilitanciasSection retorna
+  // null → sin sección). Suficiente para resolver la ficha sin tocar PROD.
+  if (
+    name === "comisiones_de_parlamentario" ||
+    name === "militancias_de_parlamentario"
+  ) {
+    return Promise.resolve({ data: [], error: null });
   }
   if (name === "votos_de_parlamentario") {
     // 3 filas confirmadas → votos=dato(3): la capa-1 muestra cifras reales y la
@@ -243,7 +262,7 @@ describe("/parlamentario/[id] — gate a nivel de sección #cruces (Candado B, L
 
 describe("/parlamentario/[id] — breadcrumb en la cabecera (53-03, UX-01)", () => {
   it("la cabecera monta el breadcrumb con Inicio/Parlamentarios como links y el nombre como segmento actual", async () => {
-    // HeaderSection resuelve el RPC cacheado `parlamentario_publico` (nombre real)
+    // HeaderSection resuelve el RPC cacheado `parlamentario_publico_v2` (nombre real)
     // → ParlamentarioHeader → Breadcrumbs. Se monta directo (renderToStaticMarkup
     // no resuelve los hijos async de Suspense en la página).
     const html = renderToStaticMarkup(await HeaderSection({ id: "P00001" }));
@@ -265,12 +284,13 @@ describe("/parlamentario/[id] — breadcrumb en la cabecera (53-03, UX-01)", () 
     rpcMock.mockClear();
     await HeaderSection({ id: "P00001" });
     const headerRpc = rpcMock.mock.calls.filter(
-      ([name]) => name === "parlamentario_publico",
+      ([name]) => name === "parlamentario_publico_v2",
     );
     // React.cache dedup (F52): el breadcrumb reusa la misma fila del header.
     // WR-06 (53-REVIEW): EXACTAMENTE 1 — un segundo round-trip a
-    // `parlamentario_publico` por render de cabecera sería la regresión que este
-    // test existe para pillar; `>= 1` la dejaba pasar.
+    // `parlamentario_publico_v2` por render de cabecera sería la regresión que este
+    // test existe para pillar; `>= 1` la dejaba pasar. (getComisiones es un RPC
+    // distinto, no cuenta contra esta dedup.)
     expect(headerRpc).toHaveLength(1);
   });
 });

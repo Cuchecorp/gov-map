@@ -28,9 +28,14 @@ import {
 import { moneyPublicEnabled } from "@/lib/money-gate";
 import { crucesPublicEnabled } from "@/lib/cruces-gate";
 import { netPublicEnabled } from "@/lib/net-gate";
+import { MilitanciasDeParlamentario } from "@/components/militancias-de-parlamentario";
 import { formatNombre } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { ParlamentarioPublicoRow } from "@/lib/types";
+import type {
+  ComisionRow,
+  MilitanciaRow,
+  ParlamentarioPublicoRow,
+} from "@/lib/types";
 
 /**
  * /parlamentario/[id] — la ficha del parlamentario (VOTE-03/04/05 + UXCOG 55-03).
@@ -104,26 +109,65 @@ function chipToRailEntry(ch: ResumenChip): RailEntry {
 }
 
 /**
- * WR-02: lectura ÚNICA y deduplicada del RPC público `parlamentario_publico`.
+ * WR-02: lectura ÚNICA y deduplicada del RPC público `parlamentario_publico_v2`
+ * (migración 0060, super-set de la 0020 con partido de la militancia vigente).
  * `HeaderSection`, `ParlamentarioRail`, `LobbySectionConCamara` y
- * `FinanciamientoSectionConPeriodo` necesitan la MISMA fila (nombre/cámara/periodo)
- * en el mismo request. `React.cache` deduplica: una sola RPC por request, cero
- * copy-paste, mismo #34 (un error real de DB/red se LANZA → UI de error honesta,
- * nunca se degrada). `.maybeSingle()` no lanza por 0 filas → el llamador distingue
- * "no existe" (data null → 404 en Header) de un fallo real (error → throw). CERO
- * RPC nueva.
+ * `FinanciamientoSectionConPeriodo` necesitan la MISMA fila (nombre/cámara/periodo
+ * + partido/fecha/origen) en el mismo request. `React.cache` deduplica: una sola
+ * RPC por request, cero copy-paste, mismo #34 (un error real de DB/red se LANZA →
+ * UI de error honesta, nunca se degrada). `.maybeSingle()` no lanza por 0 filas →
+ * el llamador distingue "no existe" (data null → 404 en Header) de un fallo real
+ * (error → throw). El super-set v2 es transparente para los consumidores que sólo
+ * leen nombre/cámara/periodo.
  */
 const getParlamentarioPublico = cache(async (id: string) => {
   const sb = createServerSupabase();
   const { data, error } = await sb
-    .rpc("parlamentario_publico", { p_id: id })
+    .rpc("parlamentario_publico_v2", { p_id: id })
     .maybeSingle<ParlamentarioPublicoRow>();
   if (error) {
     throw new Error(
-      `parlamentario_publico falló para ${id}: ${error.message}`,
+      `parlamentario_publico_v2 falló para ${id}: ${error.message}`,
     );
   }
   return data;
+});
+
+/**
+ * BIO-02: comisiones de la bio oficial (RPC `comisiones_de_parlamentario`, 0060).
+ * React.cache dedup dedicado (lo consume HeaderSection). Un error real de DB/red
+ * se LANZA (#34) — NUNCA se degrada a "sin comisiones" (un vacío honesto es `[]`
+ * SIN error, no un fallo enmascarado). Orden alfabético lo fija el RPC.
+ */
+const getComisiones = cache(async (id: string): Promise<ComisionRow[]> => {
+  const sb = createServerSupabase();
+  const { data, error } = await sb.rpc("comisiones_de_parlamentario", {
+    p_id: id,
+  });
+  if (error) {
+    throw new Error(
+      `comisiones_de_parlamentario falló para ${id}: ${error.message}`,
+    );
+  }
+  return (data ?? []) as ComisionRow[];
+});
+
+/**
+ * BIO-03: militancias del parlamentario (RPC `militancias_de_parlamentario`, 0060).
+ * React.cache dedup dedicado (lo consume la sección de militancias). Un error real
+ * se LANZA (#34) — nunca se degrada. El RPC ordena vigente primero, histórico DESC.
+ */
+const getMilitancias = cache(async (id: string): Promise<MilitanciaRow[]> => {
+  const sb = createServerSupabase();
+  const { data, error } = await sb.rpc("militancias_de_parlamentario", {
+    p_id: id,
+  });
+  if (error) {
+    throw new Error(
+      `militancias_de_parlamentario falló para ${id}: ${error.message}`,
+    );
+  }
+  return (data ?? []) as MilitanciaRow[];
 });
 
 export default async function ParlamentarioPage({
@@ -152,6 +196,17 @@ export default async function ParlamentarioPage({
         <div>
           <Suspense fallback={<ParlamentarioHeaderSkeleton />}>
             <HeaderSection id={id} />
+          </Suspense>
+
+          {/*
+            BIO-03 — Militancias registradas. Carril hermano (su propia <section
+            mt-12> dentro del componente), tras el header y ANTES de los carriles
+            de dominio: la militancia vigente ya viaja en el chip del header; esta
+            sección expone su rango + los tramos históricos (acordeón). Vive tras
+            su propio <Suspense> para streamear independiente del shell (WR-02).
+          */}
+          <Suspense fallback={<MilitanciasSkeleton />}>
+            <MilitanciasSection id={id} />
           </Suspense>
 
           {/*
@@ -551,7 +606,23 @@ export async function HeaderSection({ id }: { id: string }) {
     notFound();
   }
 
-  return <ParlamentarioHeader parlamentario={data} />;
+  // BIO-02: comisiones de la bio oficial → bloque bajo el cargo del header.
+  // Lector dedicado cacheado; un error real se lanza (#34), vacío honesto = [].
+  const comisiones = await getComisiones(id);
+
+  return <ParlamentarioHeader parlamentario={data} comisiones={comisiones} />;
+}
+
+// ── Sección Militancias (BIO-03, RPC militancias_de_parlamentario, 0060) ────────
+// Server component: lee las militancias (cacheado, #34 se lanza) y las pasa al
+// componente presentacional, que arma su propia <section mt-12> con la vigente en
+// capa-1 + el acordeón histórico. Si el RPC devuelve [] (parlamentario sin ninguna
+// militancia registrada) NO se pinta la sección — un vacío TOTAL de militancias no
+// merece un carril vacío (a diferencia del "solo vigente", que sí muestra leyenda).
+export async function MilitanciasSection({ id }: { id: string }) {
+  const militancias = await getMilitancias(id);
+  if (militancias.length === 0) return null;
+  return <MilitanciasDeParlamentario militancias={militancias} />;
 }
 
 // ── Skeletons (UI-SPEC §6.2, anti-CLS IN-02/IN-03) ─────────────────────────────
@@ -586,6 +657,18 @@ function ParlamentarioHeaderSkeleton() {
       <Skeleton className="h-9 w-3/4" />
       <Skeleton className="h-4 w-48" />
       <Skeleton className="h-4 w-56 mt-4" />
+    </div>
+  );
+}
+
+// Militancias (BIO-03): h2 + leyenda + la fila vigente. Anti-CLS al swap; el
+// acordeón histórico no se pre-dibuja (arranca cerrado).
+function MilitanciasSkeleton() {
+  return (
+    <div className="mt-12 space-y-2" aria-hidden="true">
+      <Skeleton className="h-6 w-56" />
+      <Skeleton className="h-4 w-full max-w-md" />
+      <Skeleton className="h-5 w-40 mt-2" />
     </div>
   );
 }
