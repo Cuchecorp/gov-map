@@ -240,7 +240,10 @@ export async function main(opts: SpikeCliOptions): Promise<void> {
   const parametrosFts = `limit=${opts.limit} unaccent=${unaccentEnabled}`;
   const parametrosSem = `limit=${opts.limit}`;
   const parametrosRrf = `rrf-k=${opts.rrfK} limit=${opts.limit} w-fts=${opts.wFts} w-sem=${opts.wSem} unaccent=${unaccentEnabled}`;
-  const parametrosRpc = `limit=${opts.limit} (RPC real buscar_proyectos_hibrido)`;
+  // WR-05 (Phase 87): los flags --w-fts/--w-sem/--rrf-k no afectan la estrategia rpc-real
+  // porque la RPC tiene rrf_k=50, w_fts=w_sem=1 horneados en SQL (0056/0057).
+  // Se anota explícitamente para evitar confusión al comparar tablas con --w-fts != 1.
+  const parametrosRpc = `limit=${opts.limit} (RPC real; rrf_k=50 w=1 fijos en SQL, --w-* ignorados)`;
 
   const reporte = [
     "# 87-SCORING — Gate de Dominancia RPC Real buscar_proyectos_hibrido",
