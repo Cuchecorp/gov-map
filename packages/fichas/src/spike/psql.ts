@@ -14,6 +14,9 @@
  */
 
 import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { writeFileSync, unlinkSync } from "node:fs";
 
 // Tokens de escritura prohibidos — la guarda los detecta y lanza.
 const FORBIDDEN_TOKENS =
@@ -90,22 +93,38 @@ export async function runSql(
     );
   }
 
-  // Construir args para psql
-  // -At = tuples-only + unaligned
-  // -F tab = separador de campos (default es tab en -A, pero explicitamos)
-  const args: string[] = [
-    dbUrl,
-    "-At",
-    "-F",
-    "\t",
-    "-c",
-    sql,
-  ];
-
-  // Parámetros bindeados como variables psql: -v key=value
-  for (const [key, value] of Object.entries(params)) {
-    args.push("-v", `${key}=${value}`);
+  // Estrategia de paso de parámetros (Windows-safe, sin límite de línea de comandos):
+  // Los parámetros se sustituyen en el SQL y se pasa via archivo temporal (-f).
+  // Esto evita el límite de 32KB de cmd.exe y el mangling de caracteres especiales.
+  //
+  // Seguridad (V5 — interpolación segura por tipo):
+  // - Vectores (floats): solo contienen [0-9.,\-\[\]] → sin riesgo de inyección
+  // - Números: solo dígitos y punto → sin riesgo de inyección
+  // - Null literal → sin riesgo de inyección
+  // - Strings de usuario (query text): se escapan las comillas simples (''→'') y se envuelven
+  //   en comillas simples SQL. Esto es el estándar SQL para prevenir inyección cuando no hay
+  //   parametrized queries reales disponibles via psql -f.
+  let sqlWithParams = sql;
+  for (const [k, v] of Object.entries(params)) {
+    if (v === "null") {
+      // SQL null literal — sin comillas
+      sqlWithParams = sqlWithParams.replace(new RegExp(`:${k}\\b`, "g"), "null");
+    } else {
+      // Todos los demás valores (vectores, números, strings) se envuelven en comillas simples.
+      // PostgreSQL hará el cast correcto con ::type si el SQL lo especifica.
+      // Escape de comillas simples internas: ' → ''
+      const escaped = v.replace(/'/g, "''");
+      sqlWithParams = sqlWithParams.replace(new RegExp(`:${k}\\b`, "g"), `'${escaped}'`);
+    }
   }
+
+  let tmpFile: string | null = null;
+  const args: string[] = [dbUrl, "-At", "-F", "\t"];
+
+  // Siempre pasar via archivo temporal para evitar cualquier límite de línea de comandos
+  tmpFile = join(tmpdir(), `psql-spike-${Date.now()}-${Math.random().toString(36).slice(2)}.sql`);
+  writeFileSync(tmpFile, sqlWithParams, "utf8");
+  args.push("-f", tmpFile);
 
   // Env del hijo: incluye PGCLIENTENCODING para UTF-8 seguro, pero NUNCA loguea dbUrl
   const childEnv = {
@@ -118,7 +137,9 @@ export async function runSql(
     const child = spawn("psql", args, {
       env: childEnv,
       stdio: ["ignore", "pipe", "pipe"],
-      shell: process.platform === "win32",
+      // shell: false para evitar la limitación de 32KB de cmd.exe en Windows
+      // y el mangling de caracteres especiales (@, :, /) en la URL de la DB.
+      shell: false,
     });
 
     let stdout = "";
@@ -136,6 +157,10 @@ export async function runSql(
     });
 
     child.on("close", (code) => {
+      // Limpiar archivo temporal si se creó
+      if (tmpFile) {
+        try { unlinkSync(tmpFile); } catch { /* ignorar errores de limpieza */ }
+      }
       if (code !== 0) {
         // No incluir dbUrl en el mensaje de error (V4)
         reject(
