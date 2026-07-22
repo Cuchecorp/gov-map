@@ -71,14 +71,15 @@ export function parseAtOutput(raw: string): string[][] {
  * Ejecuta una query SELECT-only contra SUPABASE_DB_URL mediante psql.
  *
  * @param sql     - SQL a ejecutar (debe ser SELECT o WITH...SELECT)
- * @param params  - Parámetros posicionales {p1, p2, ...} pasados vía `-v p1=value`
- *                  (NUNCA interpolados en el SQL)
+ * @param params  - Parámetros {key: value} interpolados en el SQL con escape de comillas simples.
+ *                  El SQL resultante se re-valida con assertReadOnly antes de ejecutarse.
  * @returns filas como string[][]
  *
  * Seguridad:
  *   - assertReadOnly lanza antes de invocar psql si el SQL contiene DDL/DML
  *   - SUPABASE_DB_URL se pasa en el env del proceso hijo, NUNCA en argv/logs
- *   - Los params van como variables psql (-v key=value), el SQL los referencia con :key
+ *   - Los valores de usuario se escapan (' -> '') y se envuelven en comillas simples SQL
+   - El SQL final interpolado se re-valida con assertReadOnly (segunda pasada)
  */
 export async function runSql(
   sql: string,
@@ -117,6 +118,10 @@ export async function runSql(
       sqlWithParams = sqlWithParams.replace(new RegExp(`:${k}\\b`, "g"), `'${escaped}'`);
     }
   }
+
+  // Segunda pasada: guarda read-only sobre el SQL final interpolado.
+  // Detecta inyecciones en valores de usuario antes de que lleguen a psql.
+  assertReadOnly(sqlWithParams);
 
   let tmpFile: string | null = null;
   const args: string[] = [dbUrl, "-At", "-F", "\t"];
@@ -179,7 +184,9 @@ export async function runSql(
  * Prueba si la extensión unaccent está disponible en la DB.
  *
  * Devuelve true si `select unaccent('Ñuñoa')` funciona.
- * Devuelve false si la extensión no existe (para degradar el FTS sin unaccent).
+ * Devuelve false SOLO si la extensión no existe (error "function unaccent(...) does not exist").
+ * Lanza en cualquier otro error (conexión fallida, auth, timeout) para no enmascarar
+ * problemas de infraestructura como "unaccent no disponible".
  *
  * Si SUPABASE_DB_URL no está disponible, devuelve false (degradación segura).
  */
@@ -188,7 +195,14 @@ export async function probeUnaccent(): Promise<boolean> {
   try {
     const rows = await runSql("select unaccent('Ñuñoa')");
     return rows.length > 0 && rows[0]![0] !== undefined;
-  } catch {
-    return false;
+  } catch (err) {
+    // Solo enmascarar si es "extensión unaccent no existe" (extensión ausente).
+    // Cualquier otro error (conexión, auth, timeout) se re-lanza para no degradar
+    // silenciosamente el FTS de toda la corrida por un fallo transitorio de red.
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/function unaccent.*does not exist/i.test(msg)) {
+      return false;
+    }
+    throw err;
   }
 }

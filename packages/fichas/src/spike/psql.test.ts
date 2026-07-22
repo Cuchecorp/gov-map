@@ -130,3 +130,26 @@ describe("assertReadOnly — SELECT-only guard", () => {
     expect(() => assertReadOnly("vacuum proyecto")).toThrow(/prohibido/i);
   });
 });
+
+// ──────────────────────────────────────────────────────────
+// assertReadOnly: segunda pasada — detecta inyeccion en valores interpolados (CR-01)
+// ──────────────────────────────────────────────────────────
+describe("assertReadOnly — CR-01: injection-shaped param reaches final SQL", () => {
+  it("detecta DROP TABLE en SQL final si el escape fuera bypasseado", () => {
+    // La segunda pasada de assertReadOnly (sobre sqlWithParams) debe atrapar esto.
+    // Representa el SQL final si un atacante inyecta DROP:
+    const injectedSql = "select boletin from proyecto where titulo = 'hack'; DROP TABLE proyecto; --";
+    expect(() => assertReadOnly(injectedSql)).toThrow(/prohibido/i);
+  });
+
+  it("detecta DELETE en SQL final si el escape fuera bypasseado", () => {
+    const injectedSql = "select boletin from proyecto where titulo = 'x'; DELETE FROM proyecto WHERE id=1; --";
+    expect(() => assertReadOnly(injectedSql)).toThrow(/prohibido/i);
+  });
+
+  it("no lanza en params seguros (texto de usuario normal, sin tokens prohibidos)", () => {
+    // Query con param de usuario normal correctamente escapado — no debe lanzar
+    const safeSql = "select boletin from proyecto where titulo = 'reforma laboral'";
+    expect(() => assertReadOnly(safeSql)).not.toThrow();
+  });
+});
