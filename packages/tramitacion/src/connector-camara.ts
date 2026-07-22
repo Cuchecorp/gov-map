@@ -148,7 +148,7 @@ export class CamaraConnector {
       const url = `${BASE_LEG}/${op}?prmAnno=${encodeURIComponent(String(anno))}`;
       try {
         const xml = await this.fetch(url); // política LOCKED (T-63-04/T-63-05)
-        for (const b of parseCamaraLegislativo(xml)) out.add(b); // zod-validado (T-63-07)
+        for (const par of parseCamaraLegislativo(xml)) out.add(par.boletin); // zod-validado (T-63-07)
       } catch (e) {
         // Best-effort POR OP: la otra op sigue. Se LOGUEA (nunca catch mudo → observable).
         fallos++;

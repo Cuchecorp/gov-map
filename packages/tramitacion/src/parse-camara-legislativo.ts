@@ -1,4 +1,4 @@
-// parse-camara-legislativo — XML de WSLegislativo (opendata.camara.cl) → NumeroBoletin[].
+// parse-camara-legislativo — XML de WSLegislativo (opendata.camara.cl) → {boletin, prmId}[].
 //
 // Fuente (verificada LIVE 2026-07-10): WSLegislativo.asmx/retornarMocionesXAnno?prmAnno={año}
 // y retornarMensajesXAnno. El WS de VOTACIONES devuelve [] para enumeración por año
@@ -21,6 +21,12 @@
 // llevan prefijo). El idiom (XMLParser config + txt/asArray) es copia verbatim de
 // parse-camara-votacion.ts. Cada ProyectoLey se valida con `ProyectoLeySchema` (zod) ANTES de
 // aceptarlo (compuerta de contrato de fuente, CLAUDE.md); los inválidos se DESCARTAN, no lanzan.
+//
+// Change (89-01 TRACE-01): el `<Id>` (prmID interno de Cámara) ya se leía pero se descartaba.
+// Ahora se incluye en el return como `prmId: string | null` (null si ausente). Esto permite
+// persistir el deep-link de tramitación:
+//   https://www.camara.cl/legislacion/ProyectosDeLey/tramitacion.aspx?prmID={prmId}&prmBOLETIN={boletin}
+// El idiom fail-soft (continue en boletin inválido) se preserva INTACTO.
 
 import { XMLParser } from "fast-xml-parser";
 import { z } from "zod";
@@ -52,20 +58,29 @@ function asArray<T>(v: T | T[] | undefined | null): T[] {
 
 /**
  * Compuerta de contrato de fuente (CLAUDE.md "validación de esquema"): un ProyectoLey se acepta
- * solo si su `NumeroBoletin` es un boletín bien formado. `Nombre` es opcional (provenance).
+ * solo si su `NumeroBoletin` es un boletín bien formado. `Nombre` e `Id` son opcionales.
  * Se valida por ELEMENTO — un elemento inválido se descarta, no aborta la colección.
  */
 const ProyectoLeySchema = z.object({
   NumeroBoletin: z.string().regex(BOLETIN_RE),
   Nombre: z.string().optional(),
+  Id: z.string().optional(),
 });
 
+/** Par {boletin, prmId} emitido por el parser. prmId es null si el XML no trae <Id>. */
+export interface CamaraProyectoPar {
+  boletin: string;
+  /** ID interno de la Cámara (<Id> de WSLegislativo). Null si el WS no lo entregó. */
+  prmId: string | null;
+}
+
 /**
- * Parsea la respuesta de `retornarMocionesXAnno`/`retornarMensajesXAnno` → lista de
- * `NumeroBoletin` deduplicados que pasan el regex. Los boletines malformados/ausentes se
- * DESCARTAN (no lanzan); un XML sin colección devuelve [] (zod rechaza, fail-closed).
+ * Parsea la respuesta de `retornarMocionesXAnno`/`retornarMensajesXAnno` → lista de pares
+ * `{boletin, prmId}` deduplicados (por boletín) que pasan el regex de boletín. Los boletines
+ * malformados/ausentes se DESCARTAN (not lanzan); un XML sin colección devuelve [] (zod rechaza,
+ * fail-closed). `prmId` es null si el elemento no trae `<Id>` (no descarta la fila).
  */
-export function parseCamaraLegislativo(xml: string): string[] {
+export function parseCamaraLegislativo(xml: string): CamaraProyectoPar[] {
   let doc: unknown;
   try {
     doc = parser.parse(xml);
@@ -84,20 +99,22 @@ export function parseCamaraLegislativo(xml: string): string[] {
   );
 
   const vistos = new Set<string>();
-  const out: string[] = [];
+  const out: CamaraProyectoPar[] = [];
   for (const p of lista) {
     const numeroBoletin = txt(p.NumeroBoletin);
     const nombre = txt(p.Nombre);
+    const id = txt(p.Id);
     // zod-validate-before-return: el shape debe cumplir el contrato o se descarta.
     const parsed = ProyectoLeySchema.safeParse({
       NumeroBoletin: numeroBoletin ?? "",
       ...(nombre != null ? { Nombre: nombre } : {}),
+      ...(id != null ? { Id: id } : {}),
     });
-    if (!parsed.success) continue; // inválido → descartar, NO lanzar
+    if (!parsed.success) continue; // inválido → descartar, NO lanzar (idiom LOCKED)
     const bol = parsed.data.NumeroBoletin;
     if (!vistos.has(bol)) {
       vistos.add(bol);
-      out.push(bol);
+      out.push({ boletin: bol, prmId: parsed.data.Id ?? null });
     }
   }
   return out;
