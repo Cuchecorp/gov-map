@@ -48,6 +48,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { LEYENDA_ANTI_INSINUACION_MONEY } from "@/lib/money-presentacion";
+import { LEYENDA_CROSS_LINK } from "@/components/cross-links-parlamentario";
 
 // ---------------------------------------------------------------------------
 // Helpers (espejo verbatim de lockdown-guard.test.ts)
@@ -158,6 +159,35 @@ const SUPERFICIES_BUSQUEDA: string[] = [
 ];
 
 /**
+ * Superficies PERSONAS (91-03, BIO-03/BIO-04). El frente parlamentario 360 es el
+ * vector #1 de insinuación de AFINIDAD: el chip de partido, las militancias, las
+ * comisiones, y sobre todo los BLOQUES CROSS-LINK (mismo partido/zona/comisión/
+ * co-autoría) + el filtro por partido tientan al vocabulario de bancada/afinidad
+ * ("aliado", "cercano a", "bloque de", "afín", "coordina con", "alineado"). El copy
+ * de estas superficies debe ser estrictamente FACTUAL: la relación es DECLARADA por
+ * una fuente oficial, nunca inferida.
+ *
+ * NOTA (Pitfall 1, LOCKED): `cross-links-parlamentario.tsx` renderiza la leyenda
+ * anti-causal `LEYENDA_CROSS_LINK`, que CONTIENE "afinidad" en un contexto que lo
+ * NIEGA ("No implica afinidad…"). Por eso la leyenda se AÑADE a NEGACIONES_LOCKED
+ * (abajo) ANTES de que esta superficie entre al scan — mismo tratamiento que las
+ * leyendas VOTO/MONEY. Sin esa resta, el guard se auto-cazaría sobre la propia
+ * superficie que enfuerza la regla.
+ *
+ * Rutas relativas a app/, mismo formato que los otros arrays. Si una ruta no existe,
+ * se salta sin fallar (tolerancia try/catch del bucle).
+ */
+const SUPERFICIES_PERSONAS: string[] = [
+  "components/partido-chip.tsx",
+  "components/comisiones-de-parlamentario.tsx",
+  "components/militancias-de-parlamentario.tsx",
+  "components/cross-links-parlamentario.tsx",
+  "components/parlamentarios-filtro.tsx",
+  "components/parlamentario-directory-row.tsx",
+  "components/parlamentario-header.tsx",
+];
+
+/**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
  * texto RENDERIZADO (post-strip de comentarios), con límite de palabra en español
  * para no cazar identificadores snake_case: `rebeldias_de_parlamentario` (nombre de
@@ -232,6 +262,17 @@ const TERMINOS_PROHIBIDOS: string[] = [
   "direccionamiento",
   "quid pro quo",
   "kickback",
+  // --- Carril PERSONAS (91-03, BIO-03/BIO-04) — vocabulario de bancada/afinidad
+  //     que el frente parlamentario 360 (partido, militancias, cross-links, filtro)
+  //     tienta. TILDES EXACTAS. Dedupe verificado: "alineado"/"alineada" ya viven
+  //     arriba (carril VOTO) y "vinculado a" en el carril MONEY → NO se re-agregan.
+  //     "cercano a" cubre "cercano a su bloque/partido"; "bloque de" cubre
+  //     "bloque de derecha/izquierda"; "coordina con" cubre coordinación inferida.
+  "aliado",
+  "cercano a",
+  "bloque de",
+  "afín",
+  "coordina con",
 ];
 
 /**
@@ -247,6 +288,11 @@ const NEGACIONES_LOCKED: string[] = [
   // guard se auto-cazaría sobre la propia superficie que la renderiza (Pitfall 1).
   // Importada verbatim para no re-tipearla (si el copy cambia, cambia aquí solo).
   LEYENDA_ANTI_INSINUACION_MONEY,
+  // Leyenda CROSS-LINK (91-03, single-source en cross-links-parlamentario.tsx).
+  // NIEGA "afinidad" ("No implica afinidad, coordinación ni causalidad."). Sin
+  // restarla, el scan de SUPERFICIES_PERSONAS se auto-cazaría sobre la propia
+  // superficie que renderiza la leyenda (Pitfall 1). Importada verbatim.
+  LEYENDA_CROSS_LINK,
 ];
 
 /**
@@ -319,7 +365,7 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
 
   it("ningún término prohibido aparece en el texto renderizado (post-strip de comentarios)", () => {
     const offenders: string[] = [];
-    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA]) {
+    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS]) {
       const full = path.join(APP_ROOT, rel);
       let raw: string;
       try {
@@ -432,6 +478,29 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
       expect.arrayContaining(["quid pro quo", "kickback", "puerta giratoria"]),
     );
   });
+
+  it("PERSONAS (91-03): caza un término de bancada/afinidad FRESCO inyectado (cercano a su bloque)", () => {
+    // Término NO-negado por ninguna leyenda LOCKED → prueba que el guard MUERDE
+    // sobre lo nuevo aunque la leyenda cross-link (que NIEGA 'afinidad') esté restada.
+    // "cercano a" y "bloque de" son términos nuevos del carril PERSONAS.
+    const fixtureMutado = `
+      <p>Este parlamentario es cercano a su bloque de derecha y aliado del comité.</p>
+    `;
+    const hits = detectarInsinuaciones(fixtureMutado);
+    expect(
+      hits,
+      "El detector NO cazó vocabulario de bancada inyectado → el guard PERSONAS sería un no-op",
+    ).toEqual(
+      expect.arrayContaining(["cercano a", "bloque de", "aliado"]),
+    );
+  });
+
+  it("PERSONAS (91-03): caza 'afín' / 'coordina con' inyectados (afinidad/coordinación explícita)", () => {
+    const hits = detectarInsinuaciones(
+      `<span>es afín al oficialismo y coordina con la bancada</span>`,
+    );
+    expect(hits).toEqual(expect.arrayContaining(["afín", "coordina con"]));
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -501,6 +570,16 @@ describe("(3) Sin falsos positivos — strip de comentarios, límites de palabra
     const conLeyenda = `
       const LEYENDA = ${JSON.stringify(LEYENDA_ANTI_INSINUACION_MONEY)};
       export const M = <p>{LEYENDA}</p>;
+    `;
+    expect(detectarInsinuaciones(conLeyenda)).toEqual([]);
+  });
+
+  it("PERSONAS (91-03): la leyenda cross-link (que NIEGA 'afinidad') NO es offender", () => {
+    // Restada en NEGACIONES_LOCKED (Pitfall 1): la leyenda CONTIENE "afinidad" pero
+    // la NIEGA ("No implica afinidad, coordinación ni causalidad.") → montar verbatim → [].
+    const conLeyenda = `
+      const LEYENDA = ${JSON.stringify(LEYENDA_CROSS_LINK)};
+      export const C = <p>{LEYENDA}</p>;
     `;
     expect(detectarInsinuaciones(conLeyenda)).toEqual([]);
   });
