@@ -98,6 +98,53 @@ export interface MatchProyectoRow {
 }
 
 /**
+ * Forma serializada camelCase que el server component pasa al island BuscarFiltros.
+ * El server computa todos los campos derivados; el island recibe todo pre-calculado
+ * y NUNCA re-consulta la DB (contrato FichaRail / zero-network island, PATTERNS §FichaRail).
+ *
+ * Derivación server-side (88-03 / page.tsx):
+ *   - `estadoBucket` ← `estadoBucket(p.estado?.trim() || p.etapa?.trim() || null)`
+ *     (fallback truthy-trim estado→etapa; Advisory checker #3 de 88-01)
+ *   - `anio`         ← `deriveAnio(fechaMinEvento)` donde `fechaMinEvento` es el MIN
+ *     fecha de `tramitacion_evento` para el boletín (earliest filing-date proxy)
+ *     NUNCA de `fecha_captura` ni del sufijo del boletín (T-88-03, UI-SPEC §Year LOCKED)
+ *   - `iniciativa`   ← texto literal de `ProyectoRow.iniciativa` narrowed a Mensaje/Moción/null
+ */
+export interface BuscarSliceRow {
+  boletin: string;
+  titulo: string;
+  /**
+   * Año derivado del evento de tramitación más antiguo (proxy de ingreso).
+   * `null` = sin evento Ingreso derivable en `tramitacion_evento`; nunca fabricado.
+   */
+  anio: number | null;
+  /**
+   * Tipo de iniciativa como texto literal de la fuente, normalizado a los dos valores
+   * reconocidos. `null` = texto de fuente no reconocido como "Mensaje" ni "Moción".
+   */
+  iniciativa: "Mensaje" | "Moción" | null;
+  /** Estado normalizado al bucket enum LOCKED (UI-SPEC §Estado normalizer). */
+  estadoBucket: import("./estado-bucket").EstadoBucket;
+  /**
+   * Cámara de origen del proyecto.
+   * `null` = la fuente no registra cámara de origen para este boletín.
+   */
+  camaraOrigen: string | null;
+  /**
+   * Fecha ISO del evento de tramitación más antiguo disponible (proxy de presentación).
+   * `null` = sin fecha derivable desde `tramitacion_evento`.
+   */
+  fecha: string | null;
+  /**
+   * Partido político del autor principal (opcional, forward-compat BIO-03 / P2).
+   * Cuando ausente, el island omite el grupo de faceta de partido — sin placeholder.
+   * `null` explícito = dato disponible pero sin partido registrado.
+   * Campo ausente (`undefined`) = funcionalidad no habilitada aún (P2).
+   */
+  partido?: string | null;
+}
+
+/**
  * Cabecera pública del parlamentario (RPC `parlamentario_publico`, migración 0020).
  *
  * `parlamentario` es deny-by-default (RLS on, cero policies, 0005/0018): anon NO
