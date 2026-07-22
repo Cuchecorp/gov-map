@@ -20,3 +20,12 @@ export {
   ComisionSchema,
   ComisionMembresiaSchema,
 } from "./model";
+
+// Parser de diputados (XML → bio con allowlist por construcción, SIN PII).
+export {
+  parseDiputadosBio,
+  FechaInvalidaError,
+  DIPUTADOS_BIO_URL,
+  CORTE_VIGENCIA,
+} from "./parse-diputados";
+export type { DiputadoBio, MilitanciaBio } from "./parse-diputados";
