@@ -16,7 +16,7 @@
 -- Espeja 0060/0061.test.sql (has_function/is/ok, begin/plan(N)/rollback).
 
 begin;
-select plan(14);
+select plan(13);
 
 -- ── Existencia + seguridad ───────────────────────────────────────────────────────────────
 select has_function('public', 'lobby_menciones_de_boletin', ARRAY['text'], 'lobby_menciones_de_boletin(text) existe');
@@ -33,8 +33,10 @@ select ok(
 
 -- ── FIXTURES de comportamiento (espejo FIXTURE_MATERIA) ──────────────────────────────────
 -- Un parlamentario y un proyecto EXISTENTE (14309-04, base 14309); otro boletín NO existe.
-insert into public.parlamentario (id, nombre_normalizado, nombres, apellido_paterno, apellido_materno, camara)
-  values ('T92', 'test parlamentario', 'Test', 'Parlamentario', 'Uno', 'diputados')
+-- NOT NULL sin default en el schema PROD aplicado: periodo, origen, enlace (además de id,
+-- nombre_normalizado, camara) → se suministran para no violar constraints al correr vs PROD.
+insert into public.parlamentario (id, nombre_normalizado, nombres, apellido_paterno, apellido_materno, camara, periodo, origen, enlace)
+  values ('T92', 'test parlamentario', 'Test', 'Parlamentario', 'Uno', 'diputados', '2022-2026', 'test', 'http://x')
   on conflict (id) do nothing;
 insert into public.proyecto (boletin, boletin_num, titulo, origen, enlace)
   values ('14309-04', '14309', 'Proyecto de prueba 92', 'test', 'http://x')
@@ -83,11 +85,19 @@ select ok(
   not exists (select 1 from public.lobby_menciones_de_boletin('14309-04') where identificador in ('T92AW5','T92AW6')),
   '(e) no_confirmado / sin parlamentario_id → NO mencionada (fail-closed identidad)');
 
--- total_n honesto: 2 audiencias válidas (T92AW1 + T92AW2) para 14309-04
+-- total_n honesto: los 2 fixtures válidos del test (T92AW1 + T92AW2) aparecen y son contados.
+-- NOTA: 14309-04 es un boletín REAL de PROD y puede tener audiencias reales que también
+-- mencionen el número → el total_n absoluto NO es isolation-safe. La aserción honesta es que
+-- (i) los 2 fixtures del test SÍ están en el resultado, y (ii) total_n es constante y ≥ 2
+-- (count(*) over () honesto — cada fila reporta el mismo conteo global de menciones válidas).
 select is(
-  (select distinct total_n from public.lobby_menciones_de_boletin('14309-04')),
+  (select count(*) from public.lobby_menciones_de_boletin('14309-04') where identificador in ('T92AW1','T92AW2')),
   2::bigint,
-  'total_n = 2 (conteo honesto de menciones válidas)');
+  'los 2 fixtures válidos del test (T92AW1+T92AW2) son emitidos como menciones');
+select ok(
+  (select count(distinct total_n) from public.lobby_menciones_de_boletin('14309-04')) = 1
+    and (select max(total_n) from public.lobby_menciones_de_boletin('14309-04')) >= 2,
+  'total_n constante (count(*) over ()) y ≥ 2 (conteo honesto de menciones válidas)');
 
 select * from finish();
 rollback;
