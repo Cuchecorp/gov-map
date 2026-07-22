@@ -202,8 +202,16 @@ export function parseDiputadosBio(
       const p = partidoDe(m.Partido);
       if (p == null) continue;
       // Fechas: crudas al modelo (string), pero validadas fail-closed arriba (indiceVigente ya
-      // habría lanzado). `desde` cae a "" si ausente; `hasta` null si vigente.
-      const desdeRaw = str(m.FechaInicio) ?? "";
+      // habría lanzado). `hasta` null si vigente.
+      // CR-01 (fail-loud): `desde` alimenta una columna `date NOT NULL` (0059) y forma parte de la
+      // clave natural (parlamentario_id, partido_alias, desde). Una militancia sin FechaInicio NO es
+      // persistible: emitir `""` abortaría el upsert del lote entero (`''::date` inválido) o
+      // degradaría la clave (WR-03). Se SALTA con conteo en el log (contrato explícito, no silencioso).
+      const desdeRaw = str(m.FechaInicio);
+      if (desdeRaw == null) {
+        log(`parseDiputadosBio: DIP:${dipid} militancia "${p.partido}" sin FechaInicio → se salta (desde es NOT NULL)`);
+        continue;
+      }
       const hastaRaw = str(m.FechaTermino);
       militancias.push({
         partido: p.partido,

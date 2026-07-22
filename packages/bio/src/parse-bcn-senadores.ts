@@ -110,6 +110,11 @@ export function parseBcnSenadores(json: SparqlResults): SenadorMilitancia[] {
     const personLabel = b.personLabel?.value?.trim();
     const partyLabel = (b.partyLabel?.value ?? b.party?.value ?? "").trim();
     if (!personLabel || !partyLabel) continue; // sin nombre o sin partido → no mapeable
+    // CR-01 (fail-loud): `desde` alimenta `date NOT NULL` (0059) y es parte de la clave natural. Una
+    // Militancy BCN sin `bio:hasBeginning` → `desde` vacío → NO persistible (abortaría el upsert del
+    // lote). Se SALTA (contrato explícito): la degradación se declara, no se defaultea a "".
+    const desde = b.beginDate?.value?.trim();
+    if (!desde) continue; // BCN Militancy sin hasBeginning → sin desde → no persistible
     const { nombre_normalizado } = normalizarNombre({ libre: personLabel });
     out.push({
       personaNombre: personLabel,
@@ -118,7 +123,7 @@ export function parseBcnSenadores(json: SparqlResults): SenadorMilitancia[] {
       parlidSenado: b.idSenado?.value?.trim() || null,
       partido: partyLabel,
       partidoAlias: aliasDePartido(partyLabel),
-      desde: b.beginDate?.value?.trim() ?? "",
+      desde,
       hasta: b.endDate?.value?.trim() ? b.endDate.value.trim() : null,
     });
   }
