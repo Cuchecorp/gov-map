@@ -170,7 +170,7 @@ Plans:
 **Componentes**: MODIFICADO (conector net-new `@obs/bio` dos-etapas + columna/tabla de bio + modelo de comisiones) · reusa `fetch`+`fast-xml-parser`/`cheerio` del repo
 **Success Criteria** (what must be TRUE):
 
-  1. El conector de bio oficial es dos-etapas fuente→R2→Supabase: WSCamaraDiputados `getDiputados` (XML GET) para diputados + fuente Senado/BCN para senadores (SPIKE SPARQL BCN, con degradación honesta a ficha Senado si el endpoint es inestable)
+  1. El conector de bio oficial es dos-etapas fuente→R2→Supabase: WSDiputado `retornarDiputadosPeriodoActual` (opendata.camara.cl, XML GET — endpoint corregido por research 90: `getDiputados` trae históricos con militancias vacías) para diputados + fuente Senado/BCN para senadores (SPIKE SPARQL BCN, con degradación honesta a ficha Senado si el endpoint es inestable)
   2. El parser aplica un ALLOWLIST de campos (nombre/partido/comité/cámara/región/prosa vetada): la PII de TERCEROS/familiares queda en R2 crudo, JAMÁS en tablas servidas por Supabase
   3. La membresía de comisiones queda ingerida y modelada (hoy NO existe) — prerequisito de BIO-02/BIO-04 y CIT-04
   4. Solo se puebla identidad `confirmado`/`determinista` (fail-closed); rate-limit 2-3s + curl-first ante WAF; backfill masivo LOCAL
