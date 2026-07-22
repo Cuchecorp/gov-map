@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { runIngest } from "./ingest-run";
+import { sha256Hex } from "@obs/ingest";
 import { CamaraBloqueadaError, CAMARA_TABLA_PDF_URL } from "./connector-camara";
 import { InMemoryAgendaWriter } from "./writer";
 import type { CitacionesCamaraConnector } from "./connector-camara";
@@ -179,17 +180,30 @@ describe("runIngest — tolerante + degradación honesta", () => {
 
   it("(f) Etapa 1 R2: el HTML crudo de cada semana de Cámara va a R2 content-addressed", async () => {
     const writer = new InMemoryAgendaWriter();
-    const puestos: { source: string; resource: string; ext: string; sha: string }[] = [];
+    // IN-04: el fake CAPTURA el `body` (los bytes persistidos) además de source/resource/
+    // ext/sha, para asertar la invariante-foco del flujo LOCKED de 2 etapas: los bytes
+    // que se persisten en R2 son BYTE-IDÉNTICOS a los que la Etapa 2 decodifica y parsea
+    // (un solo `const bytes`). Sin capturar el body, el test no cazaría una regresión que
+    // hiciera dos fetch (uno para R2, otro para parsear).
+    const puestos: {
+      source: string;
+      resource: string;
+      date: string;
+      ext: string;
+      sha: string;
+      body: Uint8Array;
+    }[] = [];
     const r2 = {
       putImmutable: async (
         source: string,
         resource: string,
-        _date: string,
+        date: string,
         sha: string,
         ext: string,
+        body: Uint8Array,
       ) => {
-        puestos.push({ source, resource, ext, sha });
-        return { r2Path: `${source}/${resource}/${sha}.${ext}`, existed: false };
+        puestos.push({ source, resource, date, ext, sha, body });
+        return { r2Path: `${source}/${resource}/${date}/${sha}.${ext}`, existed: false };
       },
     };
 
@@ -210,6 +224,12 @@ describe("runIngest — tolerante + degradación honesta", () => {
       expect(p.resource).toBe("citaciones-semana");
       expect(p.ext).toBe("html");
       expect(p.sha).toMatch(/^[0-9a-f]{64}$/); // content-addressed (sha256 hex)
+      // WR-01: la partición es la SEMANA ISO ingerida (`YYYY-Www`), NO la fecha de corrida.
+      expect(p.date).toMatch(/^\d{4}-W\d{2}$/);
+      // IN-04: los bytes PERSISTIDOS son los MISMOS que se content-addressaron — el sha del
+      // body capturado coincide con el sha reportado (no se persiste un payload distinto del
+      // que se parsea). Es la garantía "parse consume los MISMOS bytes persistidos".
+      expect(await sha256Hex(p.body)).toBe(p.sha);
     }
     // La Etapa 2 sigue igual: las citaciones se parsean y escriben.
     expect(res.camaraCitaciones).toBeGreaterThanOrEqual(1);
