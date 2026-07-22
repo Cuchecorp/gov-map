@@ -201,11 +201,18 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
   }
 
   // Normalizar texto libre de iniciativa a "Mensaje" | "Moción" | null (honesto).
+  // Usa word-boundary (/\b/) para evitar falsos positivos en strings como
+  // "rechazo de la moción de mensaje" (contiene ambas palabras). La fuente
+  // (Cámara/Senado) emite valores limpios ("Mensaje" / "Moción") sin ambigüedad
+  // en el corpus actual, pero el check excluyente es más robusto.
   function normalizarIniciativa(raw: string | null): "Mensaje" | "Moción" | null {
     if (!raw) return null;
     const v = raw.toLowerCase().trim();
-    if (v.includes("mensaje")) return "Mensaje";
-    if (v.includes("moción") || v.includes("mocion")) return "Moción";
+    const esMensaje = /\bmensaje\b/.test(v);
+    const esMocion = /\bmoción\b/.test(v) || /\bmocion\b/.test(v);
+    if (esMensaje && !esMocion) return "Mensaje";
+    if (esMocion && !esMensaje) return "Moción";
+    // Ambiguo o ninguno → null (fail-honest).
     return null;
   }
 
