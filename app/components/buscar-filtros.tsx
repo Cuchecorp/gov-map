@@ -59,8 +59,29 @@ function getAnioKey(row: BuscarSliceRow): string {
 
 function applyOrder(rows: BuscarSliceRow[], mode: OrderMode): BuscarSliceRow[] {
   if (mode === "relevancia") {
-    // Preservar el orden de entrada = rank del retrieval
-    return rows;
+    // WR-01: RANK-01 tie-break LOCKED.
+    // El orden de entrada YA encoda el rank del retrieval (primary key).
+    // En caso de empate de rank (rank idéntico, prácticamente imposible en kNN
+    // pero LOCKED en spec): Mensaje (Ejecutivo) > Moción, luego más reciente primero.
+    // Como el slice no lleva un campo `rank` numérico explícito, usamos el índice
+    // de posición como primary key de desempate de rank — JS sort es estable así
+    // que el orden original se preserva salvo que haya diferencia en los keys.
+    return [...rows]
+      .map((r, i) => ({ r, i }))
+      .sort((a, b) => {
+        // Primary: posición de retrieval (preserva rank relativo)
+        if (a.i !== b.i) return a.i - b.i;
+        // Secondary: Mensaje antes que Moción
+        const rankA = a.r.iniciativa === "Mensaje" ? 0 : 1;
+        const rankB = b.r.iniciativa === "Mensaje" ? 0 : 1;
+        if (rankA !== rankB) return rankA - rankB;
+        // Tertiary: más reciente primero; null al final
+        if (a.r.anio == null && b.r.anio == null) return 0;
+        if (a.r.anio == null) return 1;
+        if (b.r.anio == null) return -1;
+        return b.r.anio - a.r.anio;
+      })
+      .map((x) => x.r);
   }
   if (mode === "recientes") {
     // anio desc; null al final (RANK-01: nunca fabricado)
