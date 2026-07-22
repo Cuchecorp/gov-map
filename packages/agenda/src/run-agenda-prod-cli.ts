@@ -157,8 +157,11 @@ async function main(): Promise<void> {
     proveedorTablaCamara,
     r2,
     r2Enabled: Boolean(r2Creds),
-    // `prmId=0` = la semana vigente → asociar la tabla a la semana ISO actual (la primera del rango).
-    semanaTablaCamara: desde,
+    // `prmId=0` = SIEMPRE la semana vigente → asociar la tabla a la semana ISO ACTUAL
+    // (isoWeekOf(now)), JAMÁS a la primera del rango: un backfill con --desde histórico
+    // etiquetaría la tabla vigente con una semana pasada (bug reparado 2026-07-22:
+    // sesión W30 quedó como camara:sesion:2026-W20 en PROD; relabel + este fix).
+    semanaTablaCamara: isoWeekOf(now),
   });
 
   console.log(

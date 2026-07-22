@@ -39,7 +39,7 @@ sesion_sala_senado|11|2026-06-23|2026-07-15
 |-------|--------|------------------|--------------------------|----------|---------------------|
 | **comisiones × Cámara** | **34 citaciones** | histórico completo navegable por semana ISO (∞ semanas desde el inicio del período); ~20–40 citaciones/semana (estimación de 2 semanas sondeadas, no censo — Assumption A4 del research) | 2026-06-22 → 2026-07-07 | `citaciones_semana.aspx?prmSemana=AAAA-NN` (UP, **histórico confirmado** — Probe 4b) | **THIN** — solo **2 semanas ISO** capturadas (W26=32, W28=2); el universo histórico navegable NO está ingerido |
 | **comisiones × Senado** | **104 citaciones** | ventana **forward-only** de hoy (~20 citaciones, 22/07→05/08); sin universo histórico por la fuente | 2026-06-23 → 2026-07-24 | `web-back.senado.cl/api/commissions_citations` (UP, **forward-only** — Probe 1) | **AL DÍA en su ventana** — 5 semanas ISO acumuladas (W26–W30); sin histórico *posible* por la fuente (no es un bug de ingesta) |
-| **sala × Cámara** | **1 sesión / 19 items** (Plan-01, PRE-backfill; **post-backfill = 22 ítems**, ver §5/§7) | 1 PDF vigente/semana (`verDoc prmId=0`, solo la semana en curso); histórico de PDFs exigiría enumerar `prmId≠0` (fuera de alcance) | 2026-06-22 (única sesión) | `verDoc.aspx?prmId=0&prmTipo=TABLASEMANAL` → DeepSeek (UP, solo vigente — Probe 5) | **THIN** — 1 sola sesión ingerida; sin histórico estructurado (solo el PDF vigente, no estructurado → DeepSeek) |
+| **sala × Cámara** | **2 sesiones / 41 items** (W26=19 + W30=22; PRE-backfill era 1 sesión/19 — ver §5/§7 y la reparación de etiqueta abajo) | 1 PDF vigente/semana (`verDoc prmId=0`, solo la semana en curso); histórico de PDFs exigiría enumerar `prmId≠0` (fuera de alcance) | 2026-06-22 (única sesión) | `verDoc.aspx?prmId=0&prmTipo=TABLASEMANAL` → DeepSeek (UP, solo vigente — Probe 5) | **THIN** — 1 sola sesión ingerida; sin histórico estructurado (solo el PDF vigente, no estructurado → DeepSeek) |
 | **sala × Senado** | **11 sesiones / 27 items** | ventana **forward-only** de hoy (~3 sesiones en curso); sin histórico por la fuente | 2026-06-23 → 2026-07-15 | `web-back.senado.cl/api/weekly_table` (UP, **forward-only** — Probe 2) | **AL DÍA en su ventana** — sin histórico *posible* por la fuente |
 
 **Lectura honesta:** las dos celdas **Cámara** (comisiones y sala) son **THIN** por sub-ingesta (el universo existe y es alcanzable — Cámara tiene histórico); las dos celdas **Senado** están **AL DÍA en su ventana** — su límite es la FUENTE (forward-only), NO el conector (Pitfall 1: no confundir forward-only de la fuente con bug de ingesta).
@@ -304,3 +304,23 @@ una semana/estado como "no hay actividad" ni como "vigencia confirmada".
 - **Queries psql:** todas verbatim en §1, re-ejecutables con `PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -c "<query>"`. Re-corrida 2026-07-22 = idéntica al research (cero deriva).
 - **Probes curl:** re-ejecutables con el UA identificatorio (endpoints públicos) o el header-set de navegador completo (`headers-camara.ts`, obligatorio para `www.camara.cl`). Rate-limit ≥3 s entre hosts. Paths CORREGIDOS en §2 (Cámara comisiones = `/legislacion/comisiones/`, no `/sesiones_sala/`).
 - **Ningún número presentado como "cobertura completa":** cada celda de §1.2 declara THIN o AL DÍA-en-su-ventana con justificación.
+
+
+---
+
+## §8 — ADDENDUM post-review (2026-07-22, orquestador)
+
+**Bug de etiquetado descubierto y reparado.** El backfill acotado (§5) asoció la tabla de sala
+vigente de Cámara (PDF `prmId=0`, sesión real de la semana **2026-W30**, fecha 2026-07-20) a la
+clave `2026-W20` (la primera del rango `--desde`), porque el CLI pasaba `semanaTablaCamara: desde`.
+Reparación aplicada:
+
+1. **Dato PROD** (transacción única, verificada): `camara:sesion:2026-W20` → `camara:sesion:2026-W30`
+   (insert copia + update de los 22 `sesion_tabla_item` + delete de la fila vieja).
+   Estado final verificado: `camara:sesion:2026-W26` (19 items) + `camara:sesion:2026-W30` (22 items).
+2. **Código**: `run-agenda-prod-cli.ts` ahora pasa `semanaTablaCamara: isoWeekOf(now)` — la tabla
+   vigente JAMÁS se asocia a una semana histórica de un backfill.
+
+**Cifras finales sala × Cámara para el gate de 94:** 2 sesiones / **41 ítems** (19 + 22).
+Query reproducible:
+`select ss.id, count(sti.id) from sesion_sala ss left join sesion_tabla_item sti on sti.sesion_id=ss.id where ss.camara='camara' group by ss.id;`
