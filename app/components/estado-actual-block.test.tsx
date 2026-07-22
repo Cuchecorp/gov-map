@@ -562,6 +562,34 @@ describe("citacionesPasadas — deriva las citaciones con fecha < hoy-Chile", ()
     expect(citacionesPasadas(cits, HOY)).toEqual([]);
     expect(citacionesPasadas([], HOY)).toEqual([]);
   });
+
+  it("WR-01: un boletín en ≥2 puntos de la MISMA citación (mismo id) → UNA sola pasada", () => {
+    // El embed citacion_punto × citacion emite una fila por PUNTO: la misma
+    // citación (id="c1") listada dos veces por dos puntos NO debe duplicar la
+    // línea. Se conserva una sola aparición por identidad del padre.
+    const cits: CitacionCruda[] = [
+      { id: "c1", comision: "de Economía", fecha: "2026-07-21T00:00:00Z" },
+      { id: "c1", comision: "de Economía", fecha: "2026-07-21T00:00:00Z" },
+    ];
+    const pasadas = citacionesPasadas(cits, HOY);
+    expect(pasadas).toHaveLength(1);
+    expect(pasadas[0].comision).toBe("de Economía");
+  });
+
+  it("WR-01: citaciones DISTINTAS (ids distintos) NO se colapsan; sin id tampoco se colapsan", () => {
+    // Dos ids distintos = dos citaciones reales → 2 líneas.
+    const distintas: CitacionCruda[] = [
+      { id: "c1", comision: "A", fecha: "2026-07-21T00:00:00Z" },
+      { id: "c2", comision: "B", fecha: "2026-07-20T00:00:00Z" },
+    ];
+    expect(citacionesPasadas(distintas, HOY)).toHaveLength(2);
+    // Sin id (legacy/tests) no hay identidad → no se colapsa aunque coincidan.
+    const sinId: CitacionCruda[] = [
+      { comision: "A", fecha: "2026-07-21T00:00:00Z" },
+      { comision: "A", fecha: "2026-07-21T00:00:00Z" },
+    ];
+    expect(citacionesPasadas(sinId, HOY)).toHaveLength(2);
+  });
 });
 
 // ── enTablaSala — Gap #2 (CIT-04), lectura sesion_tabla_item omit-when-empty ──
@@ -587,6 +615,34 @@ describe("enTablaSala — deriva las apariciones en la tabla de sala", () => {
     ];
     expect(enTablaSala(filas)).toEqual([]);
     expect(enTablaSala([])).toEqual([]);
+  });
+
+  it("WR-02: un boletín en ≥2 ítems de la MISMA sesión (misma cámara+día) → UNA aparición", () => {
+    // El embed sesion_tabla_item × sesion_sala emite una fila por ÍTEM: la misma
+    // sesión (senado, 2026-07-14) listada dos veces NO debe inflar el conteo ni
+    // duplicar el link a la misma semana.
+    const filas: TablaSalaCruda[] = [
+      { camara: "senado", fecha: "2026-07-14T00:00:00Z" },
+      { camara: "senado", fecha: "2026-07-14T00:00:00Z" },
+    ];
+    const sala = enTablaSala(filas);
+    expect(sala).toHaveLength(1);
+    expect(sala[0].semanaIso).toBe("2026-W29");
+  });
+
+  it("WR-02: días distintos o cámaras distintas del mismo día NO se colapsan", () => {
+    // Dos días distintos = dos apariciones legítimas.
+    const dosDias: TablaSalaCruda[] = [
+      { camara: "senado", fecha: "2026-07-07T00:00:00Z" },
+      { camara: "senado", fecha: "2026-07-14T00:00:00Z" },
+    ];
+    expect(enTablaSala(dosDias)).toHaveLength(2);
+    // Mismo día, distinta cámara = dos apariciones legítimas.
+    const dosCamaras: TablaSalaCruda[] = [
+      { camara: "senado", fecha: "2026-07-14T00:00:00Z" },
+      { camara: "camara", fecha: "2026-07-14T00:00:00Z" },
+    ];
+    expect(enTablaSala(dosCamaras)).toHaveLength(2);
   });
 });
 

@@ -60,6 +60,15 @@ export interface EstadoActual {
 
 /** Fila cruda de citación aplanada desde el embed `citacion_punto × citacion`. */
 export interface CitacionCruda {
+  /**
+   * Id de la CITACIÓN padre (WR-01). El embed `citacion_punto × citacion` emite
+   * UNA fila por PUNTO, no por citación: un boletín listado en ≥2 puntos de la
+   * misma citación (`posicion`) produce filas duplicadas con la MISMA citación.
+   * El id permite deduplicar por identidad del padre antes de contar/mostrar.
+   * Opcional (`null`/ausente ⇒ esa fila NO se deduplica) → los tests y llamadas
+   * que no lo proveen siguen compilando y no colapsan filas legítimas.
+   */
+  id?: string | null;
   comision: string | null;
   fecha: string | null;
 }
@@ -80,6 +89,24 @@ function fechaValida(raw: string | null | undefined): Date | null {
   if (!raw) return null;
   const d = new Date(raw);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Deduplica citaciones por identidad del PADRE (`id`, WR-01). El embed
+ * `citacion_punto × citacion` devuelve una fila por PUNTO: una citación cuyo
+ * orden del día lista el mismo boletín en dos puntos aparece dos veces con el
+ * MISMO `id`. Se conserva la PRIMERA aparición de cada `id`. Las filas sin `id`
+ * (tests/legacy que no lo proveen) NO se colapsan — se dejan pasar tal cual,
+ * porque sin identidad no hay forma honesta de decidir si son la misma citación.
+ */
+function dedupPorCitacion(citaciones: CitacionCruda[]): CitacionCruda[] {
+  const vistos = new Set<string>();
+  return citaciones.filter((c) => {
+    if (c.id == null) return true;
+    if (vistos.has(c.id)) return false;
+    vistos.add(c.id);
+    return true;
+  });
 }
 
 /**
@@ -151,7 +178,8 @@ export function citacionVigente(
 ): { comision: string; fecha: Date } | null {
   const hoyChile = DIA_CALENDARIO_CHILE_HOY.format(hoy); // día-Chile del instante
 
-  const futuras = citaciones
+  // WR-01: deduplicar por id de citación (mismo padre en ≥2 puntos = una citación).
+  const futuras = dedupPorCitacion(citaciones)
     .map((c) => ({ c, d: fechaValida(c.fecha) }))
     .filter(
       (x): x is { c: CitacionCruda; d: Date } =>
@@ -181,7 +209,9 @@ export function citacionesPasadas(
 ): { comision: string; fecha: Date }[] {
   const hoyChile = DIA_CALENDARIO_CHILE_HOY.format(hoy); // día-Chile del instante
 
-  return citaciones
+  // WR-01: deduplicar por id de citación ANTES de contar/renderizar — un boletín
+  // en ≥2 puntos de la misma citación NO debe producir dos líneas idénticas.
+  return dedupPorCitacion(citaciones)
     .map((c) => ({ c, d: fechaValida(c.fecha) }))
     .filter(
       (x): x is { c: CitacionCruda; d: Date } =>
@@ -220,6 +250,13 @@ function semanaIsoChile(fecha: Date): string {
 export function enTablaSala(
   filas: TablaSalaCruda[],
 ): { camara: "camara" | "senado"; fecha: Date; semanaIso: string }[] {
+  // WR-02: deduplicar por (cámara, día publicado) ANTES de contar/renderizar. El
+  // embed `sesion_tabla_item × sesion_sala` emite una fila por ÍTEM: una sesión
+  // que lista el mismo boletín en dos ítems (dos `parte_sesion`, o re-listado)
+  // traería la MISMA sesión repetida, inflando "En tabla de sala N veces" y
+  // duplicando el link a la misma semana. Dos DÍAS distintos de la misma cámara
+  // siguen siendo dos apariciones legítimas (no se colapsan).
+  const vistos = new Set<string>();
   return filas
     .map((f) => ({ f, d: fechaValida(f.fecha) }))
     .filter(
@@ -227,6 +264,14 @@ export function enTablaSala(
         x.d !== null && (x.f.camara === "camara" || x.f.camara === "senado"),
     )
     .sort((a, b) => b.d.getTime() - a.d.getTime()) // DESC: más reciente primero
+    .filter((x) => {
+      // Clave de sesión = cámara + día publicado (parte fecha UTC, contrato
+      // date-only). Se conserva la primera fila por (cámara, día).
+      const clave = `${x.f.camara}:${diaCalendarioCitacion(x.d)}`;
+      if (vistos.has(clave)) return false;
+      vistos.add(clave);
+      return true;
+    })
     .map((x) => ({
       camara: x.f.camara as "camara" | "senado",
       fecha: x.d,
@@ -492,7 +537,10 @@ export async function EstadoActualBlock({ boletin }: { boletin: string }) {
     // lo mínimo para derivar la citación vigente/futura y las pasadas (gap #1).
     sb
       .from("citacion_punto")
-      .select("citacion:citacion(comision, fecha, semana_iso)")
+      // WR-01: se selecciona `id` de la citación padre para deduplicar por
+      // identidad — el embed emite una fila por PUNTO, así que un boletín en ≥2
+      // puntos de la misma citación traería la misma citación repetida.
+      .select("citacion:citacion(id, comision, fecha, semana_iso)")
       .eq("boletin", boletin),
     // Gap #2 (CIT-04): tabla de sala del boletín vía embed
     // `sesion_tabla_item × sesion_sala` (no-PII, public-read 0010). `sesion_sala`
@@ -535,8 +583,8 @@ export async function EstadoActualBlock({ boletin }: { boletin: string }) {
   // como objeto | array según el shape de la relación; se normaliza a objeto.
   type PuntoEmbed = {
     citacion:
-      | { comision: string | null; fecha: string | null }
-      | { comision: string | null; fecha: string | null }[]
+      | { id: string | null; comision: string | null; fecha: string | null }
+      | { id: string | null; comision: string | null; fecha: string | null }[]
       | null;
   };
   const citaciones: CitacionCruda[] = ((puntos as PuntoEmbed[] | null) ?? [])
@@ -545,7 +593,8 @@ export async function EstadoActualBlock({ boletin }: { boletin: string }) {
       if (!c) return [];
       return Array.isArray(c) ? c : [c];
     })
-    .map((c) => ({ comision: c.comision, fecha: c.fecha }));
+    // WR-01: se conserva `id` para deduplicar por identidad del padre.
+    .map((c) => ({ id: c.id, comision: c.comision, fecha: c.fecha }));
 
   // Gap #2: aplana el embed de sala a `{ camara, fecha }`. Supabase tipa el embed
   // to-one como objeto | array según el shape de la relación; se normaliza a objeto.
