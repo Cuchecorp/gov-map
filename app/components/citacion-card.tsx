@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CamaraChip } from "@/components/camara-chip";
 import { formatNombre } from "@/lib/format";
+import { badgeFechaCitacion } from "@/lib/dia-calendario";
 import {
   ProvenanceBadge,
   type ProvenanceBadgeProps,
@@ -44,14 +45,12 @@ export interface CitacionCardProps {
   provenance: ProvenanceBadgeProps;
 }
 
-// BLOCKER (plan-checker #1): el badge de fecha DEBE rotular el día-calendario de
-// Chile, no el día UTC almacenado. Una citación a 00:00Z (21:00 CL del día
-// anterior en invierno) tiene que mostrar el día chileno, no el siguiente.
-const horaFmt = new Intl.DateTimeFormat("es-CL", {
-  day: "2-digit",
-  month: "short",
-  timeZone: "America/Santiago",
-});
+// CONTRATO date-only-midnight-UTC (regresión live Phase 94, ver
+// `@/lib/dia-calendario`): el badge rotula el DÍA PUBLICADO por la fuente = la
+// PARTE FECHA UTC de `citacion.fecha` (almacenada a medianoche UTC, hora real en
+// `horario`). NO se convierte a tz America/Santiago: interpretar esa medianoche
+// en Chile retrocede un día (fecha 2026-07-20T00:00Z renderizaría "19-jul").
+// `badgeFechaCitacion` emite "DD-mmm" desde el día civil.
 
 export function CitacionCard({
   comision,
@@ -65,7 +64,7 @@ export function CitacionCard({
   estado,
   provenance,
 }: CitacionCardProps) {
-  const fechaLabel = fecha ? horaFmt.format(fecha) : null;
+  const fechaLabel = badgeFechaCitacion(fecha);
 
   return (
     <Card>

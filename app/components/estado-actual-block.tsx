@@ -1,5 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase";
 import { fechaCorta, relativeTimeEs } from "@/lib/format";
+import { diaCalendarioCitacion } from "@/lib/dia-calendario";
 import { sourceLabel } from "@/lib/types";
 import type { ProyectoRow, TramitacionEventoRow } from "@/lib/types";
 import { isoWeekOf, semanaIsoKey } from "@/lib/week-utils";
@@ -113,8 +114,15 @@ export function urgenciaVigente(
   return vigente;
 }
 
-/** Día calendario YYYY-MM-DD en Chile (en-CA emite ISO; DST-safe vía tzdb). */
-const DIA_CALENDARIO_CHILE = new Intl.DateTimeFormat("en-CA", {
+/**
+ * Día calendario YYYY-MM-DD en Chile del INSTANTE ACTUAL "hoy" (en-CA emite ISO;
+ * DST-safe vía tzdb). OJO: esto es correcto SOLO para `hoy` (un timestamp real con
+ * hora — el server corre en UTC, así que a las 21:00 CL ya está en el día UTC
+ * siguiente). Las FECHAS de citación/sala NO se convierten con esto: son date-only
+ * a medianoche UTC y su día es la parte fecha UTC (`diaCalendarioCitacion`, ver
+ * `@/lib/dia-calendario`) — convertirlas de zona fabricaría el día anterior.
+ */
+const DIA_CALENDARIO_CHILE_HOY = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/Santiago",
   year: "numeric",
   month: "2-digit",
@@ -141,7 +149,7 @@ export function citacionVigente(
   citaciones: CitacionCruda[],
   hoy: Date = new Date(),
 ): { comision: string; fecha: Date } | null {
-  const hoyChile = DIA_CALENDARIO_CHILE.format(hoy); // YYYY-MM-DD
+  const hoyChile = DIA_CALENDARIO_CHILE_HOY.format(hoy); // día-Chile del instante
 
   const futuras = citaciones
     .map((c) => ({ c, d: fechaValida(c.fecha) }))
@@ -149,7 +157,8 @@ export function citacionVigente(
       (x): x is { c: CitacionCruda; d: Date } =>
         x.d !== null &&
         !!x.c.comision?.trim() &&
-        x.d.toISOString().slice(0, 10) >= hoyChile,
+        // Día publicado de la citación (parte fecha UTC, contrato date-only) vs hoy-Chile.
+        diaCalendarioCitacion(x.d)! >= hoyChile,
     )
     .sort((a, b) => a.d.getTime() - b.d.getTime());
 
@@ -170,7 +179,7 @@ export function citacionesPasadas(
   citaciones: CitacionCruda[],
   hoy: Date = new Date(),
 ): { comision: string; fecha: Date }[] {
-  const hoyChile = DIA_CALENDARIO_CHILE.format(hoy); // YYYY-MM-DD
+  const hoyChile = DIA_CALENDARIO_CHILE_HOY.format(hoy); // día-Chile del instante
 
   return citaciones
     .map((c) => ({ c, d: fechaValida(c.fecha) }))
@@ -178,7 +187,8 @@ export function citacionesPasadas(
       (x): x is { c: CitacionCruda; d: Date } =>
         x.d !== null &&
         !!x.c.comision?.trim() &&
-        x.d.toISOString().slice(0, 10) < hoyChile,
+        // Día publicado de la citación (parte fecha UTC, contrato date-only) vs hoy-Chile.
+        diaCalendarioCitacion(x.d)! < hoyChile,
     )
     .sort((a, b) => b.d.getTime() - a.d.getTime()) // DESC: más reciente primero
     .slice(0, 5)
@@ -186,16 +196,16 @@ export function citacionesPasadas(
 }
 
 /**
- * Semana ISO ("YYYY-Www") de una fecha en el día calendario de CHILE — la clave de
- * navegación de /agenda. `sesion_sala` NO guarda `semana_iso` (0010): solo `fecha`
- * timestamptz. Espejamos la convención SQL de /agenda
- * (`to_char(fecha at time zone 'America/Santiago', 'IYYY"-W"IW')`): se toma el DÍA
- * calendario chileno de la fecha y se calcula su semana ISO sobre ese día (a
- * medianoche UTC, para que `isoWeekOf` — que opera en UTC — no cruce de huso).
+ * Semana ISO ("YYYY-Www") de una fila de tabla de sala — la clave de navegación de
+ * /agenda. `sesion_sala.fecha` es date-only a medianoche UTC (contrato, ver
+ * `@/lib/dia-calendario`): su día publicado es la PARTE FECHA UTC, NO una conversión
+ * a tz Chile (que retrocedería un día y podría corrimiento de semana ISO). Se toma
+ * ese día publicado y se calcula su semana ISO sobre él (a medianoche UTC, para que
+ * `isoWeekOf` — que opera en UTC — no cruce de huso).
  */
 function semanaIsoChile(fecha: Date): string {
-  const diaChile = DIA_CALENDARIO_CHILE.format(fecha); // YYYY-MM-DD (Chile)
-  const [y, m, d] = diaChile.split("-").map(Number);
+  const diaPublicado = diaCalendarioCitacion(fecha)!; // YYYY-MM-DD (día publicado)
+  const [y, m, d] = diaPublicado.split("-").map(Number);
   const { year, week } = isoWeekOf(new Date(Date.UTC(y, m - 1, d)));
   return semanaIsoKey(year, week);
 }

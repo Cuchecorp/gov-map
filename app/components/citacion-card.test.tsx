@@ -72,18 +72,30 @@ describe("CitacionCard — invitados como gestores de interés (T-06-02)", () =>
   });
 });
 
-describe("CitacionCard — badge de fecha en tz America/Santiago (BLOCKER)", () => {
-  it("una citación a 00:00Z (21:00 CL del día anterior, invierno) rotula el día-calendario de Chile (21, no 22)", () => {
-    // 2026-07-22T00:00:00Z = 2026-07-21 21:00 en Chile (offset −03:00 en invierno).
+describe("CitacionCard — badge de fecha por contrato date-only-midnight-UTC (regresión 94)", () => {
+  it("una citación a 00:00Z rotula SU día publicado (parte fecha UTC = 22), NO el anterior", () => {
+    // CONTRATO (ver `@/lib/dia-calendario`): `citacion.fecha` es date-only
+    // almacenada a medianoche UTC — su parte fecha (2026-07-22) ES el día
+    // publicado por la fuente. Interpretar 00:00Z en tz Chile fabricaría el 21
+    // (regresión live detectada en Phase 94). El badge debe decir 22-jul.
     render(
       <CitacionCard
         {...makeProps({ fecha: new Date("2026-07-22T00:00:00Z") })}
       />,
     );
-    // El badge de fecha usa America/Santiago → día 21, NUNCA el 22 UTC.
-    // (es-CL month:short emite "21-jul"; el separador ` · ` une con el horario.)
-    expect(screen.getByText(/21-jul/i)).toBeInTheDocument();
-    expect(screen.queryByText(/22-jul/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/22-jul/i)).toBeInTheDocument();
+    expect(screen.queryByText(/21-jul/i)).not.toBeInTheDocument();
+  });
+
+  it("fecha 2026-07-20T00:00Z (lunes 20 publicado) → badge '20-jul', nunca '19-jul'", () => {
+    // Caso exacto de la regresión: la tz America/Santiago retrocedía a domingo 19.
+    render(
+      <CitacionCard
+        {...makeProps({ fecha: new Date("2026-07-20T00:00:00Z") })}
+      />,
+    );
+    expect(screen.getByText(/20-jul/i)).toBeInTheDocument();
+    expect(screen.queryByText(/19-jul/i)).not.toBeInTheDocument();
   });
 });
 
