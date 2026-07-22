@@ -180,12 +180,60 @@
 
 ## DECISIÓN
 
-> _(Completar tras revisar los resultados: algoritmo, pesos A/B/C, rrf_k, límite de candidatos, cobertura embeddings LIVE, plan de flag, gate de 87)_
+**Registrada al cierre del plan 86-03 — 2026-07-22**
 
-- **Algoritmo elegido:** _TBD_
-- **Pesos FTS/semántico:** _TBD_
-- **rrf_k:** _TBD_
-- **Límite de candidatos por rama:** _TBD_
-- **Cobertura embeddings LIVE:** 3100/3659 (84.7%)
-- **Plan de flag:** match_proyectos se CONSERVA; la híbrida entra tras flag en fase 87 hasta dominar el golden set; sin dominación no hay rewire (gate de 87 explícito).
-- **Criterio de victoria:** arregla literal/boletín Y no regresiona NL/similares
+### (a) Estrategia ganadora: RRF (FTS ∪ semántico) con short-circuit determinista de boletín
+
+- **Algoritmo elegido:** RRF (Reciprocal Rank Fusion) fusionando FTS ad-hoc y `match_proyectos` semántico, con short-circuit determinista de boletín FUERA de la fusión.
+- **Pesos tsvector:** A = titulo, B = idea_matriz, C = normas (cuerpos_legales jsonb, key 'norma').
+- **Pesos de fusión FTS/semántico:** w_fts=1, w_sem=1 (igual peso).
+- **rrf_k:** 50 (valor central del patrón Supabase; el grid limit 20/50/100 × rrf_k 30/50/70 dio resultados idénticos → corpus 3.659 insensible en este rango).
+- **Límite de candidatos por rama:** 50 (default central).
+- **Cobertura embeddings LIVE:** 3100/3659 (84.7%) — medida en PROD, no asumida.
+- **unaccent en PROD:** false (extensión ausente) — explica FTS-solo 9.4% y acentos-topónimos 20% hit@1. La proyección del spike SUBESTIMA el potencial RRF; con unaccent solo puede mejorar.
+
+**Evidencia de dominación (criterio de victoria cumplido):**
+
+| Estrategia | hit@1 | hit@5 | MRR |
+|------------|-------|-------|-----|
+| FTS-solo | 9.4% | 18.8% | 11.8% |
+| Semántico-solo | 34.4% | 53.1% | 40.3% |
+| **RRF (ganadora)** | **43.8%** | **68.8%** | **53.6%** |
+
+RRF domina las 3 métricas globales. No regresiona NL/similares: parafrasis-nl 80% hit@5 (igual semántico-solo), similares 80% hit@5 (igual). Boletines: 100% hit@1 (4/4) por short-circuit determinista.
+
+### (b) REQUISITO DURO para fase 87: `CREATE EXTENSION unaccent` + wrapper IMMUTABLE
+
+La corrida midió que `unaccent` NO está instalado en PROD. Esto explica el 9.4% de FTS-solo y el 20% hit@1 en acentos-topónimos. La RPC híbrida de fase 87 DEBE incluir en su migración:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS unaccent;
+CREATE OR REPLACE FUNCTION immutable_unaccent(text) RETURNS text
+  LANGUAGE sql IMMUTABLE PARALLEL SAFE
+  AS $$ SELECT unaccent($1) $$;
+```
+
+Sin esto el FTS funciona en modo degradado y la mejora real del RRF queda subestimada.
+
+### (c) Caso boletín analizado: todos los 4 casos pasaron hit@1 en RRF
+
+La tabla final muestra bo-01 a bo-04 todos en rank=1 en RRF (100% hit@1, 4/4). El short-circuit de boletín en `detectarBoletin` maneja correctamente los 3 formatos:
+- `14309-04` → `{base:"14309", sufijo:"04"}` → busca por `boletin='14309-04'` OR `boletin_num='14309'` → hit exacto.
+- `14309` → `{base:"14309", sufijo:null}` → busca por `boletin_num='14309'` → resuelve a `14309-04` (prefix-match vía boletin_num).
+- `14.309-04` → strip de puntos → `14309-04` → mismo flujo que caso 1.
+- `18060-07` → hit directo por `boletin='18060-07'`.
+
+**El requisito de "boletín SIEMPRE #1" está CUMPLIDO en el spike.** La RPC de fase 87 debe implementar el mismo short-circuit (boletin exacto OR boletin_num prefix-match) como cláusula determinista en la función SQL.
+
+**Nota sobre el checkpoint:** el jefe indicó "~75% (3/4)" basándose en una estimación preliminar antes de ver la tabla final. Los datos LIVE muestran 100% (4/4). No hay caso fallido que documentar.
+
+### (d) Golden set CONGELADO
+
+El golden set queda congelado con las correcciones LIVE de d7bb3d3 (expected[] verificados contra PROD; placeholders reemplazados). Cualquier cambio futuro = decisión explícita registrada en 86-SCORING.md con justificación en el campo `nota` del caso.
+
+### (e) Plan de flag para fase 87
+
+- `match_proyectos` (RPC existente) se CONSERVA intacta — la usa "proyectos similares" (SEM-05).
+- La RPC híbrida nueva (`buscar_proyectos_hibrido` o similar) entra DETRÁS de flag/paralelo.
+- `/buscar` solo se rewirea a la RPC híbrida cuando el golden live-test la muestre dominante sobre la RPC real de fase 87 (no sobre el harness del spike).
+- **Gate de fase 87 explícito:** sin dominación demostrada sobre el golden set en la RPC real de 87, no hay rewire del endpoint `/buscar`. La dominación ya fue demostrada en este spike; el gate se re-verifica sobre la RPC real.
