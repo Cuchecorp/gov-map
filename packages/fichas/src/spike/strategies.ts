@@ -137,11 +137,23 @@ export interface SemanticOptions {
 export interface RrfOptions {
   runSql: SqlRunner;
   rrfK?: number;
+  /** Overall result limit (top-k from RRF fusion output). Default 20. */
   limit?: number;
+  /**
+   * Candidate limit per FTS arm. Default: same as limit.
+   * Setting ftsLimit/semLimit independently enables honest per-arm grid measurement.
+   */
+  ftsLimit?: number;
+  /**
+   * Candidate limit per semantic arm. Default: same as limit.
+   */
+  semLimit?: number;
   wFts?: number;
   wSem?: number;
   matchThreshold?: number;
   useUnaccent?: boolean;
+  /** Self-exclusion for 'similares' queries (SEM-05). Passed to semantic arm. */
+  excludeBoletin?: string;
 }
 
 // ── Runners ──────────────────────────────────────────────────────────────────
@@ -232,11 +244,17 @@ export async function runRrf(
     runSql,
     rrfK = 50,
     limit = 20,
+    ftsLimit,
+    semLimit,
     wFts = 1,
     wSem = 1,
     matchThreshold = 0.59,
     useUnaccent = true,
+    excludeBoletin,
   } = opts;
+  // Per-arm candidate limits (WR-02): allow independent sizing for honest grid measurement.
+  const resolvedFtsLimit = ftsLimit ?? limit;
+  const resolvedSemLimit = semLimit ?? limit;
 
   // SHORT-CIRCUIT de boletín ANTES de cualquier rama (Pitfall #5)
   const boletinMatch = detectarBoletin(query);
@@ -253,9 +271,9 @@ export async function runRrf(
 
   // Texto libre: correr FTS + semántico y fusionar con RRF
   const [ftsResults, semResults] = await Promise.all([
-    runFtsOnly(query, { runSql, limit, useUnaccent }),
+    runFtsOnly(query, { runSql, limit: resolvedFtsLimit, useUnaccent }),
     vector !== null
-      ? runSemanticOnly(vector, { runSql, limit, matchThreshold })
+      ? runSemanticOnly(vector, { runSql, limit: resolvedSemLimit, matchThreshold, excludeBoletin })
       : Promise.resolve<string[]>([]),
   ]);
 
