@@ -140,11 +140,17 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
           if (opts.r2Enabled && opts.r2) {
             try {
               const sha = await sha256Hex(bytes);
-              const date = new Date().toISOString().slice(0, 10);
+              // WR-01: la partición de la key es la SEMANA ISO ingerida (`clave`, p.ej.
+              // "2026-W20"), NO la fecha de corrida (wall-clock). Así el objeto es
+              // content-addressed Y estable por semana: re-fetch del mismo HTML otro día
+              // produce la MISMA key → `If-None-Match: *` colisiona (412 idempotente) en vez
+              // de crear un duplicado bajo un `<date>/` distinto. El hash-check pre-descarga
+              // del masivo (§5) tiene así un prefijo ACOTADO (`camara/citaciones-semana/<clave>/`)
+              // que probar, no un set ilimitado de fechas.
               const { r2Path: key } = await opts.r2.putImmutable(
                 "camara",
                 "citaciones-semana",
-                date,
+                clave,
                 sha,
                 "html",
                 bytes,
@@ -257,11 +263,15 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
         if (opts.r2Enabled && opts.r2) {
           try {
             const sha = await sha256Hex(pdfBytes);
-            const date = new Date().toISOString().slice(0, 10);
+            // WR-01: partición = semana ISO de la tabla (`prmId=0` = la vigente), NO la
+            // fecha de corrida. El PDF vigente re-descargado el mismo día en dos corridas
+            // colisiona por sha bajo el mismo prefijo `camara/tabla-sala/<clave>/` (412
+            // idempotente) en vez de duplicarse bajo `<date>/` distintos.
+            const claveTabla = semanaIsoKey(semanaTabla.year, semanaTabla.week);
             const { r2Path: key } = await opts.r2.putImmutable(
               "camara",
               "tabla-sala",
-              date,
+              claveTabla,
               sha,
               "pdf",
               pdfBytes,
