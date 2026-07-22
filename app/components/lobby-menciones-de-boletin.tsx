@@ -229,7 +229,7 @@ export function LobbyMencionesView({ rows }: { rows: LobbyMencionRow[] }) {
       {heading}
       {leyenda}
       {conteo}
-      <ul className="space-y-0">
+      <ul>
         {rows.map((r, idx) => (
           <FilaMencion key={r.identificador ?? idx} row={r} />
         ))}
