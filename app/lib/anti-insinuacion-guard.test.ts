@@ -141,6 +141,21 @@ const SUPERFICIES_HOME: string[] = [
 ];
 
 /**
+ * Superficies BÚSQUEDA (88-03, RANK-01 / FILT-01-03). El carril de "ranking
+ * explicable" y filtros client-side island es especialmente tentador para vocabulario
+ * prohibido: `ranking`, `score`, `índice`, `puntaje`, `afinidad`. Este guard asegura
+ * que el copy del island y del server component /buscar sea estrictamente factual.
+ *
+ * Rutas relativas a app/, mismo formato que los otros arrays.
+ * Si una ruta no existe (p.ej. durante despliegue incremental), se salta sin fallar
+ * (la tolerancia try/catch del bucle ya lo cubre).
+ */
+const SUPERFICIES_BUSQUEDA: string[] = [
+  "components/buscar-filtros.tsx",
+  "app/buscar/page.tsx",
+];
+
+/**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
  * texto RENDERIZADO (post-strip de comentarios), con límite de palabra en español
  * para no cazar identificadores snake_case: `rebeldias_de_parlamentario` (nombre de
@@ -295,7 +310,7 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
 
   it("ningún término prohibido aparece en el texto renderizado (post-strip de comentarios)", () => {
     const offenders: string[] = [];
-    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME]) {
+    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA]) {
       const full = path.join(APP_ROOT, rel);
       let raw: string;
       try {
