@@ -14,7 +14,12 @@
 export function detectarBoletin(
   q: string,
 ): { base: string; sufijo: string | null } | null {
-  const stripped = q.trim().replace(/\./g, "");
+  // Solo strip puntos que estén en posición de separador de miles válido:
+  //   ^\d{1,3}(\.\d{3})*(-\d{1,2})?$  → 14.309-04, 14.309 → OK
+  //   12.34, 100.00, 3.14 → NO son boletines (punto decimal)
+  const trimmed = q.trim();
+  const hasDotThousands = /^\d{1,3}(\.\d{3})*(-\d{1,2})?$/.test(trimmed);
+  const stripped = hasDotThousands ? trimmed.replace(/\./g, "") : trimmed;
   if (!/^\d{3,6}(-\d{1,2})?$/.test(stripped)) return null;
   const [base, sufijo = null] = stripped.split("-");
   return { base: base!, sufijo };

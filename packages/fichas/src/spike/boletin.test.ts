@@ -25,4 +25,27 @@ describe("detectarBoletin", () => {
   it('cadena vacía "" → null', () => {
     expect(detectarBoletin("")).toBeNull();
   });
+
+  // WR-01: regression — punto decimal / dinero NO debe ser boletín
+  it('decimal "12.34" → null (punto decimal, no separador de miles)', () => {
+    expect(detectarBoletin('12.34')).toBeNull();
+  });
+
+  it('decimal "100.00" → null (monto monetario, no boletín)', () => {
+    expect(detectarBoletin('100.00')).toBeNull();
+  });
+
+  it('decimal "3.14" → null (pi, no boletín)', () => {
+    expect(detectarBoletin('3.14')).toBeNull();
+  });
+
+  it('decimal "1.234.56" → null (punto mal posicionado)', () => {
+    expect(detectarBoletin('1.234.56')).toBeNull();
+  });
+
+  // Formatos válidos de boletín punteado siguen funcionando
+  it('formato punteado largo "123.456" → {base:"123456", sufijo:null}', () => {
+    expect(detectarBoletin('123.456')).toEqual({ base: '123456', sufijo: null });
+  });
+
 });
