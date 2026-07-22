@@ -59,7 +59,7 @@ function buildSenadoUrl(boletin) {
 }
 
 function buildCamaraUrl(boletin, prmId) {
-  return `https://www.camara.cl/legislacion/proyectosdeley/tramitacion.aspx?prmID=${encodeURIComponent(prmId)}&prmBOLETIN=${encodeURIComponent(boletin)}`;
+  return `https://www.camara.cl/legislacion/ProyectosDeLey/tramitacion.aspx?prmID=${encodeURIComponent(prmId)}&prmBOLETIN=${encodeURIComponent(boletin)}`;
 }
 
 // ── curl wrapper ──────────────────────────────────────────────────────────────

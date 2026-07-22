@@ -58,7 +58,7 @@ export function buildSenadoUrl(boletin: string): string {
  * URL de tramitación de la Cámara. SOLO cuando prm_id_camara != null.
  */
 export function buildCamaraUrl(boletin: string, prmId: string): string {
-  return `https://www.camara.cl/legislacion/proyectosdeley/tramitacion.aspx?prmID=${encodeURIComponent(prmId)}&prmBOLETIN=${encodeURIComponent(boletin)}`;
+  return `https://www.camara.cl/legislacion/ProyectosDeLey/tramitacion.aspx?prmID=${encodeURIComponent(prmId)}&prmBOLETIN=${encodeURIComponent(boletin)}`;
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
