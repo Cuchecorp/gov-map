@@ -21,7 +21,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { GOLDEN_SET } from "./golden-set.js";
 import { evaluarRetrieval, type MetricasRetrieval } from "./score.js";
-import { runFtsOnly, runSemanticOnly, runRrf } from "./strategies.js";
+import { runFtsOnly, runSemanticOnly, runRrf, runRpcHibrida } from "./strategies.js";
 import { getCachedEmbeddings } from "./embed-cache.js";
 import { embedQuery } from "./embed-query.js";
 import { runSql, probeUnaccent } from "./psql.js";
@@ -228,14 +228,22 @@ export async function main(opts: SpikeCliOptions): Promise<void> {
     });
   });
 
+  console.log("[retrieval-cli] Corriendo estrategia: rpc-real (buscar_proyectos_hibrido)...");
+  const metricasRpc = await evaluarRetrieval(GOLDEN_SET, (caso) => {
+    const vector = vectorMap.get(caso.query);
+    if (!vector) return Promise.resolve([]);
+    return runRpcHibrida(caso.query, vector, { runSql, limit: opts.limit });
+  });
+
   // 6. Generar reporte
   const fechaRun = new Date().toISOString();
   const parametrosFts = `limit=${opts.limit} unaccent=${unaccentEnabled}`;
   const parametrosSem = `limit=${opts.limit}`;
   const parametrosRrf = `rrf-k=${opts.rrfK} limit=${opts.limit} w-fts=${opts.wFts} w-sem=${opts.wSem} unaccent=${unaccentEnabled}`;
+  const parametrosRpc = `limit=${opts.limit} (RPC real buscar_proyectos_hibrido)`;
 
   const reporte = [
-    "# 86-SCORING — Resultados del Spike de Retrieval Híbrido",
+    "# 87-SCORING — Gate de Dominancia RPC Real buscar_proyectos_hibrido",
     "",
     `**Corrida:** ${fechaRun}`,
     `**Golden set:** ${GOLDEN_SET.length} casos`,
@@ -255,7 +263,9 @@ export async function main(opts: SpikeCliOptions): Promise<void> {
     "",
     renderTabla("2. Semántico-solo (match_proyectos)", metricasSem, parametrosSem),
     "",
-    renderTabla("3. RRF (FTS ∪ semántico)", metricasRrf, parametrosRrf),
+    renderTabla("3. RRF ad-hoc (spike 86)", metricasRrf, parametrosRrf),
+    "",
+    renderTabla("4. rpc-real (buscar_proyectos_hibrido)", metricasRpc, parametrosRpc),
     "",
     "## Resumen Comparativo",
     "",
@@ -263,19 +273,16 @@ export async function main(opts: SpikeCliOptions): Promise<void> {
     "|------------|-------|-------|-------|",
     `| FTS-solo | ${pct(metricasFts.agregado.hit1)} | ${pct(metricasFts.agregado.hit5)} | ${pct(metricasFts.agregado.mrr)} |`,
     `| Semántico-solo | ${pct(metricasSem.agregado.hit1)} | ${pct(metricasSem.agregado.hit5)} | ${pct(metricasSem.agregado.mrr)} |`,
-    `| RRF | ${pct(metricasRrf.agregado.hit1)} | ${pct(metricasRrf.agregado.hit5)} | ${pct(metricasRrf.agregado.mrr)} |`,
+    `| RRF ad-hoc (baseline 86) | ${pct(metricasRrf.agregado.hit1)} | ${pct(metricasRrf.agregado.hit5)} | ${pct(metricasRrf.agregado.mrr)} |`,
+    `| **rpc-real** | **${pct(metricasRpc.agregado.hit1)}** | **${pct(metricasRpc.agregado.hit5)}** | **${pct(metricasRpc.agregado.mrr)}** |`,
     "",
     "## DECISIÓN",
     "",
-    "> _(Completar tras revisar los resultados: algoritmo, pesos A/B/C, rrf_k, límite de candidatos, cobertura embeddings LIVE, plan de flag, gate de 87)_",
+    "> _(Completar tras revisar los resultados: ¿la rpc-real domina al baseline semántico en NL/similares y arregla boletín/literal?)_",
     "",
-    "- **Algoritmo elegido:** _TBD_",
-    "- **Pesos FTS/semántico:** _TBD_",
-    "- **rrf_k:** _TBD_",
-    "- **Límite de candidatos por rama:** _TBD_",
     "- **Cobertura embeddings LIVE:** " + `${proyectosConEmbedding}/${totalProyectos} (${pctCobertura}%)`,
-    "- **Plan de flag:** match_proyectos se CONSERVA; la híbrida entra tras flag en fase 87 hasta dominar el golden set; sin dominación no hay rewire (gate de 87 explícito).",
-    "- **Criterio de victoria:** arregla literal/boletín Y no regresiona NL/similares",
+    "- **Criterio de victoria:** boletín 100% hit@1 (4/4) Y parafrasis-nl ≥ 80% hit@5 Y similares ≥ 80% hit@5 Y mejora agregada vs semántico-solo",
+    "- **Resultado:** _TBD — ver tabla rpc-real arriba_",
     "",
   ].join("\n");
 
@@ -290,6 +297,9 @@ export async function main(opts: SpikeCliOptions): Promise<void> {
   );
   console.log(
     `[retrieval-cli] Resumen — RRF: hit@1=${pct(metricasRrf.agregado.hit1)} hit@5=${pct(metricasRrf.agregado.hit5)} MRR=${pct(metricasRrf.agregado.mrr)}`,
+  );
+  console.log(
+    `[retrieval-cli] Resumen — RPC: hit@1=${pct(metricasRpc.agregado.hit1)} hit@5=${pct(metricasRpc.agregado.hit5)} MRR=${pct(metricasRpc.agregado.mrr)}`,
   );
 }
 

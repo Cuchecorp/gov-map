@@ -22,7 +22,7 @@ import { describe, expect, it, beforeAll } from "vitest";
 import { findWorkspaceRoot } from "@obs/tramitacion";
 import { GOLDEN_SET } from "./golden-set.js";
 import { evaluarRetrieval, type MetricasRetrieval } from "./score.js";
-import { runFtsOnly, runSemanticOnly, runRrf } from "./strategies.js";
+import { runFtsOnly, runSemanticOnly, runRrf, runRpcHibrida } from "./strategies.js";
 import { getCachedEmbeddings } from "./embed-cache.js";
 import { embedQuery } from "./embed-query.js";
 import { probeUnaccent, runSql } from "./psql.js";
@@ -62,6 +62,7 @@ const LIVE = !!process.env.SUPABASE_DB_URL && !!process.env.GEMINI_API_KEY;
     let metricasFts: MetricasRetrieval;
     let metricasSem: MetricasRetrieval;
     let metricasRrf: MetricasRetrieval;
+    let metricasRpc: MetricasRetrieval;
     let unaccentEnabled: boolean;
 
     const LIMIT = 50;
@@ -107,13 +108,59 @@ const LIVE = !!process.env.SUPABASE_DB_URL && !!process.env.GEMINI_API_KEY;
         });
       });
 
+      // Correr RPC real (buscar_proyectos_hibrido)
+      metricasRpc = await evaluarRetrieval(GOLDEN_SET, (caso) => {
+        const vector = vectorMap.get(caso.query);
+        if (!vector) return Promise.resolve([]);
+        return runRpcHibrida(caso.query, vector, { runSql, limit: LIMIT });
+      });
+
       // Log de resultados
       console.log(`[live-test] FTS   hit@1=${pct(metricasFts.agregado.hit1)} hit@5=${pct(metricasFts.agregado.hit5)} MRR@5=${pct(metricasFts.agregado.mrr)}`);
       console.log(`[live-test] SEM   hit@1=${pct(metricasSem.agregado.hit1)} hit@5=${pct(metricasSem.agregado.hit5)} MRR@5=${pct(metricasSem.agregado.mrr)}`);
       console.log(`[live-test] RRF   hit@1=${pct(metricasRrf.agregado.hit1)} hit@5=${pct(metricasRrf.agregado.hit5)} MRR@5=${pct(metricasRrf.agregado.mrr)}`);
+      console.log(`[live-test] RPC   hit@1=${pct(metricasRpc.agregado.hit1)} hit@5=${pct(metricasRpc.agregado.hit5)} MRR@5=${pct(metricasRpc.agregado.mrr)}`);
     });
 
-    it("winner ≥ baseline on literal/boletín AND no regression on NL/similares", () => {
+    it("rpc-real (buscar_proyectos_hibrido) ≥ baseline semántico on NL/similares AND boletín 100% hit@1", () => {
+      const semNlHit5 = metricasSem.porCategoria["parafrasis-nl"]?.hit5 ?? 0;
+      const semSimHit5 = metricasSem.porCategoria["similares"]?.hit5 ?? 0;
+
+      // Gate RPC-A: parafrasis-nl ≥ semántico-solo hit@5 (criterio 86-SCORING §e)
+      const rpcNlHit5 = metricasRpc.porCategoria["parafrasis-nl"]?.hit5 ?? 0;
+      console.log(`[live-test] rpc NL:      hit@5=${pct(rpcNlHit5)} vs SEM hit@5=${pct(semNlHit5)}`);
+      expect(
+        rpcNlHit5,
+        `rpc-real hit@5 en parafrasis-nl debe ser ≥ semántico-solo (${pct(semNlHit5)}) [criterio §e]`,
+      ).toBeGreaterThanOrEqual(semNlHit5);
+
+      // Gate RPC-B: similares ≥ semántico-solo hit@5
+      const rpcSimHit5 = metricasRpc.porCategoria["similares"]?.hit5 ?? 0;
+      console.log(`[live-test] rpc similares: hit@5=${pct(rpcSimHit5)} vs SEM hit@5=${pct(semSimHit5)}`);
+      expect(
+        rpcSimHit5,
+        `rpc-real hit@5 en similares no debe regresar vs semántico-solo (${pct(semSimHit5)})`,
+      ).toBeGreaterThanOrEqual(semSimHit5);
+
+      // Gate RPC-C: boletín 100% hit@1 (4/4) — short-circuit determinista
+      const rpcBoletinHit1 = metricasRpc.porCategoria["boletin"]?.hit1 ?? 0;
+      console.log(`[live-test] rpc boletin: hit@1=${pct(rpcBoletinHit1)} (esperado 100%)`);
+      expect(
+        rpcBoletinHit1,
+        `rpc-real hit@1 en boletin debe ser 100% (short-circuit determinista de PROD)`,
+      ).toBeGreaterThanOrEqual(1.0);
+
+      // Gate RPC-D: agregado rpc-real ≥ semántico-solo
+      const semAggHit5 = metricasSem.agregado.hit5;
+      const rpcAggHit5 = metricasRpc.agregado.hit5;
+      console.log(`[live-test] rpc agregado: hit@5=${pct(rpcAggHit5)} vs SEM hit@5=${pct(semAggHit5)}`);
+      expect(
+        rpcAggHit5,
+        `rpc-real hit@5 agregado debe ser ≥ semántico-solo`,
+      ).toBeGreaterThanOrEqual(semAggHit5);
+    });
+
+    it("winner (RRF ad-hoc) ≥ baseline on literal/boletín AND no regression on NL/similares", () => {
       const semHit5 = metricasSem.agregado.hit5;
 
       // Gate 1: RRF mejora (o mantiene) el titulo-literal vs semántico solo

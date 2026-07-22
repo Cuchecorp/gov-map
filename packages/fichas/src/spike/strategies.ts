@@ -24,6 +24,24 @@
 import { detectarBoletin } from "./boletin.js";
 import { rrf } from "./rrf.js";
 
+// ── RPC híbrida (buscar_proyectos_hibrido) ────────────────────────────────────
+
+/**
+ * SELECT sobre la RPC real `buscar_proyectos_hibrido` (aplicada en Plan 01).
+ * Vector parametrizado en formato '[x,y,...]' — NUNCA interpolado (T-87-09).
+ * Espejo de runSemanticOnly:208 en serialización del vector.
+ */
+const RPC_HIBRIDA_QUERY = `
+select boletin, rank
+from buscar_proyectos_hibrido(:q, :query_embedding::vector, :match_count::int)
+order by rank
+`.trim();
+
+export interface RpcHibridaOptions {
+  runSql: SqlRunner;
+  limit?: number;
+}
+
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
 /** Función de ejecución SQL inyectada (real = runSql de psql.ts; test = mock). */
@@ -269,7 +287,7 @@ export async function runRrf(
     return rows.map((row) => row[0]!).filter(Boolean);
   }
 
-  // Texto libre: correr FTS + semántico y fusionar con RRF
+  // Texto libre: correr FTS + semántico y fusionar con RRF (runRrf ad-hoc)
   const [ftsResults, semResults] = await Promise.all([
     runFtsOnly(query, { runSql, limit: resolvedFtsLimit, useUnaccent }),
     vector !== null
@@ -282,4 +300,33 @@ export async function runRrf(
 
   // Limitar al top-limit
   return merged.slice(0, limit);
+}
+
+/**
+ * Estrategia 4: RPC real `buscar_proyectos_hibrido`.
+ *
+ * Llama a la función SQL real aplicada en Plan 01, que implementa el RRF con
+ * short-circuit de boletín DENTRO de la RPC (unaccent + pesos A/B/C).
+ * El vector se serializa como '[x,y,...]' y va como param (T-87-09 — NUNCA interpolado).
+ *
+ * @param query   - texto de búsqueda (o número de boletín)
+ * @param vector  - embedding L2-normalizado de 768 dims
+ * @param opts.runSql  - SQL runner inyectado
+ * @param opts.limit   - match_count (default 20)
+ * @returns boletin[] rankeado por rank asc (la RPC devuelve rank=1 para el mejor)
+ */
+export async function runRpcHibrida(
+  query: string,
+  vector: number[],
+  opts: RpcHibridaOptions,
+): Promise<string[]> {
+  const { runSql, limit = 20 } = opts;
+  // Serializar vector al formato array de PostgreSQL: '[0.1,0.2,...]' (espejo runSemanticOnly:208)
+  const vectorStr = `[${vector.join(",")}]`;
+  const rows = await runSql(RPC_HIBRIDA_QUERY, {
+    q: query,
+    query_embedding: vectorStr,
+    match_count: String(limit),
+  });
+  return rows.map((r) => r[0]!).filter(Boolean);
 }
