@@ -237,3 +237,13 @@ El golden set queda congelado con las correcciones LIVE de d7bb3d3 (expected[] v
 - La RPC híbrida nueva (`buscar_proyectos_hibrido` o similar) entra DETRÁS de flag/paralelo.
 - `/buscar` solo se rewirea a la RPC híbrida cuando el golden live-test la muestre dominante sobre la RPC real de fase 87 (no sobre el harness del spike).
 - **Gate de fase 87 explícito:** sin dominación demostrada sobre el golden set en la RPC real de 87, no hay rewire del endpoint `/buscar`. La dominación ya fue demostrada en este spike; el gate se re-verifica sobre la RPC real.
+
+## Post-fix re-run (2026-07-21, tras code review)
+
+Tras aplicar los 7 fixes del review (CR-01 guard sobre SQL final, WR-01 boletín punteado estricto, WR-02 límites por brazo, WR-03 etiquetas MRR@5, WR-04 excludeBoletin en brazo semántico del RRF, WR-05 probeUnaccent tri-estado, WR-06 loadEnv sin ENOENT), se re-corrió el scoring LIVE completo (rrf-k=50, limit=50, embeddings 100% desde cache):
+
+- FTS-solo: hit@1=9.4% hit@5=18.8% MRR@5=11.8% — idéntico
+- Semántico-solo: hit@1=34.4% hit@5=53.1% MRR@5=40.3% — idéntico
+- RRF: hit@1=43.8% hit@5=68.8% MRR@5=53.6% — idéntico
+
+**La decisión RRF se sostiene sin cambios tras los fixes.** Los fixes WR-02/WR-04 agregan superficie de API con defaults equivalentes al comportamiento medido; ningún número cambió.
