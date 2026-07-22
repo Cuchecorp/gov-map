@@ -1,7 +1,8 @@
 ---
 phase: 89
 slug: b-squeda-p1d-deep-links-de-validaci-n-por-bolet-n-gate-browseros
-status: draft
+status: approved
+reviewed_at: 2026-07-21
 shadcn_initialized: true
 preset: "shadcn Default / Slate (extended Phase 19/v8 — crema + petróleo 60/30/10)"
 created: 2026-07-21
