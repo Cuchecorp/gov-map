@@ -42,9 +42,9 @@
 
 ### LOB — Lobby legible y enlazado
 
-- [ ] **LOB-01**: El título/materia COMPLETO de cada audiencia de lobby es visible y legible en la ficha del parlamentario (el dato ya está entero en DB — la falla es presentacional)
+- [x] **LOB-01**: El título/materia COMPLETO de cada audiencia de lobby es visible y legible en la ficha del parlamentario (el dato ya está entero en DB — la falla es presentacional)
 - [x] **LOB-02**: Audiencia→PL enlazada SOLO por mención explícita de boletín en la materia (fail-closed, reusa `lobby_en_tramitacion`), con leyenda anti-causal — nunca regex de keywords ni "coincidencia temática" afirmada
-- [ ] **LOB-03**: Navegación bidireccional fácil para ciudadano/periodista: audiencia → ficha del PL en movimiento → parlamentario, con links específicos
+- [x] **LOB-03**: Navegación bidireccional fácil para ciudadano/periodista: audiencia → ficha del PL en movimiento → parlamentario, con links específicos
 
 ### CIT — Citaciones completas (sala + comisiones, ambas cámaras)
 
@@ -102,9 +102,9 @@ Cobertura 100 por ciento: 27/27 requisitos mapeados a fases 86-96 (sin huérfano
 | BIO-03 | Phase 91 | Complete |
 | BIO-04 | Phase 91 | Complete |
 | BIO-05 | Phase 90 | Complete |
-| LOB-01 | Phase 92 | Pending |
+| LOB-01 | Phase 92 | Complete |
 | LOB-02 | Phase 92 | Complete |
-| LOB-03 | Phase 92 | Pending |
+| LOB-03 | Phase 92 | Complete |
 | CIT-01 | Phase 93 | Pending |
 | CIT-02 | Phase 94 | Pending |
 | CIT-03 | Phase 94 | Pending |
