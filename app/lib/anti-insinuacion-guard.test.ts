@@ -53,8 +53,10 @@ import { LEYENDA_ANTI_INSINUACION_MONEY } from "@/lib/money-presentacion";
 // Helpers (espejo verbatim de lockdown-guard.test.ts)
 // ---------------------------------------------------------------------------
 
-// vitest corre desde el directorio app/ (vitest.config.ts vive ahí).
-const APP_ROOT = process.cwd(); // app/
+// WR-06: anclar a import.meta.dirname (este archivo vive en app/lib/) en lugar de
+// process.cwd() para evitar el bug conocido donde pnpm --filter exec cambia cwd
+// y el guard escanea cero archivos silenciosamente (memory: v8.1 bug process.cwd).
+const APP_ROOT = path.resolve(import.meta.dirname, "..");
 
 /**
  * Eliminar comentarios de TypeScript/JavaScript:
@@ -306,6 +308,13 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
       "votos-por-parlamentario.tsx",
     );
     expect(readFileSync(principal, "utf-8").length).toBeGreaterThan(100);
+  });
+
+  it("sanity WR-06: buscar-filtros.tsx es scannable con contenido no trivial", () => {
+    // Si APP_ROOT está mal (cwd vs dirname mismatch), readFileSync lanza y el test falla
+    // explícitamente en lugar de que el guard pase verde habiendo escaneado cero archivos.
+    const buscarFiltros = path.join(APP_ROOT, "components", "buscar-filtros.tsx");
+    expect(readFileSync(buscarFiltros, "utf-8").length).toBeGreaterThan(100);
   });
 
   it("ningún término prohibido aparece en el texto renderizado (post-strip de comentarios)", () => {
