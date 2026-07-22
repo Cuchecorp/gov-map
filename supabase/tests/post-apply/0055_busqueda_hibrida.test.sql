@@ -7,7 +7,7 @@
 -- contra PROD ya aplicado. Debe reportar 5 ok, 0 not ok.
 
 begin;
-select plan(5);
+select plan(6);
 
 -- (a) La función existe con la firma EXACTA (text, vector, int).
 --     Pitfall 4: la firma en regprocedure debe ser EXACTA o lanza "function does not exist" → rollback.
@@ -41,6 +41,12 @@ select ok(
 select ok(
   exists(select 1 from pg_ts_config where cfgname = 'es_unaccent'),
   'text search config es_unaccent existe'
+);
+
+-- (e-pre) Precondición: el boletín pinneado debe existir (WR-04 fix).
+select ok(
+  exists(select 1 from public.proyecto where boletin = '15627-12'),
+  'precondition: boletin 15627-12 existe en public.proyecto (re-pinnear si falta)'
 );
 
 -- (e) Short-circuit boletín: q='15627-12' devuelve boletin='15627-12' con rank=0.

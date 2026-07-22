@@ -6,7 +6,7 @@
 -- Debe reportar 5 ok, 0 not ok.
 
 begin;
-select plan(5);
+select plan(7);
 
 -- (a) La función sigue existiendo con la firma EXACTA (text, vector, int).
 select has_function(
@@ -42,6 +42,13 @@ select is(
   'short-circuit boletín canónico 15627-12 → rank 0 (regresión bo-01/02/04)'
 );
 
+-- (d-pre) Precondición: el boletín pinneado debe existir antes del assert (WR-04 fix).
+--     Si falta, reporta data-precondition failure (no logic failure).
+select ok(
+  exists(select 1 from public.proyecto where boletin = '14309-04'),
+  'precondition: boletin 14309-04 existe en public.proyecto (re-pinnear si falta)'
+);
+
 -- (d) SHORT-CIRCUIT PUNTEADO — caso bo-03 (Pitfall #5, pin A3).
 --     "14.309-04" debe normalizarse a "14309-04" dentro de la RPC y devolver rank 0.
 --     Boletín pinneado: 14309-04 presente en public.proyecto en PROD al momento de aplicar 0056.
@@ -57,6 +64,13 @@ select is(
    limit 1),
   '14309-04',
   'short-circuit boletín punteado "14.309-04" → boletin 14309-04 rank 0 (bo-03 fix)'
+);
+
+-- (e-pre) Precondición compartida con (d): mismo boletín (WR-04 fix).
+--     (La precondición ya está cubierta por (d-pre) si ambas están en el mismo plan.)
+select ok(
+  exists(select 1 from public.proyecto where boletin_num::text = '14309'),
+  'precondition: boletin_num=14309 existe en public.proyecto (cubre el assert (e))'
 );
 
 -- (e) Boletín punteado sin sufijo: "14.309" → short-circuit por boletin_num.
