@@ -173,7 +173,6 @@ async function run(): Promise<void> {
     let enumerados = 0;
     let conPrmId = 0;
     let updated = 0;
-    let errAnno = false;
 
     try {
       // ETAPA 1 + parse: el callback onXml persiste cada XML crudo a R2 ANTES del parse.
@@ -219,14 +218,12 @@ async function run(): Promise<void> {
         `backfill-prmid: ${anno} → ${enumerados} enumerados, ${conPrmId} con prmId, ${updated} updated`,
       );
     } catch (e) {
-      errAnno = true;
       totalErrAnos++;
       console.error(
         `backfill-prmid: ERROR año ${anno}:`,
         e instanceof Error ? e.message : e,
       );
     }
-    void errAnno; // lint
   }
 
   log(

@@ -193,23 +193,30 @@ export class CamaraConnector {
     let fallos = 0;
     for (const op of ops) {
       const url = `${BASE_LEG}/${op}?prmAnno=${encodeURIComponent(String(anno))}`;
+      let xml: string;
       try {
-        const xml = await this.fetch(url); // política LOCKED (T-89-01)
-        // Etapa 1: exponer el crudo ANTES del parse (el caller persiste a R2).
-        if (onXml) await onXml(op, xml);
-        // Etapa 2: parsear y dedup por boletin.
-        for (const par of parseCamaraLegislativo(xml)) {
-          if (!vistos.has(par.boletin)) {
-            vistos.add(par.boletin);
-            out.push(par);
-          }
-        }
+        xml = await this.fetch(url); // política LOCKED (T-89-01)
       } catch (e) {
+        // Solo fallo de FETCH: best-effort por op, la otra sigue.
         fallos++;
         console.warn(
-          `[connector-camara] enumerarProyectosConIdXAnno ${op} ${anno} omitido:`,
+          `[connector-camara] enumerarProyectosConIdXAnno fetch ${op} ${anno} omitido:`,
           e instanceof Error ? e.message : e,
         );
+        continue;
+      }
+      // Etapa 1 gatea Etapa 2: fallo de R2 DEBE propagar (no es op-skip).
+      // CLAUDE.md Conventions §1 (LOCKED): "todo lo descargado se persiste PRIMERO como
+      // crudo inmutable en R2 … la carga a Supabase lee del crudo". Si onXml lanza
+      // (auth failure, red, bucket misconfig) propagamos al catch del caller (per-año)
+      // para que el año se cuente en totalErrAnos y NO se ejecuten UPDATEs parciales.
+      if (onXml) await onXml(op, xml); // lanza → propaga → sin UPDATE para este año
+      // Etapa 2: parsear y dedup por boletin.
+      for (const par of parseCamaraLegislativo(xml)) {
+        if (!vistos.has(par.boletin)) {
+          vistos.add(par.boletin);
+          out.push(par);
+        }
       }
     }
     // WR-04: ambas ops falladas = fallo TOTAL (audible, no silencioso).
