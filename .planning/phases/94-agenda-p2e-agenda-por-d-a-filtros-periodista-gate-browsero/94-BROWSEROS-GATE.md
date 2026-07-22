@@ -265,5 +265,28 @@ medianoche UTC en Chile **fabrica el día anterior** (offset −03/−04 retroce
   UTC) + caso 20-jul/19-jul; nuevo `lib/dia-calendario.test.ts` con fixture midnight-UTC + horario
   texto. Suite completa verde (**1217**), `tsc -b` limpio.
 
-### Verificación live del redeploy
-Ver §Redeploy más abajo (hash nuevo + evidencia curl del día correcto "20-jul"/"lunes 20").
+### Redeploy — hash nuevo + evidencia live del día correcto
+
+**Fecha:** 2026-07-22 · **Version ID nueva:** `369f9cbe-b919-4880-bc49-02e0f2987d9a`
+(supera `9aba6a1a`, el deploy con la regresión). `Worker Startup Time: 22 ms`,
+`Total Upload 7155.72 KiB / gzip 1513.54 KiB`.
+
+**Build/deploy (mismo runbook, MEMORY):** OpenNext en Docker Linux `node:22-slim`; fuente staged a
+`C:/Temp/obs-build2` con robocopy (NTFS local, excluye node_modules/.git/.next/.open-next/.wrangler);
+build IN-PLACE en el árbol NTFS (`.open-next` con symlinks pnpm en NTFS) → `wrangler deploy` (host
+4.102.0, OAuth `sanchez.rossi@gmail.com`) con `--config` apuntando al `wrangler.jsonc` staged.
+Gotcha reconfirmado: `MSYS_NO_PATHCONV=1` para los `-v //host` de docker y el `deploy`. Staging
+(`obs-build2`/`obs-out2`, contienen `.env`) **borrado al cierre** (robocopy /MIR desde vacío).
+
+**Evidencia curl del SSR (deploy `369f9cbe`, `x-opennext: 1` — render dinámico, no cache):**
+
+- **/agenda (semana vigente, W30):** el HTML SSR muestra **`Lunes 20 de julio` (10×) y `20-jul`
+  (9×)** para las citaciones de fecha `2026-07-20T00:00Z`. **CERO** ocurrencias de `19-jul` /
+  `domingo 19 de julio` (la salida del bug). La semana lee Lunes 20 → Viernes 24 de julio, alineada.
+- **/proyecto/18193-06:** el DOM sigue declarando `Citado el 21 jul 2026 en de Economía (sesión
+  pasada)` — la pasada del 21 jul NO se corrió a 20.
+- **/proyecto/13665-07:** `En tabla de sala 3 veces:` con links a `/agenda?semana=2026-W28|W29|W30`
+  — tabla de sala intacta.
+
+**Veredicto:** regresión de zona horaria date-only CERRADA en producción. El día publicado por la
+fuente se renderiza tal cual (parte fecha UTC), sin corrimiento a −1 día.
