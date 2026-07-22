@@ -29,10 +29,15 @@ import { moneyPublicEnabled } from "@/lib/money-gate";
 import { crucesPublicEnabled } from "@/lib/cruces-gate";
 import { netPublicEnabled } from "@/lib/net-gate";
 import { MilitanciasDeParlamentario } from "@/components/militancias-de-parlamentario";
+import {
+  CrossLinkBloque,
+  type CrossLinkFila,
+} from "@/components/cross-links-parlamentario";
 import { formatNombre } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
   ComisionRow,
+  CrossLinkRow,
   MilitanciaRow,
   ParlamentarioPublicoRow,
 } from "@/lib/types";
@@ -170,6 +175,29 @@ const getMilitancias = cache(async (id: string): Promise<MilitanciaRow[]> => {
   return (data ?? []) as MilitanciaRow[];
 });
 
+/**
+ * BIO-04: lector genérico cacheado de un RPC cross-link (0060). Cada RPC devuelve
+ * `CrossLinkRow[]` bounded (LIMIT en canal de datos) con auto-exclusión garantizada
+ * por la propia RPC (where <> p_id). Un error real se LANZA (#34) — un vacío honesto
+ * es `[]` SIN error. El orden lo fija la RPC (alfabético/cámara, NUNCA por n_proyectos).
+ * React.cache dedup por (rpc, id) — cada bloque tiene su propio <Suspense>.
+ */
+function crossLinkReader(rpc: string) {
+  return cache(async (id: string): Promise<CrossLinkRow[]> => {
+    const sb = createServerSupabase();
+    const { data, error } = await sb.rpc(rpc, { p_id: id });
+    if (error) {
+      throw new Error(`${rpc} falló para ${id}: ${error.message}`);
+    }
+    return (data ?? []) as CrossLinkRow[];
+  });
+}
+
+const getCopartidarios = crossLinkReader("copartidarios_de_parlamentario");
+const getMismaZona = crossLinkReader("de_la_misma_zona");
+const getCoComisionados = crossLinkReader("co_comisionados_de_parlamentario");
+const getCoautores = crossLinkReader("coautores_de_parlamentario");
+
 export default async function ParlamentarioPage({
   params,
   searchParams,
@@ -243,9 +271,98 @@ export default async function ParlamentarioPage({
           <Suspense fallback={<CarrilesSkeleton />}>
             <CarrilesSection id={id} searchParams={sp} />
           </Suspense>
+
+          {/*
+            BIO-04 — Bloques cross-link FACTUALES anti-causales. Cada bloque es su
+            propia <section mt-12> HERMANA (frontera anti-insinuación LOCKED), con su
+            propio <Suspense> para streaming independiente (un fallo no tumba la
+            ficha). La auto-exclusión y el LIMIT bounded los garantiza la RPC; el
+            bloque vacío (N=0) se OMITE dentro del componente (return null). Orden
+            NEUTRAL preservado — NUNCA ranking por afinidad.
+          */}
+          <Suspense fallback={null}>
+            <CrossLinkCopartidarios id={id} />
+          </Suspense>
+          <Suspense fallback={null}>
+            <CrossLinkMismaZona id={id} />
+          </Suspense>
+          <Suspense fallback={null}>
+            <CrossLinkCoComisionados id={id} />
+          </Suspense>
+          <Suspense fallback={null}>
+            <CrossLinkCoautores id={id} />
+          </Suspense>
         </div>
       </div>
     </main>
+  );
+}
+
+// ── Bloques cross-link (BIO-04) ────────────────────────────────────────────────
+// Cada uno lee su RPC cacheada y arma su CrossLinkBloque. El conteo honesto usa el
+// total real que emite la RPC (bounded). "Ver los N" navega al directorio
+// pre-filtrado sólo cuando el eje admite un filtro directo (partido). Los ejes
+// zona/comisión no tienen filtro de directorio equivalente todavía → sin "Ver los N"
+// (el bloque muestra hasta 8; no fabrica un link que no filtraría).
+
+/** "Del mismo partido" — no muestra PartidoChip por fila (redundante). */
+async function CrossLinkCopartidarios({ id }: { id: string }) {
+  const filas = (await getCopartidarios(id)) as CrossLinkFila[];
+  const total = filas.length;
+  return (
+    <CrossLinkBloque
+      heading="Del mismo partido"
+      conteoTexto={`${total} ${total === 1 ? "parlamentario comparte" : "parlamentarios comparten"} el partido de la militancia vigente.`}
+      filas={filas}
+      totalN={total}
+      verTodosHref={null}
+      mostrarPartido={false}
+    />
+  );
+}
+
+/** "De la misma zona" — PartidoChip por fila añade contexto. */
+async function CrossLinkMismaZona({ id }: { id: string }) {
+  const filas = (await getMismaZona(id)) as CrossLinkFila[];
+  const total = filas.length;
+  return (
+    <CrossLinkBloque
+      heading="De la misma zona"
+      conteoTexto={`${total} ${total === 1 ? "parlamentario comparte" : "parlamentarios comparten"} la zona electoral (distrito o circunscripción).`}
+      filas={filas}
+      totalN={total}
+      verTodosHref={null}
+    />
+  );
+}
+
+/** "En la misma comisión" — PartidoChip por fila + comisión compartida. */
+async function CrossLinkCoComisionados({ id }: { id: string }) {
+  const filas = (await getCoComisionados(id)) as CrossLinkFila[];
+  const total = filas.length;
+  return (
+    <CrossLinkBloque
+      heading="En la misma comisión"
+      conteoTexto={`${total} ${total === 1 ? "parlamentario comparte" : "parlamentarios comparten"} al menos una comisión.`}
+      filas={filas}
+      totalN={total}
+      verTodosHref={null}
+    />
+  );
+}
+
+/** "Han co-firmado proyectos" — n_proyectos es dato honesto, NO criterio de orden. */
+async function CrossLinkCoautores({ id }: { id: string }) {
+  const filas = (await getCoautores(id)) as CrossLinkFila[];
+  const total = filas.length;
+  return (
+    <CrossLinkBloque
+      heading="Han co-firmado proyectos"
+      conteoTexto={`${total} ${total === 1 ? "parlamentario ha co-firmado" : "parlamentarios han co-firmado"} al menos un proyecto de ley.`}
+      filas={filas}
+      totalN={total}
+      verTodosHref={null}
+    />
   );
 }
 
