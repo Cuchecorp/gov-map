@@ -102,11 +102,13 @@ language sql stable security definer set search_path = '' as $$
   ),
   -- ── Rama semántica kNN (HNSW cosine, proyecto_embedding, 0011) ──────────────────────
   -- row_number sobre distancia cruda; el índice HNSW cosine (0011) lo acelera.
+  -- Con search_path='' el operador <=> (pgvector, en schema public) no resuelve sin
+  -- calificación explícita → usar operator(public.<=>) (Rule 1 auto-fix).
   semantic as (
     select e.boletin,
-           row_number() over (order by e.embedding <=> query_embedding) as rank_ix
+           row_number() over (order by e.embedding operator(public.<=>) query_embedding) as rank_ix
     from public.proyecto_embedding e
-    order by e.embedding <=> query_embedding
+    order by e.embedding operator(public.<=>) query_embedding
     limit least(match_count, 50) * 2
   ),
   -- ── Fusión RRF (rrf_k=50, w_fts=w_sem=1, SPIKE 86 LOCKED) ──────────────────────────
