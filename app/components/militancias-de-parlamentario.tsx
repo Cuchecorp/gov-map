@@ -30,8 +30,11 @@ function rango(desde: string | null, hasta: string | null): string {
 
 export function MilitanciasDeParlamentario({
   militancias,
+  camara,
 }: {
   militancias: MilitanciaRow[];
+  /** "senado" activa el rótulo partido≠comité (91-UI-SPEC §Copy, decisión operador). */
+  camara?: string | null;
 }) {
   // El RPC ordena vigente primero; la separación es por `es_actual` (no por índice).
   const vigente = militancias.find((m) => m.es_actual) ?? null;
@@ -44,6 +47,13 @@ export function MilitanciasDeParlamentario({
         Afiliaciones partidarias según registro oficial, con la fecha de cada
         tramo. La militancia vigente aparece primero.
       </p>
+      {camara === "senado" && (
+        // Rótulo partido≠comité (Senado) — copy LOCKED 91-UI-SPEC §Copywriting.
+        <p className="text-sm text-muted-foreground mt-1">
+          El comité parlamentario es una agrupación de trabajo legislativo,
+          distinta de la militancia partidaria.
+        </p>
+      )}
 
       {vigente ? (
         <div className="mt-4">

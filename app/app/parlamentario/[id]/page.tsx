@@ -752,9 +752,17 @@ export async function HeaderSection({ id }: { id: string }) {
 // militancia registrada) NO se pinta la sección — un vacío TOTAL de militancias no
 // merece un carril vacío (a diferencia del "solo vigente", que sí muestra leyenda).
 export async function MilitanciasSection({ id }: { id: string }) {
-  const militancias = await getMilitancias(id);
+  const [militancias, cabecera] = await Promise.all([
+    getMilitancias(id),
+    getParlamentarioPublico(id),
+  ]);
   if (militancias.length === 0) return null;
-  return <MilitanciasDeParlamentario militancias={militancias} />;
+  return (
+    <MilitanciasDeParlamentario
+      militancias={militancias}
+      camara={cabecera?.camara ?? null}
+    />
+  );
 }
 
 // ── Skeletons (UI-SPEC §6.2, anti-CLS IN-02/IN-03) ─────────────────────────────

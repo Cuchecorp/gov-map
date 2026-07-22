@@ -30,8 +30,8 @@ import { ParlamentarioDirectoryRow } from "@/components/parlamentario-directory-
 // ---------------------------------------------------------------------------
 // Copy LOCKED (91-UI-SPEC §Copywriting)
 // ---------------------------------------------------------------------------
-const LEYENDA_COUNTS =
-  "Conteos sobre estos N parlamentarios cargados, no sobre todo el Congreso.";
+const leyendaCounts = (n: number) =>
+  `Conteos sobre estos ${n} parlamentarios cargados, no sobre todo el Congreso.`;
 const EMPTY_HEADING = "Sin parlamentarios para este partido";
 const EMPTY_BODY = "Ajusta o quita filtros para ver más.";
 
@@ -142,7 +142,7 @@ export function ParlamentariosFiltro({ slice }: ParlamentariosFiltroProps) {
       {todosLosPartidos.length > 0 && (
         <section aria-label="Filtrar por partido">
           <p className="w-full text-xs text-muted-foreground">
-            {LEYENDA_COUNTS}
+            {leyendaCounts(slice.length)}
           </p>
           <fieldset className="mt-2">
             <legend className="text-sm font-medium">Partido</legend>
