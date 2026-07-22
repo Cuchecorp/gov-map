@@ -4,13 +4,13 @@ milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
 status: verifying
 stopped_at: Completed 92-02-PLAN.md
-last_updated: "2026-07-22T18:22:05.001Z"
+last_updated: "2026-07-22T18:35:17.745Z"
 last_activity: 2026-07-22
 progress:
   total_phases: 11
   completed_phases: 6
   total_plans: 22
-  completed_plans: 20
+  completed_plans: 21
   percent: 55
 ---
 
@@ -75,6 +75,7 @@ Last activity: 2026-07-22
 | Phase 91 P03 | ~26min | 3 tasks | 7 files |
 | Phase 92 P01 | ~14min | 2 tasks | 5 files |
 | Phase 92 P02 | 6 | 2 tasks | 4 files |
+| Phase 92 P03 | 12min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase 92] 92-01: canal de datos audiencia→PL fail-closed. extraerBoletines context-gated (regla LOCKED riesgo #1): (a) sufijo -NN inequívoco en cualquier posición; (b) base pelada/punteada SOLO tras gatillo boletín/bol. ≤3 tokens; JAMÁS keywords → "Ley 20.730"/"año 2024"/"20730 suelto"/"$14.309" = []. DIVERGENCIA deliberada vs detectarBoletin (aquél valida query completa). Migración 0062 RPC lobby_menciones_de_boletin: fail-closed doble (regex SQL espeja el TS + join proyecto por existencia), SOLO confirmado+parlamentario_id, PII-safe (nombre público+contraparte cruda sin RUT/contraparte_id), total_n honesto, LIMIT 50, doble-revoke CERO grant. Guard equivalencia TS↔SQL vía FIXTURE_MATERIA compartido asertado en vitest Y pgTAP; VALIDADO local en pg efímero 14/14 espejados (CERO contacto PROD). FIX RULE-1: branch (b) aplica SIEMPRE (con/sin sufijo en p_boletin) con \M(?!-[[:digit:]]) anti-doble-conteo; tokens intermedios sin dígitos [^space:digit:]+ para robustez backtracking. 0062 NO aplicada a PROD (apply+pgTAP contra schema aplicado + métrica cobertura honesta = Plan 04). lobby_menciones_de_boletin en PUBLIC_RPC_ALLOWLIST. Suite app 1129 verde + tsc 0. LOB-02 canal cerrado; montaje UI = Plan 02/03.
 - [Phase ?]: 92-02: boletines_mencionados en LobbyAudienciaRow fluye in-place al slice cronologico y a los grupos desde el mismo objeto todas
 - [Phase ?]: 92-02: .in() de existencia paginado en IN_CHUNK=500 (< cap PostgREST) -> bound por request siempre < 1000 (MAJOR-5)
+- [Phase ?]: 92-03: sección menciones de lobby (carril hermano SEPARADO de 0048, parlamentario ENLAZADO LOB-03, degrade honesto PGRST202 hasta apply 0062 Plan 04); linter con NEGACIONES_LOCKED antes de SUPERFICIES_LOBBY (lección BLOCKER 91) + mutation self-check LOBBY
 
 ### Pending Todos
 
@@ -164,7 +166,7 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-22T18:22:04.990Z
+Last session: 2026-07-22T18:34:59.539Z
 Stopped at: Completed 92-02-PLAN.md
 Resume file: None
 
