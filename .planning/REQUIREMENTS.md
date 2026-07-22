@@ -51,9 +51,9 @@
 - [x] **CIT-01**: AUDITORÍA de cobertura ANTES de tocar UI: qué se scrapea hoy vs qué publica cada fuente (sala+comisiones × Cámara+Senado), con N/M declarado — hallazgos previos a confirmar: Senado comisiones forward-only, Cámara sala thin (PDF→DeepSeek) — <!-- Plan 01: secciones medibles LISTAS (matriz N/M + endpoints + hallazgos + frescura); pendiente wiring frontend (Plan 02) + declaración final (Plan 03) -->
 
 - [ ] **CIT-02**: Scraping/backfill de lo faltante por dos-etapas y rate-limit LOCKED — endpoints candidatos verificados: Senado PHP `?mo=comisiones&ac=citacionesComision` (sin buildId), Cámara `citaciones_semana.aspx?prmSemana=` + `getComisiones_Vigentes`; probar con curl primero (WAF)
-- [ ] **CIT-03**: /agenda estructurada POR DÍA (tz America/Santiago), distinguiendo sala vs comisiones y Cámara vs Senado, fácil de navegar
+- [x] **CIT-03**: /agenda estructurada POR DÍA (tz America/Santiago), distinguiendo sala vs comisiones y Cámara vs Senado, fácil de navegar
 - [ ] **CIT-04**: Filtros para periodistas/ciudadanos: cámara, comisión, rango de fechas, boletín mencionado, vista "esta semana"
-- [ ] **CIT-05**: Sesiones canceladas/reagendadas modeladas honestamente — nunca mostradas como vigentes; cobertura parcial declarada, nunca calendario parcial presentado como completo
+- [x] **CIT-05**: Sesiones canceladas/reagendadas modeladas honestamente — nunca mostradas como vigentes; cobertura parcial declarada, nunca calendario parcial presentado como completo
 
 ### SEC — Seguridad final (repo público, sujetos hostiles)
 
@@ -108,9 +108,9 @@ Cobertura 100 por ciento: 27/27 requisitos mapeados a fases 86-96 (sin huérfano
 | LOB-03 | Phase 92 | Complete |
 | CIT-01 | Phase 93 | In progress (Plan 01/03) |
 | CIT-02 | Phase 94 | Pending |
-| CIT-03 | Phase 94 | Pending |
+| CIT-03 | Phase 94 | Complete |
 | CIT-04 | Phase 94 | Pending |
-| CIT-05 | Phase 94 | Pending |
+| CIT-05 | Phase 94 | Complete |
 | SEC-01 | Phase 95 | Pending |
 | SEC-02 | Phase 96 | Pending |
 | SEC-03 | Phase 96 | Pending |
