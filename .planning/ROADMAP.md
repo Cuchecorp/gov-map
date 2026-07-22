@@ -218,7 +218,14 @@ Plans:
   2. Audiencia→PL enlazada SOLO por mención explícita de boletín en la materia (fail-closed, reusa `lobby_en_tramitacion`), con leyenda anti-causal — NUNCA regex de keywords ni "coincidencia temática" afirmada
   3. Navegación bidireccional fácil para ciudadano/periodista: audiencia → ficha del PL en movimiento → parlamentario, con links específicos
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+
+- [ ] 92-01-PLAN.md — Canal de datos: extractor puro de boletines embebidos en materia + guard equivalencia TS + migración 0062 RPC lobby_menciones_de_boletin (fail-closed doble, doble-revoke, total_n) + pgTAP + allowlist
+- [ ] 92-02-PLAN.md — Ficha parlamentario: materia legible en ambas vistas (whitespace-pre-line, sin clamp) + chip "Menciona boletín N" server-computado fail-closed doble
+- [ ] 92-03-PLAN.md — Ficha proyecto: sección #lobby-menciones separada de 0048 (parlamentario enlazado, leyenda anti-causal LOCKED, conteo honesto) + rail + linter extendido con NEGACIONES_LOCKED
+- [ ] 92-04-PLAN.md — Cierre: apply 0062 a PROD (psql, checkpoint operador) + pgTAP + cobertura declarada + deploy Cloudflare (arrastra fixes UI 91) + gate BrowserOS
 **UI hint**: yes
 
 ### Phase 93: AGENDA P2d — AUDITORÍA de cobertura de citaciones (GATE duro de 94)
