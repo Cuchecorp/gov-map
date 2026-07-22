@@ -29,3 +29,30 @@ export {
   CORTE_VIGENCIA,
 } from "./parse-diputados";
 export type { DiputadoBio, MilitanciaBio } from "./parse-diputados";
+
+// Parser de senadores (BCN SPARQL → militancia, enlace fail-closed por nombre) + fallback ficha.
+export {
+  parseBcnSenadores,
+  enlazarSenadores,
+  buildSparqlUrl,
+  nombreMaestra,
+  BCN_SPARQL_URL,
+  BCN_UA,
+  BCN_MILITANCY_QUERY,
+} from "./parse-bcn-senadores";
+export type {
+  SenadorMilitancia,
+  EnlaceSenadoresResult,
+  SparqlResults,
+} from "./parse-bcn-senadores";
+export { parseSenadoFicha } from "./parse-senado-ficha";
+export type { FichaSenadorBio } from "./parse-senado-ficha";
+
+// Parser de comisiones (catálogo camara.cl + membresía fail-closed por DIPID).
+export {
+  parseComisionesCatalogo,
+  parseIntegrantes,
+  integrantesUrl,
+  COMISIONES_CATALOGO_URL,
+} from "./parse-comisiones";
+export type { ComisionCatalogo, IntegranteComision } from "./parse-comisiones";

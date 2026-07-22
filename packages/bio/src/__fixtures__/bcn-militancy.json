@@ -1,0 +1,34 @@
+{
+  "head": {
+    "vars": ["person", "personLabel", "party", "partyLabel", "beginDate", "endDate"]
+  },
+  "results": {
+    "distinct": false,
+    "ordered": true,
+    "bindings": [
+      {
+        "person": { "type": "uri", "value": "http://datos.bcn.cl/recurso/persona/135" },
+        "personLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "Ricardo Núñez Muñoz" },
+        "party": { "type": "uri", "value": "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/partido-por-la-democracia" },
+        "partyLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "Partido Por la Democracia" },
+        "beginDate": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "1988-01-01" },
+        "endDate": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "2006-03-10" }
+      },
+      {
+        "person": { "type": "uri", "value": "http://datos.bcn.cl/recurso/persona/135" },
+        "personLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "Ricardo Núñez Muñoz" },
+        "party": { "type": "uri", "value": "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/partido-socialista-de-chile" },
+        "partyLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "Partido Socialista de Chile" },
+        "beginDate": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "2006-03-11" }
+      },
+      {
+        "person": { "type": "uri", "value": "http://datos.bcn.cl/recurso/persona/3370" },
+        "personLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "Ximena Rincón González" },
+        "party": { "type": "uri", "value": "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/partido-democrata-cristiano" },
+        "partyLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "Partido Demócrata Cristiano" },
+        "beginDate": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "1990-06-01" },
+        "endDate": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "2022-01-15" }
+      }
+    ]
+  }
+}
