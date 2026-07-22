@@ -83,3 +83,49 @@ export interface SesionTablaItemRow {
  */
 export const CAMARA_TABLA_PDF_URL =
   "https://www.camara.cl/verDoc.aspx?prmId=0&prmTipo=TABLASEMANAL";
+
+/**
+ * Fila PLANA serializada por el Server Component hacia el island de filtros
+ * (`agenda-filtros.tsx`, contrato FichaRail). Cruza la frontera server→client, así
+ * que TODOS los campos son primitivos JSON-serializables (fechas como ISO string,
+ * NUNCA `Date`; el island reconstruye `Date` al renderizar la `CitacionCard`).
+ *
+ * DECISIÓN del orquestador (plan-checker): el island es el ÚNICO renderer del
+ * listado por día post-hidratación y renderiza la MISMA `CitacionCard` que el SSR
+ * (cero divergencia visual). Por eso el slice incluye TODO lo que la card muestra:
+ * `estado`, `provenance` (trazabilidad — principio rector, NUNCA se pierde al
+ * hidratar) e `invitados` (dato PÚBLICO ya renderizado SSR en la misma página;
+ * serializarlo al island NO es exposición adicional).
+ *
+ * `dayKey` (día-calendario-Chile YYYY-MM-DD) y `dayLabel` los calcula el SERVER en
+ * tz America/Santiago — el island NO recalcula tz (no duplica tzdb en cliente).
+ *
+ * Trust boundary (T-94-03): campos NO-PII (citacion/citacion_punto/citacion_invitado
+ * son públicas por 0010). El island NUNCA importa `@/lib/supabase` ni usa `.rpc`/`.from`.
+ */
+export interface CitacionSliceRow {
+  id: string;
+  camara: "camara" | "senado";
+  comision: string;
+  /** Fecha ISO (o null). El island reconstruye `new Date(fecha)` para la card. */
+  fecha: string | null;
+  /** Día-calendario-Chile YYYY-MM-DD calculado por el server (tz Chile), o "sin-fecha". */
+  dayKey: string;
+  /** Rótulo del día ya formateado por el server en tz Chile ("Lunes 22 de julio"). */
+  dayLabel: string;
+  horario: string | null;
+  sala: string | null;
+  materia: string | null;
+  estado: string | null;
+  /** Boletines mencionados en los puntos de la citación (para el filtro de boletín). */
+  boletines: string[];
+  /** Primer boletín (cruce a la ficha), o null. */
+  boletin: string | null;
+  invitados: { nombre: string; calidad: string | null }[];
+  provenance: {
+    /** ISO string de captura, o null. El island reconstruye `Date`. */
+    capturedAt: string | null;
+    sourceName: string;
+    sourceUrl: string | null;
+  };
+}
