@@ -37,19 +37,27 @@ export interface BioWriter {
   actualizarPartidoParlamentario(updates: PartidoUpdate[]): Promise<void>;
 }
 
+// CR-02: separador EXPLÍCITO y VISIBLE para las claves naturales. Antes se usaba un byte de
+// control invisible (SOH, U+0001) que un reviewer no puede ver — indistinguible de "sin separador"
+// y frágil (editores/herramientas lo pueden strippear, colapsando la clave a concatenación sin
+// separador → colisiones tipo `membresiaKey("1","12")` === `membresiaKey("11","2")` que
+// `dedupePorClave`/el Map del fake descartan silenciosamente, last-write-wins). El `|` no aparece
+// en ids `bigint identity` ni en nombres/alias de partido/comisión, y es reviewable.
+const KEY_SEP = "|";
+
 /** Clave natural de una comisión (nombre + camara). */
 export function comisionKey(nombre: string, camara: string): string {
-  return `${nombre}${camara}`;
+  return `${nombre}${KEY_SEP}${camara}`;
 }
 
 /** Clave natural de una militancia (parlamentario + alias + desde). */
 export function militanciaKey(parlamentarioId: string, partidoAlias: string, desde: string): string {
-  return `${parlamentarioId}${partidoAlias}${desde}`;
+  return `${parlamentarioId}${KEY_SEP}${partidoAlias}${KEY_SEP}${desde}`;
 }
 
 /** Clave natural de una membresía (comisión + parlamentario). */
 export function membresiaKey(comisionId: string, parlamentarioId: string): string {
-  return `${comisionId}${parlamentarioId}`;
+  return `${comisionId}${KEY_SEP}${parlamentarioId}`;
 }
 
 /**
