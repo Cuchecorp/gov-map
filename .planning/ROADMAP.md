@@ -179,7 +179,7 @@ Plans:
 
 Plans:
 
-- [ ] 90-01-PLAN.md — Scaffold @obs/bio + model.ts allowlist (sin PII) + migración 0059 (4 tablas deny-by-default) + pgTAP (offline)
+- [x] 90-01-PLAN.md — Scaffold @obs/bio + model.ts allowlist (sin PII) + migración 0059 (4 tablas deny-by-default) + pgTAP (offline)
 - [ ] 90-02-PLAN.md — Parsers allowlist (diputados XML + BCN senadores spike + comisiones Open Q1 degradación honesta) + writer idempotente + orquestador dos-etapas fail-closed
 - [ ] 90-03-PLAN.md — CLI run-bio-cli + apply 0059 a PROD + pgTAP contra schema aplicado + corrida LIVE acotada + cobertura declarada en ledger
 

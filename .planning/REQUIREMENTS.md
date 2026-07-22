@@ -34,11 +34,11 @@
 
 ### BIO — Parlamentario 360 (bio oficial cruzada)
 
-- [ ] **BIO-01**: Conector de biografía oficial dos-etapas (fuente→R2→Supabase): WSCamaraDiputados `getDiputados` (XML GET) para diputados + fuente Senado/BCN para senadores (SPIKE SPARQL BCN); la PII de TERCEROS/familiares queda en R2, jamás en tablas servidas
+- [x] **BIO-01**: Conector de biografía oficial dos-etapas (fuente→R2→Supabase): WSCamaraDiputados `getDiputados` (XML GET) para diputados + fuente Senado/BCN para senadores (SPIKE SPARQL BCN); la PII de TERCEROS/familiares queda en R2, jamás en tablas servidas
 - [ ] **BIO-02**: La ficha muestra la biografía oficial del Congreso: región/distrito, períodos, profesión, comisiones, y demás campos de la bio oficial — con fuente+fecha+enlace
 - [ ] **BIO-03**: El partido político se muestra DIRECTO y se correlaciona en todas las superficies (ficha, filtros, cruces) — decisión del operador 2026-07-21: la militancia del cargo electo y su bio oficial son datos públicos esenciales para accountability; siempre con fuente+fecha ("según fuente al [fecha]"), distinguiendo partido vs comité (Senado) y militancia histórica vs actual
 - [ ] **BIO-04**: Cross-links factuales entre parlamentarios: mismo partido, misma región/distrito, misma comisión, co-autoría — relaciones DECLARADAS u observables, jamás afinidad inferida (anti-insinuación LOCKED)
-- [ ] **BIO-05**: Membresía de comisiones ingerida y modelada (hoy NO existe) — prerequisito de BIO-02/BIO-04 y de CIT-04
+- [x] **BIO-05**: Membresía de comisiones ingerida y modelada (hoy NO existe) — prerequisito de BIO-02/BIO-04 y de CIT-04
 
 ### LOB — Lobby legible y enlazado
 
@@ -97,11 +97,11 @@ Cobertura 100 por ciento: 27/27 requisitos mapeados a fases 86-96 (sin huérfano
 | TRACE-01 | Phase 89 | Complete |
 | TRACE-02 | Phase 89 | Complete |
 | TRACE-03 | Phase 89 | Complete |
-| BIO-01 | Phase 90 | Pending |
+| BIO-01 | Phase 90 | Complete |
 | BIO-02 | Phase 91 | Pending |
 | BIO-03 | Phase 91 | Pending |
 | BIO-04 | Phase 91 | Pending |
-| BIO-05 | Phase 90 | Pending |
+| BIO-05 | Phase 90 | Complete |
 | LOB-01 | Phase 92 | Pending |
 | LOB-02 | Phase 92 | Pending |
 | LOB-03 | Phase 92 | Pending |

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
-status: verifying
+status: executing
 stopped_at: "Roadmap v9.0 creado — 11 fases (86-96) en tres pasadas; 27/27 requisitos mapeados; listo para /gsd:plan-phase 86"
-last_updated: "2026-07-22T06:41:30.521Z"
+last_updated: "2026-07-22T13:07:38.072Z"
 last_activity: 2026-07-22
 progress:
   total_phases: 11
   completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 15
+  completed_plans: 13
   percent: 36
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 89 — BÚSQUEDA P1d — Deep-links de validación + gate BrowserOS
+**Current focus:** Phase 90 — PERSONAS P2a — Conector bio oficial dos-etapas + membresía de comisiones
 
 ## Current Position
 
-Phase: 89 (BÚSQUEDA P1d — Deep-links de validación + gate BrowserOS) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 90 (PERSONAS P2a — Conector bio oficial dos-etapas + membresía de comisiones) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-07-22
 
 ## Performance Metrics
@@ -68,6 +68,7 @@ Last activity: 2026-07-22
 | Phase 74 P01 | 40 | 2 tasks | 7 files |
 | Phase 75 P02 | ~8 min | 2 tasks | 1 files |
 | Phase 89 P02 | 30 | 2 tasks | 6 files |
+| Phase 90 P01 | ~15min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: Freshness: señal MIN-edad de leyes (leyes-min-edad, MIN fecha_captura, umbral 45) revela la cola sin rotar sin regresionar las señales MAX v6.0 (FuenteConfig.agregado default MAX)
 - [Phase ?]: DEBT-05: .net-* font-size migrado a tokens var(--text-*) pixel-identico; .net-chip 0.6875rem preservado; guard source-scan bloquea rem ad-hoc; /red F18 diferida a ui-review+operador
 - [Phase ?]: DEBT-06: rotación del DB password de Supabase (B26) documentada como runbook de operador zero-credential-values (75-DB-PASSWORD-ROTATION-OPERATOR-NOTE.md); el agente NO rota (acto exclusivo de operador). Radio de impacto solo SUPABASE_DB_URL; CI + sitio usan SUPABASE_SECRET_KEY por REST (no afectados).
+- [Phase 90] 90-01: @obs/bio scaffolded (espejo @obs/lobby; SIN @obs/adjudication porque bio no usa LLM; +fast-xml-parser@^5 ya en el monorepo; tsconfig references NO paths por gotcha Phase 43; vitest.config.ts verbatim evita CI-DARK). model.ts = ALLOWLIST POR CONSTRUCCION: los 4 contratos (BioParlamentario/Militancia/Comision/ComisionMembresia) NO declaran fechaNacimiento/rut/sexo → PII imposible de persistir; zod .strict() por entidad muerde con campo extra (11 tests). Migracion 0059 = 4 tablas deny-by-default (parlamentario_bio 1:1, parlamentario_militancia, comision, comision_membresia) VERBATIM de 0021: provenance inline NOT NULL + clave natural unique + RLS habilitada SIN policies + revoke all from anon,authenticated + CERO grant a anon (lockdown-guard Block A >0044; RPCs publicas = Phase 91) + pgTAP plan(28). OFFLINE: NO aplicada a PROD (apply + pgTAP contra schema aplicado = 90-03, psql --single-transaction nunca db push). parlamentario NO alterado (partido lo refresca el writer en 90-02). BIO-01/BIO-05 completos. GOTCHA: el <automated> check node del Task 3 da falso-FAIL si se corre inline en bash (doble-escape colapsa [\\s\\S]→sS); correrlo desde archivo .cjs. DEUDA PRE-EXISTENTE fuera de alcance: app/lib/buscar.test.ts:193 falla (drift Phase 89 commit 2a4a6a9 similarity 0→null), root pnpm test en rojo por eso; ver deferred-items.md.
 
 ### Pending Todos
 
@@ -146,7 +148,7 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-22T06:16:51.939Z
+Last session: 2026-07-22T13:07:29.367Z
 Stopped at: Roadmap v9.0 creado — 11 fases (86-96) en tres pasadas; 27/27 requisitos mapeados; listo para /gsd:plan-phase 86
 Resume file: None
 
