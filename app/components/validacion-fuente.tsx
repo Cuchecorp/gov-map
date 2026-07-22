@@ -68,6 +68,37 @@ export function buildCamaraUrl(boletin: string, prmId: string): string {
   return `https://www.camara.cl/legislacion/ProyectosDeLey/tramitacion.aspx?prmID=${encodeURIComponent(prmId)}&prmBOLETIN=${encodeURIComponent(boletin)}`;
 }
 
+/**
+ * enlaceHumanoProyecto — reruta el `proyecto.enlace` a un destino HUMANO.
+ *
+ * En PROD, `proyecto.enlace` de miles de filas apunta al endpoint WS XML
+ * `https://tramitacion.senado.cl/wspublico/tramitacion.php` (ROTO para humanos:
+ * devuelve XML crudo). Cuando el enlace ES ese endpoint (detectado por HOST
+ * `tramitacion.senado.cl` + PATH que incluye `/wspublico/`), se reescribe a la
+ * ficha humana del Senado `buildSenadoUrl(boletin)`. En CUALQUIER otro caso
+ * (host distinto, path sin `/wspublico/`, o parseo de URL fallido) se devuelve
+ * el `enlace` VERBATIM — nunca fabrica ni rompe un enlace ya válido.
+ *
+ * Detección por host+path SIEMPRE, NUNCA por substring suelto del string
+ * completo: un boletín (o el literal "wspublico") en el query de otro host no
+ * debe gatillar el rewrite. Helper puro (sin JSX, sin hex); el guard del badge
+ * (`safeExternalHref`) decide al render si el resultado se linkea.
+ */
+export function enlaceHumanoProyecto(enlace: string, boletin: string): string {
+  try {
+    const url = new URL(enlace);
+    if (
+      url.hostname.toLowerCase() === "tramitacion.senado.cl" &&
+      url.pathname.toLowerCase().includes("/wspublico/")
+    ) {
+      return buildSenadoUrl(boletin);
+    }
+  } catch {
+    // enlace vacío/whitespace/malformado → no parsea como URL → verbatim.
+  }
+  return enlace;
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 /**
