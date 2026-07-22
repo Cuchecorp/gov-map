@@ -24,7 +24,10 @@ import {
   type ISOWeek,
 } from "@/lib/week-utils";
 import { sourceLabel } from "@/lib/types";
-import { capitalizarPrimera } from "@/lib/format";
+import {
+  diaCalendarioCitacion,
+  dayLabelCitacion,
+} from "@/lib/dia-calendario";
 import {
   CAMARA_TABLA_PDF_URL,
   type CitacionRow,
@@ -60,18 +63,11 @@ function parseCamaraFiltro(v: unknown): "camara" | "senado" | undefined {
   return v === "camara" || v === "senado" ? v : undefined;
 }
 
-/**
- * Día calendario YYYY-MM-DD en Chile (en-CA emite ISO; DST-safe vía tzdb).
- * Idiom reutilizado de `estado-actual-block.tsx:92-98`. NÚCLEO DE LA FASE:
- * la agrupación por día JAMÁS usa UTC — una citación de las 21:00 CL almacenada
- * a medianoche UTC cae en el día-Chile correcto (no en el siguiente).
- */
-const DIA_CALENDARIO_CHILE = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "America/Santiago",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
+// CONTRATO date-only-midnight-UTC (ver `@/lib/dia-calendario`): la agrupación por
+// día de la agenda usa la PARTE FECHA UTC de `citacion.fecha`/`sesion_sala.fecha`
+// (el día publicado por la fuente), NO una conversión a tz America/Santiago —
+// interpretar esa medianoche UTC en Chile fabrica el día anterior (regresión live
+// Phase 94). `diaCalendarioCitacion`/`dayLabelCitacion` codifican ese contrato.
 
 export default async function AgendaPage({ searchParams }: PageProps) {
   const sp = await searchParams;
@@ -238,12 +234,6 @@ async function ResultadosBusqueda({
     grupos.set(f.comision, arr);
   }
 
-  const diaFmt = new Intl.DateTimeFormat("es-CL", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    timeZone: "America/Santiago",
-  });
   const camaraLabel = (c: "camara" | "senado") =>
     c === "camara" ? "Cámara" : "Senado";
 
@@ -264,10 +254,8 @@ async function ResultadosBusqueda({
                     <span className="rounded-full border border-border px-2 py-0.5 text-xs">
                       {camaraLabel(c.camara)}
                     </span>
-                    {c.fecha && (
-                      <span>
-                        {capitalizarPrimera(diaFmt.format(new Date(c.fecha)))}
-                      </span>
+                    {dayLabelCitacion(c.fecha) && (
+                      <span>{dayLabelCitacion(c.fecha)}</span>
                     )}
                     {c.estado && <span className="text-foreground">· {c.estado}</span>}
                   </div>
@@ -341,8 +329,10 @@ async function derivarMetricaCamara(): Promise<CoberturaCamaraMetrica> {
 
   const minFecha = (minRes.data as { fecha: string }[] | null)?.[0]?.fecha ?? null;
   const maxFecha = (maxRes.data as { fecha: string }[] | null)?.[0]?.fecha ?? null;
-  const camaraMin = minFecha ? DIA_CALENDARIO_CHILE.format(new Date(minFecha)) : null;
-  const camaraMax = maxFecha ? DIA_CALENDARIO_CHILE.format(new Date(maxFecha)) : null;
+  // Contrato date-only-midnight-UTC: el min/max de cobertura es el día publicado
+  // (parte fecha UTC), no una conversión de zona (que retrocedería un día).
+  const camaraMin = minFecha ? diaCalendarioCitacion(minFecha) : null;
+  const camaraMax = maxFecha ? diaCalendarioCitacion(maxFecha) : null;
 
   return {
     camaraN: countRes.count ?? 0,
@@ -428,30 +418,20 @@ export async function CitacionesSection({ year, week }: ISOWeek) {
     );
   }
 
-  // Rótulo de día en tz Chile (weekday/day/month, es-CL) — el SERVER lo calcula una
-  // vez por citación y lo serializa en el slice; el island NO recalcula tz.
-  const diaFmt = new Intl.DateTimeFormat("es-CL", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    timeZone: "America/Santiago",
-  });
-
   // SLICE PLANO serializable → island de filtros (CIT-04, contrato FichaRail).
   // DECISIÓN del orquestador: el island `AgendaFiltros` es el ÚNICO renderer del
   // listado por día post-hidratación (renderiza la MISMA `CitacionCard` que este
   // Server Component produce en SSR — cero divergencia). El server arma el slice
   // completo (estado + provenance + invitados, todos NO-PII por 0010); el island
-  // solo filtra/agrupa EN MEMORIA. `dayKey` (día-calendario-Chile YYYY-MM-DD) y
-  // `dayLabel` se calculan AQUÍ en tz Chile — NUNCA en el cliente (no se duplica
-  // tzdb en el navegador). Las fechas cruzan como ISO string (JSON-serializable).
+  // solo filtra/agrupa EN MEMORIA. `dayKey` (día calendario chileno YYYY-MM-DD) y
+  // `dayLabel` se calculan AQUÍ en el SERVER — NUNCA en el cliente (no se duplica
+  // lógica en el navegador). Por el CONTRATO date-only-midnight-UTC de
+  // `citacion.fecha` (ver `@/lib/dia-calendario`) el día es la PARTE FECHA UTC (el
+  // día publicado), NO una conversión a tz Chile — que fabricaría el día anterior.
+  // Las fechas cruzan como ISO string (JSON-serializable).
   const slice: CitacionSliceRow[] = citaciones.map((c) => {
-    const fechaRef = c.fecha ? new Date(c.fecha) : null;
-    const dayKey = fechaRef ? DIA_CALENDARIO_CHILE.format(fechaRef) : "sin-fecha";
-    const dayLabel =
-      dayKey === "sin-fecha" || !fechaRef
-        ? "Sin fecha asignada"
-        : capitalizarPrimera(diaFmt.format(fechaRef));
+    const dayKey = diaCalendarioCitacion(c.fecha) ?? "sin-fecha";
+    const dayLabel = dayLabelCitacion(c.fecha) ?? "Sin fecha asignada";
     const boletines = (c.citacion_punto ?? [])
       .map((p) => p.boletin)
       .filter((b): b is string => b != null);
