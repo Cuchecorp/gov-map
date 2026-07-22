@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { isRedirectError } from "next/dist/client/components/redirect-error";
+
 import { createServerSupabase } from "@/lib/supabase";
 import { contarCoberturaBusqueda, ALCANCE_COBERTURA } from "@/lib/coverage";
 import { buscarProyectos, BOLETIN_RE, MAX_QUERY_CHARS } from "@/lib/buscar";
@@ -86,6 +88,9 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
   try {
     vecinos = await buscarProyectos(q, { matchCount: PAGE_SIZE * page + 1 });
   } catch (err) {
+    // NEXT_REDIRECT es una señal interna de Next.js (redirect() lanza), no un error
+    // real. Re-lanzar para que el framework lo procese correctamente (Rule 1 — bug).
+    if (isRedirectError(err)) throw err;
     // Error = una llamada falló (embed / rpc / DB). Distinto de vacío/degradado.
     // Log para observabilidad (Cloudflare logs): un "search error" permanente por
     // GEMINI_API_KEY ausente o 429 era invisible sin esto.
