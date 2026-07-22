@@ -80,21 +80,19 @@ export interface LobbyMencionRow {
 // EXPORTADA para que el linter anti-insinuación la reste en NEGACIONES_LOCKED antes
 // de escanear esta superficie: CONTIENE "influencia" y "relación causal" en un
 // contexto que los NIEGA. Verbatim de 92-UI-SPEC §Copywriting (LOCKED).
-export const LEYENDA_MENCIONES_LOBBY =
-  "La materia de estas audiencias menciona el número de este boletín en el " +
-  "registro público de la Ley del Lobby (Ley 20.730). La mención es un dato del " +
-  "registro; no implica influencia en la tramitación ni relación causal con el " +
-  "proyecto.";
+// prettier-ignore — un SOLO string literal en una línea: el linter anti-insinuación
+// resta esta leyenda VERBATIM del source (split/join); un `+` de concat entre líneas
+// rompería la sustracción y "influencia" quedaría → falso-positivo (lección BLOCKER 91).
+// eslint-disable-next-line
+export const LEYENDA_MENCIONES_LOBBY = "La materia de estas audiencias menciona el número de este boletín en el registro público de la Ley del Lobby (Ley 20.730). La mención es un dato del registro; no implica influencia en la tramitación ni relación causal con el proyecto.";
 
 // ── Empty state LOCKED (single-source) ──────────────────────────────────────────
 // EXPORTADA para el linter: CONTIENE "actividad de lobby" en un contexto que la
 // NIEGA. Verbatim de 92-UI-SPEC §Copywriting (LOCKED). NUNCA se lee como "sin
 // lobby" / "limpio": declara explícitamente que sólo cuenta menciones explícitas.
-export const EMPTY_MENCIONES_LOBBY =
-  "Ninguna audiencia de lobby registrada menciona el número de este boletín en su " +
-  "materia, según las fuentes consultadas. Esto no describe la actividad de lobby " +
-  "en torno al proyecto; solo cuenta las materias que citan explícitamente este " +
-  "número de boletín.";
+// prettier-ignore — SOLO string literal en una línea (misma razón que la leyenda arriba).
+// eslint-disable-next-line
+export const EMPTY_MENCIONES_LOBBY = "Ninguna audiencia de lobby registrada menciona el número de este boletín en su materia, según las fuentes consultadas. Esto no describe la actividad de lobby en torno al proyecto; solo cuenta las materias que citan explícitamente este número de boletín.";
 
 // ── Fecha ISO parseable → Date válida, o null (nunca "Invalid Date") ────────────
 function fechaValida(raw: string | null | undefined): Date | null {

@@ -10,6 +10,7 @@ import {
   derivarEstadoActual,
 } from "@/components/estado-actual-block";
 import { LobbyEnTramitacionSection } from "@/components/lobby-en-tramitacion";
+import { LobbyMencionesSection } from "@/components/lobby-menciones-de-boletin";
 import { CrucesSection } from "@/components/cruces-de-proyecto";
 import { crucesPublicEnabled } from "@/lib/cruces-gate";
 import { TimelineView } from "@/components/timeline-view";
@@ -167,6 +168,25 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
           </section>
 
           {/*
+            Phase 92 (LOB-02/LOB-03) — Carril MENCIONES de lobby: audiencias cuya
+            MATERIA menciona EXPLÍCITAMENTE este boletín (mención explícita del número,
+            NUNCA coincidencia temporal ni keywords). Carril HERMANO SEPARADO de
+            #lobby-tramitacion (0048, cruce TEMPORAL — NO se toca): heading distinto,
+            leyenda distinta, y el parlamentario ENLAZADO a /parlamentario/{id}
+            (navegación bidireccional PL→audiencia→parlamentario, LOB-03). Va contiguo
+            (ambos del dominio lobby) pero JAMÁS se fusiona con 0048. El h2 y la leyenda
+            viven DENTRO del componente: en el degrade honesto pre-apply (RPC 0062
+            ausente → PGRST202) retorna null y NO deja heading huérfano; el wrapper
+            mt-12 preserva la frontera (frontier rule). La RPC 0062 se aplica a PROD en
+            el Plan 04 — hasta entonces la sección degrada honesto (null).
+          */}
+          <section id="lobby-menciones" className="mt-12">
+            <Suspense fallback={<LobbyTramitacionSkeleton />}>
+              <LobbyMencionesSection boletin={boletin} />
+            </Suspense>
+          </section>
+
+          {/*
             Phase 38 (SURF-02) — Carril CRUCES: yuxtapone parlamentarios que votaron
             A FAVOR del boletín con sus reuniones de lobby EN EL SECTOR del proyecto.
             Carril HERMANO (mt-12), NUNCA anidado ni compuesto con votos/lobby. GATE
@@ -277,6 +297,11 @@ export async function ProyectoRail({ boletin }: { boletin: string }) {
       ? [{ id: "autores", label: "Autores", count: nAutores }]
       : []),
     { id: "lobby-tramitacion", label: "Lobby del período" },
+    // Phase 92 (LOB-02): entrada de la sección de menciones explícitas, hermana e
+    // independiente de "Lobby del período" (0048). Siempre presente: la <section
+    // id="lobby-menciones"> se monta siempre (su contenido degrada honesto a null
+    // pre-apply de 0062, pero el ancla del scrollspy existe en el DOM).
+    { id: "lobby-menciones", label: "Menciones en lobby" },
     // Phase 38 (SURF-02): entrada de cruces con marcador diamante ◆, GATED por el
     // mismo Candado B que la <section id="cruces"> — sin el gate, ni el ancla ni el
     // target de scrollspy existen (sin ancla muerta). Petróleo NO se filtra a otras
@@ -644,7 +669,9 @@ async function ValidacionFuenteServerSection({ boletin }: { boletin: string }) {
 // (WR-02). Un 6→8 producía un salto CLS visible al resolver el rail.
 function RailSkeleton() {
   // Phase 89 added "validacion-fuente" → +1 entry in every configuration (WR-02).
-  const nEntries = crucesPublicEnabled(process.env) ? 9 : 8;
+  // Phase 92 added "lobby-menciones" → +1 more in every configuration (siempre
+  // presente, no gated). Debe igualar `ProyectoRail.navEntries` para no producir CLS.
+  const nEntries = crucesPublicEnabled(process.env) ? 10 : 9;
   return (
     <div className="space-y-4" aria-hidden="true">
       <div className="space-y-1.5">

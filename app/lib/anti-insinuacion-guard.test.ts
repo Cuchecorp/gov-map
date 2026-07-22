@@ -49,6 +49,10 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { LEYENDA_ANTI_INSINUACION_MONEY } from "@/lib/money-presentacion";
 import { LEYENDA_CROSS_LINK } from "@/components/cross-links-parlamentario";
+import {
+  LEYENDA_MENCIONES_LOBBY,
+  EMPTY_MENCIONES_LOBBY,
+} from "@/components/lobby-menciones-de-boletin";
 
 // ---------------------------------------------------------------------------
 // Helpers (espejo verbatim de lockdown-guard.test.ts)
@@ -188,6 +192,35 @@ const SUPERFICIES_PERSONAS: string[] = [
 ];
 
 /**
+ * Superficies LOBBY (92-03, LOB-02/LOB-03). El enlace audiencia→PL por mención
+ * EXPLÍCITA de boletín es un vector de insinuación de causalidad: una "mención en el
+ * registro" NO es "influencia en la tramitación" ni "relación causal", y el linter
+ * debe garantizar que el copy de estas superficies lo mantenga estrictamente factual.
+ *
+ * Las 3 superficies nuevas de la fase:
+ *  - `lobby-menciones-de-boletin.tsx`: la SECCIÓN nueva de la ficha proyecto
+ *    (heading + leyenda anti-causal + filas con parlamentario enlazado + empty).
+ *  - `mencion-boletin-chip.tsx`: el chip-link "Menciona boletín N" (ficha parlamentario).
+ *  - `lobby-de-parlamentario.tsx`: la sección de lobby de la ficha parlamentario, que
+ *    la fase EXTENDIÓ con materia legible + chips de mención.
+ *
+ * NOTA (Pitfall 1, LOCKED — lección BLOCKER 91): `lobby-menciones-de-boletin.tsx`
+ * renderiza `LEYENDA_MENCIONES_LOBBY` (CONTIENE "influencia"/"relación causal" en un
+ * contexto que los NIEGA) y `EMPTY_MENCIONES_LOBBY` (CONTIENE "actividad de lobby" en
+ * un contexto que la NIEGA). Ambas se AÑADEN a NEGACIONES_LOCKED (abajo) ANTES de que
+ * estas superficies entren al scan — sin esa resta, el guard se auto-cazaría sobre la
+ * propia superficie que enfuerza la regla.
+ *
+ * Rutas relativas a app/, mismo formato que los otros arrays. Si una ruta no existe,
+ * se salta sin fallar (tolerancia try/catch del bucle).
+ */
+const SUPERFICIES_LOBBY: string[] = [
+  "components/lobby-menciones-de-boletin.tsx",
+  "components/mencion-boletin-chip.tsx",
+  "components/lobby-de-parlamentario.tsx",
+];
+
+/**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
  * texto RENDERIZADO (post-strip de comentarios), con límite de palabra en español
  * para no cazar identificadores snake_case: `rebeldias_de_parlamentario` (nombre de
@@ -293,6 +326,16 @@ const NEGACIONES_LOCKED: string[] = [
   // restarla, el scan de SUPERFICIES_PERSONAS se auto-cazaría sobre la propia
   // superficie que renderiza la leyenda (Pitfall 1). Importada verbatim.
   LEYENDA_CROSS_LINK,
+  // Leyenda MENCIONES-LOBBY (92-03, single-source en lobby-menciones-de-boletin.tsx).
+  // NIEGA "influencia" y "relación causal" ("…no implica influencia en la tramitación
+  // ni relación causal con el proyecto."). Sin restarla, el scan de SUPERFICIES_LOBBY
+  // se auto-cazaría sobre la propia superficie que renderiza la leyenda (Pitfall 1,
+  // lección BLOCKER 91: registrar la negación ANTES de añadir la superficie).
+  LEYENDA_MENCIONES_LOBBY,
+  // Empty state de la sección de menciones (92-03, single-source). NIEGA "actividad de
+  // lobby" ("Esto no describe la actividad de lobby en torno al proyecto…"). Misma
+  // razón que arriba — el copy honesto usa el término para NEGARLO explícitamente.
+  EMPTY_MENCIONES_LOBBY,
 ];
 
 /**
@@ -365,7 +408,7 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
 
   it("ningún término prohibido aparece en el texto renderizado (post-strip de comentarios)", () => {
     const offenders: string[] = [];
-    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS]) {
+    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY]) {
       const full = path.join(APP_ROOT, rel);
       let raw: string;
       try {
@@ -501,6 +544,26 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
     );
     expect(hits).toEqual(expect.arrayContaining(["afín", "coordina con"]));
   });
+
+  it("LOBBY (92-03): caza causalidad de mención inyectada (influencia / a cambio de) sobre lo NUEVO", () => {
+    // Término causal FRESCO inyectado en un fixture EN MEMORIA que simula la sección
+    // de menciones. Prueba que el guard MUERDE sobre el carril LOBBY aunque la leyenda
+    // LOCKED (que NIEGA 'influencia') esté restada en NEGACIONES_LOCKED.
+    const fixtureMutado = `
+      export function SeccionMenciones() {
+        return (
+          <section id="lobby-menciones">
+            <p>Este lobby tuvo influencia en la tramitación, a cambio de un voto.</p>
+          </section>
+        );
+      }
+    `;
+    const hits = detectarInsinuaciones(fixtureMutado);
+    expect(
+      hits,
+      "El detector NO cazó causalidad de mención inyectada → el guard LOBBY sería un no-op",
+    ).toEqual(expect.arrayContaining(["influencia", "a cambio de"]));
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -582,5 +645,27 @@ describe("(3) Sin falsos positivos — strip de comentarios, límites de palabra
       export const C = <p>{LEYENDA}</p>;
     `;
     expect(detectarInsinuaciones(conLeyenda)).toEqual([]);
+  });
+
+  it("LOBBY (92-03): la leyenda de menciones (que NIEGA 'influencia'/'relación causal') NO es offender", () => {
+    // Restada en NEGACIONES_LOCKED (Pitfall 1, lección BLOCKER 91): la leyenda CONTIENE
+    // "influencia" pero la NIEGA ("…no implica influencia en la tramitación ni relación
+    // causal con el proyecto.") → montar verbatim → []. Sin la resta, el linter daría
+    // falso-positivo y BLOQUEARÍA la fase (como en 91).
+    const conLeyenda = `
+      const LEYENDA = ${JSON.stringify(LEYENDA_MENCIONES_LOBBY)};
+      export const M = <p>{LEYENDA}</p>;
+    `;
+    expect(detectarInsinuaciones(conLeyenda)).toEqual([]);
+  });
+
+  it("LOBBY (92-03): el empty state de menciones (que NIEGA 'actividad de lobby') NO es offender", () => {
+    // El empty CONTIENE "actividad de lobby" pero la NIEGA ("…no describe la actividad
+    // de lobby en torno al proyecto…"). Restado en NEGACIONES_LOCKED → montar verbatim → [].
+    const conEmpty = `
+      const EMPTY = ${JSON.stringify(EMPTY_MENCIONES_LOBBY)};
+      export const E = <p>{EMPTY}</p>;
+    `;
+    expect(detectarInsinuaciones(conEmpty)).toEqual([]);
   });
 });
