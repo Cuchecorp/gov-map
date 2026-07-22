@@ -93,3 +93,38 @@ describe("parse-diputados — fail-loud", () => {
     expect(() => parseDiputadosBio(xmlMalo)).toThrow(FechaInvalidaError);
   });
 });
+
+describe("parse-diputados — CR-01/WR-03 desde ausente", () => {
+  // Una militancia SIN <FechaInicio> NO debe emitirse con desde="" (romperia el upsert contra la
+  // columna date NOT NULL y degradaria la clave natural). Se SALTA con log (contrato explicito).
+  const xmlSinFecha = `<?xml version="1.0"?>
+<DiputadosPeriodoColeccion>
+  <DiputadoPeriodo><Diputado>
+    <Id>7777</Id><Nombre>Ana</Nombre><ApellidoPaterno>Sin</ApellidoPaterno><ApellidoMaterno>Fecha</ApellidoMaterno>
+    <Militancias>
+      <Militancia>
+        <FechaInicio /><FechaTermino />
+        <Partido><Id>1</Id><Nombre>Partido Sin Alias</Nombre></Partido>
+      </Militancia>
+      <Militancia>
+        <FechaInicio>2022-03-11T00:00:00</FechaInicio><FechaTermino />
+        <Partido><Id>2</Id><Nombre>Partido Con Fecha</Nombre><Alias>PCF</Alias></Partido>
+      </Militancia>
+    </Militancias>
+  </Diputado></DiputadoPeriodo>
+</DiputadosPeriodoColeccion>`;
+
+  it("militancia sin <FechaInicio> se salta (no emite desde vacío) y loguea", () => {
+    const logs: string[] = [];
+    const parsed = parseDiputadosBio(xmlSinFecha, {
+      corte: new Date("2026-03-11T12:00:00"),
+      log: (m) => logs.push(m),
+    });
+    const d = parsed.find((x) => x.dipid === "7777")!;
+    // Solo la militancia CON fecha sobrevive; ninguna con desde vacío.
+    expect(d.militancias).toHaveLength(1);
+    expect(d.militancias[0]!.partidoAlias).toBe("PCF");
+    expect(d.militancias.every((m) => m.desde.length > 0)).toBe(true);
+    expect(logs.some((l) => l.includes("sin FechaInicio"))).toBe(true);
+  });
+});
