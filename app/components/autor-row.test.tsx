@@ -64,6 +64,35 @@ describe("AutorRow — guarda de identidad (AUTOR-02, espejo TRAM-06)", () => {
     expect(screen.getByLabelText("identidad no verificada")).toBeInTheDocument();
   });
 
+  it("deep-links humanos (quick 260722-eia): enlace wspublico → 'fuente oficial' reruta a ficha humana (nunca WS XML)", () => {
+    render(
+      <AutorRow
+        autor={makeAutor({
+          origen: "senado",
+          boletin: "16456-35",
+          enlace: "https://tramitacion.senado.cl/wspublico/tramitacion.php",
+        })}
+      />,
+    );
+    const fuente = screen.getByRole("link", {
+      name: /Fuente oficial.*abre en nueva pestaña/i,
+    });
+    const href = fuente.getAttribute("href") ?? "";
+    expect(href).not.toContain("/wspublico/");
+    expect(href).toContain("boletin_ini=16456-35");
+    expect(href).toContain("appsenado");
+  });
+
+  it("deep-links humanos: enlace no-wspublico (Cámara) se respeta verbatim", () => {
+    render(
+      <AutorRow autor={makeAutor({ enlace: "https://www.camara.cl/" })} />,
+    );
+    const fuente = screen.getByRole("link", {
+      name: /Fuente oficial.*abre en nueva pestaña/i,
+    });
+    expect(fuente).toHaveAttribute("href", "https://www.camara.cl/");
+  });
+
   it("estado_vinculo probable (aunque traiga id) → NO link a parlamentario, muestra IdentityMarker", () => {
     render(
       <AutorRow

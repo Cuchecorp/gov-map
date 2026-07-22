@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { IdentityMarker } from "@/components/identity-marker";
 import { ProvenanceBadge } from "@/components/provenance-badge";
+import { enlaceHumanoProyecto } from "@/components/validacion-fuente";
 import { sourceLabel } from "@/lib/types";
 
 /**
@@ -57,7 +58,10 @@ export function AutorRow({ autor }: { autor: ProyectoAutorRow }) {
           autor.fecha_captura ? new Date(autor.fecha_captura) : null
         }
         sourceName={sourceLabel(autor.origen)}
-        sourceUrl={autor.enlace || null}
+        // La provenance de la autoría proviene del `enlace` de tramitación del
+        // proyecto (WS XML wspublico en PROD, roto para humanos). Se reruta a la
+        // ficha humana del Senado por boletín — mismo helper que header/Similares.
+        sourceUrl={enlaceHumanoProyecto(autor.enlace || "", autor.boletin) || null}
       />
     </li>
   );
