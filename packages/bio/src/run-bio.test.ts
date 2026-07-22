@@ -114,6 +114,65 @@ describe("run-bio — match fail-closed de diputados por DIPID", () => {
   });
 });
 
+describe("run-bio — senadores partido A1 guard (WR-01)", () => {
+  function maestraSenador(id: string, parlidSenado: string, nombreParts: string): MaestraRow {
+    return { ...maestraRow(id, null, nombreParts), camara: "senado", parlid_senado: parlidSenado };
+  }
+  function bindingMilitancia(idSenado: string, persona: string, party: string, begin: string, end: string | null) {
+    return {
+      person: { type: "uri", value: `http://datos.bcn.cl/p/${idSenado}` },
+      personLabel: { type: "literal", value: persona },
+      idSenado: { type: "literal", value: idSenado },
+      party: { type: "uri", value: `http://datos.bcn.cl/party/${party}` },
+      partyLabel: { type: "literal", value: party },
+      beginDate: { type: "literal", value: begin },
+      ...(end != null ? { endDate: { type: "literal", value: end } } : {}),
+    };
+  }
+  function envelopeSenadores(bindings: unknown[]): BioEnvelope {
+    return {
+      diputadosXml: null,
+      senadoresSparql: JSON.stringify({ results: { bindings } }),
+      comisionesCatalogoHtml: null,
+      integrantesPorComision: {},
+    };
+  }
+
+  it("una sola militancia vigente → actualiza partido", async () => {
+    const maestra = [maestraSenador("S1", "999", "Juan Perez Soto")];
+    const writer = new InMemoryBioWriter();
+    await runBio({
+      conector: conectorDeEnvelope(
+        envelopeSenadores([bindingMilitancia("999", "Juan Perez", "Partido A", "2022-03-11", null)]),
+      ),
+      writer,
+      maestra,
+      fechaCaptura: "2026-07-22T00:00:00Z",
+    });
+    expect(writer.partidos.get("S1")?.partido).toBe("Partido A");
+  });
+
+  it("DOS militancias vigentes (ambas sin hasEnd) → NO actualiza partido (ambiguo A1)", async () => {
+    const maestra = [maestraSenador("S1", "999", "Juan Perez Soto")];
+    const writer = new InMemoryBioWriter();
+    const res = await runBio({
+      conector: conectorDeEnvelope(
+        envelopeSenadores([
+          bindingMilitancia("999", "Juan Perez", "Partido A", "2018-03-11", null),
+          bindingMilitancia("999", "Juan Perez", "Partido B", "2022-03-11", null),
+        ]),
+      ),
+      writer,
+      maestra,
+      fechaCaptura: "2026-07-22T00:00:00Z",
+    });
+    // Las dos militancias se persisten (honest-state), pero NINGÚN partido se actualiza (ambiguo).
+    expect(res.militancias).toBe(2);
+    expect(writer.partidos.has("S1")).toBe(false);
+    expect(res.actualizados).toBe(0);
+  });
+});
+
 describe("run-bio — dos-etapas R2", () => {
   it("--from-r2 reconstruye SIN tocar la red (conector que explota si se invoca)", async () => {
     const store = new Map<string, Uint8Array>();

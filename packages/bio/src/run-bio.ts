@@ -220,14 +220,24 @@ export async function runBio(opts: RunBioOpts): Promise<RunBioResult> {
     // no trajo idSenado) → NO re-prefijar aquí (evita el doble `SEN:SEN:` cosmético).
     for (const n of res.sinMatch) sinMatch.add(n);
     // parlamentario.partido de senadores ← militancia vigente (esActual = sin fin).
+    // WR-01 (espejo del guard A1 de diputados): para senadores `esActual` = `hasta == null`, así que
+    // BCN stale/renombres modelados como dos rangos abiertos pueden dar DOS militancias esActual para
+    // el mismo parlamentario. Elegir la primera arbitraria escribiría un partido posiblemente errado.
+    // Solo se actualiza cuando hay EXACTAMENTE una militancia vigente; si no, se loguea y NO actualiza.
     for (const enlace of res.confirmados) {
-      const vigente = res.militancias.find((m) => m.parlamentarioId === enlace.parlamentarioId && m.esActual);
-      if (vigente) {
+      const vigentes = res.militancias.filter(
+        (m) => m.parlamentarioId === enlace.parlamentarioId && m.esActual,
+      );
+      if (vigentes.length === 1) {
         partidoUpdates.push({
           parlamentarioId: enlace.parlamentarioId,
-          partido: vigente.partido,
+          partido: vigentes[0]!.partido,
           fechaCaptura,
         });
+      } else if (vigentes.length > 1) {
+        log(
+          `bio: SEN:${enlace.parlamentarioId} con ${vigentes.length} militancias actuales → NO actualiza partido (ambiguo, A1)`,
+        );
       }
     }
   }
