@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
 status: executing
-stopped_at: Completed 93-02-PLAN.md
-last_updated: "2026-07-22T20:55:37.017Z"
+stopped_at: Completed 93-03-PLAN.md (auditoría citaciones cerrada, gate de 94 listo)
+last_updated: "2026-07-22T21:12:38.945Z"
 last_activity: 2026-07-22
 progress:
   total_phases: 11
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 25
-  completed_plans: 24
-  percent: 64
+  completed_plans: 25
+  percent: 73
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 93 (AGENDA P2d — AUDITORÍA de cobertura de citaciones) — EN CURSO
-Plan: 2 of 3 complete (medibles + wiring BrowserOS listos)
-Status: 93-02 completo — gaps de wiring CONFIRMADOS con DOM PROD en 93-WIRING-EVIDENCIA.md; sigue Plan 03 (declaración de cobertura + backfill)
+Plan: 3 of 3 complete (medibles + wiring BrowserOS listos)
+Status: Ready to execute
 Last activity: 2026-07-22
 
 ## Performance Metrics
@@ -79,6 +79,7 @@ Last activity: 2026-07-22
 | Phase 92 P04 | ~55min | 2 tasks | 3 files |
 | Phase 93 P01 | ~20min | 2 tasks | 2 files |
 | Phase 93 P02 | ~7min | 2 tasks | 1 files |
+| Phase 93 P03 | 35min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,8 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: [Phase 92] 92-04: 0062 APLICADA a PROD (psql --single-transaction, precedente 0059-0061) + pgTAP 13/13 contra schema aplicado (2 fixes Rule-1 de fixture: NOT NULL periodo/origen/enlace + total_n no isolation-safe vs 14309-04 real con audiencias reales); cobertura DECLARADA 195/5106 confirmadas (~3.8%) sobre 82 boletines distintos (query verbatim en runbook); deploy Cloudflare fa4d4369 arrastra fixes UI 91 fuera del bundle e0c969af; gate BrowserOS APROBADO por DOM del deploy real (materia completa+chips fail-closed doble / seccion #lobby-menciones separada de 0048 + leyenda anti-causal + parlamentario enlazado / header partido 91 sin regresion). LOB-01/02/03 LIVE en PROD. Fase 92 CERRADA.
 - [Phase 93] 93-01: AUDITORÍA de cobertura de citaciones — secciones MEDIBLES en 93-AUDITORIA-CITACIONES.md (§1-4). Matriz N/M re-medida psql verbatim CERO deriva vs research: comisiones×Cámara 34 (THIN, 2 sem ISO), comisiones×Senado 104 (AL DÍA, forward-only), sala×Cámara 1 sesión (THIN, solo PDF vigente), sala×Senado 11 sesiones (AL DÍA, forward-only). % estado cancelación ~9% Cámara / ~6% Senado (mayoría NO cancelada = honesto; "estado ausente ≠ vigente confirmado" para 94). 10 probes curl: 3 hallazgos previos CONFIRMADOS + REFUTADO "Cámara forward-only" (prmSemana=2026-20 mayo → 200 histórico). CORRECCIÓN #1 (RULE-1): path Cámara comisiones REAL = /legislacion/comisiones/ (el plan decía /sesiones_sala/ → 302 error404) + HOY exige header-set navegador completo (headers-camara.ts), UA simple da 302 (refina research "GET simple pasa WAF"). CORRECCIÓN #2 (RULE-2): endpoint alterno opendata wscamaradiputados.asmx/getComisiones_Vigentes UP 200 XML vivo (el WSComisiones.asmx del research sigue DOWN 302 mantención). cron agenda-weekly.yml EXISTE (lun 11:00 UTC, 7 secrets SUPABASE/DEEPSEEK/R2, mismo CLI); gap = ejecución GH no verificable desde código (billing intermitente) + no hace backfill histórico Cámara. CIT-01 NO completo (spanea 3 planes: wiring frontend = Plan 02 BrowserOS; declaración + backfill = Plan 03).
 - [Phase 93] 93-02: auditoría de WIRING de citaciones sobre PROD (fa4d4369) con BrowserOS DOM real → 93-WIRING-EVIDENCIA.md. DOS gaps de WIRING CONFIRMADOS con DOM (no análisis de código). gap #1 = citacionVigente forward-only (estado-actual-block.tsx:122-129, filtro fecha>=hoy) oculta citaciones PASADAS en la ficha — sujeto 18193-06 (cita 2026-07-21) "Citado"=0 ocurrencias; control positivo 11929-13 (cita HOY) SÍ muestra "Citado en de Trabajo…" → aísla que el gap es el filtro, no la query (:311-315 trae todas sin filtro fecha). gap #2 = sesion_tabla_item NO se lee en la ficha (EstadoActualBlock :290-315 no lo consulta; interface EstadoActual :21-45 sin campo sala) — sujeto 13665-07 en sala W28/W29 pero ficha "tabla de sala"=0; contraste /agenda?semana=2026-W28 muestra la fila | 5 | N°13665-07 | … | ORDEN DEL DÍA |. /agenda citaciones NO es forward-only (navega por semana_iso): W26 = 53 pasadas ambas cámaras (acordeón 12+19+22) → refuta sesgo a futuro en /agenda; W30 degrada honesto (Cámara PDF, Senado sin tabla) = gap DATOS. Nota A3 resuelta: token urgencia 260722-eia live pero filtro forward-only NO tocado. Sujetos deterministas por psql; cero fix (fixes = 94). CIT-01 NO completo (declaración + backfill = Plan 03).
+- [Phase ?]: 93-03: backfill acotado Cámara W20-W24 (34→164 citaciones, 2→6 semanas ISO) por dos-etapas; Etapa 1 R2 crudo content-addressed cableada en ingest-run step 1 (espejo sala-PDF)
+- [Phase ?]: 93-03: --from-r2 para citaciones NO existe hoy; SC#3 satisfecha por runbook operador-LOCAL, no por esta fase; solo la mitad fuente→R2 está viva
 
 ### Pending Todos
 
@@ -172,8 +175,8 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-22T20:55:37.007Z
-Stopped at: Completed 93-01-PLAN.md
+Last session: 2026-07-22T21:12:38.934Z
+Stopped at: Completed 93-03-PLAN.md (auditoría citaciones cerrada, gate de 94 listo)
 Resume file: None
 
 ## Operator Next Steps

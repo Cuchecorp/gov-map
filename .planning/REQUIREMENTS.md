@@ -48,7 +48,7 @@
 
 ### CIT — Citaciones completas (sala + comisiones, ambas cámaras)
 
-- [ ] **CIT-01**: AUDITORÍA de cobertura ANTES de tocar UI: qué se scrapea hoy vs qué publica cada fuente (sala+comisiones × Cámara+Senado), con N/M declarado — hallazgos previos a confirmar: Senado comisiones forward-only, Cámara sala thin (PDF→DeepSeek) — <!-- Plan 01: secciones medibles LISTAS (matriz N/M + endpoints + hallazgos + frescura); pendiente wiring frontend (Plan 02) + declaración final (Plan 03) -->
+- [x] **CIT-01**: AUDITORÍA de cobertura ANTES de tocar UI: qué se scrapea hoy vs qué publica cada fuente (sala+comisiones × Cámara+Senado), con N/M declarado — hallazgos previos a confirmar: Senado comisiones forward-only, Cámara sala thin (PDF→DeepSeek) — <!-- Plan 01: secciones medibles LISTAS (matriz N/M + endpoints + hallazgos + frescura); pendiente wiring frontend (Plan 02) + declaración final (Plan 03) -->
 
 - [ ] **CIT-02**: Scraping/backfill de lo faltante por dos-etapas y rate-limit LOCKED — endpoints candidatos verificados: Senado PHP `?mo=comisiones&ac=citacionesComision` (sin buildId), Cámara `citaciones_semana.aspx?prmSemana=` + `getComisiones_Vigentes`; probar con curl primero (WAF)
 - [ ] **CIT-03**: /agenda estructurada POR DÍA (tz America/Santiago), distinguiendo sala vs comisiones y Cámara vs Senado, fácil de navegar
