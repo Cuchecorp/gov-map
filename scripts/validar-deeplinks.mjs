@@ -105,10 +105,11 @@ function sleep(ms) {
 function assertResponse(boletin, { status, body, error }) {
   if (error) return { ok: false, reason: `curl error: ${error}` };
   if (status !== 200) return { ok: false, reason: `HTTP ${status}` };
-  // content-match: el boletín debe aparecer en el HTML (sin guión → puede ser "14309" o "14309-04")
-  const boletinBase = boletin.split("-")[0];
-  if (!body.includes(boletinBase)) {
-    return { ok: false, reason: `content-match fallo (boletin "${boletinBase}" no en body; body length: ${body.length})` };
+  // content-match: el boletín COMPLETO con sufijo debe aparecer en el HTML.
+  // Usar solo la base numérica (e.g. "14309") era demasiado laxo: coincide en
+  // páginas de listado, soft-404 o JS bundles, anulando la garantía TRACE-02.
+  if (!body.includes(boletin)) {
+    return { ok: false, reason: `content-match fallo (boletin completo "${boletin}" no en body; body length: ${body.length})` };
   }
   return { ok: true };
 }
