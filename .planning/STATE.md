@@ -4,7 +4,7 @@ milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
 status: verifying
 stopped_at: "Roadmap v9.0 creado — 11 fases (86-96) en tres pasadas; 27/27 requisitos mapeados; listo para /gsd:plan-phase 86"
-last_updated: "2026-07-22T06:16:51.949Z"
+last_updated: "2026-07-22T06:41:30.521Z"
 last_activity: 2026-07-22
 progress:
   total_phases: 11
