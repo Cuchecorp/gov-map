@@ -32,10 +32,15 @@ export const BCN_UA = "ObservatorioCongreso360/1.0 (contacto: sanchez.rossi@gmai
  * y ENVIADA vía URLSearchParams (parse-bcn-senadores no interpola valores de usuario → no hay
  * superficie de inyección; los PREFIX/patrones son constantes).
  */
+// CORRECCIÓN LIVE (90-03): NO existe la clase `bio:Senador` — la query original devolvía 0
+// bindings. El grafo BCN tipa a las personas como `foaf:Person`; un SENADOR se distingue por
+// exponer el predicado `bio:idSenado` (id del portal del Senado = parlid_senado de la maestra).
+// Ese id es un JOIN DETERMINISTA a la maestra (más fuerte que el name-match del research A3, que
+// queda como fallback). La query filtra `?person bio:idSenado ?idSenado` y lo SELECCIONA.
 export const BCN_MILITANCY_QUERY = `PREFIX bio:<http://datos.bcn.cl/ontologies/bcn-biographies#>
 PREFIX rdfs:<http://www.w3.org/2000/01/rdf-schema#>
-SELECT ?person ?personLabel ?party ?partyLabel ?beginDate ?endDate WHERE {
-  ?person a bio:Senador ; rdfs:label ?personLabel ; bio:hasMilitancy ?m .
+SELECT ?person ?personLabel ?idSenado ?party ?partyLabel ?beginDate ?endDate WHERE {
+  ?person bio:idSenado ?idSenado ; rdfs:label ?personLabel ; bio:hasMilitancy ?m .
   ?m bio:hasPoliticalParty ?party .
   OPTIONAL { ?party rdfs:label ?partyLabel }
   OPTIONAL { ?m bio:hasBeginning ?b . ?b bio:originalDate ?beginDate }
@@ -56,6 +61,7 @@ interface SparqlValue {
 interface SparqlBinding {
   person?: SparqlValue;
   personLabel?: SparqlValue;
+  idSenado?: SparqlValue;
   party?: SparqlValue;
   partyLabel?: SparqlValue;
   beginDate?: SparqlValue;
@@ -84,6 +90,8 @@ export interface SenadorMilitancia {
   nombreNormalizado: string;
   /** URI de persona de BCN (trazabilidad; NO se persiste como identidad). */
   personaUri: string;
+  /** id del portal del Senado (= parlid_senado de la maestra). JOIN determinista si presente. */
+  parlidSenado: string | null;
   partido: string;
   partidoAlias: string;
   desde: string;
@@ -107,6 +115,7 @@ export function parseBcnSenadores(json: SparqlResults): SenadorMilitancia[] {
       personaNombre: personLabel,
       nombreNormalizado: nombre_normalizado,
       personaUri: b.person?.value ?? "",
+      parlidSenado: b.idSenado?.value?.trim() || null,
       partido: partyLabel,
       partidoAlias: aliasDePartido(partyLabel),
       desde: b.beginDate?.value?.trim() ?? "",
@@ -166,6 +175,63 @@ export function enlazarSenadores(
       hasta: m.hasta,
       // BCN no da un "corte" limpio; `esActual` = militancia sin fin (hasta null). El runner
       // refina la actual por el partido vigente si aplica; aquí honest-state por FechaTermino.
+      esActual: m.hasta == null,
+      origen: opts.origen,
+      fechaCaptura: opts.fechaCaptura,
+      enlace: opts.enlace,
+    });
+  }
+
+  return { militancias, confirmados, sinMatch: [...sinMatch] };
+}
+
+/**
+ * Enlaza las militancias de BCN a la maestra por `parlid_senado` DETERMINISTA (corrección LIVE
+ * 90-03: BCN SÍ expone `bio:idSenado` en esta consulta → join exacto, más fuerte que el
+ * name-match). FAIL-CLOSED: confirma SOLO si el parlid empata con EXACTAMENTE una fila de la
+ * maestra; 0 o 2+ → skip + sinMatch (JAMÁS fabrica FK). Las militancias sin `parlidSenado` (BCN
+ * no lo trajo para esa persona) caen al `sinMatch` — la degradación se DECLARA, no se defaultea.
+ */
+export function enlazarSenadoresPorParlid(
+  senMilitancias: SenadorMilitancia[],
+  maestra: MaestraRow[],
+  opts: { origen: string; fechaCaptura: string; enlace: string },
+): EnlaceSenadoresResult {
+  const militancias: Militancia[] = [];
+  const confirmados: EnlaceConfirmado[] = [];
+  const confirmadoPorParlid = new Map<string, EnlaceConfirmado>();
+  const sinMatch = new Set<string>();
+
+  // Índice parlid_senado → id de la maestra (ambiguo si dos filas lo comparten).
+  const porParlid = new Map<string, string>();
+  for (const p of maestra) {
+    if (p.parlid_senado != null && p.parlid_senado !== "") {
+      porParlid.set(p.parlid_senado, porParlid.has(p.parlid_senado) ? "__AMBIGUO__" : p.id);
+    }
+  }
+
+  for (const m of senMilitancias) {
+    if (m.parlidSenado == null) {
+      sinMatch.add(m.personaNombre); // BCN no trajo idSenado → no enlazable por parlid
+      continue;
+    }
+    let enlace = confirmadoPorParlid.get(m.parlidSenado) ?? null;
+    if (enlace == null) {
+      const id = porParlid.get(m.parlidSenado);
+      if (id == null || id === "__AMBIGUO__") {
+        sinMatch.add(`SEN:${m.parlidSenado}`); // 0 o 2+ → fail-closed
+        continue;
+      }
+      enlace = confirmar(id);
+      confirmadoPorParlid.set(m.parlidSenado, enlace);
+      confirmados.push(enlace);
+    }
+    militancias.push({
+      parlamentarioId: enlace.parlamentarioId,
+      partido: m.partido,
+      partidoAlias: m.partidoAlias,
+      desde: m.desde,
+      hasta: m.hasta,
       esActual: m.hasta == null,
       origen: opts.origen,
       fechaCaptura: opts.fechaCaptura,

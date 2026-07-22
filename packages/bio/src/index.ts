@@ -34,6 +34,7 @@ export type { DiputadoBio, MilitanciaBio } from "./parse-diputados";
 export {
   parseBcnSenadores,
   enlazarSenadores,
+  enlazarSenadoresPorParlid,
   buildSparqlUrl,
   nombreMaestra,
   BCN_SPARQL_URL,

@@ -23,8 +23,7 @@ import type { MaestraRow } from "@obs/identity";
 import { parseDiputadosBio, DIPUTADOS_BIO_URL } from "./parse-diputados";
 import {
   parseBcnSenadores,
-  enlazarSenadores,
-  nombreMaestra,
+  enlazarSenadoresPorParlid,
   BCN_SPARQL_URL,
   type SparqlResults,
 } from "./parse-bcn-senadores";
@@ -88,8 +87,6 @@ export interface RunBioResult {
   sinMatch: string[];
 }
 
-const PERIODO_SENADO_DEFAULT = "2026-2034";
-
 /** Conector-fake que sirve un envelope ya materializado (para --from-r2, SIN red). */
 function conectorDeEnvelope(env: BioEnvelope): BioConector {
   return {
@@ -107,7 +104,9 @@ export async function runBio(opts: RunBioOpts): Promise<RunBioResult> {
   const log = opts.log ?? (() => {});
   const fechaCaptura = opts.fechaCaptura ?? new Date().toISOString();
   const date = fechaCaptura.slice(0, 10);
-  const periodoSenado = opts.periodoSenado ?? PERIODO_SENADO_DEFAULT;
+  // periodoSenado sigue en RunBioOpts por compat, pero el join de senadores ahora es por
+  // parlid_senado determinista (no por nombre+periodo) → ya no se usa aquí.
+  void opts.periodoSenado;
 
   let r2Path: string | null = null;
   let envelope: BioEnvelope;
@@ -205,23 +204,21 @@ export async function runBio(opts: RunBioOpts): Promise<RunBioResult> {
     }
   }
 
-  // (B) Senadores: match por nombre único (BCN sin parlid, research A3).
+  // (B) Senadores: match por parlid_senado DETERMINISTA (corrección LIVE 90-03: BCN SÍ expone
+  // bio:idSenado en la query → join exacto, más fuerte que el name-match del research A3, que
+  // queda como fallback documentado). Sin parlid o sin match único → skip + sinMatch (declarado).
   if (envelope.senadoresSparql != null) {
     const json = JSON.parse(envelope.senadoresSparql) as SparqlResults;
     const senMil = parseBcnSenadores(json);
-    // La maestra de senadores necesita nombre_normalizado COMPLETO para el join (materno).
-    const maestraSenado: MaestraRow[] = opts.maestra.map((p) => ({
-      ...p,
-      nombre_normalizado: nombreMaestra(p),
-    }));
-    const res = enlazarSenadores(senMil, maestraSenado, {
-      periodo: periodoSenado,
+    const res = enlazarSenadoresPorParlid(senMil, opts.maestra, {
       origen: "bcn-senadores",
       fechaCaptura,
       enlace: BCN_SPARQL_URL,
     });
     for (const m of res.militancias) militanciasOut.push(m);
-    for (const n of res.sinMatch) sinMatch.add(`SEN:${n}`);
+    // `enlazarSenadoresPorParlid` ya prefija sus entradas (`SEN:<parlid>` o el nombre crudo si BCN
+    // no trajo idSenado) → NO re-prefijar aquí (evita el doble `SEN:SEN:` cosmético).
+    for (const n of res.sinMatch) sinMatch.add(n);
     // parlamentario.partido de senadores ← militancia vigente (esActual = sin fin).
     for (const enlace of res.confirmados) {
       const vigente = res.militancias.find((m) => m.parlamentarioId === enlace.parlamentarioId && m.esActual);

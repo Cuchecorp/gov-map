@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import {
   parseBcnSenadores,
   enlazarSenadores,
+  enlazarSenadoresPorParlid,
   buildSparqlUrl,
   BCN_MILITANCY_QUERY,
   type SparqlResults,
@@ -57,6 +58,20 @@ describe("parse-bcn-senadores — mapeo sparql-results (allowlist)", () => {
     // sin espacios crudos ni saltos → codificado
     expect(url).not.toContain("\n");
     expect(url).not.toMatch(/query=PREFIX bio/);
+  });
+
+  it("la query filtra por bio:idSenado y lo selecciona (corrección LIVE 90-03)", () => {
+    expect(BCN_MILITANCY_QUERY).toContain("bio:idSenado");
+    expect(BCN_MILITANCY_QUERY).not.toContain("a bio:Senador"); // clase inexistente, devolvía 0
+    expect(BCN_MILITANCY_QUERY).toContain("?idSenado");
+  });
+
+  it("mapea parlidSenado desde idSenado del binding", () => {
+    const mil = parseBcnSenadores(cargar());
+    const nunez = mil.find((m) => m.personaNombre.startsWith("Ricardo"))!;
+    expect(nunez.parlidSenado).toBe("701");
+    const rincon = mil.find((m) => m.personaNombre.startsWith("Ximena"))!;
+    expect(rincon.parlidSenado).toBe("1009");
   });
 
   it("mapea cada binding a { partido, desde, hasta } sin PII", () => {
@@ -114,5 +129,51 @@ describe("parse-bcn-senadores — enlace fail-closed por nombre (A3: BCN sin par
     });
     expect(res.militancias).toHaveLength(0); // homónimo → skip
     expect(res.sinMatch).toContain("Ricardo Núñez Muñoz");
+  });
+});
+
+describe("parse-bcn-senadores — enlace DETERMINISTA por parlid_senado (corrección LIVE 90-03)", () => {
+  it("confirma militancia por parlid_senado exacto; parlid ausente en maestra → sinMatch", () => {
+    const maestra: MaestraRow[] = [maestraRow("701", "Ricardo Núñez Muñoz")]; // parlid_senado = id
+    const mil = parseBcnSenadores(cargar());
+    const res = enlazarSenadoresPorParlid(mil, maestra, {
+      origen: "bcn-senadores",
+      fechaCaptura: "2026-07-22T00:00:00Z",
+      enlace: "https://datos.bcn.cl/sparql",
+    });
+    // Núñez (701) enlazado; Rincón (1009) no está en la maestra → sinMatch.
+    expect(res.militancias.every((m) => m.parlamentarioId === "701")).toBe(true);
+    expect(res.militancias).toHaveLength(2);
+    expect(res.sinMatch).toContain("SEN:1009");
+    expect(res.confirmados).toHaveLength(1);
+  });
+
+  it("NO fabrica FK ante parlid_senado ambiguo (dos filas comparten parlid) → fail-closed", () => {
+    const maestra: MaestraRow[] = [
+      maestraRow("A", "Ricardo Núñez Muñoz"),
+      maestraRow("B", "Otro Nombre Cualquiera"),
+    ];
+    // Forzar ambigüedad: ambas filas con parlid_senado "701".
+    maestra[0]!.parlid_senado = "701";
+    maestra[1]!.parlid_senado = "701";
+    const mil = parseBcnSenadores(cargar()).filter((m) => m.parlidSenado === "701");
+    const res = enlazarSenadoresPorParlid(mil, maestra, {
+      origen: "bcn-senadores",
+      fechaCaptura: "2026-07-22T00:00:00Z",
+      enlace: "https://datos.bcn.cl/sparql",
+    });
+    expect(res.militancias).toHaveLength(0); // ambiguo → skip, cero FK
+    expect(res.sinMatch).toContain("SEN:701");
+  });
+
+  it("militancia sin parlidSenado (BCN no lo trajo) → sinMatch declarado, no defaulteado", () => {
+    const mil = parseBcnSenadores(cargar()).map((m) => ({ ...m, parlidSenado: null }));
+    const res = enlazarSenadoresPorParlid(mil, [maestraRow("701", "Ricardo Núñez Muñoz")], {
+      origen: "bcn-senadores",
+      fechaCaptura: "2026-07-22T00:00:00Z",
+      enlace: "https://datos.bcn.cl/sparql",
+    });
+    expect(res.militancias).toHaveLength(0);
+    expect(res.sinMatch.length).toBeGreaterThan(0);
   });
 });
