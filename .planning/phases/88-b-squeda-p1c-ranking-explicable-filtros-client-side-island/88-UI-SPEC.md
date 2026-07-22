@@ -1,7 +1,8 @@
 ---
 phase: 88
 slug: b-squeda-p1c-ranking-explicable-filtros-client-side-island
-status: draft
+status: approved
+reviewed_at: 2026-07-21
 shadcn_initialized: true
 preset: "shadcn Default / Slate — extended (crema --background + petróleo --accent-product, 60/30/10 LOCKED)"
 created: 2026-07-21
