@@ -29,12 +29,19 @@ const SEMANAS: SemanaIso[] = [
   { year: 2026, week: 25 },
 ];
 
-/** Fake del conector de Cámara con comportamiento configurable por semana. */
+/**
+ * Fake del conector de Cámara con comportamiento configurable por semana. `runIngest` invoca
+ * `fetchSemanaBytes` (Etapa 1 R2 opera sobre los bytes crudos); el fake lo modela devolviendo
+ * el HTML codificado (o relanzando el error configurado, p.ej. `CamaraBloqueadaError`).
+ */
 function fakeCamara(behavior: {
   semana?: (year: number, week: number) => Promise<string>;
 }): CitacionesCamaraConnector {
+  const semanaFn = behavior.semana ?? (async () => camaraHtml);
+  const enc = new TextEncoder();
   return {
-    fetchSemana: behavior.semana ?? (async () => camaraHtml),
+    fetchSemanaBytes: async (year: number, week: number) => enc.encode(await semanaFn(year, week)),
+    fetchSemana: semanaFn,
     fetchPdfTabla: () => ({ url: CAMARA_TABLA_PDF_URL, content_type: "application/pdf" }),
   } as unknown as CitacionesCamaraConnector;
 }
@@ -168,5 +175,90 @@ describe("runIngest — tolerante + degradación honesta", () => {
     expect(camaraTocada).toBe(false);
     expect(res.camaraCitaciones).toBe(0);
     expect(res.senadoCitaciones).toBeGreaterThanOrEqual(1);
+  });
+
+  it("(f) Etapa 1 R2: el HTML crudo de cada semana de Cámara va a R2 content-addressed", async () => {
+    const writer = new InMemoryAgendaWriter();
+    const puestos: { source: string; resource: string; ext: string; sha: string }[] = [];
+    const r2 = {
+      putImmutable: async (
+        source: string,
+        resource: string,
+        _date: string,
+        sha: string,
+        ext: string,
+      ) => {
+        puestos.push({ source, resource, ext, sha });
+        return { r2Path: `${source}/${resource}/${sha}.${ext}`, existed: false };
+      },
+    };
+
+    const res = await runIngest({
+      conectorCamara: fakeCamara({}),
+      conectorSenado: fakeSenado(),
+      writer,
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2,
+      r2Enabled: true,
+    });
+
+    // Una escritura R2 por semana de Cámara (Etapa 1), con el namespace correcto.
+    expect(puestos).toHaveLength(SEMANAS.length);
+    for (const p of puestos) {
+      expect(p.source).toBe("camara");
+      expect(p.resource).toBe("citaciones-semana");
+      expect(p.ext).toBe("html");
+      expect(p.sha).toMatch(/^[0-9a-f]{64}$/); // content-addressed (sha256 hex)
+    }
+    // La Etapa 2 sigue igual: las citaciones se parsean y escriben.
+    expect(res.camaraCitaciones).toBeGreaterThanOrEqual(1);
+  });
+
+  it("(g) R2 gateado: sin r2Enabled NO se toca R2 (degrada honesto)", async () => {
+    const writer = new InMemoryAgendaWriter();
+    let r2Tocado = false;
+    const r2 = {
+      putImmutable: async () => {
+        r2Tocado = true;
+        return { r2Path: "x", existed: false };
+      },
+    };
+
+    const res = await runIngest({
+      conectorCamara: fakeCamara({}),
+      conectorSenado: fakeSenado(),
+      writer,
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2,
+      r2Enabled: false, // gate cerrado
+    });
+
+    expect(r2Tocado).toBe(false); // R2 NO se tocó
+    expect(res.camaraCitaciones).toBeGreaterThanOrEqual(1); // pero la ingesta sí corrió
+  });
+
+  it("(h) R2 best-effort: un fallo de R2 NO aborta la Etapa 2 (parse+upsert siguen)", async () => {
+    const writer = new InMemoryAgendaWriter();
+    const r2 = {
+      putImmutable: async () => {
+        throw new Error("R2 401 simulado");
+      },
+    };
+
+    const res = await runIngest({
+      conectorCamara: fakeCamara({}),
+      conectorSenado: fakeSenado(),
+      writer,
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2,
+      r2Enabled: true,
+    });
+
+    // El fallo de R2 no cuenta como error de ingesta ni bloquea la escritura.
+    expect(res.camaraCitaciones).toBeGreaterThanOrEqual(1);
+    expect(res.errores).toHaveLength(0);
   });
 });

@@ -133,7 +133,31 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
       // Reintento con backoff SOLO ante 403 del WAF (Cloudflare endurecido).
       for (let intento = 0; intento <= reintentos; intento++) {
         try {
-          html = await opts.conectorCamara.fetchSemana(semana.year, semana.week);
+          // Flujo LOCKED de 2 etapas (espejo del paso 4 sala-PDF): fetch de los BYTES crudos →
+          // Etapa 1 (R2, gateado por r2Enabled, best-effort) content-addressed → decode a HTML
+          // (Etapa 2) para parse+upsert. El crudo se persiste ANTES de tocar Supabase.
+          const bytes = await opts.conectorCamara.fetchSemanaBytes(semana.year, semana.week);
+          if (opts.r2Enabled && opts.r2) {
+            try {
+              const sha = await sha256Hex(bytes);
+              const date = new Date().toISOString().slice(0, 10);
+              const { r2Path: key } = await opts.r2.putImmutable(
+                "camara",
+                "citaciones-semana",
+                date,
+                sha,
+                "html",
+                bytes,
+              );
+              log(`ingest: Cámara ${clave} → HTML crudo en R2 (${key})`);
+            } catch (r2Err) {
+              // R2 401/red: los bytes ya están en memoria; la Etapa 2 sigue (no aborta).
+              log(
+                `ingest: Cámara ${clave} → respaldo R2 falló (sigue parse): ${r2Err instanceof Error ? r2Err.message : String(r2Err)}`,
+              );
+            }
+          }
+          html = new TextDecoder().decode(bytes);
           break;
         } catch (err) {
           if (err instanceof CamaraBloqueadaError) {

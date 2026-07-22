@@ -108,9 +108,19 @@ export class CitacionesCamaraConnector {
     }
   }
 
-  /** Fetch del HTML de citaciones de una semana ISO. */
+  /**
+   * Fetch de los BYTES crudos del HTML de citaciones de una semana ISO. Se expone aparte de
+   * `fetchSemana` para que el caller pueda persistir el crudo content-addressed en R2 (Etapa 1
+   * LOCKED, espejo de `fetchTablaSalaPdf`) ANTES de decodificar+parsear (Etapa 2). Un 403 del WAF
+   * se relanza como `CamaraBloqueadaError` (igual que `fetchSemana`).
+   */
+  async fetchSemanaBytes(year: number, week: number): Promise<Uint8Array> {
+    return this.fetchBytes(this.urlSemana(year, week));
+  }
+
+  /** Fetch del HTML de citaciones de una semana ISO (decodifica los bytes crudos). */
   async fetchSemana(year: number, week: number): Promise<string> {
-    const bytes = await this.fetchBytes(this.urlSemana(year, week));
+    const bytes = await this.fetchSemanaBytes(year, week);
     return new TextDecoder().decode(bytes);
   }
 

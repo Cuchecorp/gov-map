@@ -189,6 +189,64 @@ select camara, semana_iso, count(*) from citacion group by camara, semana_iso or
 
 ---
 
+## 5. Backfill acotado (agente) — dos etapas R2, counts antes/después
+
+**Qué:** un backfill **ACOTADO** por el agente de la celda **comisiones × Cámara** (la única candidata: THIN por sub-ingesta + histórico navegable por semana ISO — §3 NUEVO). Rango elegido: **5 semanas ISO contiguas hacia atrás** NO capturadas antes de W26 (la DB tenía solo W26/W28 — §1.5), dentro del período legislativo vigente: **2026-W20 … 2026-W24**. Todas confirmadas como histórico alcanzable (Probe 4b ya había traído W20 → 200). Pocas decenas de requests, rate-limit 2-3s LOCKED (el `HostRateLimiter` del CLI lo impone; NUNCA ráfagas).
+
+**Comando exacto corrido** (desde la RAÍZ del repo, para que `loadEnv` lea el `.env` — ver nota de cwd abajo):
+
+```bash
+# 1) dry-run (verificar shape sin escribir):
+./node_modules/.bin/tsx packages/agenda/src/run-agenda-prod-cli.ts --dry-run --desde 2026-W20 --hasta 2026-W24
+# 2) WRITE real (Etapa 1 R2 crudo + Etapa 2 upsert PROD):
+./node_modules/.bin/tsx packages/agenda/src/run-agenda-prod-cli.ts --desde 2026-W20 --hasta 2026-W24
+```
+
+**Dos etapas LOCKED cableadas en ESTE backfill (decisión (a) del orquestador — MAJOR-1):** el crudo HTML de cada semana de Cámara se persiste **content-addressed en R2 ANTES del parse/write**, espejo exacto del patrón sala-PDF (paso 4). Se agregó `CitacionesCamaraConnector.fetchSemanaBytes` (bytes crudos) y el paso 1 de `ingest-run.ts` hace `r2.putImmutable("camara","citaciones-semana",date,sha256,"html",bytes)` gateado por `r2Enabled`, best-effort (un fallo de R2 no aborta la Etapa 2). Evidencia LIVE (log de la corrida real):
+
+```
+ingest: Cámara 2026-W20 → HTML crudo en R2 (camara/citaciones-semana/2026-07-22/61125e76…d16e.html)
+ingest: Cámara 2026-W21 → HTML crudo en R2 (camara/citaciones-semana/2026-07-22/cf450689…dd3d.html)
+ingest: Cámara 2026-W22 → HTML crudo en R2 (camara/citaciones-semana/2026-07-22/b69b9bb8…61f3.html)
+ingest: Cámara 2026-W23 → HTML crudo en R2 (camara/citaciones-semana/2026-07-22/25065da9…38da.html)
+ingest: Cámara 2026-W24 → HTML crudo en R2 (camara/citaciones-semana/2026-07-22/edf21891…b485e2.html)
+...
+agenda LIVE: camara=130 senado=20 sesiones=3 camaraSesiones=22 errores=0 degradaciones=0
+```
+
+Con el crudo en R2, el hash-check pre-descarga (sha256 / `If-None-Match`) queda disponible para el masivo (resuelve MINOR-1). El backfill también refrescó, de forma idempotente y **por upsert de clave natural**, la ventana forward-only del Senado (citaciones=20, sesiones=3) y la tabla de sala de Cámara vía DeepSeek-desde-PDF (22 ítems, PDF crudo también a R2).
+
+**Counts N ANTES / DESPUÉS** (verbatim, `PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA`):
+
+| Métrica (Cámara) | ANTES | DESPUÉS | Δ |
+|------------------|-------|---------|---|
+| `count(*)` citaciones | **34** | **164** | **+130** |
+| `count(distinct semana_iso)` | **2** | **6** | **+4** |
+
+Query re-ejecutable:
+```sql
+select count(*), count(distinct semana_iso) from citacion where camara='camara';
+```
+
+Desglose por semana ISO (verbatim, DESPUÉS):
+
+```
+2026-W20|38   ← NUEVA (backfill)
+2026-W21|18   ← NUEVA (backfill)
+2026-W23|37   ← NUEVA (backfill)
+2026-W24|37   ← NUEVA (backfill)
+2026-W26|32   (ya estaba)
+2026-W28|2    (ya estaba)
+```
+
+**Nota honesta sobre W22:** `2026-W22` devolvió **0 citaciones** (semana genuinamente sin citaciones de comisión — el fetch fue 200, no 403; no se fabricó fila). Por eso el rango de 5 semanas suma 4 semanas ISO nuevas, no 5. El hueco W25/W27 sigue existiendo (no estaba en el rango elegido) — la cobertura de Cámara es **parcial declarada**, NO completa (ver §7).
+
+**Alcance de R2 en las otras celdas (transparencia MAJOR-1):** en esta fase van a R2 crudo el **paso 1 (Cámara citaciones HTML)** y el **paso 4 (Cámara tabla-sala PDF)**. Los **pasos 2-3 (Senado citaciones + weekly_table)** NO se cablearon a R2 en esta fase: el Senado es una API JSON forward-only sin histórico, y el reuso del envelope R2 para el Senado es una extensión menor de mayor alcance — se declara pendiente aquí y en el runbook (no bloquea la auditoría, cuyo candidato de ingesta es Cámara). Estado de R2 por path: **camara/citaciones-semana ✓**, **camara/tabla-sala ✓**, **senado/* ✗ (pendiente)**.
+
+**Replay `--from-r2` (declaración MAJOR-2):** **NO existe hoy** un replay `--from-r2` para citaciones. El `run-agenda-prod-cli.ts` **no** acepta `--from-r2` (a diferencia del CLI de votos de 66), y el único crudo R2 que se persiste es el de Cámara citaciones (nuevo en esta fase) + la tabla-sala PDF; **no hay lector** que reconstruya la Etapa 2 desde ese crudo. La cláusula `--from-r2` de SC#3 queda **satisfecha por el runbook futuro** (`93-BACKFILL-CITACIONES-RUNBOOK.md` § extensión pendiente), **no por esta fase**. Lo que SÍ existe hoy: el crudo content-addressed en R2 (la mitad "fuente→R2" del dos-etapas), listo para que el masivo/94 agregue el lector "R2→Supabase".
+
+---
+
 ## Apéndice — reproducibilidad
 
 - **Queries psql:** todas verbatim en §1, re-ejecutables con `PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -c "<query>"`. Re-corrida 2026-07-22 = idéntica al research (cero deriva).
