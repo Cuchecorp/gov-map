@@ -299,16 +299,27 @@ export default async function ParlamentarioPage({
 }
 
 // ── Bloques cross-link (BIO-04) ────────────────────────────────────────────────
-// Cada uno lee su RPC cacheada y arma su CrossLinkBloque. El conteo honesto usa el
-// total real que emite la RPC (bounded). "Ver los N" navega al directorio
-// pre-filtrado sólo cuando el eje admite un filtro directo (partido). Los ejes
-// zona/comisión no tienen filtro de directorio equivalente todavía → sin "Ver los N"
-// (el bloque muestra hasta 8; no fabrica un link que no filtraría).
+// Cada uno lee su RPC cacheada y arma su CrossLinkBloque.
+//
+// WR-01/WR-02 (conteo honesto + truncamiento visible): el conteo YA NO usa
+// `filas.length` (que se cap-eaba en 20 y mentía el total). El total REAL viaja en
+// la columna `total_n` que 0061 proyecta vía `count(*) over ()` ANTES del `limit`.
+// `totalReal(filas)` lo lee de la primera fila (idéntico en todas). Cuando el total
+// excede el LÍMITE_VISUAL del componente, el bloque declara "mostrando los primeros N"
+// (CrossLinkBloque) — el truncamiento NUNCA es silencioso, aun sin "Ver los N" (los
+// ejes zona/comisión/co-autoría no tienen filtro de directorio equivalente todavía).
+
+/** Total REAL del eje (0061 `total_n`, antes del cap). Fallback a filas.length si el
+ *  RPC aún no emitiera la columna (defensivo). */
+function totalReal(filas: CrossLinkFila[]): number {
+  const n = filas[0]?.total_n;
+  return typeof n === "number" ? n : filas.length;
+}
 
 /** "Del mismo partido" — no muestra PartidoChip por fila (redundante). */
 async function CrossLinkCopartidarios({ id }: { id: string }) {
   const filas = (await getCopartidarios(id)) as CrossLinkFila[];
-  const total = filas.length;
+  const total = totalReal(filas);
   return (
     <CrossLinkBloque
       heading="Del mismo partido"
@@ -321,10 +332,10 @@ async function CrossLinkCopartidarios({ id }: { id: string }) {
   );
 }
 
-/** "De la misma zona" — PartidoChip por fila añade contexto. */
+/** "De la misma zona" — el partido NO viaja en esta RPC → sin PartidoChip por fila (WR-05). */
 async function CrossLinkMismaZona({ id }: { id: string }) {
   const filas = (await getMismaZona(id)) as CrossLinkFila[];
-  const total = filas.length;
+  const total = totalReal(filas);
   return (
     <CrossLinkBloque
       heading="De la misma zona"
@@ -332,14 +343,16 @@ async function CrossLinkMismaZona({ id }: { id: string }) {
       filas={filas}
       totalN={total}
       verTodosHref={null}
+      mostrarPartido={false}
     />
   );
 }
 
-/** "En la misma comisión" — PartidoChip por fila + comisión compartida. */
+/** "En la misma comisión" — comisión compartida por fila. El partido NO viaja en
+ *  esta RPC → sin PartidoChip por fila (WR-05). */
 async function CrossLinkCoComisionados({ id }: { id: string }) {
   const filas = (await getCoComisionados(id)) as CrossLinkFila[];
-  const total = filas.length;
+  const total = totalReal(filas);
   return (
     <CrossLinkBloque
       heading="En la misma comisión"
@@ -347,6 +360,7 @@ async function CrossLinkCoComisionados({ id }: { id: string }) {
       filas={filas}
       totalN={total}
       verTodosHref={null}
+      mostrarPartido={false}
     />
   );
 }
@@ -354,7 +368,7 @@ async function CrossLinkCoComisionados({ id }: { id: string }) {
 /** "Han co-firmado proyectos" — n_proyectos es dato honesto, NO criterio de orden. */
 async function CrossLinkCoautores({ id }: { id: string }) {
   const filas = (await getCoautores(id)) as CrossLinkFila[];
-  const total = filas.length;
+  const total = totalReal(filas);
   return (
     <CrossLinkBloque
       heading="Han co-firmado proyectos"
@@ -362,6 +376,7 @@ async function CrossLinkCoautores({ id }: { id: string }) {
       filas={filas}
       totalN={total}
       verTodosHref={null}
+      mostrarPartido={false}
     />
   );
 }

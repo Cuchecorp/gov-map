@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { CamaraChip } from "@/components/camara-chip";
-import { PartidoChip } from "@/components/partido-chip";
 import { formatNombre } from "@/lib/format";
 import type { CrossLinkRow } from "@/lib/types";
 
@@ -26,8 +25,14 @@ import type { CrossLinkRow } from "@/lib/types";
  *    pinta una `<section>` vacía.
  *  - AUTO-EXCLUSIÓN: la garantiza la RPC (where <> p_id) — el propio parlamentario
  *    nunca aparece en sus propios bloques.
- *  - PartidoChip por fila OPCIONAL: útil en "misma comisión"/"misma zona" (el partido
- *    añade contexto); redundante en "mismo partido" → se OMITE ahí (mostrarPartido=false).
+ *  - CONTEO VS CAP (WR-01/WR-02): el canal de datos emite hasta LÍMITE_VISUAL filas,
+ *    pero el conteo honesto (`totalN`) es el total REAL del eje (0061 `total_n`). Si
+ *    `totalN` excede lo mostrado, el bloque DECLARA el truncamiento ("Mostrando los
+ *    primeros N") — el cap JAMÁS es silencioso. "Ver los N" navega SOLO si hay un
+ *    directorio pre-filtrado equivalente (`verTodosHref`); si no, queda la leyenda.
+ *  - SIN PartidoChip por fila (WR-05): las RPCs de cross-link emiten sólo id/nombre/
+ *    cámara[/comisión/n_proyectos] — NUNCA `partido`. El chip por fila era código
+ *    muerto (siempre null) → se eliminó. El partido se ve en la ficha de cada quien.
  *
  * Presentacional puro (server-friendly): recibe filas ya serializadas por el server,
  * NUNCA toca Supabase. La leyenda anti-causal se exporta para que el linter
@@ -46,12 +51,13 @@ export const LEYENDA_CROSS_LINK =
 /** Límite visual de filas por bloque en la ficha (§4). */
 const LIMITE_VISUAL = 8;
 
-export interface CrossLinkFila extends CrossLinkRow {
-  /** Provenance del partido para el PartidoChip opcional por fila (omitido si null). */
-  partido?: string | null;
-  partido_fecha_captura?: string | null;
-  partido_origen?: string | null;
-}
+/**
+ * Fila de un bloque cross-link. Es exactamente `CrossLinkRow` (id/nombre/cámara
+ * [+comision_nombre/n_proyectos/total_n según RPC]). WR-05: ya NO extiende con
+ * `partido*` — ninguna RPC de cross-link emite el partido, así que el chip por fila
+ * era código muerto. El alias se mantiene por claridad semántica en la ficha.
+ */
+export type CrossLinkFila = CrossLinkRow;
 
 export interface CrossLinkBloqueProps {
   /** Heading del bloque (LOCKED §Copywriting): "Del mismo partido", etc. */
@@ -63,11 +69,14 @@ export interface CrossLinkBloqueProps {
    * recorta a LIMITE_VISUAL para el render; el conteo honesto refleja el total.
    */
   filas: CrossLinkFila[];
-  /** Total real que comparte el eje (para "Ver los N" y para el conteo). */
+  /** Total real que comparte el eje (0061 `total_n`; para el conteo y el truncamiento). */
   totalN: number;
   /** Destino del "Ver los N" (directorio pre-filtrado). Si null, no se muestra. */
   verTodosHref: string | null;
-  /** PartidoChip por fila: false en "mismo partido" (redundante). Default true. */
+  /**
+   * @deprecated WR-05: las RPCs de cross-link no emiten partido; el chip por fila se
+   * eliminó. La prop se conserva sólo para no romper llamadores; se IGNORA.
+   */
   mostrarPartido?: boolean;
 }
 
@@ -77,14 +86,15 @@ export function CrossLinkBloque({
   filas,
   totalN,
   verTodosHref,
-  mostrarPartido = true,
 }: CrossLinkBloqueProps) {
   // Bloque vacío (N=0) → la <section> entera se OMITE (§4, §6).
   if (filas.length === 0) return null;
 
   // Orden NEUTRAL preservado: NO re-ordenar. Sólo recortar al límite visual.
   const visibles = filas.slice(0, LIMITE_VISUAL);
-  const excede = totalN > LIMITE_VISUAL && verTodosHref != null;
+  // WR-02: hay más de lo mostrado si el total REAL excede lo visible.
+  const truncado = totalN > visibles.length;
+  const excede = truncado && verTodosHref != null;
 
   return (
     <section className="mt-12">
@@ -104,13 +114,6 @@ export function CrossLinkBloque({
               >
                 {formatNombre(p.nombre)}
               </Link>
-              {mostrarPartido && (
-                <PartidoChip
-                  partido={p.partido ?? null}
-                  fechaCaptura={p.partido_fecha_captura ?? null}
-                  origen={p.partido_origen ?? null}
-                />
-              )}
               {/* Comisión compartida (solo co-comisión): dato factual del eje. */}
               {p.comision_nombre && (
                 <span className="text-sm text-muted-foreground">
@@ -121,13 +124,22 @@ export function CrossLinkBloque({
           </li>
         ))}
       </ul>
-      {excede && (
+      {excede ? (
+        // "Ver los N" — sólo cuando el eje tiene un directorio pre-filtrado.
         <a
           href={verTodosHref}
           className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-accent-product underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-product"
         >
           Ver los {totalN}
         </a>
+      ) : (
+        // WR-02: sin destino "Ver los N", el truncamiento NUNCA es silencioso —
+        // se declara explícitamente cuántos se muestran del total real.
+        truncado && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Mostrando los primeros {visibles.length} de {totalN}.
+          </p>
+        )
       )}
     </section>
   );
