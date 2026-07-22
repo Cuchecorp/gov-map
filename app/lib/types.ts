@@ -24,6 +24,9 @@ export interface ProyectoRow {
   origen: string;
   fecha_captura: string;
   enlace: string;
+  /** ID de tramitación en Cámara (mig 0058). null si no se ha poblado por el backfill.
+   *  Deep-link: tramitacion.aspx?prmID={prm_id_camara}&prmBOLETIN={boletin} */
+  prm_id_camara: string | null;
 }
 
 export interface TramitacionEventoRow {
