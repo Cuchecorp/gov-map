@@ -214,15 +214,21 @@ async function main(): Promise<void> {
   const maestra = cargarMaestra(root);
   log(`bio: maestra cargada (${maestra.length} parlamentarios)`);
 
-  // Etapa 1 (R2): solo en LIVE con credenciales R2. En dry-run no se construye (verificado por test).
-  let r2Store: R2Store | undefined;
-  if (!dryRun && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY && env.R2_ENDPOINT_URL) {
-    r2Store = new R2Store({
-      accessKeyId: env.R2_ACCESS_KEY_ID,
-      secretAccessKey: env.R2_SECRET_ACCESS_KEY,
-      endpoint: env.R2_ENDPOINT_URL,
+  const tieneCredsR2 = Boolean(env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY && env.R2_ENDPOINT_URL);
+  const construirR2 = (): R2Store =>
+    new R2Store({
+      accessKeyId: env.R2_ACCESS_KEY_ID!,
+      secretAccessKey: env.R2_SECRET_ACCESS_KEY!,
+      endpoint: env.R2_ENDPOINT_URL!,
       bucket: env.R2_BUCKET ?? "observatorio",
     });
+
+  // Etapa 1 (R2) del camino LIVE (fetch → PUT crudo): solo en LIVE con creds. En dry-run NO se
+  // construye para el LIVE path → una corrida LIVE en dry-run jamás escribe R2 (WR-02 preserva esto).
+  // El replay `--from-r2` construye su propio store read-only más abajo (permitido bajo dry-run).
+  let r2Store: R2Store | undefined;
+  if (!dryRun && tieneCredsR2) {
+    r2Store = construirR2();
   }
 
   // Etapa 2 writer: Supabase real solo si hay URL + service key; si no (o --dry-run) → in-memory.
@@ -239,15 +245,19 @@ async function main(): Promise<void> {
   }
 
   // --from-r2: replay desde el envelope crudo en R2 (CERO red). El conector no se usa (fake).
+  // WR-02: replay = R2-read → parse → write. Es una operación segura incluso bajo --dry-run (lee R2,
+  // enruta writes al InMemoryBioWriter → inspeccionar conteos sin tocar PROD). Por eso el store de
+  // replay se construye si HAY creds R2, independiente de dry-run. Sin creds → error claro.
   if (fromR2 != null) {
-    if (r2Store == null) {
-      throw new Error("--from-r2 requiere R2_* en .env (y no --dry-run)");
+    if (!tieneCredsR2) {
+      throw new Error("--from-r2 requiere R2_* en .env (credenciales de lectura del crudo)");
     }
+    const replayStore = r2Store ?? construirR2(); // en dry-run r2Store es undefined → construir aquí
     const res = await runBio({
       conector: { fetchEnvelope: async () => ({} as BioEnvelope) }, // no se invoca en modo fromR2
-      writer,
+      writer, // dry-run → InMemoryBioWriter (ya elegido arriba)
       maestra,
-      r2Store,
+      r2Store: replayStore,
       fromR2,
       log,
     });
