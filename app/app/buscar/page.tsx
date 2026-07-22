@@ -156,7 +156,7 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
   // T-88-10: año solo de min(fecha) de tramitacion_evento; JAMÁS de fecha_captura.
   const { data: eventosData, error: eventosError } = await sb
     .from("tramitacion_evento")
-    .select("boletin, fecha")
+    .select("boletin, fecha, tipo")
     .in("boletin", boletines)
     .order("fecha", { ascending: true });
   if (eventosError) {
@@ -168,13 +168,29 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
       </div>
     );
   }
-  const eventos = (eventosData as Pick<TramitacionEventoRow, "boletin" | "fecha">[] | null) ?? [];
-  // Tomar el primer evento por boletín (ya vienen ordenados asc → min fecha)
+  const eventos = (eventosData as Pick<TramitacionEventoRow, "boletin" | "fecha" | "tipo">[] | null) ?? [];
+  /**
+   * WR-02: año del proyecto = fecha del evento de ingreso (tipo 'Ingreso').
+   * Regla: preferir el evento más antiguo cuyo tipo matchee /ingreso/i; si
+   * ninguno matchea (datos faltantes), caer al evento más antiguo de cualquier
+   * tipo como proxy (orden asc garantiza la min fecha al primer elemento).
+   * WR-03: filtrar fechas no parseables ANTES de tomar el min para no contaminar
+   * el map con valores vacíos o malformados que lexicográficamente preceden a ISO.
+   */
   const minFechaPorBoletin = new Map<string, string>();
+  // Agrupar por boletín — eventos ya vienen ordenados asc por fecha.
+  const eventosPorBoletin = new Map<string, typeof eventos>();
   for (const ev of eventos) {
-    if (!minFechaPorBoletin.has(ev.boletin)) {
-      minFechaPorBoletin.set(ev.boletin, ev.fecha);
-    }
+    if (!eventosPorBoletin.has(ev.boletin)) eventosPorBoletin.set(ev.boletin, []);
+    eventosPorBoletin.get(ev.boletin)!.push(ev);
+  }
+  for (const [boletin, evs] of eventosPorBoletin) {
+    // WR-03: solo fechas parseables (deriveAnio no nulo).
+    const validos = evs.filter((e) => deriveAnio(e.fecha) != null);
+    if (validos.length === 0) continue;
+    // WR-02: preferir primer evento tipo Ingreso; si no, primer evento válido.
+    const ingreso = validos.find((e) => /ingreso/i.test(e.tipo ?? ""));
+    minFechaPorBoletin.set(boletin, (ingreso ?? validos[0]).fecha);
   }
 
   // Normalizar texto libre de iniciativa a "Mensaje" | "Moción" | null (honesto).
@@ -189,7 +205,7 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
   // Construir BuscarSliceRow[] preservando el orden rank del retrieval (RANK-01).
   // Advisory #3: fallback truthy-trim estado→etapa antes de estadoBucket.
   const sliceEnriquecido: BuscarSliceRow[] = ordenados.map((p) => {
-    const estadoInput = (p.estado && p.estado.trim()) ? p.estado : p.etapa;
+    const estadoInput = p.estado?.trim() || p.etapa?.trim() || null;
     return {
       boletin: p.boletin,
       titulo: p.titulo,
@@ -211,9 +227,11 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
   return (
     <>
       <p className="text-sm text-muted-foreground mt-4">{countCopy}</p>
-      <BuscarFiltros slice={sliceEnriquecido} />
-      <section className="mt-6 space-y-4">
-        {sliceEnriquecido.map((p) => {
+      {/* CR-01: renderRow slot wires the island to SearchResultCard;
+           static section removed so filtering/reordering affects the visible cards. */}
+      <BuscarFiltros
+        slice={sliceEnriquecido}
+        renderRow={(p) => {
           const raw = porBoletin.get(p.boletin);
           return (
             <SearchResultCard
@@ -232,8 +250,8 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
               }}
             />
           );
-        })}
-      </section>
+        }}
+      />
 
       {(page > 1 || hayMas) && (
         <nav className="mt-8 flex items-center justify-between" aria-label="Paginación">
