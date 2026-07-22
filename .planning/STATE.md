@@ -119,6 +119,8 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ### Blockers/Concerns
 
+- OPERADOR 2026-07-22 (durante pasada 2): deep-links tramitación FIXEADOS y deployados (quick 260722-eia, versión d99b8fa9 — enlaceHumanoProyecto + link Cámara prmID + token urgencia 3-estados). PENDIENTE del mismo reporte: citaciones (sala y comisiones) y tablas de sesión están MAL WIRED en el frontend — es requisito EXPLÍCITO de Phase 93 (auditoría debe medir el wiring frontend, no solo el scraping) y Phase 94 (fix de /agenda + wiring en ficha), iterando con BrowserOS.
+
 - [Phase 64] opendata.camara.cl UP a escala HOY = MEDIUM confidence → SPIKE bloqueante; fallback honesto a agregados si falla. Códigos Abstención/Pareo (A1) nunca confirmados live → fijar con test.
 - [Phase 69] RUT-01 = write remoto vía db-url = checkpoint de OPERADOR (bloquea TODO P5).
 - [Phase 70] Cuota ChileCompra (10k/día) + ticket operador; SERVEL sin feed estable (toil operador por elección).
