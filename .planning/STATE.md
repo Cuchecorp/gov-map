@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
 status: verifying
-stopped_at: Completed 92-02-PLAN.md
-last_updated: "2026-07-22T18:35:17.745Z"
+stopped_at: Completed 92-04-PLAN.md
+last_updated: "2026-07-22T19:48:30.625Z"
 last_activity: 2026-07-22
 progress:
   total_phases: 11
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 22
-  completed_plans: 21
-  percent: 55
+  completed_plans: 22
+  percent: 64
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 91 — PERSONAS P2b — Ficha bio + partido directo + cross-links factuales
+**Current focus:** Phase 92 — PERSONAS P2c — Lobby legible + audiencia→PL fail-closed (CERRADA — canal LIVE en PROD)
 
 ## Current Position
 
-Phase: 91 (PERSONAS P2b — Ficha bio + partido directo + cross-links factuales) — EXECUTING
-Plan: 3 of 3 complete
-Status: Phase complete — ready for verification
+Phase: 92 (PERSONAS P2c — Lobby legible + audiencia→PL fail-closed) — COMPLETE
+Plan: 4 of 4 complete
+Status: Phase complete — 0062 aplicada a PROD, deploy fa4d4369 LIVE, gate BrowserOS aprobado
 Last activity: 2026-07-22
 
 ## Performance Metrics
@@ -76,6 +76,7 @@ Last activity: 2026-07-22
 | Phase 92 P01 | ~14min | 2 tasks | 5 files |
 | Phase 92 P02 | 6 | 2 tasks | 4 files |
 | Phase 92 P03 | 12min | 2 tasks | 4 files |
+| Phase 92 P04 | ~55min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 92-02: boletines_mencionados en LobbyAudienciaRow fluye in-place al slice cronologico y a los grupos desde el mismo objeto todas
 - [Phase ?]: 92-02: .in() de existencia paginado en IN_CHUNK=500 (< cap PostgREST) -> bound por request siempre < 1000 (MAJOR-5)
 - [Phase ?]: 92-03: sección menciones de lobby (carril hermano SEPARADO de 0048, parlamentario ENLAZADO LOB-03, degrade honesto PGRST202 hasta apply 0062 Plan 04); linter con NEGACIONES_LOCKED antes de SUPERFICIES_LOBBY (lección BLOCKER 91) + mutation self-check LOBBY
+- [Phase ?]: [Phase 92] 92-04: 0062 APLICADA a PROD (psql --single-transaction, precedente 0059-0061) + pgTAP 13/13 contra schema aplicado (2 fixes Rule-1 de fixture: NOT NULL periodo/origen/enlace + total_n no isolation-safe vs 14309-04 real con audiencias reales); cobertura DECLARADA 195/5106 confirmadas (~3.8%) sobre 82 boletines distintos (query verbatim en runbook); deploy Cloudflare fa4d4369 arrastra fixes UI 91 fuera del bundle e0c969af; gate BrowserOS APROBADO por DOM del deploy real (materia completa+chips fail-closed doble / seccion #lobby-menciones separada de 0048 + leyenda anti-causal + parlamentario enlazado / header partido 91 sin regresion). LOB-01/02/03 LIVE en PROD. Fase 92 CERRADA.
 
 ### Pending Todos
 
@@ -166,8 +168,8 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-22T18:34:59.539Z
-Stopped at: Completed 92-02-PLAN.md
+Last session: 2026-07-22T19:48:25.584Z
+Stopped at: Completed 92-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

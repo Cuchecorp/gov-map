@@ -225,7 +225,7 @@ Plans:
 - [x] 92-01-PLAN.md — Canal de datos: extractor puro de boletines embebidos en materia + guard equivalencia TS + migración 0062 RPC lobby_menciones_de_boletin (fail-closed doble, doble-revoke, total_n) + pgTAP + allowlist
 - [x] 92-02-PLAN.md — Ficha parlamentario: materia legible en ambas vistas (whitespace-pre-line, sin clamp) + chip "Menciona boletín N" server-computado fail-closed doble
 - [x] 92-03-PLAN.md — Ficha proyecto: sección #lobby-menciones separada de 0048 (parlamentario enlazado, leyenda anti-causal LOCKED, conteo honesto) + rail + linter extendido con NEGACIONES_LOCKED
-- [ ] 92-04-PLAN.md — Cierre: apply 0062 a PROD (psql, checkpoint operador) + pgTAP + cobertura declarada + deploy Cloudflare (arrastra fixes UI 91) + gate BrowserOS
+- [x] 92-04-PLAN.md — Cierre: apply 0062 a PROD (psql, checkpoint operador) + pgTAP + cobertura declarada + deploy Cloudflare (arrastra fixes UI 91) + gate BrowserOS
 
 **UI hint**: yes
 
