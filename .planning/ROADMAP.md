@@ -136,7 +136,7 @@ Plans:
 
 - [x] 88-01-PLAN.md — Normalizador estado→bucket (FILT-03) + deriveAnio honesto + tipo BuscarSliceRow (puro, tests, censo PROD)
 - [x] 88-02-PLAN.md — Island buscar-filtros.tsx: facetas año/iniciativa/estado/cámara, counts honestos de-estos-N, orden explicable, sin_dato visible, partido opcional (FILT-01/FILT-02/RANK-01)
-- [ ] 88-03-PLAN.md — Wiring: enriquecer slice en page.tsx (año min tramitacion_evento) + montar island + chip Mensaje/Moción+año en card + SUPERFICIES_BUSQUEDA en linter
+- [x] 88-03-PLAN.md — Wiring: enriquecer slice en page.tsx (año min tramitacion_evento) + montar island + chip Mensaje/Moción+año en card + SUPERFICIES_BUSQUEDA en linter
 
 **UI hint**: yes
 
