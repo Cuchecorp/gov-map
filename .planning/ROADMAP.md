@@ -107,6 +107,8 @@ PASADA 3 — Seguridad:
   3. La búsqueda por idea matriz y normas/cuerpos legales en lenguaje natural opera con pesos declarados (A título / B idea matriz / C normas), fusionada por RRF sobre RANK (no suma ponderada de scores)
   4. La nueva RPC `buscar_proyectos_hibrido` está en `PUBLIC_RPC_ALLOWLIST` y devuelve boletín+rank; `buscar.ts` recableado; el golden set en CI pasa y no regresiona NL/similares (RPC vieja tras flag hasta que la nueva domine)
 
+  *Nota de diseño (resuelta en planning 87):* el "tsvector STORED" del criterio 2 era imposible tal cual — título vive en `proyecto` e idea_matriz/normas en `proyecto_ficha`; una columna generada no cruza tablas. Diseño real (research 87): FTS ad-hoc con `LEFT JOIN proyecto_ficha` + config `es_unaccent` + GIN de expresión sobre título; `pg_trgm` diferido a 88 como escape-hatch. El OUTCOME del criterio (literal siempre encuentra, misma config índice/consulta) se cumple igual.
+
 **Plans**: 3 plans
 
 Plans:
