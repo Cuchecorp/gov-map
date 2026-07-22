@@ -56,3 +56,18 @@ export {
   COMISIONES_CATALOGO_URL,
 } from "./parse-comisiones";
 export type { ComisionCatalogo, IntegranteComision } from "./parse-comisiones";
+
+// Writer idempotente (interface + InMemory fake) + impl Supabase.
+export {
+  InMemoryBioWriter,
+  comisionKey,
+  militanciaKey,
+  membresiaKey,
+} from "./writer";
+export type { BioWriter, PartidoUpdate } from "./writer";
+export { SupabaseBioWriter } from "./writer-supabase";
+export type { SupabaseBioWriterOptions } from "./writer-supabase";
+
+// Orquestador dos-etapas fail-closed (fetch→R2→parse→match→write; --from-r2 replay).
+export { runBio, conectorDeEnvelope } from "./run-bio";
+export type { RunBioOpts, RunBioResult, BioEnvelope, BioConector } from "./run-bio";
