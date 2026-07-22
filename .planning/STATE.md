@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
-status: verifying
-stopped_at: "Roadmap v9.0 creado — 11 fases (86-96) en tres pasadas; 27/27 requisitos mapeados; listo para /gsd:plan-phase 86"
-last_updated: "2026-07-22T16:28:23.800Z"
+status: executing
+stopped_at: "Completado 91-02-PLAN.md — PartidoChip neutro + comisiones + militancias montados en la ficha (BIO-02/BIO-03); suite app 1106/1106 verde"
+last_updated: "2026-07-22T16:37:45.000Z"
 last_activity: 2026-07-22
 progress:
   total_phases: 11
   completed_phases: 5
   total_plans: 18
-  completed_plans: 16
-  percent: 45
+  completed_plans: 18
+  percent: 47
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 90 — PERSONAS P2a — Conector bio oficial dos-etapas + membresía de comisiones
+**Current focus:** Phase 91 — PERSONAS P2b — Ficha bio + partido directo + cross-links factuales
 
 ## Current Position
 
-Phase: 90 (PERSONAS P2a — Conector bio oficial dos-etapas + membresía de comisiones) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 91 (PERSONAS P2b — Ficha bio + partido directo + cross-links factuales) — EXECUTING
+Plan: 2 of 3 complete
+Status: 91-02 completo (PartidoChip + comisiones + militancias montados) — listo para 91-03 (cross-links + filtro partido)
 Last activity: 2026-07-22
 
 ## Performance Metrics
@@ -71,6 +71,7 @@ Last activity: 2026-07-22
 | Phase 90 P01 | ~15min | 3 tasks | 10 files |
 | Phase 90 P03 | ~55min | 3 tasks | 8 files |
 | Phase 91 P01 | 8min | 3 tasks | 5 files |
+| Phase 91 P02 | ~8min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
