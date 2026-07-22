@@ -169,6 +169,56 @@ export class CamaraConnector {
     return [...out];
   }
 
+  /**
+   * Enumera pares {boletin, prmId, xml} (mociones + mensajes) INGRESADOS en un año
+   * vía WSLegislativo.asmx. Espeja `enumerarProyectosXAnno` EXACTAMENTE salvo por:
+   * (a) expone el XML crudo de cada op (para que el caller lo persista en R2 antes de parsear),
+   * (b) devuelve `CamaraProyectoPar[]` (con prmId) en lugar de `string[]`.
+   *
+   * El rate-limit LOCKED se preserva: `this.fetch` (assertAllowedUrl → robots → rateLimiter
+   * 2-3s → fetcher) se usa SIEMPRE; NUNCA hand-roll fetch directo a camara.cl (T-89-01).
+   * Año validado 1990..2100 + encodeURIComponent (V5). Best-effort por op; WR-04 si AMBAS fallan.
+   */
+  async enumerarProyectosConIdXAnno(
+    anno: number,
+    /** Callback que recibe el XML crudo de cada op ANTES del parse (para persistir en R2). */
+    onXml?: (op: string, xml: string) => Promise<void>,
+  ): Promise<import("./parse-camara-legislativo").CamaraProyectoPar[]> {
+    if (!Number.isInteger(anno) || anno < 1990 || anno > 2100) {
+      throw new Error(`anno inválido: ${anno} (esperado entero 1990..2100)`);
+    }
+    const vistos = new Set<string>();
+    const out: import("./parse-camara-legislativo").CamaraProyectoPar[] = [];
+    const ops = ["retornarMocionesXAnno", "retornarMensajesXAnno"] as const;
+    let fallos = 0;
+    for (const op of ops) {
+      const url = `${BASE_LEG}/${op}?prmAnno=${encodeURIComponent(String(anno))}`;
+      try {
+        const xml = await this.fetch(url); // política LOCKED (T-89-01)
+        // Etapa 1: exponer el crudo ANTES del parse (el caller persiste a R2).
+        if (onXml) await onXml(op, xml);
+        // Etapa 2: parsear y dedup por boletin.
+        for (const par of parseCamaraLegislativo(xml)) {
+          if (!vistos.has(par.boletin)) {
+            vistos.add(par.boletin);
+            out.push(par);
+          }
+        }
+      } catch (e) {
+        fallos++;
+        console.warn(
+          `[connector-camara] enumerarProyectosConIdXAnno ${op} ${anno} omitido:`,
+          e instanceof Error ? e.message : e,
+        );
+      }
+    }
+    // WR-04: ambas ops falladas = fallo TOTAL (audible, no silencioso).
+    if (fallos === ops.length) {
+      throw new Error(`enumerarProyectosConIdXAnno ${anno}: ambas ops fallaron`);
+    }
+    return out;
+  }
+
   /** Fetch del XML de votaciones por boletín base (`getVotaciones_Boletin`). */
   async fetchVotacionesBoletin(boletinBase: string): Promise<string> {
     const url = `${BASE}/getVotaciones_Boletin?prmBoletin=${encodeURIComponent(boletinBase)}`;
