@@ -378,6 +378,106 @@ describe("EstadoActualView — render honesto", () => {
     expect(monos.length).toBeGreaterThan(0);
   });
 
+  it("Gap #1: citacionesPasadas → 'Citado el {fecha} en {comisión}' con marca sobria '(sesión pasada)'", () => {
+    const estado: EstadoActual = {
+      etapaLinea: "Etapa: Primer trámite",
+      citacionesPasadas: [
+        { comision: "de Economía", fecha: new Date("2026-07-21T00:00:00Z") },
+      ],
+    };
+    const { container } = render(<EstadoActualView estado={estado} />);
+    expect(screen.getByText(/Citado el/)).toBeInTheDocument();
+    expect(screen.getByText(/de Economía/)).toBeInTheDocument();
+    // marca sobria en text-muted-foreground (NUNCA destructive/alarma).
+    const marca = screen.getByText(/\(sesión pasada\)/);
+    expect(marca).toBeInTheDocument();
+    expect(marca.className).toContain("text-muted-foreground");
+    expect(marca.className).not.toContain("destructive");
+    // la fecha vive en un span font-mono.
+    expect(container.querySelectorAll("span.font-mono").length).toBeGreaterThan(0);
+  });
+
+  it("Gap #1: sin citacionesPasadas → sub-bloque omitido", () => {
+    const estado: EstadoActual = { etapaLinea: "Etapa: Primer trámite" };
+    render(<EstadoActualView estado={estado} />);
+    expect(screen.queryByText(/\(sesión pasada\)/)).not.toBeInTheDocument();
+  });
+
+  it("Gap #2: una aparición en tabla de sala → línea con link petróleo a /agenda?semana=", () => {
+    const estado: EstadoActual = {
+      etapaLinea: "Etapa: Primer trámite",
+      enTablaSala: [
+        {
+          camara: "senado",
+          fecha: new Date("2026-07-14T00:00:00Z"),
+          semanaIso: "2026-W29",
+        },
+      ],
+    };
+    render(<EstadoActualView estado={estado} />);
+    expect(screen.getByText(/En tabla de sala de la Senado del/)).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /ver en la agenda/ });
+    expect(link).toHaveAttribute("href", "/agenda?semana=2026-W29");
+    expect(link.className).toContain("text-accent-product");
+  });
+
+  it("Gap #2: varias apariciones → conteo honesto 'En tabla de sala N veces' con link por semana", () => {
+    const estado: EstadoActual = {
+      etapaLinea: "Etapa: Primer trámite",
+      enTablaSala: [
+        {
+          camara: "senado",
+          fecha: new Date("2026-07-14T00:00:00Z"),
+          semanaIso: "2026-W29",
+        },
+        {
+          camara: "senado",
+          fecha: new Date("2026-07-07T00:00:00Z"),
+          semanaIso: "2026-W28",
+        },
+      ],
+    };
+    render(<EstadoActualView estado={estado} />);
+    expect(screen.getByText(/En tabla de sala 2 veces/)).toBeInTheDocument();
+    const links = screen.getAllByRole("link");
+    const semanas = links.map((l) => l.getAttribute("href"));
+    expect(semanas).toContain("/agenda?semana=2026-W29");
+    expect(semanas).toContain("/agenda?semana=2026-W28");
+  });
+
+  it("Gap #2: sin enTablaSala → línea omitida (nunca 'no está en tabla')", () => {
+    const estado: EstadoActual = { etapaLinea: "Etapa: Primer trámite" };
+    const { container } = render(<EstadoActualView estado={estado} />);
+    expect(screen.queryByText(/tabla de sala/)).not.toBeInTheDocument();
+    expect(container.textContent ?? "").not.toMatch(/no está en tabla/i);
+  });
+
+  it("bloque se renderiza aunque SOLO haya pasadas o tabla de sala (guard actualizado)", () => {
+    const soloPasadas: EstadoActual = {
+      citacionesPasadas: [
+        { comision: "de Economía", fecha: new Date("2026-07-21T00:00:00Z") },
+      ],
+    };
+    render(<EstadoActualView estado={soloPasadas} />);
+    expect(
+      screen.getByRole("heading", { name: /¿Dónde está hoy\?/ }),
+    ).toBeInTheDocument();
+    cleanup();
+    const soloSala: EstadoActual = {
+      enTablaSala: [
+        {
+          camara: "camara",
+          fecha: new Date("2026-07-14T00:00:00Z"),
+          semanaIso: "2026-W29",
+        },
+      ],
+    };
+    render(<EstadoActualView estado={soloSala} />);
+    expect(
+      screen.getByRole("heading", { name: /¿Dónde está hoy\?/ }),
+    ).toBeInTheDocument();
+  });
+
   it("SC3: sin citacionVigente → la línea de citación se OMITE por completo", () => {
     const estado: EstadoActual = { etapaLinea: "Etapa: Primer trámite" };
     render(<EstadoActualView estado={estado} />);

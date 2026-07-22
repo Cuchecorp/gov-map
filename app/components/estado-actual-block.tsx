@@ -305,12 +305,27 @@ export function derivarEstadoActual(
  * padding `p-6` (lg). Heading factual neutro permitido ("¿Dónde está hoy?").
  */
 export function EstadoActualView({ estado }: { estado: EstadoActual }) {
-  const { etapaLinea, ultimoHito, urgenciaEstado, urgenciaFuente, citacionVigente } =
-    estado;
+  const {
+    etapaLinea,
+    ultimoHito,
+    urgenciaEstado,
+    urgenciaFuente,
+    citacionVigente,
+    citacionesPasadas,
+    enTablaSala,
+  } = estado;
 
   // Sin ninguna línea derivable → no se renderiza el bloque (cero contenido
-  // fabricado). El resto de la ficha cubre la información.
-  if (!etapaLinea && !ultimoHito && !urgenciaEstado && !citacionVigente)
+  // fabricado). El resto de la ficha cubre la información. Incluye los campos
+  // nuevos (gap #1/#2): el bloque se pinta si hay CUALQUIER línea derivable.
+  if (
+    !etapaLinea &&
+    !ultimoHito &&
+    !urgenciaEstado &&
+    !citacionVigente &&
+    !citacionesPasadas &&
+    !enTablaSala
+  )
     return null;
 
   return (
@@ -377,9 +392,65 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
             .
           </p>
         )}
+        {/*
+          Gap #1 (CIT-05): citaciones PASADAS. Contexto temporal NEUTRO para prensa
+          que revisa un proyecto histórico — la marca "(sesión pasada)" es sobria en
+          `text-muted-foreground`, NUNCA alarma/destructive (§Color). Fecha en mono.
+          El sub-bloque se omite por completo si el campo está ausente.
+        */}
+        {citacionesPasadas &&
+          citacionesPasadas.map((c, i) => (
+            <p key={`pasada-${i}`}>
+              Citado el{" "}
+              <span className="font-mono">{fechaCorta(c.fecha)}</span> en{" "}
+              {c.comision}{" "}
+              <span className="text-sm text-muted-foreground">
+                (sesión pasada)
+              </span>
+            </p>
+          ))}
+        {/*
+          Gap #2 (CIT-04): tabla de sala. Una aparición → línea con link petróleo
+          (regla accent #2) a /agenda?semana=. Varias → conteo honesto + lista de
+          cada semana. Se omite si el campo está ausente (nunca "no está en tabla").
+        */}
+        {enTablaSala && enTablaSala.length === 1 && (
+          <p>
+            En tabla de sala de la {camaraNombre(enTablaSala[0].camara)} del{" "}
+            <span className="font-mono">{fechaCorta(enTablaSala[0].fecha)}</span>{" "}
+            <a
+              href={`/agenda?semana=${enTablaSala[0].semanaIso}`}
+              className="text-accent-product underline underline-offset-2"
+            >
+              ver en la agenda
+            </a>
+          </p>
+        )}
+        {enTablaSala && enTablaSala.length > 1 && (
+          <p>
+            En tabla de sala {enTablaSala.length} veces:{" "}
+            {enTablaSala.map((s, i) => (
+              <span key={`sala-${i}`}>
+                {i > 0 && ", "}
+                <a
+                  href={`/agenda?semana=${s.semanaIso}`}
+                  className="text-accent-product underline underline-offset-2"
+                >
+                  {camaraNombre(s.camara)},{" "}
+                  <span className="font-mono">{fechaCorta(s.fecha)}</span>
+                </a>
+              </span>
+            ))}
+          </p>
+        )}
       </div>
     </section>
   );
+}
+
+/** Nombre legible de la cámara para el copy de la tabla de sala. */
+function camaraNombre(c: "camara" | "senado"): string {
+  return c === "senado" ? "Senado" : "Cámara";
 }
 
 /**
@@ -394,6 +465,7 @@ export async function EstadoActualBlock({ boletin }: { boletin: string }) {
     { data: proyecto, error: proyectoError },
     { data: eventos, error: eventosError },
     { data: puntos, error: citacionError },
+    { data: itemsSala, error: salaError },
   ] = await Promise.all([
     sb
       .from("proyecto")
@@ -407,10 +479,17 @@ export async function EstadoActualBlock({ boletin }: { boletin: string }) {
       .order("fecha", { ascending: true }),
     // SC3: citaciones del boletín vía embed `citacion_punto × citacion` (tablas
     // no-PID/no-PII, public-read 0010; guard-permitidas). Sólo comisión + fecha:
-    // lo mínimo para derivar la citación vigente/futura más próxima.
+    // lo mínimo para derivar la citación vigente/futura y las pasadas (gap #1).
     sb
       .from("citacion_punto")
       .select("citacion:citacion(comision, fecha, semana_iso)")
+      .eq("boletin", boletin),
+    // Gap #2 (CIT-04): tabla de sala del boletín vía embed
+    // `sesion_tabla_item × sesion_sala` (no-PII, public-read 0010). `sesion_sala`
+    // NO guarda semana_iso (0010) → solo camara + fecha; la semana se deriva en TS.
+    sb
+      .from("sesion_tabla_item")
+      .select("sesion:sesion_sala(camara, fecha)")
       .eq("boletin", boletin),
   ]);
 
@@ -429,6 +508,13 @@ export async function EstadoActualBlock({ boletin }: { boletin: string }) {
   if (citacionError) {
     throw new Error(
       `EstadoActualBlock: no se pudo leer la citación de ${boletin}: ${citacionError.message}`,
+    );
+  }
+  // #34: un fallo real de lectura de la tabla de sala ≠ "no está en tabla". Se
+  // lanza (espejo de las otras 3 lecturas), NUNCA se degrada a línea vacía.
+  if (salaError) {
+    throw new Error(
+      `EstadoActualBlock: no se pudo leer la tabla de sala de ${boletin}: ${salaError.message}`,
     );
   }
 
@@ -451,10 +537,28 @@ export async function EstadoActualBlock({ boletin }: { boletin: string }) {
     })
     .map((c) => ({ comision: c.comision, fecha: c.fecha }));
 
+  // Gap #2: aplana el embed de sala a `{ camara, fecha }`. Supabase tipa el embed
+  // to-one como objeto | array según el shape de la relación; se normaliza a objeto.
+  type SalaEmbed = {
+    sesion:
+      | { camara: "camara" | "senado" | null; fecha: string | null }
+      | { camara: "camara" | "senado" | null; fecha: string | null }[]
+      | null;
+  };
+  const tablaSala: TablaSalaCruda[] = ((itemsSala as SalaEmbed[] | null) ?? [])
+    .flatMap((i) => {
+      const s = i.sesion;
+      if (!s) return [];
+      return Array.isArray(s) ? s : [s];
+    })
+    .map((s) => ({ camara: s.camara, fecha: s.fecha }));
+
   const estado = derivarEstadoActual(
     proyecto,
     (eventos as TramitacionEventoRow[]) ?? [],
     citaciones,
+    new Date(),
+    tablaSala,
   );
   return <EstadoActualView estado={estado} />;
 }
