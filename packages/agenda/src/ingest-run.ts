@@ -127,6 +127,11 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
     // en vez de abortar toda la fuente Cámara. Se registran las semanas omitidas para
     // que el reporte distinga "bloqueada" de "obtenida-y-vacía".
     const semanasBloqueadas: string[] = [];
+    // IN-02: el respaldo R2 (Etapa 1) es best-effort, pero un fallo NO puede ser invisible —
+    // si R2 cae persistentemente, el dos-etapas LOCKED degrada silenciosamente a una-etapa.
+    // Se enumeran las semanas cuyo crudo NO se persistió para reflejarlo como `degradación`
+    // (honestidad, no error: no cambia el exit-code; la Etapa 2 siguió).
+    const semanasSinRespaldoR2: string[] = [];
     for (const semana of opts.semanas) {
       const clave = semanaIsoKey(semana.year, semana.week);
       let html: string | null = null;
@@ -158,6 +163,8 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
               log(`ingest: Cámara ${clave} → HTML crudo en R2 (${key})`);
             } catch (r2Err) {
               // R2 401/red: los bytes ya están en memoria; la Etapa 2 sigue (no aborta).
+              // IN-02: se registra la semana para exponer la degradación en el reporte.
+              semanasSinRespaldoR2.push(clave);
               log(
                 `ingest: Cámara ${clave} → respaldo R2 falló (sigue parse): ${r2Err instanceof Error ? r2Err.message : String(r2Err)}`,
               );
@@ -210,6 +217,19 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
           `Cloudflare bloqueó (403 persistente) ${semanasBloqueadas.length} semana(s) ` +
           `durante esta corrida; las demás semanas sí se ingestaron`,
         semanasOmitidas: semanasBloqueadas,
+      });
+    }
+    // IN-02: si el respaldo R2 (Etapa 1) falló para alguna semana, se refleja como
+    // degradación (NO error → no cambia exit-code): el crudo versionado NO se persistió,
+    // así que el dos-etapas LOCKED quedó como una-etapa para esas semanas. Un operador
+    // ve así una caída persistente de R2 en la línea-resumen en vez de que sea invisible.
+    if (semanasSinRespaldoR2.length > 0) {
+      degradaciones.push({
+        fuente: "camara-citaciones-r2",
+        motivo:
+          `respaldo R2 (crudo versionado) falló para ${semanasSinRespaldoR2.length} semana(s); ` +
+          `la Etapa 2 (parse+upsert) sí corrió, pero el crudo NO quedó en R2`,
+        semanasOmitidas: semanasSinRespaldoR2,
       });
     }
   }

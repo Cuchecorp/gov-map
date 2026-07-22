@@ -280,5 +280,10 @@ describe("runIngest — tolerante + degradación honesta", () => {
     // El fallo de R2 no cuenta como error de ingesta ni bloquea la escritura.
     expect(res.camaraCitaciones).toBeGreaterThanOrEqual(1);
     expect(res.errores).toHaveLength(0);
+    // IN-02: el fallo best-effort de R2 NO es invisible → se refleja como degradación
+    // (honestidad, sin cambiar el exit-code) enumerando las semanas sin respaldo.
+    const degR2 = res.degradaciones.find((d) => d.fuente === "camara-citaciones-r2");
+    expect(degR2).toBeDefined();
+    expect(degR2?.semanasOmitidas).toHaveLength(SEMANAS.length);
   });
 });
