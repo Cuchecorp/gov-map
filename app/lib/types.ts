@@ -94,10 +94,14 @@ export interface ProyectoFichaRow {
  * Fila del RPC `match_proyectos` (migración 0011). El RPC retorna SOLO
  * (boletin, similarity) — nunca columnas no públicas (T-07-03). `similarity`
  * se usa server-side para el orden; NUNCA se muestra al usuario (UI-SPEC §5).
+ *
+ * `similarity` es `null` en la ruta híbrida (`buscar_proyectos_hibrido`), donde el
+ * orden viene del `rank` del RPC y el score semántico no está disponible. Un consumidor
+ * que lea `similarity` para gating/threshold DEBE tratar `null` como "sin score".
  */
 export interface MatchProyectoRow {
   boletin: string;
-  similarity: number;
+  similarity: number | null;
 }
 
 /**

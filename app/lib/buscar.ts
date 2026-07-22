@@ -225,13 +225,14 @@ export async function buscarProyectos(
     // CR-02 (Phase 87): la RPC devuelve (boletin, rank); normalizamos al shape
     // MatchProyectoRow {boletin, similarity} en el boundary para que los
     // consumidores downstream no reciban similarity=undefined. El orden ya viene
-    // correcto del RPC (order by rank asc), así que similarity=0 es inofensivo.
+    // correcto del RPC (order by rank asc). similarity=null señaliza honestamente
+    // que el score semántico no está disponible en esta ruta (WR-04, Phase 89).
     const hybridRows = (
       hybridData as { boletin: string; rank: number }[] | null
     ) ?? [];
     const normalizedRows: MatchProyectoRow[] = hybridRows.map((r) => ({
       boletin: r.boletin,
-      similarity: 0, // n/a en híbrida — el orden viene del RPC (rank asc)
+      similarity: null, // n/a en híbrida — el orden viene del RPC (rank asc)
     }));
     const filtered = opts.excludeBoletin
       ? normalizedRows.filter((r) => r.boletin !== opts.excludeBoletin)
