@@ -28,16 +28,28 @@ import { sourceLabel } from "@/lib/types";
  * (`fechaCorta`). El chip NUNCA dice "actual" sin la fecha de fuente. El `aria-label`
  * expone partido + fuente + fecha a lectores de pantalla.
  *
- * Consumido por: header de ficha (Plan 02) y cross-links/directorio (Plan 03).
+ * WR-04 — `tooltip` (default true): el Tooltip Radix envuelve el Badge en un
+ * `TooltipTrigger` INTERACTIVO (focusable, event-bound). Anidar eso DENTRO de otro
+ * elemento interactivo (p.ej. el `<Link>` de una fila del directorio) es HTML
+ * inválido/hostil a la interacción (un focus-stop dentro de un anchor; el click del
+ * chip compite con la navegación del link). Con `tooltip={false}` el chip se renderiza
+ * como un Badge PLANO no interactivo cuya procedencia va en `title`/`aria-label` — sin
+ * trigger anidado. Usar `tooltip={false}` SIEMPRE que el chip viva dentro de un
+ * `<Link>`/`<button>` (directorio); `tooltip` (default) sólo donde el chip es hoja.
+ *
+ * Consumido por: header de ficha (Plan 02, tooltip) y directorio (Plan 03, plano).
  */
 export function PartidoChip({
   partido,
   fechaCaptura,
   origen,
+  tooltip = true,
 }: {
   partido: string | null;
   fechaCaptura: string | Date | null;
   origen: string | null;
+  /** false → Badge plano (title/aria-label, sin trigger interactivo). Default true. */
+  tooltip?: boolean;
 }) {
   // Omisión honesta: sin partido → no se renderiza nada (espejo CamaraChip).
   const nombre = (partido ?? "").trim();
@@ -58,6 +70,23 @@ export function PartidoChip({
     : `según ${fuente}`;
 
   const aria = `Partido: ${nombre}, ${provenance}`;
+
+  // WR-04: variante PLANA (no interactiva) para uso dentro de un elemento interactivo
+  // (p.ej. fila del directorio envuelta en <Link>). La procedencia va en title +
+  // aria-label — sin TooltipTrigger anidado. Mismo look NEUTRO (bg-muted).
+  if (!tooltip) {
+    return (
+      <Badge
+        variant="outline"
+        data-slot="partido-chip"
+        aria-label={aria}
+        title={provenance}
+        className={cn("bg-muted border-border text-foreground")}
+      >
+        {nombre}
+      </Badge>
+    );
+  }
 
   return (
     <TooltipProvider>

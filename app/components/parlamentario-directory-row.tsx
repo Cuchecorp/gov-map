@@ -17,6 +17,10 @@ import type { ParlamentarioListadoRow } from "@/lib/types";
  * militancia vigente, omitido honestamente si null). El row-type NO trae `rut`/
  * `email` ni URL de foto, así que la fila no puede renderizarlos ni por accidente.
  * El enlace usa el id D####/S####. Sin foto.
+ *
+ * WR-04: la fila ENTERA es un `<Link>` (anchor). El PartidoChip usa `tooltip={false}`
+ * → Badge PLANO (procedencia en title/aria-label), NUNCA un TooltipTrigger Radix
+ * interactivo anidado dentro del anchor (focus-stop inválido + click en conflicto).
  */
 export function ParlamentarioDirectoryRow({
   parlamentario: p,
@@ -43,6 +47,7 @@ export function ParlamentarioDirectoryRow({
           partido={p.partido}
           fechaCaptura={p.partido_fecha_captura}
           origen={p.partido_origen}
+          tooltip={false}
         />
       </div>
       {cargoPartes.length > 0 && (
