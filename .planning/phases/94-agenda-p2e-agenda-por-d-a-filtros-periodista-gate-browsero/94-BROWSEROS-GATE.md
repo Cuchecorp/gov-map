@@ -226,3 +226,44 @@ Los 2 gaps de wiring de la ficha (93 §6) quedan cerrados en PROD (citaciones pa
    congeladas.
 4. **Limpieza:** el staging `C:/Temp/obs-build` y `C:/Temp/obs-out` (que contienen `.env` vía la
    variable `--env-file` del build) se borran al cierre (precedente 92-04).
+
+---
+
+## ADDENDUM — Regresión de zona horaria detectada en verificación live (post-gate)
+
+**Fecha:** 2026-07-22 · **Detectada por:** el orquestador en la verificación live del deploy `9aba6a1a`.
+
+### Síntoma
+El render/agrupación por día de /agenda —y la ficha— mostraban las citaciones **a −1 día**:
+una citación de `fecha = 2026-07-20T00:00Z` con `horario = "10:30"` renderizaba **"19-jul" /
+"domingo 19"** cuando el día real publicado es el **lunes 20**. Afectaba TODOS los días (badge de
+`citacion-card`, `dayKey`/`dayLabel` del slice, banner de cobertura y búsqueda), no solo casos borde.
+
+### Causa raíz — contrato de datos date-only
+`citacion.fecha` y `sesion_sala.fecha` se almacenan como **MEDIANOCHE UTC date-only** (verificado en
+PROD: **278/278** citaciones con `00:00:00+00`; la hora real vive en la columna `horario` texto). La
+**parte fecha UTC** (`toISOString().slice(0,10)`) YA ES el día calendario chileno publicado por la
+fuente. El código de 94 aplicaba la regla LOCKED "renderizar en tz America/Santiago" (correcta para
+timestamps REALES con hora: lobby, tramitación) también a estos campos date-only → interpretar esa
+medianoche UTC en Chile **fabrica el día anterior** (offset −03/−04 retrocede al día previo).
+
+### Fix aplicado
+- **Helper único** `app/lib/dia-calendario.ts` (`diaCalendarioCitacion` / `badgeFechaCitacion` /
+  `dayLabelCitacion`) que codifica el contrato: para estos dos campos se usa la parte fecha UTC (el
+  día publicado), SIN conversión de zona. Docstring con el contrato completo.
+- **`app/app/agenda/page.tsx`**: slice `dayKey`/`dayLabel`, cobertura min/max y resultados de
+  búsqueda usan el helper (antes `DIA_CALENDARIO_CHILE` tz America/Santiago).
+- **`app/components/citacion-card.tsx`**: badge de fecha usa `badgeFechaCitacion` (revierte el
+  `timeZone: America/Santiago` SOLO para estos campos date-only).
+- **`app/components/estado-actual-block.tsx`**: `citacionVigente`/`citacionesPasadas` comparan el
+  día publicado (helper) vs **hoy-Chile** (el instante actual SÍ es tz Chile — correcto);
+  `semanaIsoChile` deriva la semana del día publicado. `DIA_CALENDARIO_CHILE` → `…_HOY` (aplica
+  SOLO a "hoy"). 11929-13 (hoy 22-jul) sigue vigente; 18193-06 (21-jul) sigue pasada.
+- **`app/components/agenda-filtros.tsx`**: docstring — el island consume `dayKey`/`dayLabel` del
+  server tal cual, NUNCA re-deriva con `Date` local ni tz.
+- **Tests**: el test "00:00Z renderiza el día anterior" se **invirtió** (00:00Z renderiza SU fecha
+  UTC) + caso 20-jul/19-jul; nuevo `lib/dia-calendario.test.ts` con fixture midnight-UTC + horario
+  texto. Suite completa verde (**1217**), `tsc -b` limpio.
+
+### Verificación live del redeploy
+Ver §Redeploy más abajo (hash nuevo + evidencia curl del día correcto "20-jul"/"lunes 20").
