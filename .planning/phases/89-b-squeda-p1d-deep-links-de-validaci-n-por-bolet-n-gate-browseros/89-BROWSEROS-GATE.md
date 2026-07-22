@@ -153,3 +153,10 @@ fuentes oficiales están live y verificados empíricamente en el deploy de produ
 3. **Senado timeout transient:** el portal del Senado tiene latencia variable (timeout
    en 16244-07 primer intento, OK en retry inmediato). El script ya tiene --max-time 40
    y --connect-timeout 15; considerar reintentos automáticos en el script.
+
+## Cobertura prmID post-backfill completo (2026-07-22)
+
+Backfill 1990-2024 terminado (exit 0): **2.549/3.659 (69,7%)** proyectos con `prm_id_camara`.
+Los 1.110 restantes no aparecen en la enumeración por año del WS de la Cámara (proyectos
+solo-Senado u origen no listado). Comportamiento fail-honest: esas fichas muestran solo el
+deep-link Senado. N/M declarado — no se finge cobertura completa.
