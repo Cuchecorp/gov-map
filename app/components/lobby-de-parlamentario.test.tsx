@@ -96,6 +96,55 @@ describe("agruparPorContraparte — orden por frecuencia DESC", () => {
     expect(grupos).toEqual([
       expect.objectContaining({ contraparte: "Enel Chile S.A.", n: 1 }),
     ]);
+    // Dedupe por audiencia: UNA sola reunión pese a dos nombres repetidos.
+    expect(grupos[0].reuniones).toHaveLength(1);
+  });
+
+  // ── Plan 92-02 (MAJOR-4): shape explícito `reuniones` + regresión de semántica ──
+  it("MAJOR-4: cada grupo lleva `reuniones` paralelo a `fechas`, con materia y boletines por reunión", () => {
+    const audiencias = [
+      makeAudiencia({
+        identificador: "E1",
+        fecha: "2026-01-01T00:00:00Z",
+        materia: "Boletín 14309-04 salud",
+        boletines_mencionados: ["14309-04"],
+        contrapartes: [cp("Enel Chile S.A.")],
+      }),
+      makeAudiencia({
+        identificador: "E2",
+        fecha: "2026-02-01T00:00:00Z",
+        materia: "Reunión sin mención",
+        boletines_mencionados: [],
+        contrapartes: [cp("Enel Chile S.A.")],
+      }),
+    ];
+    const grupos = agruparPorContraparte(audiencias);
+    expect(grupos).toHaveLength(1);
+    const g = grupos[0];
+    // `reuniones` y `fechas` son PARALELOS (mismo índice, misma reunión).
+    expect(g.reuniones).toHaveLength(2);
+    expect(g.reuniones.map((r) => r.fechaTexto)).toEqual(g.fechas);
+    // Cada reunión conserva SU materia y SUS boletines validados.
+    expect(g.reuniones[0].materia).toBe("Boletín 14309-04 salud");
+    expect(g.reuniones[0].boletines).toEqual(["14309-04"]);
+    expect(g.reuniones[1].materia).toBe("Reunión sin mención");
+    expect(g.reuniones[1].boletines).toEqual([]);
+  });
+
+  it("MAJOR-4: la dedupe por audiencia y el orden freq-DESC se conservan con `reuniones`", () => {
+    const audiencias = [
+      makeAudiencia({ identificador: "E1", fecha: "2026-01-01T00:00:00Z", contrapartes: [cp("Enel Chile S.A.")] }),
+      makeAudiencia({ identificador: "C1", fecha: "2026-02-01T00:00:00Z", contrapartes: [cp("Codelco")] }),
+      makeAudiencia({ identificador: "E2", fecha: "2026-03-01T00:00:00Z", contrapartes: [cp("Enel Chile S.A.")] }),
+    ];
+    const grupos = agruparPorContraparte(audiencias);
+    // Freq DESC: Enel (2 reuniones) antes que Codelco (1).
+    expect(grupos.map((g) => [g.contraparte, g.n])).toEqual([
+      ["Enel Chile S.A.", 2],
+      ["Codelco", 1],
+    ]);
+    expect(grupos[0].reuniones).toHaveLength(2);
+    expect(grupos[1].reuniones).toHaveLength(1);
   });
 });
 
@@ -435,6 +484,162 @@ describe("LobbyView (sección lobby) — ProvenanceBadge por fila (vista cronol�
     );
     const fuentes = screen.getAllByText(/fuente oficial ↗/i);
     expect(fuentes.length).toBe(2);
+  });
+});
+
+// ── Plan 92-02 (LOB-01): materia COMPLETA legible en AMBAS vistas ───────────────
+describe("LobbyView — materia legible en ambas vistas (LOB-01, whitespace-pre-line, sin clamp)", () => {
+  const MATERIA_MULTILINEA =
+    "Primera línea de la materia.\nSegunda línea con más detalle.\nTercera línea final.";
+
+  it("cronológica: la materia multilínea COMPLETA es visible, en un bloque whitespace-pre-line", () => {
+    const { container } = render(
+      <LobbyView
+        data={makeViewData({
+          vista: "cronologica",
+          audiencias: [makeAudiencia({ materia: MATERIA_MULTILINEA })],
+        })}
+      />,
+    );
+    // El texto completo (las 3 líneas) está en el DOM — nada recortado.
+    expect(container.textContent).toContain("Primera línea de la materia.");
+    expect(container.textContent).toContain("Segunda línea con más detalle.");
+    expect(container.textContent).toContain("Tercera línea final.");
+    // El bloque de materia honra los \n de la fuente (whitespace-pre-line) y NO clampa.
+    const bloque = Array.from(container.querySelectorAll("div")).find((d) =>
+      d.className.includes("whitespace-pre-line"),
+    );
+    expect(bloque).toBeTruthy();
+    expect(bloque!.className).toContain("leading-relaxed");
+    expect(bloque!.className).not.toMatch(/line-clamp|truncate|max-h/);
+  });
+
+  it("agrupada: la materia por reunión es visible (whitespace-pre-line), sin clamp", () => {
+    const { container } = render(
+      <LobbyView
+        data={makeViewData({
+          audiencias: [
+            makeAudiencia({
+              identificador: "G1",
+              materia: MATERIA_MULTILINEA,
+              contrapartes: [cp("Enel Chile S.A.")],
+            }),
+          ],
+        })}
+      />,
+    );
+    // La vista agrupada (default) ahora muestra la materia por reunión (antes NO).
+    expect(container.textContent).toContain("Primera línea de la materia.");
+    expect(container.textContent).toContain("Tercera línea final.");
+    const bloques = container.querySelectorAll(".whitespace-pre-line");
+    expect(bloques.length).toBeGreaterThan(0);
+    for (const b of bloques) {
+      expect((b as HTMLElement).className).not.toMatch(/line-clamp|truncate|max-h/);
+    }
+  });
+
+  it("la materia es SELECCIONABLE (sin user-select-none) y no queda tras un 'ver más'", () => {
+    const { container } = render(
+      <LobbyView
+        data={makeViewData({
+          vista: "cronologica",
+          audiencias: [makeAudiencia({ materia: MATERIA_MULTILINEA })],
+        })}
+      />,
+    );
+    expect(container.textContent).not.toMatch(/ver más|ver mas|mostrar más/i);
+    const bloque = container.querySelector(".whitespace-pre-line") as HTMLElement;
+    expect(bloque.className).not.toContain("select-none");
+  });
+});
+
+// ── Plan 92-02 (LOB-02/LOB-03): chips "Menciona boletín N" fail-closed doble ────
+describe("LobbyView — chips de mención server-computados (fail-closed doble, ambas vistas)", () => {
+  it("chip presente cuando el boletín fue validado (patrón + existencia) → /proyecto/N", () => {
+    render(
+      <LobbyView
+        data={makeViewData({
+          vista: "cronologica",
+          audiencias: [
+            makeAudiencia({ materia: "Boletín 14309-04", boletines_mencionados: ["14309-04"] }),
+          ],
+        })}
+      />,
+    );
+    const chip = screen.getByRole("link", { name: /menciona el boletín 14309-04/i });
+    expect(chip).toHaveAttribute("href", "/proyecto/14309-04");
+    expect(chip.textContent).toContain("14309-04");
+  });
+
+  it("SIN chip cuando el patrón matchea pero el boletín NO fue validado (fail-closed #2)", () => {
+    render(
+      <LobbyView
+        data={makeViewData({
+          vista: "cronologica",
+          // La materia menciona un patrón, pero el server NO lo validó (no existe en proyecto)
+          // → `boletines_mencionados` vacío → NUNCA se fabrica el chip/link muerto.
+          audiencias: [
+            makeAudiencia({ materia: "Boletín 99999-99", boletines_mencionados: [] }),
+          ],
+        })}
+      />,
+    );
+    expect(screen.queryByRole("link", { name: /menciona el boletín/i })).toBeNull();
+  });
+
+  it("SIN chip cuando la materia no menciona ningún boletín", () => {
+    render(
+      <LobbyView
+        data={makeViewData({
+          vista: "cronologica",
+          audiencias: [
+            makeAudiencia({ materia: "Reforma al sistema de salud", boletines_mencionados: [] }),
+          ],
+        })}
+      />,
+    );
+    expect(screen.queryByRole("link", { name: /menciona el boletín/i })).toBeNull();
+  });
+
+  it("múltiples chips deduplicados, uno por boletín distinto", () => {
+    render(
+      <LobbyView
+        data={makeViewData({
+          vista: "cronologica",
+          audiencias: [
+            makeAudiencia({
+              materia: "Boletines 14309-04 y 15000-07",
+              boletines_mencionados: ["14309-04", "15000-07"],
+            }),
+          ],
+        })}
+      />,
+    );
+    expect(
+      screen.getByRole("link", { name: /menciona el boletín 14309-04/i }),
+    ).toHaveAttribute("href", "/proyecto/14309-04");
+    expect(
+      screen.getByRole("link", { name: /menciona el boletín 15000-07/i }),
+    ).toHaveAttribute("href", "/proyecto/15000-07");
+  });
+
+  it("el chip también aparece en la vista AGRUPADA (misma fila de la reunión)", () => {
+    render(
+      <LobbyView
+        data={makeViewData({
+          audiencias: [
+            makeAudiencia({
+              identificador: "AG1",
+              materia: "Boletín 14309-04",
+              boletines_mencionados: ["14309-04"],
+              contrapartes: [cp("Enel Chile S.A.")],
+            }),
+          ],
+        })}
+      />,
+    );
+    const chip = screen.getByRole("link", { name: /menciona el boletín 14309-04/i });
+    expect(chip).toHaveAttribute("href", "/proyecto/14309-04");
   });
 });
 

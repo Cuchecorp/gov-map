@@ -435,6 +435,14 @@ export interface LobbyAudienciaRow {
   fecha_captura: string;
   /** → `ProvenanceBadge.sourceUrl` (enlace por-audiencia). */
   enlace: string | null;
+  /**
+   * LOB-02/LOB-03 (Plan 92-02): boletines que la `materia` menciona EXPLÍCITAMENTE
+   * (patrón `extraerBoletines`) Y que EXISTEN en `proyecto` — fail-closed DOBLE,
+   * resuelto SERVER-SIDE (Block-B). Canónicos, ordenados asc, deduplicados. `[]` =
+   * sin mención válida (la fila no monta chip). El array llega YA validado a
+   * `LobbyView` (puro) → el chip nunca consulta la DB ni fabrica un link muerto.
+   */
+  boletines_mencionados?: string[];
 }
 
 /**

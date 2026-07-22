@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { createServerSupabase } from "@/lib/supabase";
 import { ProvenanceBadge } from "@/components/provenance-badge";
+import { MencionBoletinChips } from "@/components/mencion-boletin-chip";
+import { extraerBoletines } from "@/lib/boletin-en-materia";
 import { fechaCorta, formatNombre } from "@/lib/format";
 import {
   sourceLabel,
@@ -94,15 +96,33 @@ export interface LobbyViewData {
 }
 
 /**
+ * Una reunión dentro de un grupo por contraparte (Plan 92-02, LOB-01/LOB-02). La
+ * vista agrupada HOY solo mostraba contraparte + conteo + fechas; ahora lista la
+ * MATERIA por reunión (whitespace-pre-line) y sus chips de mención en la MISMA fila
+ * (restricción de carril LOCKED: la mención proviene de ESA materia, es metadata de
+ * la propia audiencia — no compone dos dominios). `fechaTexto` es la fecha ya
+ * formateada; `materia` verbatim (null si la fuente no la publica); `boletines` son
+ * las menciones VÁLIDAS (patrón + existencia) resueltas server-side.
+ */
+export interface GrupoReunion {
+  fechaTexto: string;
+  materia: string | null;
+  boletines: string[];
+}
+
+/**
  * Grupo de audiencias por contraparte (SC6/B11). `contraparte` es el nombre CRUDO
  * verbatim de la fuente; `n` es el conteo NEUTRO de reuniones (único agregado
- * permitido §3.4, jamás un score/ranking); `fechas` son las fechas de cada
- * reunión ya formateadas para render.
+ * permitido §3.4, jamás un score/ranking); `fechas` son las fechas de cada reunión
+ * ya formateadas (conservado por retro-compat con consumidores existentes);
+ * `reuniones` (Plan 92-02, MAJOR-4) es la lista EXPLÍCITA por reunión con su materia
+ * y chips de mención — `reuniones[i].fechaTexto === fechas[i]` por construcción.
  */
 export interface GrupoContraparte {
   contraparte: string;
   n: number;
   fechas: string[];
+  reuniones: GrupoReunion[];
 }
 
 /**
@@ -112,17 +132,31 @@ export interface GrupoContraparte {
  * nombre). Las audiencias SIN contraparte se EXCLUYEN de la agrupación (nunca se
  * fabrica un nombre — la vista cronológica sigue mostrándolas). El sort es
  * estable → los empates conservan el orden de aparición.
+ *
+ * Plan 92-02 (MAJOR-4): además de `n`/`fechas` (semántica LOCKED conservada), cada
+ * grupo lleva `reuniones[]` con la materia y los boletines mencionados de cada
+ * audiencia — para que la vista agrupada pueda mostrar POR REUNIÓN. `fechas` y
+ * `reuniones` son paralelos (mismo índice, misma reunión); la dedupe por audiencia
+ * (una fila por (contraparte × audiencia)) y el orden freq-DESC se preservan.
  */
 export function agruparPorContraparte(
   audiencias: LobbyAudienciaRow[],
 ): GrupoContraparte[] {
-  const porNombre = new Map<string, { n: number; fechas: string[] }>();
+  const porNombre = new Map<
+    string,
+    { n: number; fechas: string[]; reuniones: GrupoReunion[] }
+  >();
   const orden: string[] = [];
 
   for (const a of audiencias) {
     const fechaTexto = a.fecha
       ? fechaCorta(new Date(a.fecha))
       : a.fecha_raw ?? "Fecha no publicada";
+    const reunion: GrupoReunion = {
+      fechaTexto,
+      materia: a.materia,
+      boletines: a.boletines_mencionados ?? [],
+    };
     // Nombres crudos ÚNICOS dentro de la audiencia → cuenta 1 por contraparte.
     const nombresUnicos = new Set(
       a.contrapartes
@@ -132,19 +166,26 @@ export function agruparPorContraparte(
     for (const nombre of nombresUnicos) {
       let g = porNombre.get(nombre);
       if (!g) {
-        g = { n: 0, fechas: [] };
+        g = { n: 0, fechas: [], reuniones: [] };
         porNombre.set(nombre, g);
         orden.push(nombre);
       }
       g.n += 1;
       g.fechas.push(fechaTexto);
+      g.reuniones.push(reunion);
     }
   }
 
   const grupos: GrupoContraparte[] = [];
   for (const contraparte of orden) {
     const g = porNombre.get(contraparte);
-    if (g) grupos.push({ contraparte, n: g.n, fechas: g.fechas });
+    if (g)
+      grupos.push({
+        contraparte,
+        n: g.n,
+        fechas: g.fechas,
+        reuniones: g.reuniones,
+      });
   }
   // Orden por frecuencia DESC; `sort` es estable → empates conservan aparición.
   return grupos.sort((a, b) => b.n - a.n);
@@ -379,13 +420,37 @@ function VistaAgrupada({ grupos }: { grupos: GrupoContraparte[] }) {
         <li key={g.contraparte} className="py-3 border-t first:border-t-0">
           {/* Contraparte VERBATIM (h3) — NUNCA enlazada. */}
           <h3 className="text-base font-semibold">{g.contraparte}</h3>
-          {/* Conteo neutro + fechas (Mono). "{contraparte} — {N} reuniones: {fechas}". */}
+          {/* Conteo neutro (Mono). "{contraparte} — {N} reuniones". */}
           <p className="text-sm text-muted-foreground">
             <span aria-hidden="true">— </span>
             <span className="font-mono">{g.n}</span>{" "}
-            {g.n === 1 ? "reunión" : "reuniones"}:{" "}
-            <span className="font-mono">{g.fechas.join(" · ")}</span>
+            {g.n === 1 ? "reunión" : "reuniones"}
           </p>
+          {/*
+            Plan 92-02 (LOB-01): la materia COMPLETA por reunión dentro del grupo.
+            HOY la vista agrupada no la mostraba → el usuario no podía leer de qué
+            trató cada reunión sin cambiar a cronológica. Cada reunión lleva su fecha
+            (Mono) + materia legible (whitespace-pre-line, sin clamp) + sus chips de
+            mención en la MISMA fila (carril LOCKED — la mención es metadata de ESA
+            materia). Los chips NO son un voto/declaración → no violan carril aislado.
+          */}
+          <ul className="mt-2 space-y-2">
+            {g.reuniones.map((r, i) => (
+              <li key={`${g.contraparte}-${i}`} className="min-w-0">
+                <span className="font-mono text-sm text-muted-foreground">
+                  {r.fechaTexto}
+                </span>
+                {r.materia && (
+                  <div className="text-sm whitespace-pre-line leading-relaxed">
+                    <span className="text-muted-foreground">Asunto: </span>
+                    {r.materia}
+                  </div>
+                )}
+                {/* Chips "Menciona boletín N" (fail-closed doble, ya validados). */}
+                <MencionBoletinChips boletines={r.boletines} />
+              </li>
+            ))}
+          </ul>
         </li>
       ))}
     </ul>
@@ -441,13 +506,27 @@ function VistaCronologica({
                   </span>
                 )}
 
-                {/* Asunto/materia verbatim, opcional (nunca fabricado/resumido). */}
+                {/*
+                  Asunto/materia verbatim, opcional (nunca fabricado/resumido).
+                  Plan 92-02 (LOB-01): bloque (`<div>`) con `whitespace-pre-line`
+                  `leading-relaxed` para leer la materia multilínea ENTERA — un
+                  `<span>` inline no honra los `\n` de la fuente. PROHIBIDO
+                  line-clamp/truncate/max-h; el `min-w-0` del contenedor padre (arriba)
+                  permite el wrap sin desbordar. Materia SELECCIONABLE, sin "ver más".
+                */}
                 {a.materia && (
-                  <span className="text-sm">
+                  <div className="text-sm whitespace-pre-line leading-relaxed">
                     <span className="text-muted-foreground">Asunto: </span>
                     {a.materia}
-                  </span>
+                  </div>
                 )}
+
+                {/*
+                  Chips "Menciona boletín N" (LOB-02/LOB-03) — BAJO la materia, en su
+                  propia fila (no inline: rompería el wrap del texto largo). Ya
+                  validados server-side (fail-closed doble); `[]` → no se pinta nada.
+                */}
+                <MencionBoletinChips boletines={a.boletines_mencionados ?? []} />
               </div>
 
               {/* ProvenanceBadge por fila, obligatorio (§3.2). */}
@@ -542,6 +621,72 @@ export function agruparAudiencias(
     .filter((a): a is NonNullable<typeof a> => a !== undefined);
 }
 
+/**
+ * WIRE DE CHIPS server-side (Plan 92-02, LOB-02/LOB-03, fail-closed DOBLE, Block-B).
+ *
+ * Dado el conjunto COMPLETO de audiencias, resuelve para cada una la lista de
+ * boletines VÁLIDOS que su materia menciona: (1) patrón — `extraerBoletines` sobre
+ * `a.materia`; (2) existencia — el boletín DEBE existir en `public.proyecto`. Los que
+ * matchean el patrón pero NO existen se DESCARTAN (fail-closed #2 — jamás un chip
+ * muerto). `proyecto` NO es PII y ya se lee server-side (Block-B) → la validación vive
+ * aquí, nunca en el island. El error real de la query se PROPAGA (return de error) —
+ * NUNCA degrada a "sin chips" (#34): eso lo maneja el llamador lanzando.
+ *
+ * BOUND del `.in()` (MAJOR-5): el set de candidatos = ⋃ extraerBoletines(materia) sobre
+ * TODAS las audiencias confirmadas del parlamentario (bounded a cientos por el RPC), ya
+ * DEDUPLICADO. Cota superior teórica = (audiencias) × (boletines por materia). Para no
+ * asumir que el producto queda bajo el cap de PostgREST (~1000 valores por `.in()`), el
+ * lote se PAGINA en trozos de `IN_CHUNK` (< 1000) y se unen los existentes: así el bound
+ * por request es SIEMPRE `IN_CHUNK` < 1000, independiente del volumen del parlamentario.
+ */
+const IN_CHUNK = 500; // < cap PostgREST (~1000) por `.in()` — bound duro por request.
+
+async function resolverBoletinesMencionados(
+  sb: ReturnType<typeof createServerSupabase>,
+  audiencias: LobbyAudienciaRow[],
+): Promise<{ error: string | null }> {
+  // 1) Patrón: extraer candidatos por audiencia (memo por audiencia para el paso 3).
+  const porAudiencia = new Map<string, string[]>();
+  const candidatos = new Set<string>();
+  for (const a of audiencias) {
+    const bs = extraerBoletines(a.materia);
+    porAudiencia.set(a.identificador, bs);
+    for (const b of bs) candidatos.add(b);
+  }
+
+  // Sin candidatos → nada que validar; cada audiencia queda sin chip (fail-closed).
+  if (candidatos.size === 0) {
+    for (const a of audiencias) a.boletines_mencionados = [];
+    return { error: null };
+  }
+
+  // 2) Existencia: UNA query batched por trozo (`in('boletin', chunk)`), bound < 1000.
+  const todos = [...candidatos];
+  const existentes = new Set<string>();
+  for (let i = 0; i < todos.length; i += IN_CHUNK) {
+    const chunk = todos.slice(i, i + IN_CHUNK);
+    const { data, error } = await sb
+      .from("proyecto")
+      .select("boletin")
+      .in("boletin", chunk);
+    if (error) {
+      // #34: error real de DB/red — se PROPAGA al llamador (nunca "sin chips").
+      return { error: error.message };
+    }
+    for (const row of (data as { boletin: string }[] | null) ?? []) {
+      existentes.add(row.boletin);
+    }
+  }
+
+  // 3) Adjuntar a cada audiencia SOLO los boletines patrón-Y-existencia (dedupe/orden
+  //    los preserva `extraerBoletines`). Los inexistentes se descartan (fail-closed #2).
+  for (const a of audiencias) {
+    const bs = porAudiencia.get(a.identificador) ?? [];
+    a.boletines_mencionados = bs.filter((b) => existentes.has(b));
+  }
+  return { error: null };
+}
+
 // ── Server Component: lee el RPC + el marcador de ingesta y arma la LobbyView ───
 export async function LobbySection({
   id,
@@ -581,6 +726,17 @@ export async function LobbySection({
   }
   const filas = (rpcData as LobbyAudienciaRpcRow[] | null) ?? [];
   const todas = agruparAudiencias(filas);
+
+  // WIRE DE CHIPS (LOB-02/LOB-03): resuelve server-side, sobre el conjunto COMPLETO,
+  // los boletines mencionados VÁLIDOS (patrón + existencia) y los adjunta in-place a
+  // cada audiencia de `todas` — así fluyen tanto al slice paginado (cronológica) como
+  // a los grupos (agrupada). El error real se LANZA (#34); nunca degrada a "sin chips".
+  const { error: chipsError } = await resolverBoletinesMencionados(sb, todas);
+  if (chipsError) {
+    throw new Error(
+      `validación de boletines mencionados falló para ${id}: ${chipsError}`,
+    );
+  }
 
   // Estado honesto (a) vs (b): la AUSENCIA de fila en lobby_ingesta_estado = "no
   // ingestado todavía"; la presencia (aunque con 0 audiencias) = "ingestado, cero".
