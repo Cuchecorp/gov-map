@@ -94,6 +94,42 @@ describe("VotacionCard — desenlace factual (Phase 22, §3.3/§9)", () => {
     expect(screen.queryByText(/Etapa:/)).not.toBeInTheDocument();
   });
 
+  it("deep-links humanos (quick 260722-eia): enlace wspublico → fuente oficial reruta a ficha humana (nunca WS XML)", () => {
+    render(
+      <VotacionCard
+        votacion={makeVotacion({
+          origen: "senado",
+          boletin: "16456-35",
+          enlace: "https://tramitacion.senado.cl/wspublico/tramitacion.php",
+        })}
+      />,
+    );
+    const fuente = screen.getByRole("link", {
+      name: /Fuente oficial.*abre en nueva pestaña/i,
+    });
+    const href = fuente.getAttribute("href") ?? "";
+    expect(href).not.toContain("/wspublico/");
+    expect(href).toContain("boletin_ini=16456-35");
+    expect(href).toContain("appsenado");
+  });
+
+  it("deep-links humanos: enlace no-wspublico (opendata Cámara) se respeta verbatim", () => {
+    render(
+      <VotacionCard
+        votacion={makeVotacion({
+          enlace: "https://opendata.camara.cl/votacion/1",
+        })}
+      />,
+    );
+    const fuente = screen.getByRole("link", {
+      name: /Fuente oficial.*abre en nueva pestaña/i,
+    });
+    expect(fuente).toHaveAttribute(
+      "href",
+      "https://opendata.camara.cl/votacion/1",
+    );
+  });
+
   it("GATE §6: el render no contiene banned-vocab ni juicio sobre la votación", () => {
     const { container } = render(
       <VotacionCard

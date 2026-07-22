@@ -8,6 +8,7 @@ import { EtapaBadge } from "@/components/etapa-badge";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { VotacionBar } from "@/components/votacion-bar";
 import { VotoDetalle } from "@/components/voto-detalle";
+import { enlaceHumanoProyecto } from "@/components/validacion-fuente";
 import { fechaCorta, conteoVotacion } from "@/lib/format";
 import type { VotacionRow } from "@/lib/types";
 import { sourceLabel } from "@/lib/types";
@@ -94,7 +95,13 @@ export function VotacionCard({ votacion }: { votacion: VotacionRow }) {
           <ProvenanceBadge
             capturedAt={capturedAt}
             sourceName={sourceLabel(votacion.origen)}
-            sourceUrl={votacion.enlace || null}
+            // El `votacion.enlace` de PROD suele ser el WS XML (wspublico), roto
+            // para humanos; se reruta a la ficha humana del Senado por boletín
+            // (mismo helper que header/Similares — deep-links humanos).
+            sourceUrl={
+              enlaceHumanoProyecto(votacion.enlace || "", votacion.boletin) ||
+              null
+            }
           />
         </div>
 
