@@ -247,6 +247,56 @@ Desglose por semana ISO (verbatim, DESPUÉS):
 
 ---
 
+## 6. Gaps de wiring frontend (resumen — evidencia DOM en `93-WIRING-EVIDENCIA.md`)
+
+Auditoría DOM sobre el deploy PROD real (`fa4d4369`) con BrowserOS (Plan 02). **La data existe en
+DB; el defecto es de wiring del frontend, no de cobertura.** No duplicamos aquí la evidencia — cada
+gap está con su snapshot verbatim, sujeto de prueba y causa raíz (archivo:línea) en
+`93-WIRING-EVIDENCIA.md`. Resumen para el gate de 94:
+
+| Gap | Veredicto DOM (PROD `fa4d4369`) | Clasificación | Causa raíz (para 94) |
+|-----|----------------------------------|---------------|----------------------|
+| **#1 — la ficha oculta citaciones PASADAS** | ficha `18193-06` → "Citado" = **0 ocurrencias**; control positivo `11929-13` (cita HOY) SÍ muestra "Citado en …" → aísla que el defecto es el filtro, no el canal de datos | **WIRING** | `app/components/estado-actual-block.tsx:122-129` — el derivador `citacionVigente` filtra `fecha >= hoyChile`; la query (`:311-315`) trae TODAS las citaciones sin filtro. El sesgo forward-only vive puramente en el derivador |
+| **#2 — la ficha no declara presencia en la tabla de sala** | ficha `13665-07` → "tabla de sala"/"orden del día" = **0**; contraste `/agenda?semana=2026-W28` SÍ muestra la fila `\| 5 \| N°13665-07 \| … \| ORDEN DEL DÍA \|` | **WIRING** | `estado-actual-block.tsx:290-315` — `EstadoActualBlock` NO consulta `sesion_tabla_item`; el interface `EstadoActual` (`:21-45`) no tiene campo de sala. Solo `app/app/agenda/page.tsx` (`SalaTableServer`) lee esa tabla |
+| **Control /agenda** | `/agenda?semana=2026-W26` renderiza **53 citaciones PASADAS** de ambas cámaras (acordeón 12+19+22) + tabla de sala | **WIRING OK** | `/agenda` navega por `semana_iso` → NO es forward-only (refuta sesgo a futuro en `/agenda`). El gap forward-only es exclusivo de la **ficha** |
+
+**Distinción DATOS vs WIRING (para no confundir carriles en 94):**
+- Gaps **#1 y #2 = WIRING** (la data está en DB; la ficha no la lee/deriva). Se arreglan en la ficha
+  SIN re-ingesta.
+- Los gaps de **DATOS/cobertura** (Cámara W30 vacío, Senado sala forward-only, celdas THIN) son
+  cobertura declarada (§1-3, §7), NO wiring — no se "arreglan" con código de frontend.
+
+---
+
+## 7. DECLARACIÓN de cobertura parcial (insumo directo del gate de 94)
+
+**Regla rectora (LOCKED):** ninguna celda se presenta como cobertura **completa**. 94 debe mostrar,
+por celda, el **rango real de semanas/fechas cubierto** como banner/leyenda de cobertura declarada, y
+respetar la regla honesta: **"estado ausente ≠ vigente confirmado"** — la mayoría de citaciones NO
+tienen `estado` de cancelación poblado (§1.4: Cámara ~9 %, Senado ~6 %) porque la mayoría NO fueron
+canceladas (dato honesto), NO por bug; **94 NO debe fabricar vigencia** a partir de la ausencia de
+una marca de cancelación.
+
+| Celda | Cobertura DECLARADA que 94 muestra | Rango real (post-backfill 93-03) | Naturaleza del límite |
+|-------|-------------------------------------|----------------------------------|-----------------------|
+| **comisiones × Cámara** | "citaciones de comisión ingeridas para **6 semanas** (2026-W20, W21, W23, W24, W26, W28); histórico completo del período **pendiente** de backfill masivo" | N=164, 6 semanas ISO (min 2026-06-22 → tras backfill se agregó desde mayo/W20). Huecos: W22 (semana sin citaciones, honesto), W25, W27 | **Sub-ingesta recuperable** — histórico navegable por la fuente; el backfill masivo (runbook) lo cierra |
+| **comisiones × Senado** | "citaciones de comisión **al día en su ventana** (próximas ~2 semanas); **sin histórico** — la fuente es forward-only" | N=104, 5 semanas ISO acumuladas (W26–W30) por corridas del cron; la fuente NO expone fechas pasadas | **Límite de la FUENTE** (forward-only) — NO es un bug de ingesta; no hay backfill posible |
+| **sala × Cámara** | "solo la **sesión vigente** (PDF semanal procesado); **sin histórico estructurado**" | 1 sesión / 19-22 ítems (la semana en curso); `verDoc prmId=0` = solo el PDF vigente | **Límite estructural** — el histórico exigiría `prmId≠0` + PDF no estructurado (DeepSeek); irrecuperable en alcance razonable |
+| **sala × Senado** | "orden del día **al día en su ventana** (~sesiones en curso); **sin histórico** — la fuente es forward-only" | 11 sesiones / 27 ítems, W26–W30; `weekly_table` no expone histórico | **Límite de la FUENTE** (forward-only) — no hay backfill posible |
+
+**Cruce a la ficha (para el gate de 94):** el % cruzable a boletín por celda (§1.3) es lo que la
+ficha del proyecto puede declarar: Cámara comisiones **100 %**, Senado comisiones **~71 %**, sala
+Cámara **~79 %**, sala Senado **~81 %**. Los puntos sin boletín (audiencias, cuenta) NO son un fallo
+de parseo — son citaciones sin proyecto asociado; 94 no debe inventar un boletín para ellos.
+
+**Síntesis honesta para el banner de 94:** dos celdas (Cámara comisiones y sala) son **THIN** —
+Cámara comisiones **recuperable** (backfill), sala Cámara **estructuralmente limitada**; dos celdas
+(Senado) están **al día en su ventana** con límite de FUENTE. NINGUNA es "cobertura completa". El
+banner de cobertura de `/agenda` debe declarar el rango por celda y NUNCA presentar la ausencia de
+una semana/estado como "no hay actividad" ni como "vigencia confirmada".
+
+---
+
 ## Apéndice — reproducibilidad
 
 - **Queries psql:** todas verbatim en §1, re-ejecutables con `PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -c "<query>"`. Re-corrida 2026-07-22 = idéntica al research (cero deriva).
