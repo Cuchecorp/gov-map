@@ -1,5 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase";
 import { fechaCorta, relativeTimeEs } from "@/lib/format";
+import { sourceLabel } from "@/lib/types";
 import type { ProyectoRow, TramitacionEventoRow } from "@/lib/types";
 
 /**
@@ -24,6 +25,21 @@ export interface EstadoActual {
   ultimoHito?: { descripcion: string; fecha: Date };
   /** Última urgencia "hace presente" sin "retira" posterior. */
   urgenciaVigente?: { tipo: string; desde: Date };
+  /**
+   * Estado del token de urgencia (quick 260722-eia). SIEMPRE presente cuando hay
+   * tramitación (eventos.length > 0); AUSENTE sin eventos (estado "sin datos", se
+   * omite — no se fabrica). Tres estados honestos:
+   *   - "vigente": hay una urgencia "hace presente" sin retiro posterior.
+   *   - "sin-vigente": hay tramitación pero sin urgencia vigente (hecho negativo).
+   */
+  urgenciaEstado?:
+    | { kind: "vigente"; tipo: string; desde: Date }
+    | { kind: "sin-vigente" };
+  /**
+   * Fuente del token de urgencia: origen + fecha_captura más reciente de los
+   * eventos. Ausente si no hay eventos con fecha_captura (no fabrica coletilla).
+   */
+  urgenciaFuente?: { origen: string; fechaCaptura: Date };
   /** SC3 (Phase 52): citación vigente/futura más próxima (fecha >= hoy). */
   citacionVigente?: { comision: string; fecha: Date };
 }
@@ -156,6 +172,26 @@ export function derivarEstadoActual(
   const urg = urgenciaVigente(eventos);
   if (urg) est.urgenciaVigente = urg;
 
+  // Token de urgencia 3-estado (quick 260722-eia). SIEMPRE presente cuando hay
+  // tramitación; ausente sin eventos (estado "sin datos", omitido — no fabrica).
+  if (eventos.length > 0) {
+    est.urgenciaEstado = urg
+      ? { kind: "vigente", tipo: urg.tipo, desde: urg.desde }
+      : { kind: "sin-vigente" };
+
+    // Fuente del token: origen + fecha_captura MÁS RECIENTE de los eventos
+    // (mismo patrón "más reciente" que TramitacionSection). Si ningún evento
+    // tiene fecha_captura válida, se omite la coletilla (no fabrica).
+    const fuente = eventos
+      .map((e) => ({ e, d: fechaValida(e.fecha_captura) }))
+      .filter((x): x is { e: TramitacionEventoRow; d: Date } => x.d !== null)
+      .sort((a, b) => a.d.getTime() - b.d.getTime())
+      .at(-1);
+    if (fuente) {
+      est.urgenciaFuente = { origen: fuente.e.origen, fechaCaptura: fuente.d };
+    }
+  }
+
   // SC3: citación vigente/futura más próxima; si no derivable, se omite.
   const cit = citacionVigente(citaciones, hoy);
   if (cit) est.citacionVigente = cit;
@@ -169,11 +205,12 @@ export function derivarEstadoActual(
  * padding `p-6` (lg). Heading factual neutro permitido ("¿Dónde está hoy?").
  */
 export function EstadoActualView({ estado }: { estado: EstadoActual }) {
-  const { etapaLinea, ultimoHito, urgenciaVigente, citacionVigente } = estado;
+  const { etapaLinea, ultimoHito, urgenciaEstado, urgenciaFuente, citacionVigente } =
+    estado;
 
   // Sin ninguna línea derivable → no se renderiza el bloque (cero contenido
   // fabricado). El resto de la ficha cubre la información.
-  if (!etapaLinea && !ultimoHito && !urgenciaVigente && !citacionVigente)
+  if (!etapaLinea && !ultimoHito && !urgenciaEstado && !citacionVigente)
     return null;
 
   return (
@@ -190,17 +227,40 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
             <span className="font-mono">{fechaCorta(ultimoHito.fecha)}</span>
           </p>
         )}
-        {urgenciaVigente && (
+        {/*
+          Token de urgencia SIEMPRE visible cuando hay tramitación (quick
+          260722-eia): 3 estados honestos. (a) "vigente" → hecho fechado; (b)
+          "sin-vigente" → hecho NEGATIVO honesto (nunca "—", nunca adjetivo). Sin
+          eventos, urgenciaEstado es ausente y el token se omite. La coletilla de
+          fuente ("según {fuente} al {fecha}") solo si urgenciaFuente existe.
+        */}
+        {urgenciaEstado && (
           <p>
-            Urgencia {urgenciaVigente.tipo} vigente desde el{" "}
-            <span className="font-mono">
-              {fechaCorta(urgenciaVigente.desde)}
-            </span>{" "}
-            (
-            <span className="font-mono">
-              {relativeTimeEs(urgenciaVigente.desde)}
-            </span>
-            ).
+            {urgenciaEstado.kind === "vigente" ? (
+              <>
+                Urgencia {urgenciaEstado.tipo} vigente desde el{" "}
+                <span className="font-mono">
+                  {fechaCorta(urgenciaEstado.desde)}
+                </span>{" "}
+                (
+                <span className="font-mono">
+                  {relativeTimeEs(urgenciaEstado.desde)}
+                </span>
+                ).
+              </>
+            ) : (
+              <>Sin urgencia vigente.</>
+            )}
+            {urgenciaFuente && (
+              <span className="text-sm text-muted-foreground">
+                {" "}
+                según {sourceLabel(urgenciaFuente.origen)} al{" "}
+                <span className="font-mono">
+                  {fechaCorta(urgenciaFuente.fechaCaptura)}
+                </span>
+                .
+              </span>
+            )}
           </p>
         )}
         {/*

@@ -223,13 +223,131 @@ describe("derivarEstadoActual — línea de citación SC3", () => {
   });
 });
 
+// ── Token de urgencia SIEMPRE visible (3 estados honestos) ───────────────────
+describe("derivarEstadoActual — urgenciaEstado de 3 valores (deep-links quick 260722-eia)", () => {
+  it("(a) eventos con urgencia vigente → urgenciaEstado kind 'vigente' (+ urgenciaVigente conservado)", () => {
+    const eventos = [
+      makeEvento({
+        fecha: "2026-04-10T00:00:00Z",
+        descripcion: "hace presente la urgencia Suma",
+      }),
+    ];
+    const est = derivarEstadoActual(makeProyecto(), eventos);
+    expect(est.urgenciaEstado).toBeDefined();
+    expect(est.urgenciaEstado!.kind).toBe("vigente");
+    if (est.urgenciaEstado!.kind === "vigente") {
+      expect(est.urgenciaEstado!.tipo.toLowerCase()).toContain("suma");
+      expect(est.urgenciaEstado!.desde).toBeInstanceOf(Date);
+    }
+    // El campo legacy se conserva para el stepper que lo consume.
+    expect(est.urgenciaVigente).toBeDefined();
+  });
+
+  it("(b) tramitación presente pero sin urgencia vigente → kind 'sin-vigente'", () => {
+    const eventos = [
+      makeEvento({ fecha: "2026-03-01T00:00:00Z", descripcion: "Ingreso" }),
+      makeEvento({ fecha: "2026-05-20T00:00:00Z", descripcion: "Informe de comisión" }),
+    ];
+    const est = derivarEstadoActual(makeProyecto(), eventos);
+    expect(est.urgenciaEstado).toBeDefined();
+    expect(est.urgenciaEstado!.kind).toBe("sin-vigente");
+    expect(est.urgenciaVigente).toBeUndefined();
+  });
+
+  it("(b') urgencia retirada → kind 'sin-vigente' (hay tramitación, sin vigencia)", () => {
+    const eventos = [
+      makeEvento({ fecha: "2026-04-10T00:00:00Z", descripcion: "hace presente la urgencia Suma" }),
+      makeEvento({ fecha: "2026-05-01T00:00:00Z", descripcion: "retira la urgencia" }),
+    ];
+    const est = derivarEstadoActual(makeProyecto(), eventos);
+    expect(est.urgenciaEstado!.kind).toBe("sin-vigente");
+  });
+
+  it("(c) sin eventos → urgenciaEstado AUSENTE (omitido, no se fabrica)", () => {
+    const est = derivarEstadoActual(makeProyecto(), []);
+    expect(est.urgenciaEstado).toBeUndefined();
+  });
+
+  it("la fuente del token (origen + fecha_captura más reciente) se deriva de los eventos", () => {
+    const eventos = [
+      makeEvento({
+        fecha: "2026-03-01T00:00:00Z",
+        descripcion: "Ingreso",
+        origen: "senado",
+        fecha_captura: "2026-06-01T00:00:00Z",
+      }),
+      makeEvento({
+        fecha: "2026-05-20T00:00:00Z",
+        descripcion: "Informe de comisión",
+        origen: "senado",
+        fecha_captura: "2026-07-15T00:00:00Z",
+      }),
+    ];
+    const est = derivarEstadoActual(makeProyecto(), eventos);
+    expect(est.urgenciaFuente).toBeDefined();
+    expect(est.urgenciaFuente!.origen).toBe("senado");
+    // fecha_captura más reciente = 2026-07-15.
+    expect(est.urgenciaFuente!.fechaCaptura.toISOString().slice(0, 10)).toBe("2026-07-15");
+  });
+});
+
+describe("EstadoActualView — token de urgencia 3 estados", () => {
+  it("(a) urgenciaEstado 'vigente' → renderiza 'Urgencia {tipo} vigente desde el'", () => {
+    const estado: EstadoActual = {
+      etapaLinea: "Etapa: Primer trámite",
+      urgenciaEstado: { kind: "vigente", tipo: "Suma", desde: new Date("2026-05-18T00:00:00Z") },
+    };
+    render(<EstadoActualView estado={estado} />);
+    expect(screen.getByText(/Urgencia Suma vigente desde el/)).toBeInTheDocument();
+  });
+
+  it("(b) urgenciaEstado 'sin-vigente' → renderiza 'Sin urgencia vigente' (hecho negativo honesto, no '—')", () => {
+    const estado: EstadoActual = {
+      etapaLinea: "Etapa: Primer trámite",
+      urgenciaEstado: { kind: "sin-vigente" },
+    };
+    render(<EstadoActualView estado={estado} />);
+    expect(screen.getByText(/Sin urgencia vigente/)).toBeInTheDocument();
+    expect(screen.queryByText(/Urgencia — vigente/)).not.toBeInTheDocument();
+  });
+
+  it("(c) sin urgenciaEstado → no hay token de urgencia (omitido)", () => {
+    const estado: EstadoActual = { etapaLinea: "Etapa: Primer trámite" };
+    render(<EstadoActualView estado={estado} />);
+    expect(screen.queryByText(/Sin urgencia vigente/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/vigente desde el/)).not.toBeInTheDocument();
+  });
+
+  it("la coletilla de fuente se renderiza cuando urgenciaFuente está presente", () => {
+    const estado: EstadoActual = {
+      urgenciaEstado: { kind: "sin-vigente" },
+      urgenciaFuente: { origen: "senado", fechaCaptura: new Date("2026-07-15T00:00:00Z") },
+    };
+    render(<EstadoActualView estado={estado} />);
+    expect(screen.getByText(/según Senado al/)).toBeInTheDocument();
+  });
+
+  it("anti-insinuación: el token de urgencia no contiene adjetivos de juicio", () => {
+    const estado: EstadoActual = {
+      urgenciaEstado: { kind: "sin-vigente" },
+      urgenciaFuente: { origen: "senado", fechaCaptura: new Date("2026-07-15T00:00:00Z") },
+    };
+    const { container } = render(<EstadoActualView estado={estado} />);
+    const texto = container.textContent ?? "";
+    expect(texto).not.toMatch(
+      /importante|clave|prioridad|urgente de verdad|estancad|polémic|sospechos/i,
+    );
+  });
+});
+
 // ── EstadoActualView — presentación pura (omisión + banned-vocab) ────────────
 describe("EstadoActualView — render honesto", () => {
   it("renderiza el heading '¿Dónde está hoy?' y las líneas derivadas", () => {
     const estado: EstadoActual = {
       etapaLinea: "Etapa: Primer trámite · En tramitación",
       ultimoHito: { descripcion: "Pasa a comisión", fecha: new Date("2026-05-20T00:00:00Z") },
-      urgenciaVigente: { tipo: "Suma", desde: new Date("2026-05-18T00:00:00Z") },
+      // El token de urgencia ahora se dirige por urgenciaEstado (quick 260722-eia).
+      urgenciaEstado: { kind: "vigente", tipo: "Suma", desde: new Date("2026-05-18T00:00:00Z") },
     };
     render(<EstadoActualView estado={estado} />);
     expect(
@@ -278,7 +396,7 @@ describe("EstadoActualView — render honesto", () => {
     const estado: EstadoActual = {
       etapaLinea: "Etapa: Primer trámite · En tramitación",
       ultimoHito: { descripcion: "Pasa a comisión", fecha: new Date("2026-05-20T00:00:00Z") },
-      urgenciaVigente: { tipo: "Suma", desde: new Date("2026-05-18T00:00:00Z") },
+      urgenciaEstado: { kind: "vigente", tipo: "Suma", desde: new Date("2026-05-18T00:00:00Z") },
     };
     const { container } = render(<EstadoActualView estado={estado} />);
     const texto = container.textContent ?? "";
