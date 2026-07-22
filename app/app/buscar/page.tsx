@@ -5,9 +5,11 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase";
 import { contarCoberturaBusqueda, ALCANCE_COBERTURA } from "@/lib/coverage";
 import { buscarProyectos, BOLETIN_RE, MAX_QUERY_CHARS } from "@/lib/buscar";
-import { sourceLabel, type ProyectoRow } from "@/lib/types";
+import { sourceLabel, type ProyectoRow, type TramitacionEventoRow, type BuscarSliceRow } from "@/lib/types";
+import { estadoBucket, deriveAnio } from "@/lib/estado-bucket";
 import { SearchBox } from "@/components/search-box";
 import { SearchResultCard } from "@/components/search-result-card";
+import { BuscarFiltros } from "@/components/buscar-filtros";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -149,6 +151,56 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
     .map((v) => porBoletin.get(v.boletin))
     .filter((p): p is ProyectoRow => p !== undefined);
 
+  // Leer tramitacion_evento para derivar el año de cada proyecto.
+  // Patrón actualidad-module: .in/.order/throw-on-error. NUNCA ?? [] para tragar fallos.
+  // T-88-10: año solo de min(fecha) de tramitacion_evento; JAMÁS de fecha_captura.
+  const { data: eventosData, error: eventosError } = await sb
+    .from("tramitacion_evento")
+    .select("boletin, fecha")
+    .in("boletin", boletines)
+    .order("fecha", { ascending: true });
+  if (eventosError) {
+    console.error(`tramitacion_evento falló ("${q}"):`, eventosError);
+    return (
+      <div className="mt-6 border border-destructive/20 bg-destructive/5 rounded-[var(--radius-tile)] p-4 text-sm">
+        Ocurrió un error al realizar la búsqueda. Vuelve a intentarlo en unos
+        momentos.
+      </div>
+    );
+  }
+  const eventos = (eventosData as Pick<TramitacionEventoRow, "boletin" | "fecha">[] | null) ?? [];
+  // Tomar el primer evento por boletín (ya vienen ordenados asc → min fecha)
+  const minFechaPorBoletin = new Map<string, string>();
+  for (const ev of eventos) {
+    if (!minFechaPorBoletin.has(ev.boletin)) {
+      minFechaPorBoletin.set(ev.boletin, ev.fecha);
+    }
+  }
+
+  // Normalizar texto libre de iniciativa a "Mensaje" | "Moción" | null (honesto).
+  function normalizarIniciativa(raw: string | null): "Mensaje" | "Moción" | null {
+    if (!raw) return null;
+    const v = raw.toLowerCase().trim();
+    if (v.includes("mensaje")) return "Mensaje";
+    if (v.includes("moción") || v.includes("mocion")) return "Moción";
+    return null;
+  }
+
+  // Construir BuscarSliceRow[] preservando el orden rank del retrieval (RANK-01).
+  // Advisory #3: fallback truthy-trim estado→etapa antes de estadoBucket.
+  const sliceEnriquecido: BuscarSliceRow[] = ordenados.map((p) => {
+    const estadoInput = (p.estado && p.estado.trim()) ? p.estado : p.etapa;
+    return {
+      boletin: p.boletin,
+      titulo: p.titulo,
+      anio: deriveAnio(minFechaPorBoletin.get(p.boletin) ?? null),
+      iniciativa: normalizarIniciativa(p.iniciativa),
+      estadoBucket: estadoBucket(estadoInput),
+      camaraOrigen: p.camara_origen,
+      fecha: minFechaPorBoletin.get(p.boletin) ?? null,
+    };
+  });
+
   // #32: mostrar el RANGO de la página, no `ordenados.length` como si fuera el total
   // (antes "20 resultados" aunque hubiera más). `hayMas` indica que la cuenta no termina aquí.
   const desde = PAGE_SIZE * (page - 1) + 1;
@@ -159,22 +211,28 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
   return (
     <>
       <p className="text-sm text-muted-foreground mt-4">{countCopy}</p>
+      <BuscarFiltros slice={sliceEnriquecido} />
       <section className="mt-6 space-y-4">
-        {ordenados.map((p) => (
-          <SearchResultCard
-            key={p.boletin}
-            boletin={p.boletin}
-            titulo={p.titulo}
-            materia={p.materia}
-            estado={p.estado}
-            camaraOrigen={p.camara_origen}
-            provenance={{
-              capturedAt: p.fecha_captura ? new Date(p.fecha_captura) : null,
-              sourceName: sourceLabel(p.origen),
-              sourceUrl: p.enlace ?? null,
-            }}
-          />
-        ))}
+        {sliceEnriquecido.map((p) => {
+          const raw = porBoletin.get(p.boletin);
+          return (
+            <SearchResultCard
+              key={p.boletin}
+              boletin={p.boletin}
+              titulo={p.titulo}
+              materia={raw?.materia ?? null}
+              estado={raw?.estado ?? null}
+              camaraOrigen={p.camaraOrigen}
+              iniciativa={p.iniciativa}
+              anio={p.anio}
+              provenance={{
+                capturedAt: raw?.fecha_captura ? new Date(raw.fecha_captura) : null,
+                sourceName: sourceLabel(raw?.origen ?? null),
+                sourceUrl: raw?.enlace ?? null,
+              }}
+            />
+          );
+        })}
       </section>
 
       {(page > 1 || hayMas) && (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { EtapaBadge } from "@/components/etapa-badge";
 import { CamaraChip } from "@/components/camara-chip";
 import {
@@ -25,6 +26,17 @@ export interface SearchResultCardProps {
   estado: string | null;
   camaraOrigen: string | null;
   provenance: ProvenanceBadgeProps;
+  /**
+   * Tipo de iniciativa normalizado. Opcional para no romper call-sites existentes.
+   * `null` u omitido → no se muestra chip de iniciativa (honesto).
+   */
+  iniciativa?: "Mensaje" | "Moción" | null;
+  /**
+   * Año derivado del primer evento de tramitación (proxy de ingreso). Opcional.
+   * `null` u omitido → chip "Sin dato" visible (Advisory #4, coherente con faceta año).
+   * NUNCA score/cosine/rank/número de similitud — JSDoc §5 LOCKED.
+   */
+  anio?: number | null;
 }
 
 export function SearchResultCard({
@@ -34,6 +46,8 @@ export function SearchResultCard({
   estado,
   camaraOrigen,
   provenance,
+  iniciativa,
+  anio,
 }: SearchResultCardProps) {
   return (
     <Card className="rounded-[var(--radius-tile)]">
@@ -41,6 +55,22 @@ export function SearchResultCard({
         <div className="flex flex-wrap items-center gap-2">
           <EtapaBadge estado={estado} />
           <CamaraChip camara={camaraOrigen} />
+          {iniciativa != null && (
+            <Badge
+              variant="outline"
+              className="border-transparent bg-muted text-muted-foreground"
+            >
+              {iniciativa}
+            </Badge>
+          )}
+          {anio !== undefined && (
+            <Badge
+              variant="outline"
+              className="border-transparent bg-muted text-muted-foreground"
+            >
+              {anio != null ? String(anio) : "Sin dato"}
+            </Badge>
+          )}
           <span className="font-mono text-sm text-muted-foreground">
             Boletín N°{boletin}
           </span>
