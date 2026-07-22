@@ -37,11 +37,18 @@ export interface ValidacionFuenteProps {
 // ── Helper: allowlist de prefijo R2 (T-89-06) ────────────────────────────────
 
 /**
- * Devuelve true SOLO si el r2_path empieza con "tramitacion/" (allowlist).
+ * Devuelve true SOLO si el r2_path empieza con "tramitacion/" (allowlist) y
+ * no contiene componentes de traversal ("..") ni backslashes.
  * Protege contra exponer keys de dominios PII (infoprobidad/, servel/, money/, rut/).
+ * T-89-06 boundary: aunque r2_path nunca se usa como href hoy, la allowlist es el
+ * límite documentado de PII disclosure y debe ser robusta a futuros usos.
  */
 export function esR2PathPermitido(r2_path: string): boolean {
-  return r2_path.startsWith("tramitacion/");
+  return (
+    r2_path.startsWith("tramitacion/") &&
+    !r2_path.includes("..") &&
+    !r2_path.includes("\\")
+  );
 }
 
 // ── Construcción de URLs (T-89-07) ───────────────────────────────────────────

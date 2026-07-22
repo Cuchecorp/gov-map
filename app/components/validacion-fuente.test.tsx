@@ -132,6 +132,19 @@ describe("TRACE-03 — respaldo R2 (allowlist prefijo tramitacion/*)", () => {
     renderSection({ ...BASE, snapshot: null });
     expect(screen.queryByText(/Respaldo del/i)).not.toBeInTheDocument();
   });
+
+  it("con r2_path con componente '..' (traversal) → respaldo OMITIDO (T-89-06)", () => {
+    renderSection({
+      ...BASE,
+      snapshot: {
+        content_hash: "abc123",
+        fetched_at: "2026-07-10T08:00:00Z",
+        r2_path: "tramitacion/../infoprobidad/parlamentario/2026/abc.json",
+      },
+    });
+    expect(screen.queryByText(/Respaldo del/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Esto decía la fuente ese día/i)).not.toBeInTheDocument();
+  });
 });
 
 // ── T-89-08: guard safeExternalHref ──────────────────────────────────────────
