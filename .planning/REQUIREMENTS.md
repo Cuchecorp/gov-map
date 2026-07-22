@@ -24,7 +24,7 @@
 
 - [ ] **FILT-01**: Filtros que reordenan/filtran los resultados YA obtenidos sin re-buscar: año, mensaje/moción, estado (archivado/en tramitación), cámara de origen, partido de autores (cuando BIO-03 esté poblado)
 - [ ] **FILT-02**: Chips con counts honestos ("de estos N resultados", nunca presentados como globales), facetas vacías deshabilitadas, NULLs explícitos como bucket "sin dato"
-- [ ] **FILT-03**: Normalizador de estado de tramitación (texto libre → buckets enum) definido, testeado y reusable
+- [x] **FILT-03**: Normalizador de estado de tramitación (texto libre → buckets enum) definido, testeado y reusable
 
 ### TRACE — Trazabilidad al punto oficial
 
@@ -93,7 +93,7 @@ Cobertura 100 por ciento: 27/27 requisitos mapeados a fases 86-96 (sin huérfano
 | RANK-01 | Phase 88 | Pending |
 | FILT-01 | Phase 88 | Pending |
 | FILT-02 | Phase 88 | Pending |
-| FILT-03 | Phase 88 | Pending |
+| FILT-03 | Phase 88 | Complete |
 | TRACE-01 | Phase 89 | Pending |
 | TRACE-02 | Phase 89 | Pending |
 | TRACE-03 | Phase 89 | Pending |
