@@ -5,9 +5,9 @@ import { detectarBoletin } from "./boletin";
 // If you update detectarBoletin here, update app/lib/boletin-detector.ts too.
 function detectarBoletinApp(q: string): { base: string; sufijo: string | null } | null {
   const trimmed = q.trim();
-  const hasDotThousands = /^d{1,3}(.d{3})*(-d{1,2})?$/.test(trimmed);
-  const stripped = hasDotThousands ? trimmed.replace(/./g, "") : trimmed;
-  if (!/^d{3,6}(-d{1,2})?$/.test(stripped)) return null;
+  const hasDotThousands = /^\d{1,3}(\.\d{3})*(-\d{1,2})?$/.test(trimmed);
+  const stripped = hasDotThousands ? trimmed.replace(/\./g, "") : trimmed;
+  if (!/^\d{3,6}(-\d{1,2})?$/.test(stripped)) return null;
   const [base, sufijo = null] = stripped.split("-");
   return { base: base!, sufijo };
 }
