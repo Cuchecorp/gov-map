@@ -364,13 +364,15 @@ describe("BuscarFiltros — modos de orden", () => {
       if (a.textContent?.includes("Moción")) return "Moción";
       return "ninguna";
     });
-    // Todos los "Mensaje" deben venir antes que los "Moción"
+    // WR-05: assert incondicional — si firstMocion o lastMensaje son -1 el test
+    // debe fallar explícitamente (indica que el render/orden está roto), no pasar vacío.
     const firstMocion = iniciativas.indexOf("Moción");
     const lastMensaje = iniciativas.lastIndexOf("Mensaje");
-    // Si hay al menos un Mensaje y un Moción, lastMensaje < firstMocion
-    if (firstMocion !== -1 && lastMensaje !== -1) {
-      expect(lastMensaje).toBeLessThan(firstMocion);
-    }
+    // El fixture tiene tanto Mensaje como Moción — ambos deben existir.
+    expect(firstMocion).toBeGreaterThan(-1);
+    expect(lastMensaje).toBeGreaterThan(-1);
+    // Todos los "Mensaje" deben venir antes que los "Moción"
+    expect(lastMensaje).toBeLessThan(firstMocion);
   });
 });
 
@@ -407,18 +409,19 @@ describe("BuscarFiltros — empty-after-filter", () => {
       .find((b) => b.getAttribute("aria-pressed") === "false");
     fireEvent.click(chipTramitacion!); // filtra a 1 fila (Mensaje en tramitacion)
 
+    // WR-04: assert incondicional — si chipSenado no se encuentra el test falla
+    // explícitamente en lugar de pasar en blanco.
     const chipSenado = screen
       .getAllByRole("button", { name: /Senado/ })
       .find((b) => b.getAttribute("aria-pressed") === "false");
-    if (chipSenado) {
-      fireEvent.click(chipSenado!); // intersección vacía
-      expect(
-        screen.getByText("Ningún resultado con estos filtros"),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Ajusta o quita filtros para ver más proyectos."),
-      ).toBeInTheDocument();
-    }
+    expect(chipSenado).toBeDefined();
+    fireEvent.click(chipSenado!); // intersección vacía
+    expect(
+      screen.getByText("Ningún resultado con estos filtros"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Ajusta o quita filtros para ver más proyectos."),
+    ).toBeInTheDocument();
   });
 });
 
