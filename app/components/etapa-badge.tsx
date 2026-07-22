@@ -16,6 +16,14 @@ interface EtapaVariant {
 function resolveVariant(value: string | null): EtapaVariant {
   const v = (value ?? "").toLowerCase();
 
+  // IN-02: "tramit" precede a "ley" para evitar que "En tramitación ... ley ..."
+  // caiga en el bucket verde de Promulgado/Ley — mismo orden-matters que estado-bucket.ts.
+  if (v.includes("tramit")) {
+    return { label: value ?? "En tramitación", className: "bg-blue-100 text-blue-800" };
+  }
+  if (v.includes("archiv")) {
+    return { label: value ?? "Archivado", className: "bg-slate-100 text-slate-600" };
+  }
   if (v.includes("promulg") || v.includes("ley")) {
     return {
       label: value ?? "Promulgado / Ley",
@@ -30,12 +38,6 @@ function resolveVariant(value: string | null): EtapaVariant {
   }
   if (v.includes("empate")) {
     return { label: value ?? "Empate", className: "bg-amber-100 text-amber-800" };
-  }
-  if (v.includes("archiv")) {
-    return { label: value ?? "Archivado", className: "bg-slate-100 text-slate-600" };
-  }
-  if (v.includes("tramit")) {
-    return { label: value ?? "En tramitación", className: "bg-blue-100 text-blue-800" };
   }
   if (value && value.trim().length > 0) {
     return { label: value, className: "bg-slate-100 text-slate-600" };
