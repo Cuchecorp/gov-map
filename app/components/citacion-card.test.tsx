@@ -72,6 +72,57 @@ describe("CitacionCard — invitados como gestores de interés (T-06-02)", () =>
   });
 });
 
+describe("CitacionCard — badge de fecha en tz America/Santiago (BLOCKER)", () => {
+  it("una citación a 00:00Z (21:00 CL del día anterior, invierno) rotula el día-calendario de Chile (21, no 22)", () => {
+    // 2026-07-22T00:00:00Z = 2026-07-21 21:00 en Chile (offset −03:00 en invierno).
+    render(
+      <CitacionCard
+        {...makeProps({ fecha: new Date("2026-07-22T00:00:00Z") })}
+      />,
+    );
+    // El badge de fecha usa America/Santiago → día 21, NUNCA el 22 UTC.
+    // (es-CL month:short emite "21-jul"; el separador ` · ` une con el horario.)
+    expect(screen.getByText(/21-jul/i)).toBeInTheDocument();
+    expect(screen.queryByText(/22-jul/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("CitacionCard — estado de cancelación honesto (CIT-05)", () => {
+  it("estado='Suspendida' → marca sobria visible", () => {
+    render(<CitacionCard {...makeProps({ estado: "Suspendida" })} />);
+    expect(screen.getByText(/Suspendida/)).toBeInTheDocument();
+  });
+
+  it("estado='Sin efecto' → marca sobria visible", () => {
+    render(<CitacionCard {...makeProps({ estado: "Sin efecto" })} />);
+    expect(screen.getByText(/Sin efecto/)).toBeInTheDocument();
+  });
+
+  it("marca de estado NO usa color de alarma (destructive/rojo)", () => {
+    const { container } = render(
+      <CitacionCard {...makeProps({ estado: "Suspendida" })} />,
+    );
+    expect(container.innerHTML).not.toMatch(/destructive/);
+    expect(container.innerHTML).not.toMatch(/\bbg-red\b|\btext-red\b/);
+  });
+
+  it("estado=null → NO renderiza marca y NUNCA añade 'Vigente'/'Confirmada'", () => {
+    render(<CitacionCard {...makeProps({ estado: null })} />);
+    expect(screen.queryByText(/Vigente/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Confirmada/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Suspendida|Sin efecto/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("estado ausente (prop omitida) → backward-compatible, sin marca", () => {
+    render(<CitacionCard {...makeProps()} />);
+    expect(
+      screen.queryByText(/Vigente|Confirmada/i),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe("CitacionCard — datos + procedencia", () => {
   it("renderiza comisión, horario, sala y materia", () => {
     render(<CitacionCard {...makeProps()} />);

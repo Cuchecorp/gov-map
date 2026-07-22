@@ -33,13 +33,24 @@ export interface CitacionCardProps {
   invitados: CitacionInvitado[];
   /** Boletín del primer punto con proyecto (cruce a la ficha). `null` → sin enlace. */
   boletin?: string | null;
+  /**
+   * Estado de cancelación verbatim de la fuente ("Suspendida"/"Sin efecto",
+   * poblado en ~6-9%). Cuando presente → marca sobria. Cuando ausente → NO se
+   * renderiza marca; la ausencia NUNCA equivale a "Vigente"/"Confirmada"
+   * (regla LOCKED: estado ausente ≠ vigencia confirmada). Opcional →
+   * backward-compatible con las llamadas existentes.
+   */
+  estado?: string | null;
   provenance: ProvenanceBadgeProps;
 }
 
+// BLOCKER (plan-checker #1): el badge de fecha DEBE rotular el día-calendario de
+// Chile, no el día UTC almacenado. Una citación a 00:00Z (21:00 CL del día
+// anterior en invierno) tiene que mostrar el día chileno, no el siguiente.
 const horaFmt = new Intl.DateTimeFormat("es-CL", {
   day: "2-digit",
   month: "short",
-  timeZone: "UTC",
+  timeZone: "America/Santiago",
 });
 
 export function CitacionCard({
@@ -51,6 +62,7 @@ export function CitacionCard({
   camara,
   invitados,
   boletin,
+  estado,
   provenance,
 }: CitacionCardProps) {
   const fechaLabel = fecha ? horaFmt.format(fecha) : null;
@@ -64,6 +76,12 @@ export function CitacionCard({
             <span className="font-mono text-sm text-muted-foreground">
               {[fechaLabel, horario].filter(Boolean).join(" · ")}
             </span>
+          )}
+          {/* Estado de cancelación honesto (CIT-05): marca sobria en muted, sin
+              badge de alarma ni --destructive. La ausencia de estado NO se
+              rotula (nunca "Vigente"/"Confirmada"). */}
+          {estado && (
+            <span className="text-sm text-muted-foreground">· {estado}</span>
           )}
         </div>
         <h3 className="text-base font-semibold mt-1">{comision}</h3>
