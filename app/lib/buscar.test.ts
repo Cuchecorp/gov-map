@@ -189,8 +189,9 @@ describe("buscarProyectos — flag híbrido OFF/ON (RETR-05)", () => {
       }),
     );
     expect(rpcMock).not.toHaveBeenCalledWith("match_proyectos", expect.any(Object));
-    // CR-02 fix (Phase 87): la RPC devuelve rank; el boundary normaliza a {boletin, similarity:0}
-    expect(res).toEqual([{ boletin: "222-07", similarity: 0 }]);
+    // WR-04 (Phase 89): la RPC devuelve rank; el boundary normaliza a {boletin, similarity:null}
+    // (null señaliza honestamente n/a en híbrida — el orden viene del RPC, rank asc)
+    expect(res).toEqual([{ boletin: "222-07", similarity: null }]);
   });
 
   it("flag ON + RPC error → LANZA (honest degradation)", async () => {
