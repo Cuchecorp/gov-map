@@ -202,7 +202,7 @@ Plans:
 
 - [x] 91-01-PLAN.md — Canal de datos: migracion 0060 (RPCs PII-safe partido/militancias/comisiones/cross-links + listado ampliado) + allowlist + pgTAP + apply PROD
 - [x] 91-02-PLAN.md — Header ampliado: PartidoChip neutro (fuente+fecha) + bloque comisiones + seccion militancias (vigente + acordeon historico)
-- [ ] 91-03-PLAN.md — Cross-links factuales (4 bloques anti-causales) + filtro partido island en /parlamentarios + linter extendido + deploy Cloudflare
+- [x] 91-03-PLAN.md — Cross-links factuales (4 bloques anti-causales) + filtro partido island en /parlamentarios + linter extendido + deploy Cloudflare
 
 **UI hint**: yes
 
