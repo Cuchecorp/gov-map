@@ -17,7 +17,11 @@
 export interface CoberturaCamaraMetrica {
   /** Total de citaciones de comisiones de la Cámara ingeridas. */
   camaraN: number;
-  /** Nº de semanas ISO distintas cubiertas (derivado del rango min→max). */
+  /**
+   * Ancho del rango min→max en semanas de 7 días (aprox., derivado — IN-01). NO es
+   * el conteo de semanas ISO distintas: es `floor(díasEntre/7)+1` (ver `semanasEntre`
+   * en app/agenda/page.tsx). El copy la muestra como cifra derivada aproximada.
+   */
   camaraSemanas: number;
   /** Fecha mínima (YYYY-MM-DD) de citación de Cámara ingerida. */
   camaraMin: string | null;

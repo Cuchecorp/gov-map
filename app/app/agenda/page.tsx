@@ -343,8 +343,13 @@ async function derivarMetricaCamara(): Promise<CoberturaCamaraMetrica> {
 }
 
 /**
- * Nº de semanas ISO abarcadas por el rango min→max de fecha (derivado, no exacto).
- * Se cuenta la cantidad de lunes-Chile distintos entre ambas fechas, inclusive.
+ * Ancho del rango min→max expresado en semanas de 7 días (aprox., derivado — IN-01).
+ * NO cuenta semanas ISO distintas ni lunes-Chile distintos: computa
+ * `floor(díasEntre / 7) + 1`, el número de "cubos" de 7 días que abarca el rango
+ * inclusive (p.ej. un rango de 7 días devuelve 2). El banner declara la cifra como
+ * un rango derivado aproximado y prohíbe leerla como "cobertura completa", así que
+ * la aproximación es honesta; este JSDoc describe EXACTAMENTE lo que el código mide
+ * (antes decía "semanas ISO / lunes-Chile distintos", que el código no calcula).
  * Si falta algún extremo → 0.
  */
 function semanasEntre(min: string | null, max: string | null): number {
