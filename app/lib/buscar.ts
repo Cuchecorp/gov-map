@@ -204,12 +204,17 @@ export async function buscarProyectos(
   // Rama híbrida (RETR-05): flag ON → RPC buscar_proyectos_hibrido (RRF Postgres nativo).
   // Default OFF hasta el gate de dominancia de Plan 87-03.
   if (busquedaHibridaEnabled()) {
+    // CR-01 (Phase 87): la RPC no tiene argumento exclude_boletin — se solicita un
+    // resultado extra y se filtra app-side para que un proyecto no aparezca en su
+    // propia sección "proyectos similares" (SEM-05).
+    const requestCount =
+      (opts.matchCount ?? 20) + (opts.excludeBoletin ? 1 : 0);
     const { data: hybridData, error: hybridError } = await sb.rpc(
       "buscar_proyectos_hibrido",
       {
         q,
         query_embedding: emb.vector,
-        match_count: opts.matchCount ?? 20,
+        match_count: requestCount,
       },
     );
     if (hybridError) {
@@ -217,7 +222,21 @@ export async function buscarProyectos(
         `buscar_proyectos_hibrido RPC falló: ${hybridError.message}`,
       );
     }
-    return (hybridData as MatchProyectoRow[] | null) ?? [];
+    // CR-02 (Phase 87): la RPC devuelve (boletin, rank); normalizamos al shape
+    // MatchProyectoRow {boletin, similarity} en el boundary para que los
+    // consumidores downstream no reciban similarity=undefined. El orden ya viene
+    // correcto del RPC (order by rank asc), así que similarity=0 es inofensivo.
+    const hybridRows = (
+      hybridData as { boletin: string; rank: number }[] | null
+    ) ?? [];
+    const normalizedRows: MatchProyectoRow[] = hybridRows.map((r) => ({
+      boletin: r.boletin,
+      similarity: 0, // n/a en híbrida — el orden viene del RPC (rank asc)
+    }));
+    const filtered = opts.excludeBoletin
+      ? normalizedRows.filter((r) => r.boletin !== opts.excludeBoletin)
+      : normalizedRows;
+    return filtered.slice(0, opts.matchCount ?? 20);
   }
 
   // Camino default OFF: match_proyectos semántico puro (sin cambios).

@@ -189,7 +189,8 @@ describe("buscarProyectos — flag híbrido OFF/ON (RETR-05)", () => {
       }),
     );
     expect(rpcMock).not.toHaveBeenCalledWith("match_proyectos", expect.any(Object));
-    expect(res).toEqual([{ boletin: "222-07", rank: 1 }]);
+    // CR-02 fix (Phase 87): la RPC devuelve rank; el boundary normaliza a {boletin, similarity:0}
+    expect(res).toEqual([{ boletin: "222-07", similarity: 0 }]);
   });
 
   it("flag ON + RPC error → LANZA (honest degradation)", async () => {
@@ -210,6 +211,46 @@ describe("buscarProyectos — flag híbrido OFF/ON (RETR-05)", () => {
     rpcMock.mockResolvedValue({ data: null, error: null });
     const res = await buscarProyectos("consulta sin resultados", { embedder: emb });
     expect(res).toEqual([]);
+  });
+
+  it("flag ON + excludeBoletin: el propio boletín NO aparece en resultado (CR-01 fix)", async () => {
+    busquedaHibridaEnabledMock.mockReturnValue(true);
+    const emb = fakeEmbedder();
+    // RPC devuelve el propio boletín como rank 1 (self-match)
+    rpcMock.mockResolvedValue({
+      data: [
+        { boletin: "14309-04", rank: 1 },
+        { boletin: "111-07", rank: 2 },
+        { boletin: "222-07", rank: 3 },
+      ],
+      error: null,
+    });
+    const res = await buscarProyectos("medio ambiente", {
+      embedder: emb,
+      excludeBoletin: "14309-04",
+      matchCount: 5,
+    });
+    // El propio boletín debe estar excluido
+    expect(res.find((r) => r.boletin === "14309-04")).toBeUndefined();
+    // El resto se devuelve en orden
+    expect(res[0]?.boletin).toBe("111-07");
+    expect(res[1]?.boletin).toBe("222-07");
+  });
+
+  it("flag ON + excludeBoletin: match_count correcto (pide +1 al RPC)", async () => {
+    busquedaHibridaEnabledMock.mockReturnValue(true);
+    const emb = fakeEmbedder();
+    rpcMock.mockResolvedValue({ data: [], error: null });
+    await buscarProyectos("pensiones", {
+      embedder: emb,
+      excludeBoletin: "999-01",
+      matchCount: 5,
+    });
+    // Debe pedir 5+1=6 al RPC para compensar el filtro
+    expect(rpcMock).toHaveBeenCalledWith(
+      "buscar_proyectos_hibrido",
+      expect.objectContaining({ match_count: 6 }),
+    );
   });
 });
 
