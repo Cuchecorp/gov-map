@@ -119,7 +119,7 @@ export function ValidacionFuenteSection({
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Ver en el Senado (abre en nueva pestaña)"
-              className="inline-flex flex-col min-h-11 justify-center gap-0.5 text-[color:var(--accent-product)] underline underline-offset-2 hover:opacity-80 focus-visible:outline-[2px] focus-visible:outline-[color:var(--accent-product)]"
+              className="inline-flex flex-col min-h-11 justify-center gap-0.5 text-accent-product underline underline-offset-2 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-product"
             >
               <span className="text-sm font-normal">Ver en el Senado ↗</span>
               <span className="text-xs text-muted-foreground no-underline">
@@ -137,7 +137,7 @@ export function ValidacionFuenteSection({
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Ver en la Cámara (abre en nueva pestaña)"
-              className="inline-flex flex-col min-h-11 justify-center gap-0.5 text-[color:var(--accent-product)] underline underline-offset-2 hover:opacity-80 focus-visible:outline-[2px] focus-visible:outline-[color:var(--accent-product)]"
+              className="inline-flex flex-col min-h-11 justify-center gap-0.5 text-accent-product underline underline-offset-2 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-product"
             >
               <span className="text-sm font-normal">Ver en la Cámara ↗</span>
               <span className="text-xs text-muted-foreground no-underline">
