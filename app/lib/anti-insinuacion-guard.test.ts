@@ -227,10 +227,19 @@ const SUPERFICIES_LOBBY: string[] = [
  * parcial NO deben editorializarse, y el island de filtros no debe agrupar por
  * afinidad inferida. El copy de estas superficies debe ser estrictamente FACTUAL.
  *
- * Las 3 superficies:
+ * Las 5 superficies:
  *  - `agenda-filtros.tsx`: el island de filtros de periodista (94-02) — el ÚNICO
  *    renderer del listado por día post-hidratación (facetas + counts + reagrupación).
  *  - `agenda-cobertura.tsx`: el banner de cobertura declarada (94-01).
+ *  - `estado-actual-block.tsx` (WR-03): el bloque "¿Dónde está hoy?" de la ficha
+ *    de proyecto, que renderiza el copy NUEVO de la fase — "Citado el … (sesión
+ *    pasada)" y "En tabla de sala N veces". Es EXACTAMENTE la superficie temporal/
+ *    causal-adyacente que el linter existe para proteger, y la más tentada a
+ *    derivar hacia editorialización ("citado reiteradamente", "insiste", etc.).
+ *  - `citacion-card.tsx` (WR-03): la tarjeta de citación (island + SSR), que
+ *    renderiza el estado de cancelación verbatim ("Suspendida"/"Sin efecto") + el
+ *    bloque de invitados. Copy actual factual → superficie limpia; tripwire
+ *    PREVENTIVO para copy futuro.
  *  - `app/agenda/page.tsx`: el Server Component de /agenda (serializa el slice,
  *    monta el island, mantiene el buscador FTS + leyendas de estado/cobertura).
  *
@@ -239,8 +248,12 @@ const SUPERFICIES_LOBBY: string[] = [
  * realizará.") usan "completo"/"confirma", que NO están en TERMINOS_PROHIBIDOS —
  * son negaciones honestas de términos NO prohibidos, así que NO requieren registro
  * en NEGACIONES_LOCKED (verificado 94-01/94-02: el diff de TERMINOS_PROHIBIDOS no
- * contiene "completo" ni "confirma"). Si alguna leyenda futura negara un término
- * prohibido, debe registrarse en NEGACIONES_LOCKED verbatim ANTES de escanear.
+ * contiene "completo" ni "confirma"). El copy de `estado-actual-block.tsx` y
+ * `citacion-card.tsx` se VERIFICÓ igualmente limpio (WR-03): "(sesión pasada)",
+ * "En tabla de sala N veces", "Sin urgencia vigente", "Suspendida"/"Sin efecto"
+ * no contienen ni NIEGAN término prohibido → NO requieren NEGACIONES_LOCKED. Si
+ * alguna leyenda futura negara un término prohibido, debe registrarse verbatim
+ * ANTES de escanear.
  *
  * Rutas relativas a app/, mismo formato que los otros arrays. Si una ruta no existe,
  * se salta sin fallar (tolerancia try/catch del bucle).
@@ -248,6 +261,8 @@ const SUPERFICIES_LOBBY: string[] = [
 const SUPERFICIES_AGENDA: string[] = [
   "components/agenda-filtros.tsx",
   "components/agenda-cobertura.tsx",
+  "components/estado-actual-block.tsx",
+  "components/citacion-card.tsx",
   "app/agenda/page.tsx",
 ];
 
