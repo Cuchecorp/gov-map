@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
-status: executing
+status: verifying
 stopped_at: "Roadmap v9.0 creado — 11 fases (86-96) en tres pasadas; 27/27 requisitos mapeados; listo para /gsd:plan-phase 86"
-last_updated: "2026-07-22T17:09:10.052Z"
+last_updated: "2026-07-22T18:13:03.374Z"
 last_activity: 2026-07-22
 progress:
   total_phases: 11
   completed_phases: 6
-  total_plans: 18
-  completed_plans: 18
+  total_plans: 22
+  completed_plans: 19
   percent: 55
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 91 (PERSONAS P2b — Ficha bio + partido directo + cross-links factuales) — EXECUTING
 Plan: 3 of 3 complete
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-22
 
 ## Performance Metrics
@@ -73,6 +73,7 @@ Last activity: 2026-07-22
 | Phase 91 P01 | 8min | 3 tasks | 5 files |
 | Phase 91 P02 | ~8min | 3 tasks | 8 files |
 | Phase 91 P03 | ~26min | 3 tasks | 7 files |
+| Phase 92 P01 | ~14min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: [Phase 90] 90-03: run-bio-cli dos-etapas + 0059 APLICADA a PROD (pgTAP 28/28). LIVE por el agente: diputados 155/155 (315 militancias, 155 partidos frescos), senadores 31/31 vigentes (48 militancias; 85 historicos BCN sin match=fail-closed), comisiones 34+386 membresias+154 dip (curl-first WAF). CERO FK fabricado. FIX RULE-1: query BCN clase bio:Senador inexistente->0 filas; corregida a bio:idSenado + join DETERMINISTA por parlid_senado (supera name-match A3). parlamentario_bio=0 (Known Stub). Gate 91 DESBLOQUEADO.
 - [Phase ?]: [Phase 91] 91-01: canal de datos ficha 360 en PROD — migración 0060 con 8 RPCs security-definer PII-safe (cabecera_v2/listado_v2 con partido DIRECTO desde militancia vigente +fecha_captura+origen, militancias, comisiones, 4 cross-links factuales bounded orden-neutral); firmas v2 PARALELAS (no altera 0020/0026: evita 42P13+re-arma default-privileges, 0020 intacto para guard LEGAL-03); partido revierte retencion de 0020 por decision operador 2026-07-21 (dato publico del cargo electo; minimizacion 21.719 plena solo terceros/RUT/email); doble-revoke CERO grant VERBATIM 0055; anti-ranking (coautores n_proyectos honesto pero orden por nombre); APLICADA a PROD por el agente (DDL aditivo, precedente 0055-0059), pgTAP 30/30 verde contra schema aplicado, partido no-null confirmado (D1074 Independientes), cero rut/email; 8 RPCs en PUBLIC_RPC_ALLOWLIST; suite app 1097 verde + tsc 0; montaje UI diferido a 02/03.
 - [Phase ?]: 91-03: cross-links factuales + filtro partido island + linter extendido; deploy Cloudflare e0c969af verificado BrowserOS
+- [Phase 92] 92-01: canal de datos audiencia→PL fail-closed. extraerBoletines context-gated (regla LOCKED riesgo #1): (a) sufijo -NN inequívoco en cualquier posición; (b) base pelada/punteada SOLO tras gatillo boletín/bol. ≤3 tokens; JAMÁS keywords → "Ley 20.730"/"año 2024"/"20730 suelto"/"$14.309" = []. DIVERGENCIA deliberada vs detectarBoletin (aquél valida query completa). Migración 0062 RPC lobby_menciones_de_boletin: fail-closed doble (regex SQL espeja el TS + join proyecto por existencia), SOLO confirmado+parlamentario_id, PII-safe (nombre público+contraparte cruda sin RUT/contraparte_id), total_n honesto, LIMIT 50, doble-revoke CERO grant. Guard equivalencia TS↔SQL vía FIXTURE_MATERIA compartido asertado en vitest Y pgTAP; VALIDADO local en pg efímero 14/14 espejados (CERO contacto PROD). FIX RULE-1: branch (b) aplica SIEMPRE (con/sin sufijo en p_boletin) con \M(?!-[[:digit:]]) anti-doble-conteo; tokens intermedios sin dígitos [^space:digit:]+ para robustez backtracking. 0062 NO aplicada a PROD (apply+pgTAP contra schema aplicado + métrica cobertura honesta = Plan 04). lobby_menciones_de_boletin en PUBLIC_RPC_ALLOWLIST. Suite app 1129 verde + tsc 0. LOB-02 canal cerrado; montaje UI = Plan 02/03.
 
 ### Pending Todos
 
@@ -159,7 +161,7 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-22T17:09:03.767Z
+Last session: 2026-07-22T18:13:03.364Z
 Stopped at: Roadmap v9.0 creado — 11 fases (86-96) en tres pasadas; 27/27 requisitos mapeados; listo para /gsd:plan-phase 86
 Resume file: None
 
