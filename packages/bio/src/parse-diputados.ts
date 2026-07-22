@@ -75,6 +75,28 @@ function str(v: unknown): string | null {
 }
 
 /**
+ * WR-04: el `<Id>` (DIPID) es la ÚNICA clave de match. `str()` colapsa "ausente" y
+ * "presente-pero-no-escalar" al mismo `null` → un `<Id>` que llega como objeto (atributos, nesting
+ * inesperado por deriva del markup) se trataría como "sin Id" y el diputado se saltaría en silencio,
+ * reduciendo cobertura sin error. Aquí distinguimos: ausente/vacío → `null` (skip legítimo);
+ * presente-pero-no-escalar → LANZA (misma rigurosidad fail-loud que las fechas), para que un cambio
+ * de formato de la fuente SURJA en vez de encoger la corrida calladamente.
+ */
+export class IdNoEscalarError extends Error {
+  constructor(readonly valor: unknown) {
+    super(`parseDiputadosBio: <Id> presente pero no escalar (${JSON.stringify(valor)}) — posible deriva de formato de la fuente`);
+    this.name = "IdNoEscalarError";
+  }
+}
+
+function strMatchKey(v: unknown): string | null {
+  if (v == null) return null; // ausente → skip legítimo
+  if (typeof v === "object") throw new IdNoEscalarError(v); // presente pero no escalar → fail-loud
+  const s = String(v).trim();
+  return s.length === 0 ? null : s;
+}
+
+/**
  * Parsea una fecha FAIL-CLOSED: `null` si ausente/vacía (semántica legítima: vigente sin fin),
  * un `Date` válido si parsea, y LANZA `FechaInvalidaError` si el string no es parseable.
  * NUNCA devuelve un `Invalid Date`.
@@ -177,7 +199,7 @@ export function parseDiputadosBio(
     const d = per.Diputado;
     if (!d) continue;
 
-    const dipid = str(d.Id);
+    const dipid = strMatchKey(d.Id); // WR-04: fail-loud si <Id> presente pero no escalar
     if (dipid == null) {
       log("parseDiputadosBio: <Diputado> sin <Id> — se salta (sin clave de match)");
       continue;

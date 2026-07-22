@@ -25,6 +25,7 @@ export {
 export {
   parseDiputadosBio,
   FechaInvalidaError,
+  IdNoEscalarError,
   DIPUTADOS_BIO_URL,
   CORTE_VIGENCIA,
 } from "./parse-diputados";

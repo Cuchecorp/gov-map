@@ -9,7 +9,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { parseDiputadosBio, FechaInvalidaError } from "./parse-diputados";
+import { parseDiputadosBio, FechaInvalidaError, IdNoEscalarError } from "./parse-diputados";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(here, "__fixtures__", "diputados-periodo-actual.xml");
@@ -91,6 +91,22 @@ describe("parse-diputados — fail-loud", () => {
   </Diputado></DiputadoPeriodo>
 </DiputadosPeriodoColeccion>`;
     expect(() => parseDiputadosBio(xmlMalo)).toThrow(FechaInvalidaError);
+  });
+
+  it("WR-04: <Id> presente pero no escalar (nesting inesperado) → LANZA (no skip silencioso)", () => {
+    // <Id> con hijo → fast-xml-parser lo entrega como objeto. str() lo colapsaria a null (skip
+    // silencioso, cobertura menguada sin error); strMatchKey debe LANZAR para que la deriva surja.
+    const xmlIdObjeto = `<?xml version="1.0"?>
+<DiputadosPeriodoColeccion>
+  <DiputadoPeriodo><Diputado>
+    <Id><Interno>5</Interno></Id><Nombre>Test</Nombre><ApellidoPaterno>Id</ApellidoPaterno><ApellidoMaterno>Objeto</ApellidoMaterno>
+    <Militancias><Militancia>
+      <FechaInicio>2022-03-11T00:00:00</FechaInicio><FechaTermino />
+      <Partido><Id>X</Id><Nombre>X</Nombre><Alias>X</Alias></Partido>
+    </Militancia></Militancias>
+  </Diputado></DiputadoPeriodo>
+</DiputadosPeriodoColeccion>`;
+    expect(() => parseDiputadosBio(xmlIdObjeto)).toThrow(IdNoEscalarError);
   });
 });
 
