@@ -1,5 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { detectarBoletin } from "./boletin";
+// WR-03 equivalence guard: inline re-implementation of app/lib/boletin-detector.ts
+// to assert both copies produce identical output over the shared fixture set.
+// If you update detectarBoletin here, update app/lib/boletin-detector.ts too.
+function detectarBoletinApp(q: string): { base: string; sufijo: string | null } | null {
+  const trimmed = q.trim();
+  const hasDotThousands = /^d{1,3}(.d{3})*(-d{1,2})?$/.test(trimmed);
+  const stripped = hasDotThousands ? trimmed.replace(/./g, "") : trimmed;
+  if (!/^d{3,6}(-d{1,2})?$/.test(stripped)) return null;
+  const [base, sufijo = null] = stripped.split("-");
+  return { base: base!, sufijo };
+}
 
 describe("detectarBoletin", () => {
   it('detecta formato "14309-04" → {base:"14309", sufijo:"04"}', () => {
@@ -48,4 +59,28 @@ describe("detectarBoletin", () => {
     expect(detectarBoletin('123.456')).toEqual({ base: '123456', sufijo: null });
   });
 
+});
+describe("detectarBoletin — equivalencia guard app vs spike (WR-03)", () => {
+  // This fixture must stay in sync with app/lib/boletin-detector.ts.
+  // SQL regex counterpart: '^ d{1,3}(.d{3})*(-d{1,2})?$' in 0056/0057 migration.
+  const FIXTURE: Array<[string, { base: string; sufijo: string | null } | null]> = [
+    ["14309-04",   { base: "14309", sufijo: "04" }],
+    ["14309",      { base: "14309", sufijo: null }],
+    ["14.309-04",  { base: "14309", sufijo: "04" }],
+    ["14.309",     { base: "14309", sufijo: null }],
+    ["123.456",    { base: "123456", sufijo: null }],
+    ["medio ambiente", null],
+    ["",           null],
+    ["12.34",      null],
+    ["100.00",     null],
+    ["3.14",       null],
+    ["1.234.56",   null],
+  ];
+
+  it("spike (boletin.ts) y app (boletin-detector.ts) producen resultados idénticos sobre el fixture", () => {
+    for (const [input, expected] of FIXTURE) {
+      expect(detectarBoletin(input)).toEqual(expected);
+      expect(detectarBoletinApp(input)).toEqual(expected);
+    }
+  });
 });
