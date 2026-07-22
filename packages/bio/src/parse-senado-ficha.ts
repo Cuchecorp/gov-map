@@ -31,20 +31,45 @@ function normWs(s: string): string {
  * La estructura de senado.cl varía; se buscan etiquetas comunes ("Partido", "Militancia").
  * Fallback deliberadamente conservador: ante ambigüedad, null.
  */
+/** ¿La etiqueta es un rótulo de partido/militancia? (normalizada, sin ":" ni espacios de sobra). */
+function esEtiquetaPartido(etiqueta: string): boolean {
+  const e = etiqueta.replace(/[:\s]+$/, "");
+  return /^partido( pol[ií]tico)?$/.test(e) || /^militancia$/.test(e);
+}
+
+/**
+ * ¿El texto parece un NOMBRE de partido y no otro rótulo/decoy?
+ * WR-05: rechaza vacíos, valores demasiado largos, y strings que a su vez lucen como etiquetas
+ * ("(sin especificar)", "Partido político", cadenas que terminan en ":") — prefiere null antes que
+ * un best-guess del sibling arbitrario.
+ */
+function pareceNombrePartido(val: string): boolean {
+  if (val.length === 0 || val.length >= 120) return false;
+  if (/[:]$/.test(val)) return false; // otro rótulo, no un valor
+  const bajo = val.toLowerCase();
+  if (/(sin especificar|no especificad|independiente\b.*sin)/.test(bajo)) return false;
+  if (esEtiquetaPartido(bajo)) return false; // el sibling es OTRA etiqueta "Partido", no el valor
+  return true;
+}
+
 export function parseSenadoFicha(html: string, parlidSenado: string): FichaSenadorBio {
   const $ = cheerio.load(html);
   let partido: string | null = null;
 
-  // Patrón 1: pares etiqueta/valor ("Partido: X" o <dt>Partido</dt><dd>X</dd>).
-  $("dt, th, strong, b, span, label").each((_, el) => {
+  // WR-05: SOLO pares estructurados etiqueta/valor — <dt>Partido</dt><dd>X</dd> y
+  // <th>Partido</th><td>X</td>. Se abandonan strong/b/span/label sueltos (un "Partido…" decoy en un
+  // heading o menú capturaba el sibling arbitrario y fabricaba un partido). El valor debe LUCIR como
+  // nombre de partido (pareceNombrePartido); ante cualquier duda → null (honest-state, no fabrica).
+  $("dt, th").each((_, el) => {
     if (partido != null) return;
     const etiqueta = normWs($(el).text()).toLowerCase();
-    if (/^partido/.test(etiqueta) || /militancia/.test(etiqueta)) {
-      // valor = siguiente celda/sibling con texto.
-      const sib = $(el).next();
-      const val = normWs(sib.text());
-      if (val.length > 0 && val.length < 120) partido = val;
-    }
+    if (!esEtiquetaPartido(etiqueta)) return;
+    const tag = (el as { tagName?: string }).tagName?.toLowerCase();
+    // El valor es el par estructural: dd para dt, td para th (mismo nivel, hermano siguiente).
+    const sib = tag === "dt" ? $(el).nextAll("dd").first() : $(el).nextAll("td").first();
+    if (sib.length === 0) return;
+    const val = normWs(sib.text());
+    if (pareceNombrePartido(val)) partido = val;
   });
 
   return { parlidSenado, partido };
