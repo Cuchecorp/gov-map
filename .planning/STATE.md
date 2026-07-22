@@ -1,15 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v9.0
-milestone_name: Robustez de productos estrella + seguridad final
-status: ready
-last_updated: "2026-07-21T22:37:39.122Z"
-last_activity: 2026-07-21
+milestone_name: — Robustez de productos estrella + seguridad final
+status: executing
+stopped_at: "Roadmap v9.0 creado — 11 fases (86-96) en tres pasadas; 27/27 requisitos mapeados; listo para /gsd:plan-phase 86"
+last_updated: "2026-07-22T00:02:48.330Z"
+last_activity: 2026-07-22
 progress:
   total_phases: 11
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 1
   percent: 0
 ---
 
@@ -20,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** v9.0 Robustez de productos estrella + seguridad final — Phase 86 (BÚSQUEDA P1a — SPIKE retrieval híbrido + golden set) lista para planificar. Roadmap: ROADMAP.md §v9.0 (tres pasadas 86-89 / 90-94 / 95-96). Decisión operador: partido/bio oficial DIRECTO (REQUIREMENTS.md §v9.0).
+**Current focus:** Phase 86 — BÚSQUEDA P1a — SPIKE retrieval híbrido + golden set congelado (GATE de 87)
 
 ## Current Position
 
-Phase: 86 — BÚSQUEDA P1a — SPIKE retrieval híbrido + golden set congelado (Not started)
-Plan: — (roadmap complete; ready for /gsd:plan-phase 86)
-Status: Ready — roadmap approved, 27/27 requisitos mapeados (fases 86-96)
-Last activity: 2026-07-21 — Roadmap v9.0 creado (11 fases, tres pasadas)
+Phase: 86 (BÚSQUEDA P1a — SPIKE retrieval híbrido + golden set congelado (GATE de 87)) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-07-22
 
 ## Performance Metrics
 
@@ -144,9 +145,9 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-21
+Last session: 2026-07-22T00:02:48.321Z
 Stopped at: Roadmap v9.0 creado — 11 fases (86-96) en tres pasadas; 27/27 requisitos mapeados; listo para /gsd:plan-phase 86
-Resume file: .planning/ROADMAP.md (§v9.0)
+Resume file: None
 
 ## Operator Next Steps
 

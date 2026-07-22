@@ -12,8 +12,8 @@
 
 - [ ] **RETR-01**: El ciudadano que escribe un número de boletín en cualquier formato (`14309-04`, `14309`, `14.309-04`) SIEMPRE encuentra el proyecto, como resultado #1 — short-circuit determinista fuera del RRF
 - [ ] **RETR-02**: El ciudadano que escribe un fragmento LITERAL del título/nombre del PL SIEMPRE lo encuentra — FTS `spanish` + unaccent sobre título/materia (hoy la búsqueda es solo-semántica y falla; ese es EL bug)
-- [ ] **RETR-03**: La estrategia híbrida keyword ∪ semántica (RRF, patrón oficial Supabase) se elige por SPIKE EMPÍRICO con golden set congelado ANTES de escribir schema (≥30 queries: título literal, paráfrasis NL, normas, todos los formatos de boletín, ñ/acentos/topónimos)
-- [ ] **RETR-04**: El golden set queda como test de regresión permanente en CI; la búsqueda NL/semántica y "proyectos similares" NO regresionan (RPC vieja tras flag hasta que la nueva domine)
+- [x] **RETR-03**: La estrategia híbrida keyword ∪ semántica (RRF, patrón oficial Supabase) se elige por SPIKE EMPÍRICO con golden set congelado ANTES de escribir schema (≥30 queries: título literal, paráfrasis NL, normas, todos los formatos de boletín, ñ/acentos/topónimos)
+- [x] **RETR-04**: El golden set queda como test de regresión permanente en CI; la búsqueda NL/semántica y "proyectos similares" NO regresionan (RPC vieja tras flag hasta que la nueva domine)
 - [ ] **RETR-05**: La búsqueda por idea matriz y por normas/cuerpos legales afectados en lenguaje natural opera con pesos declarados (A título / B idea matriz / C normas)
 
 ### RANK — Ranking explicable
@@ -87,8 +87,8 @@ Cobertura 100 por ciento: 27/27 requisitos mapeados a fases 86-96 (sin huérfano
 |-------------|-------|--------|
 | RETR-01 | Phase 87 | Pending |
 | RETR-02 | Phase 87 | Pending |
-| RETR-03 | Phase 86 | Pending |
-| RETR-04 | Phase 86 | Pending |
+| RETR-03 | Phase 86 | Complete |
+| RETR-04 | Phase 86 | Complete |
 | RETR-05 | Phase 87 | Pending |
 | RANK-01 | Phase 88 | Pending |
 | FILT-01 | Phase 88 | Pending |
