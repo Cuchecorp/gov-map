@@ -10,6 +10,7 @@
     { "path": "./packages/agenda" },
     { "path": "./packages/votos" },
     { "path": "./packages/lobby" },
+    { "path": "./packages/bio" },
     { "path": "./packages/probidad" },
     { "path": "./packages/dinero" },
     { "path": "./packages/fichas" },
