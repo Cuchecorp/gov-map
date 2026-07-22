@@ -15,7 +15,7 @@
  * El cache committeado (embed-cache.json) evita llamadas a Gemini en re-corridas.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, beforeAll } from "vitest";
@@ -41,8 +41,11 @@ function loadEnv(root: string): Record<string, string> {
 }
 
 // Cargar .env antes de evaluar el gate (para que process.env tenga las vars)
+// WR-06: guard existsSync — en CI con secrets via process.env no hay .env file;
+// readFileSync lanzaria ENOENT y colapsaria el test file (opuesto al SKIP HONESTO).
 const root = findWorkspaceRoot(process.cwd());
-const env = loadEnv(root);
+const envPath = join(root, ".env");
+const env = existsSync(envPath) ? loadEnv(root) : {};
 for (const [k, v] of Object.entries(env)) {
   if (!process.env[k]) process.env[k] = v;
 }
