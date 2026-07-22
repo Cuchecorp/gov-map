@@ -71,3 +71,14 @@ export type { SupabaseBioWriterOptions } from "./writer-supabase";
 // Orquestador dos-etapas fail-closed (fetch→R2→parse→match→write; --from-r2 replay).
 export { runBio, conectorDeEnvelope } from "./run-bio";
 export type { RunBioOpts, RunBioResult, BioEnvelope, BioConector } from "./run-bio";
+
+// CLI (entry-point operador/agente): helpers reutilizables + conector real.
+export {
+  flagValue,
+  flagValues,
+  loadEnv,
+  findWorkspaceRoot,
+  cargarMaestra,
+  buildBioConector,
+} from "./run-bio-cli";
+export type { Fuente } from "./run-bio-cli";
