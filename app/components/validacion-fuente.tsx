@@ -156,7 +156,7 @@ export function ValidacionFuenteSection({
         <div className="pt-2 border-t border-border space-y-1">
           <p className="text-xs text-muted-foreground">
             Respaldo del{" "}
-            <span className="font-mono">{formatFethedAt(respaldo.fetched_at)}</span>
+            <span className="font-mono">{formatFetchedAt(respaldo.fetched_at)}</span>
             {" · "}
             hash{" "}
             <span className="font-mono">
@@ -203,7 +203,7 @@ function formatFechaCaptura(iso: string): string {
   }
 }
 
-function formatFethedAt(iso: string): string {
+function formatFetchedAt(iso: string): string {
   try {
     return new Date(iso).toLocaleDateString("es-CL", {
       year: "numeric",
