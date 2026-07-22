@@ -3,6 +3,10 @@ import { CamaraChip } from "@/components/camara-chip";
 import { ProvenanceBadge } from "@/components/provenance-badge";
 import { AutoresList } from "@/components/autores-list";
 import { Badge } from "@/components/ui/badge";
+import {
+  enlaceHumanoProyecto,
+  buildCamaraUrl,
+} from "@/components/validacion-fuente";
 import type { ProyectoRow } from "@/lib/types";
 import { sourceLabel } from "@/lib/types";
 
@@ -61,9 +65,30 @@ export function FichaHeader({ proyecto }: { proyecto: ProyectoRow }) {
         <ProvenanceBadge
           capturedAt={capturedAt}
           sourceName={sourceLabel(proyecto.origen)}
-          sourceUrl={proyecto.enlace || null}
+          // El `proyecto.enlace` de PROD suele ser el WS XML (wspublico) —
+          // se reruta a la ficha humana del Senado; nunca la URL cruda.
+          sourceUrl={
+            enlaceHumanoProyecto(proyecto.enlace || "", proyecto.boletin) ||
+            null
+          }
         />
       </div>
+
+      {/* Link Cámara — SOLO si prm_id_camara != null (fail-honest). Espeja el
+          link Cámara de validacion-fuente.tsx (mismas clases/tokens). */}
+      {proyecto.prm_id_camara !== null && (
+        <div className="mt-2">
+          <a
+            href={buildCamaraUrl(proyecto.boletin, proyecto.prm_id_camara)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Ver en la Cámara (abre en nueva pestaña)"
+            className="inline-flex min-h-11 items-center text-sm text-accent-product underline underline-offset-2 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-product"
+          >
+            Ver en la Cámara ↗
+          </a>
+        </div>
+      )}
     </header>
   );
 }

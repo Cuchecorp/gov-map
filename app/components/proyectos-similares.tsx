@@ -2,6 +2,7 @@ import { createServerSupabase } from "@/lib/supabase";
 import { buscarProyectos } from "@/lib/buscar";
 import { sourceLabel, type ProyectoRow } from "@/lib/types";
 import { SearchResultCard } from "@/components/search-result-card";
+import { enlaceHumanoProyecto } from "@/components/validacion-fuente";
 
 /**
  * ProyectosSimilares — sección kNN de la ficha (UI-SPEC §6.2). Async Server
@@ -104,7 +105,8 @@ export async function ProyectosSimilares({ boletin }: { boletin: string }) {
           provenance={{
             capturedAt: p.fecha_captura ? new Date(p.fecha_captura) : null,
             sourceName: sourceLabel(p.origen),
-            sourceUrl: p.enlace ?? null,
+            // Reruta el WS XML (wspublico) a la ficha humana; nunca URL cruda.
+            sourceUrl: enlaceHumanoProyecto(p.enlace ?? "", p.boletin) || null,
           }}
         />
       ))}
