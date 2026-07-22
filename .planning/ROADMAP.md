@@ -247,7 +247,7 @@ Plans:
 
 Plans:
 
-- [ ] 93-01-PLAN.md — Matriz N/M por celda (psql verbatim) + veredictos de endpoints (curl re-sondeo) + 3 hallazgos confirmados/refutados (incl. refutación Cámara-histórico) + %% estado cancelación + frescura del cron agenda-weekly
+- [x] 93-01-PLAN.md — Matriz N/M por celda (psql verbatim) + veredictos de endpoints (curl re-sondeo) + 3 hallazgos confirmados/refutados (incl. refutación Cámara-histórico) + %% estado cancelación + frescura del cron agenda-weekly
 - [ ] 93-02-PLAN.md — Wiring audit BrowserOS sobre PROD: sujetos concretos por psql + 4 capturas DOM (/agenda vigente/pasada + ficha con citación pasada + ficha en sesion_tabla_item) -> gaps declarados (forward-only ficha, sesion_tabla_item no leído) con causa raíz, sin fixes
 - [ ] 93-03-PLAN.md — Backfill ACOTADO de citaciones Cámara histórico (dos-etapas/rate-limit LOCKED, counts antes/después) + runbook operador-LOCAL del masivo + DECLARACIÓN de cobertura parcial por celda (insumo del gate de 94)
 

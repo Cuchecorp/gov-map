@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
-status: verifying
-stopped_at: Completed 92-04-PLAN.md
-last_updated: "2026-07-22T19:48:30.625Z"
+status: executing
+stopped_at: Completed 93-01-PLAN.md
+last_updated: "2026-07-22T20:44:14.165Z"
 last_activity: 2026-07-22
 progress:
   total_phases: 11
   completed_phases: 7
-  total_plans: 22
-  completed_plans: 22
+  total_plans: 25
+  completed_plans: 23
   percent: 64
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 92 — PERSONAS P2c — Lobby legible + audiencia→PL fail-closed (CERRADA — canal LIVE en PROD)
+**Current focus:** Phase 93 — AGENDA P2d — AUDITORÍA de cobertura de citaciones (gate duro de 94)
 
 ## Current Position
 
-Phase: 92 (PERSONAS P2c — Lobby legible + audiencia→PL fail-closed) — COMPLETE
-Plan: 4 of 4 complete
-Status: Phase complete — 0062 aplicada a PROD, deploy fa4d4369 LIVE, gate BrowserOS aprobado
+Phase: 93 (AGENDA P2d — AUDITORÍA de cobertura de citaciones) — EN CURSO
+Plan: 1 of 3 complete (secciones medibles del reporte listas)
+Status: 93-01 completo — matriz N/M + veredictos endpoints + hallazgos + frescura en 93-AUDITORIA-CITACIONES.md; siguen Plan 02 (wiring BrowserOS) y Plan 03 (declaración + backfill)
 Last activity: 2026-07-22
 
 ## Performance Metrics
@@ -77,6 +77,7 @@ Last activity: 2026-07-22
 | Phase 92 P02 | 6 | 2 tasks | 4 files |
 | Phase 92 P03 | 12min | 2 tasks | 4 files |
 | Phase 92 P04 | ~55min | 2 tasks | 3 files |
+| Phase 93 P01 | ~20min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 92-02: .in() de existencia paginado en IN_CHUNK=500 (< cap PostgREST) -> bound por request siempre < 1000 (MAJOR-5)
 - [Phase ?]: 92-03: sección menciones de lobby (carril hermano SEPARADO de 0048, parlamentario ENLAZADO LOB-03, degrade honesto PGRST202 hasta apply 0062 Plan 04); linter con NEGACIONES_LOCKED antes de SUPERFICIES_LOBBY (lección BLOCKER 91) + mutation self-check LOBBY
 - [Phase ?]: [Phase 92] 92-04: 0062 APLICADA a PROD (psql --single-transaction, precedente 0059-0061) + pgTAP 13/13 contra schema aplicado (2 fixes Rule-1 de fixture: NOT NULL periodo/origen/enlace + total_n no isolation-safe vs 14309-04 real con audiencias reales); cobertura DECLARADA 195/5106 confirmadas (~3.8%) sobre 82 boletines distintos (query verbatim en runbook); deploy Cloudflare fa4d4369 arrastra fixes UI 91 fuera del bundle e0c969af; gate BrowserOS APROBADO por DOM del deploy real (materia completa+chips fail-closed doble / seccion #lobby-menciones separada de 0048 + leyenda anti-causal + parlamentario enlazado / header partido 91 sin regresion). LOB-01/02/03 LIVE en PROD. Fase 92 CERRADA.
+- [Phase 93] 93-01: AUDITORÍA de cobertura de citaciones — secciones MEDIBLES en 93-AUDITORIA-CITACIONES.md (§1-4). Matriz N/M re-medida psql verbatim CERO deriva vs research: comisiones×Cámara 34 (THIN, 2 sem ISO), comisiones×Senado 104 (AL DÍA, forward-only), sala×Cámara 1 sesión (THIN, solo PDF vigente), sala×Senado 11 sesiones (AL DÍA, forward-only). % estado cancelación ~9% Cámara / ~6% Senado (mayoría NO cancelada = honesto; "estado ausente ≠ vigente confirmado" para 94). 10 probes curl: 3 hallazgos previos CONFIRMADOS + REFUTADO "Cámara forward-only" (prmSemana=2026-20 mayo → 200 histórico). CORRECCIÓN #1 (RULE-1): path Cámara comisiones REAL = /legislacion/comisiones/ (el plan decía /sesiones_sala/ → 302 error404) + HOY exige header-set navegador completo (headers-camara.ts), UA simple da 302 (refina research "GET simple pasa WAF"). CORRECCIÓN #2 (RULE-2): endpoint alterno opendata wscamaradiputados.asmx/getComisiones_Vigentes UP 200 XML vivo (el WSComisiones.asmx del research sigue DOWN 302 mantención). cron agenda-weekly.yml EXISTE (lun 11:00 UTC, 7 secrets SUPABASE/DEEPSEEK/R2, mismo CLI); gap = ejecución GH no verificable desde código (billing intermitente) + no hace backfill histórico Cámara. CIT-01 NO completo (spanea 3 planes: wiring frontend = Plan 02 BrowserOS; declaración + backfill = Plan 03).
 
 ### Pending Todos
 
@@ -168,8 +170,8 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ## Session Continuity
 
-Last session: 2026-07-22T19:48:25.584Z
-Stopped at: Completed 92-04-PLAN.md
+Last session: 2026-07-22T20:44:00.000Z
+Stopped at: Completed 93-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
