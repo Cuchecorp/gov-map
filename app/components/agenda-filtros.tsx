@@ -6,10 +6,11 @@
  *
  * DECISIÓN del orquestador (plan-checker): este island es el ÚNICO renderer del
  * listado por día POST-HIDRATACIÓN. Renderiza la MISMA `CitacionCard` que el SSR
- * (cero divergencia visual), reagrupada por `dayKey` (día-calendario-Chile que el
- * SERVER ya calculó en tz America/Santiago — el island NO recalcula tz). El server
- * arma el slice plano completo (estado + provenance + invitados); el island solo
- * FILTRA y AGRUPA en memoria.
+ * (cero divergencia visual), reagrupada por `dayKey` (día calendario chileno = día
+ * publicado, que el SERVER ya calculó por el CONTRATO date-only-midnight-UTC — ver
+ * `@/lib/dia-calendario`). El island NUNCA re-deriva el día con `Date` local ni tz:
+ * consume `dayKey`/`dayLabel` tal cual llegan en el slice. El server arma el slice
+ * plano completo (estado + provenance + invitados); el island solo FILTRA y AGRUPA.
  *
  * CONTRATO FichaRail DURO (LOCKED): JAMÁS importa `@/lib/supabase` ni usa
  * `.rpc`/`.from`. Recibe el slice serializado por props y filtra EN MEMORIA (React
