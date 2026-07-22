@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 
 import { createServerSupabase } from "@/lib/supabase";
 import type { MatchProyectoRow } from "@/lib/types";
+import { detectarBoletin } from "@/lib/boletin-detector";
+import { busquedaHibridaEnabled } from "@/lib/busqueda-hibrida-gate";
 
 /**
  * Capa de datos de la búsqueda semántica ciudadana (SEM-04), server-only.
@@ -181,15 +183,45 @@ export async function buscarProyectos(
   const q = qRaw.trim().slice(0, MAX_QUERY_CHARS);
   if (q.length === 0) return [];
 
-  // Atajo: un boletín redirige directo a la ficha, ANTES de gastar un embed.
-  if (BOLETIN_RE.test(q)) {
-    redirect(`/proyecto/${q}`);
+  // Atajo extendido: detectarBoletin cubre los 3 formatos (sin sufijo, con sufijo,
+  // punteado 14.309-04) y redirige directo a la ficha ANTES de gastar un embed
+  // (RETR-01, Pitfall 5). BOLETIN_RE se conserva exportado para los demás consumidores
+  // (#36: /buscar, /proyecto/[boletin], agenda-buscar, etc.).
+  const bolDetectado = detectarBoletin(q);
+  if (bolDetectado !== null) {
+    const full =
+      bolDetectado.sufijo !== null
+        ? `${bolDetectado.base}-${bolDetectado.sufijo}`
+        : bolDetectado.base;
+    redirect(`/proyecto/${full}`);
   }
 
   const embedder = opts.embedder ?? defaultEmbedder();
   const [emb] = await embedder.embed([q], "RETRIEVAL_QUERY");
 
   const sb = createServerSupabase();
+
+  // Rama híbrida (RETR-05): flag ON → RPC buscar_proyectos_hibrido (RRF Postgres nativo).
+  // Default OFF hasta el gate de dominancia de Plan 87-03.
+  if (busquedaHibridaEnabled()) {
+    const { data: hybridData, error: hybridError } = await sb.rpc(
+      "buscar_proyectos_hibrido",
+      {
+        q,
+        query_embedding: emb.vector,
+        match_count: opts.matchCount ?? 20,
+      },
+    );
+    if (hybridError) {
+      throw new Error(
+        `buscar_proyectos_hibrido RPC falló: ${hybridError.message}`,
+      );
+    }
+    return (hybridData as MatchProyectoRow[] | null) ?? [];
+  }
+
+  // Camino default OFF: match_proyectos semántico puro (sin cambios).
+  // También es el camino de "proyectos similares" vía excludeBoletin (SEM-05).
   const { data, error } = await sb.rpc("match_proyectos", {
     query_embedding: emb.vector,
     match_count: opts.matchCount ?? 20,

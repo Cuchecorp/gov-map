@@ -16,11 +16,18 @@ vi.mock("@/lib/supabase", () => ({
   createServerSupabase: () => ({ rpc: rpcMock }),
 }));
 
+// Flag de búsqueda híbrida — controlable por test (RETR-05).
+const busquedaHibridaEnabledMock = vi.fn(() => false);
+vi.mock("./busqueda-hibrida-gate", () => ({
+  busquedaHibridaEnabled: () => busquedaHibridaEnabledMock(),
+}));
+
 import { buscarProyectos, CONTRAPARTE_ID_RE } from "./buscar";
 
 beforeEach(() => {
   redirectMock.mockClear();
   rpcMock.mockReset();
+  busquedaHibridaEnabledMock.mockReturnValue(false); // default OFF
 });
 
 /** Embedder mockeado: nunca toca red ni la Gemini key. */
@@ -155,6 +162,73 @@ describe("buscarProyectos — input validation (V5: trim + cap ≤300)", () => {
     await buscarProyectos(largo, { embedder: emb });
     const arg = (emb.embed.mock.calls as unknown as string[][][])[0]![0][0];
     expect(arg.length).toBe(300);
+  });
+});
+
+describe("buscarProyectos — flag híbrido OFF/ON (RETR-05)", () => {
+  it("flag OFF (default): llama match_proyectos, NO buscar_proyectos_hibrido", async () => {
+    busquedaHibridaEnabledMock.mockReturnValue(false);
+    const emb = fakeEmbedder();
+    rpcMock.mockResolvedValue({ data: [{ boletin: "111-07", rank: 1 }], error: null });
+    await buscarProyectos("protección de datos", { embedder: emb });
+    expect(rpcMock).toHaveBeenCalledWith("match_proyectos", expect.any(Object));
+    expect(rpcMock).not.toHaveBeenCalledWith("buscar_proyectos_hibrido", expect.any(Object));
+  });
+
+  it("flag ON: llama buscar_proyectos_hibrido con {q, query_embedding, match_count}", async () => {
+    busquedaHibridaEnabledMock.mockReturnValue(true);
+    const emb = fakeEmbedder();
+    rpcMock.mockResolvedValue({ data: [{ boletin: "222-07", rank: 1 }], error: null });
+    const res = await buscarProyectos("medio ambiente", { embedder: emb });
+    expect(rpcMock).toHaveBeenCalledWith(
+      "buscar_proyectos_hibrido",
+      expect.objectContaining({
+        q: "medio ambiente",
+        query_embedding: expect.any(Array),
+        match_count: 20,
+      }),
+    );
+    expect(rpcMock).not.toHaveBeenCalledWith("match_proyectos", expect.any(Object));
+    expect(res).toEqual([{ boletin: "222-07", rank: 1 }]);
+  });
+
+  it("flag ON + RPC error → LANZA (honest degradation)", async () => {
+    busquedaHibridaEnabledMock.mockReturnValue(true);
+    const emb = fakeEmbedder();
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: "permission denied for function buscar_proyectos_hibrido" },
+    });
+    await expect(
+      buscarProyectos("algo", { embedder: emb }),
+    ).rejects.toThrow(/buscar_proyectos_hibrido RPC falló/);
+  });
+
+  it("flag ON + data null → [] (resultado genuinamente vacío)", async () => {
+    busquedaHibridaEnabledMock.mockReturnValue(true);
+    const emb = fakeEmbedder();
+    rpcMock.mockResolvedValue({ data: null, error: null });
+    const res = await buscarProyectos("consulta sin resultados", { embedder: emb });
+    expect(res).toEqual([]);
+  });
+});
+
+describe("buscarProyectos — redirect extendido con detectarBoletin (RETR-01)", () => {
+  it("query punteada '14.309-04' → redirect('/proyecto/14309-04') ANTES de embeber", async () => {
+    const emb = fakeEmbedder();
+    await expect(
+      buscarProyectos("14.309-04", { embedder: emb }),
+    ).rejects.toThrow("NEXT_REDIRECT:/proyecto/14309-04");
+    expect(redirectMock).toHaveBeenCalledWith("/proyecto/14309-04");
+    expect(emb.embed).not.toHaveBeenCalled();
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("texto libre 'medio ambiente' → NO redirige", async () => {
+    const emb = fakeEmbedder();
+    rpcMock.mockResolvedValue({ data: [], error: null });
+    await buscarProyectos("medio ambiente", { embedder: emb });
+    expect(redirectMock).not.toHaveBeenCalled();
   });
 });
 
