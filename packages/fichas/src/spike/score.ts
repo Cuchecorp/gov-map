@@ -7,7 +7,7 @@
  * Hit criteria:
  *   hit@1  = el primer expected encontrado tiene rank === 1
  *   hit@5  = rank !== null && rank <= 5
- *   mrr    = rank ? 1/rank : 0  (reciprocal rank del primer hit)
+ *   mrr@5  = rank !== null && rank <= 5 ? 1/rank : 0  (MRR truncado a ventana top-5; consistente con hit@5)
  *
  * El matching es accent-insensitive via normalizarLiteral (Pitfall #3).
  */
@@ -55,7 +55,8 @@ export async function evaluarRetrieval(
 
     const hit1 = rank === 1 ? 1 : 0;
     const hit5 = rank !== null && rank <= 5 ? 1 : 0;
-    // MRR se calcula dentro de la ventana top-5 (rank > 5 → 0, consistente con hit@5)
+    // MRR@5: truncado a ventana top-5 (rank > 5 → 0, consistente con hit@5)
+    // Etiquetado como mrr en los campos para simplicidad; el CLI lo emite como MRR@5.
     const mrr = rank !== null && rank <= 5 ? 1 / rank : 0;
     const ok = rank !== null;
 

@@ -105,9 +105,9 @@ const LIVE = !!process.env.SUPABASE_DB_URL && !!process.env.GEMINI_API_KEY;
       });
 
       // Log de resultados
-      console.log(`[live-test] FTS   hit@1=${pct(metricasFts.agregado.hit1)} hit@5=${pct(metricasFts.agregado.hit5)} MRR=${pct(metricasFts.agregado.mrr)}`);
-      console.log(`[live-test] SEM   hit@1=${pct(metricasSem.agregado.hit1)} hit@5=${pct(metricasSem.agregado.hit5)} MRR=${pct(metricasSem.agregado.mrr)}`);
-      console.log(`[live-test] RRF   hit@1=${pct(metricasRrf.agregado.hit1)} hit@5=${pct(metricasRrf.agregado.hit5)} MRR=${pct(metricasRrf.agregado.mrr)}`);
+      console.log(`[live-test] FTS   hit@1=${pct(metricasFts.agregado.hit1)} hit@5=${pct(metricasFts.agregado.hit5)} MRR@5=${pct(metricasFts.agregado.mrr)}`);
+      console.log(`[live-test] SEM   hit@1=${pct(metricasSem.agregado.hit1)} hit@5=${pct(metricasSem.agregado.hit5)} MRR@5=${pct(metricasSem.agregado.mrr)}`);
+      console.log(`[live-test] RRF   hit@1=${pct(metricasRrf.agregado.hit1)} hit@5=${pct(metricasRrf.agregado.hit5)} MRR@5=${pct(metricasRrf.agregado.mrr)}`);
     });
 
     it("winner ≥ baseline on literal/boletín AND no regression on NL/similares", () => {
