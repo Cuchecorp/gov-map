@@ -5,15 +5,18 @@ import { render, screen, cleanup, within } from "@testing-library/react";
 import type { CitacionRow } from "@/lib/agenda-types";
 
 /**
- * UX-03 (55-05) — `/agenda` rediseño cognitivo: la vista semanal agrupa
- * día → comisión con jerarquía tipográfica clara y bloques COLAPSABLES por día,
- * conservando los cross-links a boletín.
+ * UX-03 (55-05) + CIT-04 (94-02) — `/agenda` vista semanal: el island
+ * `AgendaFiltros` es el ÚNICO renderer del listado por día post-hidratación
+ * (DECISIÓN del orquestador 94-02). El Server Component `CitacionesSection` arma el
+ * SLICE PLANO (dayKey/dayLabel tz Chile ya calculados) y monta el island, que
+ * reagrupa por día y renderiza la MISMA `CitacionCard` (cero divergencia SSR/
+ * hidratada), conservando los cross-links a boletín y los bloques colapsables por día.
  *
  * `CitacionesSection` es un Server Component async que lee de Supabase. Se mockea
  * con el mismo builder thenable de `citaciones-empty.test.tsx`, pero devolviendo
  * filas: dos citaciones el MISMO día en comisiones distintas (una con boletín).
- * El elemento devuelto se monta con RTL (el `CarrilAccordion` es una isla Radix
- * que corre en jsdom, como en `carril-accordion.test.tsx`).
+ * El elemento devuelto se monta con RTL (el `CarrilAccordion` dentro del island es
+ * una isla Radix que corre en jsdom, como en `carril-accordion.test.tsx`).
  */
 
 let queryResult: { data: unknown; error: unknown } = { data: [], error: null };
@@ -82,8 +85,8 @@ const FIXTURE: CitacionRow[] = [
   },
 ];
 
-describe("CitacionesSection — UX-03 día→comisión colapsable (55-05)", () => {
-  it("agrupa día → comisión: sub-encabezado de comisión (h4) dentro del día", async () => {
+describe("CitacionesSection — UX-03 día colapsable + island (55-05 / 94-02)", () => {
+  it("el island reagrupa por día: día = h3 (trigger); cada citación = CitacionCard con su comisión", async () => {
     queryResult = { data: FIXTURE, error: null };
     const el = await CitacionesSection({ year: 2026, week: 28 });
     render(el);
@@ -93,12 +96,13 @@ describe("CitacionesSection — UX-03 día→comisión colapsable (55-05)", () =
     const diaHeading = screen.getByRole("heading", { level: 3, name: /lunes/i });
     expect(diaHeading).toBeInTheDocument();
 
-    // Dentro del día, cada comisión es un sub-encabezado h4 (segundo nivel).
+    // El island renderiza la MISMA CitacionCard que el SSR: la comisión es el
+    // heading de la card (h3 dentro de la card). Ambas comisiones visibles.
     expect(
-      screen.getByRole("heading", { level: 4, name: "Comisión de Hacienda" }),
+      screen.getByRole("heading", { name: "Comisión de Hacienda" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { level: 4, name: "Comisión de Salud" }),
+      screen.getByRole("heading", { name: "Comisión de Salud" }),
     ).toBeInTheDocument();
   });
 
@@ -107,8 +111,9 @@ describe("CitacionesSection — UX-03 día→comisión colapsable (55-05)", () =
     const el = await CitacionesSection({ year: 2026, week: 28 });
     render(el);
 
-    // El encabezado del día es el trigger del acordeón (botón con aria-expanded).
-    const trigger = screen.getByRole("button");
+    // El día es el trigger del acordeón: hay un botón con aria-expanded (además de
+    // los chips de filtro del island). Se localiza por su rol + nombre de día.
+    const trigger = screen.getByRole("button", { name: /lunes/i });
     expect(trigger).toHaveAttribute("aria-expanded");
 
     // forceMount: el cuerpo (las materias de las citaciones) vive en el DOM.
@@ -117,6 +122,18 @@ describe("CitacionesSection — UX-03 día→comisión colapsable (55-05)", () =
     ).toBeInTheDocument();
     expect(
       screen.getByText("Discusión de la ley de fármacos."),
+    ).toBeInTheDocument();
+  });
+
+  it("monta el island de filtros con la leyenda de counts honestos (CIT-04)", async () => {
+    queryResult = { data: FIXTURE, error: null };
+    const el = await CitacionesSection({ year: 2026, week: 28 });
+    render(el);
+
+    expect(
+      screen.getByText(
+        "Conteos sobre estas 2 citaciones cargadas de esta semana, no sobre toda la agenda.",
+      ),
     ).toBeInTheDocument();
   });
 

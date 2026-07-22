@@ -221,6 +221,37 @@ const SUPERFICIES_LOBBY: string[] = [
 ];
 
 /**
+ * Superficies AGENDA (94-02, CIT-04/CIT-05). La /agenda por día + filtros de
+ * periodista + banner de cobertura declarada es un vector de insinuación temporal/
+ * causal: el estado de cancelación ("Suspendida"/"Sin efecto") y la cobertura
+ * parcial NO deben editorializarse, y el island de filtros no debe agrupar por
+ * afinidad inferida. El copy de estas superficies debe ser estrictamente FACTUAL.
+ *
+ * Las 3 superficies:
+ *  - `agenda-filtros.tsx`: el island de filtros de periodista (94-02) — el ÚNICO
+ *    renderer del listado por día post-hidratación (facetas + counts + reagrupación).
+ *  - `agenda-cobertura.tsx`: el banner de cobertura declarada (94-01).
+ *  - `app/agenda/page.tsx`: el Server Component de /agenda (serializa el slice,
+ *    monta el island, mantiene el buscador FTS + leyendas de estado/cobertura).
+ *
+ * NOTA (Pitfall 1, lección BLOCKER 91): las leyendas LOCKED del banner/estado
+ * ("…no es un calendario completo del Congreso.", "…no confirma que la sesión se
+ * realizará.") usan "completo"/"confirma", que NO están en TERMINOS_PROHIBIDOS —
+ * son negaciones honestas de términos NO prohibidos, así que NO requieren registro
+ * en NEGACIONES_LOCKED (verificado 94-01/94-02: el diff de TERMINOS_PROHIBIDOS no
+ * contiene "completo" ni "confirma"). Si alguna leyenda futura negara un término
+ * prohibido, debe registrarse en NEGACIONES_LOCKED verbatim ANTES de escanear.
+ *
+ * Rutas relativas a app/, mismo formato que los otros arrays. Si una ruta no existe,
+ * se salta sin fallar (tolerancia try/catch del bucle).
+ */
+const SUPERFICIES_AGENDA: string[] = [
+  "components/agenda-filtros.tsx",
+  "components/agenda-cobertura.tsx",
+  "app/agenda/page.tsx",
+];
+
+/**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
  * texto RENDERIZADO (post-strip de comentarios), con límite de palabra en español
  * para no cazar identificadores snake_case: `rebeldias_de_parlamentario` (nombre de
@@ -408,7 +439,7 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
 
   it("ningún término prohibido aparece en el texto renderizado (post-strip de comentarios)", () => {
     const offenders: string[] = [];
-    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY]) {
+    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA]) {
       const full = path.join(APP_ROOT, rel);
       let raw: string;
       try {
@@ -543,6 +574,27 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
       `<span>es afín al oficialismo y coordina con la bancada</span>`,
     );
     expect(hits).toEqual(expect.arrayContaining(["afín", "coordina con"]));
+  });
+
+  it("AGENDA (94-02): caza editorialización temporal/causal inyectada en el island de agenda (influencia / disciplina) sobre lo NUEVO", () => {
+    // Término causal/de-juicio FRESCO inyectado en un fixture EN MEMORIA que simula
+    // el island de agenda o el banner. Prueba que el guard MUERDE sobre el carril
+    // AGENDA — el estado de cancelación es un HECHO NEUTRO, jamás un juicio de
+    // "disciplina" ni una insinuación de "influencia" en la citación.
+    const fixtureMutado = `
+      export function AgendaFiltros() {
+        return (
+          <section aria-label="Filtrar la agenda de esta semana">
+            <p>La suspensión revela falta de disciplina y la influencia del comité.</p>
+          </section>
+        );
+      }
+    `;
+    const hits = detectarInsinuaciones(fixtureMutado);
+    expect(
+      hits,
+      "El detector NO cazó editorialización de agenda inyectada → el guard AGENDA sería un no-op",
+    ).toEqual(expect.arrayContaining(["disciplina", "influencia"]));
   });
 
   it("LOBBY (92-03): caza causalidad de mención inyectada (influencia / a cambio de) sobre lo NUEVO", () => {

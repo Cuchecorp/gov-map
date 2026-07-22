@@ -9,7 +9,7 @@ import {
   AgendaCobertura,
   type CoberturaCamaraMetrica,
 } from "@/components/agenda-cobertura";
-import { CarrilAccordion } from "@/components/carril-accordion";
+import { AgendaFiltros } from "@/components/agenda-filtros";
 import {
   SalaTableSection,
   type SalaTablaItem,
@@ -28,6 +28,7 @@ import { capitalizarPrimera } from "@/lib/format";
 import {
   CAMARA_TABLA_PDF_URL,
   type CitacionRow,
+  type CitacionSliceRow,
   type SesionSalaRow,
 } from "@/lib/agenda-types";
 import { BOLETIN_RE, MAX_QUERY_CHARS } from "@/lib/buscar";
@@ -427,19 +428,8 @@ export async function CitacionesSection({ year, week }: ISOWeek) {
     );
   }
 
-  // Agrupar por DÍA-CALENDARIO DE CHILE (America/Santiago), NUNCA por día UTC.
-  // `dayKey` deriva de `DIA_CALENDARIO_CHILE.format(new Date(c.fecha))` (no de
-  // `c.fecha.slice(0,10)`, que es el día UTC almacenado). Se guarda además una
-  // Date representativa del grupo para rotular en tz Chile sin re-inyectar UTC.
-  const grupos = new Map<string, { rows: CitacionRow[]; fechaRef: Date | null }>();
-  for (const c of citaciones) {
-    const fechaRef = c.fecha ? new Date(c.fecha) : null;
-    const dayKey = fechaRef ? DIA_CALENDARIO_CHILE.format(fechaRef) : "sin-fecha";
-    const grupo = grupos.get(dayKey) ?? { rows: [], fechaRef };
-    grupo.rows.push(c);
-    grupos.set(dayKey, grupo);
-  }
-
+  // Rótulo de día en tz Chile (weekday/day/month, es-CL) — el SERVER lo calcula una
+  // vez por citación y lo serializa en el slice; el island NO recalcula tz.
   const diaFmt = new Intl.DateTimeFormat("es-CL", {
     weekday: "long",
     day: "numeric",
@@ -447,82 +437,56 @@ export async function CitacionesSection({ year, week }: ISOWeek) {
     timeZone: "America/Santiago",
   });
 
-  // Jerarquía cognitiva (UX-03): la semana se lee día → comisión con bloques
-  // COLAPSABLES por día. Cada día es un `CarrilAccordion` (su encabezado es el
-  // trigger; `headingLevel="h3"` cuelga del h2 de la sección). El primer día
-  // arranca abierto (lo más próximo visible); los demás, colapsados, para reducir
-  // el largo del scroll sin ocultar el contexto.
-  const dias = Array.from(grupos.entries());
+  // SLICE PLANO serializable → island de filtros (CIT-04, contrato FichaRail).
+  // DECISIÓN del orquestador: el island `AgendaFiltros` es el ÚNICO renderer del
+  // listado por día post-hidratación (renderiza la MISMA `CitacionCard` que este
+  // Server Component produce en SSR — cero divergencia). El server arma el slice
+  // completo (estado + provenance + invitados, todos NO-PII por 0010); el island
+  // solo filtra/agrupa EN MEMORIA. `dayKey` (día-calendario-Chile YYYY-MM-DD) y
+  // `dayLabel` se calculan AQUÍ en tz Chile — NUNCA en el cliente (no se duplica
+  // tzdb en el navegador). Las fechas cruzan como ISO string (JSON-serializable).
+  const slice: CitacionSliceRow[] = citaciones.map((c) => {
+    const fechaRef = c.fecha ? new Date(c.fecha) : null;
+    const dayKey = fechaRef ? DIA_CALENDARIO_CHILE.format(fechaRef) : "sin-fecha";
+    const dayLabel =
+      dayKey === "sin-fecha" || !fechaRef
+        ? "Sin fecha asignada"
+        : capitalizarPrimera(diaFmt.format(fechaRef));
+    const boletines = (c.citacion_punto ?? [])
+      .map((p) => p.boletin)
+      .filter((b): b is string => b != null);
+    return {
+      id: c.id,
+      camara: c.camara,
+      comision: c.comision,
+      fecha: c.fecha,
+      dayKey,
+      dayLabel,
+      horario: c.horario,
+      sala: c.sala,
+      materia: c.materia,
+      estado: c.estado,
+      boletines,
+      boletin: primerBoletin(c),
+      invitados: (c.citacion_invitado ?? []).map((inv) => ({
+        nombre: inv.nombre,
+        calidad: inv.calidad,
+      })),
+      provenance: {
+        capturedAt: c.fecha_captura ?? null,
+        sourceName: sourceLabel(c.origen),
+        sourceUrl: c.enlace ?? null,
+      },
+    };
+  });
 
+  // El island envuelve la presentación por día de la semana cargada (hidratación
+  // progresiva: el SSR de `AgendaFiltros` produce el primer render; al hidratar,
+  // los filtros de periodista quedan operativos). El buscador FTS global
+  // (`buscarCitaciones`) coexiste intacto — se maneja en la rama `buscando`.
   return (
-    <div className="mt-4 space-y-4">
-      {dias.map(([dayKey, { rows: items, fechaRef }], index) => {
-        // Rótulo del día en tz Chile desde la Date representativa del grupo
-        // (NUNCA desde `${dayKey}T00:00:00Z`, que re-introduce UTC).
-        const dayLabel =
-          dayKey === "sin-fecha" || !fechaRef
-            ? "Sin fecha asignada"
-            : capitalizarPrimera(diaFmt.format(fechaRef));
-
-        // Sub-agrupamiento PRESENTACIONAL por comisión DENTRO del día (Assumption
-        // A4: cero query nueva; se agrupa sobre las filas ya leídas). El Map
-        // preserva el orden de aparición — la consulta ya ordena por cámara y
-        // comisión, de modo que las comisiones salen agrupadas y estables.
-        const porComision = new Map<string, CitacionRow[]>();
-        for (const c of items) {
-          const arr = porComision.get(c.comision) ?? [];
-          arr.push(c);
-          porComision.set(c.comision, arr);
-        }
-
-        return (
-          <CarrilAccordion
-            key={dayKey}
-            titulo={dayLabel}
-            conteo={`${items.length} ${items.length === 1 ? "citación" : "citaciones"}`}
-            defaultOpen={index === 0}
-            headingLevel="h3"
-            headingClassName="text-base font-semibold"
-          >
-            <div className="space-y-6">
-              {Array.from(porComision.entries()).map(([comision, cits]) => (
-                <div key={comision}>
-                  <h4 className="text-sm font-semibold text-muted-foreground">
-                    {comision}
-                  </h4>
-                  <Separator className="mt-1" />
-                  <div className="mt-3 space-y-4">
-                    {cits.map((c) => (
-                      <CitacionCard
-                        key={c.id}
-                        comision={c.comision}
-                        fecha={c.fecha ? new Date(c.fecha) : null}
-                        horario={c.horario}
-                        sala={c.sala}
-                        materia={c.materia}
-                        camara={c.camara}
-                        estado={c.estado}
-                        invitados={(c.citacion_invitado ?? []).map((inv) => ({
-                          nombre: inv.nombre,
-                          calidad: inv.calidad,
-                        }))}
-                        boletin={primerBoletin(c)}
-                        provenance={{
-                          capturedAt: c.fecha_captura
-                            ? new Date(c.fecha_captura)
-                            : null,
-                          sourceName: sourceLabel(c.origen),
-                          sourceUrl: c.enlace ?? null,
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CarrilAccordion>
-        );
-      })}
+    <div className="mt-4">
+      <AgendaFiltros slice={slice} />
     </div>
   );
 }
@@ -651,7 +615,7 @@ async function SalaTableServer({ year, week }: ISOWeek) {
           <p className="text-sm text-muted-foreground leading-relaxed">
             La tabla de sala del Senado se publica con ventana hacia adelante (sin
             histórico){weekLabel ? ` — ${weekLabel}` : ""} es anterior al inicio de
-            la captura, por lo que no se registró su orden del día.
+            la ingesta, por lo que no se registró su orden del día.
           </p>
         ) : (
           <p className="text-sm text-muted-foreground leading-relaxed">
