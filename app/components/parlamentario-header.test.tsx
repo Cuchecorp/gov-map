@@ -25,6 +25,12 @@ const BASE: ParlamentarioPublicoRow = {
   origen: "camara",
   fecha_captura: "2026-01-15T00:00:00Z",
   enlace: "https://www.camara.cl/diputado/1",
+  // Phase 91 (0060): la fila v2 trae partido; el fixture usa null (sin militancia
+  // vigente) para no alterar las aserciones de este test — el MONTAJE del chip de
+  // partido (decisión operador 2026-07-21) vive en los planes de UI 02/03.
+  partido: null,
+  partido_fecha_captura: null,
+  partido_origen: null,
 };
 
 function make(overrides: Partial<ParlamentarioPublicoRow> = {}): ParlamentarioPublicoRow {

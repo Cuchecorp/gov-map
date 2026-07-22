@@ -162,13 +162,20 @@ export interface BuscarSliceRow {
 }
 
 /**
- * Cabecera pública del parlamentario (RPC `parlamentario_publico`, migración 0020).
+ * Cabecera pública del parlamentario (RPC `parlamentario_publico_v2`, migración 0060 —
+ * super-set de la 0020 `parlamentario_publico`).
  *
  * `parlamentario` es deny-by-default (RLS on, cero policies, 0005/0018): anon NO
  * lee NINGUNA columna directamente. Este RPC `security definer` emite SOLO los
- * campos públicos-seguros de la cabecera — NUNCA `partido` (afiliación política,
- * dato sensible Ley 21.719), `rut` ni `email` (LEGAL-03). El chip de bancada/
- * partido de UI-SPEC §3.1 queda OMITIDO en consecuencia (no anon-readable).
+ * campos públicos-seguros de la cabecera. NUNCA `rut`, `email` ni `partido_alias`
+ * (forma normalizada interna) ni datos de terceros/familiares (minimización PLENA
+ * Ley 21.719 reservada a esos campos).
+ *
+ * DECISIÓN OPERADOR 2026-07-21 (revierte la retención de partido de 0020): el
+ * `partido` del CARGO ELECTO SÍ viaja como dato público esencial de accountability,
+ * junto con `partido_fecha_captura` (para el rótulo "según fuente al [fecha]") y
+ * `partido_origen`. Derivado de la militancia vigente; `null` honesto si no hay
+ * militancia vigente registrada.
  */
 export interface ParlamentarioPublicoRow {
   id: string;
@@ -181,17 +188,27 @@ export interface ParlamentarioPublicoRow {
   origen: string;
   fecha_captura: string;
   enlace: string | null;
+  /** Partido de la militancia vigente. `null` = sin militancia vigente (honesto). */
+  partido: string | null;
+  /** Fecha de captura de la militancia vigente (rótulo "según fuente al [fecha]"). */
+  partido_fecha_captura: string | null;
+  /** Origen/fuente de la militancia vigente. */
+  partido_origen: string | null;
 }
 
 /**
- * Fila del RPC `parlamentarios_publico()` (migración 0026) — el DIRECTORIO.
+ * Fila del RPC `parlamentarios_publico_v2()` (migración 0060 — super-set de la 0026
+ * `parlamentarios_publico`) — el DIRECTORIO.
  *
- * Espejo de `ParlamentarioPublicoRow` MENOS los campos de provenance
- * (`origen`/`fecha_captura`/`enlace`): el listado no los renderiza por fila
- * (los muestra la ficha individual). Son EXACTAMENTE las 7 columnas seguras que
- * el RPC `security definer` emite. NUNCA `partido`/`rut`/`email` (LEGAL-03);
- * la fila del directorio tampoco trae foto. `camara` es NOT NULL en la maestra;
+ * Espejo de `ParlamentarioPublicoRow` MENOS los campos de provenance de cabecera
+ * (`origen`/`fecha_captura`/`enlace`): el listado no los renderiza por fila (los
+ * muestra la ficha individual). NUNCA `rut`/`email`/`partido_alias`; la fila del
+ * directorio tampoco trae foto. `camara` es NOT NULL en la maestra;
  * `region`/`distrito`/`circunscripcion`/`periodo` son NULLABLE (0005, Pitfall 5).
+ *
+ * DECISIÓN OPERADOR 2026-07-21: el `partido` (+ fecha_captura + origen de la
+ * militancia vigente) viaja en el listado para el filtro por partido (cierra
+ * FILT-01) — filtrado client-side por el island, JAMÁS re-query a Supabase.
  */
 export interface ParlamentarioListadoRow {
   id: string;
@@ -201,6 +218,72 @@ export interface ParlamentarioListadoRow {
   distrito: string | null;
   circunscripcion: string | null;
   periodo: string | null;
+  /** Partido de la militancia vigente. `null` = sin militancia vigente (honesto). */
+  partido: string | null;
+  /** Fecha de captura de la militancia vigente (rótulo "según fuente al [fecha]"). */
+  partido_fecha_captura: string | null;
+  /** Origen/fuente de la militancia vigente. */
+  partido_origen: string | null;
+}
+
+/**
+ * Fila del RPC `militancias_de_parlamentario(p_id)` (migración 0060).
+ *
+ * Militancia partidaria histórica: cada partido con su rango `[desde, hasta]` y si
+ * es la vigente (`es_actual`). Orden del RPC: vigente primero, luego histórico
+ * cronológico descendente. NUNCA `partido_alias` (forma normalizada interna),
+ * `rut` ni `email`. Provenance por fila para el rótulo "según fuente al [fecha]".
+ */
+export interface MilitanciaRow {
+  partido: string;
+  /** Inicio de la militancia (ISO date). */
+  desde: string;
+  /** Término, o `null` si vigente. */
+  hasta: string | null;
+  es_actual: boolean;
+  origen: string;
+  fecha_captura: string;
+  enlace: string | null;
+}
+
+/**
+ * Fila del RPC `comisiones_de_parlamentario(p_id)` (migración 0060).
+ *
+ * Comisión del parlamentario con su cargo (si la fuente lo trae) y provenance de la
+ * membresía. Orden del RPC: alfabético por nombre. NUNCA `rut`/`email`.
+ */
+export interface ComisionRow {
+  nombre: string;
+  camara: "diputados" | "senadores";
+  /** permanente/especial/investigadora/…; `''` si la fuente no lo trae. */
+  tipo: string;
+  /** presidente/integrante/…; `null` si la fuente no lo trae. */
+  cargo: string | null;
+  origen: string;
+  fecha_captura: string;
+  enlace: string | null;
+}
+
+/**
+ * Fila de los RPCs de cross-links factuales (migración 0060):
+ * `copartidarios_de_parlamentario`, `de_la_misma_zona`,
+ * `co_comisionados_de_parlamentario`, `coautores_de_parlamentario`.
+ *
+ * Relación DECLARADA u OBSERVABLE por fuente oficial (militancia/zona/comisión/
+ * autoría) — NUNCA implica afinidad ni coordinación. Orden NEUTRAL (alfabético por
+ * nombre), JAMÁS ranking. `comision_nombre` / `n_proyectos` son campos EXTRA
+ * opcionales según el RPC (co-comisión trae el nombre de la comisión compartida;
+ * co-autoría trae el conteo honesto de boletines, que NO es criterio de orden).
+ * NUNCA `rut`/`email`/`partido`.
+ */
+export interface CrossLinkRow {
+  id: string;
+  nombre: string;
+  camara: "diputados" | "senado";
+  /** Comisión compartida (solo `co_comisionados_de_parlamentario`). */
+  comision_nombre?: string;
+  /** Conteo honesto de boletines co-firmados (solo `coautores_de_parlamentario`). */
+  n_proyectos?: number;
 }
 
 /**
