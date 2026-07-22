@@ -59,7 +59,8 @@ function loadEnv(root: string): Record<string, string> {
   for (const k of [
     "SUPABASE_API_URL",
     "SUPABASE_SECRET_KEY",
-    "SUPABASE_URL",
+    // IN-03: el writer se arma con SUPABASE_API_URL + SUPABASE_SECRET_KEY; SUPABASE_URL
+    // no lo consume nadie en este CLI → se quita de la allow-list (evita env muerta).
     "DEEPSEEK_API_KEY",
     "R2_ENDPOINT_URL",
     "R2_ACCESS_KEY_ID",
