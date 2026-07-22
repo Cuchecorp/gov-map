@@ -156,7 +156,7 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
   // T-88-10: año solo de min(fecha) de tramitacion_evento; JAMÁS de fecha_captura.
   const { data: eventosData, error: eventosError } = await sb
     .from("tramitacion_evento")
-    .select("boletin, fecha, tipo")
+    .select("boletin, fecha, tipo, descripcion")
     .in("boletin", boletines)
     .order("fecha", { ascending: true });
   if (eventosError) {
@@ -168,12 +168,15 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
       </div>
     );
   }
-  const eventos = (eventosData as Pick<TramitacionEventoRow, "boletin" | "fecha" | "tipo">[] | null) ?? [];
+  const eventos = (eventosData as Pick<TramitacionEventoRow, "boletin" | "fecha" | "tipo" | "descripcion">[] | null) ?? [];
   /**
-   * WR-02: año del proyecto = fecha del evento de ingreso (tipo 'Ingreso').
-   * Regla: preferir el evento más antiguo cuyo tipo matchee /ingreso/i; si
-   * ninguno matchea (datos faltantes), caer al evento más antiguo de cualquier
-   * tipo como proxy (orden asc garantiza la min fecha al primer elemento).
+   * WR-02: año del proyecto = fecha del evento de INGRESO. `tipo` es un enum
+   * cerrado ('tramite'|'urgencia'|'informe'|'oficio'|'votacion') que JAMÁS
+   * contiene "ingreso" — la señal vive en `descripcion` (censado en PROD:
+   * ~3.850 eventos con /ingreso/i en descripcion). Regla: preferir el evento
+   * más antiguo cuya descripción matchee /ingreso/i; si ninguno matchea,
+   * caer al evento más antiguo de cualquier tipo como proxy (orden asc
+   * garantiza la min fecha al primer elemento).
    * WR-03: filtrar fechas no parseables ANTES de tomar el min para no contaminar
    * el map con valores vacíos o malformados que lexicográficamente preceden a ISO.
    */
@@ -188,8 +191,8 @@ export async function Resultados({ q, page }: { q: string; page: number }) {
     // WR-03: solo fechas parseables (deriveAnio no nulo).
     const validos = evs.filter((e) => deriveAnio(e.fecha) != null);
     if (validos.length === 0) continue;
-    // WR-02: preferir primer evento tipo Ingreso; si no, primer evento válido.
-    const ingreso = validos.find((e) => /ingreso/i.test(e.tipo ?? ""));
+    // WR-02: preferir primer evento con "ingreso" en la DESCRIPCIÓN; si no, primer válido.
+    const ingreso = validos.find((e) => /ingreso/i.test(e.descripcion ?? ""));
     minFechaPorBoletin.set(boletin, (ingreso ?? validos[0]).fecha);
   }
 
