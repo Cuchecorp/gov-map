@@ -22,6 +22,11 @@ import { CuerposLegalesList } from "@/components/cuerpos-legales-list";
 import { ProyectosSimilares } from "@/components/proyectos-similares";
 import { AutorRow, type ProyectoAutorRow } from "@/components/autor-row";
 import { ProvenanceBadge } from "@/components/provenance-badge";
+import {
+  ValidacionFuenteSection,
+  ValidacionFuenteSkeleton,
+  type SourceSnapshotRecord,
+} from "@/components/validacion-fuente";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sourceLabel } from "@/lib/types";
 import { extractoIdea } from "@/lib/format";
@@ -204,6 +209,19 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
               <ProyectosSimilares boletin={boletin} />
             </Suspense>
           </section>
+
+          {/*
+            TRACE-01/02/03 (Phase 89) — Sección "Valida este dato en la fuente".
+            Deep-links: Senado SIEMPRE, Cámara SOLO si prm_id_camara != null, BCN omitido.
+            Fecha de captura visible. Respaldo R2: fecha + hash abreviado, sin descarga,
+            allowlist de prefijo tramitacion/*. safeExternalHref en todo href externo.
+            Honest-error #34: un fallo real de DB/red se LANZA (nunca degrada a empty).
+          */}
+          <section id="validacion-fuente" className="mt-12">
+            <Suspense fallback={<ValidacionFuenteSkeleton />}>
+              <ValidacionFuenteServerSection boletin={boletin} />
+            </Suspense>
+          </section>
         </div>
       </div>
     </main>
@@ -271,6 +289,8 @@ export async function ProyectoRail({ boletin }: { boletin: string }) {
     // scrollspy nunca la observa y el rail marca "idea-matriz" mientras se lee.
     { id: "cuerpos-legales", label: "Cuerpos legales" },
     { id: "similares", label: "Similares" },
+    // TRACE-01/02/03 (Phase 89): entrada de validación de fuente — siempre presente.
+    { id: "validacion-fuente", label: "Valida en fuente" },
   ];
 
   const estadoTexto = proyecto.estado?.trim() || proyecto.etapa?.trim() || null;
@@ -572,13 +592,59 @@ async function AutoresSection({ boletin }: { boletin: string }) {
   );
 }
 
+// ── Validación de fuente (TRACE-01/02/03, Phase 89) ──────────────────────────
+// Lee source_snapshot directamente (no RPC) — permitido bajo Camino A porque
+// source_snapshot NO es PII_TABLE (lockdown-guard block B :133-144 no muerde).
+// T-89-06: SOLO filtramos r2_path del registro; el componente aplica la allowlist.
+// Honest-error #34: un error real de DB/red se LANZA — nunca se fabrica un empty.
+
+async function leerSourceSnapshot(
+  boletin: string,
+): Promise<SourceSnapshotRecord | null> {
+  const sb = createServerSupabase();
+  const { data, error } = await sb
+    .from("source_snapshot")
+    .select("content_hash, fetched_at, r2_path")
+    .eq("source", "leyes")
+    .eq("resource", boletin)
+    .order("date_bucket", { ascending: false })
+    .limit(1)
+    .maybeSingle<SourceSnapshotRecord>();
+  // #34: un error real de DB/red ≠ "sin snapshot". Propagar para la página de error
+  // honesta en vez de fabricar un estado vacío.
+  if (error) {
+    throw new Error(
+      `leerSourceSnapshot(${boletin}) falló: ${error.message}`,
+    );
+  }
+  return data ?? null;
+}
+
+async function ValidacionFuenteServerSection({ boletin }: { boletin: string }) {
+  // leerProyecto ya está cacheada (React.cache): cero query extra.
+  const proyecto = await leerProyecto(boletin);
+  if (!proyecto) return null;
+
+  const snapshot = await leerSourceSnapshot(boletin);
+
+  return (
+    <ValidacionFuenteSection
+      boletin={proyecto.boletin}
+      prm_id_camara={proyecto.prm_id_camara ?? null}
+      fecha_captura={proyecto.fecha_captura}
+      snapshot={snapshot}
+    />
+  );
+}
+
 // ── Skeletons (UI-SPEC §6.2) ─────────────────────────────────────────────────
 // Rail: cabecera compacta (título/boletín/estado) + 7–8 entradas de nav + caveat.
 // Shape-matched a FichaRail para no producir layout shift al resolver: el conteo
 // DEBE igualar a `ProyectoRail.navEntries` — 7 con el gate de cruces OFF, 8 con ON
 // (WR-02). Un 6→8 producía un salto CLS visible al resolver el rail.
 function RailSkeleton() {
-  const nEntries = crucesPublicEnabled(process.env) ? 8 : 7;
+  // Phase 89 added "validacion-fuente" → +1 entry in every configuration (WR-02).
+  const nEntries = crucesPublicEnabled(process.env) ? 9 : 8;
   return (
     <div className="space-y-4" aria-hidden="true">
       <div className="space-y-1.5">

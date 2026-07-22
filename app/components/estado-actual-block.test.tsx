@@ -30,6 +30,7 @@ function makeProyecto(overrides: Partial<ProyectoRow> = {}): ProyectoRow {
     origen: "senado",
     fecha_captura: "2026-06-18T00:00:00Z",
     enlace: "https://senado.cl/16284-07",
+    prm_id_camara: null,
     ...overrides,
   };
 }
