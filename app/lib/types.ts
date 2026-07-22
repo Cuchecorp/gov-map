@@ -275,6 +275,11 @@ export interface ComisionRow {
  * opcionales según el RPC (co-comisión trae el nombre de la comisión compartida;
  * co-autoría trae el conteo honesto de boletines, que NO es criterio de orden).
  * NUNCA `rut`/`email`/`partido`.
+ *
+ * WR-01 (0061): `total_n` = conteo COMPLETO de quienes comparten el eje, computado
+ * ANTES del `limit 20` del canal de datos (`count(*) over ()`). Es el conteo HONESTO
+ * que la ficha muestra: si `total_n > filas devueltas`, la lista está truncada y la
+ * UI lo declara. Cada RPC de cross-link lo emite (bigint → number en el cliente).
  */
 export interface CrossLinkRow {
   id: string;
@@ -284,6 +289,12 @@ export interface CrossLinkRow {
   comision_nombre?: string;
   /** Conteo honesto de boletines co-firmados (solo `coautores_de_parlamentario`). */
   n_proyectos?: number;
+  /**
+   * WR-01 (0061): total REAL de quienes comparten el eje (antes del cap `limit 20`).
+   * Idéntico en todas las filas del mismo RPC (window `count(*) over ()`). La ficha
+   * lo usa para el conteo honesto y para declarar el truncamiento.
+   */
+  total_n?: number;
 }
 
 /**
