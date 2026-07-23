@@ -4,10 +4,9 @@ import type { NextConfig } from "next";
 // Se aplican a TODAS las rutas vía el Worker de OpenNext (SSR + API routes).
 // Para assets estáticos servidos por Cloudflare Assets, ver public/_headers.
 //
-// CSP: solo Report-Only para no bloquear la hidratación de Next.js (inline
-// scripts en __NEXT_DATA__ y el bootstrap runtime). Una CSP enforced requiere
-// nonces/hashes que el build de OpenNext no inyecta hoy — pendiente de
-// validación post-deploy. El resto de cabeceras son seguras para aplicar ya.
+// CSP: enforced desde v9.0 Plan 03 (SEC-02). script-src mantiene 'unsafe-inline'
+// porque el worker estático de OpenNext no soporta nonce per-request.
+// Validación empírica en el deploy real (0 errores CSP, hidratación viva).
 const securityHeaders = [
   // Anti-clickjacking: el sitio no usa iframes propios → DENY es seguro.
   { key: "X-Frame-Options", value: "DENY" },
@@ -26,16 +25,18 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "geolocation=(), microphone=(), camera=()",
   },
-  // CSP en modo Report-Only: detecta violaciones sin romper el sitio.
-  // Cuando se confirme que no hay violaciones en prod, promover a enforced.
-  // PENDIENTE OPERADOR: configurar report-uri antes de hacer enforced.
+  // CSP enforced pragmático (unsafe-inline en script-src porque el worker
+  // estático no soporta nonce per-request; object-src none + frame-ancestors
+  // none como defensa de injection). SEC-02 — v9.0 milestone final.
   {
-    key: "Content-Security-Policy-Report-Only",
+    key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
       "img-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
-      "script-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline'", // Next hidrata inline sin nonce en OpenNext estático
+      "connect-src 'self'", // navegador NO habla con Supabase directo (todo server-side); validado en deploy
+      "object-src 'none'", // NET-NEW vs la política anterior
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
