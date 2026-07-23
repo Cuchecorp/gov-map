@@ -1,6 +1,7 @@
 ---
 phase: 96-seguridad-p3b-audit-final-sitio-supabase-net-new-no-duplicat
 reviewed: 2026-07-23T00:00:00Z
+fixed: 2026-07-23T00:00:00Z
 depth: deep
 files_reviewed: 5
 files_reviewed_list:
@@ -15,7 +16,14 @@ findings:
   warning: 3
   info: 2
   total: 5
-status: issues_found
+status: resolved
+resolutions:
+  WR-01: FIXED (commit 0220be5) — latente hasta redeploy a Cloudflare Workers Assets
+  WR-02: FIXED (commit 46a9908)
+  WR-03: FIXED (commit f6b61e4)
+  IN-01a: WONT-FIX (preload omitido intencionalmente — documentado en _headers)
+  IN-01b: FIXED como parte de WR-01 (comentario cross-ref actualizado en _headers)
+  IN-02: FIXED (commit ef64d56) — minimumReleaseAgeExclude eliminado
 ---
 
 # Phase 96: Code Review Report
