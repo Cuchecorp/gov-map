@@ -74,12 +74,30 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| AUTH-01 | TBD | Pending |
-| SEN-01..06 | TBD | Pending |
-| PANEL-01..04 | TBD | Pending |
-| REL-01..05 | TBD | Pending |
-| VSIM-01..03 | TBD | Pending |
-| NOTIF-01..05 | TBD | Pending |
-| E2E-01 | TBD | Pending |
+| AUTH-01 | Phase 97 | Pending |
+| SEN-01 | Phase 98 | Pending |
+| SEN-06 | Phase 98 | Pending |
+| SEN-02 | Phase 99 | Pending |
+| SEN-03 | Phase 99 | Pending |
+| SEN-04 | Phase 99 | Pending |
+| SEN-05 | Phase 99 | Pending |
+| PANEL-01 | Phase 100 | Pending |
+| PANEL-02 | Phase 100 | Pending |
+| PANEL-03 | Phase 100 | Pending |
+| PANEL-04 | Phase 100 | Pending |
+| REL-01 | Phase 101 | Pending |
+| REL-02 | Phase 101 | Pending |
+| REL-03 | Phase 101 | Pending |
+| REL-04 | Phase 101 | Pending |
+| REL-05 | Phase 101 | Pending |
+| VSIM-01 | Phase 102 | Pending |
+| VSIM-02 | Phase 102 | Pending |
+| VSIM-03 | Phase 102 | Pending |
+| NOTIF-01 | Phase 103 | Pending |
+| NOTIF-02 | Phase 103 | Pending |
+| NOTIF-03 | Phase 103 | Pending |
+| NOTIF-04 | Phase 103 | Pending |
+| NOTIF-05 | Phase 103 | Pending |
+| E2E-01 | Phase 104 | Pending |
 
-*Filled by roadmap: 24 requirements total.*
+*Filled by roadmap: 25 requirements total (AUTH 1, SEN 6, PANEL 4, REL 5, VSIM 3, NOTIF 5, E2E 1) — mapeados 25/25 a Phases 97-104, 0 huérfanos, 0 duplicados. Nota: el brief citó "24"; la enumeración real del bloque SEN es de 6 (SEN-01..06), total 25.*

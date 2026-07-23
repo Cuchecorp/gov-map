@@ -15,6 +15,7 @@
 - ✅ **v8.0 — Rediseño Bento** — Phases 76-81 (home bento + primitivas + chrome + coherencia + candados + ship) — shipped 2026-07-15 (`fb88c8a4`); gate lectura fría = handoff (`phases/81-*/81-BROWSEROS-GATE.md`); archivo: milestones/v8.0-ROADMAP.md
 - ✅ **v8.1 — Demo perfecto** — Phases 82-85 — shipped 2026-07-15 (`3563ecc9`); archivo: milestones/v8.1-ROADMAP.md
 - ✅ **v9.0 — Robustez de productos estrella + seguridad final** — Phases 86-96 — shipped 2026-07-23 (deploy `09f1d5c2`, CSP enforced, audit PASSED 29/29); archivo: milestones/v9.0-ROADMAP.md
+- 🚧 **v10.0 — Panel de actualidad legislativa + notificaciones + relaciones** — Phases 97-104 (ACTIVA) — landing = panel de actualidad cuantitativo (señales honestas con frescura declarada), notificaciones por suscripción (primer dato de usuario: auth + RLS `to authenticated`), relaciones exhaustivas entre parlamentarios (+ similitud de voto gated legal), y verificación E2E final
 
 <details>
 <summary>✅ v9.0 — Robustez de productos estrella + seguridad final (Phases 86-96) — SHIPPED 2026-07-23</summary>
@@ -34,6 +35,195 @@
 Detalle completo: milestones/v9.0-ROADMAP.md · Audit: milestones/v9.0-MILESTONE-AUDIT.md · Requirements: milestones/v9.0-REQUIREMENTS.md
 
 </details>
+
+## 🚧 v10.0 — Panel de actualidad legislativa + notificaciones + relaciones (ACTIVA)
+
+**Milestone Goal:** La landing deja de ser un folleto del producto y se convierte en un PANEL DE ACTUALIDAD cuantitativo — "qué está pasando HOY en el Congreso" derivado de datos objetivos (movimiento, urgencias, nuevos ingresos, votaciones próximas, agrupación por tema) — que un periodista/tramitador/asesor pueda usar como primera pantalla del día; más notificaciones por suscripción (proyecto/parlamentario, el primer dato de usuario del sistema) y una capa de relaciones entre parlamentarios EXHAUSTIVA (partido, coalición, comisiones, co-autoría, similitud de voto). Toda señal/relación es factual con fuente+fecha; la ausencia de datos se DECLARA, jamás se emite como hecho.
+
+**Mode:** yolo · **Granularity:** fine (muchas fases pequeñas y atómicas) · **Numbering:** continúa desde v9.0 (Phase 96 fue la última) → v10.0 arranca en **Phase 97**.
+
+**MÉTODO LOCKED del operador:** TODO con base empírica — spikes de datos ANTES que frontend (primero QUÉ señal es honesta, después CÓMO se muestra), BrowserOS como gate de comprensión en DEPLOY real, y ciclo diseño→crítica→loop contra benchmark (senado.cl / camara.cl). Gates humanos/legales (flip VSIM, checkpoint 21.719 de NOTIF) JAMÁS los ejecuta un agente — el agente construye hasta el gate deny-by-default y se detiene.
+
+**TESIS RECTORA (research HIGH, convergente 5/5):** v10.0 es casi todo RE-USO gobernado por gates de honestidad. La infra net-new es mínima (un proveedor de email + el primer subsistema de dato de usuario: Supabase Auth + RLS real). No se añade cola/broker/cache — el patrón es SQL precomputado + cron. El trabajo REAL es disciplina: qué señal es honesta, qué ausencia no es un hecho, qué copy no insinúa, qué dato de usuario merece auth+RLS+consentimiento reales.
+
+### Estructura: TRES PASADAS autónomas (con `/clear` entre pasadas)
+
+- **PASADA 1 — Auth de-risk + Señales + Panel:** Phases **97-100** (spike auth-on-Workers paralelo + SPIKE de datos que gatea + materializador de señales + landing panel con benchmark y gate BrowserOS).
+- **PASADA 2 — Relaciones + Similitud:** Phases **101-102** (relaciones exhaustivas no-voto en ficha/comparador + similitud de voto gated legal).
+- **PASADA 3 — Notificaciones + Cierre:** Phases **103-104** (suscripciones + digest + auth/RLS/legal + verificación E2E "todo funciona").
+
+### Coverage
+
+- v10.0 requirements: 25 (AUTH 1, SEN 6, PANEL 4, REL 5, VSIM 3, NOTIF 5, E2E 1) — el brief citó "24"; SEN enumera 6 → 25
+- Mapped to phases (97-104): 25/25 ✓
+- Orphaned: 0 · Duplicates: 0
+
+### Build order (dependencias duras de la investigación)
+
+```
+97 AUTH de-risk (SPIKE middleware+cookies sobre OpenNext) ── paralelo desde el día 0, NO gatea el panel
+                                                                │ (gatea solo 103)
+98 SEN SPIKE datos (qué señal es honesta) ──► 99 materializador actualidad_senal + RPCs ──► 100 landing panel (gate BrowserOS)
+   (GATEA 99 y 100)
+
+101 RELACIONES no-voto (audit brecha + ficha + /comparar + coalición empírica) ──► 102 VSIM similitud voto (gated legal)
+
+103 NOTIF (depende de 97; lockdown-guard authenticated = PRIMER commit; checkpoint legal 21.719) ──► 104 E2E "todo funciona" (cierra al final)
+```
+
+### Gates humanos explícitos (el agente construye hasta el gate; NUNCA lo cruza)
+
+- **VSIM (Phase 102):** flip de `VSIM_PUBLIC_ENABLED` = sign-off legal humano en dossier (clase MONEY/NET). El agente deja la superficie deny-by-default y el guard anti-flip mordiendo.
+- **NOTIF (Phase 103):** checkpoint legal 21.719 (DPA del proveedor + diseño de consentimiento) ANTES de exponer la captura de emails al público. Sin respuesta → feature queda tras flag OFF con handoff documentado; la corrida cierra igual.
+
+### Phases
+
+- [ ] **Phase 97: AUTH P0 — SPIKE auth-on-Workers de-risk** — primer `middleware.ts` del repo (Edge-style, NO Node Middleware 15.2+) + `@supabase/ssr` sobre deploy OpenNext real; Set-Cookie + refresh de sesión verificados; paralelizable, no gatea el panel
+- [ ] **Phase 98: SEÑALES P1a — SPIKE de datos: qué señales son honestas (gate del panel)** — auditoría empírica de `tramitacion_evento` (frescura/cobertura/primer-evento fiable) clasifica cada señal candidata honesta/sesgada/imposible + evaluación BCN "leyes publicadas"; GATEA 99-100
+- [ ] **Phase 99: SEÑALES P1b — Materializador `actualidad_senal` + RPCs bounded + cron intradía** — tabla precomputada (espejo `cruce_senal`/0039) + agrupación por materia (+ k-means seed-fija, labels NUNCA LLM) + supresión-si-stale; RPCs bounded PII-safe allowlisted; refresh L-V
+- [ ] **Phase 100: PANEL P1c — Landing panel + benchmark senado/camara + gate BrowserOS** — `app/page.tsx` panel reusando BentoGrid/tokens con candados de régimen; linter home extendido a `SUPERFICIES_PANEL` ANTES del copy; benchmark BrowserOS + gate lectura fría en deploy real
+- [ ] **Phase 101: RELACIONES P2a — Audit brecha + bloque relaciones + /comparar + coalición empírica** — inventario N/M por relación; bloque "Relaciones con otros parlamentarios" above-the-fold; `/comparar` 1-a-1 no-voto (partido/comisiones/co-autoría/zona) orden alfabético anti-ranking; coalición Servel/comités evaluada empíricamente o DIFERIDA documentada
+- [ ] **Phase 102: RELACIONES P2b — Similitud de votación (gated legal)** — métrica "coinciden en N de M" con denominador honesto + caveat de base-alta OBLIGATORIO; en `/comparar` detrás de `VSIM_PUBLIC_ENABLED` OFF (flip = sign-off legal humano); linter extendido; `co_votacion` JAMÁS a /red
+- [ ] **Phase 103: NOTIF P3a — Suscripciones + digest + guards authenticated + gate legal** — suscripción/des-suscripción user-owned con RLS `to authenticated`; lockdown-guard extendido a `authenticated` como PRIMER commit; digest diario Resend (cursor idempotente, cola drenada por cron); doble opt-in + unsubscribe por token opaco; checkpoint legal 21.719
+- [ ] **Phase 104: CIERRE P3b — Verificación E2E "todo funciona"** — inventario de CADA superficie nueva × dato real × BrowserOS sobre el deploy: panel con señales vivas, relaciones verificadas contra SQL, comparador con caveat visible, flags OFF ausentes del DOM, linter verde con vocabulario nuevo, suite + guards verdes
+
+## Phase Details (v10.0)
+
+### Phase 97: AUTH P0 — SPIKE auth-on-Workers de-risk
+
+**Goal**: Confirmar sobre el deploy REAL que OpenNext/Cloudflare sostiene una sesión de Supabase Auth end-to-end ANTES de construir cualquier feature de usuario — el mayor riesgo desconocido de-riskeado temprano, sin bloquear el panel.
+**Depends on**: Nothing (primera de v10.0; paralelizable desde el día 0; NO gatea 98-102)
+**Requirements**: AUTH-01
+**Componentes**: NUEVO (primer `middleware.ts` del repo, Edge-style; `@supabase/ssr`; `lib/supabase-user.ts`) · el sitio HOY corre service_role sin middleware (precedente Camino A YA-EXISTE, intacto)
+**Success Criteria** (what must be TRUE):
+
+  1. Existe un `middleware.ts` mínimo desplegado que corre en el pipeline OpenNext sin romper el build (Edge-style clásico, NO Node Middleware 15.2+ que OpenNext no soporta — verificado, no asumido)
+  2. Sobre el deploy real (no local), una sesión Supabase Auth (magic-link/OTP) emite `Set-Cookie` y el refresh de sesión SOBREVIVE al pipeline OpenNext (evidencia BrowserOS/curl del cookie + refresh)
+  3. El spike NO resucita la anon legacy muerta ni toca el plano service_role del sitio existente (Camino A intacto; el nuevo acceso es de bajo privilegio con RLS)
+  4. Si el deploy NO sostiene la sesión, queda registrado el fallback honesto y un re-plan del bloque NOTIF (Phase 103) — el panel de datos NO depende de este resultado
+
+**Plans**: TBD
+
+**Research**: yes (SPIKE — OpenNext+middleware+cookies sobre Workers es MEDIUM: docs lo dicen, NO probado en este repo; bloqueante estructural de NOTIF)
+**UI hint**: yes
+
+### Phase 98: SEÑALES P1a — SPIKE de datos: qué señales son honestas (gate del panel)
+
+**Goal**: Decidir con evidencia empírica QUÉ señales del panel son honestas ANTES de construir nada de frontend — sin este gate el panel mentiría por cobertura parcial (riesgo existencial #1 en la página más visitada).
+**Depends on**: Nothing (arranca el frente de datos; GATEA 99 y 100)
+**Requirements**: SEN-01, SEN-06
+**Componentes**: EJECUCIÓN (SPIKE auditoría) · `tramitacion_evento`, `proyecto.materia`, freshness por fuente YA-EXISTEN · evaluación de fuentes BCN (`portada_ulp`) / Cámara (`leyes_promulgadas.aspx`)
+**Success Criteria** (what must be TRUE):
+
+  1. Cada señal candidata (velocity, nuevos ingresos, urgencias, agenda, archivados/retirados, leyes publicadas) queda clasificada honesta / sesgada / imposible con evidencia — `fecha_captura` JAMÁS aceptada como "fecha de ingreso"
+  2. La auditoría de `tramitacion_evento` mide frescura y cobertura por cámara y declara el sesgo Cámara/Senado por señal (una fuente stale debe poder suprimirse, no afirmarse como "sin movimiento")
+  3. La señal "leyes recién publicadas" se evalúa contra BCN/Cámara con verdict binario: viable → entra por dos-etapas R2 en una fase; no-viable → DIFERIDA documentada
+  4. Queda VERIFICADO contra la DB viva que la similitud de voto es computable HOY (voto `confirmado` cubre lo esperado; la reconciliación no fabrica votantes) — insumo de Phase 102
+
+**Plans**: TBD
+
+**Research**: yes (SPIKE de datos — el gate del operador "QUÉ antes que CÓMO"; decide honestidad de velocity/nuevos-ingresos/leyes-publicadas)
+
+### Phase 99: SEÑALES P1b — Materializador `actualidad_senal` + RPCs bounded + cron intradía
+
+**Goal**: Precomputar offline las señales validadas en el SPIKE y servirlas a la landing como filas listas — cero agregación cara on-read en la página más visitada.
+**Depends on**: Phase 98
+**Requirements**: SEN-02, SEN-03, SEN-04, SEN-05
+**Componentes**: MODIFICADO/NUEVO (migración aditiva) · espejo de `cruce_senal`/0039 + `materializar_cruces()` (patrón full-rebuild transaccional YA-EXISTE) · embeddings 768d de v6.1 YA-EXISTEN · RPCs bounded PII-safe allowlisted (patrón 0064 YA-EXISTE) · pg_cron / GH Actions YA-EXISTEN
+**Success Criteria** (what must be TRUE):
+
+  1. `actualidad_senal` es tabla precomputada refrescada por un proc full-rebuild (SQL puro → pg_cron; lógica TS de clustering → CLI GH Actions intradía L-V); la landing lee filas listas vía RPC bounded (LIMIT + statement_timeout + allowlist)
+  2. Las señales mínimas validadas existen como conteos factuales: actividad reciente por ventana (framing "N trámites en 7 días", nunca "top/los más" — resuelve el lock T-52-13), agenda próxima, urgencias vivas, archivados/retirados; nuevos ingresos SOLO si el SPIKE validó el reloj
+  3. Toda señal se SUPRIME con causa cuando su fuente está stale ("sin datos frescos de esta fuente") — "sin movimiento" nunca se afirma sin scrape; el sesgo de cobertura por cámara queda declarado por señal
+  4. La agrupación por tema usa `materia` oficial como label primario (+ k-means determinista seed-fija sobre embeddings como capa secundaria) — los labels JAMÁS se generan por LLM
+
+**Plans**: TBD
+
+### Phase 100: PANEL P1c — Landing panel + benchmark senado/camara + gate BrowserOS
+
+**Goal**: Reemplazar el bento producto-céntrico por un panel de "qué está pasando", reusando primitivas y candados de régimen, validado empíricamente contra los portales oficiales y por lectura fría en deploy real.
+**Depends on**: Phase 99
+**Requirements**: PANEL-01, PANEL-02, PANEL-03, PANEL-04
+**Componentes**: MODIFICADO (`app/page.tsx` reusa BentoGrid/BentoTile; los 3 tiles de `actualidad-module.tsx` son el germen) · candados cero-hex/tipografía/linter home YA-EXISTEN · `force-dynamic` YA-EXISTE
+**Success Criteria** (what must be TRUE):
+
+  1. La landing muestra las señales SEN validadas (no el folleto producto-céntrico) reusando BentoGrid/tokens y conservando los candados de régimen (cero-hex, whitelist tipográfica); el linter home se extiende a `SUPERFICIES_PANEL` ANTES de escribir cualquier copy nuevo
+  2. Cada tile/señal lleva fuente+fecha + estado vacío honesto ("en las fuentes consultadas al [fecha]"); cero agregación cara on-read (lee precomputado); la URL de la home no cambia (SEO/anchors intactos)
+  3. Existe un benchmark BrowserOS documentado de senado.cl y camara.cl (portada/actualidad/tablas) con crítica de diseño — qué evitar y qué superar; el panel iteró diseño→crítica→loop contra ese benchmark
+  4. El veredicto BrowserOS de lectura fría sobre el DEPLOY real (comprensible para periodista/tramitador/ciudadano) es "comprensible" — criterio de éxito, no opcional (candados verificados por getComputedStyle en deploy)
+
+**Plans**: TBD
+
+**UI hint**: yes
+
+### Phase 101: RELACIONES P2a — Audit brecha + bloque relaciones + /comparar + coalición empírica
+
+**Goal**: Sacar a la superficie las relaciones entre parlamentarios que YA existen en datos pero están enterradas, y añadir la comparación 1-a-1 que falta — todo factual, orden alfabético, jamás ranking.
+**Depends on**: Nothing de v10.0 (frente de relaciones independiente; puede correr en PASADA 2)
+**Requirements**: REL-01, REL-02, REL-03, REL-04, REL-05
+**Componentes**: MODIFICADO/NUEVO · los 4 cross-links 0060/0061 YA-EXISTEN (enterrados) · RPC "militancia histórica compartida" NUEVO sobre patrón conocido · `/comparar` NUEVO · `parlamentario_militancia`/`comision_membresia`/`proyecto_autor` YA-EXISTEN · coalición = fuente candidata Servel pactos / comités Senado (evaluación empírica)
+**Success Criteria** (what must be TRUE):
+
+  1. Existe un audit N/M por relación (dato-disponible vs superficie-mostrada) como insumo de diseño — los 4 cross-links quedan reubicados above-the-fold en un bloque "Relaciones con otros parlamentarios" (mismo partido, misma zona, mismas comisiones, co-autoría) con conteo total_n honesto, orden alfabético anti-ranking y leyenda factual
+  2. Existe `/comparar` 1-a-1 entre dos parlamentarios con ejes factuales NO-voto (partido/militancia histórica, comisiones compartidas, co-autoría, zona), cada dato con fuente+fecha
+  3. Las relaciones nuevas derivadas de datos existentes (militancia histórica compartida, lobby con la misma contraparte si el dato lo sostiene) aparecen con framing factual y cobertura declarada
+  4. La coalición/pacto se evalúa empíricamente (Servel pactos / comités Senado): si hay fuente factual viable se ingiere por dos-etapas; si no, queda DIFERIDA documentada — JAMÁS inferida desde votos; ningún eje/score/mapa ideológico aparece
+
+**Plans**: TBD
+
+**UI hint**: yes
+
+### Phase 102: RELACIONES P2b — Similitud de votación (gated legal)
+
+**Goal**: Añadir el eje "coinciden en N de M votaciones" que el operador re-pide, con el caveat de base-alta obligatorio y detrás de un flag deny-by-default — el dato está listo, el encendido es acto humano.
+**Depends on**: Phase 101
+**Requirements**: VSIM-01, VSIM-02, VSIM-03
+**Componentes**: MODIFICADO (montaje en `/comparar` + gate) · voto individual `confirmado` en DB YA-EXISTE (verificado en Phase 98) · linter anti-insinuación + `NEGACIONES_LOCKED` YA-EXISTEN · patrón flag deny-by-default clase MONEY/NET YA-EXISTE
+**Success Criteria** (what must be TRUE):
+
+  1. La métrica es factual pairwise "coinciden en N de M votaciones compartidas" con denominador honesto (solo votaciones sustantivas donde AMBOS votaron) y caveat de base-alta OBLIGATORIO ("la coincidencia alta es la norma, no una señal") — NUNCA score/ranking/eje ideológico/mapa (anti-modelo DW-NOMINATE)
+  2. La similitud se muestra en `/comparar` SOLO a través de `VSIM_PUBLIC_ENABLED` (o equivalente) fail-closed OFF por defecto; un guard CI impide que un commit de agente lo cambie a "true" (el flip requiere sign-off legal humano en dossier — acto humano exclusivo)
+  3. El linter anti-insinuación se extiende ANTES del copy con los idioms de similitud vetados ("votan juntos", "aliados", "más afín", "tasa de coincidencia" como ranking) + leyenda en `NEGACIONES_LOCKED` + mutation self-check
+  4. `co_votacion` JAMÁS entra a /red (explosión de clique + insinuación espacial) — verificable en el diff
+
+**Plans**: TBD
+
+**UI hint**: yes
+
+### Phase 103: NOTIF P3a — Suscripciones + digest + guards authenticated + gate legal
+
+**Goal**: Introducir el primer dato de usuario del sistema (suscripciones + digest por email) con auth/RLS reales y el lockdown-guard extendido al rol nuevo desde el primer commit — sin que el agujero de `authenticated` llegue a PROD.
+**Depends on**: Phase 97 (auth de-risk confirmado)
+**Requirements**: NOTIF-01, NOTIF-02, NOTIF-03, NOTIF-04, NOTIF-05
+**Componentes**: NUEVO · `suscripcion`/`notificacion_envio` tablas user-owned + Supabase Auth + `middleware.ts` (de Phase 97) + `@obs/notificaciones` (cron de EGRESO GH Actions, patrón NUEVO NO-dos-etapas) + Resend · lockdown-guard + mutation self-check YA-EXISTEN (se extienden al rol `authenticated`)
+**Success Criteria** (what must be TRUE):
+
+  1. Un usuario autenticado (magic-link/OTP) puede suscribirse y des-suscribirse a un proyecto o parlamentario; las suscripciones viven en tablas user-owned con RLS real (`to authenticated`, `auth.uid()=user_id`), deny-by-default, aisladas del plano service_role (pgTAP usuario-A-no-ve-B)
+  2. El lockdown-guard se extiende al rol `authenticated` (allowlist de tablas-de-usuario + mutation self-check) como PRIMER commit de la fase — el agujero detectado en research no llega a PROD
+  3. Un digest diario por email (Resend, free 100/día declarado como techo) agrupa las novedades por cursor idempotente (cola en tabla drenada por cron GH Actions); jamás instantáneo; doble opt-in + unsubscribe por token opaco sin login + registro de consentimiento (fecha/versión/método); el email del usuario NUNCA va a LLM/logs CI/R2
+  4. El checkpoint legal humano 21.719 (DPA del proveedor) es requisito ANTES de exponer la captura de emails al público; sin respuesta la feature queda detrás de flag OFF con handoff documentado y la corrida cierra igual — el agente JAMÁS provee el sign-off
+
+**Plans**: TBD
+
+**Research**: yes (Resend + Custom SMTP + DKIM + encaje `.env`/secrets = MEDIUM; diseño de consentimiento 21.719 merece research legal)
+**UI hint**: yes
+
+### Phase 104: CIERRE P3b — Verificación E2E "todo funciona"
+
+**Goal**: Cerrar el milestone con el inventario que pidió el operador — cada superficie nueva contra dato real y BrowserOS sobre el deploy, con flags OFF ausentes y linter verde.
+**Depends on**: Phase 100, Phase 101, Phase 102, Phase 103 (verifica todo lo construido; última de v10.0)
+**Requirements**: E2E-01
+**Componentes**: EJECUCIÓN (verificación) · todas las superficies de v10.0 + suite + guards YA-EXISTEN
+**Success Criteria** (what must be TRUE):
+
+  1. Cada superficie nueva está verificada × dato real × BrowserOS sobre el deploy: panel con señales vivas, relaciones con conteos honestos verificados contra SQL (truncamiento >20), comparador con caveat de base-alta visible
+  2. Los flags deny-by-default (VSIM, y NOTIF si quedó gated) están AUSENTES del DOM cuando OFF — no hay superficie fantasma renderizada
+  3. El linter anti-insinuación corre verde con el vocabulario nuevo Y sobre las superficies nuevas (`SUPERFICIES_PANEL`, similitud, relaciones); la similitud de voto cuadra contra recálculo SQL
+  4. La suite completa + todos los guards (lockdown authenticated, anti-flip VSIM, candados de régimen) están verdes; empty states honestos, cero URI-como-partido
+
+**Plans**: TBD
+
+**UI hint**: yes
 
 ## 🔒 v7.0 — Votos, dinero y cierre técnico (Code-complete; gates de operador abiertos)
 
@@ -1070,6 +1260,14 @@ Plans:
 | 73. DINERO P5e — Superficies MONEY gated OFF + linter + gate legal | v7.0 | 4/4 | Complete   | 2026-07-15 |
 | 74. DEUDA — Cursor leylobby + CF token CI + round-robin cron | v7.0 | 3/3 | Complete   | 2026-07-15 |
 | 75. DEUDA — Typography .net-* + rotar DB password (operador) | v7.0 | 2/2 | Complete   | 2026-07-15 |
+| 97. AUTH P0 — SPIKE auth-on-Workers de-risk | v10.0 | 0/? | Not started | - |
+| 98. SEÑALES P1a — SPIKE datos: qué señales son honestas (gate) | v10.0 | 0/? | Not started | - |
+| 99. SEÑALES P1b — Materializador actualidad_senal + RPCs + cron | v10.0 | 0/? | Not started | - |
+| 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 0/? | Not started | - |
+| 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 0/? | Not started | - |
+| 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 0/? | Not started | - |
+| 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 0/? | Not started | - |
+| 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 0/? | Not started | - |
 
 ## ✅ v4.0 — De datos a cruces verificables
 
