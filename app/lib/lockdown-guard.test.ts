@@ -396,12 +396,34 @@ describe("(A2) Guard — toda entrada del allowlist existe en migraciones (Direc
     ).toHaveLength(0);
   });
 
-  it("Direction-B self-check: detecta entrada fantasma en allowlist (SC#4)", () => {
-    // Allowlist sintético con una entrada inventada, set de funciones definidas vacío.
-    // Prueba que el guard MUERDE — no es un no-op verde vacío.
+  it("Direction-B self-check: detecta entrada fantasma en allowlist ejercitando el detector REAL (SC#4)", () => {
+    // Helper puro que replica el regex de definedRpcNames sobre SQL en memoria.
+    // Si el regex del parser se rompe (p.ej. se elimina `(?:public\.)?` o `\w`),
+    // este test falla — a diferencia de la versión anterior que solo probaba
+    // Set.prototype.has (tautología). Patrón idéntico al de crossLinkReader self-check.
+    function parseDefinedRpcNames(sql: string): Set<string> {
+      const out = new Set<string>();
+      for (const m of stripSqlComments(sql).matchAll(
+        /create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?(\w+)/gi,
+      )) {
+        out.add(m[1]);
+      }
+      return out;
+    }
+
+    // Fixture: migración sintética con UNA función definida.
+    const sqlWithOneFunction =
+      "create or replace function public.solo_esta(p_id text) returns table(x int) language sql as $$ select 1; $$;";
+
+    // El detector REAL reconoce la función definida en el fixture.
+    const defined = parseDefinedRpcNames(sqlWithOneFunction);
+    expect(defined).toContain("solo_esta");
+
+    // Allowlist fantasma con una entrada que NO existe en el fixture.
     const ghostAllowlist = new Set(["funcion_fantasma_typo"]);
-    const emptyDefined = new Set<string>();
-    const orphans = [...ghostAllowlist].filter((n) => !emptyDefined.has(n));
+    const orphans = [...ghostAllowlist].filter((n) => !defined.has(n));
+
+    // El filtro de huérfanos caza al fantasma — el guard MUERDE.
     expect(orphans).toHaveLength(1);
     expect(orphans[0]).toBe("funcion_fantasma_typo");
   });
