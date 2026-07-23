@@ -347,6 +347,128 @@ describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
 });
 
 // ---------------------------------------------------------------------------
+// (A2) Guard — toda entrada del allowlist existe en migraciones (Direction-B, SC#3)
+//
+// Direction-A (Block B arriba) verifica: servida ⊆ allowlist (RPC llamada desde el
+// árbol público → debe estar en PUBLIC_RPC_ALLOWLIST).
+// Direction-B (este bloque) verifica: allowlist ⊆ definidas (cada entrada del
+// allowlist debe tener una función `create (or replace) function` en alguna migración).
+//
+// Regex CRÍTICO: `public.` es OPCIONAL (`(?:public\.)?`) porque match_proyectos,
+// parlamentario_publico y parlamentarios_publico se definen SIN el qualifier `public.`
+// (0011:55, 0020:28, 0026:30). Un regex que exija `public.` produce 3 falsos orphans
+// y llevaría a relajar o borrar el guard perdiendo la protección.
+//
+// Scope: repo-wide (TODAS las migraciones, sin filtro >0044) porque las 3 RPCs
+// mencionadas son pre-0044 y siguen en el allowlist (sus definiciones deben respaldarse).
+// ---------------------------------------------------------------------------
+
+/**
+ * Detector puro y testeable: recolecta todos los nombres de función SQL definidos
+ * en las migraciones (repo-wide). Usado por Direction-B y su mutation self-check.
+ */
+function definedRpcNames(migrationsDir: string): Set<string> {
+  const defined = new Set<string>();
+  for (const f of readdirSync(migrationsDir).filter((x) => x.endsWith(".sql"))) {
+    const sql = stripSqlComments(
+      readFileSync(path.join(migrationsDir, f), "utf-8"),
+    );
+    for (const m of sql.matchAll(
+      /create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?(\w+)/gi,
+    )) {
+      defined.add(m[1]);
+    }
+  }
+  return defined;
+}
+
+describe("(A2) Guard — toda entrada del allowlist existe en migraciones (Direction-B, SC#3)", () => {
+  it("sanity: definedRpcNames encontró al menos 20 funciones (el glob no está vacío)", () => {
+    expect(definedRpcNames(MIGRATIONS_DIR).size).toBeGreaterThan(20);
+  });
+
+  it("toda entrada de PUBLIC_RPC_ALLOWLIST corresponde a una función definida en migraciones (SC#3 Direction-B)", () => {
+    const defined = definedRpcNames(MIGRATIONS_DIR);
+    const orphans = [...PUBLIC_RPC_ALLOWLIST].filter((n) => !defined.has(n));
+    expect(
+      orphans,
+      `Allowlist con entradas sin función en supabase/migrations/ (typo/stale): [${orphans.join(", ")}] — corrige el nombre o elimina la entrada`,
+    ).toHaveLength(0);
+  });
+
+  it("Direction-B self-check: detecta entrada fantasma en allowlist (SC#4)", () => {
+    // Allowlist sintético con una entrada inventada, set de funciones definidas vacío.
+    // Prueba que el guard MUERDE — no es un no-op verde vacío.
+    const ghostAllowlist = new Set(["funcion_fantasma_typo"]);
+    const emptyDefined = new Set<string>();
+    const orphans = [...ghostAllowlist].filter((n) => !emptyDefined.has(n));
+    expect(orphans).toHaveLength(1);
+    expect(orphans[0]).toBe("funcion_fantasma_typo");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (A3) Guard — cross-links via crossLinkReader ⊆ allowlist (SC#1/SC#3)
+//
+// BLIND-SPOT de Direction-A (Block B): el rpcPattern=/\.rpc\(\s*['"`](\w+)['"`]/g
+// matchea `.rpc("literal")` pero NO matchea `crossLinkReader("literal")`, que llama
+// `.rpc(rpc)` con una VARIABLE (app/parlamentario/[id]/page.tsx:185-199). Los 4 RPCs
+// de cross-link aparecen sólo como argumento de `crossLinkReader("...")` en las
+// líneas 196-199, por lo que Block B los MISS.
+//
+// Este bloque (A3) cierra el hueco: extrae los literales de `crossLinkReader("...")`
+// del call site y verifica que todos estén en PUBLIC_RPC_ALLOWLIST. Si en el futuro
+// se añade un 5° cross-link vía este helper, (A3) lo atrapa.
+// ---------------------------------------------------------------------------
+
+/**
+ * Detector puro: extrae los nombres de RPC pasados como literales a crossLinkReader().
+ * Testeable con fixtures en memoria (mutation self-check, SC#4).
+ */
+function crossLinkRpcNames(tsSource: string): string[] {
+  const names: string[] = [];
+  for (const m of tsSource.matchAll(/crossLinkReader\(\s*['"`](\w+)['"`]\)/g)) {
+    names.push(m[1]);
+  }
+  return names;
+}
+
+describe("(A3) Guard — cross-links via crossLinkReader ⊆ allowlist (SC#1/SC#3)", () => {
+  const crossLinkPage = path.join(
+    APP_ROOT,
+    "app",
+    "parlamentario",
+    "[id]",
+    "page.tsx",
+  );
+
+  it("sanity: el archivo de cross-links tiene al menos 4 literales de crossLinkReader", () => {
+    const source = readFileSync(crossLinkPage, "utf-8");
+    const names = crossLinkRpcNames(source);
+    expect(names.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("todos los literales de crossLinkReader(\"...\") están en PUBLIC_RPC_ALLOWLIST (SC#1/SC#3)", () => {
+    const source = readFileSync(crossLinkPage, "utf-8");
+    const names = crossLinkRpcNames(source);
+    const offenders = names.filter((n) => !PUBLIC_RPC_ALLOWLIST.has(n));
+    expect(
+      offenders,
+      `crossLinkReader llama RPCs no-allowlisted (escapan al rpcPattern estático de Block B): [${offenders.join(", ")}] — añáde la RPC a PUBLIC_RPC_ALLOWLIST si es PII-safe`,
+    ).toHaveLength(0);
+  });
+
+  it("crossLinkReader self-check: detecta un literal no-listado en fixture EN MEMORIA (SC#4)", () => {
+    // Fixture sintético con una RPC que no está en el allowlist.
+    const fixture = `const x = crossLinkReader("rpc_no_listada");`;
+    const names = crossLinkRpcNames(fixture);
+    expect(names).toContain("rpc_no_listada");
+    const offenders = names.filter((n) => !PUBLIC_RPC_ALLOWLIST.has(n));
+    expect(offenders).toContain("rpc_no_listada");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // (B) [Camino A] El arbol publico server-side no accede a tablas PII directas
 // ---------------------------------------------------------------------------
 
