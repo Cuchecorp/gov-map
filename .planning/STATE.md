@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
-status: verifying
+status: in_progress
 stopped_at: Completed 94-03-PLAN.md
 last_updated: "2026-07-22T23:02:31.848Z"
 last_activity: 2026-07-22
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 93 — AGENDA P2d — AUDITORÍA de cobertura de citaciones (gate duro de 94)
+**Current focus:** PASADA 3 — Phases 95-96 (Seguridad): guards extendidos + audit final. Lanzar con `/clear` + PROMPT-v9.0-build-autonomo.md §PASADA 3.
 
 ## Current Position
 
-Phase: 93 (AGENDA P2d — AUDITORÍA de cobertura de citaciones) — EN CURSO
-Plan: 3 of 3 complete (medibles + wiring BrowserOS listos)
-Status: Phase complete — ready for verification
+Phase: 94 completa — PASADA 2 (90-94) CERRADA 2026-07-22
+Plan: —
+Status: Listo para pasada 3 (95-96)
 Last activity: 2026-07-22
 
 ## Performance Metrics
@@ -143,6 +143,9 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ### Blockers/Concerns
+
+- PASADA 2 CERRADA 2026-07-22. Deploy live: `369f9cbe` (dias correctos /agenda). DEUDA que viaja con el PROXIMO deploy (95/96 o cierre): fixes latentes WR-01/02 dedup counts ficha + a11y/accent de 94-UI-REVIEW (ya en master, no bundleados). HANDOFF operador: cold-read humano de /agenda y ficha bio/lobby (gates BrowserOS del agente aprobados con evidencia DOM; el veredicto humano "comprensible" queda abierto, patron v7/v8). Residuo benigno: C:\Temp\obs-build
+ode_modules (lock Linux-container, sin secrets — borrar tras reboot).
 
 - OPERADOR 2026-07-22 (durante pasada 2): deep-links tramitación FIXEADOS y deployados (quick 260722-eia, versión d99b8fa9 — enlaceHumanoProyecto + link Cámara prmID + token urgencia 3-estados). PENDIENTE del mismo reporte: citaciones (sala y comisiones) y tablas de sesión están MAL WIRED en el frontend — es requisito EXPLÍCITO de Phase 93 (auditoría debe medir el wiring frontend, no solo el scraping) y Phase 94 (fix de /agenda + wiring en ficha), iterando con BrowserOS.
 
