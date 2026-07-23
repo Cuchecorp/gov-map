@@ -102,7 +102,12 @@ Detalle completo: milestones/v9.0-ROADMAP.md · Audit: milestones/v9.0-MILESTONE
   3. El spike NO resucita la anon legacy muerta ni toca el plano service_role del sitio existente (Camino A intacto; el nuevo acceso es de bajo privilegio con RLS)
   4. Si el deploy NO sostiene la sesión, queda registrado el fallback honesto y un re-plan del bloque NOTIF (Phase 103) — el panel de datos NO depende de este resultado
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 97-01-PLAN.md — Código local: primer middleware.ts (Edge deprecado) + supabase-user.ts (publishable) + ruta /spike-auth OTP; next build + suite verdes
+- [ ] 97-02-PLAN.md — Deploy real: build OpenNext (Docker) + wrangler deploy + secret publishable + config Supabase OTP; leer el log del middleware
+- [ ] 97-03-PLAN.md — Evidencia curl/BrowserOS (Set-Cookie + refresh + dos-jars + Camino A/CSP) + fallback honesto NOTIF-103 condicional
 
 **Research**: yes (SPIKE — OpenNext+middleware+cookies sobre Workers es MEDIUM: docs lo dicen, NO probado en este repo; bloqueante estructural de NOTIF)
 **UI hint**: yes
