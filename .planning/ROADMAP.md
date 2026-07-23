@@ -308,7 +308,13 @@ Plans:
   3. La rotación del DB password (B26, arrastrada de v7) queda documentada como checkpoint de operador — el agente NO rota
   4. El golden gate de identidad se re-verifica (la correctitud ES la defensa legal)
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 96-01-PLAN.md — Repo público: gitleaks full-history triage + .gitleaks.toml + guard vitest .env.example placeholder-only + pnpm audit fix (bump Next ≥16.2.11 + overrides) → 96-AUDIT-REPO.md
+- [ ] 96-02-PLAN.md — DB viva: grants/RLS/allowlist sobre PROD (filtro pg_depend), re-derivación allowlist (2 inertes-por-diseño), pgvector 0.8.0 gap → handoff, golden gates de identidad verdes → 96-AUDIT-DB-VIVA.md
+- [ ] 96-03-PLAN.md — CSP Report-Only → ENFORCED + deploy Cloudflare (arrastra Next parcheado + fixes latentes 94) + verificación empírica BrowserOS/curl/errores genéricos + 96-OPERATOR-HANDOFF.md consolidado (B26 + pgvector + sign-offs)
 
 ## 🔒 v7.0 — Votos, dinero y cierre técnico (Code-complete; gates de operador abiertos)
 
