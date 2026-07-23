@@ -105,8 +105,16 @@ Detalle completo: milestones/v9.0-ROADMAP.md · Audit: milestones/v9.0-MILESTONE
 **Plans**: 3 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 97-01-PLAN.md — Código local: primer middleware.ts (Edge deprecado) + supabase-user.ts (publishable) + ruta /spike-auth OTP; next build + suite verdes
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 97-02-PLAN.md — Deploy real: build OpenNext (Docker) + wrangler deploy + secret publishable + config Supabase OTP; leer el log del middleware
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 97-03-PLAN.md — Evidencia curl/BrowserOS (Set-Cookie + refresh + dos-jars + Camino A/CSP) + fallback honesto NOTIF-103 condicional
 
 **Research**: yes (SPIKE — OpenNext+middleware+cookies sobre Workers es MEDIUM: docs lo dicen, NO probado en este repo; bloqueante estructural de NOTIF)

@@ -326,7 +326,7 @@ All three canonical patterns are inlined above under **Architecture Patterns** (
 | A3 | The env var name the repo will use is `SUPABASE_PUBLISHABLE_KEY` (repo convention favors non-`NEXT_PUBLIC_` server-side names; the Vercel example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`). Planner's discretion; publishable key is safe to expose either way. | Env Availability / Pattern 2 | Low — naming only; both are functionally valid. Server-side calls make `NEXT_PUBLIC_` unnecessary. |
 | A4 | Cloudflare will not cache the Set-Cookie because routes are `force-dynamic` + `@supabase/ssr`≥0.10.0 cache headers. Must be verified with two curl jars on the real deploy. | Pitfall #4 | If it caches → session leak; the spike's two-jar test catches it before any feature is built. |
 
-## Open Questions
+## Open Questions (RESOLVED — routed to empirical execution: Q1→02/T2 log read, Q2→02/T1 operator probe; fallback SC4 covers the negative branch)
 
 1. **Does OpenNext 1.19.11 emit a hard error or a soft warning for `middleware.ts` in Next 16.2.11?**
    - What we know: OpenNext supports Edge middleware and rejects Node proxy; the deprecated filename is the documented workaround.
