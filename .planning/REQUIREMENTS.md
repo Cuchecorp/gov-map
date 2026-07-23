@@ -60,7 +60,7 @@
 - [x] **SEC-01**: Todos los guards existentes (lockdown/allowlist, PII, anti-insinuación, pgTAP) extendidos sobre las RPCs y superficies NUEVAS de P1/P2; toda RPC nueva acotada (LIMIT, `statement_timeout`, caps de `match_count`) contra DoS
 - [x] **SEC-02**: Audit final del sitio/repo público: scan de secretos sobre TODO el historial git, `.env.example` sin valores reales, mensajes de error genéricos, headers de seguridad verificados, CSP Report-Only → enforced
 - [x] **SEC-03**: Audit final de Supabase: Splinter + revisión de grants/RLS sobre la DB VIVA (no solo migraciones), re-derivación del RPC allowlist incluyendo lo nuevo, pgvector ≥0.8.2 confirmado, `pnpm audit` limpio
-- [ ] **SEC-04**: Rotación del DB password (B26, arrastrada de v7) — checkpoint de operador documentado; el agente no rota
+- [x] **SEC-04**: Rotación del DB password (B26, arrastrada de v7) — checkpoint de operador documentado; el agente no rota
 
 ## Future Requirements (deferred)
 
@@ -114,7 +114,7 @@ Cobertura 100 por ciento: 27/27 requisitos mapeados a fases 86-96 (sin huérfano
 | SEC-01 | Phase 95 | Complete |
 | SEC-02 | Phase 96 | Complete |
 | SEC-03 | Phase 96 | Complete |
-| SEC-04 | Phase 96 | Pending |
+| SEC-04 | Phase 96 | Complete |
 
 ---
 *Requirements defined: 2026-07-21*
