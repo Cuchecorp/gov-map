@@ -1,0 +1,21 @@
+# .gitleaks.toml — allowlist para falsos positivos conocidos en el historial git.
+# Regenerar scan: gitleaks git --redact --config .gitleaks.toml
+# Expected: 0 findings tras el allowlist.
+# Triage 2026-07-23: todos los findings son FP (fixtures de test y documentación).
+
+title = "Observatorio gitleaks config"
+
+[allowlist]
+description = "FP triage 2026-07-23: constantes de test, fixture HTML y docs de planificación"
+paths = [
+  # FP 1-3: constantes de test del guard de redacción de ticket dinero (S3CR3T-TICKET-* son fixtures)
+  "packages/dinero/src/run-dinero-masivo-cli.test.ts",
+  "packages/dinero/src/ingest-run.test.ts",
+  "packages/dinero/src/connector-chilecompra.test.ts",
+  # FP 4: fixture HTML de scraping WebForms (__VIEWSTATE token de ejemplo, no un secreto propio)
+  "packages/agenda/test/fixtures/camara-citaciones-semana.html",
+  # FP 5-6: docs de planificación de la fase 96 que CITAN las constantes de test
+  #         como ejemplos de código (rule: generic-api-key, los valores son los S3CR3T-TICKET-* ya triados)
+  ".planning/phases/96-seguridad-p3b-audit-final-sitio-supabase-net-new-no-duplicat/96-01-PLAN.md",
+  ".planning/phases/96-seguridad-p3b-audit-final-sitio-supabase-net-new-no-duplicat/96-PATTERNS.md",
+]
