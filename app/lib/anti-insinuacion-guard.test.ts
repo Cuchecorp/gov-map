@@ -267,6 +267,21 @@ const SUPERFICIES_AGENDA: string[] = [
 ];
 
 /**
+ * Superficies DEEP-LINK (89-03, TRACE-01/02/03). El bloque "Valida este dato en la
+ * fuente" de la ficha de proyecto renderiza URLs de fuente oficial (Senado/BCN/R2)
+ * + fecha de captura + hash. Copy actual factual (TRACE: URLs reproducibles, fecha,
+ * hash) → superficie limpia; tripwire PREVENTIVO para copy futuro. Si el componente
+ * de provenance-badge existe también se incluye (mismo rationale que SUPERFICIES_HOME).
+ *
+ * NO se necesita NEGACIONES_LOCKED nueva: el copy de validacion-fuente.tsx no usa
+ * ningún término prohibido ni siquiera para negarlo (verificado 95-02 TRACE-01/02/03).
+ */
+const SUPERFICIES_DEEPLINK: string[] = [
+  "components/validacion-fuente.tsx",
+  "components/provenance-badge.tsx",
+];
+
+/**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
  * texto RENDERIZADO (post-strip de comentarios), con límite de palabra en español
  * para no cazar identificadores snake_case: `rebeldias_de_parlamentario` (nombre de
@@ -454,7 +469,7 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
 
   it("ningún término prohibido aparece en el texto renderizado (post-strip de comentarios)", () => {
     const offenders: string[] = [];
-    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA]) {
+    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA, ...SUPERFICIES_DEEPLINK]) {
       const full = path.join(APP_ROOT, rel);
       let raw: string;
       try {
@@ -610,6 +625,19 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
       hits,
       "El detector NO cazó editorialización de agenda inyectada → el guard AGENDA sería un no-op",
     ).toEqual(expect.arrayContaining(["disciplina", "influencia"]));
+  });
+
+  it("DEEPLINK (95-02): caza insinuación inyectada en fixture de validacion-fuente (SC#4)", () => {
+    // Fixture EN MEMORIA que simula copy insinuante en la superficie deep-link 89.
+    // Prueba que el guard MUERDE sobre lo nuevo — cero contacto con disco en el self-check.
+    const fixtureDeepLink = `
+      <p>Este dato fue obtenido gracias a la influencia del parlamentario sobre la tramitación.</p>
+    `;
+    const hits = detectarInsinuaciones(fixtureDeepLink);
+    expect(
+      hits,
+      "El detector NO cazó 'influencia' inyectado en fixture deep-link → el guard DEEPLINK sería un no-op",
+    ).toContain("influencia");
   });
 
   it("LOBBY (92-03): caza causalidad de mención inyectada (influencia / a cambio de) sobre lo NUEVO", () => {
