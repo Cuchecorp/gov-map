@@ -60,11 +60,20 @@ worker sirve el CSP enforced; la caché edge es temporal (~minutos).
 
 ## 3. Evidencia BrowserOS / hidratación
 
-**Estado del MCP BrowserOS:** no verificado interactivamente en esta corrida (el subagente
-ejecutor corre en PowerShell sin acceso al browser de BrowserOS). Cláusula de degradación
-del plan aplicada: evidencia por DOM/curl estático.
+**Estado del MCP BrowserOS:** el subagente ejecutor no tenía acceso al MCP (degradación
+declarada), pero el ORQUESTADOR cerró el gate interactivo el 2026-07-23 sobre el deploy
+`1bcdc948`:
 
-**Evidencia de hidratación (DOM estático):**
+- `/buscar?q=pensiones` abierta en BrowserOS: consola con **0 errores y 0 warnings**
+  (nivel `warning`, buffer completo) — cero violaciones CSP bajo la política ENFORCED.
+- Island de filtros HIDRATADO Y VIVO: click en el chip "Moción · 19" re-filtró el listado
+  client-side (20 → 19 cards: la card tipo Mensaje salió del DOM) sin navegación y con la
+  consola aún en cero. Interactividad client-side probada bajo `script-src 'self'
+  'unsafe-inline'`.
+- Snapshot DOM: counts honestos del island presentes ("En tramitación · 12",
+  "C.Diputados · 14", orden "Relevancia (por defecto)").
+
+**Evidencia estática del ejecutor (previa, complementaria):**
 ```
 $ curl -sL https://observatorio-congreso.thevalis.workers.dev/proyecto/18193-06 → HTTP 200
 $ curl -sL https://observatorio-congreso.thevalis.workers.dev/agenda → HTTP 200
