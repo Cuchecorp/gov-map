@@ -8,7 +8,13 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato mostrado lleva fuente, fecha y enlace original, sin afirmar nunca intención ni causalidad.
 
-## Current Milestone: v9.0 — Robustez de productos estrella + seguridad final
+## Current State: v9.0 shipped (2026-07-23)
+
+**Shipped v9.0 — Robustez de productos estrella + seguridad final** (Phases 86-96, tres pasadas autónomas). El bug estrella de /buscar quedó FIXEADO (búsqueda híbrida RRF 100% Postgres — FTS unaccent + pgvector HNSW + short-circuit boletín — golden set 32 como regresión CI permanente), con ranking explicable, filtros island de counts honestos y deep-links de validación a la fuente oficial. Parlamentario 360 ganó bio oficial dos-etapas (155 diputados + 31 senadores + 386 membresías de comisión, 0 FK fabricado), partido DIRECTO con fuente+fecha y 4 cross-links factuales anti-causales. Lobby legible (materia completa + audiencia→PL fail-closed por boletín explícito, cobertura declarada) y /agenda por día tz Chile con cobertura parcial DECLARADA. Pasada 3 de seguridad: 9 RPCs nuevas bounded (0064), guards que MUERDEN (Direction-B, crossLinkReader, env-example — 57 tests), gitleaks historial limpio, pnpm audit 14→0 (Next 16.2.11), DB viva 0 offenders, golden gates identidad 1263 verdes, y **CSP ENFORCED en ambas superficies** (deploy final `09f1d5c2`). Audit: PASSED 29/29 reqs, integración 8/8. Detalle: `milestones/v9.0-*.md`.
+
+**Deuda de operador viva:** consolidada en `phases/96-*/96-OPERATOR-HANDOFF.md` — B26 (rotación DB password, runbook 75), pgvector 0.8.0 (plataforma sin ≥0.8.2, CVE-2026-3172, exposición baja), HSTS preload, cold-reads /agenda+ficha; más los gates v7.0 (`HANDOFF-v7.0-operator-gates.md`) y sign-offs F13/F17.
+
+## Current Milestone (history): v9.0 — Robustez de productos estrella + seguridad final (shipped 2026-07-23)
 
 **Goal:** Los 6 productos de cara al ciudadano quedan robustos y validados empíricamente —retrieval de PL que nunca falla lo obvio, ranking+filtros, trazabilidad al punto exacto de la fuente oficial, parlamentario 360 con bio oficial cruzada, lobby legible y enlazado a PLs, citaciones completas (sala+comisiones, ambas cámaras)— cerrando con validación final de seguridad del sitio (repo público) y de Supabase. Máxima legalidad, defensa robusta.
 
@@ -115,6 +121,15 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 <!-- v1.0 MVP — Proyectos de Ley + Fundaciones de Identidad (shipped 2026-06-18). Detalle: .planning/milestones/v1.0-*.md -->
 
+**Robustez de productos estrella + seguridad final (v9.0) — shipped 2026-07-23**
+- ✓ Retrieval híbrido RRF Postgres-nativo con short-circuit boletín + golden set 32 CI (RETR-01..05) — v9.0
+- ✓ Ranking explicable (mensaje>moción, sin scores) + filtros island counts honestos incl. partido (RANK-01, FILT-01..03) — v9.0
+- ✓ Deep-links de validación por boletín (Senado/Cámara prmID/BCN) + fecha captura + snapshot R2 (TRACE-01..03) — v9.0
+- ✓ Bio oficial dos-etapas con allowlist por construcción + comisiones + partido directo + cross-links factuales (BIO-01..05) — v9.0
+- ✓ Lobby legible: materia completa + audiencia→PL fail-closed por boletín explícito, bidireccional (LOB-01..03) — v9.0
+- ✓ Citaciones: cobertura auditada N/M declarada + /agenda por día tz Chile + filtros periodista (CIT-01..05) — v9.0
+- ✓ Seguridad final: guards extendidos + bounded RPCs 0064 + audit repo/DB viva + CSP enforced (SEC-01..04) — v9.0
+
 **Fundaciones (FND-01..08) — v1.0**
 - ✓ Framework de conectores `@obs/ingest` (rate-limit 2–3s serial por host, robots, UA, caché diaria, snapshots versionados, drift no-bloqueante) — v1.0
 - ✓ Crudo inmutable content-addressed en Cloudflare R2 (aws4fetch + If-None-Match); Postgres solo modelo normalizado + vectores — v1.0
@@ -147,7 +162,7 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 ### Active
 
-- [ ] **v9.0 — robustez de productos estrella + seguridad final** (arrancado 2026-07-21): tres pasadas autónomas — P1 búsqueda/PL (retrieval híbrido + ranking/filtros + deep-link de validación), P2 personas/agenda (bio oficial cruzada + lobby legible + citaciones completas), P3 seguridad final (sitio + Supabase). Ciclo por producto: diseño → BrowserOS → rediseño → validación empírica+seguridad.
+- [x] **v9.0 — robustez de productos estrella + seguridad final** (shipped 2026-07-23): búsqueda híbrida RRF + ranking/filtros + deep-links de validación · bio oficial + partido directo + cross-links · lobby legible audiencia→PL · /agenda por día con cobertura declarada · seguridad final (bounded RPCs, guards, gitleaks, audit DB viva, CSP enforced). Audit PASSED 29/29.
 - [~] **v7.0 — votos, dinero y cierre técnico** (code-complete 2026-07-15, gates de operador abiertos — HANDOFF-v7.0-operator-gates.md): P3 voto individual (opendata.camara.cl) → P5 dimensión dinero (SERVEL + ChileCompra por RUT, prereq RUT-01) → deuda técnica/hardening. Gates pre-aprobados por el operador; RUT-01 y revisión legal 21.719 siguen como prerrequisitos reales.
 - [x] **v6.1 — entendible y completo** (shipped 2026-07-11): /red ego-network radial legible + búsqueda sobre corpus completo declarado (3.657 proyectos, techo honesto).
 - [x] **v6.0 — confiabilidad y comprensión** (shipped 2026-07-09): crons/ingesta E2E perfecta (R2 dos-etapas, hash-check, monitoreo de frescura) · autoría de proyectos (desbloquea F48) · ícono/identidad visual gov-map · visualización comprensible con loop BrowserOS.
@@ -216,7 +231,11 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 | Alcance histórico de búsqueda = legislatura vigente completa (2022-2026), no "todo el archivo" | Valor de búsqueda decae con antigüedad; ~20h ingesta + ~12h pipeline es el costo real; alcance declarado honesto en la UI | ✓ v6.1 (3.657 proyectos, cobertura declarada) |
 | Techo honesto en vez de fabricar: 565 fichas en `estado='error'` con causa (478 RUT-guard, 87 schema-fail) | El guard RUT es LOCKED (nunca PII a LLM) y el gate zod no acepta salidas malformadas; mejor cobertura declarada 84,6% que 100% inventado | ✓ v6.1 |
 | Seed de fichas como paso propio (`seedFichasPendientes` ON CONFLICT DO NOTHING) | Root cause BUSQ-01: `runIngest` escribe `proyecto` pero el pipeline solo ve `proyecto_ficha` — sin seed, 82→1.643 proyectos invisibles; paginar lecturas PostgREST (cap 1k) fue imprescindible a escala | ✓ v6.1 |
-| Partido político + bio oficial del cargo electo se muestran DIRECTO y se correlacionan en todas las superficies (revierte la retención de `partido` en 0020) | Decisión del operador 2026-07-21: la militancia y la biografía oficial de un político electo son datos públicos esenciales para accountability ("¡son políticos!"); siempre con fuente+fecha, partido≠comité, militancia histórica vs actual. La minimización 21.719 sigue PLENA para terceros/familiares/RUT | v9.0 (en curso) |
+| Partido político + bio oficial del cargo electo se muestran DIRECTO y se correlacionan en todas las superficies (revierte la retención de `partido` en 0020) | Decisión del operador 2026-07-21: la militancia y la biografía oficial de un político electo son datos públicos esenciales para accountability ("¡son políticos!"); siempre con fuente+fecha, partido≠comité, militancia histórica vs actual. La minimización 21.719 sigue PLENA para terceros/familiares/RUT | ✓ v9.0 (validado al shippear) |
+| Búsqueda híbrida = RRF sobre RANK 100% Postgres (jamás suma ponderada de scores; websearch_to_tsquery siempre) + short-circuit boletín fuera de la fusión | Escalas incomparables entre ts_rank y cosine; el boletín exacto debe ser determinista #1; golden set congelado ANTES del schema (86 gatea 87) | ✓ v9.0 (gate DOMINA, flag ON) |
+| Cada RPC pública nueva enhebra la misma aguja: migración >0044 cero-grant + security-definer PII-safe + PUBLIC_RPC_ALLOWLIST + bounded (LIMIT + statement_timeout + cap match_count) | Bajo Camino A service_role bypassa RLS → cada RPC ES el boundary; DoS barato en repo público con sujetos hostiles (Pitfall 12) | ✓ v9.0 (0064 + guards que muerden) |
+| CSP enforced pragmático (script-src 'self' 'unsafe-inline') > Report-Only perfecto | Report-Only-forever = cero protección; nonce exige dynamic rendering no disponible en OpenNext estático; validación empírica BrowserOS en deploy real | ✓ v9.0 (ambas superficies, deploy 09f1d5c2) |
+| Audiencia lobby→PL SOLO por mención explícita de boletín (regex context-gated, jamás keywords/tema) | Riesgo #1: un enlace temático inventado fabrica una relación; fail-closed doble TS↔SQL con fixture compartido | ✓ v9.0 (cobertura declarada ~3.8%, honesta) |
 
 ## Evolution
 
@@ -236,4 +255,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-21 — Milestone v9.0 (Robustez de productos estrella + seguridad final) arrancado: tres pasadas autónomas (búsqueda/PL → personas/agenda → seguridad), ciclo diseño→BrowserOS→rediseño→validación por producto, phases desde 86. Antes: v8.1 Demo perfecto shipped 2026-07-15 (`3563ecc9`); v7.0 code-complete con gates de operador abiertos.*
+*Last updated: 2026-07-23 after v9.0 milestone — Robustez de productos estrella + seguridad final SHIPPED (Phases 86-96, audit PASSED 29/29, deploy `09f1d5c2` con CSP enforced). Deuda de operador viva: 96-OPERATOR-HANDOFF.md + HANDOFF-v7.0-operator-gates.md. Antes: v8.1 Demo perfecto shipped 2026-07-15 (`3563ecc9`); v7.0 code-complete con gates de operador abiertos.*

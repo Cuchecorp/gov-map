@@ -1,5 +1,25 @@
 # Milestones
 
+## v9.0 Robustez de productos estrella + seguridad final (Shipped: 2026-07-23)
+
+**Phases completed:** 11 phases (86-96), 34 plans — tres pasadas autónomas (P1 búsqueda 86-89 · P2 personas/agenda 90-94 · P3 seguridad 95-96)
+
+**Delivered:** Los 6 productos ciudadanos robustos y validados empíricamente, cerrando con la validación final de seguridad (repo público + DB viva) y CSP enforced.
+
+**Key accomplishments:**
+
+- Bug estrella FIXEADO: búsqueda híbrida RRF 100% Postgres (FTS unaccent A/B/C + pgvector HNSW, rrf_k=50) con short-circuit determinista de boletín — golden set 32 congelado como regresión CI; ranking explicable + filtros island con counts honestos + deep-links de validación a la fuente oficial (prmID Cámara persistido)
+- Parlamentario 360: bio oficial dos-etapas (diputados XML + senadores BCN SPARQL determinista por parlid), 34 comisiones + 386 membresías, partido DIRECTO con fuente+fecha (decisión operador 2026-07-21), 4 cross-links factuales anti-causales con total_n honesto — 0 FK fabricado
+- Lobby legible: materia completa en ambas superficies + audiencia→PL SOLO por mención explícita de boletín (fail-closed doble TS↔SQL, cobertura declarada 195/5106) con navegación bidireccional
+- /agenda por día (tz America/Santiago) con filtros de periodista, cobertura parcial DECLARADA por celda (auditoría 93 N/M medida), cancelaciones honestas y wiring de ficha corregido (citaciones pasadas + tabla de sala)
+- Seguridad P3: 9 RPCs nuevas bounded (0064 statement_timeout, pgTAP 36/36 en PROD), guards extendidos que MUERDEN (Direction-B allowlist, crossLinkReader blind-spot, env-example, 57 tests), gitleaks 1.726 commits limpio, pnpm audit 14→0 (Next 16.2.11), DB viva 0 offenders, golden gates identidad 1263 verdes
+- CSP Report-Only → ENFORCED en AMBAS superficies (SSR + assets), hidratación probada interactivamente por BrowserOS — deploy final `09f1d5c2`
+
+**Known deferred items at close:** 16 (ver STATE.md Deferred Items — todos pre-v9.0: 11 verificaciones human_needed de v7.0 con gates de operador + 5 quick tasks completadas sin marcador formal). Deuda de operador v9.0 propia consolidada en `phases/96-*/96-OPERATOR-HANDOFF.md` (B26, pgvector 0.8.0, HSTS preload, cold-reads).
+
+**Audit:** PASSED — 29/29 requirements, integración 8/8, flujos E2E 4/4 (milestones/v9.0-MILESTONE-AUDIT.md)
+
+
 ## v6.1 Entendible y completo (Shipped: 2026-07-11)
 
 **Delivered:** Las dos superficies menos entendibles quedaron entendibles y completas: `/red` renació como ego-network radial legible (nunca más la franja apiñada) y la búsqueda pasó de operar sobre 74 fichas a un corpus declarado de 3.657 proyectos (legislatura 2022-2026) con cobertura honesta visible. PROD: deploy final `af1cfcaf`. Timeline 2026-07-09 → 2026-07-11 (corrida autónoma `--from 62 --to 63`). Audit: `milestones/v6.1-MILESTONE-AUDIT.md` (tech_debt, 0 gaps, 6/6 reqs, 8/8 integration).

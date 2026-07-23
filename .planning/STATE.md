@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
-status: verifying
+status: Awaiting next milestone
 stopped_at: Completed 94-03-PLAN.md
-last_updated: "2026-07-23T19:33:17.870Z"
-last_activity: 2026-07-23
+last_updated: "2026-07-23T20:22:00.181Z"
+last_activity: 2026-07-23 — Milestone v9.0 completed and archived
 progress:
   total_phases: 11
   completed_phases: 11
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 96 — SEGURIDAD P3b — Audit final sitio + Supabase
+**Current focus:** v9.0 SHIPPED 2026-07-23 (audit PASSED 29/29, deploy `09f1d5c2`, tag v9.0). Próximo: `/gsd:new-milestone` cuando el operador quiera; deuda de operador en `phases/96-*/96-OPERATOR-HANDOFF.md` + `HANDOFF-v7.0-operator-gates.md`
 
 ## Current Position
 
-Phase: 96 (SEGURIDAD P3b — Audit final sitio + Supabase) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-07-23
+Phase: Milestone v9.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-23 — Milestone v9.0 completed and archived
 
 ## Performance Metrics
 
@@ -181,6 +181,13 @@ ode_modules (lock Linux-container, sin secrets — borrar tras reboot).
 | Legal | Sign-offs F13/MONEY + F17/NET | Human gate — F13 vive en Phase 73 (v7.0) | v4.0 |
 | verification_gap | Phase 62: 62-VERIFICATION.md | human_needed (mismo ítem UAT) | v6.1 close 2026-07-11 |
 
+Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre-v9.0; no bloquean el cierre por directiva de la corrida):
+
+| Category | Item | Status |
+|----------|------|--------|
+| verification_gap | Phases 64-75 (v7.0): 11 × VERIFICATION.md | human_needed — gates de operador v7.0 (HANDOFF-v7.0-operator-gates.md); cerrar con audit/complete-milestone v7.0 |
+| quick_task | 260623-rtl, 260702-rbb, 260713-izo, 260715-bvd, 260722-eia | Completadas en la práctica (commits en tabla Quick Tasks); solo falta marcador formal en su directorio |
+
 ## Session Continuity
 
 Last session: 2026-07-23T19:33:17.858Z
@@ -189,6 +196,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- v9.0: `/gsd:plan-phase 86` para descomponer el SPIKE de retrieval híbrido; luego `/clear` + prompt de pasada en `.planning/PROMPT-v9.0-build-autonomo.md` (pasada 1 = fases 86-89)
-- v9.0 checkpoints de operador (no los flipea el agente): sign-off de deep-links/agenda (gate BrowserOS 89/94), rotación DB password B26 (Phase 96, SEC-04)
-- v7.0 (paralelo, cuando quieras): gates de operador según `.planning/HANDOFF-v7.0-operator-gates.md`; al cerrarlos, `/gsd:audit-milestone` → `/gsd:complete-milestone v7.0`
+- Start the next milestone with /gsd:new-milestone
