@@ -312,7 +312,7 @@ Plans:
 
 Plans:
 
-- [ ] 96-01-PLAN.md — Repo público: gitleaks full-history triage + .gitleaks.toml + guard vitest .env.example placeholder-only + pnpm audit fix (bump Next ≥16.2.11 + overrides) → 96-AUDIT-REPO.md
+- [x] 96-01-PLAN.md — Repo público: gitleaks full-history triage + .gitleaks.toml + guard vitest .env.example placeholder-only + pnpm audit fix (bump Next ≥16.2.11 + overrides) → 96-AUDIT-REPO.md
 - [ ] 96-02-PLAN.md — DB viva: grants/RLS/allowlist sobre PROD (filtro pg_depend), re-derivación allowlist (2 inertes-por-diseño), pgvector 0.8.0 gap → handoff, golden gates de identidad verdes → 96-AUDIT-DB-VIVA.md
 - [ ] 96-03-PLAN.md — CSP Report-Only → ENFORCED + deploy Cloudflare (arrastra Next parcheado + fixes latentes 94) + verificación empírica BrowserOS/curl/errores genéricos + 96-OPERATOR-HANDOFF.md consolidado (B26 + pgvector + sign-offs)
 

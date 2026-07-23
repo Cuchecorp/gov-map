@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
-status: verifying
+status: executing
 stopped_at: Completed 94-03-PLAN.md
-last_updated: "2026-07-23T17:49:25.937Z"
+last_updated: "2026-07-23T18:42:38.094Z"
 last_activity: 2026-07-23
 progress:
   total_phases: 11
   completed_phases: 10
-  total_plans: 31
-  completed_plans: 31
+  total_plans: 34
+  completed_plans: 32
   percent: 91
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 95 — SEGURIDAD P3a — Guards extendidos sobre RPCs nuevas + bounded RPCs
+**Current focus:** Phase 96 — SEGURIDAD P3b — Audit final sitio + Supabase
 
 ## Current Position
 
-Phase: 95 (SEGURIDAD P3a — Guards extendidos sobre RPCs nuevas + bounded RPCs) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
+Phase: 96 (SEGURIDAD P3b — Audit final sitio + Supabase) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-07-23
 
 ## Performance Metrics
@@ -183,7 +183,7 @@ ode_modules (lock Linux-container, sin secrets — borrar tras reboot).
 
 ## Session Continuity
 
-Last session: 2026-07-23T17:49:25.925Z
+Last session: 2026-07-23T18:42:38.080Z
 Stopped at: Completed 94-03-PLAN.md
 Resume file: None
 
