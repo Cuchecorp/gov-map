@@ -109,6 +109,41 @@ Ficha de parlamentario de muro plano → navegable: acordeones por carril + resu
 - Sessions: 1 corrida autónoma `--from 62 --to 63` (~3 días de reloj, dominados por las corridas LOCAL de ingesta/pipeline, no por tokens).
 - Notable: 2 checkpoints humanos reales (aprobación /red, espera del backfill) — el resto corrió solo.
 
+## Milestone: v9.0 — Robustez de productos estrella + seguridad final
+
+**Shipped:** 2026-07-23
+**Phases:** 11 (86-96) | **Plans:** 34 | **Corrida:** 3 pasadas autónomas con /clear entre ellas (2026-07-21 → 2026-07-23, ~3 días)
+
+### What Was Built
+Búsqueda híbrida RRF Postgres-nativa que arregla el bug estrella (literal/boletín sin resultados) con golden set 32 como regresión CI; ranking explicable + filtros island; deep-links de validación a la fuente; bio oficial dos-etapas con partido directo y cross-links factuales; lobby audiencia→PL fail-closed; /agenda por día con cobertura declarada; pasada final de seguridad (bounded RPCs 0064, guards Direction-B/crossLinkReader/env-example, gitleaks historial, pnpm audit 14→0, DB viva 0 offenders, CSP enforced ambas superficies).
+
+### What Worked
+- Estructura de TRES PASADAS con /clear + prompt por pasada: contexto siempre fresco, cero degradación por longitud; el patrón v7/v8 de "checkpoint sin respuesta = handoff documentado" permitió cerrar sin esperar al operador.
+- Gate-antes-de-schema (86 gatea 87; 93 gatea 94): el golden set y la auditoría de cobertura convirtieron decisiones de diseño en evidencia ANTES de escribir migraciones/UI.
+- Guards con mutation self-check como contrato: cada extensión de seguridad demuestra que MUERDE; el reviewer cazó un self-check tautológico (WR-02/95) precisamente porque el patrón lo hace visible.
+- Orquestador cerrando gates empíricos que el subagente no puede (BrowserOS del deploy real): el ejecutor degradó honesto y el main loop completó la evidencia interactiva.
+
+### What Was Inefficient
+- El planner doble-contó RPCs (10 vs 9 en 0064) por sumar firmas re-emitidas — el ejecutor lo reconcilió, pero costó un ciclo de review (WR-01).
+- Override brace-expansion ^2.1.2 rompió el build Docker (minimatch ESM) — el fix del audit tuvo que revertirse en pleno deploy (Rule 1); pin de overrides transitivos merece verificación de build antes de commit.
+- gitleaks sin config generó 6 FP que había que triar dos veces (research y ejecución) hasta que la allowlist quirúrgica por VALOR los cerró.
+
+### Patterns Established
+- "Bounded RPC" como idiom: set statement_timeout como atributo de función (proconfig) + LIMIT + cap interno, probado por pgTAP contra el schema APLICADO.
+- Allowlist drift bidireccional: served ⊆ allowlist (con blind-spot de wrappers tipo crossLinkReader) Y allowlist ⊆ definidas; la comparación contra pg_proc VIVO cierra el triángulo repo↔allowlist↔PROD.
+- Auditoría DB viva SIEMPRE con filtro pg_depend deptype='e' (sin él, 1201 falsos positivos de pgTAP).
+- CSP en dos superficies (next.config.ts + public/_headers) que deben mantenerse ESPEJO.
+
+### Key Lessons
+- La plataforma gestionada puede capar el fix de un CVE (pgvector 0.8.0 sin 0.8.2 disponible): medición honesta + clasificación de exposición + handoff > forzar DDL.
+- Un "audit limpio" es alcanzable pero es TRABAJO (Next bump + overrides), no una verificación.
+- Los self-checks deben ejercitar el detector REAL (regex compartido por constante), no una copia que puede derivar.
+
+### Cost Observations
+- Model mix: Fable orquestando; Opus para research/plan/check/verify/review; Sonnet para ejecutores/fixer/pattern-map.
+- Sesiones: 3 (una por pasada).
+- Notable: pasada 3 completa (2 fases, 5 planes, audit + lifecycle) en una sola sesión de orquestador con ~35 checkpoints de subagente.
+
 ## Cross-Milestone Trends
 
 | Métrica | v1.0 | v5.0 | v6.1 |
