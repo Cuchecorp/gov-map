@@ -1,6 +1,7 @@
 -- 0064_bounded_rpc_statement_timeout.sql
--- Phase 95 — SC#2 DoS bounding: añade statement_timeout = '5s' a las 10 RPCs de
--- 0060/0061/0063 que tienen LIMIT pero cero statement_timeout.
+-- Phase 95 — SC#2 DoS bounding: añade statement_timeout = '5s' a las 9 RPCs de
+-- 0060/0061/0063 (4 bio/listado + 4 cross-links + 1 lobby) que tienen LIMIT pero
+-- cero statement_timeout. (El plan estimaba 10; las interfaces definen 9 únicas.)
 -- Orden de apply: DESPUÉS de 0063_lobby_menciones_una_fila_por_audiencia.sql
 -- Aplicar: PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" --single-transaction -f supabase/migrations/0064_bounded_rpc_statement_timeout.sql
 -- NUNCA supabase db push (drift schema_migrations).
