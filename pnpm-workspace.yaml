@@ -14,6 +14,7 @@ overrides:
   uuid: "^11.1.1"
   protobufjs: "^7.6.5" # DoS .proto parsing, moderate — ya en onlyBuiltDependencies
   sharp: "^0.35.0" # libvips CVEs, high — ya en onlyBuiltDependencies
+  js-yaml: "^4.3.0" # merge-key chains CPU cuadrático, high (Dependabot 17) — dev-only vía eslint; audit --prod ya era 0
 
 # No verificar/instalar dependencias automaticamente al correr scripts: evita que
 # el gate de build-scripts ignorados aborte `pnpm -w typecheck`/`test`.
@@ -32,4 +33,5 @@ onlyBuiltDependencies:
   - unrs-resolver
   - workerd
 
-
+allowBuilds:
+  protobufjs: true
