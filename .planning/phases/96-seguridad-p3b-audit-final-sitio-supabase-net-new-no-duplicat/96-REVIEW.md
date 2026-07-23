@@ -18,7 +18,7 @@ findings:
   total: 5
 status: resolved
 resolutions:
-  WR-01: FIXED (commit 0220be5) — latente hasta redeploy a Cloudflare Workers Assets
+  WR-01: FIXED + LIVE (commit 0220be5, deploy 09f1d5c2) — CSP enforced en ambas superficies
   WR-02: FIXED (commit 46a9908)
   WR-03: FIXED (commit f6b61e4)
   IN-01a: WONT-FIX (preload omitido intencionalmente — documentado en _headers)

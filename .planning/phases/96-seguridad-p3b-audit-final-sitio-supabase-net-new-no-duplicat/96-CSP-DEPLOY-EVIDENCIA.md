@@ -139,3 +139,68 @@ Fixes incluidos en este bundle:
 | Versión deploy | `1bcdc948-cdca-45dc-bc30-12af41ab92e9` |
 | Bundle total | 7180.94 KiB / 1517.68 KiB gzip |
 | Worker startup | 25 ms |
+
+---
+
+## 7. Redeploy WR-01 — CSP enforced en superficie de assets (2026-07-23)
+
+**Versión deploy:** `09f1d5c2-3c0e-4b45-9e32-ed5fb2068d8a`
+**Versión anterior:** `1bcdc948-cdca-45dc-bc30-12af41ab92e9`
+**Commit bundleado:** `0220be5` — fix(96): WR-01 sincroniza `_headers` con CSP enforced de next.config.ts
+**Fecha:** 2026-07-23
+**Motivación:** Deploy previo (1bcdc948) no incluía el fix WR-01 de `app/public/_headers`.
+La superficie de assets estáticos (Cloudflare Workers Assets) seguía sirviendo el header
+`Content-Security-Policy-Report-Only` con la directiva antigua. Este redeploy cierra la brecha.
+
+### Commits incluidos vs. deploy anterior
+
+Commits entre `1bcdc948` y este redeploy:
+- `0220be5` fix(96): WR-01 sincroniza `_headers` con CSP enforced
+- `46a9908` fix(96): WR-02 amplía guard a base64 + mutation self-check
+- `f6b61e4` fix(96): WR-03 gitleaks allowlist quirúrgico por valor
+- `ef64d56` fix(96): IN-02 elimina minimumReleaseAgeExclude inerte
+- `5a61847` docs(96): review findings resolved
+
+### Evidencia curl — superficie SSR (home)
+
+```
+$ curl -sI -H "Cache-Control: no-cache" https://observatorio-congreso.thevalis.workers.dev
+
+HTTP/1.1 200 OK
+content-security-policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+x-frame-options: DENY
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+permissions-policy: geolocation=(), microphone=(), camera=()
+referrer-policy: strict-origin-when-cross-origin
+x-content-type-options: nosniff
+```
+
+- `content-security-policy:` presente (SIN `-report-only`) — VERDE
+
+### Evidencia curl — superficie de assets estáticos (/BUILD_ID)
+
+```
+$ curl -sI -H "Cache-Control: no-cache" https://observatorio-congreso.thevalis.workers.dev/BUILD_ID
+
+HTTP/1.1 200 OK
+CF-Cache-Status: MISS
+content-security-policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+x-frame-options: DENY
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+permissions-policy: geolocation=(), microphone=(), camera=()
+referrer-policy: strict-origin-when-cross-origin
+x-content-type-options: nosniff
+```
+
+- `content-security-policy:` presente en asset estático (SIN `-report-only`) — VERDE (WR-01 LIVE)
+
+### Resumen WR-01
+
+| Check | Resultado |
+|-------|-----------|
+| CSP enforced en superficie SSR | VERDE |
+| CSP enforced en superficie assets (`_headers`) | VERDE (WR-01 CERRADO) |
+| Sin `-report-only` en ambas superficies | VERDE |
+| Directiva igual en ambas superficies | VERDE (sincronizadas) |
+| Worker startup | 35 ms |
+| Wrangler | 4.109.0 |
