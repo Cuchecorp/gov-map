@@ -108,6 +108,20 @@ export function detectarValorNoPlaceholder(envSrc: string): string[] {
       offenders.push(trimmed);
       continue;
     }
+
+    // Base64-ish secret (alfabeto estándar + url-safe): captura HMAC blobs, R2 secret keys,
+    // JWT secrets no-eyJ, etc. que contienen '+', '/' o '=' y escapan al regex anterior.
+    // Condición: ≥20 chars, sólo alphabet base64 estándar, NO es una URL (sin "://"),
+    // y contiene al menos un char base64 ambiguo (+, /, =) para reducir FP en slugs simples.
+    if (
+      value.length >= 20 &&
+      /^[A-Za-z0-9+/=]{20,}$/.test(value) &&
+      !value.includes("://") &&
+      /[+/=]/.test(value)
+    ) {
+      offenders.push(trimmed);
+      continue;
+    }
   }
 
   return offenders;
@@ -213,6 +227,14 @@ describe("(2) Mutation self-check — el detector MUERDE ante valores reales", (
   it("MUERDE: R2 endpoint con .r2.cloudflarestorage.com", () => {
     const offenders = detectarValorNoPlaceholder(
       "R2_ENDPOINT_URL=https://abc123.r2.cloudflarestorage.com\n",
+    );
+    expect(offenders.length).toBeGreaterThan(0);
+  });
+
+  it("MUERDE: base64 con '+' y '/' (HMAC blob, R2 secret key, JWT secret no-eyJ)", () => {
+    // Un secreto base64 estándar típico — contiene '/' y '+', escapa al regex alfanumérico anterior
+    const offenders = detectarValorNoPlaceholder(
+      "R2_SECRET_ACCESS_KEY=abc/def+ghijklmnopqrstuvwxyz1234==\n",
     );
     expect(offenders.length).toBeGreaterThan(0);
   });
