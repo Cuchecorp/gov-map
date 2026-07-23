@@ -288,7 +288,11 @@ Plans:
   3. El allowlist de RPCs no tiene drift: toda RPC nueva está enumerada y ninguna RPC servida queda fuera del allowlist
   4. Los guards muerden (mutation self-check) sobre las superficies nuevas — no pasan por vacío
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 95-01-PLAN.md — migración 0064: statement_timeout=5s en las 10 RPCs nuevas (0060/0061/0063) + pgTAP post-apply + apply PROD (SC#2 bounded)
+- [ ] 95-02-PLAN.md — guards extendidos: Direction-B allowlist + cobertura crossLinkReader + superficie deep-link 89 + mutation self-checks (SC#1/#3/#4)
 
 ### Phase 96: SEGURIDAD P3b — Audit final sitio + Supabase (net-new, no duplicativo)
 
