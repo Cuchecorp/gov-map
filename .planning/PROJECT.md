@@ -8,6 +8,20 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato mostrado lleva fuente, fecha y enlace original, sin afirmar nunca intención ni causalidad.
 
+## Current Milestone: v10.0 — Panel de actualidad legislativa (landing) + notificaciones
+
+**Goal:** La landing deja de ser un folleto del producto y se convierte en un PANEL DE ACTUALIDAD cuantitativo — "qué está pasando HOY en el Congreso" derivado de datos objetivos (movimiento, urgencias, nuevos ingresos, votaciones próximas, agrupación por tema) — que alguien que va todos los días al Congreso (periodista, tramitador, asesor) pueda usar como primera pantalla del día; más la evaluación/construcción de un modelo de notificaciones por suscripción (proyecto/parlamentario). Entender el Congreso en fácil y mejorar accountability.
+
+**Target features (brief del operador 2026-07-23):**
+
+1. **Señales cuantitativas objetivas** (base empírica, SPIKE primero): proyectos con más movimiento (trámites recientes), nuevos ingresos, urgencias vivas (Ejecutivo apurando), presentados a último momento, votaciones/citaciones próximas (agenda ya ingerida), leyes recién publicadas (BCN), y lo que más se pueda INFERIR de datos objetivos sin afirmar intención — ser creativo explorando qué da BCN/fuentes ya conectadas. Crons más frecuentes OK (repo público, GH Actions).
+2. **Etapa datos ANTES que frontend**: establecer QUÉ debería tener el panel con evidencia (qué señales son computables HOY con los datos ya ingeridos, cuáles requieren ingesta nueva, cuáles son útiles para ciudadano vs tramitador) — spikes + iteraciones BrowserOS + diseño→crítica→loop.
+3. **Landing = panel informativo de actualidad**: reemplazar el bento producto-céntrico por "lo que está pasando", incl. agrupación de proyectos con movimiento POR TEMA (los embeddings/pgvector ya existen — clustering factual, jamás editorial).
+4. **Notificaciones por suscripción (evaluar + construir lo defendible)**: usuarios se suscriben a un proyecto o parlamentario y reciben novedades/alertas. OJO: primer dato DE USUARIO del sistema → auth + RLS real (hoy anon está muerta y el sitio corre service_role) — diseño de seguridad es parte del alcance, deny-by-default.
+5. **Benchmark UX/UI contra senado.cl y camara.cl**: comparación empírica BrowserOS de sus páginas de actualidad/tablas, aprender qué hacen bien/mal y superar — cierre con crítica de diseño.
+
+**Método (LOCKED por el operador):** TODO con base empírica — spikes, iteraciones BrowserOS, revisión, diseño, crítica, loop. Primero QUÉ (señales con evidencia), después CÓMO (frontend). Corrida en contexto limpio con prompt listo (`.planning/PROMPT-v10.0-build-autonomo.md`).
+
 ## Current State: v9.0 shipped (2026-07-23)
 
 **Shipped v9.0 — Robustez de productos estrella + seguridad final** (Phases 86-96, tres pasadas autónomas). El bug estrella de /buscar quedó FIXEADO (búsqueda híbrida RRF 100% Postgres — FTS unaccent + pgvector HNSW + short-circuit boletín — golden set 32 como regresión CI permanente), con ranking explicable, filtros island de counts honestos y deep-links de validación a la fuente oficial. Parlamentario 360 ganó bio oficial dos-etapas (155 diputados + 31 senadores + 386 membresías de comisión, 0 FK fabricado), partido DIRECTO con fuente+fecha y 4 cross-links factuales anti-causales. Lobby legible (materia completa + audiencia→PL fail-closed por boletín explícito, cobertura declarada) y /agenda por día tz Chile con cobertura parcial DECLARADA. Pasada 3 de seguridad: 9 RPCs nuevas bounded (0064), guards que MUERDEN (Direction-B, crossLinkReader, env-example — 57 tests), gitleaks historial limpio, pnpm audit 14→0 (Next 16.2.11), DB viva 0 offenders, golden gates identidad 1263 verdes, y **CSP ENFORCED en ambas superficies** (deploy final `09f1d5c2`). Audit: PASSED 29/29 reqs, integración 8/8. Detalle: `milestones/v9.0-*.md`.

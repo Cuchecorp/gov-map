@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v9.0
-milestone_name: — Robustez de productos estrella + seguridad final
-status: Awaiting next milestone
-stopped_at: Completed 94-03-PLAN.md
-last_updated: "2026-07-23T20:22:00.181Z"
-last_activity: 2026-07-23 — Milestone v9.0 completed and archived
+milestone: v10.0
+milestone_name: Panel de actualidad legislativa (landing) + notificaciones
+status: planning
+last_updated: "2026-07-23T20:54:23.111Z"
+last_activity: 2026-07-23
 progress:
-  total_phases: 11
-  completed_phases: 11
-  total_plans: 34
-  completed_plans: 34
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 ## Current Position
 
-Phase: Milestone v9.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-23 — Milestone v9.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-07-23 — Milestone v10.0 started
 
 ## Performance Metrics
 
