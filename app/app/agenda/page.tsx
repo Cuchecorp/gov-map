@@ -118,7 +118,7 @@ export default async function AgendaPage({ searchParams }: PageProps) {
           <p className="mt-8 text-sm">
             <Link
               href="/agenda"
-              className="text-primary underline underline-offset-2"
+              className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               ← Volver a la vista semanal
             </Link>

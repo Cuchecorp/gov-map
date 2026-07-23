@@ -98,7 +98,7 @@ export function CitacionCard({
             <details className="group text-base leading-relaxed">
               <p className="line-clamp-3 group-open:hidden">{materia}</p>
               <p className="hidden leading-relaxed group-open:block">{materia}</p>
-              <summary className="mt-1 cursor-pointer text-sm text-primary underline underline-offset-2 list-none">
+              <summary className="mt-1 inline-flex min-h-11 cursor-pointer items-center text-sm text-accent-product underline underline-offset-2 list-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <span className="group-open:hidden">ver más</span>
                 <span className="hidden group-open:inline">ver menos</span>
               </summary>
@@ -128,7 +128,7 @@ export function CitacionCard({
           <div>
             <Link
               href={`/proyecto/${boletin}`}
-              className="text-sm text-primary underline underline-offset-2"
+              className="inline-flex min-h-11 items-center text-sm text-accent-product underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={`Ver proyecto Boletín N°${boletin}`}
             >
               Boletín N°{boletin} →

@@ -475,7 +475,8 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
             <span className="font-mono">{fechaCorta(enTablaSala[0].fecha)}</span>{" "}
             <a
               href={`/agenda?semana=${enTablaSala[0].semanaIso}`}
-              className="text-accent-product underline underline-offset-2"
+              className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`En tabla de sala de la ${camaraNombre(enTablaSala[0].camara)} del ${fechaCorta(enTablaSala[0].fecha)} — ver en la agenda`}
             >
               ver en la agenda
             </a>
@@ -489,7 +490,8 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
                 {i > 0 && ", "}
                 <a
                   href={`/agenda?semana=${s.semanaIso}`}
-                  className="text-accent-product underline underline-offset-2"
+                  className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={`En tabla de sala de la ${camaraNombre(s.camara)} del ${fechaCorta(s.fecha)} — ver en la agenda`}
                 >
                   {camaraNombre(s.camara)},{" "}
                   <span className="font-mono">{fechaCorta(s.fecha)}</span>
