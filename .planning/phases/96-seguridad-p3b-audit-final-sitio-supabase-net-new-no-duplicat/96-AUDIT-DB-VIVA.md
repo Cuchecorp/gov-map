@@ -207,4 +207,37 @@ La DB viva está en el estado esperado post-0044/0045. El allowlist repo (26 ent
 
 ---
 
+## 5. Golden Gates de Identidad (correctitud = defensa legal)
+
+Re-corridos HOY: `pnpm -r --filter "./packages/*" test`
+
+| Package | Test Files | Tests Verdes | Skipped | Estado |
+|---------|-----------|-------------|---------|--------|
+| packages/adjudication | 12 passed | **89 passed** | 1 | VERDE |
+| packages/cruces | 5 passed | **33 passed** | 1 | VERDE |
+| packages/votos (gate DIPID) | 3 passed | **31 passed** | 0 | VERDE |
+| packages/fichas (golden set) | 18 passed | **159 passed** | 1 | VERDE |
+| packages/identity | 14 passed | **110 passed** | 0 | VERDE |
+| packages/tramitacion | 18 passed | **171 passed** | 0 | VERDE |
+| packages/dinero | 18 passed | **167 passed** | 0 | VERDE |
+| packages/lobby | 9 passed | **68 passed** | 0 | VERDE |
+| packages/agenda | 13 passed | **113 passed** | 0 | VERDE |
+| packages/bio | 8 passed | **65 passed** | 0 | VERDE |
+| packages/probidad | 8 passed | **46 passed** | 0 | VERDE |
+| packages/ingest | 11 passed | **68 passed** | 0 | VERDE |
+| packages/llm | 9 passed | **78 passed** | 3 | VERDE |
+| packages/core | 3 passed | **21 passed** | 0 | VERDE |
+| packages/freshness | 1 passed | **44 passed** | 0 | VERDE |
+
+**Total: 150 test files pasados, 1.263 tests verdes, 7 skipped (deliberados), 0 fallos.**
+
+Golden gate de identidad: **VERDE**. La correctitud queda re-verificada — ningún caso de identidad incorrecta (riesgo legal de atribución falsa) en la suite.
+
+**Clave de los golden gates de identidad:**
+- `packages/adjudication` (`src/golden/golden-set.test.ts`): 89 tests sobre el golden set de adjudicación de identidad por nombre/DIPID
+- `packages/cruces` (`src/golden/golden-set.test.ts`): 33 tests de cruces factual-safe
+- `packages/votos` (`src/golden-dipid.test.ts`): 14 tests del gate DIPID determinista (voto reconciliado por DIPID, nunca name-match)
+
+---
+
 *Generado por Phase 96 Plan 02 — agente READ-ONLY, cero DDL, connection string no impresa*
