@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: — Robustez de productos estrella + seguridad final
-status: in_progress
+status: executing
 stopped_at: Completed 94-03-PLAN.md
-last_updated: "2026-07-22T23:02:31.848Z"
-last_activity: 2026-07-22
+last_updated: "2026-07-23T17:43:49.869Z"
+last_activity: 2026-07-23
 progress:
   total_phases: 11
   completed_phases: 9
-  total_plans: 29
-  completed_plans: 29
+  total_plans: 31
+  completed_plans: 30
   percent: 82
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** PASADA 3 — Phases 95-96 (Seguridad): guards extendidos + audit final. Lanzar con `/clear` + PROMPT-v9.0-build-autonomo.md §PASADA 3.
+**Current focus:** Phase 95 — SEGURIDAD P3a — Guards extendidos sobre RPCs nuevas + bounded RPCs
 
 ## Current Position
 
-Phase: 94 completa — PASADA 2 (90-94) CERRADA 2026-07-22
-Plan: —
-Status: Listo para pasada 3 (95-96)
-Last activity: 2026-07-22
+Phase: 95 (SEGURIDAD P3a — Guards extendidos sobre RPCs nuevas + bounded RPCs) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-07-23
 
 ## Performance Metrics
 
@@ -145,6 +145,7 @@ Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 ### Blockers/Concerns
 
 - PASADA 2 CERRADA 2026-07-22. Deploy live: `369f9cbe` (dias correctos /agenda). DEUDA que viaja con el PROXIMO deploy (95/96 o cierre): fixes latentes WR-01/02 dedup counts ficha + a11y/accent de 94-UI-REVIEW (ya en master, no bundleados). HANDOFF operador: cold-read humano de /agenda y ficha bio/lobby (gates BrowserOS del agente aprobados con evidencia DOM; el veredicto humano "comprensible" queda abierto, patron v7/v8). Residuo benigno: C:\Temp\obs-build
+
 ode_modules (lock Linux-container, sin secrets — borrar tras reboot).
 
 - OPERADOR 2026-07-22 (durante pasada 2): deep-links tramitación FIXEADOS y deployados (quick 260722-eia, versión d99b8fa9 — enlaceHumanoProyecto + link Cámara prmID + token urgencia 3-estados). PENDIENTE del mismo reporte: citaciones (sala y comisiones) y tablas de sesión están MAL WIRED en el frontend — es requisito EXPLÍCITO de Phase 93 (auditoría debe medir el wiring frontend, no solo el scraping) y Phase 94 (fix de /agenda + wiring en ficha), iterando con BrowserOS.
@@ -182,7 +183,7 @@ ode_modules (lock Linux-container, sin secrets — borrar tras reboot).
 
 ## Session Continuity
 
-Last session: 2026-07-22T23:02:10.566Z
+Last session: 2026-07-23T17:43:49.855Z
 Stopped at: Completed 94-03-PLAN.md
 Resume file: None
 
