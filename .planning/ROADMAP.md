@@ -107,7 +107,7 @@ Detalle completo: milestones/v9.0-ROADMAP.md · Audit: milestones/v9.0-MILESTONE
 Plans:
 **Wave 1**
 
-- [ ] 97-01-PLAN.md — Código local: primer middleware.ts (Edge deprecado) + supabase-user.ts (publishable) + ruta /spike-auth OTP; next build + suite verdes
+- [x] 97-01-PLAN.md — Código local: primer middleware.ts (Edge deprecado) + supabase-user.ts (publishable) + ruta /spike-auth OTP; next build + suite verdes
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -1273,7 +1273,7 @@ Plans:
 | 73. DINERO P5e — Superficies MONEY gated OFF + linter + gate legal | v7.0 | 4/4 | Complete   | 2026-07-15 |
 | 74. DEUDA — Cursor leylobby + CF token CI + round-robin cron | v7.0 | 3/3 | Complete   | 2026-07-15 |
 | 75. DEUDA — Typography .net-* + rotar DB password (operador) | v7.0 | 2/2 | Complete   | 2026-07-15 |
-| 97. AUTH P0 — SPIKE auth-on-Workers de-risk | v10.0 | 0/? | Not started | - |
+| 97. AUTH P0 — SPIKE auth-on-Workers de-risk | v10.0 | 1/3 | In Progress|  |
 | 98. SEÑALES P1a — SPIKE datos: qué señales son honestas (gate) | v10.0 | 0/? | Not started | - |
 | 99. SEÑALES P1b — Materializador actualidad_senal + RPCs + cron | v10.0 | 0/? | Not started | - |
 | 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 0/? | Not started | - |

@@ -10,7 +10,7 @@
 
 ### AUTH — De-risk estructural (spike primero)
 
-- [ ] **AUTH-01**: El deploy OpenNext/Cloudflare sostiene sesión Supabase Auth end-to-end (primer `middleware.ts` del repo, Edge-style — NO Node Middleware 15.2+; `@supabase/ssr`, Set-Cookie + refresh verificados sobre deploy real) ANTES de construir cualquier feature de usuario.
+- [x] **AUTH-01**: El deploy OpenNext/Cloudflare sostiene sesión Supabase Auth end-to-end (primer `middleware.ts` del repo, Edge-style — NO Node Middleware 15.2+; `@supabase/ssr`, Set-Cookie + refresh verificados sobre deploy real) ANTES de construir cualquier feature de usuario.
 
 ### SEN — Señales de actualidad (datos ANTES que frontend — gate del operador)
 
@@ -74,7 +74,7 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| AUTH-01 | Phase 97 | Pending |
+| AUTH-01 | Phase 97 | Complete |
 | SEN-01 | Phase 98 | Pending |
 | SEN-06 | Phase 98 | Pending |
 | SEN-02 | Phase 99 | Pending |

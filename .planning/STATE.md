@@ -4,13 +4,13 @@ milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
 status: executing
 stopped_at: Completed 94-03-PLAN.md
-last_updated: "2026-07-23T23:20:34.080Z"
-last_activity: 2026-07-23 -- Phase 97 planning complete
+last_updated: "2026-07-23T23:30:17.848Z"
+last_activity: 2026-07-23
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** v9.0 SHIPPED 2026-07-23 (audit PASSED 29/29, deploy `09f1d5c2`, tag v9.0). Próximo: `/gsd:new-milestone` cuando el operador quiera; deuda de operador en `phases/96-*/96-OPERATOR-HANDOFF.md` + `HANDOFF-v7.0-operator-gates.md`
+**Current focus:** Phase 97 — AUTH P0 — SPIKE auth-on-Workers de-risk
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
+Phase: 97 (AUTH P0 — SPIKE auth-on-Workers de-risk) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-23 -- Phase 97 planning complete
+Last activity: 2026-07-23
 
 ## Performance Metrics
 
@@ -137,6 +137,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 93-03: --from-r2 para citaciones NO existe hoy; SC#3 satisfecha por runbook operador-LOCAL, no por esta fase; solo la mitad fuente→R2 está viva
 - [Phase ?]: 94-03: sesion_sala sin columna semana_iso; semana ISO derivada en TS (Chile tz) en la ficha
 - [Phase ?]: 94-04: deploy Cloudflare 9aba6a1a live (OpenNext Docker Linux + wrangler OAuth); gate BrowserOS COMPRENSIBLE sobre el deploy real; SC#1 cerrado por 93; cold-read humano = HANDOFF
+- [Phase ?]: 97-01: primer middleware.ts = convencion DEPRECADA Edge (OpenNext la corre Edge); NO proxy.ts/runtime/codemod. Cliente user @supabase/ssr publishable SEPARADO del service_role; /spike-auth no enlazada ejerce OTP. Build Next + suite 1244 + tsc verdes. Deploy OpenNext real = Plan 02.
 
 ### Pending Todos
 
@@ -190,7 +191,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-23T19:33:17.858Z
+Last session: 2026-07-23T23:29:51.565Z
 Stopped at: Completed 94-03-PLAN.md
 Resume file: None
 
