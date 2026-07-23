@@ -1,376 +1,232 @@
-# Pitfalls Research — v9.0 "Robustez de productos estrella + seguridad final"
+# Domain Pitfalls
 
-**Domain:** Civic-transparency web app (Chile Congress) — adding hybrid search, client-side filters, official deep-links, official bios, lobby→bill linking, committee calendars, and final security validation to an existing production system (Observatorio del Congreso 360).
-**Researched:** 2026-07-21
-**Confidence:** HIGH (FTS/RRF/deep-link mechanics verified against Supabase docs + Postgres docs; project-specific rules from PROJECT.md/CLAUDE.md/MEMORY.md)
+**Domain:** Panel de actualidad legislativa cuantitativo (landing) + clustering por tema + notificaciones por suscripción, sobre Observatorio del Congreso 360
+**Milestone:** v10.0
+**Researched:** 2026-07-23
+**Overall confidence:** HIGH (los locks del sistema están leídos en código; los patrones externos verificados)
 
-**Scope note:** These are pitfalls specific to ADDING v9.0's six features + final hardening to THIS system, not generic advice. Each maps to a Pass (P1 búsqueda/PL · P2 personas/agenda · P3 seguridad) and phase (numbering continues from 86). The system already has LOCKED rules — most pitfalls below are about *violating a LOCKED rule while chasing a new feature*.
+> Ranking por likelihood × impacto PARA ESTE SISTEMA. Pitfalls específicos de AÑADIR estas features a este sistema — no OWASP genérico. Cada uno declara qué fase debería abordarlo y las señales de alerta.
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Swapping in hybrid search without golden queries → silent regression of what already works
+Mistakes that cause a false public claim, a legal breach under 21.719, a broken security regime, or a rewrite.
 
-**What goes wrong:**
-Today's search "falla con palabras LITERALES del título" (PROJECT.md) — that's the whole reason for the feature. But the current semantic search *does* work for paraphrase/NL queries and "proyectos similares" (kNN). Bolting on FTS and swapping the RPC without a frozen baseline means you fix the literal-title case and silently break the NL case (or the boletín-number case, or "similares"), and nobody notices until a journalist does.
+### Pitfall 1: "Sin movimiento" ≠ "no se scrapeó" — la señal factual miente por cobertura parcial
 
-**Why it happens:**
-Hybrid search is tuned by feel ("this query looks better now"). Without a fixed golden set scored BEFORE the swap, "better" is anecdote. RRF weights, `rrf_k`, FTS config, and candidate `limit` all interact; each tweak that helps one query class can hurt another.
+**What goes wrong:** El panel dice "Este proyecto no tuvo movimiento esta semana" cuando en realidad la fuente de ese proyecto NO se ingirió esta semana (cron saltado, WAF, boletín fuera del corpus 2022-2026, embedding faltante del 15,4%). El usuario objetivo (periodista/tramitador) toma "sin movimiento" como un HECHO del Congreso; es un hecho del scraper. GovTrack documenta exactamente esto: "screen scrapers can be easily confused… unanticipated cases (like bills without sponsors) cause incorrect information being shown."
 
-**How to avoid:**
-Freeze a golden query set (≥30 queries spanning: literal title words, idea-matriz paraphrase, norma afectada, boletín number in all formats, plain NL, and "proyectos similares" seeds) with expected top-K hits BEFORE writing any hybrid code. The SPIKE (PROJECT.md P1a: retrieval design "elegido por SPIKE empírico con golden queries") scores candidates against this set. No swap ships unless it dominates the baseline on literal-title AND does not regress the other classes. Keep the old RPC live behind a flag until the golden gate passes.
+**Why it happens:** El panel deriva señales de la ausencia de filas (`WHERE fecha >= inicio_semana` → 0 rows). Ausencia de filas tiene DOS causas indistinguibles sin metadato de frescura: (a) no pasó nada, (b) no se miró. El `actualidad-module.tsx` ya tiene el molde correcto para el caso positivo ("Sin votaciones registradas **en las fuentes consultadas**") pero una señal NUEVA de "actividad reciente por proyecto/tema" invierte el riesgo: ahora la AUSENCIA es la señal, y la ausencia es donde vive la mentira.
 
-**Warning signs:**
-"It feels better." No numeric before/after per query class. A single blended score tuned by hand.
+**Consequences:** Afirmación falsa y creíble — el riesgo existencial #1 del proyecto, ahora en la página más visitada. Un periodista publica "el proyecto X está congelado" cuando solo estaba el cron caído.
 
-**Phase to address:** Pass 1, first phase (SPIKE + golden gate) — BEFORE the hybrid RPC is written.
+**Prevention:**
+- Toda señal de "actualidad" se computa SOLO sobre fuentes con frescura conocida y RECIENTE. Cruzar cada señal contra `fecha_captura` de su tabla (ya existe `pnpm freshness` con umbral por fuente): si la fuente está STALE, la señal NO se emite — se degrada a "sin datos frescos de esta fuente", nunca a "sin movimiento".
+- **Jamás emitir una señal NEGATIVA como afirmación** ("no se movió", "proyecto inactivo", "sin actividad"). El panel afirma solo lo POSITIVO observado ("se registró trámite X el día Y"). La ausencia se muestra como cobertura, no como hecho.
+- Banner de cobertura declarada en el panel, igual que /buscar ("sobre 3.100 proyectos…") y /agenda (cobertura N/M por celda) — patrón LOCKED del proyecto. El panel hereda ese contrato: "muestra actividad de las N fuentes con datos al día DD/MM".
+- Nunca leer `?? []` un error de query como "sin actividad" — el molde `throw` de `actualidad-module.tsx` (#34) es LOCKED y debe replicarse en toda señal nueva.
 
----
+**Detection:** Test que inyecta una tabla STALE (fecha_captura vieja) y verifica que la señal se SUPRIME, no que muestra 0. Cold-read BrowserOS del panel un lunes tras un cron saltado del viernes.
 
-### Pitfall 2: Spanish FTS config mismatch between index and query (accents, ñ, unaccent immutability)
-
-**What goes wrong:**
-Three compounding failures unique to Spanish civic text:
-1. The `'spanish'` stemmer stems unpredictably — searching "política" succeeds on `poli`/`polit`/`politica` but *fails* on `politi`/`politic` (verified Postgres bug threads). Users typing partial words get empty results on the flagship product.
-2. `unaccent()` is **STABLE, not IMMUTABLE**, so it cannot appear in an index expression. If the generated `tsvector` applies `unaccent` but query-time `websearch_to_tsquery` does not (or vice-versa), the index is bypassed or returns nothing — "medioambiente" vs "medio ambiente", "Ñuñoa", "Aysén" break asymmetrically.
-3. If the index uses `to_tsvector('spanish', ...)` but a query uses `to_tsvector(col)` (no config), Postgres **won't use the index** — silently slow or empty (verified Postgres docs).
-
-**Why it happens:**
-Copy-paste of the Supabase hybrid-search example, which uses `'english'` and no unaccent. Spanish + Chilean proper nouns (Ñuñoa, Aysén, Bío-Bío) are exactly where accent/ñ handling matters, and it's invisible until someone searches a specific place/name.
-
-**How to avoid:**
-- Build a custom text-search config chaining `unaccent` + `spanish_stem` into one dictionary, and store a **generated `tsvector` column** (`GENERATED ALWAYS AS (to_tsvector('config_es_unaccent', coalesce(titulo,'')||' '||coalesce(idea_matriz,''))) STORED`). This bakes unaccent into the stored expression (immutable at write time) — the STABLE trap disappears.
-- Query with the **exact same config**: `col_fts @@ websearch_to_tsquery('config_es_unaccent', $1)`.
-- Use `websearch_to_tsquery` (never raw `to_tsquery`) so input like `presupuesto OR "medio ambiente"` doesn't throw (see Pitfall 3).
-- Put accent/ñ/place-name cases (Ñuñoa, Aysén, "medio ambiente") IN the golden set from Pitfall 1.
-
-**Warning signs:**
-Search works for one accented term, empty for another. `EXPLAIN` shows a seq scan on the FTS column. Query works in psql with explicit config but not from the app.
-
-**Phase to address:** Pass 1, hybrid-search build phase.
+**Phase:** Etapa DATOS (la primera — "QUÉ señales son computables con evidencia"). Es la decisión rectora: cada señal candidata se clasifica "requiere frescura declarada" antes de tocar frontend.
 
 ---
 
-### Pitfall 3: Raw user input into `to_tsquery` → syntax errors; and naive score-mixing instead of RRF
+### Pitfall 2: Sesgo de cámara amplificado — "más movimiento" porque una cámara se scrapea mejor
 
-**What goes wrong:**
-- `to_tsquery` requires operator syntax; feeding it a user string with a stray `&`, `:`, `!`, unbalanced quote, or bare hyphen (very common in Spanish: "sub-secretaría", boletín "16733-07") throws `syntax error in tsquery` — a 500 on the search box.
-- Separately: mixing pgvector cosine distance (`<=>`, ~0–2) and `ts_rank_cd` (unbounded, corpus-dependent) by adding/averaging requires arbitrary scaling that shifts as the 3.657-project corpus grows. One runaway `ts_rank` compresses everything else.
+**What goes wrong:** El ranking "proyectos con más movimiento" o el conteo de actividad por tema queda dominado por la Cámara o el Senado no porque haya más actividad real, sino porque una fuente tiene mejor cobertura. El brief lo nombra: "citaciones thin en Cámara". Un ranking que ordena por conteo de eventos ingeridos amplifica la asimetría del scraping y la presenta como asimetría del Congreso.
 
-**Why it happens:**
-`to_tsquery` looks like the obvious function. "Just add the two scores" looks reasonable until you realize they're on incompatible, moving scales.
+**Why it happens:** Los conectores de las dos cámaras tienen cobertura desigual por construcción (Cámara = HTML/WAF frágil vs Senado = XML limpio; voto individual de Cámara aún backfill pendiente; citaciones Cámara delgadas). Cualquier agregación cross-cámara sin normalizar por cobertura hereda ese sesgo. Un "top 10 de proyectos más activos" es un top 10 de "proyectos mejor scrapeados".
 
-**How to avoid:**
-- Always `websearch_to_tsquery('config_es_unaccent', $userInput)` — sanitizes operators/quotes.
-- Combine rankings with **Reciprocal Rank Fusion (RRF)**, not weighted score sum. RRF fuses on rank position (`1/(k+rank)`), needs no normalization, and is robust to moving BM25/cosine scales. Use the Supabase `hybrid_search` RRF pattern (`rrf_k` ~50–60, `full_text_weight`/`semantic_weight` as knobs scored on the golden set). Boletín exact match should be a *pre-filter/short-circuit*, not left to RRF (Pitfall 4).
+**Consequences:** Sesgo sistemático presentado como señal editorial ("el Senado está más activo"). Cruza la línea anti-insinuación por la puerta de atrás: es una comparación institucional que el dato no sostiene.
 
-**Warning signs:**
-Intermittent 500s on odd search strings. A single float being sorted. Ranking quality drifting after a corpus re-ingest.
+**Prevention:**
+- NO construir rankings cross-cámara que sumen eventos de cobertura desigual sin declararlo. Preferir señales POR proyecto/POR tema dentro de una misma fuente homogénea, o declarar explícitamente la asimetría.
+- Si hay "top de movimiento", que el criterio sea un HECHO discreto y verificable (p.ej. "tuvo votación en sala esta semana" — evento único, no conteo acumulado que premia al mejor-scrapeado).
+- Evitar el vocabulario comparativo ya vetado por el linter ("los más…", "ranking" está PROHIBIDO en `TERMINOS_PROHIBIDOS`). El `actualidad-module.tsx` ya lo dice: "CERO ranking / score / 'los más…' / porcentaje-como-veredicto / 'quién ganó' (T-52-13)". Una feature de "más movimiento" choca de frente con este lock — hay que resolverlo en diseño, no rodearlo.
 
-**Phase to address:** Pass 1, hybrid-search build phase.
+**Detection:** Comparar el "top de actividad" contra la distribución de `fecha_captura`/conteo de filas por fuente: si el top correlaciona con cobertura y no con actividad independiente, está sesgado. Revisión de diseño explícita.
 
----
-
-### Pitfall 4: Boletín format chaos ("16733-07" vs "16733" vs dígito)
-
-**What goes wrong:**
-A boletín is the primary cross-key of the whole system. Users type it many ways: `16733-07`, `16733`, `16.733-07`. If search routes the boletín through FTS/embeddings, an exact boletín query ranks *below* fuzzy title matches — the one query type that should be a guaranteed bullseye becomes lossy. The `-07` suffix is a chamber/materia code, not a check digit; stripping/keeping it inconsistently between ingest and query splits one project into "two."
-
-**Why it happens:**
-Treating the boletín as just another token in the hybrid pipeline; not normalizing format at both write and read time.
-
-**How to avoid:**
-Detect boletín patterns with a strict regex at query time; if the input *is* a boletín, **short-circuit to an exact/normalized lookup** and return that project first, bypassing RRF. Store a canonical normalized boletín (decide once: keep full `NNNNN-NN`, strip dots) and normalize identically on ingest and query. Include all format variants in the golden set. This is a fail-obvious case — the flagship must never miss a correctly-typed boletín.
-
-**Warning signs:**
-"16733-07" returns the right project but "16733" doesn't (or ranks 4th). Two ficha rows for one project. Golden set has no boletín-format cases.
-
-**Phase to address:** Pass 1, hybrid-search build phase.
+**Phase:** Etapa DATOS. El conflicto ranking-vs-linter debe resolverse ANTES del frontend (el linter home ya bloqueará "los más movidos").
 
 ---
 
-### Pitfall 5: Client-side filters presenting facet counts / results from a TRUNCATED server set as if global
+### Pitfall 3: Insinuación disfrazada de señal — el vocabulario NUEVO que el linter aún no veta
 
-**What goes wrong:**
-PROJECT.md P1b is explicit: filters "reordenan/filtran resultados YA obtenidos sin re-buscar." The trap: the server returns top-K (say 30 via RRF `limit`). The UI shows "Partido: UDI (4), RN (2)…" as if global — but those are counts within the 30 shown. Users read "only 4 UDI projects match" when there are 40. Worse: a filter silently triggers a re-query (breaking the "no re-buscar" contract) and counts change under the user.
+**What goes wrong:** Señales que suenan factuales pero afirman intención: "presentado a último momento", "proyecto zombie revivido", "urgencia de madrugada", "colgado en comisión", "tramitación exprés", "ingreso sospechoso". Cada una cruza de hecho fechado a editorial. El clustering por tema con labels LLM es el vector más peligroso: un cluster etiquetado "proyectos polémicos de seguridad" o "leyes contra la delincuencia" editorializa por construcción.
 
-**Why it happens:**
-Faceting is normally a server aggregate. Reusing the truncated result array for facet counts is the path of least resistance and looks correct in a demo where K > total matches.
+**Why it happens:** El linter `anti-insinuacion-guard.test.ts` es una **denylist EXACTA** — su propio JSDoc (WR-01) admite que "NO previene la insinuación: paráfrasis, sinónimos, yuxtaposición temporal e inglés se le escapan por construcción". El vocabulario de una feature de "actualidad" es TODO nuevo (temporal: "último momento", "madrugada", "revivido", "exprés") y NO está en `TERMINOS_PROHIBIDOS`. El linter pasará verde sobre copy insinuante que nunca vio.
 
-**How to avoid:**
-- Be honest about scope: facet counts describe **the loaded result set**, labeled as such ("de estos N resultados"), never implied-global. Matches the system's existing honesty pattern (freshness N/M, "Busca sobre 3.100 proyectos").
-- Filters operate purely on the already-fetched array — pure client transform, zero network. If a filter needs data outside the fetched set, that's a search change, not a filter, and must be surfaced.
-- NULL facet values (an author with no `partido`) must render as an explicit "Sin partido / no informado" bucket, NEVER folded into a zero or an arbitrary party. Some authors legitimately lack `partido` (independientes, missing data) — showing "0 for RN" when it's "unknown" is a factual misstatement in a transparency product.
+**Consequences:** Difamación/editorialización — riesgo existencial #2 ("máquina de sospechas"). "Presentado a último momento" afirma una intención (esconder, apurar) que el dato no prueba.
 
-**Warning signs:**
-Facet count sum ≠ visible results. A filter click shows a network request. A "0" for a party that has projects. Independents vanishing from buckets.
+**Prevention:**
+- **Extender `TERMINOS_PROHIBIDOS` con el vocabulario temporal/editorial NUEVO ANTES de escribir el panel** — no después. Candidatos a vetar: "último momento", "última hora", "a escondidas", "madrugada", "exprés", "express", "zombie", "revivido", "resucitado", "colgado", "estancado", "durmiente", "sospechoso/a", "polémico/a", "controvertido/a", "silencioso/a", "a la rápida", "de apuro", "maniobra", "aprovechando". El panel entra a un array `SUPERFICIES_PANEL` nuevo del linter (patrón idéntico a `SUPERFICIES_AGENDA`/`SUPERFICIES_HOME`).
+- **Clustering por tema = etiquetas FACTUALES, jamás editoriales.** El label de un cluster debe ser descriptivo-neutro derivable del contenido literal (palabras clave de las ideas matrices), no un juicio LLM. Riesgo LLM: el modelo etiquetará "proyectos anti-inmigración" o "leyes punitivas" si se le deja. Usar el eval propio del proyecto (el patrón de "etiquetado de sector con eval propio, NO el de extracción literal", ya establecido en v4 cruces) y un gate de fidelidad. Preferir labels neutros tipo "Seguridad pública", "Trabajo y previsión" sobre cualquier adjetivo.
+- **Señales temporales = solo el hecho fechado, nunca la interpretación.** "Ingresó el 2026-07-22" bien. "Ingresó a último momento" mal. "Urgencia calificada suma el DD/MM a las HH:MM" bien (si la fuente da la hora); "urgencia de madrugada" mal (el "de madrugada" es el juicio).
+- El linter es un TRIPWIRE, no una garantía (su JSDoc lo dice). La garantía real es (1) sign-off legal humano del copy del panel y (2) revisión de diseño anti-insinuación. No confiar en el linter verde como aprobación.
 
-**Phase to address:** Pass 1, ranking+filters phase.
+**Detection:** Mutation self-check nuevo en el guard (el patrón ya existe: inyecta término, verifica que muerde). Revisión humana del copy de cada señal contra "¿esto afirma una intención?".
 
----
-
-### Pitfall 6: Deep-links to government sites that rot (buildId/session URLs) or point to search results, not canonical pages
-
-**What goes wrong:**
-PROJECT.md P1c wants a deep-link "a la parte precisa de la página oficial" per boletín. Three rot modes specific to these sources:
-1. Senado's portal is Next.js with a `buildId` that **changes every deploy** (CLAUDE.md, MEMORY.md) — any URL containing `/_next/data/<buildId>/…` breaks silently on the next senado.cl deploy.
-2. Linking to a *search-results* URL ("buscar boletín X") instead of the canonical tramitación page — search UIs change params and rot.
-3. Session/`__VIEWSTATE`-based Cámara URLs are not stable, shareable, or bookmarkable.
-
-**Why it happens:**
-The URL that works in the browser *right now* gets hardcoded. buildId-bearing data routes look canonical but aren't.
-
-**How to avoid:**
-- Link only to **canonical, parameter-stable public pages**: Senado tramitación by `?boletin=`, Cámara project detail by its stable id, BCN/LeyChile by `idNorma`. Never a data route with a buildId; never a session URL.
-- **Verify empirically, don't assume:** for a sample of boletines, fetch the target link server-side and assert HTTP 200 AND that the page content actually mentions that boletín (content match, not just status). This is the BrowserOS/empirical gate the milestone already mandates ("validación empírica"). A 200 rendering "proyecto no encontrado" is a dead link that passed a naive check.
-- Store the link-construction rule (a template per source), not the resolved URL, and re-derive at render time.
-
-**Warning signs:**
-Links contain a hash/buildId segment. Link verification checks status only, not content. Links tested once at build, never re-probed.
-
-**Phase to address:** Pass 1, deep-link phase (+ periodic link-health probe thereafter).
+**Phase:** Etapa DATOS (definir qué señales) + fase FRONTEND del panel (extender el linter con el array + vocabulario NUEVO como PRIMER commit de la fase, antes del copy).
 
 ---
 
-### Pitfall 7: Scraping official bios that carry PII beyond what we may republish (Ley 21.719 minimización)
+### Pitfall 4: El primer login re-abre la superficie REST que el lockdown mató
 
-**What goes wrong:**
-Official Congress bio pages include birth date, family, education, address-adjacent data. Scraping wholesale and republishing pulls in PII the product has no basis to publish. Ley 21.719 (plena vigencia 2026-12-01) applies even to "fuente de acceso público" (PROJECT.md) — "the source published it" is NOT a defense. This directly contradicts the LOCKED minimización rule and "RUT/PII never public."
+**What goes wrong:** Notificaciones = primer dato de usuario = primer uso de auth. Hoy `anon` está MUERTA (0044 revocó todo; el sitio lee con `service_role` que bypassa RLS — Camino A). Añadir auth introduce el rol `authenticated`. Una policy `CREATE POLICY … TO authenticated` mal escrita sobre una tabla de suscripciones puede, por herencia o por un `GRANT … TO authenticated` amplio, re-exponer lectura de tablas que se creían cerradas. Peor: el `lockdown-guard.test.ts` solo veta grants a `anon`/`public` — **NO menciona `authenticated`**. El guard pasará verde mientras un grant a `authenticated` abre superficie.
 
-**Why it happens:**
-Scrapers grab the whole page; whitelisting fields is extra work; "it's already public" feels like cover.
+**Why it happens:** El régimen de seguridad actual asume DOS roles (anon-muerto, service_role-todo). `authenticated` es un tercer rol que el guard nunca contempló. `anonGrantOffenders` matchea `to anon|public` — un `grant … to authenticated` no dispara. El modelo mental "el sitio lee con service_role" se rompe: ahora hay un camino de lectura autenticado real por PostgREST.
 
-**How to avoid:**
-- **Field allowlist, not blocklist:** ingest ONLY the bio fields the product will show (name, current party/comité, cámara, región/circunscripción, official bio prose vetted for PII, links). Everything else is dropped at the parser, never stored. Birth date / family / personal contact = excluded by default; keep raw bio in R2 crudo (immutable source of truth) but do not surface or load PII columns into Supabase-served tables.
-- Keep the two-stage rule: raw bio → R2, then a *minimizing* R2→Supabase load projecting only allowlisted fields.
-- Flag as a legal-review item (human sign-off), consistent with the milestone's legal gates.
+**Consequences:** Regresión de seguridad silenciosa en un repo público con sujetos hostiles (parlamentarios). Un usuario autenticado podría leer tablas PII vía REST si una policy se escribe mal. El lockdown-guard da falsa confianza.
 
-**Warning signs:**
-Bio ingest schema has `fecha_nacimiento`/`conyuge`/`hijos`. "We'll filter in the UI" (data already stored = already a risk). No allowlist in the parser.
+**Prevention:**
+- **Extender `lockdown-guard.test.ts` para tratar `authenticated` con el mismo rigor que `anon`/`public`** ANTES de la primera migración de auth. Regla: `authenticated` obtiene grants SOLO sobre las tablas de suscripción del propio usuario, con RLS `USING (user_id = auth.uid())`, y CERO sobre cualquier tabla del modelo de datos público o PII. El guard debe FALLAR ante `grant … to authenticated` sobre cualquier tabla que no sea la allowlist explícita de tablas-de-usuario.
+- **Tablas de usuario nuevas (suscripción, consentimiento) NO viven en el mismo plano de grants que el modelo público.** RLS deny-by-default, policy por `auth.uid()`, probada con pgTAP (el usuario A no ve las suscripciones del usuario B).
+- Deny-by-default es directiva del brief ("auth + RLS real… diseño de seguridad es parte del alcance").
+- No usar `service_role` para operaciones de usuario (bypassa RLS → cualquier bug expone todo). Las lecturas/escrituras de suscripción van con el token del usuario (`authenticated`), no con la service key.
 
-**Phase to address:** Pass 2, bio phase — allowlist at parser + legal sign-off.
+**Detection:** pgTAP: usuario A no lee filas de usuario B; `authenticated` no lee `parlamentario.rut` ni ninguna PII_TABLE. Guard extendido que muerde ante grant-to-authenticated fuera de la allowlist de tablas-de-usuario.
 
----
-
-### Pitfall 8: Asserting CURRENT party from STALE/historical militancia; conflating comité with partido (Senado)
-
-**What goes wrong:**
-Party affiliation changes over time (renuncias, cambios de bancada). Scraping a bio once and asserting "Partido: X" as present-tense, when the person switched months ago, is a false statement about a hostile-capable subject — defamation-adjacent and a correctness failure. In the Senado, senators sit in **comités** (parliamentary groups) that are NOT the same as **partido**; showing comité as partido (or vice-versa) is wrong. Cross-links grouping parlamentarios by shared party can imply political alignment — anti-insinuación risk (existential risk #2).
-
-**Why it happens:**
-Bio pages show current affiliation without a timestamp; the scraper snapshots it and the UI renders it tenseless. comité and partido look interchangeable at a glance.
-
-**How to avoid:**
-- Always attach **fecha de captura + fuente + enlace** to party data (rector principle) and phrase as "según [fuente] al [fecha]", never bare present tense.
-- Model party as time-stamped, ideally a history if the source supports it; if only a snapshot exists, say so.
-- Keep **partido and comité as distinct fields** with distinct labels; never map one to the other. For the Senado, show comité as comité.
-- Any "relaciones entre parlamentarios" cross-link (PROJECT.md P2d) must be factual co-occurrence with the anti-causal/anti-insinuación legend already used across the product — never framed as "aligned/allied."
-
-**Warning signs:**
-Party rendered without a date. Same field for partido and comité. A cross-link labeled "misma línea"/"aliados." A senator's comité shown as "Partido."
-
-**Phase to address:** Pass 2, bio/ficha phase.
+**Phase:** Fase NOTIFICACIONES / AUTH (diseño de seguridad primero). El guard extendido es prerrequisito de la primera migración de auth, no un follow-up.
 
 ---
 
-### Pitfall 9: Lobby→bill linking by regex over free-text materia → false links + insinuación
+### Pitfall 5: Emails de usuario = PII REAL bajo 21.719 — consentimiento, baja, DPA del proveedor de email
 
-**What goes wrong:**
-PROJECT.md P2e wants lobby audiencias linked "con PLs en movimiento con links específicos." The trap: regex-matching the free-text `materia` of an audiencia to a boletín. A materia that *mentions* a law ("modernización del Código de Aguas") is not the specific bill; matching by keyword produces false links. Worse, asserting a **meeting was ABOUT a bill** when the link is wrong is exactly the insinuación the product is legally built to avoid ("la reunión fue sobre el proyecto X" → implied influence). This fuses existential risk #1 (false-but-credible claim) with risk #2 (insinuación).
+**What goes wrong:** Hasta hoy TODA la PII del sistema es de terceros públicos (parlamentarios, declarada por fuentes oficiales, minimizada). Un email de suscriptor es la PRIMERA PII de un DATA SUBJECT PRIVADO que el sistema RECOLECTA directamente. Cambia el régimen legal: bajo 21.719 (plena vigencia 2026-12-01, DENTRO del horizonte de este milestone) el consentimiento debe ser "libre, específico, informado e inequívoco y revocable"; el proveedor de email (Resend/SendGrid/etc.) es un ENCARGADO DE TRATAMIENTO que requiere contrato/DPA escrito; y hay que registrar consentimiento (fecha/hora, versión del aviso, método).
 
-**Why it happens:**
-Free-text materia often contains law-ish words; regex "works" on the demo cases; the linkage feels valuable so the evidence bar drops.
+**Why it happens:** El equipo trata la PII como "dato de tercero público minimizado" (el régimen entero del proyecto). Un email de usuario NO es eso: es dato recolectado, con un titular que tiene derechos de acceso/supresión/portabilidad. El instinto de "solo mostramos lo que la fuente ya publicó" no aplica — aquí el sistema ES la fuente.
 
-**How to avoid:**
-- **Fail-closed linking, explicit-pattern only:** link an audiencia to a boletín ONLY when the materia (or a structured field) contains an explicit boletín number pattern. No boletín number → no link. Mirrors the identity fail-closed rule (never name-match to an FK).
-- Never render the relationship as causal/topical ("sobre el proyecto"); render it as "esta audiencia menciona el boletín NNNNN-NN" with the source text, letting the reader judge.
-- Run the anti-insinuación text linter (already in the codebase) over any generated link copy.
+**Consequences:** Incumplimiento de 21.719 en el único punto donde el sistema recolecta PII propia. El proyecto tiene "pasada de asesoría legal antes del lanzamiento" como constraint LOCKED — notificaciones AÑADE una superficie legal nueva que esa pasada debe cubrir.
 
-**Warning signs:**
-Lobby links generated from keyword/fuzzy materia matching. Copy says "reunión sobre el proyecto." Link count suspiciously high. No explicit boletín pattern gate.
+**Prevention:**
+- **Doble opt-in (double opt-in) obligatorio:** el email no entra a ninguna lista hasta que el titular confirma vía enlace enviado a ese email. Estándar recomendado explícitamente para 21.719 (Fidelizador, Confidata). Sin confirmar = registro pendiente, nunca activo.
+- **Registro de consentimiento:** fecha/hora, versión del aviso de privacidad, método de recolección — como fila auditada (el proyecto ya tiene el patrón `identidad_audit` inmutable; reusar la disciplina).
+- **Baja (unsubscribe) en cada email + en la cuenta.** Revocable = requisito legal, no cortesía. Supresión efectiva de la fila, no solo un flag.
+- **DPA del proveedor de email:** el proveedor es subencargado (igual que el LLM tier "sin entrenamiento/DPA" ya en el modelo mental del proyecto). Elegir un proveedor con DPA firmable y tier de no-reuso. Documentar el contrato como gate de operador (acción humana, no de agente — igual que los sign-offs legales).
+- **Minimización:** recolectar SOLO el email (y quizás un nombre opcional). Nunca cruzar el email del suscriptor con la maestra de identidad ni con PII de terceros.
+- **Retención:** política explícita — cuánto se guarda un email tras la baja (idealmente supresión inmediata + log de la baja sin el email).
 
-**Phase to address:** Pass 2, lobby-legible phase.
+**Detection:** Checklist legal como gate de operador (no lo flipea un agente, igual que MONEY/NET). pgTAP de que un email no-confirmado nunca aparece en la lista de envío.
 
----
-
-### Pitfall 10: Committee-calendar completeness gaps shown as certainty; cancelled/rescheduled shown as upcoming; timezone drift
-
-**What goes wrong:**
-PROJECT.md P2f mandates a **coverage audit of scraping BEFORE touching UI** (sala + comisiones, both chambers). Pitfalls:
-- Sources publish comisión citaciones incompletely or late; showing the scraped set as "the complete agenda" misleads journalists who trust it. comisiones unidas / especiales are edge cases the scraper often misses.
-- A session cancelled or rescheduled at the source, still shown as "próxima," sends a journalist to a meeting that isn't happening.
-- Grouping "por día" (P2f) in UTC instead of **America/Santiago** buckets a 21:00 Santiago session into the next day (Chile is UTC−3/−4 with DST) — the daily agenda is silently wrong at the edges.
-
-**Why it happens:**
-Coverage is assumed, not measured. Postgres/JS default to UTC. Cancelled-state isn't modeled; only "scheduled" rows exist.
-
-**How to avoid:**
-- Do the coverage audit first and **declare coverage honestly** (the system's N/M pattern): which chambers/commissions/date-range are covered, and what's known-missing. comisiones unidas/especiales explicitly checked.
-- Model session status (programada/modificada/cancelada); never render a cancelled/rescheduled session as a plain upcoming item — show the change with source+date.
-- Group and display all dates in `America/Santiago` (store timestamptz, convert at the day-bucketing boundary). Verify with a session near midnight Santiago.
-- **Probe any new endpoint with curl first** — the WAF blocks Node/bot UAs on camara.cl (MEMORY.md: "WAF camara.cl bloquea Node fetch → curl OK"). Don't assume a new comisiones endpoint is reachable like the existing ones.
-
-**Warning signs:**
-Agenda presented as complete with no coverage statement. A day boundary that shifts sessions. No cancelled state in the schema. New endpoint tested only from Node.
-
-**Phase to address:** Pass 2, citaciones phase (coverage audit gates the UI work).
+**Phase:** Fase NOTIFICACIONES. El sign-off legal 21.719 sobre emails de usuario es un GATE HUMANO nuevo, análogo a los sign-offs MONEY/NET — el agente construye deny-by-default hasta el gate.
 
 ---
 
-### Pitfall 11: Identity fail-closed silently loosened while wiring bios/lobby/committees (existential risk #1)
+### Pitfall 6: Romper los candados de régimen v8/v9 en el rewrite de la landing
 
-**What goes wrong:**
-Every new P2 feature wants to attach data to a parlamentario. The pressure to "link more" tempts name-matching (bio → maestra, lobby contraparte → parlamentario, comité member → maestra) instead of the confirmed identity pipeline. A single wrong match = a false, credible claim attributed to a real, possibly-hostile person. This is documented existential risk #1.
+**What goes wrong:** La landing es la superficie MÁS candada del proyecto. El rewrite del bento producto-céntrico a panel de actualidad puede romper, silenciosamente y en verde local: (a) el copy hero LOCKED byte-idéntico ("Busca cualquier proyecto de ley por tema o número de boletín", decisión operador 2026-07-15); (b) `bento-guards.test.ts` cero-hex; (c) la whitelist tipográfica dura (`text-[11px]`/`[13px]`/`[15px]`… — cualquier `text-[Npx]` nuevo ad-hoc FALLA); (d) el shorthand `-[--var]` de Tailwind v4 (compila a valor inválido → elemento sin color, INVISIBLE hasta getComputedStyle en deploy real — este defecto ha reaparecido 3 veces); (e) `export const dynamic = "force-dynamic"` en `page.tsx` (sin él Next hornea `/` estática → panel congelado/500 en runtime — gotcha F50 LOCKED).
 
-**Why it happens:**
-The identity pipeline is stricter (fail-closed) and yields fewer links; a feature "looks more complete" with loose matching. Temptation is highest when the new source uses a full name that "obviously" matches.
+**Why it happens:** El régimen bento es invisible al ojo — vive en tests de guard y en tokens. Un ejecutor que "solo cambia el layout" puede meter un hex, un `text-[16px]`, o borrar el `force-dynamic` sin que el navegador local lo delate. La cascada CSS de Tailwind v4 (`-[--var]` bare) solo se caza en deploy real (memoria: v6.1/v8.0).
 
-**How to avoid:**
-- Re-verify fail-closed at every new join: bio, lobby, and committee data attach to the maestra ONLY via confirmed identity (golden set ≥0.95 gate), never a fresh name-match to an FK. If unconfirmed, show the datum unlinked (the system already does "link solo si confirmado" in UI).
-- Treat every new person-linking edge as subject to the existing identity audit trail.
+**Consequences:** Deploy roto en runtime (force-dynamic), o degradación visual invisible en local que solo aparece en producción. Re-trabajo. El copy hero cambiado sin autorización viola una decisión de operador LOCKED.
 
-**Warning signs:**
-A new `.rpc`/join that resolves a person by name string. Link coverage jumping without new confirmed identities. Bio/lobby rows FK'd to parlamentario without an adjudication record.
+**Prevention:**
+- Tratar `bento-guards.test.ts` + `anti-insinuacion-guard.test.ts` + el copy hero como CONTRATO. Cualquier token/tipografía nueva del panel se AÑADE a `WHITELIST_ARBITRARIOS` con razón documentada, o usa un paso Tailwind estándar. Cero hex, cero `-[--var]` bare.
+- `export const dynamic = "force-dynamic"` es LOCKED en la home — nunca removerlo. El panel lee datos vivos por request; es dinámico por definición.
+- Gate BrowserOS de comprensión en DEPLOY REAL (no local) — es donde se cazan la cascada CSS, el scroll-margin, el `-[--var]` (patrón LOCKED del proyecto: getComputedStyle en deploy).
+- El copy hero solo cambia con autorización explícita del operador (precedente: el copy es MOCKUP, el operador ANULÓ cambios de copy en v8.1).
 
-**Phase to address:** Pass 2, all person-linking phases (verification gate).
+**Detection:** `pnpm test` (guards muerden) + build (force-dynamic) + BrowserOS en deploy. El scan de `page.tsx`/`actualidad-module.tsx` ya está en los tres guards; el panel nuevo debe entrar a esos arrays.
 
----
-
-### Pitfall 12: Final security pass treats the PUBLIC repo + hostile subjects as ordinary web security
-
-**What goes wrong:**
-PROJECT.md P3 is "validación final de seguridad." The threat model is unusual: the repo is **public on GitHub** and the *subjects* (parlamentarios) may be motivated to find leaks or defame-back. Ordinary "we have RLS, we're fine" misses: secrets committed in git *history* (not just current tree), `.env.example` shipping real-looking values, error messages leaking schema/table names, RPC allowlist drift (a new RPC added in P1/P2 not in the allowlist — under the service_role model anon is dead but service_role bypasses RLS), CSP stuck in Report-Only forever (MEMORY.md: "CSP solo Report-Only"), dependency alerts (Dependabot), and expensive unbounded RPCs (the new hybrid_search / faceting) as a cheap DoS.
-
-**Why it happens:**
-Security is treated as a generic OWASP checklist. The public-repo + service_role-bypass + hostile-subject combination is specific to this project and easy to under-scope. New RPCs from P1/P2 silently expand attack surface after the earlier lockdown (Camino A).
-
-**How to avoid:**
-- **Git history scan** (gitleaks/trufflehog over full history), not just current files. Rotate anything ever committed (the DB password was already flagged as exposed — confirm rotation, B26).
-- Assert `.env.example` contains only placeholders; add a CI check.
-- Ensure error responses never echo Postgres error text/schema to the client (generic message + server-side log).
-- **Re-derive the RPC allowlist** including every RPC added in P1/P2; the guard CI (already scans `app/` for `.from` PII + non-allowlisted `.rpc`) must cover the new hybrid_search / bio / lobby / agenda RPCs. Under service_role (RLS bypassed by design), each new RPC is the security boundary — verify each is PII-safe.
-- **Bound the new expensive RPCs:** hybrid_search and faceting must have a hard `LIMIT` + `statement_timeout` and cap `match_count` so a crafted query can't pin the Pro-plan DB. Supabase RPCs can time out; an unbounded RRF over 3.657 rows + HNSW is cheap, but a pathological `websearch_to_tsquery` or huge `match_count` is not.
-- **Flip CSP from Report-Only to enforced** (with a tested policy) — Report-Only forever = no protection.
-- Correctness-as-defamation-defense: re-run the identity golden gate and confirm every publicly-shown person-linked datum traces to a confirmed identity + source + date. Data correctness IS the legal defense here.
-
-**Warning signs:**
-Secret scan runs on HEAD only. `.env.example` has real hostnames/keys. 500s show `relation "x" does not exist`. A new RPC not in the allowlist. CSP still Report-Only at ship. hybrid_search has no LIMIT/timeout.
-
-**Phase to address:** Pass 3, security phase.
+**Phase:** Fase FRONTEND del panel. Añadir el panel a los arrays de los 3 guards es parte del scaffolding, no un cierre.
 
 ---
 
-## Technical Debt Patterns
+## Moderate Pitfalls
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Facet counts from truncated top-K set | No server aggregate to build | Misleading counts in a transparency product; credibility hit | Never — label "de estos N resultados" if truly client-only |
-| Weighted score sum instead of RRF | One less concept | Re-tuning as corpus grows; scale-mismatch bugs | Only after golden set shows it beats RRF for this corpus |
-| Hardcode a government URL that "works now" | Ships the deep-link fast | Rots on next senado.cl deploy (buildId) | Never — store the template, re-derive |
-| Scrape whole bio, filter in UI | Faster ingest | PII stored = Ley 21.719 exposure even before display | Never — allowlist at parser |
-| Keyword-match lobby materia → boletín | More links, "richer" ficha | False links = false influence claims (insinuación) | Never — explicit boletín pattern only |
-| Group agenda by day in UTC | No tz code | Edge sessions on wrong day | Never — America/Santiago at bucketing |
-| Ship hybrid search without golden gate | Feels done | Silent regression of NL/similares | Never — golden gate is the SPIKE's whole point |
+### Pitfall 7: Crons más frecuentes → ráfagas que el WAF gubernamental bloquea
 
-## Integration Gotchas
+**What goes wrong:** El brief autoriza "crons más frecuentes" para frescura del panel. Más frecuencia intradía contra las fuentes gubernamentales choca con el WAF que bloquea ráfagas (rate-limit 2-3s LOCKED, "no opcional"). Un cron cada hora que reingiere sin hash-check puede gatillar bloqueo del WAF → paradójicamente CERO frescura.
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| Postgres Spanish FTS | Reuse `'english'` example; unaccent in index expr (STABLE → fails) | Custom `unaccent+spanish` config in a STORED generated tsvector; same config at query |
-| pgvector + FTS fusion | Add cosine + ts_rank scores | RRF on rank position (`rrf_k` ~50–60); tune weights on golden set |
-| User input → tsquery | Raw `to_tsquery` → syntax errors | `websearch_to_tsquery` always |
-| senado.cl Next.js portal | Link to `/_next/data/<buildId>/…` | Canonical `?boletin=` page; read buildId dynamically only for scraping, never for public links |
-| camara.cl new endpoint | Probe with Node fetch | Probe with curl first (WAF blocks bot UAs); rate-limit 2–3s |
-| Bio/lobby/committee → maestra | Name-match to FK | Confirmed-identity pipeline only (fail-closed) |
-| Supabase RPC under service_role | Assume RLS protects | RLS bypassed by service_role → each RPC is the boundary; allowlist + PII-safe |
+**Prevention:** La frecuencia mayor NO significa más requests a la fuente. Respetar el patrón LOCKED de DOS ETAPAS: hash-check ANTES de descargar (`If-None-Match`/sha256 en R2) → salir temprano si no cambió. Lotes acotados, solo novedades. El rate-limit 2-3s/host es intocable. Preferir refrescar la VISTA/agregación (barata, interna) más seguido que re-scrapear la fuente.
 
-## Performance Traps
+**Phase:** Etapa DATOS / fase de ingesta del panel.
 
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Unbounded hybrid_search / faceting RPC | Slow queries, DB CPU spikes | Hard `LIMIT` + `statement_timeout`; cap `match_count` | Crafted large `match_count` / pathological tsquery (DoS on Pro plan) |
-| `ts_rank_cd` over large WHERE set | Slow ranking | Rank only rows matching the FTS `WHERE` (small set), per Supabase RRF pattern | If FTS predicate is too broad |
-| PostgREST 1k row cap on facet source | Facets computed on 1000 rows silently | Paginate `.order().range()` (MEMORY.md LOCKED lesson) | Result set > 1000 (already bit this project) |
-| HNSW recall vs candidate limit too low | Good query, missing obvious hit | Fetch `limit * 2` candidates per arm before RRF (Supabase pattern) | Sparse embedding coverage (84.6% today) |
+### Pitfall 8: GH Actions cron drift/skip → panel de "actualidad" sirviendo actualidad vieja
 
-## Security Mistakes
+**What goes wrong:** Las señales de actualidad DEPENDEN de frescura, y los crons de GH Actions se retrasan o se SALTAN — confirmado: "delays or even be dropped during high load (midnight UTC)", "no SLA", y GH SUSPENDE crons en repos sin commit en 60 días. Un cron saltado el viernes → panel muestra "actualidad" del jueves como si fuera de hoy, sin avisar.
 
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Secret scan on HEAD only, not git history | Leaked key in public repo history | gitleaks/trufflehog full history; rotate ever-committed secrets |
-| `.env.example` with real-ish values | Copy-paste leaks / recon | CI asserts placeholders only |
-| Postgres error text to client | Schema/table disclosure to hostile subject | Generic error + server-side log |
-| New P1/P2 RPC not in allowlist | PII/expensive endpoint exposed under service_role | Re-derive allowlist; guard CI covers new RPCs |
-| CSP Report-Only forever | No injection protection despite appearance | Flip to enforced with tested policy |
-| Expensive RPC without limits | Cheap DoS on Pro-plan DB | LIMIT + statement_timeout + match_count cap |
-| Publishing an unconfirmed identity link | False, defamatory claim about hostile subject | Identity golden gate re-verified; unlinked if unconfirmed |
-| Bio PII stored "for later" | Ley 21.719 breach even pre-display | Parser allowlist; PII stays in R2 crudo only |
+**Prevention:** El panel muestra SIEMPRE la fecha de última actualización por fuente (el bloque `UltimaActualizacion` ya existe — reusarlo como contrato). NUNCA implicar "hoy" sin respaldarlo con `fecha_captura`. Evitar cron a medianoche UTC (pico de load → drops); usar horario off-peak. Añadir `workflow_dispatch` para disparo manual. Monitoreo de staleness (`pnpm freshness` ya existe, exit 1 si stale) como alerta. Pitfall 1 (no emitir señal si la fuente está stale) es la red de seguridad de esto.
 
-## UX Pitfalls
+**Phase:** Etapa DATOS + operacional.
 
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Facet counts implied global | User under/over-counts matches | Label "de estos N resultados"; honest scope |
-| NULL partido shown as 0 for a party | Misreads independents/missing as absence | Explicit "Sin partido / no informado" bucket |
-| Party shown tenseless | Reads stale affiliation as current | "según [fuente] al [fecha]" |
-| Cancelled session shown as upcoming | Journalist attends non-event | Model status; show change with source+date |
-| Dead deep-link (200 but "no encontrado") | Loss of trust in traceability | Content-match verification, not status-only |
-| Lobby link framed "reunión sobre X" | Implies influence (insinuación) | "menciona el boletín N"; reader judges |
+### Pitfall 9: statement_timeout vs agregaciones caras en la página más visitada
 
-## "Looks Done But Isn't" Checklist
+**What goes wrong:** El panel agrega ("proyectos con más movimiento", conteos por tema, clustering) sobre las tablas más grandes (3.657 proyectos, eventos de tramitación, embeddings). En la página más visitada, una agregación cara por request choca con `statement_timeout` (las RPCs nuevas son bounded con timeout por diseño — key decision v9) → 500 en la home. Además `force-dynamic` = sin cache = cada visita re-computa.
 
-- [ ] **Hybrid search:** Often missing golden-set regression proof — verify literal-title AND NL AND boletín AND "similares" all scored before/after swap
-- [ ] **Spanish FTS:** Often missing unaccent parity — verify Ñuñoa/Aysén/"medio ambiente" return correctly via the STORED generated tsvector
-- [ ] **Boletín search:** Often missing format normalization — verify "16733", "16733-07", "16.733-07" all bullseye the same project
-- [ ] **Filters:** Often missing NULL-partido bucket and truthful facet scope — verify counts sum to loaded set and independents appear
-- [ ] **Deep-links:** Often missing content match — verify HTTP 200 AND page mentions the boletín, on a sample, and no URL carries a buildId
-- [ ] **Bios:** Often missing PII allowlist — verify no birth/family/contact columns exist in Supabase-served tables
-- [ ] **Party data:** Often missing timestamp + comité/partido separation — verify "según fuente al fecha" and comité rendered as comité
-- [ ] **Lobby links:** Often missing explicit-boletín gate — verify zero links from keyword-only materia matches
-- [ ] **Agenda:** Often missing coverage statement + tz — verify N/M coverage declared, America/Santiago bucketing, cancelled state modeled
-- [ ] **Security:** Often missing history scan + RPC allowlist drift + CSP enforcement — verify full-history secret scan, new RPCs allowlisted+bounded, CSP enforced
+**Prevention:** Agregaciones de actualidad = vistas materializadas o RPCs bounded refrescadas por cron, NO computadas por request. El panel LEE un resultado pre-computado barato. Toda RPC nueva enhebra la aguja LOCKED (v9): migración >0044 cero-grant + security-definer PII-safe + `PUBLIC_RPC_ALLOWLIST` + bounded (LIMIT + statement_timeout + cap). Clustering pgvector se pre-computa offline, jamás en el request de la home.
 
-## Recovery Strategies
+**Phase:** Etapa DATOS (definir qué es pre-computable) + FRONTEND.
 
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Hybrid swap regressed NL search | LOW | Flag-flip back to old RPC (kept live); re-score golden set; re-tune RRF |
-| unaccent/config mismatch | MEDIUM | Rebuild STORED generated tsvector + reindex; align query config |
-| Rotted deep-links (buildId) | LOW | Re-derive from canonical template; add periodic link-health probe |
-| Bio PII already stored | HIGH | Drop PII columns; purge R2-derived Supabase rows; re-run minimizing load; legal note |
-| False lobby→bill links published | HIGH (reputational/legal) | Take down links; restrict to explicit-boletín; audit all issued links; correction |
-| Secret in git history | HIGH | Rotate credential immediately; document; (history rewrite optional — rotation is the real fix) |
-| Wrong identity link shipped | HIGH (defamation) | Unpublish; re-adjudicate via golden pipeline; audit-trail entry; correction |
+### Pitfall 10: Vista materializada stale sirviendo "actualidad" vieja + cache de Cloudflare
 
-## Pitfall-to-Phase Mapping
+**What goes wrong:** La solución al Pitfall 9 (materializar) crea su espejo: una MV que no se refresca sirve "actualidad" congelada, ahora con apariencia de dato fresco. Y Cloudflare puede cachear la respuesta del panel sirviendo una versión vieja a usuarios distintos.
 
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| 1 Golden-set regression | P1 SPIKE (first phase) | Before/after scores per query class; old RPC behind flag |
-| 2 Spanish FTS config/unaccent | P1 hybrid build | Ñuñoa/Aysén/"medio ambiente" golden cases pass; EXPLAIN uses index |
-| 3 tsquery input + score mixing | P1 hybrid build | `websearch_to_tsquery` used; RRF (not sum) in RPC |
-| 4 Boletín formats | P1 hybrid build | All formats bullseye; short-circuit exact match |
-| 5 Facet/filter honesty + NULLs | P1 ranking+filters | Facet sum = loaded set; NULL-partido bucket; no re-query on filter |
-| 6 Deep-link rot | P1 deep-link + probe | Content-match 200; no buildId in URL; periodic probe |
-| 7 Bio PII minimización | P2 bio (parser allowlist) | No PII columns; legal sign-off |
-| 8 Stale party / comité conflation | P2 bio/ficha | Timestamped party; comité≠partido; anti-insinuación cross-links |
-| 9 Lobby→bill false links | P2 lobby | Explicit-boletín-only links; linter passes copy |
-| 10 Agenda coverage/tz/cancelled | P2 citaciones (audit gates UI) | Coverage N/M declared; Santiago tz; status modeled; curl-probed |
-| 11 Identity fail-closed loosening | P2 (all person joins) | Every new join via confirmed identity ≥0.95; unlinked if not |
-| 12 Public-repo/hostile security | P3 security | History scan; allowlist re-derived+bounded; CSP enforced; identity re-verified |
+**Prevention:** La MV lleva su propio `refreshed_at` y el panel lo muestra (misma disciplina que `fecha_captura`). Si la MV está stale, degradar honestamente. Verificar los headers de cache de Cloudflare sobre la home dinámica: `force-dynamic` + no-store donde corresponda; validar en deploy real que no se sirve una portada cacheada. (El proyecto ya lidió con "cache de Cloudflare sirviendo panel viejo" en memoria de deploys.)
+
+**Phase:** Etapa DATOS + operacional/deploy.
+
+### Pitfall 11: Enumeración de suscriptores + unsubscribe token sin auth
+
+**What goes wrong:** Endpoints de suscripción que revelan si un email ya está suscrito (respuesta distinta para existe/no-existe) = enumeración de suscriptores (quién sigue a qué parlamentario → dato sensible en sí mismo). Unsubscribe por link sin token firmado = cualquiera da de baja a cualquiera; token adivinable = igual.
+
+**Prevention:** Respuesta idéntica exista o no el email ("te enviamos un correo si corresponde"). Unsubscribe con token opaco firmado, de un solo uso, ligado al email — sin exponer el id de usuario ni requerir login (pero criptográficamente ligado). Nunca listar suscriptores en ninguna superficie pública ni admin sin gate.
+
+**Phase:** Fase NOTIFICACIONES.
+
+---
+
+## Minor Pitfalls
+
+### Pitfall 12: Spam/bounce quema el dominio de envío
+
+**What goes wrong:** Envío masivo sin SPF/DKIM/DMARC configurados, o a emails no confirmados (bounces altos) → el dominio entra en blocklists → ningún email llega (ni los de confirmación). El doble opt-in (Pitfall 5) ya reduce bounces; falta la infra DNS.
+
+**Prevention:** SPF/DKIM/DMARC en el dominio antes del primer envío. Proveedor con buena reputación IP. Solo enviar a emails confirmados. Monitorear tasa de bounce/complaint.
+
+**Phase:** Fase NOTIFICACIONES (config de infra, gate de operador — DNS es acción humana).
+
+### Pitfall 13: Copiar los anti-patterns de UX de senado.cl / camara.cl
+
+**What goes wrong:** El brief pide benchmark UX contra senado.cl y camara.cl "para superar". Riesgo: copiar sus patrones porque "así lo hace el sitio oficial" — tablas densas ASP.NET WebForms, paginación con postback, jerga interna ("prmID", "boletín" sin explicar), fechas ambiguas, cero jerarquía visual. Son sitios de tramitación interna, no de comprensión ciudadana.
+
+**Prevention:** El benchmark es para APRENDER QUÉ EVITAR tanto como qué imitar. El proyecto ya tiene un régimen de comprensión (gate BrowserOS "cold read", leyenda "cómo leer esto", 3 capas cognitivas). El panel se mide contra ESE estándar, no contra los sitios oficiales. Traducir jerga (nunca mostrar "prmID" a un ciudadano). Cierre con crítica de diseño (parte del brief).
+
+**Phase:** Fase de benchmark + FRONTEND.
+
+### Pitfall 14: SEO/deep-links existentes rotos por el rewrite de la landing
+
+**What goes wrong:** El rewrite de `/` puede romper deep-links, anchors, o metadata OG existentes que prensa/redes ya enlazan. El proyecto ya cazó "scroll-margin no cubría section[id]" solo en deploy.
+
+**Prevention:** Preservar rutas y anchors existentes; verificar OG/metadata; el gate BrowserOS en deploy real caza los anchors rotos (precedente F81). No cambiar la URL de la home.
+
+**Phase:** Fase FRONTEND del panel.
+
+---
+
+## Phase-Specific Warnings
+
+| Fase | Pitfall probable | Mitigación |
+|------|------------------|------------|
+| **Etapa DATOS (QUÉ señales)** | Señal falsa por cobertura parcial (P1); sesgo de cámara (P2); ranking choca con linter (P2); definir vocabulario a vetar (P3) | Clasificar cada señal candidata: "¿requiere frescura declarada? ¿es cross-cámara sesgada? ¿el label afirma intención?" ANTES de tocar frontend |
+| **Fase NOTIFICACIONES / AUTH** | Login re-abre REST (P4); email = PII 21.719 (P5); enumeración/token (P11); bounce (P12) | Extender lockdown-guard a `authenticated` como PRIMER commit; doble opt-in + registro de consentimiento + DPA como gate humano; deny-by-default RLS por `auth.uid()` |
+| **Fase FRONTEND del panel** | Romper candados bento/copy/force-dynamic (P6); vocabulario insinuante nuevo (P3); SEO/anchors (P14); anti-patterns gubernamentales (P13) | Añadir panel a los 3 arrays de guards + extender `TERMINOS_PROHIBIDOS` como scaffolding; gate BrowserOS en DEPLOY real; copy hero solo con autorización operador |
+| **Operacional / crons** | WAF por ráfagas (P7); cron drift/skip (P8); MV stale + cache CF (P10); timeout en home (P9) | Hash-check antes de descargar; frescura declarada siempre; off-peak + workflow_dispatch; agregaciones pre-computadas bounded, nunca por request |
+| **Clustering por tema** | Labels LLM editoriales (P3) | Labels factuales derivados de contenido literal + eval propio + gate de fidelidad; pre-computado offline, nunca en el request |
+
+---
 
 ## Sources
 
-- [Supabase — Hybrid search (RRF pattern, websearch_to_tsquery, ts_rank_cd)](https://supabase.com/docs/guides/ai/hybrid-search) — Context7 `/websites/supabase` — HIGH
-- [Supabase — Full text search (websearch_to_tsquery)](https://supabase.com/docs/guides/database/full-text-search) — HIGH
-- [PostgreSQL — Controlling Text Search / index-query config match](https://www.postgresql.org/docs/current/textsearch-controls.html) — HIGH
-- [PostgreSQL bug thread — Spanish dictionary stemming misses (politi/politic)](https://postgresql.org/message-id/20151020110857.3017.63066%40wrigleys.postgresql.org) — MEDIUM
-- [PostgreSQL — Full text index without accents / unaccent STABLE not IMMUTABLE](https://www.postgresql.org/message-id/1216889206.5112.11.camel%40tambre) — HIGH
-- [Reciprocal Rank Fusion vs weighted sum — scale mismatch (cosine vs BM25)](https://www.paradedb.com/learn/search-concepts/reciprocal-rank-fusion) — MEDIUM
-- [OpenSearch — Introducing RRF for hybrid search](https://opensearch.org/blog/introducing-reciprocal-rank-fusion-hybrid-search/) — MEDIUM
-- PROJECT.md / CLAUDE.md / MEMORY.md (Observatorio) — LOCKED rules: identity fail-closed, anti-insinuación, two-stage R2, WAF/curl, service_role+RPC allowlist, buildId volatility, Ley 21.719, PostgREST 1k cap, CSP Report-Only — HIGH (project ground truth)
-
----
-*Pitfalls research for: civic-transparency app — v9.0 robustez + security hardening*
-*Researched: 2026-07-21*
+- `app/lib/anti-insinuacion-guard.test.ts` (leído) — denylist EXACTA, `TERMINOS_PROHIBIDOS`, arrays `SUPERFICIES_*`, JSDoc WR-01 ("NO previene insinuación… paráfrasis/temporal se escapan"), `NEGACIONES_LOCKED` — HIGH
+- `app/lib/lockdown-guard.test.ts` (leído) — guard veta SOLO `anon`/`public`, NO `authenticated`; `PUBLIC_RPC_ALLOWLIST`; Camino A service_role bypassa RLS; PII_TABLES — HIGH
+- `app/components/actualidad-module.tsx` (leído) — molde "en las fuentes consultadas", `throw` no `?? []` (#34), "CERO ranking/score/los más… (T-52-13)", frescura NO-PII, tz Chile — HIGH
+- `app/lib/bento-guards.test.ts` (leído) — cero-hex, whitelist tipográfica dura, `-[--var]` shorthand inválido Tailwind v4 (reaparecido 3×) — HIGH
+- `app/app/page.tsx` (leído) — copy hero LOCKED, `force-dynamic` gotcha F50, EXAMPLE_CHIPS/ENTRY_CARDS LOCKED — HIGH
+- `.planning/PROJECT.md` / `.planning/MILESTONES.md` (leídos) — anti-insinuación LOCKED, Camino A, cobertura declarada, 21.719 (2026-12-01), WAF 2-3s, gates humanos — HIGH
+- [GovTrack — About Our Data](https://www.govtrack.us/about-our-data) / [JoshData Medium](https://medium.com/civic-tech-thoughts-from-joshdata/govtrack-now-actually-uses-open-government-data-5fc16f377e86) — screen-scrapers se confunden, casos no anticipados (bills sin sponsor) → info incorrecta mostrada — MEDIUM
+- [OpenSecrets — coverage disclosure](https://www.opensecrets.org/about/policy) — cobertura desigual declarada (19/50 estados con datos de lobbying) — MEDIUM
+- [GitHub community #156282 — cron delays](https://github.com/orgs/community/discussions/156282) / [Monitoring GH Actions scheduled workflows — DEV](https://dev.to/krissv/monitoring-github-actions-scheduled-workflows-a-practical-guide-31h7) / [Prevent GitHub suspending cron — DEV](https://dev.to/gautamkrishnar/how-to-prevent-github-from-suspending-your-cronjob-based-triggers-knf) — cron delayed/dropped en high load, sin SLA, suspende tras 60 días sin commit — MEDIUM/HIGH
+- [Ley 21.719 y email marketing — Fidelizador](https://blog.fidelizador.com/2025/11/26/nueva-ley-de-proteccion-de-datos-en-chile-como-redefine-el-email-marketing-responsable/) / [Gestión de consentimiento — Confidata](https://confidata.cl/blog/como-implementar-gestion-consentimiento) / [RSM Chile](https://www.rsm.global/chile/es/news/ley-21719-proteccion-de-datos-personales) — doble opt-in recomendado, consentimiento libre/específico/informado/revocable, registro (fecha/hora/versión/método), encargado de tratamiento requiere contrato escrito — MEDIUM/HIGH

@@ -1,289 +1,123 @@
-# Stack Research — v9.0 (Robustez de productos estrella + seguridad)
+# Stack Research
 
-**Domain:** Retrieval híbrido de PL + deep-links de validación + bio/partido oficial + citaciones sala/comisiones (ambas cámaras) + validación de seguridad — sobre stack ya validado (Next.js 16 / Supabase PG15 + pgvector 0.8 / TS-Deno / R2 / service_role + allowlist)
-**Researched:** 2026-07-21
-**Confidence:** HIGH (extensiones y URL patterns verificados; SPARQL BCN MEDIUM)
+**Domain:** v10.0 — Panel de actualidad legislativa (landing) + notificaciones por suscripción, sobre Observatorio del Congreso 360 (Next.js 16 App Router / OpenNext-Cloudflare Workers + Supabase Postgres/pgvector 0.8 + R2 + GH Actions)
+**Researched:** 2026-07-23
+**Confidence:** HIGH (señales + clustering); MEDIUM/HIGH (notificaciones — depende de decisión de seguridad del operador)
 
-> **Regla de alcance:** NO re-investigar lo ya validado (pgvector HNSW 768-dim, RPC `match_proyectos`, FTS `buscar_citaciones` mig 0032, conectores Cámara/Senado/BCN, dos-etapas fuente→R2→Supabase, sitio lee con service_role + allowlist de RPCs — anon muerta). Todo lo de abajo es SÓLO lo nuevo. **Cero librerías nuevas de runtime** para lo central: el retrieval híbrido es **100% extensiones de Postgres + SQL** dentro del modelo `service_role + allowlist` existente. Los deep-links y bio/citaciones reutilizan `fetch`/`cheerio`/`fast-xml-parser` que ya están en el repo.
-
----
-
-## 1. Retrieval híbrido de proyectos de ley (el núcleo de v9.0)
-
-Hoy la búsqueda es **semántica-sólo** → falla con la palabra LITERAL del título (inaceptable en el producto estrella). La solución es **Postgres nativo**: FTS spanish + `unaccent` + `pg_trgm`, `tsvector` con pesos, y **fusión con pgvector vía Reciprocal Rank Fusion (RRF)** — el patrón oficial de Supabase. No entra ninguna dependencia de aplicación.
-
-### Extensiones de Postgres (todas disponibles en Supabase, `create extension`)
-
-| Extensión | Versión (Supabase PG15) | Propósito | Confianza |
-|-----------|--------------------------|-----------|-----------|
-| `unaccent` | built-in (contrib) | Quitar diacríticos → "citacion" matchea "citación". Base de FTS y trgm accent-insensitive. | HIGH |
-| `pg_trgm` | built-in (contrib) | `similarity()`, `word_similarity()`, operadores `%` / `<->` / `<%`; índices `gin_trgm_ops` / `gist_trgm_ops`. Cubre typos y match parcial del título/nombre. | HIGH |
-| `vector` (pgvector) | **0.8.2** (feb-2026; fija CVE-2026-3172) | Ya en uso (semántica 768-dim, HNSW). v9.0 sólo lo referencia en la RPC híbrida. | HIGH |
-| `fuzzystrmatch` | built-in (contrib) | `levenshtein()`, `metaphone` — OPCIONAL, sólo si `pg_trgm` no basta para apellidos. No recomendado de entrada. | HIGH |
-| `rum` | disponible en Supabase (Search & Indexing) | Índice invertido mejorado sobre GIN: guarda posiciones → `ts_rank_cd` más rápido y permite ordenar por rank dentro del índice. **NO adoptar en v9.0**: índice más grande y escrituras más lentas; el corpus (~3.657 PL) es chico y GIN basta. Anotado como escape hatch. | MEDIUM |
-
-> `unaccent` **no es IMMUTABLE** por defecto → para indexar hay que envolverlo:
-> ```sql
-> create extension if not exists unaccent;
-> create extension if not exists pg_trgm;
-> create or replace function public.f_unaccent(text) returns text
->   language sql immutable parallel safe strict
->   as $$ select public.unaccent('public.unaccent', $1) $$;
-> ```
-
-### Text search config spanish accent-insensitive (una vez)
-
-```sql
-create text search configuration public.es_unaccent ( copy = spanish );
-alter text search configuration public.es_unaccent
-  alter mapping for hword, hword_part, word
-  with public.unaccent, spanish_stem;
-```
-
-### tsvector con pesos (A título / B idea matriz / C normas)
-
-`setweight` A > B > C materializa la prioridad del producto (el título literal debe ganar). Generado + indexado:
-
-```sql
-alter table proyecto add column fts tsvector
-  generated always as (
-    setweight(to_tsvector('public.es_unaccent', coalesce(titulo,'')),        'A') ||
-    setweight(to_tsvector('public.es_unaccent', coalesce(idea_matriz,'')),   'B') ||
-    setweight(to_tsvector('public.es_unaccent', coalesce(normas_afectadas,'')),'C')
-  ) stored;
-create index idx_proyecto_fts on proyecto using gin (fts);
--- trgm para título/nombre (typos + substrings, sin stemming):
-create index idx_proyecto_titulo_trgm
-  on proyecto using gin (f_unaccent(titulo) gin_trgm_ops);
-```
-
-**Coste de índices:** GIN sobre `fts` y GIN trgm son baratos a esta escala (~3.657 filas; MB, no GB). El GIN trgm es el más pesado de los dos pero irrelevante aquí. Sin impacto en el plan Pro.
-
-### Número de boletín — normalización (regla explícita del milestone)
-
-El boletín es la llave de cruce más fuerte y el caso "obvio" que hoy falla. Tratarlo **fuera del FTS**, como short-circuit exacto:
-
-- Normalizar la query: si matchea `^\s*(\d{3,6})(-\d{1,2})?\s*$` → es un boletín.
-- `"16733-07"` debe hacer match exacto; `"16733"` debe traer `16733-07` (mismo número, cualquier sufijo de materia).
-- SQL: `where boletin = :q or boletin like :num || '-%'` (indexar `boletin` con btree; opcional columna generada `boletin_num int`).
-- **Este match exacto va PRIMERO** y con score máximo, antes de FTS/semántica. Un ciudadano que pega un boletín nunca debe recibir "sin resultados".
-
-### Fusión: Reciprocal Rank Fusion (patrón oficial Supabase) — VERIFICADO
-
-Fuente: `supabase.com/docs/guides/ai/hybrid-search` (Context7 `/llmstxt/supabase_llms-full_txt`). Combina dos CTEs (FTS + semántica) con `full outer join` y suma de rangos recíprocos. Fórmula:
-
-```
-score = coalesce(1.0/(rrf_k + fts.rank_ix),      0.0) * full_text_weight
-      + coalesce(1.0/(rrf_k + semantic.rank_ix), 0.0) * semantic_weight
-```
-
-Detalles del patrón oficial a respetar:
-- **`websearch_to_tsquery`** (no `plainto_tsquery`): entiende comillas y operadores del usuario, y **no lanza error** con sintaxis suelta (`plainto_` sí puede). Recomendado para input ciudadano.
-- **`ts_rank_cd`** dentro del CTE FTS (cover density; premia proximidad de términos). No es indexable, pero sólo rankea las filas del `where fts @@ query` (subconjunto chico) → sin problema.
-- `rrf_k = 50` (default Supabase; suaviza el peso de los primeros puestos). `full_text_weight`/`semantic_weight` como parámetros para el SPIKE.
-- **RRF usa RANGOS, no scores crudos** → no hay que normalizar distancia coseno vs `ts_rank`. Ésa es la razón de elegir RRF sobre "sumar scores".
-- Semántica: mantener el operador y `ops` que YA usa `match_proyectos` (coseno `<=>` / `vector_cosine_ops`). El ejemplo de Supabase usa `<#>`/`vector_ip_ops`; **no cambiar el operador existente** — RRF sólo necesita el orden, no la métrica.
-
-Firma sugerida (nueva RPC en la allowlist, `security definer`, `service_role`):
-
-```sql
-create or replace function buscar_proyectos_hibrido(
-  query_text text,
-  query_embedding vector(768),
-  match_count int  default 20,
-  full_text_weight float default 1.0,
-  semantic_weight  float default 1.0,
-  rrf_k int default 50
-) returns setof proyecto
-language sql stable
-as $$
-  with full_text as (
-    select id, row_number() over (
-             order by ts_rank_cd(fts, websearch_to_tsquery('public.es_unaccent', query_text)) desc
-           ) as rank_ix
-    from proyecto
-    where fts @@ websearch_to_tsquery('public.es_unaccent', query_text)
-    order by rank_ix limit least(match_count, 30) * 2
-  ),
-  semantic as (
-    select id, row_number() over (order by embedding <=> query_embedding) as rank_ix
-    from proyecto
-    where embedding is not null
-    order by rank_ix limit least(match_count, 30) * 2
-  )
-  select p.* from full_text
-    full outer join semantic on full_text.id = semantic.id
-    join proyecto p on p.id = coalesce(full_text.id, semantic.id)
-  order by
-    coalesce(1.0/(rrf_k + full_text.rank_ix), 0.0) * full_text_weight +
-    coalesce(1.0/(rrf_k + semantic.rank_ix), 0.0) * semantic_weight desc
-  limit match_count;
-$$;
-```
-
-> **El boletín exacto NO va en esta RPC** — resuélvelo en la capa de aplicación (o una RPC aparte `buscar_por_boletin`) y antepón sus resultados. Mezclar un match exacto dentro del RRF lo diluye.
-
-### Ranking + filtros client-side (producto 1b)
-
-- **Ranking de negocio** (mensaje del Ejecutivo > moción, recencia): aplicar como `order by` secundario / boost sobre el resultado del híbrido, NO dentro del RRF. Mantenerlo en SQL o en TS post-fetch — es determinista y barato.
-- **Filtros client-side** (año, mensaje/moción, partido, archivado/en tramitación): la RPC devuelve un lote (p.ej. top 50) con TODOS los campos de faceta; el filtrado/reordenado ocurre **en el cliente sin re-buscar**. Cero librería nueva (React state). No introducir un motor de búsqueda cliente (Fuse.js/FlexSearch) — el corpus por página es chico y el orden ya viene del servidor.
-
-### SPIKE empírico (lo exige el milestone)
-
-El milestone pide elegir la estrategia por golden queries. Montar 3 candidatas contra el mismo golden set y medir recall@k del "caso obvio":
-1. FTS-sólo (pesos A/B/C),
-2. semántica-sólo (baseline actual),
-3. RRF híbrido (recomendado).
-Casi con certeza gana (3), pero el número honesto sale del SPIKE, no de la fe.
+> **Regla de oro de este milestone:** casi todo lo que se necesita YA está en el sobre actual (Postgres + pg_cron + GH Actions + R2). Las UNICAS piezas net-new son: (1) un envío de email transaccional (Resend), y (2) el primer subsistema de datos-de-usuario (Supabase Auth + tablas con RLS real + publishable key). Todo lo demás son patrones SQL/cron sobre datos ya ingeridos. **No añadir infra de cola, cache ni broker.**
 
 ---
 
-## 2. Deep-links de validación por boletín (producto 1c) — URLs VERIFICADAS
+## Recommended Stack
 
-Cada PL debe ofrecer un link que el ciudadano abre para **verificar en la fuente oficial**. Patrones probados (búsqueda en vivo 2026-07-21):
+### Core Technologies (nuevas / cambios)
 
-| Cámara/origen | Patrón de URL | Notas | Confianza |
-|---------------|---------------|-------|-----------|
-| **Senado** (tramitación) | `https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini={BOLETIN}` | `{BOLETIN}` con sufijo (`17441-15`) → ficha directa. **Sin** sufijo (`12616`) → página de "boletines encontrados" (lista). Usar SIEMPRE el boletín completo. | HIGH |
-| **Cámara** (tramitación) | `https://www.camara.cl/legislacion/proyectosdeley/tramitacion.aspx?prmID={ID}&prmBOLETIN={BOLETIN}` | Requiere `prmID` (ID interno del proyecto) **además** del boletín. `prmBOLETIN` solo NO garantiza la ficha. El `prmID` ya viene en `doGet.asmx`/`WSLegislativo` → persistirlo por proyecto. | HIGH |
-| **BCN LeyChile** (norma final) | `https://www.bcn.cl/leychile/navegar?idNorma={ID}` | Para la ley promulgada (cuando existe). El `idNorma` sale del XML `obtxml` ya ingerido. | MEDIUM |
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| **Tabla de señales precomputada** (`senal_actualidad`, tabla normal Postgres) refrescada por **pg_cron** | Postgres 15+ (ya en Supabase) | (a) Señales cuantitativas del panel — movimiento, nuevos ingresos, urgencias, votaciones próximas, leyes publicadas | Cero infra nueva. El panel lee de una tabla plana e indexada (rápido, SSR-friendly bajo service_role), y un job la reconstruye. Preferible a **materialized view** aquí porque las señales combinan varias fuentes/ventanas y quieres control de orden/etiqueta/dedup; una tabla `TRUNCATE`+`INSERT` (o `UPSERT`) en una transacción da lecturas consistentes sin el lock de `REFRESH` no-concurrente ni la unique-index de `CONCURRENTLY`. |
+| **Supabase Auth — Email OTP (6-dígitos) / Magic Link** | GoTrue actual (Supabase plataforma) | (c) Identidad del usuario que se suscribe | Sin password (el proyecto no quiere gestionar credenciales). OTP/magic-link es el flujo mínimo defendible. **Requiere Custom SMTP** (ver Resend) — el SMTP interno de Supabase da solo **2 auth-emails/hora** y no es para producción. |
+| **Supabase publishable key** (`sb_publishable_…`) **+ RLS estricta** SOLO en el esquema/tablas de suscripción | Formato de llaves nuevo (GA 2026; legacy anon/service_role se retiran fin de 2026) | (c) Primer acceso de baja-privilegio del navegador, ACOTADO a `suscripcion`/`usuario_perfil` | Hoy la anon está MUERTA y el sitio corre service_role (bypassa RLS). Para datos de usuario necesitas lo contrario: privilegio bajo + RLS que muerde. La publishable key = mismo privilegio bajo que la anon legacy, con RLS `auth.uid() = user_id`. **Se introduce sin resucitar la anon**: es una llave nueva, y las tablas de suscripción son las UNICAS con policies `to authenticated`; el resto del esquema público sigue sin exposición anon. |
+| **Resend** (email transaccional) | API v4 / SDK `resend` 4.x | (c) Entrega de: (1) los correos de auth de Supabase (OTP/magic link) vía Custom SMTP, y (2) el digest/alertas de suscripción vía API HTTP | Free tier **3.000 emails/mes, 100/día, 1 dominio verificado, logs 30 días** ([Resend quotas](https://resend.com/docs/knowledge-base/account-quotas-and-limits)). Cubre arranque holgado. SDK TS nativo, funciona desde GH Actions (Node) y desde Edge/Workers (HTTP). Un solo proveedor cubre AMBOS caminos (auth SMTP + digest API) → una sola verificación de dominio, una sola factura. |
 
-**Regla de implementación:** guardar `prmID` (Cámara) e `idNorma` (BCN) como columnas del proyecto durante la ingesta que YA corre — no re-scrapear para el link. Fragmentos/anchors (`#...`) en estas páginas ASP.NET/PHP no son estables → NO depender de ellos; el deep-link a nivel de boletín es la unidad verificable estable. El texto del link debe seguir la regla rectora: "Ver en {Senado|Cámara} oficial · fuente · fecha".
+### Supporting Libraries / patrones
 
----
+| Library / patrón | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| **k-means en SQL puro** (Lloyd sobre `vector` con `<=>`) o **extensión `kmeans` PGXN** | pgvector 0.8.x | (b) Agrupar por TEMA los proyectos con movimiento reutilizando los embeddings 768d ya existentes | k pequeño (p.ej. 8–15 clusters sobre las ~decenas/cientos de PLs con movimiento reciente), corrido **OFFLINE en el mismo cron de señales** con **seed fija** → determinista. No necesita índice; es un scan sobre un subconjunto pequeño. Guardar `cluster_id` + `centroid` en `senal_actualidad`. |
+| **Etiqueta factual del cluster = moda de `materia`/`comisión`** (SQL `mode()`), NO LLM | — | (b) Nombrar el cluster sin editorializar | El proyecto ya tiene materia/comisión por PL. La etiqueta del cluster = la materia/comisión más frecuente del cluster (dato de la fuente, con fuente/fecha). Cero riesgo de "máquina de sospechas" ni de alucinación. Cae dentro de la regla rectora: label es dato, no interpretación. |
+| **`web-push` / `pushforge`** | pushforge (zero-dep, Workers-compatible) | (c, FALLBACK) Web push VAPID como canal alternativo al email | Solo si el operador quiere push. `pushforge` corre en Cloudflare Workers/Deno sin deps nativas ([PushForge](https://github.com/draphy/pushforge)). Requiere Service Worker en el cliente + tabla `push_subscription`. **Recomendado DIFERIR** (ver "What NOT to Use" — CSP + service worker + gestión de VAPID añaden superficie; email cubre el caso 1). |
+| **Supabase JS** (`@supabase/supabase-js`) v2 | ya en el repo | Cliente Auth (`signInWithOtp`, `verifyOtp`) en Route Handlers/Server Actions + cliente RLS con publishable key | Reutiliza el cliente existente; solo se añade el flujo de Auth. |
+| **`resend` SDK** | 4.x | Envío del digest desde el cron (Node en GH Actions) | `import { Resend } from 'resend'`; una línea por email o batch. |
 
-## 3. Bio oficial + partido de parlamentarios (producto 2d)
+### Development Tools
 
-Dos fuentes máquina-legibles; usar la de Cámara como primaria para diputados por ser estructurada y ya en el stack, y BCN para la biografía narrativa/histórica y senadores.
-
-| Fuente | Endpoint | Qué entrega | Confianza |
-|--------|----------|-------------|-----------|
-| **Cámara — WSCamaraDiputados** | `https://opendata.congreso.cl/wscamaradiputados.asmx?op=getDiputados` (también `getDiputados_Vigentes`, `getDiputados_Periodo`) | **Partido incluido**: `Militancia_Actual` (partido vigente con fechas/estado) + `Militancias_Periodos` (histórico), más `Distrito`, `Sexo`, `Fecha_Nacimiento`, `Correo`, `DIPID`. **HTTP GET devuelve XML directo** (sin envelope SOAP) → `fetch` + `fast-xml-parser`, igual patrón que Senado. | HIGH |
-| **BCN — Biografías Parlamentarias** | SPARQL endpoint `datos.bcn.cl` (ontología `bcn-biographies` / prefijo `bcnbio:`), ruta web `.../sparql`; ~3.900 congresistas 1811→hoy | Biografía histórica/trayectoria política narrativa. RDF/OWL, `SELECT` SPARQL → JSON. **No hay REST por-ID documentado**; se consulta por SPARQL. Útil para senadores y para la "historia política" cruzable. | MEDIUM |
-
-**Recomendación de fuente de partido:** para **diputados**, `Militancia_Actual` de WSCamaraDiputados (estructurado, autoritativo, ya scrapeable con el toolkit actual). Para **senadores**, cruzar `senadores_vigentes.php` (ya en uso, trae PARLID) con BCN si se necesita partido; la militancia de senadores también aparece en su ficha del portal Senado. Evitar inventar partido por heurística — fail-closed si la fuente no lo trae.
-
-**Integración SPARQL (si se adopta BCN):** cliente = `fetch` con `Content-Type: application/sparql-query` (POST) o query-string (GET), `Accept: application/sparql-results+json`. **Cero librería nueva** — no hace falta un cliente RDF; parsear el JSON de resultados con `JSON.parse`. Guardar el crudo en R2 (dos-etapas LOCKED) igual que las demás fuentes. MEDIUM porque el endpoint exacto y la estabilidad del SPARQL de BCN deben probarse en un SPIKE antes de comprometerlo.
-
----
-
-## 4. Citaciones COMPLETAS: sala + comisiones, ambas cámaras (producto 2f)
-
-El milestone pide **auditoría de cobertura antes de tocar UI**. Endpoints que existen para sala Y comisiones:
-
-| Cámara | Recurso | Endpoint | Tipo / toolkit | Confianza |
-|--------|---------|----------|----------------|-----------|
-| **Cámara** | Citaciones semana (sala + comisiones) | `https://www.camara.cl/legislacion/comisiones/citaciones_semana.aspx?prmSemana={AAAA}-{NN}` | HTML ASP.NET (ya en uso). `prmSemana` = año-semana ISO (`2025-49`). Cubre la agenda semanal. | HIGH |
-| **Cámara** | Comisiones vigentes | `wscamaradiputados.asmx?op=getComisiones_Vigentes` (opendata.congreso.cl) | XML vía HTTP GET → `fast-xml-parser`. Catálogo de comisiones (para estructurar). | HIGH |
-| **Cámara** | Sesiones (sala) | `getSesiones` / `getSesionDetalle` (mismo WS) | XML. Detalle de sesión de sala. | HIGH |
-| **Senado** | Citaciones por comisión / por fecha | `https://tramitacion.senado.cl/appsenado/index.php?mo=comisiones&ac=citacionesComision&tipo_consulta={1\|4}` | App PHP clásica (`tipo_consulta=1` por fecha, `=4` por comisión). HTML → `cheerio`. **Distinto del portal Next.js** — más estable, sin `buildId`. | HIGH |
-| **Senado** | Listado de comisiones | `https://tramitacion.senado.cl/appsenado/index.php?mo=comisiones&ac=listado` | HTML → `cheerio`. Catálogo. | HIGH |
-| **Senado** | Citaciones (portal actual) | portal Next.js `__NEXT_DATA__` (ya en uso, `buildId` autodetectado) | Mantener como está; el PHP de arriba es respaldo/complemento para comisiones. | MEDIUM |
-
-**Auditoría de cobertura primero:** cruzar lo que hoy se ingiere (`citacion`, `sesion_tabla_item`) contra estos endpoints para cuantificar el gap (sala vs comisiones, Cámara vs Senado) — es un ejercicio de **datos + SQL de conteo**, no de librerías. Nueva superficie estructurada por día con filtros = React state (igual que 1b). Cero dependencia nueva.
-
----
-
-## 5. Validación de seguridad final (producto 3) — breve, ya hay guards
-
-El repo es **público** y hay lockdown (guard CI PII, anon muerta, service_role + allowlist, headers/CSP Report-Only live desde v8.1). Herramientas actuales a correr como gate:
-
-| Herramienta | Qué valida | Cómo | Confianza |
-|-------------|-----------|------|-----------|
-| **Supabase Splinter** (database linter / Security Advisor) | RLS deshabilitada, policies laxas, `security definer` views inseguras, funciones expuestas, columnas sensibles. | Dashboard → Advisors, o SQL de `supabase/splinter` en CI. Es EL linter de seguridad oficial de Supabase. | HIGH |
-| **`index_advisor`** (extensión Supabase) | Sugiere índices faltantes para las queries nuevas (híbrido/citaciones). | `create extension index_advisor`; complementa, no reemplaza `explain`. | HIGH |
-| **`pnpm audit`** | CVEs en dependencias npm del monorepo. | `pnpm audit --prod` en CI; ya hay Dependabot npm apuntado a la raíz (commit c29087a). | HIGH |
-| **Secret scanning / push protection** | Claves filtradas en repo público. | GitHub secret scanning + push protection (repo público lo trae); complementa el guard PII propio. | HIGH |
-| **CSP** | Endurecer de `Report-Only` a enforcing. | Revisar reportes acumulados; mover a `Content-Security-Policy` enforce cuando el ruido sea 0. Evaluar con Mozilla Observatory / CSP Evaluator (manual). | MEDIUM |
-| **pgvector 0.8.2** | CVE-2026-3172 (buffer overflow en build HNSW paralelo). | Confirmar que Supabase corre ≥0.8.2. Acción de verificación, no de código. | HIGH |
-
-No añadir DAST/scanners pesados: el modelo ya es deny-by-default (anon muerta, RPCs allowlisted). El foco es **correr Splinter + audit + confirmar CSP enforce + versión pgvector**, no herramienta nueva.
-
----
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| **pg_cron** (ya instalado) | Scheduler del refresco de señales + clustering, y (opción B) del digest | Añadir 1–2 jobs: `senal-actualidad-refresh` (intradía, p.ej. cada 3–6 h L–V) y opcionalmente `digest-diario`. ≤8 jobs concurrentes, ≤10 min/job — el refresco es un agregado sobre datos ya en DB, sub-segundo. |
+| **GitHub Actions cron** (ya en uso) | Alternativa/host del digest diario (Node + `resend`) | Si el digest requiere lógica TS compleja o llamar Resend con retry/observabilidad, correrlo en Actions (ya hay el patrón de crons semanales). GH Actions NO tiene el límite de 10ms CPU de Workers ni los 100/día de invocaciones. |
 
 ## Installation
 
 ```bash
-# NADA nuevo en package.json para el núcleo. Todo el retrieval híbrido es SQL/extensiones:
+# Frontend / Route Handlers (ya existe @supabase/supabase-js)
+pnpm add resend                      # SDK email (digest + fallback)
+# (opcional, solo si se hace web push)
+pnpm add pushforge                   # VAPID web push, Workers-compatible
 
-# Postgres (migración nueva, aplicar por psql --db-url como las anteriores):
-#   create extension if not exists unaccent;
-#   create extension if not exists pg_trgm;
-#   -- (opcional seguridad) create extension if not exists index_advisor;
-#   -- f_unaccent(), text search config es_unaccent, columnas fts + índices GIN/trgm,
-#   -- RPC buscar_proyectos_hibrido() + buscar_por_boletin() → añadir a la allowlist.
+# Postgres (SQL, una vez) — pg_cron ya instalado; solo nuevos jobs + tablas
+#   create table senal_actualidad (...);            -- tabla plana precomputada
+#   create table usuario_perfil (...);              -- RLS: auth.uid()=id
+#   create table suscripcion (...);                 -- RLS: auth.uid()=user_id
+#   create table notificacion_pendiente (...);      -- cola de digest (tabla, no broker)
+#   select cron.schedule('senal-actualidad', '0 */4 * * 1-5', $$ call refrescar_senales() $$);
 
-# Conectores (Deno) — reusar lo que YA está importado:
-#   import * as cheerio from "npm:cheerio@1.2.0";          # HTML Senado PHP / Cámara semana
-#   import { XMLParser } from "npm:fast-xml-parser@5";     # WSCamaraDiputados getDiputados (XML)
-#   fetch nativo                                            # deep-links, SPARQL BCN, opendata
+# Supabase Dashboard (acción de operador, no código):
+#   - Auth > Providers > Email: enable Email OTP / Magic Link
+#   - Auth > SMTP: Custom SMTP = Resend (host smtp.resend.com, credenciales de Resend)
+#   - Settings > API Keys: crear publishable key (sb_publishable_…) — NO reactivar anon legacy
 ```
 
 ## Alternatives Considered
 
-| Recomendado | Alternativa | Cuándo usar la alternativa |
-|-------------|-------------|-----------------------------|
-| RRF (rangos) en SQL | Sumar scores normalizados (ts_rank + coseno) | Nunca aquí — normalizar dos métricas distintas es frágil; RRF es el patrón oficial Supabase y usa rangos. |
-| GIN sobre tsvector | `rum` index | Sólo si `ts_rank_cd` se vuelve cuello de botella a corpus mucho mayor; hoy overkill (más disco, escrituras lentas). |
-| `websearch_to_tsquery` | `plainto_tsquery` / `phraseto_tsquery` | `plainto_` si NO se quiere que el usuario use operadores; pero `websearch_` es más robusto a input libre y no lanza error. |
-| `pg_trgm` para fuzzy | `fuzzystrmatch` (levenshtein/metaphone) | Sólo si trgm falla en apellidos compuestos; medir antes de añadir. |
-| WSCamaraDiputados para partido de diputados | BCN SPARQL para partido | BCN para biografía narrativa/histórica y senadores; para partido vigente de diputados, el WS es más directo. |
-| Filtros client-side (React state) | Motor cliente (Fuse.js/FlexSearch) | Nunca — el corpus por página es chico y el orden ya lo da el servidor; añadir un motor cliente duplica lógica. |
-| Senado comisiones vía app PHP (`?mo=comisiones`) | Portal Next.js `__NEXT_DATA__` | El portal para lo que ya cubre; PHP para comisiones (más estable, sin `buildId`). |
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| Tabla `senal_actualidad` precomputada por pg_cron | **Materialized view + `REFRESH CONCURRENTLY`** | Si la señal fuera UNA sola query determinista y no necesitaras dedup/orden/etiqueta cruzada. `CONCURRENTLY` exige unique index y recomputa todo; para señales multi-fuente la tabla + `TRUNCATE/UPSERT` en txn es más simple y evita el lock del refresh no-concurrente. |
+| Tabla `senal_actualidad` precomputada | **SQL agregado directo en cada request** | Solo si las señales fueran triviales y de bajo costo. En la landing (primera pantalla, mucho tráfico) precomputar evita recalcular agregados por visita y da latencia estable bajo service_role. |
+| k-means SQL con seed fija (determinista) | **Agrupación por vecindad HNSW** (kNN transitivo / componentes conexas sobre umbral de similitud) | Si prefieres clusters "orgánicos" sin fijar k. Riesgo: menos determinista y clusters de tamaño desigual. k-means con seed fija es reproducible y explicable — mejor para un producto que exige trazabilidad. |
+| Etiqueta = moda de materia/comisión (factual) | **Label por LLM** (DeepSeek/MiniMax) | Solo si materia/comisión no discriminan bien el cluster Y con eval propio + guardrail anti-editorial + validación humana. Contradice la regla rectora si se usa por defecto → evitar en v10.0. |
+| Resend (email) | **Supabase Auth interno SMTP** | NUNCA en producción para volumen: 2 auth-emails/hora. Solo dev. |
+| Resend | **Amazon SES / Postmark / SendGrid** | SES si superas 3.000/mes de forma sostenida (más barato a escala, más setup). Postmark si necesitas mejor deliverability transaccional pagada. Para el arranque, Resend free basta. |
+| Digest desde **GH Actions cron** | **pg_cron + pg_net → Edge Function** | Si quieres el digest 100% dentro de Supabase sin CI. Válido; pero GH Actions ya es el patrón de crons del repo y no tiene límites de CPU/tiempo de Edge — menos fricción reutilizar el mismo host. |
+| Email (canal primario) | **Web push (pushforge/VAPID)** | Si el operador prioriza alertas instantáneas y hay apetito por Service Worker + CSP-tuning. Diferir a un milestone posterior. |
 
 ## What NOT to Use
 
-| Evitar | Por qué | En su lugar |
-|--------|---------|-------------|
-| Motor de búsqueda externo (Elasticsearch/Typesense/Meilisearch) | Infra extra que contradice "todo en Supabase"; PG FTS+trgm+RRF cubre 3.657 PL de sobra. | Postgres nativo (FTS + pg_trgm + RRF con pgvector). |
-| Meter el match de boletín DENTRO del RRF | Diluye un match exacto y determinista con rangos aproximados. | Short-circuit exacto ANTES del híbrido. |
-| `unaccent()` crudo en índices | No es IMMUTABLE → el índice no se puede crear. | Wrapper `f_unaccent()` IMMUTABLE. |
-| `ts_rank_cd` como columna indexada | No es indexable; intentarlo es error. | Calcularlo en el CTE FTS sobre el subconjunto del `where` (patrón Supabase). |
-| Anchors/fragmentos `#` en deep-links oficiales | No estables en ASP.NET/PHP; rompen silenciosamente. | Deep-link a nivel de boletín (unidad verificable estable). |
-| `prmBOLETIN` solo para el link de Cámara | La ficha requiere `prmID`; sin él puede no resolver. | Persistir `prmID` en ingesta y usar `prmID`+`prmBOLETIN`. |
-| Cliente RDF pesado para BCN SPARQL | Innecesario; el endpoint devuelve JSON de resultados. | `fetch` + `JSON.parse` + guardar crudo en R2. |
-| Inventar partido por heurística cuando la fuente calla | Riesgo existencial #1 (afirmación falsa creíble). | Fail-closed: sin fuente, sin dato. |
-| DAST/scanner pesado nuevo para la pasada de seguridad | Modelo ya deny-by-default; ruido sin señal. | Splinter + pnpm audit + CSP enforce + versión pgvector. |
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| **Reactivar la anon key legacy** para leer tablas de suscripción | Resucitar la anon reabre superficie en TODO el esquema (RLS histórica no diseñada para anon); rompe el lockdown Camino A | **Publishable key nueva** (`sb_publishable_`) + RLS `to authenticated` SOLO en `suscripcion`/`usuario_perfil`; resto del esquema intacto |
+| **service_role para escribir suscripciones desde el navegador** | service_role bypassa RLS → un cliente hostil podría suscribir/leer de otros usuarios; repo público = sujetos hostiles | **RLS real** con la publishable key: policies `auth.uid() = user_id`; o Route Handler server-side que valida la sesión y escribe con service_role tras `auth.getUser()` |
+| **`response_format`/LLM para etiquetar clusters por defecto** | Editorializa; riesgo "máquina de sospechas" (riesgo existencial #2 del PROJECT) | Etiqueta factual = moda de materia/comisión (dato de fuente) |
+| **Materialized view con `REFRESH` no-concurrente en tabla que la landing lee** | Toma `ACCESS EXCLUSIVE` lock → la landing se bloquea durante el refresh | Tabla precomputada con `TRUNCATE`+`INSERT`/UPSERT en una txn, o matview + `CONCURRENTLY` (con unique index) |
+| **Web push como canal primario en v10.0** | Service Worker + VAPID + `connect-src`/`worker-src` en la CSP enforced (deploy `09f1d5c2`) + gestión de suscripciones caducadas = superficie nueva sin payoff inmediato | Email vía Resend primero; push como fase futura opcional |
+| **BullMQ/Redis o cualquier broker para el digest** | Infra extra que contradice "todo en Supabase/CF/GH" | Tabla `notificacion_pendiente` como cola + cron que la drena (o pgmq si ya está instalado) |
+| **Enviar el correo del usuario al LLM o loguearlo en claro en repo público** | El email es PII real bajo **Ley 21.719** (vigencia plena 2026-12-01) → dato personal, no "fuente pública" | Email vive solo en `auth.users` (Supabase) + `usuario_perfil`; nunca en logs de CI, nunca al LLM, nunca en R2 crudo |
+| **Cloudflare Workers Cron para el digest pesado** | Free plan = 10 ms CPU/invocación + 100k req/día + sin retries automáticos | GH Actions (sin límite de CPU) o pg_cron+Edge |
 
 ## Stack Patterns by Variant
 
-**Si el SPIKE muestra recall insuficiente del "caso obvio" aún con RRF:**
-- Subir `full_text_weight` y añadir un boost explícito a match de título por `word_similarity()` (trgm) antes de la semántica.
-- Porque el fallo del producto estrella es literal-en-título; el peso A + trgm lo ataca directamente.
+**Si el operador quiere el modelo de seguridad más simple y auditable (RECOMENDADO):**
+- Toda escritura/lectura de suscripción pasa por **Route Handlers server-side**: `supabase.auth.getUser()` valida la sesión (cookie), y el handler escribe con service_role tras filtrar por `user.id`.
+- Porque mantiene UN solo cliente privilegiado, no expone ninguna llave nueva al navegador, y el boundary es el mismo patrón "cada superficie valida" del PROJECT (Key Decision v9.0: cada RPC enhebra la aguja). RLS queda como defensa en profundidad, no como único muro.
 
-**Si crece el corpus a decenas de miles y `ts_rank_cd` pesa:**
-- Evaluar `rum` index sobre el tsvector.
-- Porque rum guarda posiciones y acelera el ranking; a la escala actual no compensa.
+**Si el operador quiere lecturas reactivas directas desde el cliente (realtime de "mis suscripciones"):**
+- Emitir **publishable key** + RLS `auth.uid() = user_id` estricta SOLO en `suscripcion`/`usuario_perfil` (+ `revoke all` al resto para el rol `authenticated`).
+- Porque habilita el cliente Supabase en el navegador con privilegio bajo real, sin resucitar la anon. Requiere `connect-src 'self' + *.supabase.co` en la CSP (ya está para el proyecto).
 
-**Si BCN SPARQL resulta inestable en el SPIKE:**
-- Degradar a biografía mínima desde WSCamaraDiputados (diputados) + ficha portal Senado (senadores), sin narrativa histórica.
-- Porque partido/período vigente ya cubre el cruce; la biografía histórica es "nice to have".
+**Si el volumen de digest supera 100 emails/día:**
+- Agrupar en **digest diario batched** (1 email por usuario con N novedades) y/o subir a Resend pago ($20/mes, 50k) o Amazon SES.
+- Porque el free tier tope real es 100/día, no 3.000/mes; el digest batched mantiene 1 email/usuario/día → 100 usuarios activos caben en free.
 
 ## Version Compatibility
 
-| Paquete/extensión | Compatible con | Notas |
-|-------------------|----------------|-------|
-| pgvector 0.8.2 | Postgres 15 (Supabase) | Fija CVE-2026-3172; confirmar que la nube corre ≥0.8.2. |
-| unaccent / pg_trgm | Postgres 15 (contrib, Supabase) | `create extension`; wrapper IMMUTABLE para indexar unaccent. |
-| RRF (patrón Supabase) | pgvector 0.8 + GIN tsvector | Usa rangos; independiente del operador de distancia — mantener `<=>`/coseno de `match_proyectos`. |
-| cheerio 1.2.0 | Deno 2.x | Ya en uso; Senado PHP comisiones + Cámara semana. |
-| fast-xml-parser 5.10.1 | Deno 2.x | Ya en uso; `getDiputados` XML de opendata.congreso.cl (quedarse en 5.x, v6 experimental). |
-| WSCamaraDiputados HTTP GET | fetch + fast-xml-parser | Devuelve XML directo (sin SOAP envelope) por GET. |
+| Package A | Compatible With | Notes |
+|-----------|-----------------|-------|
+| `resend` 4.x | Node 18+ (GH Actions) / Fetch (Workers, Edge) | SDK usa fetch; funciona server-side en ambos hosts. Nunca desde el navegador (expone API key). |
+| Supabase publishable key | RLS policies existentes | Comportamiento idéntico a anon legacy en permisos; convive con service_role sin afectarlo. Legacy anon/service_role válidas hasta que se desactiven manualmente (retiro fin 2026). |
+| Custom SMTP (Resend) | Supabase Auth (GoTrue) | Sube el límite de auth-emails de 2/h (interno) a 30 nuevos usuarios/h (custom SMTP default, configurable). |
+| pushforge | Cloudflare Workers / Deno / Node | Zero-dep, TS-first; si se adopta push. Requiere VAPID keypair en secrets. |
+| k-means SQL / kmeans PGXN | pgvector 0.8.x `vector`/`halfvec` | Opera sobre columnas `vector(768)` ya existentes; `<=>` (cosine) como distancia — consistente con cómo se generaron los embeddings Gemini. |
+| pg_cron (nuevos jobs) | pg_net (ya instalado) | Solo se necesita pg_net si el cron invoca una Edge Function; si el refresco es SQL puro (`call refrescar_senales()`), no. |
 
 ## Sources
 
-- [Hybrid search — Supabase Docs](https://supabase.com/docs/guides/ai/hybrid-search) + Context7 `/llmstxt/supabase_llms-full_txt` — SQL RRF exacto (`ts_rank_cd`, `websearch_to_tsquery`, `<#>`, `full outer join`, `rrf_k=50`, pesos) — HIGH
-- pg_trgm / unaccent — Postgres 15 + Supabase (contrib); wrapper `f_unaccent` IMMUTABLE; config `es_unaccent`; [dev.to full-text search Supabase](https://dev.to/reclusivecoder/skip-elasticsearch-build-blazing-fast-full-text-search-right-in-supabase-58pf) + [PostgreSQL docs F.48 unaccent](https://www.postgresql.org/docs/current/unaccent.html) — HIGH
-- [RUM — Supabase Docs](https://supabase.com/docs/guides/database/extensions/rum) + [64+ extensions ranked](https://1bench.dev/extensions/postgresql/on-supabase) — rum disponible, no recomendado a esta escala — MEDIUM
-- [pgvector 0.8.2 released — postgresql.org](https://www.postgresql.org/about/news/pgvector-082-released-3245) — CVE-2026-3172, halfvec, iterative scan — HIGH
-- Deep-link Senado: [tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=17441-15](https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=17441-15) (verificado; sin sufijo → lista) — HIGH
-- Deep-link Cámara: `camara.cl/legislacion/proyectosdeley/tramitacion.aspx?prmID=…&prmBOLETIN=…` (varios ejemplos en vivo) — requiere `prmID` — HIGH
-- [BCN Biografías Parlamentarias — ontología](https://datos.bcn.cl/ontologies/bcn-biographies/doc/) + [Consultas SPARQL](https://datos.bcn.cl/es/documentacion/consultas-sparql) — endpoint SPARQL, `bcnbio:`, ~3.900 congresistas; sin REST por-ID — MEDIUM
-- [WSCamaraDiputados — opendata.congreso.cl](https://opendata.congreso.cl/wscamaradiputados.asmx) — `getDiputados` trae `Militancia_Actual`/`Militancias_Periodos`/`Distrito`; HTTP GET devuelve XML directo; `getComisiones_Vigentes`, `getSesiones`, `getSesionDetalle` — HIGH
-- Cámara citaciones semana: `camara.cl/legislacion/comisiones/citaciones_semana.aspx?prmSemana=2025-49` (HTML, sala+comisiones) — HIGH
-- Senado comisiones (app PHP): `tramitacion.senado.cl/appsenado/index.php?mo=comisiones&ac=citacionesComision&tipo_consulta=1|4` + `ac=listado` — HIGH
-- [Splinter — Supabase Postgres Linter](https://github.com/supabase/splinter) + [Supabase Security Retro 2025](https://supabase.com/blog/supabase-security-2025-retro) — linter oficial RLS/security; `index_advisor`; push protection 2026 — HIGH
+- [Resend — account quotas and limits](https://resend.com/docs/knowledge-base/account-quotas-and-limits) / [New Free Tier](https://resend.com/blog/new-free-tier) — free 3.000/mes, 100/día, 1 dominio, logs 30d — **HIGH**
+- [Supabase — Understanding API keys](https://supabase.com/docs/guides/getting-started/api-keys) / [Migrating to publishable and secret keys](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys) / [Discussion #40300](https://github.com/orgs/supabase/discussions/40300) — publishable = privilegio bajo (RLS respetada), legacy retiro fin 2026, proyectos nuevos ya sin anon/service_role legacy — **HIGH**
+- [Supabase — Custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp) / [Going into prod checklist](https://supabase.com/docs/guides/deployment/going-into-prod) — SMTP interno 2 auth-emails/h no apto prod; custom SMTP obligatorio; Resend/SES/Postmark soportados — **HIGH**
+- [kmeans PGXN extension](https://pgxn.org/dist/kmeans/doc/kmeans.html) / [pgvector production 2026](https://devstarsj.github.io/2026/06/22/pgvector-postgres-vector-database-production-2026/) / [Encore — you probably don't need a vector DB](https://encore.dev/blog/you-probably-dont-need-a-vector-database) — k-means como window function en PG; pgvector < 10M vectores = simple/rápido; clusters semánticos emergen de embeddings — **MEDIUM/HIGH**
+- [PostgreSQL — materialized views with concurrent refresh](https://www.postgresql.org/about/featurematrix/detail/materialized-views-with-concurrent-refresh) / [Stormatics — matviews when caching makes sense](https://stormatics.tech/blogs/postgresql-materialized-views-when-caching-your-query-results-makes-sense) — `CONCURRENTLY` requiere unique index + recomputa todo; refresh no-concurrente toma lock; pg_cron cadencia — **HIGH**
+- [PushForge (GitHub)](https://github.com/draphy/pushforge) / [Cloudflare Agents — push notifications](https://developers.cloudflare.com/agents/guides/push-notifications/) — VAPID web push zero-dep en Workers/Deno; Push API soporte universal 2026 — **MEDIUM**
+- [Cloudflare Workers Cron Triggers limits 2026 (Runhooks)](https://runhooks.app/blog/cloudflare-workers-cron-triggers-limits/) / [Crontap](https://crontap.com/blog/cloudflare-workers-cron-minute-limit) — free 5 crons, 100k req/día, 10ms CPU, sin retries — **MEDIUM/HIGH**
 
 ---
-*Stack research for: retrieval híbrido PL + deep-links + bio/partido + citaciones sala/comisiones + validación de seguridad (v9.0)*
-*Researched: 2026-07-21*
+*Stack research for: v10.0 panel de actualidad + notificaciones (adiciones al sobre existente Supabase/Cloudflare/GH Actions)*
+*Researched: 2026-07-23*

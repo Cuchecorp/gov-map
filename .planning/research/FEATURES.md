@@ -1,322 +1,223 @@
 # Feature Research
 
-**Domain:** Legislative-transparency web platform (civic tech) — Chile Congress; ciudadanos + prensa
-**Researched:** 2026-07-21
-**Confidence:** HIGH (comparables directos: Congress.gov, GovTrack, OpenStates, TheyWorkForYou, OpenParliament.ca, InfoLobby.cl, Vota Inteligente)
-
-> Scope: v9.0 "robustez de productos estrella" — retrieval de PL, ranking+filtros client-side, deep-link de validación, ficha de parlamentario con bio oficial cruzada, lobby legible, citaciones completas. Todo lo de abajo respeta **anti-insinuación LOCKED** (nunca causalidad/intención, nunca score de afinidad política) y el principio rector **fuente+fecha+enlace**. Complejidad y dependencias sobre superficies YA construidas se anotan por fila.
->
-> NOTA: este archivo reemplaza la versión de v7.0 (votos/dinero, 2026-07-13). v9.0 = robustez de los 6 productos de cara al ciudadano.
+**Domain:** Panel de actualidad legislativa (landing cuantitativa) + notificaciones por suscripción — producto cívico chileno (Observatorio del Congreso 360, v10.0)
+**Researched:** 2026-07-23
+**Confidence:** HIGH (comparables verificados en fuente; señales mapeadas a schema real del repo)
 
 ---
 
-## Área 1 — Búsqueda de proyectos de ley (retrieval)
+## Contexto rector (LOCKED — filtra TODA señal)
 
-Comparables clave: **Congress.gov** (exact-match por `cite:`, relevancia + sort por fecha/acción/número/título), **GovTrack** (bill number `HR 123`, comillas para frase exacta), **OpenStates** (full-text + tags), **hybrid search / RRF** (Reciprocal Rank Fusion) como estado del arte para combinar keyword+semántico.
+Cada señal del panel debe ser **100% derivable de dato objetivo con fuente+fecha+enlace** y **JAMÁS insinuar intención, causalidad ni anomalía valorativa** (riesgo existencial #2 = "máquina de sospechas"). Una señal factual sobre *timing* ("presentado un viernes a las 19:00", "sin movimiento 400 días") es permisible **solo si se presenta como conteo/fecha neutra**; en cuanto el copy sugiere que el timing fue *deliberado* o *sospechoso*, se convierte en anti-feature. El linter de texto anti-insinuante ya existe en el proyecto y debe cubrir el panel.
 
-### Table Stakes (usuarios lo asumen)
-
-| Feature | Why Expected | Complexity | Notes / dependencias |
-|---------|--------------|------------|-------|
-| **Cero-fallo en número de boletín exacto** (`14309-04`, con o sin guion) | Un buscador legislativo que no encuentra el boletín exacto se siente roto. Congress.gov lo garantiza con `cite:` | LOW | Match determinista literal ANTES del vector. Debe surgir #1 siempre. Es la queja HOY (falla con literales). Depende de /buscar existente |
-| **Cero-fallo en fragmento LITERAL del título/nombre** | "modifica el Código del Trabajo" debe traer los proyectos cuyo título contiene esa frase, no solo semánticamente parecidos | MEDIUM | Full-text (Postgres FTS `spanish`, ya usado en `buscar_citaciones`) sobre título/nombre. Es el gap explícito del milestone: "HOY falla con palabras LITERALES del título" |
-| **Retrieval híbrido: keyword ∪ semántico, fusionados** | Estado del arte 2026 (RRF). Keyword da precisión de término exacto; vector da recall conceptual. Ninguno solo basta | HIGH | Fusionar FTS + pgvector kNN (`match_proyectos` existe) por RRF o unión con reglas. Elegido por SPIKE empírico con golden queries (ya en el plan). Reusa embeddings 768-dim |
-| **Búsqueda por lenguaje natural / idea matriz** | Ciudadano no sabe jerga; escribe "proyecto para bajar el precio de los remedios" | LOW (ya existe) | Ya vive vía embeddings asimétricos + idea matriz. Mantener; solo integrarlo al híbrido |
-| **Búsqueda por norma/cuerpo legal afectado** | "qué proyectos tocan la Ley 21.719" | MEDIUM | Ya se extraen cuerpos legales; exponerlos como campo buscable |
-| **Cobertura declarada honesta** | Prensa exige saber el universo ("busca sobre 3.100 proyectos 2022-2026") | LOW (ya existe) | Banner en /buscar ya presente. Mantener N/M |
-| **Suite de golden queries (test) para retrieval** | Regresión: cada release debe pasar consultas obvias (número, título literal, tema) | MEDIUM | Fixtures versionadas; gate en CI. El milestone ya lo pide como criterio de SPIKE |
-
-### Differentiators (ventaja competitiva)
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **Ranking transparente y explicable** (mensaje Ejecutivo > moción, recencia, cámara de origen) | El usuario ve *por qué* un resultado está arriba, sin caja negra. Encaja con trazabilidad rectora | MEDIUM | Reglas explícitas, no ML opaco. Mensajes del Ejecutivo suelen avanzar más → prior legítimo de relevancia institucional (NO de mérito político) |
-| **"Proyectos similares" kNN desde una ficha** | Descubrimiento lateral que Congress.gov no da bien | LOW (ya existe) | Ya construido. Reusar |
-| **Idea matriz como snippet de resultado** | Muestra el "qué hace" en una línea, extraído literal (no resumen editorial) | LOW | Ya se extrae; mostrar en el hit |
-
-### Anti-Features
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **Ranking "por importancia política" o por polémica** | "mostrar lo relevante" | Implica juicio editorial/afinidad → viola anti-insinuación | Ranking por señales factuales neutras (recencia, tipo de iniciativa, etapa) |
-| **Autocompletar que "adivina intención"** | UX moderna | Puede sesgar hacia interpretaciones | Autocompletar solo sobre número/título literal + temas del corpus |
-| **Solo-semántico (tirar el keyword)** | "IA moderna" | Falla en número/título exacto (el bug actual) | Híbrido con keyword como piso duro |
+**Dos audiencias, mismo dato, distinta densidad:**
+- **Ciudadano/prensa general:** "qué pasó esta semana en el Congreso" — pocas señales, lenguaje claro, titulares navegables.
+- **Tramitador/periodista/asesor:** "mi primera pantalla del día" — densidad, velocity, filtros por comisión/tema, suscripción granular.
 
 ---
 
-## Área 2 — Filtros client-side (reordenan/filtran resultados YA obtenidos)
+## Hallazgos de comparables (empírico)
 
-Comparables: OpenStates (state/session/subject/type/chamber/updated), GovTrack advanced (subject, status, sponsor, chamber), Congress.gov (source/collection, sort). Patrón UX dominante: **facet chips + count por faceta + sort dropdown**, aplicados sin re-query cuando el conjunto ya está en cliente.
+| Producto | Qué muestra en home/panel | Granularidad de suscripción | Digest vs instantáneo |
+|----------|---------------------------|-----------------------------|-----------------------|
+| **GovTrack** (US) | "Coming Up" (agendados esta semana), "Trending" (bills con más interés), Roll Call Votes recientes, bills en las noticias, "Track all legislative activity" (feed de introducción/acción mayor) | bill · legislator (nuevos bills + votos) · **subject/keyword** · committee · toda actividad · **tracker lists** (listas propias) | Email + RSS; feeds por lista |
+| **LegiScan** (US, 50 estados) | **"National Trends"** = bill activity de las **últimas 72h medido por interés público + actividad**; hot bills; monitor list; mapas | full-text saved search · bill monitor list con **Topic/Client labels** propios | Email **de semanal a diario**; alerta cuando bill monitoreado tiene hearing/cambio, y cuando saved search matchea nuevo/enmendado |
+| **Congress.gov** (LoC) | Saved-search alerts; bill alerts granulares | measure · nomination · treaty · **Member** · committee · saved search — y por bill puedes elegir **qué campos** rastrear (cosponsors, actions, amendments, committees, summary, subject) | Email; **consolidación** de varias saved-searches en 1 email opcional |
+| **TheyWorkForYou** (UK, mySociety) | (home = transcripciones + actividad) | **keyword/frase exacta** (con OR/comillas) · **persona específica (tu MP) al hablar** | **1 email/día** batcheado (chequeo diario automatizado); preference center para suspender/reanudar/borrar |
+| **openparliament.ca** | Debates recientes + **"word of the day"** (término más discutido, **LLM-generado, con disclaimer de posibles fabricaciones**), bills por etapa, votos recientes; búsqueda/filtro de bills/votes/MPs/debates/committees; **RSS de todo** | alertas por interés que matchean; RSS por MP y por contenido | Email "cada vez que pasa algo que matchea"; RSS |
+| **senado.cl** (oficial CL) | **Editorial-first**: "Noticias" (titulares redactados), "Actividad legislativa" (Sala/Comisiones), "Lo que está pasando", "Interés ciudadano". NO es panel cuantitativo. | — (sin suscripción granular pública) | — |
+| **camara.cl** (oficial CL) | "Destacados", "Actividad Legislativa", "Sesiones de Sala", **"Últimos Proyectos Ingresados"** (señal factual real), "Diputada/o", Leyes y Normas | — | — |
 
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| **Filtro por estado de tramitación** (en trámite / archivado / publicado como ley) | El filtro #1 que todos esperan; separa "vivo" de "muerto" | LOW | Client-side sobre resultados. Dato ya en el modelo |
-| **Filtro por tipo de iniciativa** (mensaje Ejecutivo / moción parlamentaria) | Distinción legislativa básica en Chile; alto valor para prensa | LOW | Campo ya disponible |
-| **Filtro por año / legislatura** | Acotar temporalmente | LOW | Facet estándar |
-| **Filtro por cámara de origen** (Cámara / Senado) | Estructura bicameral | LOW | Dato existente |
-| **Filtro por etapa/urgencia** | "qué está por votarse" | MEDIUM | Etapa ya en timeline; urgencia puede requerir campo |
-| **Chips removibles + "limpiar filtros"** | UX esperada de faceted search | LOW | Patrón chip estándar; el sitio ya usa chips cívicos (v8.1) |
-| **Count por faceta** ("En trámite (42)") | Estándar faceted; orienta antes de clickear | LOW | Contar sobre el set ya obtenido |
-| **Manejo de faceta vacía** (deshabilitar, no ocultar) | Evita confusión "¿dónde fue el filtro?" | LOW | Deshabilitar chip con count 0 |
-
-### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **Filtro por partido del autor** | Prensa filtra "mociones RN sobre pensiones" — factual, no valorativo | MEDIUM | Requiere autoría poblada (F48 ya LIVE) + partido (ver Área 4). Dependencia dura |
-| **Filtro por tema/materia** | Navegación por policy area (como Congress.gov subjects) | MEDIUM | Requiere etiquetado de tema (ya existe sector/tema por LLM en cruces) |
-| **Reordenar sin re-query** (recencia ↔ relevancia ↔ nº boletín) | Fluidez; el milestone lo pide explícito | LOW | Sort client-side sobre el array ya en memoria |
-
-### Anti-Features
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **Filtro "por polémica / más comentados"** | engagement | Editorializa; anti-insinuación | Filtrar por señales factuales (urgencia, movimiento reciente) |
-| **Filtro por "alineamiento" del autor** | análisis rápido | Score de afinidad = anti-feature LOCKED | Solo partido declarado (dato oficial), sin agregación valorativa |
-| **Re-query en cada click de filtro** | "simplicidad" | Latencia + carga al backend; contradice "sin re-buscar" del milestone | Filtrado/orden 100% client-side sobre el set traído |
+**Lecturas rectoras:**
+1. El estándar de clase mundial es **velocity + agenda + trending + nuevos ingresos**, con suscripción a **bill · legislator · keyword · committee** y **listas/labels propias del usuario**. Congress.gov añade granularidad de *qué campo del bill* rastrear.
+2. El modelo de notificación dominante para cívico es **digest diario batcheado** (TheyWorkForYou), no instantáneo — encaja con nuestros crons diarios y evita alert-fatigue (unsubscribe se quintuplica >5 emails/semana).
+3. Los portales chilenos oficiales son **editoriales/redactados**, no cuantitativos — ahí está el hueco que v10.0 llena. camara.cl ya valida "Últimos Proyectos Ingresados" como señal esperada; senado.cl no da nada factual-agregado.
+4. openparliament demuestra el **riesgo**: su "word of the day"/resúmenes LLM llevan disclaimer de "total fabrications". Para nosotros eso es anti-feature salvo clustering estrictamente factual con label oficial.
 
 ---
 
-## Área 3 — Deep-link de validación a la fuente oficial
+## Datos ya en el sistema (base de mapeo de señales)
 
-Comparables: Congress.gov (link al texto oficial y al status), OpenParliament.ca y TheyWorkForYou (permalink a Hansard por sección), InfoLobby (link a la audiencia registrada). Estándar del dominio: **cada dato lleva "ver en el sitio oficial" al punto más preciso posible**.
+| Tabla / columna | Contenido | Frescura |
+|-----------------|-----------|----------|
+| `tramitacion_evento(boletin, fecha, camara, tipo, descripcion)`, `tipo ∈ {tramite, urgencia, informe, oficio, votacion}` | **El reloj real del movimiento**: cada trámite/urgencia/informe con su fecha | cron leyes-weekly (semanal hoy) |
+| `proyecto(boletin, titulo, iniciativa, camara_origen, autores[], materia, estado, etapa, subetapa, fecha_captura, enlace)` | Ficha base. **`materia` = taxonomía oficial factual**. **`iniciativa` = Mensaje/Moción** (Ejecutivo vs parlamentario). **NO hay `fecha_ingreso`** — solo `fecha_captura` (cuándo scrapeamos) | 3.657 proyectos (2022-2026) |
+| `citacion`, `citacion_punto(boletin)`, `sesion_sala`, `sesion_tabla_item(boletin)` | **Agenda**: citaciones de comisión + tabla de sala, ligadas a boletín | cron agenda-weekly |
+| `votacion(boletin, fecha, etapa, resultado…)`, `voto` | Votaciones registradas | — |
+| `proyecto_ficha` + embeddings pgvector 768-dim (HNSW) | Idea matriz + vectores → **clustering temático factual disponible sin costo nuevo** | 84,6% cobertura |
+| `cruce_senal`, lobby, `citacion_punto`→PL | Cruces factuales existentes | gated donde aplica |
 
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| **Enlace a la página oficial del boletín** (Cámara/Senado según origen) | Es el principio rector del producto; ya existe a nivel dato | LOW | Ya se guarda fuente+fecha+enlace. Consolidar el link "canónico" por boletín |
-| **Deep-link al punto preciso** (tramitación específica, no solo home de la fuente) | El milestone lo pide: "a la parte precisa de la página oficial" | MEDIUM | Construir URL profunda por boletín/etapa. Cuidado: portal Senado Next.js con `buildId` volátil (leer `__NEXT_DATA__`, NO hardcodear) |
-| **Fecha de captura visible** ("según fuente al DD/MM/AAAA") | Trazabilidad temporal; ya es convención del sitio | LOW | Ya presente vía `fecha_captura` |
-
-### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **Enlace al crudo archivado en R2** (snapshot inmutable) | Defensa jurídica: "esto es lo que la fuente decía ese día", aunque la fuente cambie | MEDIUM | R2 content-addressed ya existe (dos-etapas LOCKED). Exponer link al snapshot como respaldo. ALTO valor legal para un repo público |
-| **Indicador de frescura por dato** | Prensa sabe si el dato es de hoy o de hace un mes | LOW | `pnpm freshness` ya calcula; superficializar |
-
-### Anti-Features
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **Cachear/servir el contenido oficial como propio sin atribución** | velocidad | Riesgo legal + rompe atribución CC BY | Link + snapshot atribuido con fecha |
-| **Deep-link con `buildId` hardcodeado (Senado)** | simplicidad | Rompe silenciosamente en cada deploy del portal | Autodetectar `__NEXT_DATA__.buildId` |
+**Consecuencia dura para el roadmap:** el reloj de "cuándo entró/se movió un proyecto" es `tramitacion_evento.fecha`, **no** una fecha de ingreso en `proyecto`. Toda señal temporal ("nuevos ingresos", "revividos", "presentado viernes tarde") depende de tener `tramitacion_evento` poblado con la fecha del **primer trámite** (o de ingerir `fecha_ingreso` explícito). Hoy `tramitacion_evento` existe pero su **cobertura/frescura debe auditarse en el SPIKE** antes de prometer cualquier señal de velocity — ese es el gate de datos que el operador pide "antes que frontend".
 
 ---
 
-## Área 4 — Ficha de parlamentario (bio oficial cruzada)
+## Feature Landscape
 
-Comparables: TheyWorkForYou (votos recientes + discursos + comités + register of interests), OpenParliament.ca (partido, riding, comités, cross-link debates↔bills), Vota Inteligente (historial de votos, asistencia, comisiones, gastos). Campos bio estándar del dominio: **nacimiento, región/distrito, partido, periodos servidos, profesión, comités**.
+### Table Stakes (el panel se siente incompleto sin esto)
 
-### Table Stakes
+| Feature | Por qué se espera | Complejidad | Dato fuente concreto |
+|---------|-------------------|-------------|----------------------|
+| **Nuevos ingresos** (proyectos ingresados en ventana N días) | camara.cl ya lo destaca ("Últimos Proyectos Ingresados"); es la señal #1 esperada | MEDIUM | `tramitacion_evento` primer evento por boletín, **o** ingerir `fecha_ingreso` (dato nuevo). **NO computable fielmente hoy con `proyecto.fecha_captura`** (fecha de scrape ≠ ingreso) → **requiere SPIKE/ingesta** |
+| **Movimiento reciente / velocity** (proyectos con más trámites en ventana temporal) | GovTrack "Trending", LegiScan "National Trends 72h" — estándar de clase mundial | MEDIUM | `count(tramitacion_evento) where fecha in [ventana]` group by boletín. **Computable HOY** si `tramitacion_evento` tiene frescura; **requiere cron más frecuente** para ser "de hoy" |
+| **Agenda: qué se vota/cita próximamente** | GovTrack "Coming Up"; ya tenemos /agenda | LOW | `citacion.fecha`, `sesion_sala.fecha`, `sesion_tabla_item` (futuro). **Computable HOY** (agenda ya ingerida) |
+| **Urgencias vivas del Ejecutivo** (proyectos con urgencia vigente esta semana) | Señal factual de "el Ejecutivo está apurando esto"; ya hay token 3-estados en la ficha | MEDIUM | `tramitacion_evento where tipo='urgencia'` + estado urgencia 3-estados ya modelado. **Computable HOY** si el evento urgencia se ingiere; agregación nueva |
+| **Leyes recién publicadas** (normas promulgadas en ventana) | GovTrack/openparliament cierran el ciclo "de proyecto a ley"; el ciudadano quiere ver el resultado | MEDIUM | **Requiere ingesta nueva**: BCN "últimas leyes publicadas" (portada_ulp, últimos 12 meses) o Cámara `leyes_promulgadas.aspx` / Senado "leyes publicadas". No hay endpoint XML de recency directo — `obtxml opt=6` es por categoría estática, no por fecha. Scrapear la portada ULP o la tabla Cámara |
+| **Agrupación por tema/materia** (proyectos con movimiento agrupados por materia oficial) | LegiScan Topic labels; el usuario piensa por tema, no por boletín | MEDIUM | `proyecto.materia` (**taxonomía oficial BCN/comisión = label factual, reusable directo**). **Computable HOY**. Clustering por embeddings como capa secundaria opcional |
+| **Trazabilidad por señal** (cada dato del panel con fuente+fecha+enlace) | Principio rector del proyecto; sin esto el panel no puede existir | LOW | `origen`/`fecha_captura`/`enlace` ya inline en cada tabla |
+| **Suscripción a un proyecto** (novedades de un boletín) | GovTrack/Congress.gov/LegiScan lo tienen todos | MEDIUM-HIGH | `tramitacion_evento` diff por boletín. **Requiere auth + RLS + tabla de suscripción + email** (primer dato de usuario) |
+| **Suscripción a un parlamentario** (nuevos proyectos que presenta, cómo vota) | GovTrack "track legislators", Congress.gov "Member" | MEDIUM-HIGH | `proyecto.autores[]` + `voto`; misma infra de auth/email |
+| **Digest por email** (diario o semanal, batcheado) | TheyWorkForYou modelo dominante cívico; encaja con crons | MEDIUM | Cron que arma digest desde diffs; doble opt-in + unsubscribe en footer (legal + deliverability) |
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| **Partido político (oficial, declarado)** | Campo #1 esperado; hoy la ficha no lo trae bien | LOW-MEDIUM | Del sitio oficial del Congreso. Dato factual, no valorativo |
-| **Bio oficial: región/distrito o circunscripción** | Ubicación de representación, base de "mi parlamentario" | LOW | Del perfil oficial. Ya hay directorio /parlamentarios |
-| **Periodos servidos** | Antigüedad/continuidad, factual | LOW | Perfil oficial |
-| **Profesión / formación** | Contexto biográfico neutro | LOW | Perfil oficial |
-| **Membresías de comisiones** | Todos los comparables lo muestran; clave para prensa | MEDIUM | Puede requerir ingesta nueva (fuente de comisiones). Verificar cobertura antes de UI |
-| **Los carriles ya construidos** (votos, lobby, patrimonio, cruces, autoría) | Ya son el diferenciador; la bio los enmarca | — | Ya LIVE (v5.0 acordeones). v9.0 = enriquecer encabezado bio |
+### Differentiators (ventaja competitiva, alineados al Core Value)
 
-### Differentiators
+| Feature | Propuesta de valor | Complejidad | Dato fuente concreto |
+|---------|--------------------|-------------|----------------------|
+| **Panel unificado bicameral** (Cámara + Senado en una pantalla) | Ningún portal oficial chileno cruza ambas cámaras en un panel de actualidad; los oficiales son mono-cámara y editoriales | MEDIUM | `tramitacion_evento.camara` + `citacion` ambas cámaras — ya bicameral en el modelo |
+| **"Proyectos revividos"** (sin movimiento largo → trámite nuevo) | Señal factual valiosa para prensa: "esto estaba dormido y volvió"; nadie más la ofrece | MEDIUM | gap entre penúltimo y último `tramitacion_evento.fecha` por boletín > umbral. Presentar como **fecha neutra** ("último movimiento previo: hace 412 días"), JAMÁS "revivido sospechosamente". Requiere `tramitacion_evento` con historia completa |
+| **Comisiones más activas de la semana** | Tramitador quiere saber dónde está el trabajo real; factual puro | LOW-MEDIUM | `count(citacion)` group by comisión en ventana + `tramitacion_evento` por etapa/comisión. **Computable HOY** (agenda) |
+| **Clustering temático factual sobre materia + embeddings** | Agrupar "lo que se mueve" por tema legible sin categoría editorial; los embeddings YA existen | MEDIUM-HIGH | `proyecto.materia` como label primario (oficial) + pgvector para agrupar los que comparten idea matriz. **Label debe ser la materia oficial**, nunca un tema inventado por LLM |
+| **Suscripción por keyword/materia** (no solo bill/persona) | TheyWorkForYou keyword + LegiScan Topic; potente para asesores temáticos | HIGH | FTS `websearch_to_tsquery` (ya existe RRF) + `proyecto.materia`; matchear diffs contra el término suscrito |
+| **Suscripción por comisión** | Tramitador sigue "su" comisión entera | MEDIUM | `citacion`/`tramitacion_evento` filtrado por comisión |
+| **Ventana "hoy / esta semana" con tz Chile explícita** | Gotcha ya conocido del proyecto (date-only UTC = día chileno); hacerlo bien es diferenciador de confianza | LOW | Reusar la lógica tz de /agenda ya resuelta |
+| **RSS/feeds además de email** | GovTrack y openparliament lo dan; barato, sirve a power-users y evita fricción de auth | LOW-MEDIUM | Render de los mismos diffs a Atom/RSS server-side |
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **Cross-links entre parlamentarios** (mismo partido / misma comisión / misma región) | Navegación lateral; el milestone lo pide ("relaciones entre parlamentarios"). Factual, no de afinidad | MEDIUM | Derivar de campos declarados (partido, comité, distrito). Reusa /red pero como cross-link textual, no grafo |
-| **Co-autoría de proyectos** (quién co-firma con quién) | Relación factual verificable, muy usada por prensa | MEDIUM | Autoría ya poblada (F48). Co-autoría = firmas compartidas en el mismo boletín. NUNCA presentar como "alianza" |
-| **Header bio above-fold + acordeones** | Lectura de 3 capas ya existe (v5.0) | LOW | Extender el resumen preatentivo con bio |
+### Anti-Features (parecen buenas, editorializan o rompen el principio rector)
 
-### Anti-Features
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **"Voting summaries" que agrupan votos en una postura política** (estilo TheyWorkForYou "voted strongly for X") | Muy popular en UK | Es exactamente la insinuación LOCKED-prohibida: infiere postura desde votos | Mostrar votos individuales con fuente; NUNCA agregarlos en un juicio |
-| **Score/ranking de parlamentarios** (asistencia como "buen/mal diputado") | comparación rápida | Editorializa mérito | Métrica descriptiva vs mediana de cámara, sin juicio (VIZ-COMP ya lo hace bien) |
-| **"Con quién se alía"** derivado de co-voto/co-lobby | análisis de redes atractivo | Afinidad inferida = anti-feature existencial #2 | Solo relaciones DECLARADAS (mismo partido/comité), conteos factuales |
-| **Foto/datos de familiares** | completar la ficha | Ley 21.719; PII de terceros | Solo lo que la fuente pública ya publica del parlamentario |
-
----
-
-## Área 5 — Lobby / audiencias legibles
-
-Comparable directo: **InfoLobby.cl** (busca por autoridad o por empresa/lobbista; muestra fecha, asistentes, temas tratados, viajes, regalos). El gap del producto: el "asunto solicitado" hoy no se lee bien y no se enlaza a PLs.
-
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| **Título/materia completa de la audiencia** (no truncado) | InfoLobby lo muestra; el milestone dice "título completo de lo solicitado" | LOW-MEDIUM | Verificar que el crudo trae la materia completa (auditoría de campo antes de UI) |
-| **Asistentes / contraparte legible** | Quién pidió la reunión | LOW | Ya vive en `lobby_contraparte`; identidad de terceros (v4.0) |
-| **Fecha + link a la audiencia oficial** | Trazabilidad | LOW | Enlace a leylobby.gob.cl |
-| **Búsqueda/navegación por parlamentario** | Patrón InfoLobby | LOW (ya existe) | Ya en la ficha (carril lobby) |
-
-### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **Enlace audiencia → PL en movimiento** | El milestone lo pide explícito; NADIE en Chile lo hace bien. Alto valor periodístico | HIGH | Matching materia-audiencia ↔ boletín. Riesgoso: NO afirmar que la reunión "causó" el movimiento del PL. Presentar como "materia mencionada", con fuente, sin causalidad |
-| **Materia normalizada/temática** | Agrupar audiencias por tema | MEDIUM | Etiquetado tipo cruces; eval propio |
-| **Carril lobby × tramitación** (temporal, descriptivo) | Ya existe (v5.0 CRUCE2) | LOW | Reusar; reforzar leyenda anti-causal |
-
-### Anti-Features
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **"Este lobby influyó en este voto/proyecto"** | narrativa atractiva | Causalidad inventada = riesgo existencial #2 | "Audiencia sobre materia X el DD/MM; el boletín Y trata materia X" — coincidencia factual, leyenda "no implica causa" |
-| **Contar audiencias como "score de influencia"** | ranking | Score de correlación prohibido | Conteo factual con fuente, sin agregación valorativa |
-
----
-
-## Área 6 — Citaciones / calendario legislativo completo
-
-Comparables: House "Bills This Week" / floor.docs.house.gov (por semana, filtrable por comité), Congress.gov floor calendars, GovTrack alerts por comité/tema. Workflow periodista: **"¿qué se discute HOY / esta semana y qué boletines se mueven?"**. El milestone exige **auditoría de cobertura de scraping ANTES de tocar UI** (sala + comisiones, ambas cámaras).
-
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| **Cobertura completa: sala + comisiones, ambas cámaras** | Hoy /agenda es parcial (sala Cámara PDF + Senado). Falta comisiones | HIGH | Auditoría de scraping primero (el milestone lo ordena). Puede requerir conectores nuevos. Dependencia dura antes de UI |
-| **Estructura por día** | Calendario legible | LOW-MEDIUM | Reagrupar /agenda existente por fecha |
-| **Distinción sala vs comisión** | Estructura básica del trabajo legislativo | LOW | Etiqueta de tipo de sesión |
-| **Boletines mencionados por sesión, enlazados** | Prensa quiere saltar del ítem al PL | MEDIUM | Ya hay `sesion_tabla_item`/`citacion_punto` con boletín; enlazar a ficha |
-| **Buscador FTS de citaciones** | Ya existe | LOW (ya existe) | `buscar_citaciones` (mig 0032). Mantener |
-
-### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **Filtros: cámara / comisión / rango de fecha / boletín mencionado** | Workflow periodista directo del milestone | MEDIUM | Client-side sobre el set del rango cargado (mismo patrón que Área 2) |
-| **Vista "esta semana" / "hoy"** | El uso #1 de prensa | LOW-MEDIUM | Default temporal a la semana en curso |
-| **"Qué boletines se mueven" (agenda → tramitación)** | Cruce agenda × timeline; alto valor | MEDIUM | Reusa timeline cross-cámara existente |
-
-### Anti-Features
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **UI de agenda antes de auditar cobertura** | ganas de mostrar | Muestra calendario incompleto como si fuera completo → engaña a prensa | Auditar scraping (sala+comisiones×2 cámaras) PRIMERO; declarar cobertura honesta (patrón v6.1) |
-| **Predicción "este proyecto se aprobará"** | engagement | Especulación, no fuente | Solo lo agendado, factual, con enlace oficial |
+| Feature | Por qué se pide | Por qué es problemático | Alternativa |
+|---------|-----------------|-------------------------|-------------|
+| **"Presentado a último momento / anomalías de timing"** como señal destacada | El brief lo menciona; suena revelador | En cuanto se rotula "a último momento", "viernes tarde", "pre-receso" con framing de sospecha → **insinúa intención deliberada** = máquina de sospechas (riesgo existencial #2). Un viernes tarde puede ser rutina | Mostrar **solo la fecha/hora factual neutra** dentro de la ficha ("ingresado vie 18/07 19:14"), **sin** módulo de panel que lo destaque como anomalía ni ranking de "sospechosos". El usuario saca su conclusión |
+| **Resúmenes/"word of the day" generados por LLM** | openparliament lo hace; da narrativa | openparliament mismo advierte "inaccuracies or total fabrications" → un resumen alucinado con la marca del Observatorio destruye la credibilidad y viola trazabilidad | Titulares = **texto oficial literal** (título del proyecto, materia oficial). Clustering factual por materia/embedding, sin prosa generada |
+| **Ranking de "urgencia" que ordene parlamentarios/proyectos por juicio** | Parece útil priorizar | Un score compuesto = afirmación editorial; el proyecto prohíbe scores de correlación (ya LOCKED en cruces) | Conteos factuales ordenables por el usuario (más trámites, más reciente), nunca un "índice" propietario |
+| **Notificaciones instantáneas / real-time push** | "Enterarme al segundo" | Alert-fatigue (unsubscribe 5x >5 emails/sem); nuestros datos llegan por cron, no en tiempo real → "instantáneo" sería una promesa falsa | **Digest diario batcheado** (modelo TheyWorkForYou), con opción semanal en preference center |
+| **Feed público de "toda la actividad" sin auth pero con datos de usuario** | Simplicidad | El primer dato de usuario exige auth+RLS real (anon está muerta, sitio corre service_role) — mezclar suscripciones en superficie anon reabre el boundary de seguridad | Panel de actualidad = **público sin auth** (solo datos oficiales agregados); suscripciones = **detrás de auth con RLS deny-by-default** |
+| **Sentiment / clasificación de "polémico" o "importante"** | Editorializa lo relevante | Juicio de valor no derivable de dato objetivo | "Con más movimiento" / "más citaciones" — factual, deja el juicio al lector |
+| **Trending por vistas del propio sitio** | GovTrack usa "public interest" | Requiere analytics de usuarios y sesga hacia lo ya popular; frágil y no factual-legislativo | Trending = **actividad legislativa objetiva** (conteo de trámites en ventana), no popularidad de clicks |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[Retrieval híbrido (Área 1)]
-    └──requires──> [FTS spanish sobre título/nombre]  (existe idiom vía buscar_citaciones)
-    └──requires──> [match determinista de nº boletín]  (nuevo, LOW)
-    └──enhances──> [Ranking (Área 1b)] ──feeds──> [Filtros/sort client-side (Área 2)]
+[Panel de actualidad público]
+    └──requires──> [Auditoría de frescura/cobertura de tramitacion_evento]  (SPIKE, gate de datos)
+                       └──requires──> [Cron más frecuente que semanal]  (para "hoy")
 
-[Filtro por partido del autor (Área 2)]
-    └──requires──> [Partido en ficha (Área 4)]  +  [Autoría F48 (LIVE)]
+[Nuevos ingresos] ──requires──> [fecha de ingreso real]
+    (tramitacion_evento primer evento  O  ingesta de fecha_ingreso)   ← NO existe en proyecto hoy
 
-[Cross-links entre parlamentarios (Área 4)]
-    └──requires──> [Bio oficial: partido/comité/distrito (Área 4 table stakes)]
+[Movimiento/velocity] ──requires──> [tramitacion_evento fresco]
+[Proyectos revividos] ──requires──> [tramitacion_evento con HISTORIA completa por boletín]
+[Urgencias vivas] ──requires──> [tramitacion_evento tipo=urgencia + estado 3-estados]
+[Leyes recién publicadas] ──requires──> [ingesta nueva BCN portada_ulp / Cámara leyes_promulgadas]
+[Agrupación por tema] ──uses──> [proyecto.materia (oficial)] ──enhanced-by──> [embeddings pgvector (ya existen)]
 
-[Co-autoría (Área 4)] ──requires──> [Autoría poblada F48 (LIVE)]
+[Suscripciones a proyecto/parlamentario]
+    └──requires──> [Auth + RLS real (deny-by-default)]   ← primer dato de usuario del sistema
+                       └──requires──> [tabla suscripcion + email provider + doble opt-in]
+                              └──requires──> [motor de diff por boletín/autor]
+                                     └──requires──> [digest cron batcheado]
 
-[Enlace audiencia → PL (Área 5)]
-    └──requires──> [Materia completa de audiencia (auditoría de campo)]
-    └──requires──> [Boletines enlazables (existe)]
+[Suscripción por keyword] ──requires──> [FTS websearch_to_tsquery (ya existe, RRF)]
+[Suscripción por comisión] ──requires──> [tramitacion_evento/citacion por comisión]
 
-[UI de citaciones (Área 6)]
-    └──requires──> [Auditoría de cobertura scraping sala+comisiones×2]  (GATE antes de UI)
-
-[Deep-link preciso (Área 3)] ──enhances──> todas las fichas
-    └──conflicts──> [buildId hardcodeado del portal Senado]
+[Benchmark UX senado.cl/camara.cl] ──informs──> [diseño del panel]  (empírico BrowserOS, milestone frontend)
 ```
 
-### Dependency Notes
+### Notas de dependencia
 
-- **Filtro por partido (Área 2) requiere partido en ficha (Área 4):** por eso el milestone ordena búsqueda/PL en Pasada 1 pero el filtro por partido puede quedar detrás de la bio de Pasada 2, o adelantarse solo el dato partido.
-- **UI de citaciones (Área 6) bloqueada por auditoría de cobertura:** LOCKED en el milestone — no tocar UI hasta saber qué falta (sala+comisiones, ambas cámaras).
-- **Enlace audiencia→PL (Área 5) es el de mayor riesgo anti-causal:** debe presentarse como coincidencia de materia con fuente, jamás como influencia.
-- **Retrieval (Área 1) es prerrequisito de todo lo demás de Pasada 1:** ranking y filtros operan sobre lo que el retrieval trae.
+- **El SPIKE de datos gatea TODO el panel:** el operador pidió "QUÉ antes que CÓMO". La pregunta empírica #1 es *¿tiene `tramitacion_evento` la frescura y cobertura para sostener velocity/nuevos ingresos/revividos?* Si no, la primera obra es ingesta (fecha de ingreso + cron más frecuente), no frontend.
+- **`proyecto` no tiene `fecha_ingreso`:** cualquier señal de "nuevo" hoy usaría `fecha_captura` (fecha de scrape), que es **incorrecto** — un backfill masivo capturó proyectos viejos con `fecha_captura` reciente. Esto haría un panel mentiroso. Resolver en el SPIKE.
+- **Suscripciones = subsistema de seguridad, no un feature UI:** es el primer dato de usuario. Auth + RLS deny-by-default es parte del alcance, no un add-on. Bajo Camino A (service_role bypassa RLS), el diseño debe aislar datos de usuario en un boundary con RLS real, no en el mismo plano service_role del sitio público.
+- **Digest depende de motor de diff:** para notificar hay que comparar el estado de ayer vs hoy por boletín/autor — requiere snapshot o log de cambios (`tramitacion_evento` ya es append-only, sirve como log).
 
 ---
 
-## MVP Definition (para v9.0, sobre app ya existente)
+## MVP Definition
 
-### Launch With (Pasada 1 — Búsqueda/PL)
+### Launch With (v10.0 core)
 
-- [ ] Retrieval híbrido con **cero-fallo en número de boletín y fragmento literal de título** — es el bug del producto estrella; inaceptable no resolverlo
-- [ ] Suite de **golden queries** como gate (número, título literal, tema, NL)
-- [ ] **Ranking explicable** (mensaje > moción, recencia) — no ML opaco
-- [ ] **Filtros/sort client-side** sobre resultados ya obtenidos (estado, tipo iniciativa, año, cámara) con chips + counts + faceta-vacía deshabilitada
-- [ ] **Deep-link de validación** por boletín al punto preciso oficial + fecha de captura (+ snapshot R2 como respaldo)
+**Etapa datos (SPIKE primero — gate del operador):**
+- [ ] Auditoría empírica de `tramitacion_evento`: frescura, cobertura, ¿sirve para velocity? ¿hay primer-evento fiable por boletín? — **decide qué señales son honestas**
+- [ ] Decisión de ingesta: ¿`fecha_ingreso` explícito? ¿cron diario/más frecuente? (repo público, GH Actions OK)
 
-### Launch With (Pasada 2 — Personas/Agenda)
+**Panel público (frontend, tras el SPIKE):**
+- [ ] **Movimiento reciente** (velocity, ventana semana) — computable si el SPIKE valida frescura; señal ancla del panel
+- [ ] **Agenda próxima** (votaciones/citaciones) — ya ingerido, bajo costo, alto valor "coming up"
+- [ ] **Urgencias vivas del Ejecutivo** — factual, diferenciador, token 3-estados ya existe
+- [ ] **Agrupación por materia oficial** — `proyecto.materia`, label factual reusable directo
+- [ ] **Nuevos ingresos** — condicionado a resolver la fecha de ingreso en el SPIKE
+- [ ] **Trazabilidad por señal** (fuente+fecha+enlace) — no negociable
+- [ ] **Ventana hoy/semana tz Chile** — reusar lógica /agenda
 
-- [ ] **Bio oficial en ficha**: partido, región/distrito, periodos, profesión, comisiones
-- [ ] **Cross-links factuales** (mismo partido/comité/región) + co-autoría — sin afinidad inferida
-- [ ] **Lobby legible**: materia completa + enlace audiencia→PL como coincidencia de materia (leyenda anti-causal)
-- [ ] **Auditoría de cobertura de citaciones** (sala+comisiones×2) → luego calendario por día con filtros (cámara/comité/fecha/boletín) y vista "esta semana"
+### Add After Validation (v10.x)
 
-### Add After Validation (v9.x)
+- [ ] **Leyes recién publicadas** (ingesta BCN portada_ulp / Cámara leyes_promulgadas) — cierra el ciclo, requiere conector nuevo → segunda ola
+- [ ] **Proyectos revividos** — requiere historia completa de `tramitacion_evento`; alto valor prensa, presentar neutro
+- [ ] **Comisiones más activas** — barato una vez el panel existe
+- [ ] **Suscripciones a proyecto + parlamentario** con **digest diario** — el bloque de auth/RLS/email; construir "lo defendible" tras validar el panel público
+- [ ] **RSS/Atom feeds** de las mismas señales
 
-- [ ] Filtro por tema/materia normalizada (retrieval + agenda)
-- [ ] Indicador de frescura por-dato superficializado en cada carril
-- [ ] Alertas/seguimiento por boletín o parlamentario (patrón GovTrack/Vota Inteligente) — futuro milestone
+### Future Consideration (v11+)
 
-### Future Consideration (v10+)
-
-- [ ] Grafo de influencia P6 (fuera de scope; ego-network /red ya cubre lo legible)
-- [ ] Notificaciones push pre-votación (Vota Inteligente) — requiere cuentas de usuario
+- [ ] **Suscripción por keyword/materia y por comisión** — potente para asesores, pero exige el motor de matching sobre diffs maduro
+- [ ] **Congress.gov-style: elegir qué campo del proyecto rastrear** (solo urgencias, solo votos) — granularidad fina, tras validar demanda
+- [ ] **Preference center** completo (frecuencia diaria/semanal, pausar/reanudar) — cuando haya volumen de suscriptores
+- [ ] **Clustering por embeddings como vista temática secundaria** — cuando la materia oficial se quede corta
 
 ---
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| Cero-fallo nº boletín + título literal (híbrido) | HIGH | MEDIUM | P1 |
-| Golden queries gate | HIGH | MEDIUM | P1 |
-| Filtros/sort client-side (estado/tipo/año/cámara) | HIGH | LOW | P1 |
-| Deep-link validación preciso + snapshot R2 | HIGH | MEDIUM | P1 |
-| Bio oficial en ficha (partido/distrito/comités) | HIGH | MEDIUM | P1 |
-| Auditoría cobertura citaciones → calendario+filtros | HIGH | HIGH | P1 |
-| Lobby: materia completa + enlace a PL | HIGH | HIGH | P1 |
-| Ranking explicable (mensaje>moción, recencia) | MEDIUM | MEDIUM | P1 |
-| Cross-links parlamentarios + co-autoría | MEDIUM | MEDIUM | P2 |
-| Filtro por partido del autor | MEDIUM | MEDIUM | P2 |
-| Filtro por tema/materia | MEDIUM | MEDIUM | P2 |
-| Frescura por-dato superficial | LOW | LOW | P3 |
+| Feature | User Value | Implementation Cost | Priority | Audiencia |
+|---------|------------|---------------------|----------|-----------|
+| SPIKE frescura/cobertura tramitacion_evento | HIGH (gatea todo) | LOW-MEDIUM | **P1** | interno |
+| Movimiento/velocity semanal | HIGH | MEDIUM | **P1** | tramitador + ciudadano |
+| Agenda próxima (coming up) | HIGH | LOW | **P1** | ambos |
+| Urgencias vivas del Ejecutivo | HIGH | MEDIUM | **P1** | tramitador + prensa |
+| Agrupación por materia oficial | HIGH | MEDIUM | **P1** | ambos |
+| Nuevos ingresos | HIGH | MEDIUM (depende fecha_ingreso) | **P1** (condicional) | ambos |
+| Trazabilidad por señal | HIGH (rector) | LOW | **P1** | ambos |
+| Leyes recién publicadas | MEDIUM-HIGH | MEDIUM (ingesta nueva) | **P2** | ciudadano |
+| Comisiones más activas | MEDIUM | LOW-MEDIUM | **P2** | tramitador |
+| Proyectos revividos | MEDIUM-HIGH (prensa) | MEDIUM | **P2** | periodista |
+| Suscripción proyecto/parlamentario + digest | HIGH | HIGH (auth+RLS+email) | **P2** | ambos |
+| RSS/Atom feeds | MEDIUM | LOW-MEDIUM | **P2** | power-user |
+| Suscripción keyword/materia/comisión | HIGH (asesor) | HIGH | **P3** | tramitador/asesor |
+| Preference center avanzado | MEDIUM | MEDIUM | **P3** | suscriptores |
 
-**Priority key:** P1 = must-have v9.0 · P2 = should-have si datos alcanzan · P3 = nice-to-have.
+**Clave:** P1 = imprescindible v10.0 · P2 = segunda ola misma milestone / v10.x · P3 = futuro.
 
 ---
 
 ## Competitor Feature Analysis
 
-| Feature | Congress.gov / GovTrack | TheyWorkForYou / OpenParliament.ca | InfoLobby.cl / Vota Inteligente | Our Approach |
-|---------|-------------------------|-------------------------------------|----------------------------------|--------------|
-| Búsqueda por nº/cita exacta | `cite:` zero-miss; `HR 123` | permalink por sección | básica | **Match determinista literal #1 + híbrido RRF** |
-| Ranking | relevancia + sort (fecha/acción/nº/título) | por fecha | simple | **Reglas explicables (mensaje>moción, recencia), no ML** |
-| Filtros | subject/status/chamber/sponsor/session | comité/partido | autoridad/empresa | **Client-side chips+counts sobre set ya traído** |
-| Deep-link a fuente | texto oficial + status | Hansard permalink | link a audiencia | **Boletín→punto preciso + snapshot R2 (defensa legal)** |
-| Ficha legislador | perfil + votos + comités | votos+discursos+**voting summaries** | votos+asistencia+comisiones+gastos | **Bio oficial + carriles factuales; SIN voting summaries (anti-insinuación)** |
-| Relaciones entre legisladores | — | co-firma, comités | — | **Solo declaradas (partido/comité) + co-autoría factual; jamás afinidad** |
-| Lobby/audiencias | (N/A) | — | fecha/asistentes/temas/viajes | **Materia completa + enlace a PL como coincidencia, leyenda anti-causal** |
-| Calendario | Bills This Week, filtro comité | agenda de debates | — | **Sala+comisiones×2 (tras auditoría), por día, filtros periodista** |
+| Feature | GovTrack | LegiScan | TheyWorkForYou | Congress.gov | Nuestro enfoque |
+|---------|----------|----------|----------------|--------------|-----------------|
+| Panel "qué pasa ahora" | Coming Up + Trending + votos | National Trends 72h | debates+word-of-day | (search-céntrico) | **Velocity + agenda + urgencias + materia, bicameral, factual** |
+| Trending | interés público (clicks) | actividad 72h | — | — | **Actividad legislativa objetiva** (conteo trámites), no clicks |
+| Nuevos ingresos | feed de introducción | monitor | — | alerts | Sí, **si el SPIKE resuelve fecha de ingreso** |
+| Agrupación temática | subject areas | Topic labels propios | keyword | subject | **Materia oficial BCN** (factual) + embeddings opcional |
+| Suscripción granular | bill/legislator/subject/committee/lista | bill/topic/full-text | keyword/persona | measure/member/committee/campo | proyecto/parlamentario → luego keyword/comisión |
+| Modelo notificación | email+RSS | email semanal→diario | **1 email/día batcheado** | email consolidable | **Digest diario batcheado + doble opt-in + RSS** |
+| Resúmenes LLM | no | no | no | no | **NO** (anti-feature; solo texto oficial literal) |
+| Timing "anómalo" | no | no | no | no | **NO como señal destacada** (solo fecha neutra en ficha) |
 
-**Nota rectora:** el mayor riesgo importado de los comparables es el patrón **"voting summaries"** de TheyWorkForYou ("voted strongly for X") — es justo la insinuación que este proyecto tiene LOCKED-prohibida. Adoptamos su UX de trazabilidad (permalinks, links a fuente) pero NUNCA su agregación valorativa de votos.
+---
 
 ## Sources
 
-- [GovTrack — General User Guide](https://www.govtrack.us/how-to-use) — bill number `HR 123`, comillas para frase exacta, advanced search — HIGH
-- [Congress.gov — Introduction to Search](https://www.congress.gov/help/search-intro) / [Search Tools](https://www.congress.gov/help/search-tools-overview) — `cite:` para nº exacto, relevancia + sort (fecha/acción/nº/título/law) — HIGH
-- [Congress.gov — Find Bills by Subject and Policy Area](https://www.congress.gov/help/find-bills-by-subject) — facetas por subject/policy area — HIGH
-- [Open States — API v2 examples](https://docs.openstates.org/api-v2/examples/) / [Find Your Legislators](https://openstates.org/) — filtros state/session/subject/type/chamber/sponsor/updated — HIGH
-- [TheyWorkForYou — Voting information](https://www.theyworkforyou.com/voting-information/) / [voting summaries update Jul 2026](https://www.mysociety.org/2026/07/01/theyworkforyou-voting-summaries-update-july-2026/) — votos individuales + summaries agrupados (ANTI-feature aquí) + comités — HIGH
-- [OpenParliament.ca — About](https://openparliament.ca/about/) / [GitHub michaelmulley/openparliament](https://github.com/michaelmulley/openparliament) — MP bio, riding, comités, cross-link debates↔bills — MEDIUM
-- [InfoLobby.cl](https://www.infolobby.cl/) / [Ley del Lobby](https://www.leylobby.gob.cl/) — búsqueda por autoridad/empresa; fecha, asistentes, temas, viajes, regalos — HIGH
-- [Fundación Ciudadano Inteligente — Vota Inteligente](https://en.wikipedia.org/wiki/Fundaci%C3%B3n_Ciudadano_Inteligente) — bills en lenguaje simple, historial votos, asistencia, comisiones, gastos, alertas — MEDIUM
-- [Bills This Week — docs.house.gov/floor](https://docs.house.gov/floor/) / [Floor Calendars — Congress.gov](https://www.congress.gov/calendars-and-schedules) — calendario semanal filtrable por comité — HIGH
-- [Modern Search: Semantic, Hybrid, Faceted, Vector](https://medium.com/@linz07m/modern-search-what-is-semantic-hybrid-faceted-and-vector-search-7c68231d8179) / [How to Create Hybrid Search](https://oneuptime.com/blog/post/2026-01-30-hybrid-search/view) — RRF, keyword+semántico, faceted pairing — MEDIUM
+- [GovTrack — home + how-to-use](https://www.govtrack.us/how-to-use) — módulos Coming Up/Trending/votos, granularidad bill/legislator/subject/committee/tracker-lists — HIGH (home HTML inspeccionado directo)
+- [GovTrack — Track All Legislative Activity](https://www.govtrack.us/events/bill-activity) — feed de introducción/acción mayor — HIGH
+- [LegiScan — features](https://legiscan.com/features) / [National Trends](https://legiscan.com/trends) / [monitor](https://legiscan.com/gaits/monitor) — "National Trends = bill activity últimas 72h por interés público + actividad"; Topic labels; email semanal→diario — MEDIUM-HIGH (search verificado, página 403 a fetch directo)
+- [Congress.gov — About Alerts](https://www.congress.gov/help/alerts) / [Get Alerts](https://www.congress.gov/get-alerts) — granularidad por campo del bill; consolidación de saved-searches — HIGH
+- [TheyWorkForYou — Email Alerts](https://www.theyworkforyou.com/alert/) / [mySociety — keyword alerts](https://www.mysociety.org/2014/07/23/want-to-know-what-your-mp-is-saying-subscribe-to-a-theyworkforyou-alert/) / [improving alerts 2025](https://www.mysociety.org/2025/10/23/improving-theyworkforyou-email-alerts/) — 1 email/día batcheado; keyword/persona; preference center — HIGH
+- [openparliament.ca — Email alerts](https://openparliament.ca/alerts/) / [home](https://openparliament.ca/) — word-of-day LLM con disclaimer de fabricaciones; RSS de todo — MEDIUM (home 403 a fetch, corroborado por search + páginas de debate)
+- [BCN LeyChile — Últimas leyes publicadas (portada_ulp)](https://www.bcn.cl/leychile/Consulta/portada_ulp) — leyes publicadas últimos 12 meses ordenadas por número/fecha; **fuente para "leyes recién publicadas"** (no hay endpoint XML de recency directo; `obtxml opt=6/opt=30` son categorías estáticas, verificado) — MEDIUM
+- [Cámara — Leyes Promulgadas](https://www.camara.cl/legislacion/ProyectosDeLey/leyes_promulgadas.aspx) / [Senado — Leyes publicadas](https://www.senado.cl/actividad-legislativa/informacion-legislativa/leyes-publicadas) — alternativas de ingesta de leyes publicadas — MEDIUM
+- senado.cl / camara.cl homes (HTML inspeccionado directo, UA identificatorio) — oficiales = editorial-first; camara.cl destaca "Últimos Proyectos Ingresados", ambos "Actividad Legislativa"/"Sesiones de Sala" — HIGH
+- Repo `supabase/migrations/0008_tramitacion.sql` + `0010_agenda.sql` — schema real: `tramitacion_evento(tipo urgencia/tramite/…)`, `proyecto.materia`, **sin `fecha_ingreso`**, agenda ligada a boletín — HIGH
+- [Notification best practices — alert fatigue / unsubscribe](https://www.smtp2go.com/blog/15-email-unsubscribe-best-practices/) — digest vs instant, doble opt-in, unsubscribe 5x >5 emails/sem, preference center — MEDIUM
 
 ---
-*Feature research for: legislative-transparency platform (Chile Congress — ciudadanos + prensa)*
-*Researched: 2026-07-21*
+*Feature research for: panel de actualidad legislativa + notificaciones (Observatorio del Congreso 360 v10.0)*
+*Researched: 2026-07-23*

@@ -1,264 +1,296 @@
-# Architecture Research — v9.0 Integration
+# Architecture Research
 
-**Domain:** Civic data platform (Next.js 16 App Router + Supabase, service_role + RPC allowlist), subsequent-milestone hardening
-**Researched:** 2026-07-21
-**Confidence:** HIGH (grounded in repo reads; every integration point below cites a real file/line)
+**Domain:** v10.0 — Panel de actualidad legislativa (landing) + señales + notificaciones por suscripción
+**Researched:** 2026-07-23
+**Confidence:** HIGH (integración contra código real leído; auth-on-Workers verificado con docs actuales)
 
-> This is an **integration** map, not a greenfield architecture. It answers "where does each v9.0 feature attach to what already exists, what is new vs modified, and where the data gaps are." Ordering follows the LOCKED three-pass structure (P1 búsqueda/PL → P2 personas/agenda → P3 seguridad).
+> Alcance: cómo las TRES capacidades nuevas —(a) señales de actualidad, (b) landing-panel, (c) suscripciones+notificaciones— se enchufan al monorepo existente sin romper invariantes LOCKED. Todo lo afirmado abajo se ancla a archivos reales citados. Lo NO verificado se marca.
 
 ---
 
-## System Overview (as-built, relevant slice)
+## Standard Architecture (estado actual — leído del repo)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  BROWSER (client islands only: SearchBox, FichaRail scrollspy, toggles)    │
-│  — NUNCA llama fuentes ni modelos; navega y filtra ya-fetcheado.           │
+│  FRONTEND  — Next.js 16 App Router, OpenNext → Cloudflare Workers          │
+│  app/app/page.tsx (home bento, force-dynamic) · /buscar /parlamentarios    │
+│  /agenda /proyecto/[b] /parlamentario/[id]                                 │
+│  Lee SOLO server-side vía createServerSupabase() = service_role (bypassa   │
+│  RLS). SIN auth, SIN middleware, SIN dato de usuario. import "server-only" │
 ├──────────────────────────────────────────────────────────────────────────┤
-│  NEXT.JS 16 APP ROUTER  (app/app/**)  — Server Components por defecto       │
-│   /buscar    /proyecto/[boletin]   /parlamentario/[id]   /agenda           │
-│      │              │                     │                  │             │
-│   lib/buscar   leerProyecto/         getParlamentarioPublico  lib/agenda-  │
-│   (embed+RPC)  leerFicha/leerAutores  + *Section RPCs         buscar (FTS) │
+│  SEGURIDAD  — Camino A (app/lib/supabase.ts)                               │
+│  service_role ES el boundary. Guards CI que MUERDEN (app/lib/*.test.ts):   │
+│   · lockdown-guard   : (A) migr >0044 sin grant anon/public               │
+│                        (B) árbol público no toca .from(PII) ni .rpc(∉ALLOW)│
+│   · anti-insinuacion : denylist de vocabulario sobre SUPERFICIES_* (incl.  │
+│                        app/page.tsx + actualidad-module.tsx)               │
+│   · bento-guards     : cero-hex + tipografía-whitelist + bare-var          │
 ├──────────────────────────────────────────────────────────────────────────┤
-│  DATA ACCESS: createServerSupabase() = service_role                        │
-│   ▸ .from(<tabla pública>)  ▸ .rpc(<solo PUBLIC_RPC_ALLOWLIST>)             │
-│   Guards: lockdown-guard (grants>0044), PII/allowlist, anti-insinuación    │
+│  DATOS  — Supabase Postgres (Pro), migraciones 0001-0064                   │
+│  Tablas normalizadas (NO-PII: proyecto/votacion/tramitacion_evento/        │
+│  citacion/lobby_audiencia/proyecto_ficha…) + tablas PII (parlamentario/    │
+│  cruce_senal/…). RLS habilitada SIN policies (deny-by-default) + revoke.   │
+│  RPCs security-definer PII-safe, bounded (LIMIT + statement_timeout 5s).   │
+│  cruce_senal = precedente de SEÑAL precomputada (0039) por pg_cron.        │
 ├──────────────────────────────────────────────────────────────────────────┤
-│  SUPABASE POSTGRES  (migrations 0001–0054, psql direct)                    │
-│   proyecto · proyecto_ficha · proyecto_embedding(HNSW) · votacion/voto     │
-│   parlamentario(maestra, deny-by-default: partido/rut/email OCULTOS)       │
-│   citacion/citacion_punto/citacion_invitado · sesion_sala/sesion_tabla_item│
-│   lobby_audiencia/lobby_contraparte · cruce_senal · entidad_tercero        │
-│   RPCs security-definer (proyectan solo campos públicos PII-safe)          │
-├──────────────────────────────────────────────────────────────────────────┤
-│  INGESTA (packages/@obs/*, Deno/TS)  — DOS ETAPAS LOCKED fuente→R2→Supabase │
-│   crons = GitHub Actions semanales · backfill masivo = LOCAL · --from-r2   │
+│  INGESTA  — dos etapas LOCKED: fuente → R2 crudo → Supabase                │
+│  GH Actions crons (.github/workflows/*.yml) corriendo CLIs TS/@obs con     │
+│  SUPABASE_SECRET_KEY. leyes-weekly = L-V 20:00 UTC. Repo público =         │
+│  minutos ilimitados. pg_cron interno para materializar cruce_senal.        │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Load-bearing invariants for every v9.0 change:**
-1. New public data path = **new migration** (`NNNN_*.sql`, psql direct, `> 0044` → **zero `grant … to anon/public`**, verified by `app/lib/lockdown-guard.test.ts`) **+** a **security-definer RPC added to `PUBLIC_RPC_ALLOWLIST`** (same file, line 165) **+** the server component reading it via `createServerSupabase().rpc(...)`.
-2. The site client is `service_role` → the DB no longer blocks anything; **the guard is the wall**. Any `.rpc()` from the public tree must be in the allowlist; any `.from(<PII tabla>)` fails the PII guard.
-3. Anti-insinuación linter (`app/lib/anti-insinuacion-guard.test.ts`) + carril-aislado `mt-12` rule apply to every new surface.
+### Component Responsibilities (nuevos vs existentes)
+
+| Component | Responsibility | Nuevo / Modificado |
+|-----------|----------------|--------------------|
+| `actualidad_senal` (tabla) | Señales precomputadas del panel (movimiento, ingresos, urgencias, próximas votaciones, leyes nuevas) | **NUEVO** — espeja `cruce_senal` (0039) |
+| `actualidad.materializar_senales()` (proc) | Full-rebuild transaccional de las señales, invocado por pg_cron/CLI | **NUEVO** — espeja `cruces.materializar_cruces()` |
+| RPC(s) `actualidad_*` PII-safe bounded | Lectura del panel desde la landing | **NUEVO** — enhebra la aguja 0064 + allowlist |
+| `app/app/page.tsx` | Landing = panel de actualidad (reemplaza bento producto-céntrico) | **MODIFICADO** (conserva BentoGrid/tiles/tokens) |
+| `suscripcion` + `notificacion_envio` (tablas user-owned) | Primer dato DE USUARIO; RLS `to authenticated` real | **NUEVO** — primer uso de RLS con policies |
+| Supabase Auth + `@supabase/ssr` + `middleware.ts` | Sesión de usuario (cookies) sobre Workers | **NUEVO** — primer auth del sistema |
+| Cron de EGRESO (GH Actions) | Computa novedades por suscripción → envía email | **NUEVO patrón** (no es ingesta de dos etapas) |
 
 ---
 
-## Feature-by-feature integration (new vs modified)
-
-### Q1 — Hybrid retrieval (why literal title words miss; least-invasive fix)
-
-**Current query path** (`app/app/buscar/page.tsx` → `app/lib/buscar.ts:177`):
-`qRaw` trim/cap 300 → `BOLETIN_RE` shortcut → **Gemini `RETRIEVAL_QUERY` embed** → `sb.rpc("match_proyectos", {query_embedding, match_count, match_threshold: 0.59, exclude_boletin})` (`supabase/migrations/0011_fichas_embeddings.sql:55`) → returns `(boletin, similarity)` → page hydrates rows from `proyecto`.
-
-**Why a LITERAL title word misses:** `match_proyectos` is **pure cosine kNN over `proyecto_embedding` only**, with `match_threshold = 0.59` (`buscar.ts:67`). The embedding is built from the *ficha* (idea matriz / cuerpos legales), not the title, and only ~84,6% of the corpus is embedded (v6.1: 3.100/3.657). So a query that is an exact substring of `proyecto.titulo` has **no lexical path at all** — if the title's semantics don't clear 0.59, or the proyecto has no embedding row, it returns nothing. There is no FTS/`ILIKE`/trigram over `proyecto.titulo`/`materia`/`boletin_num`.
-
-**The template already exists in-repo:** `0032_agenda_search.sql` built a `spanish` FTS generated column + GIN index + `websearch_to_tsquery` RPC (`buscar_citaciones`) over `citacion`. **Reuse that exact pattern on `proyecto`.**
-
-**Least-invasive hybrid (new + modified):**
-- **NEW migration** `00NN_proyecto_search.sql`: `alter table proyecto add column busqueda_tsv tsvector generated always as (to_tsvector('spanish', coalesce(titulo,'')||' '||coalesce(materia,''))) stored;` + GIN index. Then a **NEW RPC `buscar_proyectos_hibrido(q text, query_embedding vector(768), match_count int, match_threshold float8)`** (security-definer, `set search_path=''`) that UNIONs: (a) boletín-exact on `boletin`/`boletin_num`; (b) FTS `busqueda_tsv @@ websearch_to_tsquery('spanish', q)`; (c) semantic `match_proyectos`-style kNN — merged/deduped by boletín with a deterministic rank (lexical hits float above semantic, or RRF). Returns `(boletin, rank)` only — **never** non-public columns (mirror `0011` T-07-03). **Add `buscar_proyectos_hibrido` to `PUBLIC_RPC_ALLOWLIST`** and **`grant execute … to service_role`** (NOT anon — `> 0044` guard).
-- **MODIFIED** `app/lib/buscar.ts`: `buscarProyectos` calls the new RPC (still embeds `q` for the semantic leg; passes `q` text for the lexical legs — parametrized, never interpolated). Keep the boletín shortcut. The page (`buscar/page.tsx`) is untouched except that the "no embedding → 0 results" failure mode disappears.
-- **SPIKE gate (P1 requires it):** golden queries incl. exact title words, número de boletín, idea NL, norma afectada. Decide the merge/rank empirically before wiring. `match_proyectos` stays for `ProyectosSimilares` (kNN self-exclusion) — do not remove it.
-
-**Confidence: HIGH** — the FTS-on-Supabase pattern is proven in `0032`; `pgvector` HNSW already indexed.
-
----
-
-### Q2 — Client-side filters over already-fetched results
-
-**Current result shape** (`buscar/page.tsx:129` hydration): full `ProyectoRow` (`app/lib/types.ts:13`) with `boletin, boletin_num, titulo, iniciativa, camara_origen, autores[], materia, estado, etapa, subetapa, origen, fecha_captura`.
-
-**Facet data availability (honest gap analysis):**
-
-| Facet | Source in `proyecto` | Gap? |
-|-------|----------------------|------|
-| **Año** | derive from `boletin_num` (`NNNNN-YY`) or `fecha_captura` | present (derivable) |
-| **Mensaje / moción** | `iniciativa` (`"Mensaje"` vs other — used at `proyecto/[boletin]/page.tsx:554`) | present |
-| **Estado (archivado / en trámite)** | `estado` / `etapa` (free text) | present but **needs a normalizer** (bucket free-text → {en trámite, archivado, publicado, …}) — no enum today |
-| **Cámara de origen** | `camara_origen` | present |
-| **Partido de autores** | `autores` is `string[]` of raw names; `proyecto_autor` (0051) links to maestra by name — but **`parlamentario.partido` is deny-by-default (LEGAL-03)** and never surfaced publicly | **BLOCKED** — see Q4; do not build a partido filter in P1 unless the legal gate for partido opens |
-
-**Pattern for the client island (matches repo idiom):** the page already renders in a Server Component and paginates server-side. For "reorder/filter WITHOUT re-query," follow the existing **server-fetch → serialize → client island** contract (same as `FichaRail`: server passes fully-derived data, island never touches Supabase). **NEW client component** `components/buscar-filtros.tsx` (`"use client"`): receives the full page slice as a prop, filters/sorts in-memory over `año/iniciativa/estado-bucket/camara`, ranking toggle (mensajes > mociones, recencia). **MODIFIED** `buscar/page.tsx` to fetch a larger slice (the RPC already returns ranked boletines) and mount the island. Ranking (mensajes del Ejecutivo > mociones, recencia) is a **pure sort** on `iniciativa` + `boletin_num` year — belongs in the island or as a stable secondary sort in the hybrid RPC.
-
-**Do not** add a URL round-trip for these filters — the requirement is explicitly "sin re-buscar." Keep the boletín/q flow server-side; make facets client-only.
-
----
-
-### Q3 — Ficha /proyecto/[boletin]: per-section deep-links to oficial pages
-
-**Where source links render today:** every carril uses `ProvenanceBadge` with `sourceUrl`. The header link is `proyecto.enlace` (`ProyectoRow.enlace`); tramitación events each carry `enlace` (`TramitacionEventoRow.enlace`); votaciones carry `enlace` (`VotacionRow.enlace`). **But two sections show `sourceUrl={null}` on purpose:** idea-matriz (`page.tsx:327` — `texto_r2_path` is an internal R2 key, not a public URL) and the tramitación section badge (`page.tsx:430`).
-
-**Data to build deep-links:** `proyecto.enlace` is the canonical project page (Cámara `pl_numero_boletin` or Senado `ficha`). Per-section deep-links (jump to the exact part of senado.cl/camara.cl) need either (a) fragment/anchor construction on top of `proyecto.enlace`, or (b) the `link_mensaje_mocion` (BCN/Senado document URL) that PROJECT.md flags as **not yet plumbed end-to-end** (`v1.0-MILESTONE-AUDIT` follow-up #4). **This is a data-plumbing task, not just UI:** the honest deep-link for idea-matriz/cuerpos requires persisting the real source document URL (BCN `obtxml`/Senado ficha) so the badge stops showing `null`.
-
-**Integration:** MODIFIED — add a `link_fuente`-style column (or reuse existing `enlace` + a computed anchor) surfaced through `leerFicha`/`leerProyecto`; the P1 "deep-link de validación" is best delivered as a **per-boletín validated link** (construct + BrowserOS-verify it resolves to the right page section). No new RPC needed if the URL already lives on `proyecto`/`proyecto_ficha`; a small ingesta backfill IS needed for `link_mensaje_mocion` to make idea-matriz/cuerpos badges non-null.
-
----
-
-### Q4 — Ficha /parlamentario/[id]: bio oficial + partido + cross-links
-
-**Where bio/partido would mount:** header via `getParlamentarioPublico` (`parlamentario/[id]/page.tsx:116`) calling RPC `parlamentario_publico` (`0020`), which returns `id, nombre, camara, region, distrito, circunscripcion, periodo, origen, fecha_captura, enlace`. A bio/partido block would mount in `ParlamentarioHeader` or a new above-fold section.
-
-**Existing maestra fields (`0005_parlamentario.sql`):** `partido` (**column EXISTS**, nullable, line 29), `region`, `distrito`, `circunscripcion`, `periodo`, `nombres/apellido_*`. **There is NO `biografia` column** and no bio ingesta today.
-
-**THE HARD CONSTRAINT (call it out honestly):** `partido` is **deliberately withheld**. `0020` (lines 15-17) and `ParlamentarioPublicoRow` docstring (`types.ts:104`) state: *"NUNCA `partido` (afiliación política, dato SENSIBLE Ley 21.719)."* So v9.0 feature (d) "ficha con partido político" is **not a code gap — it is a legal-gate decision**. Two options for the roadmap:
-- **(A)** Treat partido as gated (like `MONEY`/`NET`/`cruces`): add a `partido` projection to a **new** security-definer RPC (or extend `parlamentario_publico` behind a flag `PARTIDO_PUBLIC_ENABLED`), deny-by-default, flipped only by human legal sign-off (Ley 21.719, plena vigencia 2026-12-01). An agent NEVER flips it.
-- **(B)** Ship bio (biography is arguably less sensitive than afiliación) in P2, and leave partido behind the gate until sign-off.
-
-**Bio ingesta under DOS-ETAPAS LOCKED:** biografías oficiales live on camara.cl (ficha del diputado) / senado.cl (ficha del senador). New connector in `@obs/identity` (or a new `@obs/bio` slice) following the LOCKED pattern: **fuente → R2 content-addressed (`bio/camara|senado/<id>/<sha256>.html`, `If-None-Match:*`) → parse (cheerio) → `parlamentario` (new `biografia`/`profesion` columns via new migration) or a sibling `parlamentario_bio` table**. Hash-check before download; rate-limit 2-3s; `--from-r2` replay. Surface via an extended/new PII-safe RPC (bio text is public on the official ficha → safe to project; RUT/email stay hidden).
-
-**Cross-links (same party/committee/region) reuse existing machinery:**
-- **Region:** `parlamentario_publico` already emits `region`/`distrito`/`circunscripcion` → a "same region" cross-link needs only a **new RPC `parlamentarios_por_region(region)`** (PII-safe, projects the listado 7 cols) added to the allowlist; the directory RPC `parlamentarios_publico` (0026) is the template.
-- **Same party:** blocked by the partido gate (same as above).
-- **Committee (comisión):** **no comisión-membership model exists today** — citaciones have `comision` (text) but there's no `parlamentario ↔ comisión` table. This is a **data gap** requiring new ingesta (comisiones integrantes) before any "same committee" cross-link.
-- **Relaciones entre parlamentarios:** `/red` (subgrafo_red RPC, allowlisted) + `cruces_de_parlamentario` already exist — reuse, don't rebuild.
-
-**Confidence: HIGH on the constraint (0020/types.ts are explicit); MEDIUM on bio ingesta shape (connector not yet written).**
-
----
-
-### Q5 — Lobby: legible + link to PLs
-
-**Current component:** `app/components/lobby-de-parlamentario.tsx` (`LobbySection` server + `LobbyView` pure). **Titles are NOT truncated in the DB** — `lobby_audiencia.materia` stores the full verbatim asunto (`@obs/lobby model.ts:93`) and the RPC `lobby_de_parlamentario` projects `materia` in full; the cronológica view renders `Asunto: {a.materia}` untruncated (`lobby-de-parlamentario.tsx:445`). The "confusing" perception is a **UI/legibility problem** (raw materia strings, and the grouped-by-contraparte DEFAULT view hides the asunto entirely), not a data gap. Fix is presentational (P2 "lobby legible").
-
-**Where full materia lives:** `lobby_audiencia.materia` (DB) → `LobbyAudienciaRpcRow.materia` → `LobbyAudienciaRow.materia`. Already end-to-end; nothing to backfill for the title itself.
-
-**Linking audiencia → proyecto:** the LOCKED rule (`lobby-de-parlamentario.tsx:20-30`) forbids a lobby row from linking a concrete `/proyecto/[boletin]` — carril aislado, anti-insinuación. BUT the requirement says "relación con PLs en movimiento con links específicos." Reconcile carefully:
-- Boletín mentions **do** appear inside `materia` free text (e.g. "boletín 14309-04"). A regex extraction (`BOLETIN_RE`-style over materia) could surface candidate boletines.
-- **This collides with the anti-insinuación LOCK.** The safe pattern already exists: `LobbyEnTramitacionSection` / RPC `lobby_en_tramitacion` (0048, allowlisted) does the **temporal juxtaposition** on the *proyecto* ficha (not the parlamentario lobby carril). The v9.0 "lobby → PL link" should route through that existing surface, or a **new PII-safe RPC** that links audiencia→proyecto **only by explicit boletín mention in materia** (factual, not inferred), rendered with the mandatory caveat. Decide with a legal/anti-insinuación review, not silently. **New migration + RPC + allowlist** if a direct link is approved; otherwise reuse `lobby_en_tramitacion`.
-
-**Confidence: HIGH** (materia is full in DB; the anti-insinuación constraint is explicit in the component).
-
----
-
-### Q6 — Citaciones: coverage audit (what is / isn't scraped)
-
-**Current agenda model** (`@obs/agenda model.ts`): `Citacion` (comisión + fecha + materia + `invitados[]` + `puntos[]` with boletín) and `SesionSala` + `SesionTablaItem` (orden del día de sala). Tables: `citacion`, `citacion_punto`, `citacion_invitado`, `sesion_sala`, `sesion_tabla_item` (0010). Search: `buscar_citaciones` FTS (0032/0033).
-
-**Connectors present:**
-
-| Source | Connector | Status |
-|--------|-----------|--------|
-| **Cámara comisiones citaciones** | `connector-camara.ts` (`citaciones_semana.aspx?prmSemana=`, week enumeration, anti-Cloudflare headers) | scraped |
-| **Cámara sala (tabla semanal)** | `connector-camara.ts fetchPdfTabla()` — **PDF only, base pkg exposes URL for honest degradation** | PARTIAL — memory (`camara-tabla-y-buscador-agenda`) says a **DeepSeek-from-PDF path is LIVE** (sesion_tabla_item populated 2026-06-23) but only 1 session/W26; **no historical backfill** |
-| **Senado comisiones citaciones** | `connector-senado.ts` (`web-back.senado.cl/api/commissions_citations`) — **FORWARD-ONLY window, sin histórico** | scraped (forward-only) |
-| **Senado sala (tabla semanal)** | `connector-senado.ts` (`web-back.senado.cl/api/weekly_table`) | scraped |
-
-**Gap analysis (the P2 "auditoría de cobertura antes de tocar UI" is real work):**
-- **Senado comisiones is FORWARD-ONLY** (`connector-senado.ts:54`) → past citaciones are not captured; the API is a moving window.
-- **Cámara sala tabla depends on a fragile PDF→DeepSeek path** with no backfill; base `@obs/agenda` treats it as honest-degradation-only.
-- **Comisiones membership** (who sits on each comisión) is **not modeled at all** — needed for Q4 committee cross-links.
-- **No committee-specific citaciones tables beyond `citacion`** — the model already covers comisión citaciones generically (`camara` enum + `comision` text), so "committee citaciones" needs **no new table**, only **coverage/backfill** (fill the forward-only Senado gap + Cámara sala historical) and richer per-day structuring/filters in `/agenda`.
-
-**Integration:** mostly **ingesta coverage + backfill (LOCAL, `--from-r2`)**, not schema. New UI: `/agenda` per-day grouping + journalist/citizen filters is a **modified `app/app/agenda/page.tsx`** using the existing `citacion`/`sesion_tabla_item` tables and `buscar_citaciones`. The audit itself (which sources are stale/missing) uses the existing `pnpm freshness` CLI.
-
-**Confidence: HIGH on what's scraped; MEDIUM on the exact Cámara-sala DeepSeek state (memory says live-but-thin).**
-
----
-
-### Q7 — Security validation (P3): what to re-run/extend vs what the final audit adds
-
-**Existing guards (re-run + extend, do not duplicate):**
-
-| Guard | File | v9.0 action |
-|-------|------|-------------|
-| Lockdown (no `grant … to anon/public` in migrations > 0044) | `app/lib/lockdown-guard.test.ts` | **Re-run** — every new v9.0 migration must pass |
-| PUBLIC_RPC_ALLOWLIST (public tree only calls allowlisted RPCs) | same file, line 165 | **Extend** — add `buscar_proyectos_hibrido`, any new region/bio/lobby-link RPC |
-| PII guard (no `.from(<PII tabla>)` in `app/`) | CI guard (ci.yml) | **Re-run** — bio/partido must go through RPCs, never `.from(parlamentario)` |
-| Anti-insinuación linter | `app/lib/anti-insinuacion-guard.test.ts` | **Extend** — new lobby-link + cruce copy scanned |
-| Money/NET/cruces anti-flip guards | `money-antiflip-guard.test.ts`, gates | **Re-run** — ensure no v9.0 change flips a flag; if partido becomes gated, add `PARTIDO_PUBLIC_ENABLED` chokepoint mirroring `money-gate.ts` |
-| pgTAP | `supabase/tests/*` | **Extend** — new RPCs get PII-safe assertions (never project partido/rut/email) |
-| HTTP security headers | `app/next.config.ts` | **Extend** — P3 "seguridad del sitio": promote **CSP Report-Only → enforced** (currently Report-Only, line 33; needs nonces/hashes that OpenNext doesn't inject — this is the P3 hard task) + configure report-uri |
-
-**What the FINAL audit phase adds (net-new, non-duplicative):**
-- **Supabase-side audit:** verify PROD grants match the guards (the guards check *migrations*; the audit checks the *live DB* — that `anon` truly has zero routine/table privileges post-0044, RLS on for every table, no orphan grants). Rotate DB password (B26, long-standing operator debt).
-- **Public-repo audit:** the repo is public → scan for leaked secrets in history, confirm `.env` never committed, confirm no service_role key in client bundle.
-- **CSP enforcement:** move from Report-Only to enforced (requires OpenNext nonce work) — the single biggest net-new site-security item.
-- **Third-party surface:** BrowserOS empirical check that no PII (partido/rut) leaks through any new v9.0 surface, and that every new deep-link resolves.
-
----
-
-## Suggested build order (dependencies)
+## Recommended Project Structure (deltas sobre el repo real)
 
 ```
-PASS 1 — Búsqueda / PL  (Phases ~86–89)
-  86  SPIKE hybrid retrieval (golden queries) ──► decides merge/rank
-       │  (blocks 87; no schema until the spike picks the algorithm)
-  87  Migration 00NN_proyecto_search (tsv+GIN) + RPC buscar_proyectos_hibrido
-       + allowlist + rewire lib/buscar.ts   [MODIFIED buscar.ts; NEW migration/RPC]
-  88  estado-bucket normalizer + client filter island (components/buscar-filtros)
-       + ranking (mensaje>moción, recencia)  [NEW island; MODIFIED buscar/page.tsx]
-  89  Deep-link de validación por boletín (plumb link_mensaje_mocion / anchor)
-       [ingesta backfill + MODIFIED ficha badges]  ── BrowserOS gate
-
-PASS 2 — Personas / Agenda  (Phases ~90–94)  [/clear before]
-  90  Bio ingesta connector (@obs/identity, DOS-ETAPAS, R2) + migration
-       (biografia col / parlamentario_bio) + PII-safe RPC + allowlist   [NEW]
-  91  Ficha parlamentario: mount bio + region cross-links (parlamentarios_por_region)
-       [NEW RPC; MODIFIED parlamentario/[id]/page.tsx + header]
-      ── PARTIDO stays GATED (PARTIDO_PUBLIC_ENABLED, deny-by-default, legal sign-off)
-  92  Lobby legible (presentational) + audiencia→PL link via lobby_en_tramitacion
-       (or new PII-safe RPC if legally approved)  [MODIFIED lobby component]
-  93  Citaciones COVERAGE AUDIT (freshness) — Senado comisiones forward-only gap,
-       Cámara sala PDF backfill  [ingesta LOCAL --from-r2]  ── before UI
-  94  /agenda per-day structure + journalist filters  [MODIFIED agenda/page.tsx]
-       ── BrowserOS gate
-
-PASS 3 — Seguridad  (Phases ~95–96)  [/clear before]
-  95  Re-run + extend all guards (lockdown/PII/anti-insinuación/pgTAP) over new RPCs
-  96  FINAL AUDIT: live-DB grant/RLS audit + public-repo secret scan + CSP enforced
-       + rotate DB password (operator)  ── net-new, non-duplicative
+supabase/migrations/
+├── 0065_actualidad_senal.sql          # tabla + proc materializador + pg_cron (espeja 0039)
+├── 0066_actualidad_rpc.sql            # RPC(s) bounded PII-safe del panel (espeja 0064)
+├── 0067_auth_suscripcion.sql          # suscripcion + notificacion_envio + RLS to authenticated
+│                                       #   PRIMERA migración con CREATE POLICY (rol authenticated)
+packages/
+├── @obs/actualidad/                    # (opción A) CLI materializador reusable local+CI
+│   └── src/run-actualidad-prod-cli.ts  # espeja run-tramitacion-prod-cli.ts
+└── @obs/notificaciones/                # egreso: computa novedades por suscripción + envía email
+    └── src/run-notificaciones-cli.ts
+.github/workflows/
+├── actualidad-refresh.yml              # (si materializa por CLI, no pg_cron) L-V intradía
+└── notificaciones-daily.yml            # EGRESO diario: novedades → email (nuevo patrón)
+app/
+├── middleware.ts                       # NUEVO — refresco de sesión Supabase (auth)
+├── lib/supabase-user.ts                # NUEVO — cliente @supabase/ssr (rol authenticated, NO service_role)
+├── app/page.tsx                        # MODIFICADO — panel de actualidad
+├── app/(auth)/…                        # login/verify/unsubscribe
+├── components/panel/*.tsx              # NUEVO — tiles del panel (reusan BentoGrid/BentoTile)
+└── lib/*.test.ts                       # guards extendidos (allowlist, anti-insinuación, bento)
 ```
 
-**Hard dependencies:**
-- 86 (spike) gates 87 (no migration until the algorithm is chosen empirically).
-- 90 (bio ingesta) gates 91 (ficha can't mount bio without the connector + column).
-- 93 (coverage audit) gates 94 ("antes de tocar UI" is explicit in PROJECT.md).
-- Partido and any concrete audiencia→PL link are **legal gates**, not agent decisions — build to the gate, deny-by-default.
-- Every new public data path threads the same needle: **migration (>0044, no anon grant) + security-definer RPC + PUBLIC_RPC_ALLOWLIST entry + service_role `.rpc()`** — this is the single most repeated integration motion in v9.0.
+### Structure Rationale
+
+- **Materialización de señales:** hay DOS precedentes en el repo — pg_cron interno (`cruce_senal`, 0039) y CLI-en-GH-Actions (`run-tramitacion-prod-cli`). Recomendación: **CLI en GH Actions** para las señales (ver Decisión 1), reservando pg_cron solo si la señal es 100% SQL sin lógica TS.
+- **Auth aislado en `supabase-user.ts`:** el cliente de usuario (`authenticated`, respeta RLS) NUNCA es el mismo objeto que `createServerSupabase()` (`service_role`, bypassa RLS). Separarlos evita que un guard/refactor confunda superficies.
+- **`@obs/notificaciones` separado:** el egreso NO es ingesta; mezclarlo con conectores fuente→R2 contaminaría la regla de dos etapas.
 
 ---
 
-## Anti-Patterns (specific to this codebase)
+## Decisión 1 — ¿Dónde viven las señales?
 
-**Adding a new `.rpc()` without updating the allowlist** → `lockdown-guard.test.ts` fails CI. Instead: add the RPC name to `PUBLIC_RPC_ALLOWLIST` in the same PR and confirm it's PII-safe.
+**Recomendación: tabla `actualidad_senal` precomputada por materializador full-rebuild (espejo `cruce_senal`/0039), + RPC(s) bounded PII-safe para leerla. NO agregación on-read pesada, NO vistas materializadas.**
 
-**`.from("parlamentario").select("partido"|"rut"|"email")` to "just show the party"** → PII guard fails, and it violates LEGAL-03/Ley 21.719. Instead: gate partido behind a flag + human sign-off; project bio (public on official ficha) via a security-definer RPC.
+### Opciones evaluadas contra el repo real
 
-**Linking a lobby row to a concrete `/proyecto/[boletin]`** inside the lobby carril → breaks the LOCKED anti-insinuación rule. Instead: route through `lobby_en_tramitacion` (temporal juxtaposition on the *proyecto* side) or a factual boletín-mention link with the mandatory caveat, after review.
+| Opción | Precedente en repo | Veredicto |
+|--------|--------------------|-----------|
+| (i) RPC de agregación **on-read** | `parlamentarios_publico_v2` (0064), `actualidad-module.tsx` lee `.from()` en vivo con `force-dynamic` | OK para señales BARATAS y acotadas (votado-esta-semana ya se hace así). NO para agregaciones caras (clustering por tema, "más movimiento" sobre 3.657 proyectos) — chocaría con `statement_timeout 5s` (0057/0064) |
+| (ii) **Tabla precomputada** por cron (`actualidad_senal`) | `cruce_senal` (0039) + `cruces.materializar_cruces()` full-rebuild + pg_cron | **ELEGIDA.** El cómputo caro corre offline; la landing lee filas ya materializadas → RPC trivialmente bounded. Full-rebuild transaccional (delete+insert) da conteos/evidencia coherentes por corrida (D-11 de 0039) |
+| (iii) Vistas materializadas + `REFRESH` | — (sin precedente en el repo) | RECHAZADA. Introduce un mecanismo nuevo sin precedente; `REFRESH MATERIALIZED VIEW CONCURRENTLY` compite por locks y no encaja con el idiom de proc-security-definer + provenance-inline que ya usa el repo |
 
-**`grant … to anon` in a migration > 0044** (even for an allowlisted RPC) → guard fails; the site is `service_role`, anon is dead. Instead: grant to `service_role` only.
+### Trade-offs con el modelo bounded-RPC (statement_timeout 5s) y Pro-plan
 
-**Parsing the Cámara sala PDF as if structured** → it's PDF-only (DeepSeek-from-PDF, thin coverage). Instead: honest degradation + explicit backfill task; never fabricate `sesion_tabla_item` rows.
+- El panel lee de `actualidad_senal` (filas ya computadas) → la RPC de lectura es un `select … order … limit N` que cabe holgado en 5s. Mismo patrón que las 9 RPCs de 0064.
+- El cómputo pesado (clustering, "más movimiento", ranking factual de recencia) vive en el materializador (offline), donde NO hay `statement_timeout 5s` de RPC pública. Puede tomar segundos sin afectar la superficie.
+- **Clustering por tema:** los embeddings pgvector 768-dim ya existen (v6.1). El agrupamiento factual (jamás editorial — PROJECT §core) corre **offline en el materializador** y escribe `grupo_tema_id` a las filas de `actualidad_senal`, NO on-read. Evita HNSW-kNN por cada request de la landing.
+
+### Frecuencia de cron y qué cambia en los YAML
+
+- **Fuentes YA ingeridas:** el panel deriva de datos que `leyes-weekly` / `agenda-weekly` ya trajeron a Supabase. El materializador de señales **NO toca las fuentes** (lee Supabase) → NO aplica el rate-limit 2-3s del WAF ni robots.txt. Puede correr tan seguido como se quiera.
+- **GH Actions scheduling:** cron mínimo es 5 min; el scheduler puede retrasarse en horas pico (best-effort, no garantizado — no apto para "tiempo real", sí para intradía). Repo público = minutos ilimitados (ya explotado por `leyes-weekly`).
+- **YAML nuevo `actualidad-refresh.yml`:** clona el molde de `leyes-weekly.yml` (checkout/pnpm/node 22/install `--ignore-scripts`) pero **sin R2** (no descarga crudo) y con `SUPABASE_SECRET_KEY`+`SUPABASE_API_URL` solamente. Cambio de cadencia: `cron: "0 11,14,17,20 * * 1-5"` (varias veces intradía L-V) en lugar del único `0 20`.
+- Si algún día una señal SÍ requiere ingesta nueva de fuente (p.ej. leyes recién publicadas en BCN que no estén ingeridas), ESO va por el pipeline de dos etapas normal (fuente→R2→Supabase), separado del materializador.
+
+---
+
+## Decisión 2 — Landing panel: qué se reemplaza vs conserva
+
+### Conservar (LOCKED de v8.0/bento)
+
+- **Primitivas:** `BentoGrid`, `BentoTile` (spans 2/4/6, variants), contenedor `max-w-[1120px]`, tokens `--radius-tile`/`--radius-control`, `import Link`, `force-dynamic`.
+- **Régimen de diseño (candados que MUERDEN):** `bento-guards.test.ts` escanea `app/page.tsx` + `components/actualidad-module.tsx` por (I) cero-hex, (II) tipografía-whitelist, (III) bare-var. **El linter home SÍ muerde sobre la nueva landing** → todo tile nuevo del panel debe usar tokens (`bg-[var(--…)]`, `text-accent-product`) y cualquier arbitrary value nuevo (`text-[Npx]`) debe añadirse a `WHITELIST_ARBITRARIOS` con razón, o el CI falla.
+- **Anti-insinuación:** `anti-insinuacion-guard.test.ts` ya incluye `app/page.tsx` y `actualidad-module.tsx` en `SUPERFICIES_HOME`. El copy del panel ("más movimiento", "urgencias") pasa por la denylist → prohibido vocabulario de ranking/juicio/causalidad. Conteos factuales en Mono en-dash, como `conteoVotacion`.
+
+### Reemplazar
+
+- El **hero producto-céntrico** ("Busca cualquier proyecto…") y las 3 entry-cards se degradan/reordenan; el protagonista pasa a ser "qué está pasando HOY". La SearchBox puede conservarse como tile secundario.
+- Los 3 tiles de `actualidad-module.tsx` (votado/urgencias/frescura) son el **germen del panel** — se amplían con nuevas señales, no se botan.
+
+### ¿Lee RPCs nuevas o reusa?
+
+- **Reusa** el patrón `.from()` server-side de `actualidad-module.tsx` para señales baratas sobre tablas NO-PII (votado-esta-semana ya lo hace, sin RPC — decisión Phase 78 "cero RPC nueva").
+- **RPCs nuevas allowlisted** SOLO para leer `actualidad_senal` (tabla precomputada) o para agregaciones que excedan un `.from()` simple. Cada RPC nueva enhebra la aguja LOCKED (ver Integración/invariantes).
+- **Clustering:** corre offline en el materializador (Decisión 1), NO on-read. La landing lee `grupo_tema_id` ya escrito.
+
+---
+
+## Decisión 3 — Suscripciones + notificaciones (el cambio más estructural)
+
+### 3a. Supabase Auth en App Router sobre OpenNext/Workers — VERIFICADO
+
+- `@supabase/ssr` es el paquete vigente (auth-helpers deprecado). Usa cookies HTTP-only para la sesión; **requiere Next.js middleware** para refrescar el token (Server Components no pueden escribir cookies).
+- **OpenNext Cloudflare:** usa runtime **Node.js** (nodejs_compat de Workers), NO Edge. **Soporta middleware estándar**. **CAVEAT verificado (docs OpenNext, 2026):** "Node Middleware (introducido en Next 15.2) NO está soportado aún" → el `middleware.ts` debe ser el middleware clásico (Edge-style API, que OpenNext ejecuta en Node), NO el nuevo `runtime: 'nodejs'` middleware. Confianza: MEDIUM (docs lo dicen; NO probado en este repo — flag para spike).
+- **Impacto estructural:** el sitio HOY **no tiene `middleware.ts`** y todo es `force-dynamic` sin auth. Añadir auth introduce el PRIMER middleware del repo → riesgo de deploy nuevo (el build OpenNext ya es delicado: symlinks Windows, corre en Linux CI). **Recomendación: spike de deploy con un `middleware.ts` mínimo ANTES de construir la feature completa.**
+- Cookies: el cliente de usuario (`@supabase/ssr` `createServerClient`) lee/escribe cookies vía las APIs de Next; en Workers las cookies funcionan bajo nodejs_compat. Verificar en el spike que `Set-Cookie` sobrevive el pipeline OpenNext.
+
+### 3b. Tablas user-owned con RLS real — PRIMERA VEZ, convivencia con el lockdown-guard
+
+- `suscripcion(user_id uuid references auth.users, tipo, target_id, …)` + `notificacion_envio(…)`. **Primera vez que el proyecto usa `CREATE POLICY` con filas accesibles** (hoy TODAS las tablas son deny-by-default sin policies).
+- **Convivencia con `lockdown-guard` (Bloque A):** el guard bloquea `GRANT … TO anon`, `GRANT … TO public`, y `CREATE POLICY … TO anon` / `FOR SELECT TO anon` en migraciones >0044. **`authenticated` es OTRO rol** — el regex del guard matchea SOLO `anon|public` (líneas 221, 266-268 de `lockdown-guard.test.ts`). **Por lo tanto `CREATE POLICY … TO authenticated USING (auth.uid() = user_id)` NO dispara el guard.** Esto es correcto y deseado: `authenticated` es el rol de usuario logueado, distinto de la superficie anónima que el lockdown cierra.
+  - VERIFICADO leyendo el regex: `grantToAnon = /grant\s+\S[\s\S]*?\bto\s+[\w,\s]*\b(anon|public)\b/` y `/create\s+policy\s+[\s\S]*?\bto\s+[\w,\s]*\banon\b/`. Un policy `to authenticated` no contiene `anon` ni `public` tras el `to` → 0 offenders.
+  - CUIDADO: NO usar policies `to public` (dispara el guard, y `authenticated` no es `public`). El idiom seguro es policy explícita `to authenticated` con `USING (auth.uid() = user_id)` por operación (select/insert/update/delete).
+- **Cliente de acceso:** las tablas user-owned se leen/escriben con el cliente **`authenticated`** (`@supabase/ssr`, respeta RLS), NUNCA con `service_role`. Si se accediera por `service_role` se bypasearía RLS y un usuario vería suscripciones de otro (AP2).
+  - Decisión de guard: extender `lockdown-guard` para exigir que `suscripcion`/`notificacion_envio` se toquen SOLO vía `supabase-user.ts` desde la web (no `.from()` service_role público). No basta con añadirlas a `PII_TABLES` porque el cron de egreso SÍ las lee con service_role (job de servidor, fuera del árbol web).
+
+### 3c. Envío de alertas = EGRESO (nuevo patrón, NO dos etapas)
+
+- La regla de dos etapas (fuente→R2→Supabase) es de **ingesta**. El envío de emails es **egreso** y NO cabe en ella. Es un patrón nuevo LEGÍTIMO: "cron lee Supabase → computa novedades por suscripción → envía email".
+- **Dónde corre:** GH Actions diario (`notificaciones-daily.yml`) con `@obs/notificaciones` CLI, MISMO molde que los crons existentes (Node 22, `SUPABASE_SECRET_KEY`). Alternativa: Supabase Edge Function + pg_cron + pg_net (patrón documentado Supabase). Recomendación: **GH Actions** (consistente con el repo; los Edge Functions no están desplegados hoy — deuda v1.0).
+- **Proveedor de email:** Resend (SDK simple, DKIM/dominio verificable) es el estándar actual con Supabase. Confianza MEDIUM. La API key va en `.env` / secret de repo (constraint PROJECT §secrets).
+- **Cómputo de novedades:** el cron compara el estado actual de `proyecto`/`tramitacion_evento`/`votacion` contra un cursor por suscripción (columna `ultima_notificacion` en `suscripcion`), espejo del patrón cursor de `leylobby_cursor_estado` (0053) y `leyes_rotacion_estado` (0054). Idempotencia: registra cada envío en `notificacion_envio` para no re-enviar.
+- **Cliente en el cron:** el CLI de notificaciones corre con `service_role` (como todos los crons) → lee `suscripcion` bypasseando RLS, lo cual es correcto para un job de servidor (no es superficie de usuario). RLS protege la superficie WEB, no el job.
+
+### 3d. Unsubscribe / verificación de email
+
+- **Double opt-in:** al suscribirse, enviar email de verificación con token firmado; solo activar la suscripción tras click. Evita suscribir a terceros y spam.
+- **Unsubscribe:** link con token opaco (no adivinable) en cada email → ruta pública `/desuscribir?token=…` que marca la fila inactiva. NO requiere login (one-click, requisito legal de emails). Esta ruta escribe con un RPC bounded security-definer específico (token → update), NO expone la tabla.
+- **Ley 21.719 / minimización:** el email del usuario es dato personal → almacenar mínimo, con base de licitud (consentimiento explícito del double opt-in), y este subsistema entra en la pasada de asesoría legal (constraint PROJECT §legal).
+
+---
+
+## Decisión 4 — Build order sugerido
+
+**Orden: (0) spike auth-on-Workers → (1) señales+panel intercalados → (2) notificaciones. Con checkpoint humano legal antes de exponer suscripciones.**
+
+```
+Fase 0  SPIKE deploy: middleware.ts mínimo + @supabase/ssr sobre OpenNext/Workers
+        → de-risk el bloqueante estructural ANTES de construir nada encima.
+        (Verifica cookies + Set-Cookie + middleware clásico en Node runtime.)
+             │  (si el spike falla → replantear auth; el panel de datos NO depende de esto)
+             ▼
+Fase 1  SEÑALES (datos, empírico primero): SPIKE de qué es computable HOY
+        → 0065 actualidad_senal + materializador + YAML refresh intradía
+        → 0066 RPC(s) bounded del panel
+             │
+             ▼  (intercalado: cada señal validada → tile en el panel)
+Fase 2  PANEL (frontend): app/page.tsx reemplaza bento → tiles del panel
+        reusando BentoGrid; guards bento+anti-insinuación muerden; BrowserOS gate
+        + benchmark UX vs senado.cl/camara.cl
+             │
+             ▼
+Fase 3  NOTIFICACIONES (usuario): 0067 suscripcion+RLS to authenticated
+        → auth UI (login/verify) → @obs/notificaciones egreso cron
+        → unsubscribe/double-opt-in
+             │
+             ▼
+        [CHECKPOINT HUMANO LEGAL] antes de exponer captura de emails al público
+        (Ley 21.719 — acto humano, jamás un agente)
+```
+
+### Rationale del orden
+
+- **Señales antes que panel** lo pide el operador (PROJECT §método: "Primero QUÉ, después CÓMO"). Pero **intercalar** panel por señal permite validar cada tile con BrowserOS sin esperar todas las señales.
+- **Notificaciones al final:** es el cambio más estructural (auth, RLS real, egreso) y el ÚNICO con checkpoint legal humano → aislarlo evita que su riesgo bloquee el panel, que es puro dato ya ingerido.
+- **Spike de auth en Fase 0** (paralelo a señales, sin dependencia): el mayor riesgo desconocido es OpenNext+middleware+cookies. De-riskearlo temprano evita descubrir en Fase 3 que el deploy no soporta la sesión.
+
+---
+
+## Anti-Patterns (específicos de este milestone)
+
+### AP1: Agregar la landing/panel con clustering pgvector on-read
+**Qué:** correr HNSW-kNN o "más movimiento sobre 3.657 proyectos" en cada request de `/`.
+**Por qué mal:** choca con `statement_timeout 5s` de las RPCs públicas; la home es `force-dynamic` (una query cara por visita); DoS barato en repo público (Pitfall 12 del CLAUDE.md).
+**En vez:** precomputar en `actualidad_senal` offline (materializador + pg_cron/CLI); la landing lee filas ya listas.
+
+### AP2: Leer tablas user-owned (`suscripcion`) con service_role desde la web
+**Qué:** usar `createServerSupabase()` (service_role) para mostrar "mis suscripciones".
+**Por qué mal:** service_role bypassa RLS → un usuario vería/editaría suscripciones de otro. Es una fuga de dato de usuario.
+**En vez:** cliente `@supabase/ssr` (`authenticated`) que respeta RLS `USING (auth.uid() = user_id)`. service_role SOLO en el cron de egreso (job de servidor, no superficie).
+
+### AP3: Escribir el copy del panel sin pasar por la denylist anti-insinuación
+**Qué:** tiles con "los proyectos más activos", "el diputado que más se reúne", ranking, %.
+**Por qué mal:** `anti-insinuacion-guard.test.ts` (SUPERFICIES_HOME incluye page.tsx) falla el CI; y viola la regla rectora (riesgo existencial #2, "máquina de sospechas").
+**En vez:** conteos factuales fechados con fuente/enlace, Mono en-dash; "N trámites esta semana" no "el más activo".
+
+### AP4: Meter el envío de email en el pipeline de dos etapas
+**Qué:** tratar el email como un "conector" con paso R2.
+**Por qué mal:** dos etapas es INGESTA (fuente inmutable→R2→derivado). Email es EGRESO, no tiene fuente ni crudo que versionar.
+**En vez:** patrón nuevo explícito `@obs/notificaciones` (cron lee Supabase → computa → Resend), idempotente vía `notificacion_envio` + cursor por suscripción.
+
+### AP5: Hardcodear un arbitrary value nuevo en un tile del panel
+**Qué:** `text-[17px]` o `gap-[20px]` ad-hoc en un tile nuevo.
+**Por qué mal:** `bento-guards.test.ts` (II) falla el CI (no está en `WHITELIST_ARBITRARIOS`).
+**En vez:** usar paso Tailwind estándar, `[var(--token)]`, o añadir el off-step a la whitelist con razón documentada.
 
 ---
 
 ## Integration Points
 
-### External sources (all server-only, DOS-ETAPAS)
+### Internal Boundaries (nuevas)
 
-| Source | Pattern | Notes for v9.0 |
-|--------|---------|----------------|
-| camara.cl / senado.cl bio fichas | cheerio over R2-cached HTML | NEW bio connector; rate-limit 2-3s, `--from-r2` |
-| web-back.senado.cl/api/commissions_citations | JSON, forward-only | coverage gap — historical citaciones not captured |
-| Cámara `verDoc.aspx?...TABLASEMANAL` (PDF) | DeepSeek-from-PDF | thin; needs backfill |
-| BCN `obtxml` / Senado ficha | XML/URL | plumb `link_mensaje_mocion` for deep-links + non-null idea-matriz badge |
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| Landing panel ↔ señales | `.from()` NO-PII barato + RPC bounded sobre `actualidad_senal` | Reusa patrón `actualidad-module.tsx`; clustering ya materializado |
+| Materializador ↔ Supabase | proc security-definer (pg_cron) O CLI GH Actions (service_role) | Espeja `cruces.materializar_cruces()` (0039); NO toca fuentes → sin rate-limit |
+| Web usuario ↔ `suscripcion` | cliente `@supabase/ssr` (`authenticated`, RLS `auth.uid()=user_id`) | PRIMER uso de RLS con policies; NUNCA service_role |
+| Cron egreso ↔ email | `@obs/notificaciones` (service_role read) → Resend | Nuevo patrón EGRESO; idempotente vía `notificacion_envio` |
+| Middleware ↔ sesión | `middleware.ts` clásico (Edge-style, ejecutado en Node por OpenNext) | Node Middleware 15.2+ NO soportado por OpenNext → usar el clásico |
 
-### Internal boundaries
+### Invariantes LOCKED que toca cada pieza (y cómo se extienden sin romperlos)
 
-| Boundary | Communication | v9.0 consideration |
-|----------|---------------|--------------------|
-| Server Component ↔ Supabase | `createServerSupabase()` (service_role) + allowlisted `.rpc()` / public `.from()` | every new read follows this; guards enforce |
-| Server Component → client island | fully-serialized props, island never imports Supabase | buscar-filtros follows FichaRail contract |
-| Ingesta (@obs/*) ↔ Supabase | writer-supabase (service key, bypasses RLS) | bio/citaciones writers reuse existing writer pattern |
+| Invariante LOCKED | Pieza que la toca | Extensión segura |
+|-------------------|-------------------|------------------|
+| **Dos etapas fuente→R2→Supabase** | Señales (materializa desde Supabase) · Notificaciones (egreso) | NO la violan: no ingieren de fuente. Si una señal requiere fuente nueva → pipeline normal aparte |
+| **PUBLIC_RPC_ALLOWLIST + bounded** | RPC(s) `actualidad_*` + RPC unsubscribe-por-token | Cada RPC nueva: migración >0044 cero-grant + security-definer + `set search_path=''` + `set statement_timeout='5s'` + LIMIT + añadir a `PUBLIC_RPC_ALLOWLIST` (guard Direction-B exige que exista la función) |
+| **RLS deny-by-default (sin policies)** | `suscripcion`/`notificacion_envio` (SÍ policies, `to authenticated`) | Primera excepción: policies `to authenticated USING (auth.uid()=user_id)`. NO dispara lockdown-guard (matchea solo anon/public). `actualidad_senal` sigue deny-by-default + revoke |
+| **lockdown-guard Bloque B (.from PII / .rpc allowlist)** | Cliente de usuario nuevo | El guard escanea `app/`; el cliente `authenticated` es legítimo. Extender guard: exigir que `suscripcion` se toque solo vía `supabase-user.ts` |
+| **Camino A: web lee service_role** | Auth añade un SEGUNDO cliente (`authenticated`) | Coexisten: service_role para datos públicos (panel, señales), `authenticated` para datos de usuario. Documentar la dualidad en `supabase-user.ts` como se hizo en `supabase.ts` |
+| **Candados bento (cero-hex/tipografía/bare-var) + anti-insinuación** | Panel (page.tsx + tiles nuevos) | Los guards YA muerden sobre page.tsx → tiles nuevos deben cumplir tokens/whitelist/denylist o el CI falla |
+| **Checkpoint legal humano (Ley 21.719)** | Captura de emails (primer dato de usuario) | Gate humano antes de exponer suscripción pública; jamás lo flipea un agente (precedente MONEY/NET flags) |
+
+---
+
+## Scaling Considerations
+
+| Escala | Ajuste |
+|--------|--------|
+| 0–1k usuarios | Materializador intradía L-V; cron notificaciones diario; Resend free/starter. Pro-plan holgado |
+| 1k–100k | Señales precomputadas siguen O(1) por request; el cron de egreso se vuelve el cuello (N suscripciones × comparación) → batch + cursor + posible mover a pgmq/Edge Function; Resend de pago |
+| 100k+ | Notificaciones event-driven (Database Webhooks al insertar `tramitacion_evento`) en vez de barrido diario; fan-out por cola |
+
+### Primer cuello de botella real
+El **cron de egreso** (computar novedades por suscripción). Mitigación desde el día 1: cursor `ultima_notificacion` por suscripción + registro idempotente en `notificacion_envio` → nunca recomputa histórico. NO el panel (lee filas precomputadas).
+
+---
+
+## Gaps / spikes recomendados
+
+1. **Spike auth-on-Workers (Fase 0, bloqueante estructural):** `middleware.ts` mínimo + `@supabase/ssr` desplegado en OpenNext/Workers → verificar cookies `Set-Cookie` + refresh de sesión. Confianza actual MEDIUM (docs OpenNext dicen "middleware clásico sí, Node Middleware 15.2+ no"; NO probado en este repo).
+2. **Spike señales computables (Fase 1, pide el operador):** qué señales salen de datos YA ingeridos vs requieren ingesta nueva (leyes recién publicadas BCN — ¿ingeridas?).
+3. **Decisión materializador:** pg_cron (100% SQL, como 0039) vs CLI GH Actions (si hay lógica TS de clustering). Verificar si el clustering por embeddings es expresable en SQL puro o necesita TS.
+4. **Proveedor email:** confirmar Resend vs alternativa; verificar dominio/DKIM y encaje con `.env`/secrets del repo. Confianza MEDIUM.
+
+---
 
 ## Sources
 
-- Repo reads (HIGH): `app/lib/buscar.ts`, `app/app/buscar/page.tsx`, `app/lib/types.ts`, `app/app/proyecto/[boletin]/page.tsx`, `app/app/parlamentario/[id]/page.tsx`, `app/components/lobby-de-parlamentario.tsx`, `app/app/agenda/page.tsx`, `app/next.config.ts`
-- Migrations (HIGH): `0005_parlamentario.sql`, `0011_fichas_embeddings.sql`, `0020_parlamentario_publico.sql`, `0032_agenda_search.sql`
-- Packages (HIGH): `packages/agenda/src/{model,connector-camara,connector-senado}.ts`, `packages/lobby/src/model.ts`, `packages/fichas/src/model.ts`
-- Guards (HIGH): `app/lib/lockdown-guard.test.ts` (PUBLIC_RPC_ALLOWLIST line 165, grants>0044), `app/lib/anti-insinuacion-guard.test.ts`, `money-antiflip-guard.test.ts`
-- Project context (HIGH): `.planning/PROJECT.md` (v9.0 goal, LEGAL-03, Ley 21.719, DOS-ETAPAS LOCKED), MEMORY (Camino A service_role cutover, camara-tabla DeepSeek)
+- Repo real (HIGH): `app/app/page.tsx`, `app/components/actualidad-module.tsx`, `app/lib/supabase.ts`, `app/lib/lockdown-guard.test.ts`, `app/lib/bento-guards.test.ts`, `app/lib/anti-insinuacion-guard.test.ts`, `supabase/migrations/0039_cruce_senal.sql`, `0052_…`, `0064_bounded_rpc_statement_timeout.sql`, `.github/workflows/{leyes-weekly,roster-weekly,deploy-cloudflare,ci}.yml`, `.planning/PROJECT.md`, `CLAUDE.md`
+- [Setting up Server-Side Auth for Next.js — Supabase Docs](https://supabase.com/docs/guides/auth/server-side/nextjs) — @supabase/ssr, middleware para refrescar sesión — HIGH
+- [@opennextjs/cloudflare docs](https://opennext.js.org/cloudflare) — Node runtime, middleware estándar soportado, Node Middleware 15.2+ NO soportado — MEDIUM (no probado en este repo)
+- [Sending Emails — Supabase Docs](https://supabase.com/docs/guides/functions/examples/send-emails) / [Resend + Supabase Edge Functions](https://resend.com/docs/send-with-supabase-edge-functions) — patrón de egreso email — MEDIUM
+- [Scheduling Edge Functions / Supabase Cron](https://supabase.com/docs/guides/functions/schedule-functions) — pg_cron + pg_net, ≤8 jobs ≤10 min — HIGH
 
 ---
-*Architecture research for: Observatorio del Congreso 360 — v9.0 robustez de productos estrella + seguridad final*
-*Researched: 2026-07-21*
+*Architecture research for: v10.0 panel de actualidad + notificaciones*
+*Researched: 2026-07-23*
