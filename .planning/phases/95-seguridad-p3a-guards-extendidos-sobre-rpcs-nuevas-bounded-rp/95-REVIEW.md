@@ -1,8 +1,11 @@
 ---
-status: findings_found
+status: fixed
 critical_count: 0
 warning_count: 2
 info_count: 3
+fixed_count: 2
+wont_fix_count: 0
+fixed_at: 2026-07-23
 ---
 
 # Phase 95 — Code Review Report
@@ -36,7 +39,7 @@ reimplemented expression instead of the real detector, and minor robustness nits
 
 ## Warnings
 
-### WR-01: `0064` header comment says "10 RPCs" but only 9 exist (stale from plan)
+### WR-01: `0064` header comment says "10 RPCs" but only 9 exist (stale from plan) — **FIXED** (commit d761482, comment-only)
 
 **File:** `supabase/migrations/0064_bounded_rpc_statement_timeout.sql:2-3`
 **Issue:** The file header states *"añade statement_timeout = '5s' a las **10 RPCs** de
@@ -57,7 +60,7 @@ the test file) explaining the 9-vs-10 reconciliation:
 -- cero statement_timeout. (El plan estimaba 10; las interfaces definen 9 únicas.)
 ```
 
-### WR-02: Direction-B self-check is a tautology — it reimplements the filter instead of exercising `definedRpcNames`
+### WR-02: Direction-B self-check is a tautology — it reimplements the filter instead of exercising `definedRpcNames` — **FIXED** (commit a1c9705, parseDefinedRpcNames helper en memoria)
 
 **File:** `app/lib/lockdown-guard.test.ts:399-407`
 **Issue:** The Direction-B mutation self-check builds `ghostAllowlist` + `emptyDefined`
