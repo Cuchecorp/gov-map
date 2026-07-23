@@ -32,11 +32,4 @@ onlyBuiltDependencies:
   - unrs-resolver
   - workerd
 
-# Excepcion al gate de "edad minima de release" para fijar openai@6.44.0.
-# Anadido 2026-06-17 con el scaffold de @obs/llm. NOTA: hoy es INERTE — no existe un
-# `minimumReleaseAge` base en el repo (sin .npmrc ni setting aqui), asi que no hay gate
-# que excluir. Revisar al subir openai: si se adopta `minimumReleaseAge`, actualizar o
-# quitar esta linea; si no, es candidata a borrarse.
-minimumReleaseAgeExclude:
-  - openai@6.44.0
 
