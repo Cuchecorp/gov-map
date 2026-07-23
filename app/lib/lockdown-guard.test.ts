@@ -367,15 +367,16 @@ describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
  * Detector puro y testeable: recolecta todos los nombres de función SQL definidos
  * en las migraciones (repo-wide). Usado por Direction-B y su mutation self-check.
  */
+const RPC_DEF_REGEX =
+  /create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?(\w+)/gi;
+
 function definedRpcNames(migrationsDir: string): Set<string> {
   const defined = new Set<string>();
   for (const f of readdirSync(migrationsDir).filter((x) => x.endsWith(".sql"))) {
     const sql = stripSqlComments(
       readFileSync(path.join(migrationsDir, f), "utf-8"),
     );
-    for (const m of sql.matchAll(
-      /create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?(\w+)/gi,
-    )) {
+    for (const m of sql.matchAll(RPC_DEF_REGEX)) {
       defined.add(m[1]);
     }
   }
@@ -397,15 +398,12 @@ describe("(A2) Guard — toda entrada del allowlist existe en migraciones (Direc
   });
 
   it("Direction-B self-check: detecta entrada fantasma en allowlist ejercitando el detector REAL (SC#4)", () => {
-    // Helper puro que replica el regex de definedRpcNames sobre SQL en memoria.
-    // Si el regex del parser se rompe (p.ej. se elimina `(?:public\.)?` o `\w`),
-    // este test falla — a diferencia de la versión anterior que solo probaba
-    // Set.prototype.has (tautología). Patrón idéntico al de crossLinkReader self-check.
+    // Helper puro que aplica RPC_DEF_REGEX (el MISMO objeto regex del detector
+    // real) sobre SQL en memoria. Si el regex se rompe (p.ej. se elimina
+    // `(?:public\.)?` o `\w`), este test falla — sin copia que pueda derivar.
     function parseDefinedRpcNames(sql: string): Set<string> {
       const out = new Set<string>();
-      for (const m of stripSqlComments(sql).matchAll(
-        /create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?(\w+)/gi,
-      )) {
+      for (const m of stripSqlComments(sql).matchAll(RPC_DEF_REGEX)) {
         out.add(m[1]);
       }
       return out;
