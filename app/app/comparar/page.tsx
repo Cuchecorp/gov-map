@@ -97,7 +97,8 @@ const getComisiones = cache(async (id: string): Promise<ComisionRow[]> => {
   return (data ?? []) as ComisionRow[];
 });
 
-/** Co-autores (0061). Se busca `b.id` en el resultado de `a` → n_proyectos (count). */
+/** Co-autores (0061). El par se decide vía `interseccionPar` (CR-01: se leen AMBAS
+ *  direcciones y la ausencia solo se declara con una lista completa). */
 const getCoautores = cache(async (id: string): Promise<CrossLinkRow[]> => {
   const sb = createServerSupabase();
   const { data, error } = await sb.rpc("coautores_de_parlamentario", {
@@ -145,6 +146,12 @@ function InterseccionCompartida({
 
 /** Ausencia declarada de intersección (fuente + fecha), nunca "sin relación". */
 function InterseccionAusente({ frase }: { frase: string }) {
+  return <p className="text-muted-foreground">{frase}</p>;
+}
+
+/** Limitación declarada (CR-01): el par NO es determinable desde listas truncadas —
+ *  se declara el límite del canal de datos, JAMÁS se afirma una ausencia. */
+function InterseccionIndeterminada({ frase }: { frase: string }) {
   return <p className="text-muted-foreground">{frase}</p>;
 }
 
@@ -207,37 +214,51 @@ export async function CompararEjes({
   const nombreB = filaB ? formatNombre(filaB.nombre) : b;
 
   // Lecturas server-side en paralelo (cada una LANZA ante error real, #34).
-  const [milA, comA, comB, coautA] = await Promise.all([
+  // CR-01: los ejes de PAR (militancia / co-autoría) se leen en AMBAS direcciones
+  // (A y B): el canal de datos de las RPCs viene cap-eado (limit 20) y decidir el
+  // par por membresía en UNA lista truncada produciría ausencias FALSAS con
+  // atribución de fuente. React.cache deduplica por (rpc, id).
+  const [milA, milB, comA, comB, coautA, coautB] = await Promise.all([
     getMilitanciaHistorica(a),
+    getMilitanciaHistorica(b),
     getComisiones(a),
     getComisiones(b),
     getCoautores(a),
+    getCoautores(b),
   ]);
 
   // ── EJE 1 — Militancia (histórica) ────────────────────────────────────────────
-  // Intersección: B aparece en el resultado net-new de A (compartieron militancia
-  // histórica por partido_alias, sin compartir el alias vigente).
-  const compartenMilitancia = milA.some((r) => r.id === b);
+  // Intersección de PAR (CR-01): presencia por membresía en cualquiera de las dos
+  // direcciones (net-new por partido_alias, sin compartir el alias vigente); la
+  // ausencia SOLO se declara con al menos una lista completa; con ambas listas
+  // truncadas el par es INDETERMINADO y se declara la limitación.
+  const milPar = interseccionPar(milA, b, milB, a);
+  const totalMilA = totalHonesto(milA);
+  const totalMilB = totalHonesto(milB);
+  const interseccionMilitancia =
+    milPar.estado === "presente" ? (
+      <p>
+        <span className="font-semibold text-accent-product">
+          Compartieron militancia
+        </span>{" "}
+        en algún partido (sin compartir el partido vigente).
+      </p>
+    ) : milPar.estado === "ausente" ? (
+      <InterseccionAusente
+        frase={`En las fuentes consultadas al ${FECHA_COBERTURA}, no comparten militancia histórica.`}
+      />
+    ) : (
+      <InterseccionIndeterminada
+        frase={`Las listas consultadas al ${FECHA_COBERTURA} están truncadas (más de ${CAP_RPC} registros por parlamentario) y no permiten determinar si comparten militancia histórica. Ver el detalle en cada ficha.`}
+      />
+    );
   const ejeMilitancia = (
     <RelacionesEjeComparar
       key="militancia"
       heading="Militancia (histórica)"
-      a={ejeColMilitancia(nombreA, milA.length)}
-      b={ejeColMilitancia(nombreB, undefined)}
-      interseccion={
-        compartenMilitancia ? (
-          <p>
-            <span className="font-semibold text-accent-product">
-              Compartieron militancia
-            </span>{" "}
-            en algún partido (sin compartir el partido vigente).
-          </p>
-        ) : (
-          <InterseccionAusente
-            frase={`En las fuentes consultadas al ${FECHA_COBERTURA}, no comparten militancia histórica.`}
-          />
-        )
-      }
+      a={ejeColMilitancia(nombreA, totalMilA)}
+      b={ejeColMilitancia(nombreB, totalMilB)}
+      interseccion={interseccionMilitancia}
       provenance={`Fuente: BCN · según fuente al ${FECHA_COBERTURA}`}
     />
   );
@@ -285,53 +306,54 @@ export async function CompararEjes({
   );
 
   // ── EJE 3 — Co-autoría de proyectos ───────────────────────────────────────────
-  // DECISIÓN (count-only, ver SUMMARY): la RPC coautores_de_parlamentario devuelve B
-  // con `n_proyectos` (conteo honesto de boletines co-firmados) pero NO la lista de
-  // boletines. Mostramos el count con provenance; NO fabricamos un enlace a la lista
-  // (no se expande el alcance con una RPC boletines_compartidos en esta pasada).
-  const filaCoautB = coautA.find((r) => r.id === b);
-  const nCoproyectos = filaCoautB?.n_proyectos ?? 0;
+  // DECISIÓN (count-only, ver SUMMARY): la RPC coautores_de_parlamentario devuelve
+  // filas con `n_proyectos` (conteo honesto de boletines co-firmados) pero NO la
+  // lista de boletines. Mostramos el count con provenance; NO fabricamos un enlace
+  // a la lista (no se expande el alcance con una RPC boletines_compartidos en esta
+  // pasada). CR-01: el par se decide vía `interseccionPar` (dos direcciones +
+  // completitud); las columnas muestran el `total_n` honesto, jamás el .length
+  // cap-eado. `n_proyectos` es simétrico (mismo valor en ambas direcciones).
+  const coautPar = interseccionPar(coautA, b, coautB, a);
+  const nCoproyectos =
+    coautPar.estado === "presente" ? (coautPar.fila.n_proyectos ?? 0) : 0;
+  const totalCoautA = totalHonesto(coautA);
+  const totalCoautB = totalHonesto(coautB);
+  const interseccionCoautoria =
+    coautPar.estado === "presente" ? (
+      nCoproyectos > 0 ? (
+        <p>
+          <span className="font-semibold text-accent-product">
+            Comparten {nCoproyectos}
+          </span>{" "}
+          {nCoproyectos === 1
+            ? "proyecto co-firmado"
+            : "proyectos co-firmados"}
+          .
+        </p>
+      ) : (
+        <p>
+          <span className="font-semibold text-accent-product">
+            Han co-firmado proyectos
+          </span>{" "}
+          (la fuente no informa el conteo).
+        </p>
+      )
+    ) : coautPar.estado === "ausente" ? (
+      <InterseccionAusente
+        frase={`En las fuentes consultadas al ${FECHA_COBERTURA}, no comparten proyectos co-firmados.`}
+      />
+    ) : (
+      <InterseccionIndeterminada
+        frase={`Las listas consultadas al ${FECHA_COBERTURA} están truncadas (más de ${CAP_RPC} registros por parlamentario) y no permiten determinar si comparten proyectos co-firmados. Ver el detalle en cada ficha.`}
+      />
+    );
   const ejeCoautoria = (
     <RelacionesEjeComparar
       key="coautoria"
       heading="Co-autoría de proyectos"
-      a={{
-        nombre: nombreA,
-        contenido: (
-          <span>
-            {coautA.length === 0
-              ? `Sin registros de co-autoría para ${nombreA} en las fuentes consultadas al ${FECHA_COBERTURA}.`
-              : `${coautA.length} ${coautA.length === 1 ? "co-autor registrado" : "co-autores registrados"}.`}
-          </span>
-        ),
-      }}
-      b={{
-        nombre: nombreB,
-        contenido: (
-          <span>
-            {filaCoautB
-              ? `Co-firmó proyectos con ${nombreA}.`
-              : `Sin co-autoría registrada con ${nombreA} en las fuentes consultadas al ${FECHA_COBERTURA}.`}
-          </span>
-        ),
-      }}
-      interseccion={
-        nCoproyectos > 0 ? (
-          <p>
-            <span className="font-semibold text-accent-product">
-              Comparten {nCoproyectos}
-            </span>{" "}
-            {nCoproyectos === 1
-              ? "proyecto co-firmado"
-              : "proyectos co-firmados"}
-            .
-          </p>
-        ) : (
-          <InterseccionAusente
-            frase={`En las fuentes consultadas al ${FECHA_COBERTURA}, no comparten proyectos co-firmados.`}
-          />
-        )
-      }
+      a={ejeColCoautoria(nombreA, totalCoautA)}
+      b={ejeColCoautoria(nombreB, totalCoautB)}
+      interseccion={interseccionCoautoria}
       provenance={`Fuente: Cámara/Senado · según fuente al ${FECHA_COBERTURA}`}
     />
   );
@@ -396,17 +418,79 @@ export async function CompararEjes({
 
 // ── Utilidades ────────────────────────────────────────────────────────────────────
 
-/** Columna de militancia histórica: conteo honesto de con-quién-compartió (o ausencia). */
-function ejeColMilitancia(nombre: string, n: number | undefined): EjeColumna {
+// ── CR-01: intersección de PAR sobre listas cap-eadas ─────────────────────────────
+// Las RPCs cross-link (0060/0061/0067) devuelven a lo más CAP_RPC filas (orden
+// alfabético por nombre) + `total_n` (conteo completo ANTES del cap, molde WR-01 de
+// la ficha). Decidir el par por membresía en una lista truncada produce ausencias
+// FALSAS con atribución de fuente — el riesgo #1 del proyecto. Reglas:
+//   * PRESENTE: B está en lista(A) o A está en lista(B) — un match es un hecho.
+//   * AUSENTE: solo si al menos una de las dos listas está COMPLETA (con una lista
+//     completa, la no-membresía SÍ es un hecho).
+//   * INDETERMINADO: sin match y ambas listas truncadas → se declara la limitación,
+//     JAMÁS se afirma ausencia.
+//   * Conteos: SIEMPRE `total_n` (totalHonesto), jamás el .length cap-eado.
+
+/** Cap del canal de datos de las RPCs cross-link (`limit 20` en 0060/0061/0067). */
+const CAP_RPC = 20;
+
+/** true si la lista NO está truncada (largo bajo el cap, o `total_n` ≤ largo). */
+function listaCompleta(filas: CrossLinkRow[]): boolean {
+  if (filas.length < CAP_RPC) return true;
+  const total = filas[0]?.total_n;
+  return typeof total === "number" && total <= filas.length;
+}
+
+/** Total REAL del eje (`total_n` antes del cap). Fallback defensivo a filas.length
+ *  si la RPC no emitiera la columna (espejo de totalReal en la ficha). */
+function totalHonesto(filas: CrossLinkRow[]): number {
+  const n = filas[0]?.total_n;
+  return typeof n === "number" ? n : filas.length;
+}
+
+type InterseccionPar =
+  | { estado: "presente"; fila: CrossLinkRow }
+  | { estado: "ausente" }
+  | { estado: "indeterminado" };
+
+/** Decide la intersección del par (A,B) desde las DOS direcciones cap-eadas. */
+function interseccionPar(
+  listaA: CrossLinkRow[],
+  idB: string,
+  listaB: CrossLinkRow[],
+  idA: string,
+): InterseccionPar {
+  const fila =
+    listaA.find((r) => r.id === idB) ?? listaB.find((r) => r.id === idA);
+  if (fila) return { estado: "presente", fila };
+  if (listaCompleta(listaA) || listaCompleta(listaB)) {
+    return { estado: "ausente" };
+  }
+  return { estado: "indeterminado" };
+}
+
+/** Columna de militancia histórica: conteo honesto (`total_n` antes del cap). */
+function ejeColMilitancia(nombre: string, n: number): EjeColumna {
   return {
     nombre,
     contenido: (
       <span>
-        {n === undefined
-          ? "Ver la ficha para el detalle de militancias."
-          : n === 0
-            ? `Sin militancia histórica compartida registrada para ${nombre}.`
-            : `${n} ${n === 1 ? "parlamentario comparte" : "parlamentarios comparten"} militancia histórica.`}
+        {n === 0
+          ? `Sin militancia histórica compartida registrada para ${nombre}.`
+          : `${n} ${n === 1 ? "parlamentario comparte" : "parlamentarios comparten"} militancia histórica.`}
+      </span>
+    ),
+  };
+}
+
+/** Columna de co-autoría: conteo honesto (`total_n` antes del cap). */
+function ejeColCoautoria(nombre: string, n: number): EjeColumna {
+  return {
+    nombre,
+    contenido: (
+      <span>
+        {n === 0
+          ? `Sin registros de co-autoría para ${nombre} en las fuentes consultadas al ${FECHA_COBERTURA}.`
+          : `${n} ${n === 1 ? "co-autor registrado" : "co-autores registrados"}.`}
       </span>
     ),
   };

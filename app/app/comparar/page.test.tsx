@@ -20,8 +20,11 @@ import path from "node:path";
  */
 
 // ── Mock de Supabase (rpc configurable por test) ─────────────────────────────────
+// CR-01: `rpcImpl` recibe también los args ({ p_id }) — los fixtures del par pueden
+// variar por dirección (lista de A ≠ lista de B).
 type RpcResult = { data: unknown; error: unknown };
-const rpcImpl = vi.fn<(name: string) => Promise<RpcResult> | RpcResult>();
+const rpcImpl =
+  vi.fn<(name: string, args?: Record<string, unknown>) => Promise<RpcResult> | RpcResult>();
 
 // Roster por defecto: dos diputados SIN zona (distrito/circ null) → ejercita el
 // "no comparten zona" honesto (audit 101-01: Cámara sin distrito).
@@ -85,8 +88,8 @@ function setDefaultRpc() {
 
 // El cliente mock: rpc con 0 args (roster) devuelve el resultado directo (awaitable);
 // con args ({p_id}) también. Devolvemos un thenable simple.
-const rpcMock = vi.fn((name: string) => {
-  const r = rpcImpl(name);
+const rpcMock = vi.fn((name: string, args?: Record<string, unknown>) => {
+  const r = rpcImpl(name, args);
   return Promise.resolve(r);
 });
 const createServerSupabaseMock = vi.fn(() => ({ rpc: rpcMock }));
@@ -226,6 +229,87 @@ describe("(6) error de RPC LANZA (#34, jamás 'sin relaciones')", () => {
       return { data: [], error: null };
     });
     await expect(renderPage({})).rejects.toThrow(/parlamentarios_publico_v2/);
+  });
+});
+
+// ── CR-01: el par NO se decide desde listas truncadas (limit 20) ────────────────
+describe("(8) CR-01 — intersección de par honesta ante truncamiento", () => {
+  const filasTruncadas = (extra: Record<string, unknown> = {}) =>
+    Array.from({ length: 20 }, (_, i) => ({
+      id: `X${String(i + 1).padStart(4, "0")}`,
+      nombre: `Relleno ${String(i + 1).padStart(2, "0")}`,
+      camara: "diputados",
+      total_n: 25,
+      ...extra,
+    }));
+
+  it("ambas listas de militancia truncadas y sin match → NO declara ausencia; declara la limitación + conteo total_n", async () => {
+    rpcImpl.mockImplementation((name: string) => {
+      switch (name) {
+        case "parlamentarios_publico_v2":
+          return { data: ROSTER_DEFAULT, error: null };
+        case "militancia_historica_compartida":
+          // 20 filas (cap alcanzado) con total_n=25 y SIN el contraparte: la
+          // membresía en la lista truncada NO permite afirmar ausencia.
+          return { data: filasTruncadas(), error: null };
+        default:
+          return { data: [], error: null };
+      }
+    });
+    const html = await renderEjes("D1001", "D1002");
+    // JAMÁS una ausencia afirmada desde una lista cap-eada.
+    expect(html).not.toContain("no comparten militancia");
+    // La limitación se DECLARA (indeterminado honesto).
+    expect(html).toContain("no permiten determinar");
+    // El conteo de columna usa total_n (25), no el largo cap-eado (20).
+    expect(html).toContain("25 parlamentarios");
+    expect(html).not.toContain("20 parlamentarios");
+  });
+
+  it("lista bajo el cap de un lado y sin match → ausencia declarada (certeza)", async () => {
+    rpcImpl.mockImplementation((name: string) => {
+      switch (name) {
+        case "parlamentarios_publico_v2":
+          return { data: ROSTER_DEFAULT, error: null };
+        case "militancia_historica_compartida":
+          // 1 fila (bajo el cap) que NO es el contraparte → lista COMPLETA →
+          // la no-membresía sí es un hecho → ausencia declarada.
+          return {
+            data: [{ id: "X0001", nombre: "Relleno", camara: "diputados", total_n: 1 }],
+            error: null,
+          };
+        default:
+          return { data: [], error: null };
+      }
+    });
+    const html = await renderEjes("D1001", "D1002");
+    expect(html).toContain("no comparten militancia");
+  });
+
+  it("match SOLO en la dirección inversa (A en lista de B) → intersección presente con n_proyectos", async () => {
+    rpcImpl.mockImplementation((name: string, args?: Record<string, unknown>) => {
+      switch (name) {
+        case "parlamentarios_publico_v2":
+          return { data: ROSTER_DEFAULT, error: null };
+        case "coautores_de_parlamentario":
+          if (args?.p_id === "D1002") {
+            // La lista de B SÍ contiene a A (n_proyectos simétrico = 2).
+            return {
+              data: [
+                { id: "D1001", nombre: "Ana Prueba", camara: "diputados", n_proyectos: 2, total_n: 1 },
+              ],
+              error: null,
+            };
+          }
+          // La lista de A viene truncada (cap 20, total 30) y SIN B.
+          return { data: filasTruncadas({ n_proyectos: 1, total_n: 30 }), error: null };
+        default:
+          return { data: [], error: null };
+      }
+    });
+    const html = await renderEjes("D1001", "D1002");
+    expect(html).toContain("Comparten 2");
+    expect(html).not.toContain("no comparten proyectos co-firmados");
   });
 });
 
