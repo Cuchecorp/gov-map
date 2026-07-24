@@ -4,7 +4,7 @@ milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
 status: verifying
 stopped_at: Completed 94-03-PLAN.md
-last_updated: "2026-07-24T12:30:49.714Z"
+last_updated: "2026-07-24T13:02:27.661Z"
 last_activity: 2026-07-24
 progress:
   total_phases: 8
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 ## Current Position
 
-Phase: 97 (AUTH P0 — SPIKE auth-on-Workers de-risk) — EXECUTING
-Plan: 3 of 3
+Phase: 98
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-07-24
 
@@ -42,6 +42,7 @@ Last activity: 2026-07-24
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 64–75 | TBD | - | - |
+| 97 | 3 | - | - |
 
 **Recent Trend:**
 

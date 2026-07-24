@@ -78,7 +78,7 @@ Detalle completo: milestones/v9.0-ROADMAP.md · Audit: milestones/v9.0-MILESTONE
 
 ### Phases
 
-- [ ] **Phase 97: AUTH P0 — SPIKE auth-on-Workers de-risk** — primer `middleware.ts` del repo (Edge-style, NO Node Middleware 15.2+) + `@supabase/ssr` sobre deploy OpenNext real; Set-Cookie + refresh de sesión verificados; paralelizable, no gatea el panel
+- [x] **Phase 97: AUTH P0 — SPIKE auth-on-Workers de-risk** — primer `middleware.ts` del repo (Edge-style, NO Node Middleware 15.2+) + `@supabase/ssr` sobre deploy OpenNext real; Set-Cookie + refresh de sesión verificados; paralelizable, no gatea el panel (completed 2026-07-24)
 - [ ] **Phase 98: SEÑALES P1a — SPIKE de datos: qué señales son honestas (gate del panel)** — auditoría empírica de `tramitacion_evento` (frescura/cobertura/primer-evento fiable) clasifica cada señal candidata honesta/sesgada/imposible + evaluación BCN "leyes publicadas"; GATEA 99-100
 - [ ] **Phase 99: SEÑALES P1b — Materializador `actualidad_senal` + RPCs bounded + cron intradía** — tabla precomputada (espejo `cruce_senal`/0039) + agrupación por materia (+ k-means seed-fija, labels NUNCA LLM) + supresión-si-stale; RPCs bounded PII-safe allowlisted; refresh L-V
 - [ ] **Phase 100: PANEL P1c — Landing panel + benchmark senado/camara + gate BrowserOS** — `app/page.tsx` panel reusando BentoGrid/tokens con candados de régimen; linter home extendido a `SUPERFICIES_PANEL` ANTES del copy; benchmark BrowserOS + gate lectura fría en deploy real
@@ -605,7 +605,7 @@ Sub-maestras se construyen en su bloque, NO se difieren a NET: lobista/gestor (P
   3. El spike documenta cobertura histórica (qué legislaturas/años) y comportamiento de rate detrás del WAF respetando el delay 2–3s LOCKED
   4. El resultado es una decisión binaria registrada: **confirmar y construir** Phase 10 tal cual, o **replanificar solo el bloque VOTE** (sin bloquear INT/MONEY)
 
-**Plans:** 1 plan
+**Plans:** 3/3 plans complete
 
 - [ ] 08-01-PLAN.md — Spike confirm-or-replan: corrida LIVE-gated reusando @obs/ingest + parsers v1.0, reconcilia DIPID→id_diputado_camara, registra FINDINGS + decisión binaria
 
@@ -1273,7 +1273,7 @@ Plans:
 | 73. DINERO P5e — Superficies MONEY gated OFF + linter + gate legal | v7.0 | 4/4 | Complete   | 2026-07-15 |
 | 74. DEUDA — Cursor leylobby + CF token CI + round-robin cron | v7.0 | 3/3 | Complete   | 2026-07-15 |
 | 75. DEUDA — Typography .net-* + rotar DB password (operador) | v7.0 | 2/2 | Complete   | 2026-07-15 |
-| 97. AUTH P0 — SPIKE auth-on-Workers de-risk | v10.0 | 3/3 | Complete   | 2026-07-24 |
+| 97. AUTH P0 — SPIKE auth-on-Workers de-risk | v10.0 | 3/3 | Complete    | 2026-07-24 |
 | 98. SEÑALES P1a — SPIKE datos: qué señales son honestas (gate) | v10.0 | 0/? | Not started | - |
 | 99. SEÑALES P1b — Materializador actualidad_senal + RPCs + cron | v10.0 | 0/? | Not started | - |
 | 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 0/? | Not started | - |
