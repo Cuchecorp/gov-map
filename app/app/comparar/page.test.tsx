@@ -257,8 +257,9 @@ describe("(8) CR-01 — intersección de par honesta ante truncamiento", () => {
       }
     });
     const html = await renderEjes("D1001", "D1002");
-    // JAMÁS una ausencia afirmada desde una lista cap-eada.
+    // JAMÁS una ausencia afirmada desde una lista cap-eada (copy viejo Y nuevo WR-02).
     expect(html).not.toContain("no comparten militancia");
+    expect(html).not.toContain("no registran militancia");
     // La limitación se DECLARA (indeterminado honesto).
     expect(html).toContain("no permiten determinar");
     // El conteo de columna usa total_n (25), no el largo cap-eado (20).
@@ -283,7 +284,11 @@ describe("(8) CR-01 — intersección de par honesta ante truncamiento", () => {
       }
     });
     const html = await renderEjes("D1001", "D1002");
-    expect(html).toContain("no comparten militancia");
+    // WR-02: la ausencia declarada se ACOTA a la semántica net-new de la RPC 0067
+    // (excluye pares con alias vigente compartido) — jamás una ausencia absoluta.
+    expect(html).toContain(
+      "no registran militancia histórica compartida fuera del partido vigente",
+    );
   });
 
   it("match SOLO en la dirección inversa (A en lista de B) → intersección presente con n_proyectos", async () => {

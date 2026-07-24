@@ -250,6 +250,12 @@ export async function CompararEjes({
   // direcciones (net-new por partido_alias, sin compartir el alias vigente); la
   // ausencia SOLO se declara con al menos una lista completa; con ambas listas
   // truncadas el par es INDETERMINADO y se declara la limitación.
+  // WR-02 (101-REVIEW): la RPC 0067 es NET-NEW-ONLY — EXCLUYE los pares que
+  // comparten el alias vigente aunque ADEMÁS compartan un partido histórico. Por
+  // eso el copy de ausencia se AUTO-ACOTA a la semántica real ("fuera del partido
+  // vigente"): dos copartidarios vigentes con historia compartida NO deben leer
+  // "no comparten militancia histórica" (falso producido por la exclusión net-new,
+  // no por las fuentes).
   const milPar = interseccionPar(milA, b, milB, a);
   const totalMilA = totalHonesto(milA);
   const totalMilB = totalHonesto(milB);
@@ -263,11 +269,11 @@ export async function CompararEjes({
       </p>
     ) : milPar.estado === "ausente" ? (
       <InterseccionAusente
-        frase={`En las fuentes consultadas al ${fechaConsulta}, no comparten militancia histórica.`}
+        frase={`En las fuentes consultadas al ${fechaConsulta}, no registran militancia histórica compartida fuera del partido vigente.`}
       />
     ) : (
       <InterseccionIndeterminada
-        frase={`Las listas consultadas al ${fechaConsulta} están truncadas (más de ${CAP_RPC} registros por parlamentario) y no permiten determinar si comparten militancia histórica. Ver el detalle en cada ficha.`}
+        frase={`Las listas consultadas al ${fechaConsulta} están truncadas (más de ${CAP_RPC} registros por parlamentario) y no permiten determinar la militancia histórica compartida fuera del partido vigente. Ver el detalle en cada ficha.`}
       />
     );
   const ejeMilitancia = (
