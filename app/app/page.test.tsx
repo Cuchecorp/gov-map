@@ -28,13 +28,13 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
-// Los 3 fetchers tile de actualidad son Server Components con hijos async que leen Supabase.
-// Se stubbea a null para aislar el héroe y evitar el runtime Supabase en jsdom.
-// ActualidadModule (wrapper lineal retirado en Phase 78) ya no se exporta.
-vi.mock("@/components/actualidad-module", () => ({
-  VotadoEstaSemana: () => null,
-  UrgenciasVigentes: () => null,
-  UltimaActualizacion: () => null,
+// PanelActualidad (Phase 100) es un Server Component async que lee Supabase vía la
+// RPC bounded actualidad_senales_panel. Se mockea a () => null — espejo del germ mock
+// que reemplaza — para aislar el héroe y evitar el runtime Supabase en jsdom.
+// El germen actualidad-module.tsx quedó DESMONTADO en Phase 100-03 (page.tsx ya no lo
+// importa): su mock se retira acorde.
+vi.mock("@/components/panel-actualidad", () => ({
+  PanelActualidad: () => null,
 }));
 
 // next/link → <a> simple en jsdom.
@@ -253,16 +253,14 @@ describe("Landing — Contract 2: accent tile (/sobre) y 3 entry tiles (bento)",
  * Todos los asserts fijan CLASES (toHaveClass/className) o estructura DOM,
  * NUNCA píxeles. La verificación visual de layout y contraste dark es Phase 81.
  *
- * RESTRICCIÓN MOCKS: VotadoEstaSemana/UrgenciasVigentes/UltimaActualizacion están
- * mockeados a () => null en este archivo (líneas ~34-38). Los headings
- * "Votado esta semana"/"Urgencias vigentes" viven DENTRO de esos componentes y NO
- * se renderizan en jsdom bajo estos mocks. Por eso (b) y (e) NO pueden asertar
- * por texto de esos componentes — se anclan a la estructura estable de page.tsx
- * (BentoGrid container, nav, hrefs LOCKED) que sí está en el DOM.
- * Los wrappers <Suspense> de page.tsx no generan elementos DOM propios; sus hijos
- * mockeados a null no renderizan nada, por lo que el orden de los tiles de
- * actualidad se documenta en comentario y se ancla a los wrappers contenedores
- * del BentoGrid que sí existen.
+ * RESTRICCIÓN MOCKS: PanelActualidad (Phase 100) está mockeado a () => null en este
+ * archivo (líneas ~31-38). Sus tiles de señal (con sus títulos "Movimiento reciente"/
+ * "Urgencias del Ejecutivo"/…) viven DENTRO del componente y NO se renderizan en jsdom
+ * bajo el mock. Por eso (b) y (e) NO pueden asertar por texto del panel — se anclan a la
+ * estructura estable de page.tsx (BentoGrid container, nav, hrefs LOCKED) que sí está en
+ * el DOM. El wrapper <Suspense> de page.tsx no genera un elemento DOM propio; su hijo
+ * mockeado a null no renderiza nada, así que el panel no aporta links y el orden DOM
+ * hero → /sobre → 3 entry tiles LOCKED se preserva.
  */
 describe("BENTO-05 — colapso/orden/landmarks (estructural, jsdom-safe)", () => {
   // (a) COLAPSO: ningún tile del grid tiene col-span-N sin prefijo md:
@@ -355,15 +353,15 @@ describe("BENTO-05 — colapso/orden/landmarks (estructural, jsdom-safe)", () =>
   });
 
   // (e) SECCIONES: los tiles del BentoGrid tienen estructura de secciones.
-  // VotadoEstaSemana/UrgenciasVigentes están mockeados a null — sus <h2> internos
-  // NO renderizan bajo estos mocks (ver restricción arriba). Se asertan los
-  // wrappers de sección que SÍ existen en el DOM de page.tsx:
+  // PanelActualidad está mockeado a null — sus <section>/<h2> internos NO renderizan
+  // bajo el mock (ver restricción arriba). Se asertan los wrappers de sección que SÍ
+  // existen en el DOM de page.tsx:
   //   - La sección hero (BentoTile asChild = <section>) con heading h1.
   //   - La sección /sobre con heading h2 "¿Cómo leer esto?".
-  // Los boundaries <Suspense> de actualidad no generan elementos DOM — el orden
-  // DOM de los tiles de actualidad está garantizado por la posición en el JSX
-  // de page.tsx (no hay reordenamiento CSS) y se documenta aquí sin poder
-  // asertar el contenido de los componentes mockeados.
+  // El boundary <Suspense> del panel no genera un elemento DOM — el orden DOM de los
+  // tiles del panel está garantizado por su posición en el JSX de page.tsx (no hay
+  // reordenamiento CSS) y se documenta aquí sin poder asertar el contenido del
+  // componente mockeado.
   it("(e) secciones: section hero con h1 y tile /sobre con h2 presentes en DOM", () => {
     const { container } = render(<Home />);
 
@@ -380,24 +378,37 @@ describe("BENTO-05 — colapso/orden/landmarks (estructural, jsdom-safe)", () =>
   });
 });
 
-// ── Contract 3: force-dynamic + retiro de ActualidadModule lineal + montaje de tiles ─
+// ── Contract 3: force-dynamic + montaje del PanelActualidad (Phase 100-03) ─────────
 
-describe("Landing — Contract 3: force-dynamic + retiro del módulo lineal + tiles en BentoGrid", () => {
-  it("exporta dynamic = 'force-dynamic'", () => {
+/**
+ * Contract 3 (reescrito en Phase 100-03): la home montó `<PanelActualidad/>` bajo
+ * Suspense EN LUGAR del cuerpo producto-céntrico (los 3 germ tiles de
+ * actualidad-module.tsx Votado/Urgencias/Frescura, retirados). Los asserts:
+ *   - `HomeModule.dynamic === "force-dynamic"` — build-marker LOAD-BEARING (T-100-09):
+ *     sin él Next hornea `/` estática (○) → stale/500. Falla el test si se borra.
+ *   - render sin throw con el panel mockeado a `() => null`.
+ *   - AUSENCIA de la superficie producto-céntrica retirada: ni el wrapper lineal
+ *     ActualidadModule (`[aria-label="Actualidad"]`/`.max-w-5xl`) ni los germ tiles
+ *     (headings "Votado esta semana"/"Urgencias vigentes"/"Última actualización")
+ *     se montan. El panel (mockeado a null) NO aporta esos nodos.
+ */
+describe("Landing — Contract 3: force-dynamic + montaje del PanelActualidad (Phase 100-03)", () => {
+  it("exporta dynamic = 'force-dynamic' (build-marker LOAD-BEARING, T-100-09)", () => {
     expect(HomeModule.dynamic).toBe("force-dynamic");
   });
 
-  it("renderiza sin lanzar aunque los fetchers estén mockeados a null", () => {
+  it("renderiza sin lanzar con PanelActualidad mockeado a null", () => {
     expect(() => render(<Home />)).not.toThrow();
   });
 
-  it("NO renderiza el wrapper lineal ActualidadModule (aria-label='Actualidad' / max-w-5xl retirados)", () => {
+  it("NO monta el cuerpo producto-céntrico retirado (germ tiles + wrapper lineal ausentes)", () => {
     const { container } = render(<Home />);
-    // El wrapper lineal tenía aria-label="Actualidad"
-    expect(
-      container.querySelector('[aria-label="Actualidad"]'),
-    ).toBeNull();
-    // Y max-w-5xl era su clase de contenedor
+    // El wrapper lineal ActualidadModule (retirado en Phase 78) sigue ausente.
+    expect(container.querySelector('[aria-label="Actualidad"]')).toBeNull();
     expect(container.querySelector(".max-w-5xl")).toBeNull();
+    // Los 3 germ tiles producto-céntricos (reemplazados por el panel en 100-03) no se montan.
+    expect(screen.queryByText("Votado esta semana")).not.toBeInTheDocument();
+    expect(screen.queryByText("Urgencias vigentes")).not.toBeInTheDocument();
+    expect(screen.queryByText("Última actualización")).not.toBeInTheDocument();
   });
 });
