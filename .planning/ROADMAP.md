@@ -177,7 +177,7 @@ Plans:
 - [x] 100-01-PLAN.md — Wave 1 guards: SUPERFICIES_PANEL + denylist timing + bento cero-hex/tipografía ANTES del copy
 - [x] 100-02-PLAN.md — Wave 2: componente panel-actualidad.tsx (RSC lee RPC precomputada, supresión honesta) + RTL fixtures
 - [x] 100-03-PLAN.md — Wave 3: montar el panel en page.tsx (hero+candados+force-dynamic intactos) + suite verde
-- [ ] 100-04-PLAN.md — Wave 4: benchmark BrowserOS senado/camara + deploy real + gate lectura fría (checkpoint orquestador)
+- [x] 100-04-PLAN.md — Wave 4: benchmark BrowserOS senado/camara + deploy real + gate lectura fría (checkpoint orquestador)
 
 **UI hint**: yes
 
@@ -1288,7 +1288,7 @@ Plans:
 | 97. AUTH P0 — SPIKE auth-on-Workers de-risk | v10.0 | 3/3 | Complete    | 2026-07-24 |
 | 98. SEÑALES P1a — SPIKE datos: qué señales son honestas (gate) | v10.0 | 1/1 | Complete    | 2026-07-24 |
 | 99. SEÑALES P1b — Materializador actualidad_senal + RPCs + cron | v10.0 | 4/4 | Complete    | 2026-07-24 |
-| 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 3/4 | In Progress|  |
+| 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 4/4 | Complete   | 2026-07-24 |
 | 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 0/? | Not started | - |
 | 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 0/? | Not started | - |
 | 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 0/? | Not started | - |
