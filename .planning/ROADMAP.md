@@ -152,7 +152,11 @@ Plans:
   3. Toda señal se SUPRIME con causa cuando su fuente está stale ("sin datos frescos de esta fuente") — "sin movimiento" nunca se afirma sin scrape; el sesgo de cobertura por cámara queda declarado por señal
   4. La agrupación por tema usa `materia` oficial como label primario (+ k-means determinista seed-fija sobre embeddings como capa secundaria) — los labels JAMÁS se generan por LLM
 
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 99-01-PLAN.md — migración 0065: tabla actualidad_senal deny-by-default + proc full-rebuild (3 defectos LOCKED + 6 señales + supresión-como-fila) + pg_cron + pgTAP
+- [ ] 99-02-PLAN.md — migración 0066: RPC bounded actualidad_senales_panel (aguja completa) + alta en PUBLIC_RPC_ALLOWLIST
+- [ ] 99-03-PLAN.md — workspace @obs/actualidad: kmeans determinista seed-fija (label=mode(materia), no LLM) + run-actualidad-prod-cli
+- [ ] 99-04-PLAN.md — actualidad-refresh.yml (clon leyes-weekly sin R2, intradía L-V) + apply live-DB 0065/0066 (checkpoint operador, sin flip de régimen)
 
 ### Phase 100: PANEL P1c — Landing panel + benchmark senado/camara + gate BrowserOS
 
