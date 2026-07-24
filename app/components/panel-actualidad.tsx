@@ -48,8 +48,8 @@ export interface SenalRow {
 const TITULO: Record<string, string> = {
   velocity: "Movimiento reciente",
   urgencias: "Urgencias del Ejecutivo",
-  agenda_citacion: "Agenda próxima",
-  agenda_sala: "Agenda próxima",
+  agenda_citacion: "Citaciones próximas",
+  agenda_sala: "Sesiones de sala",
   nuevos_ingresos: "Nuevos ingresos",
   archivados: "Archivos y retiros",
   agrupacion_materia: "Por materia",
@@ -272,8 +272,10 @@ export async function PanelActualidad() {
     else porTipo.set(f.tipo_senal, [f]);
   }
 
-  // agenda_citacion + agenda_sala comparten el tile "Agenda próxima": se fusionan
-  // sus filas manteniendo el tipo_senal por fila para el rótulo de fecha correcto.
+  // agenda_citacion y agenda_sala son señales DISTINTAS: cada `tipo_senal` produce
+  // su propio TileSenal (`porTipo` keyea por tipo_senal). Llevan títulos distintos
+  // ("Citaciones próximas" / "Sesiones de sala"), NO se fusionan. El tipo_senal por
+  // fila se conserva para el rótulo de fecha date-only correcto (TIPOS_AGENDA).
   const tiposPresentes = ORDEN_TIPO.filter((t) => porTipo.has(t));
 
   return (

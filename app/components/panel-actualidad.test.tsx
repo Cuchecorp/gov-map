@@ -86,6 +86,41 @@ describe("TileSenal — WR-01: el chip nunca filtra el token interno de ventana"
   });
 });
 
+describe("TileSenal — WR-02: agenda_citacion / agenda_sala llevan títulos distintos", () => {
+  it("agenda_citacion se titula 'Citaciones próximas'", () => {
+    const fila = makeSenal({
+      tipo_senal: "agenda_citacion",
+      conteo: 4,
+      cobertura_camara: "C.Diputados",
+      ventana: "futuras",
+      fecha_max: "2026-07-28T00:00:00Z",
+    });
+    render(<TileSenal tipo="agenda_citacion" filas={[fila]} span={4} />);
+
+    expect(
+      screen.getByRole("heading", { name: "Citaciones próximas" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/citaciones próximas/)).toBeInTheDocument();
+  });
+
+  it("agenda_sala se titula 'Sesiones de sala' (distinto de citaciones)", () => {
+    const fila = makeSenal({
+      tipo_senal: "agenda_sala",
+      conteo: 2,
+      cobertura_camara: "Senado",
+      ventana: "futuras",
+      fecha_max: "2026-07-29T00:00:00Z",
+    });
+    render(<TileSenal tipo="agenda_sala" filas={[fila]} span={4} />);
+
+    expect(
+      screen.getByRole("heading", { name: "Sesiones de sala" }),
+    ).toBeInTheDocument();
+    // Los dos títulos no colisionan (a11y heading outline).
+    expect(screen.queryByRole("heading", { name: "Citaciones próximas" })).toBeNull();
+  });
+});
+
 describe("TileSenal — señal SUPRIMIDA (agenda_sala)", () => {
   const CAUSA_SALA = "sin sesiones agendadas en las fuentes consultadas";
 
