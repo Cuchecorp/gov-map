@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
-status: executing
+status: verifying
 stopped_at: Completed 99-03-PLAN.md
-last_updated: "2026-07-24T14:10:06.503Z"
+last_updated: "2026-07-24T14:14:21.269Z"
 last_activity: 2026-07-24
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 8
-  completed_plans: 7
-  percent: 25
+  completed_plans: 8
+  percent: 38
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 99 (SEÑALES P1b — Materializador actualidad_senal) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-24
 
 ## Performance Metrics
@@ -90,6 +90,7 @@ Last activity: 2026-07-24
 | Phase 99 P01 | 5min | 2 tasks | 2 files |
 | Phase 99 P02 | 4min | 2 tasks | 2 files |
 | Phase 99 P03 | 8min | 2 tasks | 7 files |
+| Phase 99 P04 | 6min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 99-01: actualidad_senal materializado — tabla deny-by-default + proc full-rebuild ACOTADO (delete solo 6 tipos temporales; agrupacion_materia lo posee el CLI 99-03) + pg_cron intradia L-V; 3 defectos LOCKED (fecha<=current_date; regexp_replace camara; camara NULL->sin-camara); supresion-como-fila (sin futuras/stale => fila con causa+conteo 0, nunca ausencia); umbral stale 7d HARDCODEADO (origen packages/freshness/src/catalog.ts leyes/agenda umbralDias:7); sesion_sala CONFIRMADA (A4); validado end-to-end en Postgres 15 efimero; apply PROD+pgTAP = checkpoint 99-04
 - [Phase ?]: 99-02: RPC bounded actualidad_senales_panel(p_tipo) aguja-completa espejo 0064 (secdef, search_path='', statement_timeout='5s', LIMIT 200, drop-before-create, doble-revoke, CERO grant); returns table = 9 columnas de actualidad_senal VERBATIM; order by neutral (anti-ranking T-52-13); p_tipo parametrico (ASVS V5); allowlisted PUBLIC_RPC_ALLOWLIST => guard Direction-B verde 14/14; apply PROD = checkpoint 99-04
 - [Phase ?]: 99-03: @obs/actualidad k-means CLI — kmeans.ts Lloyd determinista PRNG mulberry32 seed-fija KMEANS_SEED=0x9e3779b9 + init k-means++ + coseno 768d + clamp k [8,15]<=N (checker #2); labelCluster=mode(materia) factual empate-alfabetico JAMAS LLM (T-99-11); run-actualidad-prod-cli service_role lee proyecto_embedding paginado (cap 1k) + join proyecto(materia), full-rebuild ACOTADO delete where tipo_senal=agrupacion_materia (disjunto proc 99-01, T-99-10); dry-run LIVE-READ 3100 embeddings k=10; HALLAZGO: proyecto.materia NULL en 3659 filas PROD -> label (sin materia) honesto (NO bug); suite 96/1252 + tsc 0
+- [Phase ?]: 99-04: actualidad-refresh.yml cron intradia L-V (0 11,14,17,20 * * 1-5) clona el scaffold seguro de leyes-weekly SIN el bloque R2 (Phase 99 no toca fuentes: sin R2/rate-limit/robots.txt; solo SUPABASE_API_URL+SUPABASE_SECRET_KEY), corre el CLI k-means @obs/actualidad (run-actualidad-prod-cli), input k por ENV anti-inyeccion, NO --dry-run (escribe LIVE la capa agrupacion_materia). Task 2 apply live-DB DELEGADO al orquestador (aditivo puro: tabla+proc+RPC+cron nuevos, sin flip de regimen ni anon key => fuera de forbidden-gate); el agente NO toco PROD ni bloqueo en human-verify; bloque ready-to-run psql --single-transaction 0065->0066 + pgTAP(12) + verificaciones cron/RPC/conteos escrito en 99-04-SUMMARY.
 
 ### Pending Todos
 
@@ -208,7 +210,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-24T14:10:06.490Z
+Last session: 2026-07-24T14:14:14.340Z
 Stopped at: Completed 99-03-PLAN.md
 Resume file: None
 
