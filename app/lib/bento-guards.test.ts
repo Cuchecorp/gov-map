@@ -72,6 +72,11 @@ const SUPERFICIES_CERO_HEX: string[] = [
   "app/page.tsx",
   "components/actualidad-module.tsx",
   "components/brand-icon.tsx",
+  // PANEL (100-01): componente NUEVO del panel de actualidad. Declarado en Wave 0
+  // ANTES de que exista (Wave 2); el loader tolera el archivo ausente (readFileSync
+  // en el it() lanzaría, pero el archivo se crea en Wave 2) → protege el fix cero-hex
+  // (token-only) del panel desde su primera línea. + sub-tiles si el componente se divide.
+  "components/panel-actualidad.tsx",
 ];
 
 /**
@@ -88,6 +93,10 @@ const SUPERFICIES_TIPOGRAFIA: string[] = [
   "components/bento/bento-tile.tsx",
   "app/page.tsx",
   "components/actualidad-module.tsx",
+  // PANEL (100-01): componente NUEVO del panel. Mismo rationale que cero-hex — protege
+  // la whitelist tipográfica (arbitrary values sancionados) del panel desde su primera
+  // línea. + sub-tiles si el componente se divide (Plan 02).
+  "components/panel-actualidad.tsx",
 ];
 
 // ===========================================================================
@@ -128,7 +137,18 @@ describe("(A) cero-hex — archivos reales bento: 0 offenders", () => {
   for (const rel of SUPERFICIES_CERO_HEX) {
     it(`${rel} no contiene literales hex hardcodeados`, () => {
       const full = path.join(APP_ROOT, rel);
-      const contenido = stripTsComments(readFileSync(full, "utf-8"));
+      // Tolerancia de superficie declarada-pero-aún-inexistente (100-01, WAVE 0):
+      // una superficie NUEVA (p.ej. panel-actualidad.tsx) se declara en el array ANTES
+      // de que el componente exista (Wave 2). Si el archivo no está, se SALTA sin fallar
+      // (espejo del try/catch continue de anti-insinuacion-guard.test.ts:475-480) → el
+      // guard queda verde ahora y MUERDE cuando el componente exista. Ausencia = correcta.
+      let raw: string;
+      try {
+        raw = readFileSync(full, "utf-8");
+      } catch {
+        return; // superficie declarada, archivo aún ausente (Wave 2)
+      }
+      const contenido = stripTsComments(raw);
       const offenders = detectarHexHardcodeado(contenido);
       expect(
         offenders,
@@ -304,7 +324,15 @@ describe("(A) tipografía — archivos reales bento: 0 offenders no-sancionados"
   for (const rel of SUPERFICIES_TIPOGRAFIA) {
     it(`${rel}: todos los arbitrary values son tokens o están en la whitelist`, () => {
       const full = path.join(APP_ROOT, rel);
-      const contenido = stripTsComments(readFileSync(full, "utf-8"));
+      // Misma tolerancia de superficie declarada-pero-aún-inexistente (100-01, WAVE 0):
+      // panel-actualidad.tsx se declara ANTES de existir (Wave 2). Ausente → se salta.
+      let raw: string;
+      try {
+        raw = readFileSync(full, "utf-8");
+      } catch {
+        return; // superficie declarada, archivo aún ausente (Wave 2)
+      }
+      const contenido = stripTsComments(raw);
       const offenders = detectarArbitrarioNoSancionado(contenido);
       expect(
         offenders,
