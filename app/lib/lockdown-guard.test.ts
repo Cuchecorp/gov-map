@@ -163,6 +163,7 @@ function isAdminAllowlisted(file: string): boolean {
 // (`resolver_entidad`, materializadores). La DB ya no lo bloquea, asi que el guard
 // FALLA si el arbol publico llama un RPC fuera de esta lista. Mantener en sync.
 const PUBLIC_RPC_ALLOWLIST = new Set([
+  "actualidad_senales_panel",
   "agregado_por_contraparte",
   "aportes_de_parlamentario",
   "bienes_de_parlamentario",
