@@ -133,7 +133,8 @@ Plans:
   3. La señal "leyes recién publicadas" se evalúa contra BCN/Cámara con verdict binario: viable → entra por dos-etapas R2 en una fase; no-viable → DIFERIDA documentada
   4. Queda VERIFICADO contra la DB viva que la similitud de voto es computable HOY (voto `confirmado` cubre lo esperado; la reconciliación no fabrica votantes) — insumo de Phase 102
 
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 98-01-PLAN.md — Consolidar la auditoría del SPIKE en 98-SPIKE-FINDINGS.md (doc GATE) + emitir SKILL index para auto-carga downstream
 
 **Research**: yes (SPIKE de datos — el gate del operador "QUÉ antes que CÓMO"; decide honestidad de velocity/nuevos-ingresos/leyes-publicadas)
 
