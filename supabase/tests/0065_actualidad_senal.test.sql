@@ -81,11 +81,16 @@ select is(
   (select count(*)::int from cron.job where jobname = 'actualidad-materializar'),
   1, 'cron job actualidad-materializar registrado');
 
--- ── (D1) ninguna fila fecha > current_date alimenta una señal ─────────────────
--- El typo 2626-05-25 NO debe aparecer en fecha_max de NINGUNA señal materializada.
+-- ── (D1) ninguna señal TEMPORAL-PASADA alimenta una fecha futura ──────────────
+-- El typo 2626-05-25 NO debe aparecer en fecha_max de ninguna señal anclada a
+-- eventos pasados (velocity/nuevos_ingresos/urgencias/archivados). Las señales de
+-- AGENDA (agenda_citacion/agenda_sala) son futuras POR DISEÑO (citaciones/sesiones
+-- próximas) → se excluyen del assert; su futuridad es un hecho, no el typo.
 select is(
-  (select count(*)::int from actualidad_senal where fecha_max > current_date),
-  0, 'D1: ninguna señal tiene fecha_max futura (typo 2626 filtrado por fecha <= current_date)');
+  (select count(*)::int from actualidad_senal
+     where fecha_max > current_date
+       and tipo_senal not in ('agenda_citacion','agenda_sala')),
+  0, 'D1: ninguna señal temporal-pasada tiene fecha_max futura (typo 2626 filtrado por fecha <= current_date; agenda excluida por ser futura por diseño)');
 
 -- ── (D2) camara normalizada: las dos grafías colapsan a un solo bucket ────────
 -- Sembramos C.Diputados y C. Diputados; velocity DEBE agruparlas en una sola
