@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
 status: executing
-stopped_at: Completed 99-01-PLAN.md
-last_updated: "2026-07-24T13:59:07.562Z"
+stopped_at: Completed 99-03-PLAN.md
+last_updated: "2026-07-24T14:10:06.503Z"
 last_activity: 2026-07-24
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 25
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 99 (SEÑALES P1b — Materializador actualidad_senal) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-24
 
@@ -89,6 +89,7 @@ Last activity: 2026-07-24
 | Phase 98 P01 | ~10 min | 2 tasks | 2 files |
 | Phase 99 P01 | 5min | 2 tasks | 2 files |
 | Phase 99 P02 | 4min | 2 tasks | 2 files |
+| Phase 99 P03 | 8min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -151,6 +152,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 98-01: 2 defectos LOCKED Phase 99 (filtro fecha<=current_date mata filas 2626-05-25; normalizar camara dos grafias); anti-ranking T-52-13; fecha_captura JAMAS es hecho; SEN-06 Camara VIABLE (diferido) / BCN NO-VIABLE; SKILL index on-disk no git-tracked (.gitignore .claude/)
 - [Phase ?]: 99-01: actualidad_senal materializado — tabla deny-by-default + proc full-rebuild ACOTADO (delete solo 6 tipos temporales; agrupacion_materia lo posee el CLI 99-03) + pg_cron intradia L-V; 3 defectos LOCKED (fecha<=current_date; regexp_replace camara; camara NULL->sin-camara); supresion-como-fila (sin futuras/stale => fila con causa+conteo 0, nunca ausencia); umbral stale 7d HARDCODEADO (origen packages/freshness/src/catalog.ts leyes/agenda umbralDias:7); sesion_sala CONFIRMADA (A4); validado end-to-end en Postgres 15 efimero; apply PROD+pgTAP = checkpoint 99-04
 - [Phase ?]: 99-02: RPC bounded actualidad_senales_panel(p_tipo) aguja-completa espejo 0064 (secdef, search_path='', statement_timeout='5s', LIMIT 200, drop-before-create, doble-revoke, CERO grant); returns table = 9 columnas de actualidad_senal VERBATIM; order by neutral (anti-ranking T-52-13); p_tipo parametrico (ASVS V5); allowlisted PUBLIC_RPC_ALLOWLIST => guard Direction-B verde 14/14; apply PROD = checkpoint 99-04
+- [Phase ?]: 99-03: @obs/actualidad k-means CLI — kmeans.ts Lloyd determinista PRNG mulberry32 seed-fija KMEANS_SEED=0x9e3779b9 + init k-means++ + coseno 768d + clamp k [8,15]<=N (checker #2); labelCluster=mode(materia) factual empate-alfabetico JAMAS LLM (T-99-11); run-actualidad-prod-cli service_role lee proyecto_embedding paginado (cap 1k) + join proyecto(materia), full-rebuild ACOTADO delete where tipo_senal=agrupacion_materia (disjunto proc 99-01, T-99-10); dry-run LIVE-READ 3100 embeddings k=10; HALLAZGO: proyecto.materia NULL en 3659 filas PROD -> label (sin materia) honesto (NO bug); suite 96/1252 + tsc 0
 
 ### Pending Todos
 
@@ -206,8 +208,8 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-24T13:58:47.403Z
-Stopped at: Completed 99-01-PLAN.md
+Last session: 2026-07-24T14:10:06.490Z
+Stopped at: Completed 99-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
