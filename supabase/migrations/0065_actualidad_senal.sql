@@ -33,9 +33,11 @@
 --
 -- UMBRAL STALE HARDCODEADO (Open Question A5): el umbral de frescura vive en TypeScript
 --   (packages/freshness/src/catalog.ts) y NO es consultable desde el proc SQL. Se hardcodea
---   aquí como constante documentada: 7 días, el `umbralDias` de las fuentes `leyes` (tabla
---   proyecto/tramitación) y `agenda` (tabla citacion) en catalog.ts. Si el umbral cambia en
---   catalog.ts, ACTUALIZAR aquí (deriva documentada en el SUMMARY 99-01).
+--   aquí como constante documentada: 7 días, tomando como REFERENCIA del NÚMERO el `umbralDias`
+--   de las fuentes `leyes` y `agenda` en catalog.ts. WR-03: solo el NÚMERO se comparte — la
+--   SEMÁNTICA difiere por diseño (catalog.ts mide MAX(fecha_captura)=frescura de scrape; este
+--   proc mide MAX(evento.fecha)=recencia del hecho, regla del reloj §4). NO hay paridad de
+--   medida. Si el número cambia en catalog.ts, ACTUALIZAR aquí (deriva documentada, SUMMARY 99-01).
 --
 -- DELETE ACOTADO (CRÍTICO — Pitfall 5 del research, race pg_cron↔GH Actions): el proc borra
 --   SOLO los tipos_señal temporales; el tipo 'agrupacion_materia' lo posee el CLI k-means
@@ -86,9 +88,18 @@ create schema if not exists actualidad;
 create or replace function actualidad.materializar_senales()
 returns void language plpgsql security definer set search_path = '' as $$
 declare
-  -- Umbral de frescura HARDCODEADO (Open Question A5). Origen: packages/freshness/src/catalog.ts,
-  -- fuentes `leyes` (proyecto/tramitación) y `agenda` (citacion) con umbralDias:7. El valor TS
-  -- NO es consultable desde SQL → se replica aquí. Si catalog.ts cambia, actualizar esta constante.
+  -- Umbral de frescura HARDCODEADO (Open Question A5). SQL no puede leer TypeScript → el valor
+  -- se replica aquí. Si catalog.ts cambia el NÚMERO, actualizar esta constante (deriva
+  -- documentada en el SUMMARY 99-01).
+  --
+  -- WR-03 — PROVENANCE HONESTA (solo el NÚMERO se comparte, NO la semántica):
+  --   * NÚMERO (7): tomado como referencia de packages/freshness/src/catalog.ts, fuentes `leyes`
+  --     y `agenda` (ambas umbralDias:7). Es una referencia del valor, NO un acople verificado en
+  --     runtime (nada enlaza los dos; el pgTAP siembra su propia staleness, no lee catalog.ts).
+  --   * SEMÁNTICA (DISTINTA por diseño): catalog.ts mide frescura contra MAX(fecha_captura) — la
+  --     fecha de SCRAPE. Este proc mide recencia contra MAX(tramitacion_evento.fecha) /
+  --     MAX(citacion.fecha) — la fecha del EVENTO (regla del reloj, §4: fecha_captura JAMÁS es un
+  --     hecho legislativo). El número coincide; la COLUMNA MEDIDA no. NO asumir paridad de medida.
   c_umbral_stale_dias constant int := 7;
   -- Frescura real de cada fuente = max(fecha SANEADA) (D1: fecha <= current_date). Ausencia de
   -- datos frescos → supresión-como-fila, JAMÁS "sin movimiento" (regla del reloj, §4).
@@ -131,40 +142,91 @@ begin
             'tramitacion', 'plataforma-tramitacion', now());
   end if;
 
-  -- ── (2) nuevos_ingresos — primer-evento por boletín, corpus 2022-2026 ────────
+  -- ── (2) nuevos_ingresos — primer-evento por boletín, ventana 7d, corpus 2022-2026 ─
   -- HONESTA-CONDICIONAL: primer-evento por boletín; EXCLUIR primer-evento pre-2022 (eventos
-  -- históricos de proyectos viejos, no ingresos). cobertura declarada '2022-2026'. JAMÁS
-  -- fecha_captura (§4). Aplica D1. Sin corte por cámara (no aplica sesgo de cámara aquí).
-  insert into public.actualidad_senal
-    (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, dataset, origen, fecha_captura)
-  select 'nuevos_ingresos', '2022-2026', count(*), null, max(pe.primer),
-         'tramitacion', 'plataforma-tramitacion', now()
-    from (
-      select boletin, min(fecha) as primer
-        from public.tramitacion_evento
-       where fecha <= current_date                                 -- D1
-       group by boletin
-      having min(fecha) >= date '2022-01-01'                       -- EXCLUIR pre-2022
-         and min(fecha) >= current_date - interval '7 days'        -- ingresados en la ventana
-    ) pe;
+  -- históricos de proyectos viejos, no ingresos). JAMÁS fecha_captura (§4). Aplica D1. Sin
+  -- corte por cámara (no aplica sesgo de cámara aquí).
+  -- WR-02 (honestidad del label): la VENTANA REAL de conteo es 7 días (HAVING min(fecha) >=
+  --   current_date - 7). El '2022-2026' es el PISO DE CORPUS (exclusión pre-2022), NO la
+  --   ventana → `ventana='7d'` (la verdad temporal) y el corpus va en `cobertura_camara`.
+  -- WR-01 (supresión ≠ 0-como-hecho): esta señal se ancla a tramitacion_evento; si la fuente
+  --   está stale, emitir supresión-como-fila (NO conteo=0 con causa NULL). Y si la fuente está
+  --   fresca pero no hubo ingresos en la ventana, TAMBIÉN emitir supresión-como-fila (el
+  --   select sin GROUP BY devolvería una fila conteo=0/causa NULL = 0-como-hecho prohibido).
+  if v_tram_max is not null and v_tram_max >= current_date - c_umbral_stale_dias then
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, dataset, origen, fecha_captura)
+    select 'nuevos_ingresos', '7d', count(*), '2022-2026 (piso de corpus)', max(pe.primer),
+           'tramitacion', 'plataforma-tramitacion', now()
+      from (
+        select boletin, min(fecha) as primer
+          from public.tramitacion_evento
+         where fecha <= current_date                               -- D1
+         group by boletin
+        having min(fecha) >= date '2022-01-01'                     -- EXCLUIR pre-2022 (piso corpus)
+           and min(fecha) >= current_date - interval '7 days'      -- ingresados en la ventana 7d
+      ) pe
+     having count(*) > 0;                                          -- no 0-como-hecho
+    if not found then
+      insert into public.actualidad_senal
+        (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, supresion_causa,
+         dataset, origen, fecha_captura)
+      values ('nuevos_ingresos', '7d', 0, '2022-2026 (piso de corpus)', v_tram_max,
+              'sin nuevos ingresos fechados en la ventana',
+              'tramitacion', 'plataforma-tramitacion', now());
+    end if;
+  else
+    -- Supresión-como-fila (ausencia ≠ hecho): la fuente de tramitación está stale o vacía.
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, supresion_causa,
+       dataset, origen, fecha_captura)
+    values ('nuevos_ingresos', '7d', 0, '2022-2026 (piso de corpus)', v_tram_max,
+            'sin datos frescos de esta fuente',
+            'tramitacion', 'plataforma-tramitacion', now());
+  end if;
 
   -- ── (3) urgencias — evento de urgencia FECHADO (nunca "vigente") ─────────────
   -- HONESTA: el HECHO fechado, no un juicio. Aplica D1. Ventana 30d. Sin corte de cámara
   -- por conteo (evita ranking cross-cámara); el conteo agregado es honesto.
-  insert into public.actualidad_senal
-    (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, dataset, origen, fecha_captura)
-  select 'urgencias', '30d', count(*), null, max(fecha),
-         'tramitacion', 'plataforma-tramitacion', now()
-    from public.tramitacion_evento
-   where tipo = 'urgencia'
-     and fecha <= current_date                                     -- D1
-     and fecha >= current_date - interval '30 days';
+  -- WR-01 (supresión ≠ 0-como-hecho): anclada a tramitacion_evento → gate de frescura como
+  --   velocity; si stale, supresión-como-fila. Si fresca pero sin urgencias en la ventana,
+  --   TAMBIÉN supresión-como-fila (el select sin GROUP BY daría conteo=0/causa NULL prohibido).
+  if v_tram_max is not null and v_tram_max >= current_date - c_umbral_stale_dias then
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, dataset, origen, fecha_captura)
+    select 'urgencias', '30d', count(*), null, max(fecha),
+           'tramitacion', 'plataforma-tramitacion', now()
+      from public.tramitacion_evento
+     where tipo = 'urgencia'
+       and fecha <= current_date                                   -- D1
+       and fecha >= current_date - interval '30 days'
+     having count(*) > 0;                                          -- no 0-como-hecho
+    if not found then
+      insert into public.actualidad_senal
+        (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
+      values ('urgencias', '30d', 0, v_tram_max,
+              'sin urgencias fechadas en la ventana',
+              'tramitacion', 'plataforma-tramitacion', now());
+    end if;
+  else
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
+    values ('urgencias', '30d', 0, v_tram_max, 'sin datos frescos de esta fuente',
+            'tramitacion', 'plataforma-tramitacion', now());
+  end if;
 
   -- ── (4) agenda_citacion — citaciones FUTURAS reales (tz Chile date-only) ─────
   -- HONESTA: "coming up" real. `citacion.fecha` es date-only-midnight-UTC = día chileno
   -- (dia-calendario.ts LOCKED): comparar `fecha::date >= current_date` SIN at time zone.
   -- Corte de cámara declarado (cobertura_camara = citacion.camara CRUDA — 'camara'/'senado').
-  if v_cita_max is not null and v_cita_max >= current_date - c_umbral_stale_dias then
+  -- WR-05 (falso negativo por captura stale): la DECISIÓN se basa en la PRESENCIA de filas
+  --   FUTURAS, NO en max(fecha PASADA). Una citación futura real ya en la DB es un hecho
+  --   ("coming up") aunque la fuente no se haya re-ingerido hace >7 días — v_cita_max mide
+  --   el máximo evento PASADO y quedaría stale falsamente. Por eso el `if exists (futuras)`
+  --   domina la decisión: si hay futuras → filas positivas SIEMPRE. Solo cuando NO hay
+  --   futuras se distingue "fuente stale" (no re-ingerida) de "sin próximas" (hecho legítimo).
+  if exists (select 1 from public.citacion where fecha::date >= current_date) then
+    -- Hay citaciones futuras reales → emitir filas positivas SIEMPRE (hecho, no depende de frescura).
     insert into public.actualidad_senal
       (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, dataset, origen, fecha_captura)
     select 'agenda_citacion', 'futuras', count(*),
@@ -173,15 +235,15 @@ begin
       from public.citacion
      where fecha::date >= current_date                             -- tz Chile date-only (Pitfall 6)
      group by coalesce(nullif(regexp_replace(camara, '\s+', '', 'g'), ''), '(sin cámara)');  -- D2/D3
-    -- Si NO hay citaciones futuras pese a fuente fresca, emitir supresión-como-fila (no ausencia).
-    if not exists (select 1 from public.citacion where fecha::date >= current_date) then
-      insert into public.actualidad_senal
-        (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
-      values ('agenda_citacion', 'futuras', 0, v_cita_max,
-              'sin citaciones agendadas en las fuentes consultadas',
-              'agenda', 'plataforma-agenda', now());
-    end if;
+  elsif v_cita_max is not null and v_cita_max >= current_date - c_umbral_stale_dias then
+    -- Sin futuras pero la fuente es FRESCA → es un hecho: no hay nada agendado próximamente.
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
+    values ('agenda_citacion', 'futuras', 0, v_cita_max,
+            'sin citaciones agendadas en las fuentes consultadas',
+            'agenda', 'plataforma-agenda', now());
   else
+    -- Sin futuras Y fuente stale (o vacía) → no se puede afirmar "nada próximo": supresión por frescura.
     insert into public.actualidad_senal
       (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
     values ('agenda_citacion', 'futuras', 0, v_cita_max, 'sin datos frescos de esta fuente',
@@ -216,16 +278,34 @@ begin
   -- (cuya fecha = fecha_captura mentirosa). EXCLUIR 'desarchiv%' y 'retira y hace presente%'
   -- (invierten el sentido — no son archivo/retiro). Framing "movimiento de archivo/retiro
   -- fechado", NO "proyectos actualmente archivados". Aplica D1. Ventana 30d.
-  insert into public.actualidad_senal
-    (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, dataset, origen, fecha_captura)
-  select 'archivados', '30d', count(*), null, max(fecha),
-         'tramitacion', 'plataforma-tramitacion', now()
-    from public.tramitacion_evento
-   where fecha <= current_date                                     -- D1
-     and fecha >= current_date - interval '30 days'
-     and (descripcion ilike '%archiv%' or descripcion ilike '%retira%')
-     and descripcion not ilike '%desarchiv%'                       -- invierte el sentido
-     and descripcion not ilike '%retira y hace presente%';         -- invierte el sentido
+  -- WR-01 (supresión ≠ 0-como-hecho): anclada a tramitacion_evento → gate de frescura como
+  --   velocity; si stale, supresión-como-fila. Si fresca pero sin movimientos en la ventana,
+  --   TAMBIÉN supresión-como-fila (el select sin GROUP BY daría conteo=0/causa NULL prohibido).
+  if v_tram_max is not null and v_tram_max >= current_date - c_umbral_stale_dias then
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, dataset, origen, fecha_captura)
+    select 'archivados', '30d', count(*), null, max(fecha),
+           'tramitacion', 'plataforma-tramitacion', now()
+      from public.tramitacion_evento
+     where fecha <= current_date                                   -- D1
+       and fecha >= current_date - interval '30 days'
+       and (descripcion ilike '%archiv%' or descripcion ilike '%retira%')
+       and descripcion not ilike '%desarchiv%'                     -- invierte el sentido
+       and descripcion not ilike '%retira y hace presente%'        -- invierte el sentido
+     having count(*) > 0;                                          -- no 0-como-hecho
+    if not found then
+      insert into public.actualidad_senal
+        (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
+      values ('archivados', '30d', 0, v_tram_max,
+              'sin movimientos de archivo/retiro fechados en la ventana',
+              'tramitacion', 'plataforma-tramitacion', now());
+    end if;
+  else
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
+    values ('archivados', '30d', 0, v_tram_max, 'sin datos frescos de esta fuente',
+            'tramitacion', 'plataforma-tramitacion', now());
+  end if;
 end;
 $$;
 
