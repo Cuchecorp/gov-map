@@ -75,3 +75,12 @@ El benchmark (100-BENCHMARK.md) fijó el norte: superar el editorial+navegación
 - Build OpenNext liviano: se purgó `.pnpm-store` (847MB) + `.planning` del mirror `C:/Temp/obs-build` (900MB→78MB) — el `tar` sobre el bind-mount Windows→contenedor era el cuello; el contenedor hace `pnpm install` fresco.
 - `MSYS_NO_PATHCONV=1` obligatorio en `docker run`/`docker cp` (Git Bash reescribía `/host/...`→`C:/Program Files/Git/host/...`).
 - Deploy: `wrangler deploy` global (OAuth host) desde `C:/Temp/obs-build/app/` — versión `f9ad3364`.
+
+---
+
+## Adenda — re-deploy tras code review (versión `3198e159`)
+
+Los 3 WARNING del code review (WR-01 token crudo en chip, WR-02 dos tiles "Agenda próxima" duplicados, WR-03 keys por índice) se corrigieron y re-deployaron. Re-verificado en vivo sobre el deploy `3198e159`:
+- WR-02: títulos distintos "Citaciones próximas" + "Sesiones de sala"; `dupAgendaProxima: 0`.
+- WR-01: `has30dRaw: false`, `hasFuturasRaw: false` — el token interno ya no llega al chip.
+- Honestidad intacta: supresión + "trámites en 7 días" presentes. Suite 1267 verde.
