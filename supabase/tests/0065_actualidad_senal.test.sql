@@ -11,6 +11,12 @@
 --       (D2) `camara` se normaliza colapsando las dos grafías (`C.Diputados`/`C. Diputados`),
 --       (D3) supresión = FILA con `supresion_causa` cuando la fuente está stale
 --            (nunca ausencia-como-hecho, nunca 0-como-hecho).
+--   * WR-02: el `ventana` de nuevos_ingresos declara la VENTANA REAL ('7d'), NUNCA el piso de
+--     corpus ('2022-2026') — el label no confunde un conteo de 7 días con un total 4-años.
+--   * WR-01: con la fuente de tramitación STALE (max(fecha) > umbral), las señales
+--     temporales-pasadas (velocity/nuevos_ingresos/urgencias/archivados) emiten FILA de
+--     supresión (supresion_causa NOT NULL), NUNCA una fila conteo=0 con causa NULL
+--     (0-como-hecho prohibido, ausencia ≠ hecho).
 --
 -- Corre vía `psql -tA -f` (vs PROD APLICADO) (pgTAP). build/typecheck NO prueban que el DDL
 -- se aplicó (falso positivo de CI, Pitfall 5). Espeja 0039_cruce_senal.test.sql style.
@@ -22,7 +28,7 @@
 -- supera ese umbral y verifica que se emite la fila de supresión.
 
 begin;
-select plan(12);
+select plan(17);
 
 -- ── Semilla (owner, bypassa RLS) ──────────────────────────────────────────────
 -- Un proyecto de cobertura para las FK de tramitacion_evento/citacion/sesion_sala.
@@ -120,6 +126,60 @@ select is(
   (select coalesce(sum(conteo), 0)::int from actualidad_senal
      where tipo_senal = 'agenda_sala' and supresion_causa is not null),
   0, 'D3: la fila de supresión no afirma conteo positivo (0-como-hecho prohibido)');
+
+-- ── (WR-02) nuevos_ingresos declara la VENTANA REAL, no el piso de corpus ─────
+-- La fuente está fresca (eventos recientes sembrados arriba) → nuevos_ingresos emite fila(s)
+-- positiva(s). El `ventana` DEBE ser '7d' (la ventana de conteo real), NUNCA '2022-2026'
+-- (que es el piso de corpus, no la ventana). Confundir un conteo de 7 días con un total
+-- 4-años es la mentira de label que WR-02 prohíbe.
+select is(
+  (select count(*)::int from actualidad_senal
+     where tipo_senal = 'nuevos_ingresos' and ventana = '2022-2026'),
+  0, 'WR-02: nuevos_ingresos NUNCA etiqueta ventana=2022-2026 (el piso de corpus no es la ventana)');
+select cmp_ok(
+  (select count(*)::int from actualidad_senal
+     where tipo_senal = 'nuevos_ingresos' and ventana = '7d'),
+  '>=', 1,
+  'WR-02: nuevos_ingresos etiqueta ventana=7d (la ventana de conteo real)');
+
+-- ── (WR-01) fuente de tramitación STALE → supresión-como-fila, NUNCA 0-como-hecho ─
+-- Reescenario: vaciar tramitacion_evento y sembrar SOLO un evento VIEJO (> umbral 7d) para
+-- todos los tipos temporales-pasados. Con la fuente stale, velocity/nuevos_ingresos/urgencias/
+-- archivados DEBEN emitir una FILA con supresion_causa NOT NULL — jamás una fila conteo=0 con
+-- causa NULL (que afirmaría "0 hechos" como un hecho: ausencia ≠ hecho, contrato §4/§SUPRESIÓN).
+delete from tramitacion_evento where boletin = '99001-99';
+insert into tramitacion_evento
+  (boletin, fecha, camara, tipo, descripcion, origen)
+values
+  -- evento único, VIEJO (30 días atrás > umbral 7d) → max(fecha) de la fuente es stale
+  ('99001-99', current_date - interval '30 days', 'C.Diputados', 'urgencia',
+   'Hace presente la urgencia', 'test');
+-- Re-materializar con la fuente ahora stale.
+select actualidad.materializar_senales();
+
+-- Cada señal temporal-pasada emite EXACTAMENTE una fila de supresión (causa NOT NULL).
+select is(
+  (select count(*)::int from actualidad_senal
+     where tipo_senal in ('velocity','nuevos_ingresos','urgencias','archivados')
+       and supresion_causa is not null),
+  4,
+  'WR-01: fuente stale → las 4 señales temporales-pasadas emiten fila de supresión (causa NOT NULL)');
+
+-- Y NINGUNA de esas señales emite la fila prohibida conteo=0 con supresion_causa NULL.
+select is(
+  (select count(*)::int from actualidad_senal
+     where tipo_senal in ('velocity','nuevos_ingresos','urgencias','archivados')
+       and supresion_causa is null),
+  0,
+  'WR-01: ninguna señal temporal-pasada emite conteo=0 con causa NULL (0-como-hecho prohibido)');
+
+-- Ninguna de esas filas de supresión afirma un conteo positivo como hecho.
+select is(
+  (select coalesce(sum(conteo), 0)::int from actualidad_senal
+     where tipo_senal in ('velocity','nuevos_ingresos','urgencias','archivados')
+       and supresion_causa is not null),
+  0,
+  'WR-01: las filas de supresión no afirman conteo positivo (0-como-hecho prohibido)');
 
 -- ── anon NO lee actualidad_senal directamente (deny-by-default → 42501) ───────
 set local role anon;
