@@ -4,13 +4,13 @@ milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
 status: executing
 stopped_at: Completed 94-03-PLAN.md
-last_updated: "2026-07-23T23:30:17.848Z"
-last_activity: 2026-07-23
+last_updated: "2026-07-24T00:05:00.084Z"
+last_activity: 2026-07-24
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 97 (AUTH P0 — SPIKE auth-on-Workers de-risk) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
-Last activity: 2026-07-23
+Last activity: 2026-07-24
 
 ## Performance Metrics
 
@@ -82,6 +82,7 @@ Last activity: 2026-07-23
 | Phase 93 P03 | 35min | 2 tasks | 6 files |
 | Phase 94 P03 | 35min | 2 tasks | 2 files |
 | Phase 94 P02 | ~25 min | 2 tasks | 6 files |
+| Phase 97 P02 | ~35min | 1 task | 2 files |
 
 ## Accumulated Context
 
@@ -138,12 +139,15 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 94-03: sesion_sala sin columna semana_iso; semana ISO derivada en TS (Chile tz) en la ficha
 - [Phase ?]: 94-04: deploy Cloudflare 9aba6a1a live (OpenNext Docker Linux + wrangler OAuth); gate BrowserOS COMPRENSIBLE sobre el deploy real; SC#1 cerrado por 93; cold-read humano = HANDOFF
 - [Phase ?]: 97-01: primer middleware.ts = convencion DEPRECADA Edge (OpenNext la corre Edge); NO proxy.ts/runtime/codemod. Cliente user @supabase/ssr publishable SEPARADO del service_role; /spike-auth no enlazada ejerce OTP. Build Next + suite 1244 + tsc verdes. Deploy OpenNext real = Plan 02.
+- [Phase 97] 97-02: SC1 EMPIRICO PASS sobre el DEPLOY REAL — el primer middleware.ts corre como Edge en el build OpenNext (Docker node:22-slim, @opennextjs/cloudflare 1.19.11, Next 16.2.11): warning de deprecacion ESPERADO, NO error "Node.js middleware not supported"; `Bundling middleware function` + `ƒ Proxy (Middleware)` + `OpenNext build complete`. Deploy wrangler global OAuth version 3952f9bc; Camino A 200 (/,+4 rutas), CSP intacta (connect-src 'self'/object-src 'none'/frame-ancestors 'none'). El fallback SC4 (Plan 03) NO se dispara. RULE-1 FIX: la middleware VERBATIM del Plan 01 tumbaba Camino A (matcher global + throw por env ausente -> 500 en TODO el sitio); fix = fail-open (NextResponse.next si falta SUPABASE_PUBLISHABLE_KEY/URL), preserva Camino A; supabase-user.ts SIGUE fail-loud en /spike-auth (500 aislado, espera el secret). GOTCHAS deploy: (1) wrangler REAL sombreado por paquete Python -> usar npm global AppData/Roaming/npm/wrangler.cmd o dentro del contenedor; (2) opennextjs-cloudflare NO en PATH del host -> correr `pnpm run deploy` DENTRO del node:22-slim montando el OAuth del host en /root/.config/.wrangler; (3) robocopy /MIR borra los helper scripts del build dir (no estan en el repo) -> re-escribir tras cada mirror; (4) Cloudflare tarda ~10-30s en propagar la version nueva (500 intermitentes durante el lapso). Plan 03 DESBLOQUEADO en rama POSITIVA (evidencia), PRECONDICION = Task 1 operador (publishable key + config Auth OTP {{ .Token }} + wrangler secret) cerrado primero.
 
 ### Pending Todos
 
 Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 ### Blockers/Concerns
+
+- 97-02 PENDIENTE operador (checkpoint:human-action blocking-human — Task 1): (a) crear la publishable key `sb_publishable_...` en Supabase Dashboard (proyecto bctyygbmqcvizyplktuw), NO la anon legacy ni la secret; (b) Auth → Email provider ON + plantilla OTP que renderice `{{ .Token }}` (NO `{{ .ConfirmationURL }}`); (c) `wrangler secret put SUPABASE_PUBLISHABLE_KEY` (host, OAuth global) + confirmar con `wrangler secret list`; (d) poner el valor en el `.env` LOCAL (NO en `.env.example`). BLOQUEA Plan 03 (sin el secret /spike-auth da 500 y no hay flujo OTP que evidenciar). El agente NO puede crear la key ni tocar el dashboard. Pasos exactos en 97-DEPLOY-RUNBOOK.md §"Estado de runtime pendiente". Resume-signal: "listo" con key cargada + provider/template confirmados, o describir el bloqueo.
 
 - PASADA 2 CERRADA 2026-07-22. Deploy live: `369f9cbe` (dias correctos /agenda). DEUDA que viaja con el PROXIMO deploy (95/96 o cierre): fixes latentes WR-01/02 dedup counts ficha + a11y/accent de 94-UI-REVIEW (ya en master, no bundleados). HANDOFF operador: cold-read humano de /agenda y ficha bio/lobby (gates BrowserOS del agente aprobados con evidencia DOM; el veredicto humano "comprensible" queda abierto, patron v7/v8). Residuo benigno: C:\Temp\obs-build
 
@@ -191,7 +195,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-23T23:29:51.565Z
+Last session: 2026-07-24T00:05:00.075Z
 Stopped at: Completed 94-03-PLAN.md
 Resume file: None
 
