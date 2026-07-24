@@ -167,6 +167,7 @@ import ParlamentarioPage, {
   ParlamentarioRail,
 } from "./page";
 import { CrucesSection } from "@/components/cruces-de-parlamentario";
+import { LEYENDA_CROSS_LINK } from "@/components/cross-links-parlamentario";
 import { renderToStaticMarkup } from "react-dom/server";
 
 function countOccurrences(haystack: string, needle: string): number {
@@ -318,7 +319,14 @@ describe("/parlamentario/[id] — enlace gated a /red (B21b, Candado B NET)", ()
     expect(html).toContain("/red?seed=P00001");
     expect(html).toContain("Ver relaciones con otros parlamentarios");
     // Negative-match anti-insinuación: sin vocabulario de influencia/afinidad/score.
-    expect(html).not.toMatch(/influencia|conexion|sospechos|afinidad|score/i);
+    // REL-02 (101-02): la <section id="relaciones"> del shell renderiza la leyenda de
+    // grupo LEYENDA_CROSS_LINK, que CONTIENE "afinidad" en un contexto que lo NIEGA
+    // ("No implica afinidad, coordinación ni causalidad."). Se RESTA antes del
+    // negative-match — mismo tratamiento que NEGACIONES_LOCKED del linter
+    // anti-insinuación — para que el test siga MORDIENDO vocabulario genuino sin
+    // auto-cazarse sobre la propia leyenda que enfuerza la regla.
+    const sinLeyenda = html.split(LEYENDA_CROSS_LINK).join(" ");
+    expect(sinLeyenda).not.toMatch(/influencia|conexion|sospechos|afinidad|score/i);
     expect(notFoundMock).not.toHaveBeenCalled();
   });
 });

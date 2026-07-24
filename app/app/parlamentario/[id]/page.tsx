@@ -33,6 +33,7 @@ import {
   CrossLinkBloque,
   type CrossLinkFila,
 } from "@/components/cross-links-parlamentario";
+import { RelacionesSection } from "@/components/relaciones-section";
 import { formatNombre } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
@@ -238,6 +239,39 @@ export default async function ParlamentarioPage({
           </Suspense>
 
           {/*
+            REL-02 (101-02) — Bloque de relaciones des-enterrado ABOVE-THE-FOLD.
+            Los CUATRO CrossLinkBloque FACTUALES anti-causales (mismo partido / misma
+            zona / misma comisión / co-autoría) se MOVIERON de su antigua posición al
+            FINAL de la columna (era 283-294) a AQUÍ, inmediatamente tras las
+            militancias y ANTES de los carriles de dominio — cerca de la identidad,
+            per 101-UI-SPEC. `RelacionesSection` es COMPOSICIÓN PURA: recibe los 4
+            bloques ya renderizados como children y aporta la <section id="relaciones">
+            (heading + leyenda de grupo LEYENDA_CROSS_LINK + grid 2×2). Los readers
+            (getCopartidarios etc.) y los sub-componentes CrossLink* NO se tocan —
+            CrossLinkBloque queda byte-intacto. Cada bloque conserva su propio
+            <Suspense fallback={null}> para streaming independiente (un fallo no tumba
+            la ficha; N=0 → return null interno). El mt-12 frontera vive en la
+            <section id="relaciones"> misma; el mt-12 interno de cada bloque se
+            neutraliza en el grid vía [&>section]:mt-0 (Pitfall A4, sin tocar el
+            componente). El bloque MismaZona rinde 0 para diputados (audit 101-01:
+            distrito/circunscripción NULL) — return null correcto, no un bug.
+          */}
+          <RelacionesSection>
+            <Suspense fallback={null}>
+              <CrossLinkCopartidarios id={id} />
+            </Suspense>
+            <Suspense fallback={null}>
+              <CrossLinkMismaZona id={id} />
+            </Suspense>
+            <Suspense fallback={null}>
+              <CrossLinkCoComisionados id={id} />
+            </Suspense>
+            <Suspense fallback={null}>
+              <CrossLinkCoautores id={id} />
+            </Suspense>
+          </RelacionesSection>
+
+          {/*
             B21b — Enlace gated a /red?seed=<id>. Aparece SOLO cuando
             netPublicEnabled(process.env) es true (espejo EXACTO de los gates
             cruces/money): con OFF (default fail-closed) el nodo ENTERO está AUSENTE
@@ -270,27 +304,6 @@ export default async function ParlamentarioPage({
           */}
           <Suspense fallback={<CarrilesSkeleton />}>
             <CarrilesSection id={id} searchParams={sp} />
-          </Suspense>
-
-          {/*
-            BIO-04 — Bloques cross-link FACTUALES anti-causales. Cada bloque es su
-            propia <section mt-12> HERMANA (frontera anti-insinuación LOCKED), con su
-            propio <Suspense> para streaming independiente (un fallo no tumba la
-            ficha). La auto-exclusión y el LIMIT bounded los garantiza la RPC; el
-            bloque vacío (N=0) se OMITE dentro del componente (return null). Orden
-            NEUTRAL preservado — NUNCA ranking por afinidad.
-          */}
-          <Suspense fallback={null}>
-            <CrossLinkCopartidarios id={id} />
-          </Suspense>
-          <Suspense fallback={null}>
-            <CrossLinkMismaZona id={id} />
-          </Suspense>
-          <Suspense fallback={null}>
-            <CrossLinkCoComisionados id={id} />
-          </Suspense>
-          <Suspense fallback={null}>
-            <CrossLinkCoautores id={id} />
           </Suspense>
         </div>
       </div>
