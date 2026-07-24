@@ -172,7 +172,12 @@ Plans:
   3. Existe un benchmark BrowserOS documentado de senado.cl y camara.cl (portada/actualidad/tablas) con crítica de diseño — qué evitar y qué superar; el panel iteró diseño→crítica→loop contra ese benchmark
   4. El veredicto BrowserOS de lectura fría sobre el DEPLOY real (comprensible para periodista/tramitador/ciudadano) es "comprensible" — criterio de éxito, no opcional (candados verificados por getComputedStyle en deploy)
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+- [ ] 100-01-PLAN.md — Wave 1 guards: SUPERFICIES_PANEL + denylist timing + bento cero-hex/tipografía ANTES del copy
+- [ ] 100-02-PLAN.md — Wave 2: componente panel-actualidad.tsx (RSC lee RPC precomputada, supresión honesta) + RTL fixtures
+- [ ] 100-03-PLAN.md — Wave 3: montar el panel en page.tsx (hero+candados+force-dynamic intactos) + suite verde
+- [ ] 100-04-PLAN.md — Wave 4: benchmark BrowserOS senado/camara + deploy real + gate lectura fría (checkpoint orquestador)
 
 **UI hint**: yes
 
