@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
 status: executing
-stopped_at: Completed 98-01-PLAN.md
-last_updated: "2026-07-24T13:47:26.611Z"
-last_activity: 2026-07-24 -- Phase 99 planning complete
+stopped_at: Completed 99-01-PLAN.md
+last_updated: "2026-07-24T13:55:42.873Z"
+last_activity: 2026-07-24
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 8
-  completed_plans: 4
+  completed_plans: 5
   percent: 25
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 98 — SEÑALES P1a — SPIKE de datos
+**Current focus:** Phase 99 — SEÑALES P1b — Materializador actualidad_senal
 
 ## Current Position
 
-Phase: 99
-Plan: Not started
+Phase: 99 (SEÑALES P1b — Materializador actualidad_senal) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-24 -- Phase 99 planning complete
+Last activity: 2026-07-24
 
 ## Performance Metrics
 
@@ -87,6 +87,7 @@ Last activity: 2026-07-24 -- Phase 99 planning complete
 | Phase 97 P02 | ~35min | 1 task | 2 files |
 | Phase 97 P03 | ~12 min | 3 tasks | 2 files |
 | Phase 98 P01 | ~10 min | 2 tasks | 2 files |
+| Phase 99 P01 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 97-03: evidencia consolidada — SC1 PASS (middleware=Edge), SC3 PASS parcial (Camino A 5/5 200 + CSP frame-ancestors/object-src/connect-src intactos por curl live + Cache-Control anti-leak), SC2 PENDING-operator (Set-Cookie+refresh bloqueado SOLO por el checkpoint de provision diferido, NO por el spike; bloque de reproduccion curl PII-safe listo). Rama A (verde estructural): fallback SC4 NO disparado; NOTIF-103 asume middleware+cookies en Workers sin rewrite server-side-puro. El agente NO intento el flujo OTP live ni creo keys ni toco el dashboard. Fase 97 CIERRA sobre documented-handoff (v7/v9).
 - [Phase ?]: 98-01: cifra voto CORREGIDA a 283.550 confirmados / 186 / 4.852 (no 548.642); fail-closed 0 fabricados
 - [Phase ?]: 98-01: 2 defectos LOCKED Phase 99 (filtro fecha<=current_date mata filas 2626-05-25; normalizar camara dos grafias); anti-ranking T-52-13; fecha_captura JAMAS es hecho; SEN-06 Camara VIABLE (diferido) / BCN NO-VIABLE; SKILL index on-disk no git-tracked (.gitignore .claude/)
+- [Phase ?]: 99-01: actualidad_senal materializado — tabla deny-by-default + proc full-rebuild ACOTADO (delete solo 6 tipos temporales; agrupacion_materia lo posee el CLI 99-03) + pg_cron intradia L-V; 3 defectos LOCKED (fecha<=current_date; regexp_replace camara; camara NULL->sin-camara); supresion-como-fila (sin futuras/stale => fila con causa+conteo 0, nunca ausencia); umbral stale 7d HARDCODEADO (origen packages/freshness/src/catalog.ts leyes/agenda umbralDias:7); sesion_sala CONFIRMADA (A4); validado end-to-end en Postgres 15 efimero; apply PROD+pgTAP = checkpoint 99-04
 
 ### Pending Todos
 
@@ -202,8 +204,8 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-24T13:21:09.138Z
-Stopped at: Completed 98-01-PLAN.md
+Last session: 2026-07-24T13:55:42.861Z
+Stopped at: Completed 99-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

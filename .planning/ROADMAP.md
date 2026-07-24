@@ -153,7 +153,8 @@ Plans:
   4. La agrupación por tema usa `materia` oficial como label primario (+ k-means determinista seed-fija sobre embeddings como capa secundaria) — los labels JAMÁS se generan por LLM
 
 **Plans**: 4 plans
-- [ ] 99-01-PLAN.md — migración 0065: tabla actualidad_senal deny-by-default + proc full-rebuild (3 defectos LOCKED + 6 señales + supresión-como-fila) + pg_cron + pgTAP
+
+- [x] 99-01-PLAN.md — migración 0065: tabla actualidad_senal deny-by-default + proc full-rebuild (3 defectos LOCKED + 6 señales + supresión-como-fila) + pg_cron + pgTAP
 - [ ] 99-02-PLAN.md — migración 0066: RPC bounded actualidad_senales_panel (aguja completa) + alta en PUBLIC_RPC_ALLOWLIST
 - [ ] 99-03-PLAN.md — workspace @obs/actualidad: kmeans determinista seed-fija (label=mode(materia), no LLM) + run-actualidad-prod-cli
 - [ ] 99-04-PLAN.md — actualidad-refresh.yml (clon leyes-weekly sin R2, intradía L-V) + apply live-DB 0065/0066 (checkpoint operador, sin flip de régimen)
@@ -1281,7 +1282,7 @@ Plans:
 | 75. DEUDA — Typography .net-* + rotar DB password (operador) | v7.0 | 2/2 | Complete   | 2026-07-15 |
 | 97. AUTH P0 — SPIKE auth-on-Workers de-risk | v10.0 | 3/3 | Complete    | 2026-07-24 |
 | 98. SEÑALES P1a — SPIKE datos: qué señales son honestas (gate) | v10.0 | 1/1 | Complete    | 2026-07-24 |
-| 99. SEÑALES P1b — Materializador actualidad_senal + RPCs + cron | v10.0 | 0/? | Not started | - |
+| 99. SEÑALES P1b — Materializador actualidad_senal + RPCs + cron | v10.0 | 1/4 | In Progress|  |
 | 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 0/? | Not started | - |
 | 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 0/? | Not started | - |
 | 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 0/? | Not started | - |
