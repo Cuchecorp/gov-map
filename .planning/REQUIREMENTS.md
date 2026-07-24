@@ -14,12 +14,12 @@
 
 ### SEN — Señales de actualidad (datos ANTES que frontend — gate del operador)
 
-- [ ] **SEN-01**: SPIKE-auditoría de `tramitacion_evento` (frescura, cobertura por cámara, fiabilidad de primer-evento por boletín) clasifica CADA señal candidata como honesta/sesgada/imposible — gatea el panel completo. `fecha_captura` JAMÁS se usa como "fecha de ingreso".
+- [x] **SEN-01**: SPIKE-auditoría de `tramitacion_evento` (frescura, cobertura por cámara, fiabilidad de primer-evento por boletín) clasifica CADA señal candidata como honesta/sesgada/imposible — gatea el panel completo. `fecha_captura` JAMÁS se usa como "fecha de ingreso".
 - [ ] **SEN-02**: Las señales viven en tabla precomputada (`actualidad_senal`, espejo `cruce_senal`/0039) refrescada offline (SQL puro → pg_cron; lógica TS → GH Actions intradía L-V); la landing lee filas listas vía RPC bounded PII-safe allowlisted.
 - [ ] **SEN-03**: Toda señal se suprime (con causa) cuando su fuente está stale — "sin movimiento" nunca se afirma si no se scrapeó; sesgo de cobertura Cámara/Senado declarado por señal.
 - [ ] **SEN-04**: Señales mínimas del panel (las que el SPIKE valide): actividad reciente por ventana (conteo factual de trámites, framing "N trámites en 7 días" — nunca "top/los más", resuelve el lock T-52-13), nuevos ingresos (solo si el reloj es fiable), urgencias vivas, votaciones/citaciones próximas (agenda), archivados/retirados recientes.
 - [ ] **SEN-05**: Agrupación POR TEMA de proyectos con movimiento usando `materia` oficial como label primario (+ clustering k-means determinista seed-fija sobre embeddings existentes como capa secundaria) — labels JAMÁS generados por LLM.
-- [ ] **SEN-06**: Señal "leyes recién publicadas" evaluada empíricamente contra BCN (`portada_ulp`)/Cámara (`leyes_promulgadas.aspx`) — si la fuente es viable, entra por dos-etapas R2; si no, se difiere documentado.
+- [x] **SEN-06**: Señal "leyes recién publicadas" evaluada empíricamente contra BCN (`portada_ulp`)/Cámara (`leyes_promulgadas.aspx`) — si la fuente es viable, entra por dos-etapas R2; si no, se difiere documentado.
 
 ### PANEL — Landing de actualidad (frontend)
 
@@ -75,8 +75,8 @@
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
 | AUTH-01 | Phase 97 | Complete |
-| SEN-01 | Phase 98 | Pending |
-| SEN-06 | Phase 98 | Pending |
+| SEN-01 | Phase 98 | Complete |
+| SEN-06 | Phase 98 | Complete |
 | SEN-02 | Phase 99 | Pending |
 | SEN-03 | Phase 99 | Pending |
 | SEN-04 | Phase 99 | Pending |

@@ -134,7 +134,8 @@ Plans:
   4. Queda VERIFICADO contra la DB viva que la similitud de voto es computable HOY (voto `confirmado` cubre lo esperado; la reconciliación no fabrica votantes) — insumo de Phase 102
 
 **Plans**: 1 plan
-- [ ] 98-01-PLAN.md — Consolidar la auditoría del SPIKE en 98-SPIKE-FINDINGS.md (doc GATE) + emitir SKILL index para auto-carga downstream
+
+- [x] 98-01-PLAN.md — Consolidar la auditoría del SPIKE en 98-SPIKE-FINDINGS.md (doc GATE) + emitir SKILL index para auto-carga downstream
 
 **Research**: yes (SPIKE de datos — el gate del operador "QUÉ antes que CÓMO"; decide honestidad de velocity/nuevos-ingresos/leyes-publicadas)
 
@@ -1275,7 +1276,7 @@ Plans:
 | 74. DEUDA — Cursor leylobby + CF token CI + round-robin cron | v7.0 | 3/3 | Complete   | 2026-07-15 |
 | 75. DEUDA — Typography .net-* + rotar DB password (operador) | v7.0 | 2/2 | Complete   | 2026-07-15 |
 | 97. AUTH P0 — SPIKE auth-on-Workers de-risk | v10.0 | 3/3 | Complete    | 2026-07-24 |
-| 98. SEÑALES P1a — SPIKE datos: qué señales son honestas (gate) | v10.0 | 0/? | Not started | - |
+| 98. SEÑALES P1a — SPIKE datos: qué señales son honestas (gate) | v10.0 | 1/1 | Complete   | 2026-07-24 |
 | 99. SEÑALES P1b — Materializador actualidad_senal + RPCs + cron | v10.0 | 0/? | Not started | - |
 | 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 0/? | Not started | - |
 | 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 0/? | Not started | - |
