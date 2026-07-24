@@ -45,8 +45,8 @@ function leerEnv(): { url: string; publishableKey: string } {
 
 /**
  * Refresca la sesión en el middleware Edge (OpenNext). Espeja las cookies del request
- * en un `NextResponse` fresco; `getClaims()` rota el access token y re-emite Set-Cookie
- * cuando corresponde.
+ * en un `NextResponse` fresco; `getClaims()` gatilla el refresh del access token cuando
+ * corresponde (y re-emite Set-Cookie en ese caso; no siempre rota).
  */
 export async function updateSession(request: NextRequest) {
   const { url, publishableKey } = leerEnv();
