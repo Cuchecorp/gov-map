@@ -25,8 +25,8 @@
 
 - [x] **PANEL-01**: La landing muestra "qué está pasando" (señales SEN validadas) en lugar del bento producto-céntrico, reusando primitivas BentoGrid/tokens y conservando candados de régimen (cero-hex, tipografía, linter home extendido a `SUPERFICIES_PANEL` ANTES del copy).
 - [x] **PANEL-02**: Cada tile/señal lleva fuente+fecha y estados vacíos honestos ("en las fuentes consultadas al [fecha]"); cero agregación cara on-read (lee precomputado).
-- [ ] **PANEL-03**: Benchmark empírico BrowserOS de senado.cl y camara.cl (portada/actualidad/tablas) documentado con crítica de diseño — qué evitar y qué superar; el panel itera diseño→crítica→loop contra ese benchmark.
-- [ ] **PANEL-04**: Gate BrowserOS de lectura fría sobre el deploy real (comprensible para periodista/tramitador/ciudadano) — criterio de éxito, no opcional.
+- [x] **PANEL-03**: Benchmark empírico BrowserOS de senado.cl y camara.cl (portada/actualidad/tablas) documentado con crítica de diseño — qué evitar y qué superar; el panel itera diseño→crítica→loop contra ese benchmark.
+- [x] **PANEL-04**: Gate BrowserOS de lectura fría sobre el deploy real (comprensible para periodista/tramitador/ciudadano) — criterio de éxito, no opcional.
 
 ### REL — Relaciones entre parlamentarios (exhaustivas)
 
@@ -83,8 +83,8 @@
 | SEN-05 | Phase 99 | Complete |
 | PANEL-01 | Phase 100 | Complete |
 | PANEL-02 | Phase 100 | Complete |
-| PANEL-03 | Phase 100 | Pending |
-| PANEL-04 | Phase 100 | Pending |
+| PANEL-03 | Phase 100 | Complete |
+| PANEL-04 | Phase 100 | Complete |
 | REL-01 | Phase 101 | Pending |
 | REL-02 | Phase 101 | Pending |
 | REL-03 | Phase 101 | Pending |
