@@ -30,11 +30,11 @@
 
 ### REL — Relaciones entre parlamentarios (exhaustivas)
 
-- [ ] **REL-01**: Audit de brecha dato-disponible vs superficie-mostrada (los 4 cross-links 0060/0061 existen pero enterrados; /red NET OFF con una sola arista) — inventario N/M por relación como insumo de diseño.
+- [x] **REL-01**: Audit de brecha dato-disponible vs superficie-mostrada (los 4 cross-links 0060/0061 existen pero enterrados; /red NET OFF con una sola arista) — inventario N/M por relación como insumo de diseño.
 - [ ] **REL-02**: La ficha del parlamentario agrupa las relaciones en un bloque visible ("Relaciones con otros parlamentarios": mismo partido, misma zona, mismas comisiones, co-autoría) — conteo honesto total_n, orden alfabético anti-ranking, leyenda factual.
 - [ ] **REL-03**: Página de comparación 1-a-1 (`/comparar`) entre dos parlamentarios con ejes factuales no-voto: partido/militancia histórica, comisiones compartidas, co-autoría, zona — cada dato con fuente+fecha.
-- [ ] **REL-04**: Relaciones nuevas derivadas de datos existentes: militancia histórica compartida y lobby con la misma contraparte (si el dato lo sostiene) — cada una con framing factual y cobertura declarada.
-- [ ] **REL-05**: Coalición/pacto evaluada empíricamente (Servel pactos electorales / comités Senado como fuentes candidatas): si hay fuente factual viable, se ingiere por dos-etapas; si no, DIFERIDA documentada — jamás inferida desde votos.
+- [x] **REL-04**: Relaciones nuevas derivadas de datos existentes: militancia histórica compartida y lobby con la misma contraparte (si el dato lo sostiene) — cada una con framing factual y cobertura declarada.
+- [x] **REL-05**: Coalición/pacto evaluada empíricamente (Servel pactos electorales / comités Senado como fuentes candidatas): si hay fuente factual viable, se ingiere por dos-etapas; si no, DIFERIDA documentada — jamás inferida desde votos.
 
 ### VSIM — Similitud de votación (dato listo, gate legal)
 
@@ -85,11 +85,11 @@
 | PANEL-02 | Phase 100 | Complete |
 | PANEL-03 | Phase 100 | Complete |
 | PANEL-04 | Phase 100 | Complete |
-| REL-01 | Phase 101 | Pending |
+| REL-01 | Phase 101 | Complete |
 | REL-02 | Phase 101 | Pending |
 | REL-03 | Phase 101 | Pending |
-| REL-04 | Phase 101 | Pending |
-| REL-05 | Phase 101 | Pending |
+| REL-04 | Phase 101 | Complete |
+| REL-05 | Phase 101 | Complete |
 | VSIM-01 | Phase 102 | Pending |
 | VSIM-02 | Phase 102 | Pending |
 | VSIM-03 | Phase 102 | Pending |

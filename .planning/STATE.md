@@ -4,13 +4,13 @@ milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
 status: executing
 stopped_at: Completed 99-03-PLAN.md
-last_updated: "2026-07-24T19:42:09.141Z"
-last_activity: 2026-07-24 -- Phase 101 planning complete
+last_updated: "2026-07-24T19:52:28.151Z"
+last_activity: 2026-07-24
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 15
-  completed_plans: 12
+  completed_plans: 13
   percent: 50
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 100 — PANEL P1c — Landing panel
+**Current focus:** Phase 101 — RELACIONES P2a — Audit brecha + bloque relaciones + /comparar + coalición empírica
 
 ## Current Position
 
-Phase: 101
-Plan: Not started
+Phase: 101 (RELACIONES P2a — Audit brecha + bloque relaciones + /comparar + coalición empírica) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-24 -- Phase 101 planning complete
+Last activity: 2026-07-24
 
 ## Performance Metrics
 
@@ -96,6 +96,7 @@ Last activity: 2026-07-24 -- Phase 101 planning complete
 | Phase 100 P01 | 18min | 2 tasks | 2 files |
 | Phase 100 P02 | ~20min | 2 tasks | 2 files |
 | Phase 100 P03 | ~10min | 2 tasks | 2 files |
+| Phase 101 P01 | 14min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -162,6 +163,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 99-04: actualidad-refresh.yml cron intradia L-V (0 11,14,17,20 * * 1-5) clona el scaffold seguro de leyes-weekly SIN el bloque R2 (Phase 99 no toca fuentes: sin R2/rate-limit/robots.txt; solo SUPABASE_API_URL+SUPABASE_SECRET_KEY), corre el CLI k-means @obs/actualidad (run-actualidad-prod-cli), input k por ENV anti-inyeccion, NO --dry-run (escribe LIVE la capa agrupacion_materia). Task 2 apply live-DB DELEGADO al orquestador (aditivo puro: tabla+proc+RPC+cron nuevos, sin flip de regimen ni anon key => fuera de forbidden-gate); el agente NO toco PROD ni bloqueo en human-verify; bloque ready-to-run psql --single-transaction 0065->0066 + pgTAP(12) + verificaciones cron/RPC/conteos escrito en 99-04-SUMMARY.
 - [Phase ?]: 100-01: guards extendidos ANTES del copy (Wave 0) — SUPERFICIES_PANEL nuevo (no renombrar SUPERFICIES_HOME, Pitfall 1) + terminos timing/editorial/anti-ranking con tildes exactas; bare 'top' RECHAZADO (colisiona const top de actualidad-module.tsx:407) -> ranking cubierto por frases 'los mas'/'la camara mas activa'. HALLAZGO Rule 3: bento-guards NO toleraba archivo ausente (readFileSync directo) -> añadido try/catch continue a ambos loaders (A). NEGACIONES_LOCKED sin cambios (germen sin negacion de termino prohibido).
 - [Phase ?]: 100-03: home monta <PanelActualidad/> bajo un solo Suspense EN LUGAR del cuerpo producto-centrico; hero/accent/entry-cards/EXAMPLE_CHIPS/URL/section[id]/max-w-[1120px]/force-dynamic byte-identicos. actualidad-module.tsx desmontado-no-borrado (import retirado, sigue en SUPERFICIES_HOME). entry-cards movidos debajo del panel (orden DOM preservado). Contract 3 reescrito conservando HomeModule.dynamic===force-dynamic (T-100-09) + asserts de ausencia de germ tiles; Contract 1/2 sin cambio. Suite 1263/1263 + tsc 0 + guards verdes; buscar.test.ts:193 pasa (deuda STALE).
+- [Phase ?]: 101-01: audit N/M relaciones GATE — militancia histórica net-new 696 LOCKED (vs shared-ever 1966); lobby-misma-contraparte DIFERIDA (contraparte_id 0/17681 + name-match conflación CGE); zona eje SOLO Senado (diputados 155->0, NO fabricar distrito); coalición Servel VIABLE (dos-etapas R2 documentada NO ejecutada) / comités Senado DIFERIDA (sitio.senado.cl firewalled timeout 21s); RULE-1 name-match 134 parl no 136; CERO write PROD/R2
 
 ### Pending Todos
 
@@ -217,7 +219,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-24T15:32:40.549Z
+Last session: 2026-07-24T19:52:10.329Z
 Stopped at: Completed 99-03-PLAN.md
 Resume file: None
 

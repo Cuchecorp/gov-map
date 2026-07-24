@@ -199,7 +199,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 101-01-PLAN.md — Audit N/M por relación (REL-01) + decisión lobby-misma-contraparte (REL-04) + probe empírico coalición Servel/Senado (REL-05) — gate de diseño
+- [x] 101-01-PLAN.md — Audit N/M por relación (REL-01) + decisión lobby-misma-contraparte (REL-04) + probe empírico coalición Servel/Senado (REL-05) — gate de diseño
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -1302,7 +1302,7 @@ Plans:
 | 98. SEÑALES P1a — SPIKE datos: qué señales son honestas (gate) | v10.0 | 1/1 | Complete    | 2026-07-24 |
 | 99. SEÑALES P1b — Materializador actualidad_senal + RPCs + cron | v10.0 | 4/4 | Complete    | 2026-07-24 |
 | 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 4/4 | Complete    | 2026-07-24 |
-| 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 0/? | Not started | - |
+| 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 1/3 | In Progress|  |
 | 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 0/? | Not started | - |
 | 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 0/? | Not started | - |
 | 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 0/? | Not started | - |
