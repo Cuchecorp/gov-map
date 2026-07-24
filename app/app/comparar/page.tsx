@@ -518,15 +518,20 @@ function interseccionPar(
 }
 
 /** Columna de militancia histórica: conteo honesto (`total_n` antes del cap).
- *  WR-03: "militaron en un mismo partido" — sin afirmar coincidencia temporal. */
+ *  WR-03: "militaron en un mismo partido" — sin afirmar coincidencia temporal.
+ *  WR-06: la RPC 0067 es NET-NEW-ONLY (excluye a todo par que comparte el alias
+ *  vigente, aunque ADEMÁS comparta un partido histórico) → un total_n=0 NO es una
+ *  ausencia absoluta en las fuentes. Tanto la ausencia como el conteo se ACOTAN a
+ *  la semántica real de la RPC ("fuera del / sin contar el partido vigente"),
+ *  espejo del copy de intersección (WR-02, línea de InterseccionAusente). */
 function ejeColMilitancia(nombre: string, n: number): EjeColumna {
   return {
     nombre,
     contenido: (
       <span>
         {n === 0
-          ? `Sin militancia histórica compartida registrada para ${nombre}.`
-          : `${n} ${n === 1 ? "parlamentario militó" : "parlamentarios militaron"} en un mismo partido que ${nombre} (en períodos posiblemente distintos).`}
+          ? `Sin militancia histórica compartida fuera del partido vigente registrada para ${nombre}.`
+          : `${n} ${n === 1 ? "parlamentario militó" : "parlamentarios militaron"} en un mismo partido que ${nombre} (en períodos posiblemente distintos; sin contar el partido vigente compartido).`}
       </span>
     ),
   };

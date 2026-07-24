@@ -369,6 +369,38 @@ describe("(10) WR-01 — provenance con fecha honesta", () => {
   });
 });
 
+// ── WR-06: el copy de COLUMNA de militancia acota la semántica net-new (0067) ───
+describe("(11) WR-06 — columnas de militancia acotadas a la semántica net-new", () => {
+  it("total_n=0 → la ausencia de columna se acota 'fuera del partido vigente' (jamás absoluta)", async () => {
+    rpcImpl.mockImplementation((name: string) => {
+      switch (name) {
+        case "parlamentarios_publico_v2":
+          return { data: ROSTER_DEFAULT, error: null };
+        case "militancia_historica_compartida":
+          // La RPC net-new devuelve 0 filas AUNQUE dos copartidarios vigentes
+          // compartan historia (la exclusión es de la RPC, no de las fuentes) →
+          // la columna JAMÁS puede afirmar una ausencia absoluta.
+          return { data: [], error: null };
+        default:
+          return { data: [], error: null };
+      }
+    });
+    const html = await renderEjes("D1001", "D1002");
+    expect(html).toContain(
+      "Sin militancia histórica compartida fuera del partido vigente registrada para",
+    );
+    // El copy viejo (ausencia ABSOLUTA sin acotar) no debe reaparecer.
+    expect(html).not.toContain("Sin militancia histórica compartida registrada para");
+  });
+
+  it("total_n>0 → el conteo de columna declara 'sin contar el partido vigente compartido'", async () => {
+    // Fixture default: militancia con total_n=1 en ambas direcciones.
+    const html = await renderEjes("D1001", "D1002");
+    expect(html).toContain("parlamentario militó en un mismo partido que");
+    expect(html).toContain("sin contar el partido vigente compartido");
+  });
+});
+
 // ── Candados de régimen ────────────────────────────────────────────────────────
 describe("(7) candados de régimen (cero-hex, tokens tipográficos)", () => {
   it("comparar/page.tsx no usa hex ni text-[Npx] en el copy", () => {
