@@ -24,7 +24,7 @@
 ### PANEL — Landing de actualidad (frontend)
 
 - [x] **PANEL-01**: La landing muestra "qué está pasando" (señales SEN validadas) en lugar del bento producto-céntrico, reusando primitivas BentoGrid/tokens y conservando candados de régimen (cero-hex, tipografía, linter home extendido a `SUPERFICIES_PANEL` ANTES del copy).
-- [ ] **PANEL-02**: Cada tile/señal lleva fuente+fecha y estados vacíos honestos ("en las fuentes consultadas al [fecha]"); cero agregación cara on-read (lee precomputado).
+- [x] **PANEL-02**: Cada tile/señal lleva fuente+fecha y estados vacíos honestos ("en las fuentes consultadas al [fecha]"); cero agregación cara on-read (lee precomputado).
 - [ ] **PANEL-03**: Benchmark empírico BrowserOS de senado.cl y camara.cl (portada/actualidad/tablas) documentado con crítica de diseño — qué evitar y qué superar; el panel itera diseño→crítica→loop contra ese benchmark.
 - [ ] **PANEL-04**: Gate BrowserOS de lectura fría sobre el deploy real (comprensible para periodista/tramitador/ciudadano) — criterio de éxito, no opcional.
 
@@ -82,7 +82,7 @@
 | SEN-04 | Phase 99 | Complete |
 | SEN-05 | Phase 99 | Complete |
 | PANEL-01 | Phase 100 | Complete |
-| PANEL-02 | Phase 100 | Pending |
+| PANEL-02 | Phase 100 | Complete |
 | PANEL-03 | Phase 100 | Pending |
 | PANEL-04 | Phase 100 | Pending |
 | REL-01 | Phase 101 | Pending |
