@@ -328,7 +328,7 @@ const SUPERFICIES_PANEL: string[] = [
  * NOTA NEGACIONES_LOCKED: la sección de relaciones REUSA `LEYENDA_CROSS_LINK` verbatim
  * como leyenda de grupo — ya está en NEGACIONES_LOCKED (NIEGA "afinidad"), así que NO
  * requiere entrada nueva. El heading "Relaciones con otros parlamentarios" y el heading
- * del 5º bloque "Compartieron militancia en un partido" NO niegan ningún término
+ * del 5º bloque "Militaron en el mismo partido" (WR-03) NO niegan ningún término
  * prohibido → no requieren registro. Si Plan 03 introduce una leyenda nueva que NIEGA
  * un término prohibido (p.ej. en `/comparar`), debe registrarla verbatim ANTES de que
  * la superficie entre al escaneo real (Pitfall 6).

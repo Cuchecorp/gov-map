@@ -261,11 +261,16 @@ export async function CompararEjes({
   const totalMilB = totalHonesto(milB);
   const interseccionMilitancia =
     milPar.estado === "presente" ? (
+      // WR-03 (101-REVIEW): la RPC matchea por partido_alias SIN predicado de
+      // solape temporal — "Compartieron militancia" implicaría que estuvieron
+      // JUNTOS en el partido, hecho que ninguna fuente declara. El copy afirma
+      // exactamente lo que el dato soporta: ambos militaron en el mismo partido,
+      // en períodos posiblemente distintos.
       <p>
         <span className="font-semibold text-accent-product">
-          Compartieron militancia
+          Militaron en un mismo partido
         </span>{" "}
-        en algún partido (sin compartir el partido vigente).
+        (en períodos posiblemente distintos; sin compartir el partido vigente).
       </p>
     ) : milPar.estado === "ausente" ? (
       <InterseccionAusente
@@ -512,7 +517,8 @@ function interseccionPar(
   return { estado: "indeterminado" };
 }
 
-/** Columna de militancia histórica: conteo honesto (`total_n` antes del cap). */
+/** Columna de militancia histórica: conteo honesto (`total_n` antes del cap).
+ *  WR-03: "militaron en un mismo partido" — sin afirmar coincidencia temporal. */
 function ejeColMilitancia(nombre: string, n: number): EjeColumna {
   return {
     nombre,
@@ -520,7 +526,7 @@ function ejeColMilitancia(nombre: string, n: number): EjeColumna {
       <span>
         {n === 0
           ? `Sin militancia histórica compartida registrada para ${nombre}.`
-          : `${n} ${n === 1 ? "parlamentario comparte" : "parlamentarios comparten"} militancia histórica.`}
+          : `${n} ${n === 1 ? "parlamentario militó" : "parlamentarios militaron"} en un mismo partido que ${nombre} (en períodos posiblemente distintos).`}
       </span>
     ),
   };

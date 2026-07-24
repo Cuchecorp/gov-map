@@ -279,7 +279,8 @@ export default async function ParlamentarioPage({
               Lee la RPC 0067 (secdef alias-keyed net-new-only 696 LOCKED). Añade
               info que "Del mismo partido" NO da: pares que SOLO compartieron
               militancia HISTÓRICA (no el alias vigente). Heading pasado/factual
-              "Compartieron militancia en un partido" (NUNCA "aliados/cercanos");
+              "Militaron en el mismo partido" (WR-03: sin afirmar coincidencia
+              temporal; NUNCA "aliados/cercanos");
               cobertura declarada con el N honesto (total_n de la RPC). N=0 → return
               null interno (un parlamentario sin militancia histórica compartida no
               pinta bloque). <Suspense> propio para streaming independiente.
@@ -430,11 +431,14 @@ async function CrossLinkCoautores({ id }: { id: string }) {
 }
 
 /**
- * "Compartieron militancia en un partido" (REL-04, 101-03) — 5º bloque net-new.
+ * "Militaron en el mismo partido" (REL-04, 101-03) — 5º bloque net-new.
  * Lee la RPC 0067 `militancia_historica_compartida` (secdef alias-keyed net-new-only
- * 696 LOCKED): SOLO pares que compartieron militancia HISTÓRICA por partido_alias y
+ * 696 LOCKED): SOLO pares con militancia HISTÓRICA en el mismo partido_alias que
  * NO comparten el alias vigente (esos ya salen en "Del mismo partido"). Heading en
- * PASADO/FACTUAL — NUNCA "aliados"/"cercanos". Cobertura declarada con el N honesto
+ * PASADO/FACTUAL — NUNCA "aliados"/"cercanos". WR-03 (101-REVIEW): la RPC matchea
+ * por alias SIN predicado de solape temporal → el copy NO afirma que militaron
+ * JUNTOS ("compartieron"), solo que ambos militaron en el mismo partido (en
+ * períodos posiblemente distintos). Cobertura declarada con el N honesto
  * (`total_n`, conteo completo antes del cap). Sin PartidoChip por fila (la RPC no
  * emite partido; el alias es interno). N=0 → CrossLinkBloque retorna null. */
 async function CrossLinkMilitanciaHistorica({ id }: { id: string }) {
@@ -442,8 +446,8 @@ async function CrossLinkMilitanciaHistorica({ id }: { id: string }) {
   const total = totalReal(filas);
   return (
     <CrossLinkBloque
-      heading="Compartieron militancia en un partido"
-      conteoTexto={`En las militancias registradas: ${total} ${total === 1 ? "parlamentario compartió" : "parlamentarios compartieron"} militancia en algún partido.`}
+      heading="Militaron en el mismo partido"
+      conteoTexto={`En las militancias registradas: ${total} ${total === 1 ? "parlamentario militó" : "parlamentarios militaron"} en un mismo partido (en períodos posiblemente distintos).`}
       filas={filas}
       totalN={total}
       verTodosHref={null}
