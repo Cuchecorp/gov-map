@@ -346,6 +346,24 @@ describe("(9) CR-02 — intersección de comisiones por camara+nombre", () => {
   });
 });
 
+// ── WR-01: fechas honestas (jamás una fecha de cobertura horneada en build) ─────
+describe("(10) WR-01 — provenance con fecha honesta", () => {
+  it("comisiones usa la fecha_captura de la FUENTE por fila; los ejes sin fecha_captura declaran la consulta", async () => {
+    const html = await renderEjes("D1001", "D1002");
+    // fecha_captura del fixture de comisiones → "según fuente al".
+    expect(html).toContain("según fuente al 2026-01-01");
+    // Militancia/co-autoría/zona no traen fecha_captura → "consultado al" (request-time).
+    expect(html).toContain("consultado al ");
+  });
+
+  it("page.tsx NO hornea una constante de fecha de cobertura", () => {
+    const src = readFileSync(path.join(APP_ROOT, "app", "comparar", "page.tsx"), "utf-8");
+    expect(src).not.toMatch(/FECHA_COBERTURA/);
+    // Ninguna fecha literal YYYY-MM-DD interpolada como "consultadas al" fijo.
+    expect(src).not.toMatch(/consultadas al 20\d{2}-\d{2}-\d{2}/);
+  });
+});
+
 // ── Candados de régimen ────────────────────────────────────────────────────────
 describe("(7) candados de régimen (cero-hex, tokens tipográficos)", () => {
   it("comparar/page.tsx no usa hex ni text-[Npx] en el copy", () => {

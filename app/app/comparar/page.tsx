@@ -40,9 +40,23 @@ import type {
 
 export const dynamic = "force-dynamic";
 
-// Fecha de referencia de cobertura ("en las fuentes consultadas al {fecha}"). La
-// provenance por dato viaja en cada fila; esta es la declaración de ausencia honesta.
-const FECHA_COBERTURA = "2026-07-24";
+/**
+ * WR-01 (101-REVIEW): fecha de CONSULTA calculada POR REQUEST (la ruta es
+ * force-dynamic) — día calendario chileno (tz America/Santiago), YYYY-MM-DD.
+ * "En las fuentes consultadas al {fecha}" declara CUÁNDO se consultó la base,
+ * jamás una fecha de captura fabricada en build-time (el hardcode "2026-07-24"
+ * mentía desde el día siguiente). La fecha de la FUENTE (`fecha_captura`) se usa
+ * por fila cuando la RPC la emite (comisiones → "según fuente al"); los ejes cuyas
+ * filas no la traen declaran "consultado al" (honesto: es la consulta, no la fuente).
+ */
+function fechaConsultaHoy(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Santiago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
 
 // Copy LOCKED (101-UI-SPEC §Copywriting → Copy table).
 const HEADING = "Comparar dos parlamentarios";
@@ -214,6 +228,9 @@ export async function CompararEjes({
   const nombreA = filaA ? formatNombre(filaA.nombre) : a;
   const nombreB = filaB ? formatNombre(filaB.nombre) : b;
 
+  // WR-01: fecha de consulta por request (force-dynamic) — jamás horneada en build.
+  const fechaConsulta = fechaConsultaHoy();
+
   // Lecturas server-side en paralelo (cada una LANZA ante error real, #34).
   // CR-01: los ejes de PAR (militancia / co-autoría) se leen en AMBAS direcciones
   // (A y B): el canal de datos de las RPCs viene cap-eado (limit 20) y decidir el
@@ -246,11 +263,11 @@ export async function CompararEjes({
       </p>
     ) : milPar.estado === "ausente" ? (
       <InterseccionAusente
-        frase={`En las fuentes consultadas al ${FECHA_COBERTURA}, no comparten militancia histórica.`}
+        frase={`En las fuentes consultadas al ${fechaConsulta}, no comparten militancia histórica.`}
       />
     ) : (
       <InterseccionIndeterminada
-        frase={`Las listas consultadas al ${FECHA_COBERTURA} están truncadas (más de ${CAP_RPC} registros por parlamentario) y no permiten determinar si comparten militancia histórica. Ver el detalle en cada ficha.`}
+        frase={`Las listas consultadas al ${fechaConsulta} están truncadas (más de ${CAP_RPC} registros por parlamentario) y no permiten determinar si comparten militancia histórica. Ver el detalle en cada ficha.`}
       />
     );
   const ejeMilitancia = (
@@ -260,7 +277,7 @@ export async function CompararEjes({
       a={ejeColMilitancia(nombreA, totalMilA)}
       b={ejeColMilitancia(nombreB, totalMilB)}
       interseccion={interseccionMilitancia}
-      provenance={`Fuente: BCN · según fuente al ${FECHA_COBERTURA}`}
+      provenance={`Fuente: BCN · consultado al ${fechaConsulta}`}
     />
   );
 
@@ -272,6 +289,17 @@ export async function CompararEjes({
   // prefijo Circunscripción/Distrito impide el match cruzado). En la lista
   // compartida se muestra el nombre plano (camara idéntica por construcción).
   const keyComision = (c: ComisionRow) => `${c.camara}::${c.nombre}`;
+  // WR-01: la provenance del eje usa la fecha de la FUENTE por fila (máxima
+  // `fecha_captura` entre las filas de A y B) cuando existe; sin filas, se declara
+  // la fecha de consulta ("consultado al"), jamás una fecha de fuente fabricada.
+  const fechaFuenteComisiones = [...comA, ...comB]
+    .map((c) => (c.fecha_captura ?? "").slice(0, 10))
+    .filter((f) => /^\d{4}-\d{2}-\d{2}$/.test(f))
+    .sort()
+    .at(-1);
+  const provenanceComisiones = fechaFuenteComisiones
+    ? `Fuente: Cámara/Senado · según fuente al ${fechaFuenteComisiones}`
+    : `Fuente: Cámara/Senado · consultado al ${fechaConsulta}`;
   const nombresComA = comA.map((c) => c.nombre);
   const nombresComB = comB.map((c) => c.nombre);
   const clavesComB = new Set(comB.map(keyComision));
@@ -288,14 +316,14 @@ export async function CompararEjes({
         nombre: nombreA,
         contenido: listaOAusencia(
           [...nombresComA].sort((x, y) => x.localeCompare(y, "es")),
-          `Sin registros de comisiones para ${nombreA} en las fuentes consultadas al ${FECHA_COBERTURA}.`,
+          `Sin registros de comisiones para ${nombreA} en las fuentes consultadas al ${fechaConsulta}.`,
         ),
       }}
       b={{
         nombre: nombreB,
         contenido: listaOAusencia(
           [...nombresComB].sort((x, y) => x.localeCompare(y, "es")),
-          `Sin registros de comisiones para ${nombreB} en las fuentes consultadas al ${FECHA_COBERTURA}.`,
+          `Sin registros de comisiones para ${nombreB} en las fuentes consultadas al ${fechaConsulta}.`,
         ),
       }}
       interseccion={
@@ -307,11 +335,11 @@ export async function CompararEjes({
           />
         ) : (
           <InterseccionAusente
-            frase={`En las fuentes consultadas al ${FECHA_COBERTURA}, no comparten comisiones.`}
+            frase={`En las fuentes consultadas al ${fechaConsulta}, no comparten comisiones.`}
           />
         )
       }
-      provenance={`Fuente: Cámara/Senado · según fuente al ${FECHA_COBERTURA}`}
+      provenance={provenanceComisiones}
     />
   );
 
@@ -350,21 +378,21 @@ export async function CompararEjes({
       )
     ) : coautPar.estado === "ausente" ? (
       <InterseccionAusente
-        frase={`En las fuentes consultadas al ${FECHA_COBERTURA}, no comparten proyectos co-firmados.`}
+        frase={`En las fuentes consultadas al ${fechaConsulta}, no comparten proyectos co-firmados.`}
       />
     ) : (
       <InterseccionIndeterminada
-        frase={`Las listas consultadas al ${FECHA_COBERTURA} están truncadas (más de ${CAP_RPC} registros por parlamentario) y no permiten determinar si comparten proyectos co-firmados. Ver el detalle en cada ficha.`}
+        frase={`Las listas consultadas al ${fechaConsulta} están truncadas (más de ${CAP_RPC} registros por parlamentario) y no permiten determinar si comparten proyectos co-firmados. Ver el detalle en cada ficha.`}
       />
     );
   const ejeCoautoria = (
     <RelacionesEjeComparar
       key="coautoria"
       heading="Co-autoría de proyectos"
-      a={ejeColCoautoria(nombreA, totalCoautA)}
-      b={ejeColCoautoria(nombreB, totalCoautB)}
+      a={ejeColCoautoria(nombreA, totalCoautA, fechaConsulta)}
+      b={ejeColCoautoria(nombreB, totalCoautB, fechaConsulta)}
       interseccion={interseccionCoautoria}
-      provenance={`Fuente: Cámara/Senado · según fuente al ${FECHA_COBERTURA}`}
+      provenance={`Fuente: Cámara/Senado · consultado al ${fechaConsulta}`}
     />
   );
 
@@ -385,7 +413,7 @@ export async function CompararEjes({
         contenido: (
           <span>
             {zonaA ??
-              `Sin zona electoral registrada para ${nombreA} en las fuentes consultadas al ${FECHA_COBERTURA}.`}
+              `Sin zona electoral registrada para ${nombreA} en las fuentes consultadas al ${fechaConsulta}.`}
           </span>
         ),
       }}
@@ -394,7 +422,7 @@ export async function CompararEjes({
         contenido: (
           <span>
             {zonaB ??
-              `Sin zona electoral registrada para ${nombreB} en las fuentes consultadas al ${FECHA_COBERTURA}.`}
+              `Sin zona electoral registrada para ${nombreB} en las fuentes consultadas al ${fechaConsulta}.`}
           </span>
         ),
       }}
@@ -408,11 +436,11 @@ export async function CompararEjes({
           </p>
         ) : (
           <InterseccionAusente
-            frase={`En las fuentes consultadas al ${FECHA_COBERTURA}, no comparten zona.`}
+            frase={`En las fuentes consultadas al ${fechaConsulta}, no comparten zona.`}
           />
         )
       }
-      provenance={`Fuente: Cámara/Senado · según fuente al ${FECHA_COBERTURA}`}
+      provenance={`Fuente: Cámara/Senado · consultado al ${fechaConsulta}`}
     />
   );
 
@@ -493,13 +521,13 @@ function ejeColMilitancia(nombre: string, n: number): EjeColumna {
 }
 
 /** Columna de co-autoría: conteo honesto (`total_n` antes del cap). */
-function ejeColCoautoria(nombre: string, n: number): EjeColumna {
+function ejeColCoautoria(nombre: string, n: number, fecha: string): EjeColumna {
   return {
     nombre,
     contenido: (
       <span>
         {n === 0
-          ? `Sin registros de co-autoría para ${nombre} en las fuentes consultadas al ${FECHA_COBERTURA}.`
+          ? `Sin registros de co-autoría para ${nombre} en las fuentes consultadas al ${fecha}.`
           : `${n} ${n === 1 ? "co-autor registrado" : "co-autores registrados"}.`}
       </span>
     ),
