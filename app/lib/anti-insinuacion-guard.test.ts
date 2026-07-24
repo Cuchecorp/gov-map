@@ -308,6 +308,42 @@ const SUPERFICIES_PANEL: string[] = [
 ];
 
 /**
+ * Superficies RELACIONES (101-02, REL-02/REL-03). El bloque de relaciones de la
+ * ficha (des-enterrado above-the-fold) + la ruta nueva `/comparar` A/B por eje son
+ * el vector #1 de insinuación de AFINIDAD/coalición: describir que dos parlamentarios
+ * "comparten X" (partido/zona/comisión/co-autoría/militancia histórica) tienta el
+ * vocabulario de bancada ("aliado", "cercano a", "bloque de", "afín", "coordina con")
+ * y la insinuación de coalición inferida. El copy de estas superficies debe ser
+ * estrictamente FACTUAL: la relación es DECLARADA por una fuente oficial, nunca
+ * inferida; la comparación muestra hechos con fuente y fecha, jamás ordena ni puntúa.
+ *
+ * TRIPWIRE ANTES DEL COPY (Pitfall 6 + patrón Wave-0 Phase 100, lección BLOCKER 91):
+ * estas 4 superficies se declaran en Wave 0 (guards) ANTES de que el copy nuevo
+ * aterrice. `relaciones-section.tsx` existe ya en este plan (Task 2); las otras tres
+ * (`relaciones-eje-comparar.tsx`, `app/comparar/page.tsx`, `comparar-selector.tsx`)
+ * las crea Plan 03. El loader del bucle de escaneo TOLERA archivos faltantes
+ * (try/catch continue) → las rutas aún ausentes se saltan hoy (guard VERDE) y MUERDEN
+ * recién cuando el archivo exista.
+ *
+ * NOTA NEGACIONES_LOCKED: la sección de relaciones REUSA `LEYENDA_CROSS_LINK` verbatim
+ * como leyenda de grupo — ya está en NEGACIONES_LOCKED (NIEGA "afinidad"), así que NO
+ * requiere entrada nueva. El heading "Relaciones con otros parlamentarios" y el heading
+ * del 5º bloque "Compartieron militancia en un partido" NO niegan ningún término
+ * prohibido → no requieren registro. Si Plan 03 introduce una leyenda nueva que NIEGA
+ * un término prohibido (p.ej. en `/comparar`), debe registrarla verbatim ANTES de que
+ * la superficie entre al escaneo real (Pitfall 6).
+ *
+ * Rutas relativas a app/, mismo formato que los otros arrays. Si una ruta no existe,
+ * se salta sin fallar (tolerancia try/catch del bucle).
+ */
+const SUPERFICIES_RELACIONES: string[] = [
+  "components/relaciones-section.tsx",
+  "components/relaciones-eje-comparar.tsx",
+  "app/comparar/page.tsx",
+  "components/comparar-selector.tsx",
+];
+
+/**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
  * texto RENDERIZADO (post-strip de comentarios), con límite de palabra en español
  * para no cazar identificadores snake_case: `rebeldias_de_parlamentario` (nombre de
@@ -526,7 +562,7 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
 
   it("ningún término prohibido aparece en el texto renderizado (post-strip de comentarios)", () => {
     const offenders: string[] = [];
-    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA, ...SUPERFICIES_DEEPLINK, ...SUPERFICIES_PANEL]) {
+    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA, ...SUPERFICIES_DEEPLINK, ...SUPERFICIES_PANEL, ...SUPERFICIES_RELACIONES]) {
       const full = path.join(APP_ROOT, rel);
       let raw: string;
       try {
@@ -742,6 +778,31 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
         "reactivado",
         "la cámara más activa",
       ]),
+    );
+  });
+
+  it("RELACIONES (101-02): caza vocabulario de bancada/coalición inyectado (aliado / bloque de / coordina con) sobre lo NUEVO", () => {
+    // Términos de afinidad/coalición FRESCOS inyectados en un fixture EN MEMORIA que
+    // simula la sección de relaciones o una fila de /comparar. Prueba que el guard
+    // MUERDE sobre el carril RELACIONES aunque la leyenda cross-link (que NIEGA
+    // 'afinidad') esté restada en NEGACIONES_LOCKED — que dos parlamentarios
+    // "comparten X" es un HECHO DECLARADO, jamás un juicio de bancada ni una
+    // insinuación de coalición ("bloque de", "aliado", "coordina con"). Cero disco.
+    const fixtureMutado = `
+      export function RelacionesSection() {
+        return (
+          <section id="relaciones">
+            <p>Este parlamentario es aliado del mismo bloque de derecha y coordina con la bancada.</p>
+          </section>
+        );
+      }
+    `;
+    const hits = detectarInsinuaciones(fixtureMutado);
+    expect(
+      hits,
+      "El detector NO cazó vocabulario de bancada/coalición inyectado → el guard RELACIONES sería un no-op",
+    ).toEqual(
+      expect.arrayContaining(["aliado", "bloque de", "coordina con"]),
     );
   });
 });

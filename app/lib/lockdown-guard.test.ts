@@ -183,6 +183,7 @@ const PUBLIC_RPC_ALLOWLIST = new Set([
   "lobby_en_tramitacion",
   "lobby_menciones_de_boletin",
   "match_proyectos",
+  "militancia_historica_compartida", // ← NEW (debe existir en supabase/migrations/0067_*.sql, consumida en Plan 03)
   "militancias_de_parlamentario",
   "parlamentario_publico",
   "parlamentario_publico_v2",
