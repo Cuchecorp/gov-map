@@ -85,7 +85,8 @@ const getMilitanciaHistorica = cache(
   },
 );
 
-/** Comisiones del parlamentario (0060). Intersección por SET de `nombre`. */
+/** Comisiones del parlamentario (0060). Intersección por identidad COMPUESTA
+ *  camara+nombre (CR-02): las cámaras tienen comisiones permanentes homónimas. */
 const getComisiones = cache(async (id: string): Promise<ComisionRow[]> => {
   const sb = createServerSupabase();
   const { data, error } = await sb.rpc("comisiones_de_parlamentario", {
@@ -264,12 +265,21 @@ export async function CompararEjes({
   );
 
   // ── EJE 2 — Comisiones ────────────────────────────────────────────────────────
+  // CR-02: la intersección va por IDENTIDAD COMPUESTA camara+nombre, NUNCA por el
+  // string del nombre solo — ambas cámaras tienen comisiones permanentes homónimas
+  // (Hacienda, Constitución, Salud…): un diputado y un senador en "su" Hacienda NO
+  // comparten comisión (dos órganos distintos). Misma disciplina que zonaDe (el
+  // prefijo Circunscripción/Distrito impide el match cruzado). En la lista
+  // compartida se muestra el nombre plano (camara idéntica por construcción).
+  const keyComision = (c: ComisionRow) => `${c.camara}::${c.nombre}`;
   const nombresComA = comA.map((c) => c.nombre);
   const nombresComB = comB.map((c) => c.nombre);
-  const setComB = new Set(nombresComB);
-  const comCompartidas = [...new Set(nombresComA.filter((n) => setComB.has(n)))].sort(
-    (x, y) => x.localeCompare(y, "es"),
-  );
+  const clavesComB = new Set(comB.map(keyComision));
+  const comCompartidas = [
+    ...new Set(
+      comA.filter((c) => clavesComB.has(keyComision(c))).map((c) => c.nombre),
+    ),
+  ].sort((x, y) => x.localeCompare(y, "es"));
   const ejeComisiones = (
     <RelacionesEjeComparar
       key="comisiones"

@@ -313,6 +313,39 @@ describe("(8) CR-01 — intersección de par honesta ante truncamiento", () => {
   });
 });
 
+// ── CR-02: comisiones homónimas de cámaras distintas NO se comparten ────────────
+describe("(9) CR-02 — intersección de comisiones por camara+nombre", () => {
+  it("Hacienda (diputados) vs Hacienda (senadores) → 'no comparten comisiones' (dos órganos distintos)", async () => {
+    rpcImpl.mockImplementation((name: string, args?: Record<string, unknown>) => {
+      switch (name) {
+        case "parlamentarios_publico_v2":
+          return { data: ROSTER_DEFAULT, error: null };
+        case "comisiones_de_parlamentario": {
+          // Mismo NOMBRE, cámara distinta: el string solo NO es identidad.
+          const camara = args?.p_id === "D1002" ? "senadores" : "diputados";
+          return {
+            data: [
+              { nombre: "Hacienda", camara, tipo: "permanente", cargo: null, origen: "x", fecha_captura: "2026-01-01", enlace: null },
+            ],
+            error: null,
+          };
+        }
+        default:
+          return { data: [], error: null };
+      }
+    });
+    const html = await renderEjes("D1001", "D1002");
+    expect(html).toContain("no comparten comisiones");
+    expect(html).not.toContain("Comparten 1");
+  });
+
+  it("misma cámara + mismo nombre → sí comparten (el fixture default ya lo cubre)", async () => {
+    const html = await renderEjes("D1001", "D1002");
+    expect(html).toContain("Comparten 1");
+    expect(html).toContain("Hacienda");
+  });
+});
+
 // ── Candados de régimen ────────────────────────────────────────────────────────
 describe("(7) candados de régimen (cero-hex, tokens tipográficos)", () => {
   it("comparar/page.tsx no usa hex ni text-[Npx] en el copy", () => {
