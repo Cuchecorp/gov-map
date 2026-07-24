@@ -143,11 +143,14 @@ select cmp_ok(
   'WR-02: nuevos_ingresos etiqueta ventana=7d (la ventana de conteo real)');
 
 -- ── (WR-01) fuente de tramitación STALE → supresión-como-fila, NUNCA 0-como-hecho ─
--- Reescenario: vaciar tramitacion_evento y sembrar SOLO un evento VIEJO (> umbral 7d) para
--- todos los tipos temporales-pasados. Con la fuente stale, velocity/nuevos_ingresos/urgencias/
--- archivados DEBEN emitir una FILA con supresion_causa NOT NULL — jamás una fila conteo=0 con
--- causa NULL (que afirmaría "0 hechos" como un hecho: ausencia ≠ hecho, contrato §4/§SUPRESIÓN).
-delete from tramitacion_evento where boletin = '99001-99';
+-- Reescenario: la frescura la decide el max(fecha) GLOBAL de tramitacion_evento, así que para
+-- simular una fuente stale hay que VACIAR TODA la tabla (no solo el boletín seed — PROD tiene
+-- miles de eventos frescos que dejarían la fuente fresca). Esta transacción se ROLLBACKea al
+-- final (finish), por lo que el borrado NUNCA toca PROD. Sembramos un único evento VIEJO
+-- (> umbral 7d) para que max(fecha) sea stale-no-nulo. Con la fuente stale,
+-- velocity/nuevos_ingresos/urgencias/archivados DEBEN emitir una FILA con supresion_causa
+-- NOT NULL — jamás una fila conteo=0 con causa NULL (ausencia ≠ hecho, contrato §4/§SUPRESIÓN).
+delete from tramitacion_evento;
 insert into tramitacion_evento
   (boletin, fecha, camara, tipo, descripcion, origen)
 values
