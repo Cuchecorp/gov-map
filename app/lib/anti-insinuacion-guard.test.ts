@@ -282,6 +282,32 @@ const SUPERFICIES_DEEPLINK: string[] = [
 ];
 
 /**
+ * Superficies PANEL (100-01, PANEL-01). El panel de actualidad de la home lee la RPC
+ * precomputada `actualidad_senales_panel` (0066) y agrupa por `tipo_senal` (velocity/
+ * nuevos_ingresos/urgencias/agenda/archivados/agrupación). Es el vector #1 de
+ * insinuación TEMPORAL/EDITORIAL: describir la velocidad de tramitación, un reingreso,
+ * una citación de madrugada o un "top de cámara más activa" editorializa un HECHO
+ * observable (conteo + cobertura declarada + fecha) en un juicio de intención.
+ *
+ * TRIPWIRE ANTES DEL COPY (Pitfall 6 + 3, lección BLOCKER 91): esta superficie se
+ * declara en Wave 0 (guards) ANTES de que el componente exista (Wave 2). El loader del
+ * bucle de escaneo TOLERA archivos faltantes (try/catch continue) → la ruta declarada
+ * se salta hoy (guard VERDE) y MUERDE recién cuando `panel-actualidad.tsx` exista.
+ *
+ * Si el panel se divide en sub-tiles (p.ej. `panel-tile-senal.tsx`), esos archivos se
+ * SUMAN a este array. Rutas relativas a app/, mismo formato que los otros arrays.
+ *
+ * NOTA NEGACIONES_LOCKED: el germen del copy NO introduce ninguna leyenda que NIEGUE
+ * un término prohibido. Si el copy del Plan 02 introduce una leyenda que NIEGA un
+ * término prohibido, esa leyenda debe registrarse verbatim en NEGACIONES_LOCKED ANTES
+ * de que esta superficie entre al escaneo real (Pitfall 2, lección BLOCKER 91).
+ */
+const SUPERFICIES_PANEL: string[] = [
+  "components/panel-actualidad.tsx",
+  // + sub-tiles del panel si el componente se divide (Plan 02)
+];
+
+/**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
  * texto RENDERIZADO (post-strip de comentarios), con límite de palabra en español
  * para no cazar identificadores snake_case: `rebeldias_de_parlamentario` (nombre de
@@ -367,6 +393,37 @@ const TERMINOS_PROHIBIDOS: string[] = [
   "bloque de",
   "afín",
   "coordina con",
+  // --- Carril PANEL (100-01, PANEL-01) — timing/editorial insinuante + anti-ranking
+  //     que el panel de actualidad (velocidad de tramitación, reingresos, citaciones,
+  //     archivados) tienta. TILDES EXACTAS (Pitfall 3: buildTermRegex NO es
+  //     accent-insensitive → "exprés"/"resucitó"/"último"/"afín" se buscan CON tilde).
+  //     Timing: describir CUÁNDO/A-QUÉ-HORA pasó algo como si insinuara maniobra
+  //     ("de madrugada"/"a última hora"/"último momento"). Editorial de reingreso:
+  //     "revivido"/"reactivado"/"zombie"/"resucitó"/"colado" editorializan un
+  //     reingreso factual. Anti-ranking: "la cámara más activa"/"top"/"los más"
+  //     rankean cross-cámara un conteo NEUTRO (T-52-13 LOCKED, regla B de
+  //     actualidad-module: NUNCA "top/los más/la cámara más activa").
+  //     Verificado por grep (100-01): "los más"/"la cámara más activa"/"reactivado"
+  //     NO estaban en la lista → se añaden. "índice"/"ranking"/"score"/"puntaje" ya
+  //     cubren el ranking numérico arriba (NO se re-agregan).
+  //     OJO (verificado en la corrida 100-01): el token bare "top" NO se añade — el
+  //     límite de palabra lo cazaría sobre `const top = vigentes.slice(…)` de
+  //     actualidad-module.tsx:407 (identificador de código, NO copy renderido) → falso
+  //     positivo. El idiom de ranking se cubre con las frases multi-palabra "los más"
+  //     y "la cámara más activa" (que NO colisionan con identificadores). Si el copy
+  //     del panel usara literalmente la palabra "top" en un ranking, registrar la FRASE
+  //     exacta (p.ej. "top de cámaras") en Plan 02, no el token bare.
+  "último momento",
+  "a última hora",
+  "de madrugada",
+  "exprés",
+  "revivido",
+  "reactivado",
+  "zombie",
+  "resucitó",
+  "colado",
+  "la cámara más activa",
+  "los más",
 ];
 
 /**
@@ -469,7 +526,7 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
 
   it("ningún término prohibido aparece en el texto renderizado (post-strip de comentarios)", () => {
     const offenders: string[] = [];
-    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA, ...SUPERFICIES_DEEPLINK]) {
+    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA, ...SUPERFICIES_DEEPLINK, ...SUPERFICIES_PANEL]) {
       const full = path.join(APP_ROOT, rel);
       let raw: string;
       try {
@@ -658,6 +715,34 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
       hits,
       "El detector NO cazó causalidad de mención inyectada → el guard LOBBY sería un no-op",
     ).toEqual(expect.arrayContaining(["influencia", "a cambio de"]));
+  });
+
+  it("PANEL (100): caza timing insinuante inyectado (exprés / de madrugada) sobre lo NUEVO", () => {
+    // Términos de timing/editorial FRESCOS inyectados en un fixture EN MEMORIA que
+    // simula el panel de actualidad. Prueba que el guard MUERDE sobre el carril PANEL —
+    // un conteo de velocidad/reingreso es un HECHO NEUTRO, jamás "ley exprés" ni
+    // "aprobada de madrugada" (que insinúan maniobra/intención). Cero contacto con disco.
+    const fixtureMutado = `
+      export function PanelActualidad() {
+        return (
+          <section aria-label="Actualidad del Congreso">
+            <p>Proyecto reactivado: ley exprés aprobada de madrugada, la cámara más activa.</p>
+          </section>
+        );
+      }
+    `;
+    const hits = detectarInsinuaciones(fixtureMutado);
+    expect(
+      hits,
+      "El detector NO cazó timing/editorial insinuante inyectado → el guard PANEL sería un no-op",
+    ).toEqual(
+      expect.arrayContaining([
+        "exprés",
+        "de madrugada",
+        "reactivado",
+        "la cámara más activa",
+      ]),
+    );
   });
 });
 
