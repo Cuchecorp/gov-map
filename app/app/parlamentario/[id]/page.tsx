@@ -198,6 +198,11 @@ const getCopartidarios = crossLinkReader("copartidarios_de_parlamentario");
 const getMismaZona = crossLinkReader("de_la_misma_zona");
 const getCoComisionados = crossLinkReader("co_comisionados_de_parlamentario");
 const getCoautores = crossLinkReader("coautores_de_parlamentario");
+// REL-04 (101-03): 5º bloque net-new — militancia histórica compartida (RPC 0067,
+// secdef alias-keyed net-new-only 696 LOCKED). Añade info que "Del mismo partido"
+// (copartidarios vigentes) NO da: pares que SOLO compartieron militancia HISTÓRICA
+// (no comparten el alias vigente). Mismo lector genérico #34 (error LANZA, [] honesto).
+const getMilitanciaHistorica = crossLinkReader("militancia_historica_compartida");
 
 export default async function ParlamentarioPage({
   params,
@@ -268,6 +273,19 @@ export default async function ParlamentarioPage({
             </Suspense>
             <Suspense fallback={null}>
               <CrossLinkCoautores id={id} />
+            </Suspense>
+            {/*
+              REL-04 (101-03) — 5º bloque net-new: militancia histórica compartida.
+              Lee la RPC 0067 (secdef alias-keyed net-new-only 696 LOCKED). Añade
+              info que "Del mismo partido" NO da: pares que SOLO compartieron
+              militancia HISTÓRICA (no el alias vigente). Heading pasado/factual
+              "Compartieron militancia en un partido" (NUNCA "aliados/cercanos");
+              cobertura declarada con el N honesto (total_n de la RPC). N=0 → return
+              null interno (un parlamentario sin militancia histórica compartida no
+              pinta bloque). <Suspense> propio para streaming independiente.
+            */}
+            <Suspense fallback={null}>
+              <CrossLinkMilitanciaHistorica id={id} />
             </Suspense>
           </RelacionesSection>
 
@@ -386,6 +404,29 @@ async function CrossLinkCoautores({ id }: { id: string }) {
     <CrossLinkBloque
       heading="Han co-firmado proyectos"
       conteoTexto={`${total} ${total === 1 ? "parlamentario ha co-firmado" : "parlamentarios han co-firmado"} al menos un proyecto de ley.`}
+      filas={filas}
+      totalN={total}
+      verTodosHref={null}
+      mostrarPartido={false}
+    />
+  );
+}
+
+/**
+ * "Compartieron militancia en un partido" (REL-04, 101-03) — 5º bloque net-new.
+ * Lee la RPC 0067 `militancia_historica_compartida` (secdef alias-keyed net-new-only
+ * 696 LOCKED): SOLO pares que compartieron militancia HISTÓRICA por partido_alias y
+ * NO comparten el alias vigente (esos ya salen en "Del mismo partido"). Heading en
+ * PASADO/FACTUAL — NUNCA "aliados"/"cercanos". Cobertura declarada con el N honesto
+ * (`total_n`, conteo completo antes del cap). Sin PartidoChip por fila (la RPC no
+ * emite partido; el alias es interno). N=0 → CrossLinkBloque retorna null. */
+async function CrossLinkMilitanciaHistorica({ id }: { id: string }) {
+  const filas = (await getMilitanciaHistorica(id)) as CrossLinkFila[];
+  const total = totalReal(filas);
+  return (
+    <CrossLinkBloque
+      heading="Compartieron militancia en un partido"
+      conteoTexto={`En las militancias registradas: ${total} ${total === 1 ? "parlamentario compartió" : "parlamentarios compartieron"} militancia en algún partido.`}
       filas={filas}
       totalN={total}
       verTodosHref={null}
