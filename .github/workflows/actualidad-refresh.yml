@@ -1,0 +1,64 @@
+name: actualidad-refresh
+
+# Refresh INTRADÍA del clustering de actualidad (SEN-02/SEN-05). Corre el CLI
+# @obs/actualidad (run-actualidad-prod-cli) que RE-CLUSTERIZA por k-means los embeddings
+# ya presentes en PROD y hace full-rebuild ACOTADO de la capa tipo_senal='agrupacion_materia'
+# en actualidad_senal. Cadencia L-V 11/14/17/20 UTC (~4 corridas hábiles/día), en paralelo
+# a las 4 corridas del pg_cron `actualidad-materializar` (que posee las 6 señales temporales).
+# Los dos writers escriben conjuntos DISJUNTOS de tipo_senal → sin race (Pitfall 5 del research).
+#
+# NO toca fuentes gubernamentales: lee proyecto_embedding + proyecto.materia de la propia DB
+# (service_role) y escribe actualidad_senal. Por eso NO hay R2, NO hay rate-limit, NO hay
+# robots.txt — el bloque R2 de leyes-weekly (Etapa 1 crudo) NO aplica a esta fase.
+# Reusa los secrets ya cargados en el repo (SUPABASE_API_URL + SUPABASE_SECRET_KEY).
+
+on:
+  schedule:
+    - cron: "0 11,14,17,20 * * 1-5" # lunes a viernes 11/14/17/20 UTC (intradía, minutos ilimitados)
+  workflow_dispatch:
+    inputs:
+      k:
+        description: "Nº de clusters k (opcional; default del CLI, rango discrecional [8,15])"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: actualidad-refresh
+  cancel-in-progress: false
+
+jobs:
+  actualidad:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.4.0
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install deps
+        # --ignore-scripts: tsx trae su propio esbuild; evita ERR_PNPM_IGNORED_BUILDS (gate pnpm 11).
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run actualidad clustering refresh (mismo código del CLI)
+        env:
+          SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          # SIN R2: Phase 99 NO toca fuentes (lee embeddings de la propia DB, escribe actualidad_senal).
+          # Sin rate-limit, sin robots.txt — no hay Etapa 1 de crudo content-addressed aquí.
+          # Inputs por ENV (no interpolados en el shell) — evita inyección de comandos en un
+          # step que lleva SUPABASE_SECRET_KEY.
+          K: ${{ github.event.inputs.k }}
+        run: |
+          ARGS=""
+          if [ -n "$K" ]; then ARGS="$ARGS --k $K"; fi
+          pnpm --filter @obs/actualidad exec tsx src/run-actualidad-prod-cli.ts $ARGS
