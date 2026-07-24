@@ -2,17 +2,13 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { SearchBox, type ExampleChip } from "@/components/search-box";
-import {
-  VotadoEstaSemana,
-  UrgenciasVigentes,
-  UltimaActualizacion,
-} from "@/components/actualidad-module";
+import { PanelActualidad } from "@/components/panel-actualidad";
 import { BentoGrid } from "@/components/bento/bento-grid";
 import { BentoTile } from "@/components/bento/bento-tile";
 import { BrandIcon } from "@/components/brand-icon";
 
-// FORCE-DYNAMIC (load-bearing, gotcha F50 — espejo de /red): el módulo de
-// actualidad lee datos vivos (votacion/tramitacion_evento/proyecto/…) en cada
+// FORCE-DYNAMIC (load-bearing, gotcha F50 — espejo de /red): el panel de
+// actualidad lee las señales precomputadas (RPC actualidad_senales_panel) en cada
 // request. Sin esto, Next hornea `/` como estática (○) durante el build y sirve
 // una portada con datos congelados/500 en runtime. El home deja de ser una ruta
 // prerenderable en cuanto muestra frescura → debe ser dinámica por request.
@@ -21,9 +17,10 @@ export const dynamic = "force-dynamic";
 /**
  * Landing `/` — Bento composition (Phase 77-02, UI-SPEC §11.1, BENTO-02).
  *
- * Fila 1-2: BentoGrid 6 col con 5 tiles:
+ * BentoGrid 6 col:
  *   - Hero span-4: kicker + h1 mockup + SearchBox (Phase 82 copy)
  *   - Accent tile span-2: primera frase mockup + variante linter-safe (Phase 82)
+ *   - Panel de actualidad (Phase 100): un BentoTile por señal SEN validada
  *   - 3 entry tiles span-2: /buscar, /parlamentarios, /agenda (LOCKED copy)
  *
  * Anti-insinuación / honestidad (UI-SPEC §6/§8/§11.1): SIN stats fabricadas,
@@ -131,7 +128,17 @@ export default function Home() {
             </Link>
           </BentoTile>
 
-          {/* ── 3 Entry tiles: span-2 cada una ───────────────────────────── */}
+          {/* ── Panel de actualidad: señales SEN validadas (Phase 100, PANEL-01) ── */}
+          {/* Reemplaza el cuerpo producto-céntrico (los 3 germ tiles de           */}
+          {/* actualidad-module.tsx). PanelActualidad emite un BentoTile por        */}
+          {/* tipo_senal (orden DOM = orden de colapso ≤md, UI-SPEC §Panel Layout);  */}
+          {/* CERO agregación on-read (lee la RPC bounded actualidad_senales_panel). */}
+          {/* Un solo Suspense boundary: la RPC lenta nunca bloquea el hero.         */}
+          <Suspense fallback={<BloqueSkeleton span={4} />}>
+            <PanelActualidad />
+          </Suspense>
+
+          {/* ── 3 Entry tiles: span-2 cada una (bajo el panel, UI-SPEC §Panel Layout) ── */}
           {/* nav className="contents" = transparente al CSS grid (WR-01 fix).   */}
           <nav aria-label="Secciones del sitio" className="contents">
             {ENTRY_CARDS.map((card) => (
@@ -168,18 +175,6 @@ export default function Home() {
               </BentoTile>
             ))}
           </nav>
-
-          {/* ── Tiles de actualidad: votado→urgencias→frescura (Phase 78-01, BENTO-03) ── */}
-          {/* Orden DOM = orden visual al colapsar (≤md). Cada uno bajo su Suspense. */}
-          <Suspense fallback={<BloqueSkeleton span={4} />}>
-            <VotadoEstaSemana />
-          </Suspense>
-          <Suspense fallback={<BloqueSkeleton span={2} />}>
-            <UrgenciasVigentes />
-          </Suspense>
-          <Suspense fallback={<BloqueSkeleton span={6} />}>
-            <UltimaActualizacion />
-          </Suspense>
         </BentoGrid>
       </div>
     </main>
