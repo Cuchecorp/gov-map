@@ -156,13 +156,17 @@ export function TileSenal({
       <section className="p-6">
         <h2 className="text-lg font-semibold mb-4">{titulo}</h2>
         <ul>
-          {filas.map((f, idx) => {
+          {filas.map((f) => {
+            // Key estable por identidad de fila (tupla de unicidad de la RPC
+            // 0065:69 `(tipo, cobertura_camara, ventana, cluster_id)`): el
+            // full-rebuild puede reordenar filas → NUNCA index-based (WR-03).
+            const filaKey = `${tipo}-${f.cobertura_camara ?? "x"}-${f.ventana ?? "x"}-${f.cluster_id ?? "x"}`;
             // ── SUPRESIÓN (regla C): la causa ES el cuerpo, VERBATIM ──────────
             if (f.supresion_causa) {
               const rotulo = rotuloFecha(tipo, f.fecha_max);
               return (
                 <li
-                  key={idx}
+                  key={filaKey}
                   className="border-t border-border pt-3 first:border-t-0 first:pt-0"
                 >
                   <p className="text-sm text-muted-foreground">
@@ -189,7 +193,7 @@ export function TileSenal({
 
             return (
               <li
-                key={idx}
+                key={filaKey}
                 className="flex gap-[14px] items-start border-t border-border pt-4 first:border-t-0 first:pt-0"
               >
                 {/* Barra cívica 3px — proveniencia (omitida si cámara null) */}
