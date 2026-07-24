@@ -388,7 +388,7 @@ describe("/parlamentario/[id] — RelacionesConDatos (WR-04, vacío honesto decl
   it("con un eje > 0 → monta el grid (sin la línea de ausencia)", async () => {
     const orig = rpcMock.getMockImplementation()!;
     try {
-      rpcMock.mockImplementation(((name: string, args?: unknown) => {
+      rpcMock.mockImplementation(((name: string) => {
         if (name === "copartidarios_de_parlamentario") {
           return Promise.resolve({
             data: [
@@ -397,7 +397,7 @@ describe("/parlamentario/[id] — RelacionesConDatos (WR-04, vacío honesto decl
             error: null,
           });
         }
-        return orig(name as never, args as never);
+        return orig(name);
       }) as never);
       const html = renderToStaticMarkup(
         await RelacionesConDatos({ id: "P00001" }),
