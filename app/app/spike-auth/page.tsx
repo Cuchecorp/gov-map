@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { notFound } from "next/navigation";
 
+import { spikeAuthEnabled } from "@/lib/spike-auth-gate";
 import { createUserClient } from "@/lib/supabase-user";
 
 import { enviarOtp, verificarOtp } from "./actions";
@@ -19,6 +22,11 @@ import { enviarOtp, verificarOtp } from "./actions";
 
 export const dynamic = "force-dynamic";
 
+// Nunca indexar esta ruta de spike, aun cuando el flag esté encendido en preview.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
+
 /** Lee el estado de sesión sin escribir cookies (contexto de render, read-only). */
 async function leerSesion(): Promise<{ autenticado: boolean; expira: string | null }> {
   const cookieStore = await cookies();
@@ -28,7 +36,14 @@ async function leerSesion(): Promise<{ autenticado: boolean; expira: string | nu
     },
     // En el render (Server Component) las cookies son read-only: no-op de escritura.
     setAll() {
-      // No escribir cookies durante el render; el refresh lo hace el middleware.
+      // WR-03: este no-op es SEGURO SOLO porque el matcher del middleware cubre /spike-auth
+      // y realiza el refresh (re-emite Set-Cookie) allí. Si `getClaims()` gatilla un refresh
+      // en background durante el render, las cookies nuevas se descartan aquí — aceptable
+      // porque el middleware ya las escribió. NO copiar este patrón a una ruta FUERA del
+      // matcher del middleware ni con el middleware deshabilitado: el usuario vería "sin
+      // sesión" o un expiry stale mientras el token refrescado se pierde. Para leer sesión
+      // fuera del path del middleware, usar un Route Handler / Server Action con cookies
+      // escribibles.
     },
   });
 
@@ -43,6 +58,11 @@ async function leerSesion(): Promise<{ autenticado: boolean; expira: string | nu
 }
 
 export default async function SpikeAuthPage() {
+  // CR-01: gate fail-closed. Con SPIKE_AUTH_ENABLED sin setear (producción) la ruta 404
+  // en tiempo de request (force-dynamic evita el bake estático). El operador la enciende
+  // solo en preview. Las server actions repiten este gate por su cuenta (no confían en él).
+  if (!spikeAuthEnabled(process.env)) notFound();
+
   const { autenticado, expira } = await leerSesion();
 
   async function accionEnviar(formData: FormData) {
