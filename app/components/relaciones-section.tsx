@@ -33,12 +33,25 @@ import { LEYENDA_CROSS_LINK } from "@/components/cross-links-parlamentario";
  * (text-xl heading / text-sm leyenda), `font-semibold` matcheando los carriles. Ningún
  * hex, ningún `text-[Npx]`.
  *
- * Presentacional puro (server-friendly): si todos los bloques hijos retornan null (N=0),
- * la sección aún se monta con heading+leyenda pero sin filas — el contrato de OMISIÓN
- * total (todas las N=0 → no pintar sección) lo resuelve `page.tsx` a nivel de montaje si
- * se desea; aquí el wrapper es agnóstico y se apoya en el `return null` de cada bloque.
+ * VACÍO HONESTO DECLARADO (WR-04, 101-REVIEW): con todos los bloques en N=0 cada
+ * `CrossLinkBloque` retorna null y la sección quedaría como heading+leyenda sobre un
+ * grid vacío — silencio donde el régimen exige ausencia DECLARADA. El dueño del
+ * contrato es `page.tsx` (RelacionesConDatos): await-ea los 5 readers y monta
+ * `<RelacionesSection vacio />` cuando todos los `total_n` son 0. Con `vacio`, el
+ * wrapper renderiza la línea de ausencia (RELACIONES_VACIO) en lugar del grid.
  */
-export function RelacionesSection({ children }: { children: ReactNode }) {
+
+/** Copy de la ausencia declarada (WR-04): todas las N=0 → jamás un grid mudo. */
+export const RELACIONES_VACIO =
+  "Sin relaciones registradas en las fuentes consultadas.";
+
+export function RelacionesSection({
+  children,
+  vacio = false,
+}: {
+  children?: ReactNode;
+  vacio?: boolean;
+}) {
   return (
     <section id="relaciones" className="mt-12">
       <h2 className="text-xl font-semibold">
@@ -46,15 +59,20 @@ export function RelacionesSection({ children }: { children: ReactNode }) {
       </h2>
       {/* Leyenda de grupo (VERBATIM LEYENDA_CROSS_LINK, 1× a nivel de sección). */}
       <p className="mt-2 text-sm text-muted-foreground">{LEYENDA_CROSS_LINK}</p>
-      {/*
-        Grid 2×2 responsive (1 col móvil, 2 cols md+). `[&>section]:mt-0` neutraliza el
-        mt-12 interno que cada CrossLinkBloque emite (Pitfall A4) SIN tocar el componente;
-        el gap-4 del grid provee el ritmo intra-sección. La frontera mt-12 vive en la
-        <section id="relaciones"> misma (arriba), entre esta sección y sus hermanas.
-      */}
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 [&>section]:mt-0">
-        {children}
-      </div>
+      {vacio ? (
+        /* WR-04: ausencia declarada en lugar de un grid vacío mudo. */
+        <p className="mt-4 text-sm text-muted-foreground">{RELACIONES_VACIO}</p>
+      ) : (
+        /*
+          Grid 2×2 responsive (1 col móvil, 2 cols md+). `[&>section]:mt-0` neutraliza el
+          mt-12 interno que cada CrossLinkBloque emite (Pitfall A4) SIN tocar el componente;
+          el gap-4 del grid provee el ritmo intra-sección. La frontera mt-12 vive en la
+          <section id="relaciones"> misma (arriba), entre esta sección y sus hermanas.
+        */
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 [&>section]:mt-0">
+          {children}
+        </div>
+      )}
     </section>
   );
 }

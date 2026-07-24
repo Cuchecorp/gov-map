@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 
-import { RelacionesSection } from "./relaciones-section";
+import { RelacionesSection, RELACIONES_VACIO } from "./relaciones-section";
 import { LEYENDA_CROSS_LINK } from "./cross-links-parlamentario";
 
 afterEach(cleanup);
@@ -65,6 +65,29 @@ describe("RelacionesSection — wrapper above-the-fold (REL-02)", () => {
     const { container } = render(<RelacionesSection>{bloques}</RelacionesSection>);
     const section = container.querySelector("section#relaciones");
     expect(section?.className).toContain("mt-12");
+  });
+
+  it("vacio → ausencia DECLARADA en lugar del grid (WR-04, vacío honesto)", () => {
+    const { container } = render(<RelacionesSection vacio />);
+    // La línea de ausencia declarada reemplaza al grid — jamás heading+leyenda
+    // sobre un grid mudo.
+    expect(screen.getByText(RELACIONES_VACIO)).toBeTruthy();
+    expect(container.querySelector("section#relaciones > div")).toBeNull();
+    // Heading + leyenda se conservan (la sección sigue declarándose a sí misma).
+    expect(
+      screen.getByRole("heading", {
+        name: "Relaciones con otros parlamentarios",
+      }),
+    ).toBeTruthy();
+    expect(screen.getAllByText(LEYENDA_CROSS_LINK)).toHaveLength(1);
+  });
+
+  it("sin vacio → el grid se monta (default retro-compatible)", () => {
+    const { container } = render(
+      <RelacionesSection>{bloques}</RelacionesSection>,
+    );
+    expect(container.querySelector("section#relaciones > div")).not.toBeNull();
+    expect(screen.queryByText(RELACIONES_VACIO)).toBeNull();
   });
 
   it("neutraliza el mt-12 interno de los bloques en la celda del grid ([&>section]:mt-0) sin tocarlos", () => {

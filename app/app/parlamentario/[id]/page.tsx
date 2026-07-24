@@ -260,35 +260,18 @@ export default async function ParlamentarioPage({
             neutraliza en el grid vía [&>section]:mt-0 (Pitfall A4, sin tocar el
             componente). El bloque MismaZona rinde 0 para diputados (audit 101-01:
             distrito/circunscripción NULL) — return null correcto, no un bug.
+
+            WR-04 (101-REVIEW): el contrato de VACÍO HONESTO tiene dueño —
+            RelacionesConDatos (abajo) await-ea los 5 readers (React.cache dedup:
+            cada bloque re-lee gratis) y monta <RelacionesSection vacio /> cuando
+            TODOS los total_n son 0 (ausencia declarada, jamás heading+leyenda
+            sobre un grid mudo). Trade-off deliberado: el streaming por bloque se
+            cambia por la corrección del contrato — la sección entera streamea
+            como una unidad tras este <Suspense>.
           */}
-          <RelacionesSection>
-            <Suspense fallback={null}>
-              <CrossLinkCopartidarios id={id} />
-            </Suspense>
-            <Suspense fallback={null}>
-              <CrossLinkMismaZona id={id} />
-            </Suspense>
-            <Suspense fallback={null}>
-              <CrossLinkCoComisionados id={id} />
-            </Suspense>
-            <Suspense fallback={null}>
-              <CrossLinkCoautores id={id} />
-            </Suspense>
-            {/*
-              REL-04 (101-03) — 5º bloque net-new: militancia histórica compartida.
-              Lee la RPC 0067 (secdef alias-keyed net-new-only 696 LOCKED). Añade
-              info que "Del mismo partido" NO da: pares que SOLO compartieron
-              militancia HISTÓRICA (no el alias vigente). Heading pasado/factual
-              "Militaron en el mismo partido" (WR-03: sin afirmar coincidencia
-              temporal; NUNCA "aliados/cercanos");
-              cobertura declarada con el N honesto (total_n de la RPC). N=0 → return
-              null interno (un parlamentario sin militancia histórica compartida no
-              pinta bloque). <Suspense> propio para streaming independiente.
-            */}
-            <Suspense fallback={null}>
-              <CrossLinkMilitanciaHistorica id={id} />
-            </Suspense>
-          </RelacionesSection>
+          <Suspense fallback={null}>
+            <RelacionesConDatos id={id} />
+          </Suspense>
 
           {/*
             REL-03 (101-03) — CTA a /comparar pre-llenando el slot A con este
@@ -363,6 +346,56 @@ export default async function ParlamentarioPage({
 function totalReal(filas: CrossLinkFila[]): number {
   const n = filas[0]?.total_n;
   return typeof n === "number" ? n : filas.length;
+}
+
+/**
+ * WR-04 (101-REVIEW): DUEÑO del contrato de vacío honesto de la sección de
+ * relaciones. Con los 5 ejes en N=0, cada CrossLinkBloque retorna null y la
+ * sección quedaría como heading+leyenda sobre un grid vacío — silencio donde el
+ * régimen exige ausencia DECLARADA. Este server component await-ea los 5 readers
+ * (React.cache dedup: cada bloque interno re-lee GRATIS del cache) y:
+ *   - todos los total_n en 0 → `<RelacionesSection vacio />` (ausencia declarada);
+ *   - alguno > 0 → la sección con los 5 bloques (los <Suspense> internos resuelven
+ *     al tiro desde el cache; N=0 individual → return null del bloque, correcto).
+ * Un error real de cualquier reader LANZA (#34) — la sección jamás degrada un
+ * fallo a "sin relaciones". Exportado para RTL (espejo de CarrilesSection).
+ */
+export async function RelacionesConDatos({ id }: { id: string }) {
+  const listas = await Promise.all([
+    getCopartidarios(id),
+    getMismaZona(id),
+    getCoComisionados(id),
+    getCoautores(id),
+    getMilitanciaHistorica(id),
+  ]);
+  const vacio = listas.every(
+    (filas) => totalReal(filas as CrossLinkFila[]) === 0,
+  );
+  if (vacio) {
+    return <RelacionesSection vacio />;
+  }
+  return (
+    <RelacionesSection>
+      <Suspense fallback={null}>
+        <CrossLinkCopartidarios id={id} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <CrossLinkMismaZona id={id} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <CrossLinkCoComisionados id={id} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <CrossLinkCoautores id={id} />
+      </Suspense>
+      {/* REL-04 (101-03) — 5º bloque net-new: militancia histórica compartida
+          (RPC 0067). Ver JSDoc de CrossLinkMilitanciaHistorica (WR-03: copy sin
+          afirmar coincidencia temporal). */}
+      <Suspense fallback={null}>
+        <CrossLinkMilitanciaHistorica id={id} />
+      </Suspense>
+    </RelacionesSection>
+  );
 }
 
 /** "Del mismo partido" — no muestra PartidoChip por fila (redundante). */

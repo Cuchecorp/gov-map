@@ -165,6 +165,7 @@ import ParlamentarioPage, {
   CarrilesSection,
   HeaderSection,
   ParlamentarioRail,
+  RelacionesConDatos,
 } from "./page";
 import { CrucesSection } from "@/components/cruces-de-parlamentario";
 import { LEYENDA_CROSS_LINK } from "@/components/cross-links-parlamentario";
@@ -370,6 +371,44 @@ describe("/parlamentario/[id] — rail (UXCOG 55-03)", () => {
     // El resto de carriles no-gated sigue presente.
     expect(html).toContain('href="#votos"');
     expect(html).toContain('href="#patrimonio"');
+  });
+});
+
+// ── WR-04 (101-REVIEW): vacío honesto de la sección de relaciones ───────────────
+describe("/parlamentario/[id] — RelacionesConDatos (WR-04, vacío honesto declarado)", () => {
+  it("los 5 ejes en 0 → ausencia DECLARADA (jamás heading+leyenda sobre grid mudo)", async () => {
+    // El rpcMock default devuelve data:null para los cross-links → [] → total 0 ×5.
+    const html = renderToStaticMarkup(await RelacionesConDatos({ id: "P00001" }));
+    expect(html).toContain("Relaciones con otros parlamentarios");
+    expect(html).toContain(
+      "Sin relaciones registradas en las fuentes consultadas.",
+    );
+  });
+
+  it("con un eje > 0 → monta el grid (sin la línea de ausencia)", async () => {
+    const orig = rpcMock.getMockImplementation()!;
+    try {
+      rpcMock.mockImplementation(((name: string, args?: unknown) => {
+        if (name === "copartidarios_de_parlamentario") {
+          return Promise.resolve({
+            data: [
+              { id: "P00002", nombre: "Otra Persona", camara: "diputados", total_n: 1 },
+            ],
+            error: null,
+          });
+        }
+        return orig(name as never, args as never);
+      }) as never);
+      const html = renderToStaticMarkup(
+        await RelacionesConDatos({ id: "P00001" }),
+      );
+      expect(html).toContain("Relaciones con otros parlamentarios");
+      expect(html).not.toContain(
+        "Sin relaciones registradas en las fuentes consultadas.",
+      );
+    } finally {
+      rpcMock.mockImplementation(orig);
+    }
   });
 });
 
