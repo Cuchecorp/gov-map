@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
-status: executing
+status: verifying
 stopped_at: Completed 94-03-PLAN.md
-last_updated: "2026-07-24T00:05:00.084Z"
+last_updated: "2026-07-24T12:30:49.714Z"
 last_activity: 2026-07-24
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 0
+  completed_plans: 3
+  percent: 13
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 97 (AUTH P0 — SPIKE auth-on-Workers de-risk) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-24
 
 ## Performance Metrics
@@ -83,6 +83,7 @@ Last activity: 2026-07-24
 | Phase 94 P03 | 35min | 2 tasks | 2 files |
 | Phase 94 P02 | ~25 min | 2 tasks | 6 files |
 | Phase 97 P02 | ~35min | 1 task | 2 files |
+| Phase 97 P03 | ~12 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 94-04: deploy Cloudflare 9aba6a1a live (OpenNext Docker Linux + wrangler OAuth); gate BrowserOS COMPRENSIBLE sobre el deploy real; SC#1 cerrado por 93; cold-read humano = HANDOFF
 - [Phase ?]: 97-01: primer middleware.ts = convencion DEPRECADA Edge (OpenNext la corre Edge); NO proxy.ts/runtime/codemod. Cliente user @supabase/ssr publishable SEPARADO del service_role; /spike-auth no enlazada ejerce OTP. Build Next + suite 1244 + tsc verdes. Deploy OpenNext real = Plan 02.
 - [Phase 97] 97-02: SC1 EMPIRICO PASS sobre el DEPLOY REAL — el primer middleware.ts corre como Edge en el build OpenNext (Docker node:22-slim, @opennextjs/cloudflare 1.19.11, Next 16.2.11): warning de deprecacion ESPERADO, NO error "Node.js middleware not supported"; `Bundling middleware function` + `ƒ Proxy (Middleware)` + `OpenNext build complete`. Deploy wrangler global OAuth version 3952f9bc; Camino A 200 (/,+4 rutas), CSP intacta (connect-src 'self'/object-src 'none'/frame-ancestors 'none'). El fallback SC4 (Plan 03) NO se dispara. RULE-1 FIX: la middleware VERBATIM del Plan 01 tumbaba Camino A (matcher global + throw por env ausente -> 500 en TODO el sitio); fix = fail-open (NextResponse.next si falta SUPABASE_PUBLISHABLE_KEY/URL), preserva Camino A; supabase-user.ts SIGUE fail-loud en /spike-auth (500 aislado, espera el secret). GOTCHAS deploy: (1) wrangler REAL sombreado por paquete Python -> usar npm global AppData/Roaming/npm/wrangler.cmd o dentro del contenedor; (2) opennextjs-cloudflare NO en PATH del host -> correr `pnpm run deploy` DENTRO del node:22-slim montando el OAuth del host en /root/.config/.wrangler; (3) robocopy /MIR borra los helper scripts del build dir (no estan en el repo) -> re-escribir tras cada mirror; (4) Cloudflare tarda ~10-30s en propagar la version nueva (500 intermitentes durante el lapso). Plan 03 DESBLOQUEADO en rama POSITIVA (evidencia), PRECONDICION = Task 1 operador (publishable key + config Auth OTP {{ .Token }} + wrangler secret) cerrado primero.
+- [Phase ?]: 97-03: evidencia consolidada — SC1 PASS (middleware=Edge), SC3 PASS parcial (Camino A 5/5 200 + CSP frame-ancestors/object-src/connect-src intactos por curl live + Cache-Control anti-leak), SC2 PENDING-operator (Set-Cookie+refresh bloqueado SOLO por el checkpoint de provision diferido, NO por el spike; bloque de reproduccion curl PII-safe listo). Rama A (verde estructural): fallback SC4 NO disparado; NOTIF-103 asume middleware+cookies en Workers sin rewrite server-side-puro. El agente NO intento el flujo OTP live ni creo keys ni toco el dashboard. Fase 97 CIERRA sobre documented-handoff (v7/v9).
 
 ### Pending Todos
 
@@ -195,7 +197,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-24T00:05:00.075Z
+Last session: 2026-07-24T12:30:33.192Z
 Stopped at: Completed 94-03-PLAN.md
 Resume file: None
 

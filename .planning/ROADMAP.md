@@ -115,7 +115,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 97-03-PLAN.md — Evidencia curl/BrowserOS (Set-Cookie + refresh + dos-jars + Camino A/CSP) + fallback honesto NOTIF-103 condicional
+- [x] 97-03-PLAN.md — Evidencia curl/BrowserOS (Set-Cookie + refresh + dos-jars + Camino A/CSP) + fallback honesto NOTIF-103 condicional
 
 **Research**: yes (SPIKE — OpenNext+middleware+cookies sobre Workers es MEDIUM: docs lo dicen, NO probado en este repo; bloqueante estructural de NOTIF)
 **UI hint**: yes
@@ -1273,7 +1273,7 @@ Plans:
 | 73. DINERO P5e — Superficies MONEY gated OFF + linter + gate legal | v7.0 | 4/4 | Complete   | 2026-07-15 |
 | 74. DEUDA — Cursor leylobby + CF token CI + round-robin cron | v7.0 | 3/3 | Complete   | 2026-07-15 |
 | 75. DEUDA — Typography .net-* + rotar DB password (operador) | v7.0 | 2/2 | Complete   | 2026-07-15 |
-| 97. AUTH P0 — SPIKE auth-on-Workers de-risk | v10.0 | 2/3 | In Progress|  |
+| 97. AUTH P0 — SPIKE auth-on-Workers de-risk | v10.0 | 3/3 | Complete   | 2026-07-24 |
 | 98. SEÑALES P1a — SPIKE datos: qué señales son honestas (gate) | v10.0 | 0/? | Not started | - |
 | 99. SEÑALES P1b — Materializador actualidad_senal + RPCs + cron | v10.0 | 0/? | Not started | - |
 | 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 0/? | Not started | - |
