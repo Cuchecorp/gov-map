@@ -290,6 +290,23 @@ export default async function ParlamentarioPage({
           </RelacionesSection>
 
           {/*
+            REL-03 (101-03) — CTA a /comparar pre-llenando el slot A con este
+            parlamentario (`?a=${id}`). Navegación PURA (no compone hechos de otro
+            parlamentario) → NO cruza la frontera anti-insinuación; carril propio
+            mt-12 sibling. `id` ya validó contra PARLAMENTARIO_ID_RE al inicio. Copy
+            SOBRIO factual — /comparar muestra hechos con fuente y fecha, jamás ordena
+            ni puntúa (heading del destino LOCKED en 101-UI-SPEC).
+          */}
+          <nav aria-label="Comparar con otro parlamentario" className="mt-12">
+            <a
+              href={`/comparar?a=${id}`}
+              className="text-sm font-medium text-accent-product underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-product"
+            >
+              Comparar con otro parlamentario
+            </a>
+          </nav>
+
+          {/*
             B21b — Enlace gated a /red?seed=<id>. Aparece SOLO cuando
             netPublicEnabled(process.env) es true (espejo EXACTO de los gates
             cruces/money): con OFF (default fail-closed) el nodo ENTERO está AUSENTE
