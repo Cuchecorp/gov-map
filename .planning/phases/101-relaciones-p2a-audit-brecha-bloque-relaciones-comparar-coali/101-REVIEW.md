@@ -1,6 +1,6 @@
 ---
 phase: 101-relaciones-p2a-audit-brecha-bloque-relaciones-comparar-coali
-reviewed: 2026-07-24T20:35:05Z
+reviewed: 2026-07-24T21:20:00Z
 depth: standard
 files_reviewed: 12
 files_reviewed_list:
@@ -17,150 +17,124 @@ files_reviewed_list:
   - supabase/migrations/0067_militancia_historica_compartida.sql
   - supabase/tests/0067_militancia_historica_compartida.test.sql
 findings:
-  critical: 3
-  warning: 5
-  info: 4
-  total: 12
-status: issues_found
+  critical: 0
+  warning: 0
+  info: 5
+  total: 5
+status: clean
 ---
 
-# Phase 101: Code Review Report
+# Phase 101: Code Review Report (RE-REVIEW, iteration 3)
 
-**Reviewed:** 2026-07-24T20:35:05Z
+**Reviewed:** 2026-07-24T21:20:00Z (WR-06 resolved in iteration 3, commit `fcbf652`)
 **Depth:** standard
-**Files Reviewed:** 12
-**Status:** issues_found
+**Files Reviewed:** 12 (re-review focused on the 8 files touched by fixes `abc1f04..a005207`)
+**Status:** clean (0 Critical, 0 Warning — only 5 Info notes remain)
 
 ## Summary
 
-Reviewed the Phase 101 relaciones/comparar surface: the new `/comparar` route (page + selector + eje component), the 5th cross-link block on the ficha, the new RPC 0067 + pgTAP, and the two guard suites (anti-insinuación + lockdown allowlist).
+Re-review after the fixer pass (commits `abc1f04..a005207`, plus follow-up `4a21f3b`). All three Critical findings and four of five Warnings are **verified fixed in code**, with behavior locked by tests:
 
-The regime plumbing is largely sound: PII-safe projection in 0067 (only id/nombre/camara/total_n), double-revoke re-emitted after DROP, `search_path = ''`, id validation before any `.rpc()`, force-dynamic + searchParams-before-notFound preserved, error≠empty (#34) honored in every reader, alphabetical ordering everywhere, allowlist + Direction-B wiring correct, and the RELACIONES tripwire registered in the anti-insinuación guard with a mutation self-check.
+- **CR-01 RESOLVED** — `/comparar` no longer decides pair intersections from a single LIMIT-20-truncated list. `interseccionPar` (page.tsx:505-518) reads BOTH directions, declares presence on a match in either, declares absence only when at least one list is provably complete (`listaCompleta`: under-cap length, or `total_n ≤ length`), and otherwise renders a declared "indeterminado" limitation — never a false absence. Column counts use `totalHonesto` (`total_n` before the cap), never the capped `.length`. RTL describe (8) covers: both-truncated → no absence claim + `total_n=25` shown (not 20); under-cap → declared absence; reverse-direction-only match → presente with symmetric `n_proyectos`.
+- **CR-02 RESOLVED** — comisiones intersection keys on the composite `${c.camara}::${c.nombre}` (page.tsx:302, 316-321); cross-chamber homonyms ("Hacienda" diputados vs senadores) no longer match. RTL describe (9) covers both the negative and positive cases.
+- **CR-03 RESOLVED** — 0067 now carries the full molde 0064: `security definer`, `set search_path = ''`, `set statement_timeout = '5s'` (0067:44-46), `LIMIT 20`, double-revoke re-emitted after drop/recreate (0067:86-87). Re-applied to PROD per commit `de8e328`; pgTAP asserts the proconfig.
+- **WR-01 RESOLVED** — the baked `FECHA_COBERTURA` constant is gone. `fechaConsultaHoy()` (page.tsx:52-59) computes the consultation date per request (route is force-dynamic) in tz America/Santiago; the comisiones eje uses the max row-level `fecha_captura` ("según fuente al") with an honest "consultado al" fallback. Regression test forbids any baked `consultadas al 20XX-…` literal.
+- **WR-02 PARTIALLY RESOLVED** — the intersection absence copy is now correctly scoped ("no registran militancia histórica compartida **fuera del partido vigente**", page.tsx:277, tested). However, the CR-01 fix introduced a NEW unscoped instance in the column copy — see WR-06 below.
+- **WR-03 RESOLVED** — copy softened on both surfaces to what the data supports: "Militaron en un mismo partido (en períodos posiblemente distintos…)" (comparar page.tsx:269-274, 522-533; ficha page.tsx:477-490 heading "Militaron en el mismo partido").
+- **WR-04 RESOLVED** — the honest-empty contract now has an owner: `RelacionesConDatos` (ficha page.tsx:363-399) awaits the 5 readers (React.cache dedup) and mounts `<RelacionesSection vacio />` when all `total_n` are 0; `RelacionesSection` renders the declared absence `RELACIONES_VACIO` instead of a mute grid (relaciones-section.tsx:44-46, 62-65). Deliberate, documented trade-off of per-block streaming for contract correctness.
+- **WR-05 RESOLVED** — pgTAP 0067 hardened to `plan(9)` with exactly 9 assertions: `authenticated` revoke leg, `search_path` proconfig, `statement_timeout=5s` proconfig, prosecdef scoped by `::regprocedure`, `total_n` presence, PII-negative regex, and an exact returns-table contract (`TABLE(id text, nombre text, camara text, total_n bigint)`).
 
-However, `/comparar` has a correctness core defect: **all four server-side intersections are computed from LIMIT-20-truncated RPC result sets**, which makes the page assert factually false absence statements ("no comparten X, según fuente al {fecha}") and understated counts — the exact class of "lying data" this project treats as its #1 risk. Additionally, the comisiones intersection keys on `nombre` alone, so a diputado and a senador who each sit in their own chamber's "Hacienda" are declared to "share a commission." The new RPC 0067 also regressed the bounded-RPC discipline (no `statement_timeout`) that 0064 established for every sibling cross-link RPC.
+Remaining: five Info items only (three carried over unfixed — they were not in the fixer's scope — plus two new minor ones observed in the fixed code). The last Warning (WR-06, a WR-02-class semantics leak reintroduced by the CR-01 fix in the militancia column copy) was resolved in iteration 3 (commit `fcbf652`) — 0 Critical, 0 Warning remain.
 
 ## Critical Issues
 
-### CR-01: /comparar computes intersections and counts from LIMIT-20-truncated RPC rows → false "no comparten" declarations and understated counts
-
-**File:** `app/app/comparar/page.tsx:220` (militancia), `app/app/comparar/page.tsx:292-293` (co-autoría), `app/app/comparar/page.tsx:225` and `302-304` (counts)
-**Issue:** Both `militancia_historica_compartida` (0067) and `coautores_de_parlamentario` (0060/0061) return **at most 20 rows, ordered alphabetically by nombre** (`order by d.nombre limit 20`, verified in `supabase/migrations/0067_militancia_historica_compartida.sql:77-78` and `0060_bio_partido_publico.sql:295-296`). The page then decides the intersection by membership in that truncated list:
-
-- `const compartenMilitancia = milA.some((r) => r.id === b);` (line 220)
-- `const filaCoautB = coautA.find((r) => r.id === b);` → `nCoproyectos = filaCoautB?.n_proyectos ?? 0` (lines 292-293)
-
-If parlamentario A has more than 20 partners on the eje and B sorts alphabetically after the 20th, B is absent from the rows and the page renders **"En las fuentes consultadas al {fecha}, no comparten militancia histórica."** / **"no comparten proyectos co-firmados."** — a factually false, source-and-date-attributed absence claim. With 20+ co-authors being entirely realistic (mociones carry up to 10 signatures each across a full period), this is not a theoretical edge.
-
-The same truncated arrays feed the column copy: `ejeColMilitancia(nombreA, milA.length)` (line 225) and `` `${coautA.length} co-autores registrados` `` (lines 302-304) display the **capped** length (max 20) as if it were the total — the exact "conteo mentiroso" that WR-01 of Phase 91/0061 fixed on the ficha via `total_n`/`totalReal()`, regressed here. The rows already carry `total_n` (`CrossLinkRow.total_n`, `app/lib/types.ts:297`); the page ignores it.
-
-**Fix:**
-1. For the pairwise checks, do not derive presence from a capped list. Either add a bounded pairwise RPC (`militancia_historica_compartida_par(p_a, p_b)` / `coautoria_par(p_a, p_b)` returning a boolean/count — cheap, PII-safe, mirrors 0067 discipline), or as a minimal stopgap, treat `milA.length < (milA[0]?.total_n ?? 0)` as "list truncated" and query the reverse direction (`getMilitanciaHistorica(b).some(r => r.id === a)`) before declaring absence — declining to assert absence when both directions are truncated.
-2. For the counts, reuse the ficha's honest-count pattern:
-```tsx
-const totalMilA = typeof milA[0]?.total_n === "number" ? milA[0].total_n : milA.length;
-// ...ejeColMilitancia(nombreA, totalMilA)
-const totalCoautA = typeof coautA[0]?.total_n === "number" ? coautA[0].total_n : coautA.length;
-```
-
-### CR-02: Comisiones intersection keyed by `nombre` alone → declares a shared commission across chambers that is factually false
-
-**File:** `app/app/comparar/page.tsx:246-251`
-**Issue:** The comisiones eje intersects by name string only:
-```tsx
-const setComB = new Set(nombresComB);
-const comCompartidas = [...new Set(nombresComA.filter((n) => setComB.has(n)))]...
-```
-`ComisionRow` carries `camara` (the test fixture at `app/app/comparar/page.test.tsx:70` shows it), and both chambers have same-named permanent commissions (Hacienda, Constitución, Salud, Educación…). `/comparar` allows any A/B pair including diputado vs senador — for such a pair the page renders **"Comparten 1 comisión: Hacienda."** when A sits in the Cámara's Hacienda and B in the Senado's Hacienda: two different bodies, no shared membership. This is an asserted false fact with source attribution ("Fuente: Cámara/Senado"). Note the zona eje avoids exactly this trap by prefixing "Circunscripción"/"Distrito" so cross-type values can never match (`zonaDe`, lines 420-429) — the comisiones eje missed the same discipline.
-**Fix:** Key the intersection on the composite identity, e.g.:
-```tsx
-const keyOf = (c: ComisionRow) => `${c.camara}::${c.nombre}`;
-```
-and only render the plain name in the shared list (identical camara by construction). If comisiones mixtas/bicamerales must intersect cross-chamber, gate that on the row's declared `tipo`/`origen`, never on the name string.
-
-### CR-03: RPC 0067 omits `statement_timeout` — regression of the bounded security-definer discipline (0064 family standard)
-
-**File:** `supabase/migrations/0067_militancia_historica_compartida.sql:40-42`
-**Issue:** The function is declared `security definer set search_path = ''` but has **no `set statement_timeout`**. Migration 0064 (`0064_bounded_rpc_statement_timeout.sql`) added `set statement_timeout = '5s'` to all 9 interface RPCs precisely as the day-1 DoS cap, and 0066 explicitly carried the "molde 0064: security definer, search_path='', statement_timeout='5s', LIMIT" forward. 0067 mirrors 0061 (the pre-0064 shape) instead of the current standard — and it is the *heaviest* query of the cross-link family (self-join on `parlamentario_militancia` plus a correlated NOT EXISTS with a second self-join). The project's secdef discipline lists statement_timeout as mandatory; its absence here is an unbounded-execution regression on a service_role-reachable path.
-**Fix:**
-```sql
-create or replace function public.militancia_historica_compartida(p_id text)
-returns table (id text, nombre text, camara text, total_n bigint)
-language sql stable security definer
-  set search_path = ''
-  set statement_timeout = '5s'
-as $$ ... $$;
-```
-Re-apply (drop/recreate re-triggers default privileges → keep the double-revoke) and add a pgTAP assertion on the config (see WR-05).
+None remaining. CR-01, CR-02, CR-03 verified fixed (see Summary).
 
 ## Warnings
 
-### WR-01: `FECHA_COBERTURA` hardcoded to "2026-07-24" — every provenance/absence claim on /comparar goes stale (false) from the next day onward
+None remaining. WR-06 resolved in iteration 3 (see below and the Resolved table).
 
-**File:** `app/app/comparar/page.tsx:45` (used at lines 237, 241, 260, 267, 279, 283, 303, 314, 331, 335, 356, 365, 379, 383)
-**Issue:** All eje provenance lines ("Fuente: … · según fuente al 2026-07-24") and all absence declarations ("En las fuentes consultadas al 2026-07-24, no comparten…") interpolate a build-time constant equal to the ship date. The route is `force-dynamic`, so from 2026-07-25 onward the page permanently asserts a consultation date that is no longer true — on a platform whose core value is "qué pasó, cuándo y según qué fuente." The file's own comment claims "la provenance por dato viaja en cada fila" — but the row-level `fecha_captura` (present on `ComisionRow`) is never used.
-**Fix:** Derive the date per eje from the rows' `fecha_captura` (max of A/B rows; fall back honestly when absent), or at minimum compute the date at request time (`new Date().toISOString().slice(0, 10)`) if the copy means "consulted now." Do not freeze it at authoring time.
+### WR-06: RESOLVED (iteration 3, commit `fcbf652`) — militancia column copy on /comparar is not scoped to the 0067 net-new semantics (WR-02 leak, second instance)
 
-### WR-02: Militancia absence copy is false for current co-partisans who also shared a historic party (net-new semantics leak)
+> **Resolution:** both branches of `ejeColMilitancia` (page.tsx) now carry the net-new scope, mirroring the intersection copy at line 277 — absence: "Sin militancia histórica compartida **fuera del partido vigente** registrada para {nombre}."; positive count: "…(en períodos posiblemente distintos; **sin contar el partido vigente compartido**).". Behavior locked by new RTL describe (11) in page.test.tsx: n=0 asserts the scoped absence AND forbids the old unscoped string; n>0 asserts the scoped count qualifier. Suite 1303 green, tsc -b clean, anti-insinuación guard green.
 
-**File:** `app/app/comparar/page.tsx:236-239`
-**Issue:** The 0067 RPC is net-new-only by design: it **excludes** every pair that shares the vigente alias, even if that pair *also* shared a historic party. On the ficha that is correct (copartidarios covers the vigente case in a sibling block). But `/comparar` reuses it as the sole militancia source and renders, for two current co-partisans with shared history: **"En las fuentes consultadas al …, no comparten militancia histórica."** — a false statement produced by the net-new exclusion, not by the sources. (The positive copy at lines 229-234 correctly scopes itself with "(sin compartir el partido vigente)"; the absence copy does not.)
-**Fix:** Scope the absence copy to the RPC's actual semantics, e.g. "…no registran militancia histórica compartida fuera del partido vigente." — or detect the vigente-shared case from the roster (`partido` is already on `ParlamentarioListadoRow`) and render the honest variant ("Comparten el partido vigente; la militancia histórica compartida adicional no se registra en este eje.").
+**File:** `app/app/comparar/page.tsx:522-533` (`ejeColMilitancia`)
+**Issue:** The honest-count columns added by the CR-01 fix render, at `n === 0`:
 
-### WR-03: 0067 matches on alias with no temporal-overlap check — "Compartieron militancia" can assert co-membership that never coincided in time
-
-**File:** `supabase/migrations/0067_militancia_historica_compartida.sql:55-58`; copy at `app/app/parlamentario/[id]/page.tsx:445` and `app/app/comparar/page.tsx:231-233`
-**Issue:** The join is `m2.partido_alias = m1.partido_alias` with no predicate on the militancy date ranges. A militated in party X 1990-1998; B joined X in 2015: they match, and the UI renders "Compartieron militancia en un partido" / "Compartieron militancia en algún partido" — past-tense phrasing that implies they were in the party *together*, a fact no source declares. `parlamentario_militancia` carries `desde` (used by `militancias_de_parlamentario` in 0060), so an overlap predicate is feasible.
-**Fix:** Either add a range-overlap condition (`m1.desde/hasta` overlaps `m2.desde/hasta`, with NULL hasta = open-ended) to make the copy true, or soften the copy to what the data actually supports: "Ambos militaron en el mismo partido" (both were members at some point). Pick one deliberately; today the query and the copy disagree.
-
-### WR-04: RelacionesSection renders heading + leyenda over an empty grid when all five blocks are N=0 — undeclared empty state
-
-**File:** `app/components/relaciones-section.tsx:41-59`; mount at `app/app/parlamentario/[id]/page.tsx:264-290`
-**Issue:** Every `CrossLinkBloque` returns `null` at N=0, and each Suspense fallback is `null`. For a parlamentario with zero relations on all five ejes, the ficha shows "Relaciones con otros parlamentarios" + the anti-causal leyenda above a completely empty grid — silence where the regime requires a declared absence ("vacío honesto declarado," the standard every other surface follows). The component's own JSDoc (lines 36-39) explicitly defers the total-omission contract to `page.tsx` "si se desea" — and `page.tsx` never implements it, so nobody owns the contract.
-**Fix:** Either have `page.tsx` await the five readers before mounting (omit the section when all `total_n` are 0 — trades streaming for correctness), or render an explicit declared-absence line inside the section (e.g. "Sin relaciones registradas en las fuentes consultadas." as a grid-level empty fallback). The current comment-only deferral leaves the honest-empty rule unenforced.
-
-### WR-05: pgTAP 0067 does not assert the full ACL/config posture — `authenticated` revoke and function config unchecked
-
-**File:** `supabase/tests/0067_militancia_historica_compartida.test.sql:23` (and missing assertions)
-**Issue:** The migration double-revokes `from public` and `from anon, authenticated` (0067:81-82), but the test only asserts `has_function_privilege('anon', …) = false`. The `authenticated` leg — a named part of the double-revoke discipline (lockdown-guard 0065 precedent: "lockdown-guard sin authenticated" was flagged as a gap before) — is untested, so a future drop/recreate that re-emits only the anon revoke passes green. There is also no assertion on `proconfig` (`search_path=''`, and `statement_timeout` once CR-03 lands), and the `prosecdef` check at line 20 uses a bare `proname` subquery that errors (multiple rows) if an overload ever appears.
-**Fix:** Bump `plan(6)` → `plan(8)` and add:
-```sql
-select is(has_function_privilege('authenticated', 'public.militancia_historica_compartida(text)', 'execute'), false,
-  'authenticated SIN execute sobre militancia_historica_compartida');
-select ok(
-  (select array_to_string(proconfig, ',') from pg_proc
-    where oid = 'public.militancia_historica_compartida(text)'::regprocedure) ~ 'search_path=',
-  'search_path fijado en la función');
 ```
-and scope the prosecdef subquery by `oid = '…(text)'::regprocedure`.
+Sin militancia histórica compartida registrada para {nombre}.
+```
+
+and at `n > 0`: `"{n} parlamentarios militaron en un mismo partido que {nombre} (en períodos posiblemente distintos)."`
+
+The 0067 RPC is net-new-only: it **excludes** every partner who shares the vigente alias, even when that partner *also* shares a historic party. A parlamentario whose only shared-history partners are current co-partisans gets `total_n = 0` from the RPC — and the column then asserts an **unscoped absolute absence** ("Sin militancia histórica compartida registrada") that is false: the shared history IS registered in the sources; the RPC excludes it by design. This is exactly the false-statement class WR-02 named, and exactly why the intersection copy was scoped to "fuera del partido vigente" (page.tsx:277) — the fixer applied the scope to the intersection line but wrote a new unscoped absence in the columns. The positive count has the same (milder) leak: it silently understates by excluding vigente co-partisans with shared history, without the "sin compartir el partido vigente" qualifier the intersection copy carries.
+**Fix:** Scope both branches of `ejeColMilitancia` to the RPC's real semantics, mirroring line 277:
+
+```tsx
+{n === 0
+  ? `Sin militancia histórica compartida fuera del partido vigente registrada para ${nombre}.`
+  : `${n} ${n === 1 ? "parlamentario militó" : "parlamentarios militaron"} en un mismo partido que ${nombre} (en períodos posiblemente distintos; sin contar el partido vigente compartido).`}
+```
+
+Update the WR-02 regression test (page.test.tsx describe 8, first case) if its `not.toContain` guards need the new strings.
 
 ## Info
 
-### IN-01: Comment claims Suspense makes cross-link failures non-fatal — Suspense does not catch errors
+### IN-01: (carried over, unfixed) Comment claims Suspense makes cross-link failures non-fatal — Suspense does not catch errors
 
-**File:** `app/app/parlamentario/[id]/page.tsx:256-258`
-**Issue:** The REL-02 comment states "Cada bloque conserva su propio `<Suspense fallback={null}>` para streaming independiente (un fallo no tumba la ficha…)". Suspense only handles pending promises; a thrown RPC error in a block propagates to the nearest error boundary (the route-level one — there is none nested here), degrading the whole route to its error UI. That outcome is actually what #34 wants (error ≠ empty), but the comment documents the opposite behavior and will mislead the next maintainer into relying on per-block isolation that does not exist.
-**Fix:** Correct the comment: Suspense gives streaming independence, not fault isolation; a reader error surfaces at the route error boundary by design (#34).
+**File:** `app/app/parlamentario/[id]/page.tsx:257-260`
+**Issue:** The REL-02 comment still states "Cada bloque conserva su propio `<Suspense fallback={null}>` para streaming independiente (un fallo no tumba la ficha…)". Suspense handles pending promises, not thrown errors; with the WR-04 restructure, a reader error now throws inside `RelacionesConDatos` and propagates to the route error boundary — which is what #34 wants, and what the NEW JSDoc at lines 360-361 correctly documents. The two comments now contradict each other in the same file.
+**Fix:** Delete or correct the "un fallo no tumba la ficha" clause in the REL-02 comment; the WR-04 JSDoc already states the true behavior.
 
-### IN-02: lockdown-guard still anchors on `process.cwd()` while the sibling guard migrated to `import.meta.dirname` for the known pnpm cwd bug
+### IN-02: (carried over, unfixed) lockdown-guard still anchors on `process.cwd()` while the sibling guard migrated to `import.meta.dirname`
 
 **File:** `app/lib/lockdown-guard.test.ts:43`
-**Issue:** `anti-insinuacion-guard.test.ts:64` explicitly moved to `import.meta.dirname` (WR-06) citing the v8.1 `process.cwd` bug under `pnpm --filter exec` that made a guard scan zero files silently. lockdown-guard keeps `APP_ROOT = process.cwd()`. Its sanity assertions (`sourceFiles.length > 10`, migrations `readdirSync` at collection time) make the failure loud rather than silent, so this is not exploitable today — but the inconsistency re-imports the footgun the other guard just documented away.
-**Fix:** `const APP_ROOT = path.resolve(import.meta.dirname, "..");` (file lives in `app/lib/`), mirroring WR-06.
+**Issue:** Unchanged (`APP_ROOT = process.cwd()`); anti-insinuacion-guard uses `import.meta.dirname` citing the v8.1 pnpm cwd bug. Loud sanity assertions keep this non-exploitable today.
+**Fix:** `const APP_ROOT = path.resolve(import.meta.dirname, "..");`
 
-### IN-03: /comparar canonical-order "behavior" test is a source-regex scan; mock roster passed with `as never`
+### IN-03: (carried over, unfixed) canonical-order "behavior" test is still a source-regex scan; mock roster still passed with `as never`
 
-**File:** `app/app/comparar/page.test.tsx:195-199, 125`
-**Issue:** The test named "orden canónico: page.tsx ordena a/b alfabéticamente" only greps the source for `.filter(...).sort()` — it never renders `?a=D1002&b=D1001` and asserts the slots normalized, so a broken comparator (e.g. `.sort(() => 0)` refactor) still passes. Separately, `roster: ROSTER_DEFAULT as never` (line 125) erases the type contract the fixture is supposed to exercise; `as ParlamentarioListadoRow[]` would keep the fixture honest against type drift.
-**Fix:** Add one behavioral case: `renderPage({ a: "D1002", b: "D1001" })` asserting the A column renders "Ana Prueba" first (or that `CompararEjes` received `a="D1001"`); replace `as never` with the real row type.
+**File:** `app/app/comparar/page.test.tsx:198-202, 128`
+**Issue:** Unchanged: the orden-canónico test greps for `.filter(...).sort()` instead of rendering `?a=D1002&b=D1001` and asserting normalization; `roster: ROSTER_DEFAULT as never` still erases the fixture's type contract.
+**Fix:** Add one behavioral case for slot normalization; replace `as never` with `as ParlamentarioListadoRow[]`.
 
-### IN-04: Militancia eje column B is a dead-end ("Ver la ficha…" with no link)
+### IN-05: NEW — "Ver el detalle en cada ficha." in the indeterminado copy is a dead-end instruction (IN-04's pattern re-appears)
 
-**File:** `app/app/comparar/page.tsx:400-413`
-**Issue:** `ejeColMilitancia(nombreB, undefined)` renders "Ver la ficha para el detalle de militancias." as plain text with no anchor to `/parlamentario/[id]`, so the instruction is not actionable from the page.
-**Fix:** Render it as a link: `<a href={`/parlamentario/${id}`} className="underline …">Ver la ficha…</a>` (id is already regex-validated), or drop the instruction and mirror A's honest count once CR-01's `total_n` fix lands.
+**File:** `app/app/comparar/page.tsx:281, 396`
+**Issue:** IN-04's original dead-end ("Ver la ficha para el detalle…" as plain text) was removed by the CR-01 fix — **resolved**. But the new indeterminado copy ends with "Ver el detalle en cada ficha." rendered as plain text with no anchor to `/parlamentario/{a}` / `/parlamentario/{b}`, so the instruction is again not actionable (both ids are already regex-validated and available in scope).
+**Fix:** Render the two ficha links inside `InterseccionIndeterminada` (pass `a`/`b` and emit validated `<a href={/parlamentario/${id}}>` anchors), or drop the sentence.
+
+### IN-06: NEW — `listaCompleta` checks the hardcoded `CAP_RPC` before `total_n` — latent false-"complete" if a migration ever lowers the DB LIMIT below 20
+
+**File:** `app/app/comparar/page.tsx:483-490`
+**Issue:** `listaCompleta` returns `true` whenever `filas.length < CAP_RPC` (20), consulting `total_n` only at exactly 20 rows. Today the DB caps are all `limit 20`, so `length < 20` implies the list is complete. But if a future migration lowers a cross-link RPC's LIMIT (e.g., to 10) without touching this constant, a truncated 10-row list would be classified complete → false absence declared — the exact failure CR-01 fixed, resurrected silently. The rows already carry the ground truth (`total_n`).
+**Fix:** Prefer `total_n` when present, independent of the constant:
+
+```tsx
+function listaCompleta(filas: CrossLinkRow[]): boolean {
+  const total = filas[0]?.total_n;
+  if (typeof total === "number") return total <= filas.length;
+  return filas.length < CAP_RPC; // fallback only when the RPC omits total_n
+}
+```
+
+## Resolved in this iteration
+
+| ID | Finding | Resolution (verified in code) |
+|----|---------|-------------------------------|
+| CR-01 | Intersections/counts from LIMIT-20-truncated lists | `interseccionPar` two-direction + completeness gate + declared "indeterminado"; counts via `total_n` (`totalHonesto`). Tests describe (8). Commit `abc1f04`. |
+| CR-02 | Comisiones intersection by nombre only | Composite key `camara::nombre`. Tests describe (9). Commit `573a41a`. |
+| CR-03 | 0067 missing `statement_timeout` | `set statement_timeout = '5s'` + double-revoke re-emitted; re-applied to PROD; pgTAP asserts proconfig. Commit `de8e328`. |
+| WR-01 | Hardcoded "2026-07-24" date | Request-time `fechaConsultaHoy()` (tz Chile) + row-level `fecha_captura` for comisiones; regression test. Commit `256776c`. |
+| WR-02 | Net-new false absence (intersection copy) | Intersection absence scoped "fuera del partido vigente" + tested. Column instance (WR-06) closed in iteration 3. Commit `f13fa9a`. |
+| WR-06 | Net-new false absence re-introduced in militancia column copy (iteration 2) | Both `ejeColMilitancia` branches scoped to 0067 net-new semantics ("fuera del / sin contar el partido vigente"), mirror of line 277; locked by RTL describe (11). Commit `fcbf652` (iteration 3). |
+| WR-03 | Temporal-overlap copy overclaim | Copy softened to "Militaron en un mismo partido (en períodos posiblemente distintos)" on ficha + /comparar. Commit `5a7eb60`. |
+| WR-04 | Empty grid without declared absence | `RelacionesConDatos` owns the contract; `<RelacionesSection vacio />` → `RELACIONES_VACIO`. Commits `1df2a24`, `4a21f3b`. |
+| WR-05 | Weak pgTAP (authenticated leg, proconfig, prosecdef overload) | `plan(9)`: authenticated revoke, search_path + statement_timeout proconfig, regprocedure-scoped prosecdef, exact returns contract. Commit `a005207`. |
+| IN-04 | Dead-end "Ver la ficha…" column text | Column text replaced by honest counts (CR-01 fix). Residual variant noted as IN-05. |
 
 ---
 
-_Reviewed: 2026-07-24T20:35:05Z_
+_Reviewed: 2026-07-24T21:20:00Z (re-review, iteration 2)_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
