@@ -31,15 +31,20 @@
 -- ── ACL (Camino A, post-0044): CERO grant ────────────────────────────────────────
 -- El sitio ejecuta con service_role (bypassa ACL/RLS). Doble-revoke explícito
 -- VERBATIM de 0061 para limpiar los DEFAULT PRIVILEGES que Postgres re-concede sobre
--- funciones nuevas de `public`. NUNCA re-emitir grant. security definer set
--- search_path = '' con nombres schema-qualified; p_id parametrizado; LIMIT bounded.
--- Cero rut/email/partido_alias en el returns table.
+-- funciones nuevas de `public`. NUNCA re-emitir grant. Molde 0064 COMPLETO (CR-03,
+-- 101-REVIEW): security definer, search_path = '' con nombres schema-qualified,
+-- statement_timeout = '5s' (cota DoS día-1 — es la query más pesada de la familia
+-- cross-link: self-join + NOT EXISTS correlacionado), p_id parametrizado, LIMIT
+-- bounded. Cero rut/email/partido_alias en el returns table.
 
 drop function if exists public.militancia_historica_compartida(text);
 
 create or replace function public.militancia_historica_compartida(p_id text)
 returns table (id text, nombre text, camara text, total_n bigint)
-language sql stable security definer set search_path = '' as $$
+language sql stable security definer
+  set search_path = ''
+  set statement_timeout = '5s'
+as $$
   -- NET-NEW-ONLY: distinct on (p2.id) envuelto + re-ordenado por nombre → cada
   -- parlamentario aparece EXACTAMENTE una vez. total_n = conteo COMPLETO (sobre el
   -- conjunto deduplicado, antes del limit) = el conteo honesto que la ficha muestra.
