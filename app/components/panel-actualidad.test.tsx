@@ -56,6 +56,36 @@ describe("TileSenal — señal ACTIVA (velocity)", () => {
   });
 });
 
+describe("TileSenal — WR-01: el chip nunca filtra el token interno de ventana", () => {
+  it("con cobertura_camara null NO renderiza el token de ventana ('30d'/'futuras')", () => {
+    // urgencias/archivados: la RPC fija cobertura_camara=null (0065). El chip
+    // se OMITE — el token interno "30d" jamás debe llegar al ciudadano.
+    const fila = makeSenal({
+      tipo_senal: "urgencias",
+      conteo: 3,
+      cobertura_camara: null,
+      ventana: "30d",
+      fecha_max: "2026-07-20T14:30:00Z",
+    });
+    render(<TileSenal tipo="urgencias" filas={[fila]} span={2} />);
+
+    // El framing factual del conteo sí acompaña.
+    expect(screen.getByText(/urgencias fechadas en 30 días/)).toBeInTheDocument();
+    // El token interno NO aparece en ninguna parte del render.
+    expect(screen.queryByText("30d")).toBeNull();
+    expect(screen.queryByText("futuras")).toBeNull();
+  });
+
+  it("con cobertura_camara presente SÍ renderiza la cámara como chip", () => {
+    const fila = makeSenal({ cobertura_camara: "Senado", ventana: "7d" });
+    render(<TileSenal tipo="velocity" filas={[fila]} span={4} />);
+
+    // La cámara declarada aparece; el token de ventana no.
+    expect(screen.getAllByText(/Senado/).length).toBeGreaterThan(0);
+    expect(screen.queryByText("7d")).toBeNull();
+  });
+});
+
 describe("TileSenal — señal SUPRIMIDA (agenda_sala)", () => {
   const CAUSA_SALA = "sin sesiones agendadas en las fuentes consultadas";
 

@@ -208,9 +208,13 @@ export function TileSenal({
                   <p className="mt-1 text-[13px]">
                     <span className="font-mono">{f.conteo}</span> {framing}
                   </p>
-                  {(f.cobertura_camara || f.ventana) && (
+                  {/* Chip de cobertura: SOLO la proveniencia de cámara declarada
+                      (literal ciudadano). NUNCA el token interno de ventana
+                      ("30d"/"futuras"): la ventana ya la comunican el framing
+                      del conteo y el footer "datos al {fecha}" (WR-01). */}
+                  {f.cobertura_camara && (
                     <span className="mt-1 inline-flex items-center px-[9px] py-0.5 font-mono text-[11px] font-medium text-accent-product bg-accent-product-soft rounded-full">
-                      {f.cobertura_camara ?? f.ventana}
+                      {f.cobertura_camara}
                     </span>
                   )}
                   {/* Footer de proveniencia (regla E) — SIEMPRE fuente; fecha si hay */}
