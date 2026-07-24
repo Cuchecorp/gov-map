@@ -283,7 +283,7 @@ Framing por tipo (LOCKED, anti-ranking T-52-13): velocity = "trámites en 7 día
 ### Pitfall 5: force-dynamic omitido → home horneada estática → 500
 **Qué va mal:** sin `export const dynamic = "force-dynamic"`, Next hornea `/` estática en build y sirve datos congelados/500 en runtime (gotcha F50).
 **Por qué pasa:** la home lee datos vivos por request.
-**Cómo evitar:** `page.tsx` YA tiene `dynamic = "force-dynamic"` (línea 19). NO borrarlo al reescribir el cuerpo.
+**Cómo evitar:** `page.tsx` YA tiene `dynamic = "force-dynamic"` (línea 19). NO borrarlo al reescribir el cuerpo. La garantía queda protegida por el assert `expect(HomeModule.dynamic).toBe("force-dynamic")` en `page.test.tsx` (Contract 3) — si se borra, el test falla.
 **Señales de alarma:** el build marca `/` como `○` (estática) en vez de `ƒ` (dinámica).
 
 ### Pitfall 6: El gate BrowserOS falso-positivo sobre HTML crudo
@@ -364,16 +364,16 @@ node scripts/bros-cli.mjs close "$PID"
 | A3 | Los términos de timing sugeridos ("exprés", "revivido", etc.) son el set correcto a denylistar | Pitfall 3 | Medio — el set exacto lo afina el copy real; el operador/discuss puede ampliarlo. Out-of-Scope de REQUIREMENTS respalda el criterio |
 | A4 | La RPC devuelve `evidencia` como objeto jsonb (no string) vía supabase-js | Pattern 1 typing | Bajo — supabase-js deserializa jsonb a objeto JS; verificar al implementar |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **¿Se borra `actualidad-module.tsx` o se conserva?**
    - Lo que sabemos: sus 3 tiles leen tablas crudas (`.from()` + `fecha_captura`); el panel nuevo lee la RPC precomputada.
    - Lo que no está claro: si el operador quiere mantener "Votado esta semana"/"Última actualización de datos" como tiles adicionales.
-   - Recomendación: el plan decide; si se conserva algo, mantenerlo dentro del linter (ya está en `SUPERFICIES_HOME`). Preferir fundir en el panel para una sola fuente de verdad.
+   - **RESOLVED (Plan 100-03, Task 1):** conservar `actualidad-module.tsx` pero DESMONTADO — dejar de montar sus 3 tiles germen en page.tsx, NO borrar el archivo en esta wave (para no arrastrar cambios de guard; sigue en `SUPERFICIES_HOME`). Una sola fuente de verdad en el panel; el germen queda como referencia inerte. Si page.tsx deja de importarlo, se ajusta el import (y el mock en page.test.tsx). Una limpieza posterior (borrado) es deuda opcional fuera de Phase 100.
 
 2. **¿El panel conserva los 3 entry-cards (/buscar, /parlamentarios, /agenda)?**
    - Lo que sabemos: el CONTEXT dice "reemplaza el CUERPO producto-céntrico". Los entry-cards SON producto-céntricos.
-   - Recomendación: el hero + SearchBox se conservan (LOCKED); los entry-cards pueden moverse abajo o a nav secundaria. Decisión de layout (discreción de Claude), validada por el loop BrowserOS.
+   - **RESOLVED (Plan 100-03, Task 1):** conservar los 3 entry-cards con su copy LOCKED byte-idéntico, pero MOVIDOS debajo del panel (discreción de layout). El hero + SearchBox se conservan (LOCKED); los entry-cards NO se eliminan ni se cambia su copy — solo se reubican bajo el panel de actualidad para que el "qué está pasando HOY" sea el cuerpo principal y las entradas a secciones queden como navegación secundaria. Validado por el loop BrowserOS. Los tests Contract 2 (hrefs + copy verbatim) siguen verdes; BENTO-05 orden DOM se ajusta solo si el layout reubica los nodos.
 
 ## Environment Availability
 
@@ -405,7 +405,7 @@ node scripts/bros-cli.mjs close "$PID"
 | PANEL-01 | cero-hex + tipografía + bare-var sobre superficies panel | unit/guard | `pnpm --filter ./app test -- --run bento-guards` | ✅ existe — EXTENDER |
 | PANEL-01 | RPC allowlisted (regresión) | unit/guard | `pnpm --filter ./app test -- --run lockdown-guard` | ✅ existe — YA verde (14/14) |
 | PANEL-02 | render de tile: activa / supresión / empty honesto; agrupación por tipo_senal; '(sin materia)' tolerado | unit (RTL sobre `*View` con fixtures) | `pnpm --filter ./app test -- --run panel-actualidad` | ❌ Wave 0 (crear) |
-| PANEL-02 | force-dynamic presente; URL/anchors intactos | unit (estructura) | grep/estructura sobre page.tsx | ❌ Wave 0 (opcional; espejo `page-estructura.test.ts`) |
+| PANEL-02 | force-dynamic presente; URL/anchors intactos; page.test.tsx refleja el panel montado | unit (estructura) | `pnpm --filter ./app test -- --run page` | ✅ existe — page.test.tsx se ACTUALIZA (Plan 03) |
 | PANEL-03 | benchmark documentado | manual/BrowserOS | N/A — doc + capturas | manual (operador/orquestador) |
 | PANEL-04 | gate lectura fría "comprensible" sobre deploy | manual/BrowserOS | N/A — runbook operador | manual (operador/orquestador) |
 
@@ -418,6 +418,7 @@ node scripts/bros-cli.mjs close "$PID"
 - [ ] `app/lib/anti-insinuacion-guard.test.ts` — añadir `SUPERFICIES_PANEL` + términos de timing + NEGACIONES_LOCKED si aplica + mutation self-check nuevo (cubre PANEL-01). **PRIMER commit, antes del copy.**
 - [ ] `app/lib/bento-guards.test.ts` — añadir superficies panel a `SUPERFICIES_CERO_HEX` y `SUPERFICIES_TIPOGRAFIA` (+ whitelist de cualquier off-step nuevo del panel) (cubre PANEL-01 candados).
 - [ ] `app/components/panel-actualidad.test.tsx` — RTL sobre las vistas puras (`*View`) con fixtures de las 7 señales incluyendo filas de supresión y `'(sin materia)'` (cubre PANEL-02). Espejo de `actualidad-module` (vistas testeables con fixtures).
+- [ ] `app/app/page.test.tsx` — ACTUALIZAR (Plan 03): mockear `@/components/panel-actualidad` + reescribir Contract 3 al montaje del panel; Contract 1/2 byte-idénticos.
 - [ ] Fixtures de `SenalRow[]` (activa, suprimida, agrupacion_materia sin materia) para los tests de vista.
 
 *(El framework existe; los gaps son archivos de test nuevos + extensión de guards. Sin instalación.)*
@@ -449,6 +450,7 @@ node scripts/bros-cli.mjs close "$PID"
 
 ### Primary (HIGH confidence)
 - `app/app/page.tsx` — estructura actual de la landing (hero LOCKED, force-dynamic:19, BentoGrid, 3 tiles germen bajo Suspense:172-183)
+- `app/app/page.test.tsx` — contrato de la home en test (Contract 1 hero, Contract 2 accent+entry-cards, Contract 3 force-dynamic + retiro wrapper lineal; germ mock L34-38) — se ACTUALIZA en Plan 03
 - `app/components/actualidad-module.tsx` — patrón RSC de fetch + empty-state honesto + `throw` en error (#34) + reglas duras A-E
 - `app/components/bento/bento-grid.tsx` / `bento-tile.tsx` — primitivas (span, variants, tokens)
 - `supabase/migrations/0066_actualidad_rpc.sql` — contrato de la RPC bounded (9 columnas, p_tipo paramétrico, LIMIT 200, statement_timeout 5s, doble-revoke)
@@ -481,3 +483,4 @@ node scripts/bros-cli.mjs close "$PID"
 
 **Research date:** 2026-07-24
 **Valid until:** 2026-08-23 (estable — código interno; el único riesgo de deriva es si Phase 99 re-materializa con columnas distintas, improbable)
+</content>
