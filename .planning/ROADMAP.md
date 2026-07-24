@@ -194,7 +194,20 @@ Plans:
   3. Las relaciones nuevas derivadas de datos existentes (militancia histórica compartida, lobby con la misma contraparte si el dato lo sostiene) aparecen con framing factual y cobertura declarada
   4. La coalición/pacto se evalúa empíricamente (Servel pactos / comités Senado): si hay fuente factual viable se ingiere por dos-etapas; si no, queda DIFERIDA documentada — JAMÁS inferida desde votos; ningún eje/score/mapa ideológico aparece
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 101-01-PLAN.md — Audit N/M por relación (REL-01) + decisión lobby-misma-contraparte (REL-04) + probe empírico coalición Servel/Senado (REL-05) — gate de diseño
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 101-02-PLAN.md — Wave 0 guards (SUPERFICIES_RELACIONES + allowlist) + bloque `<section id=relaciones>` above-the-fold en la ficha, componentes intactos (REL-02)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 101-03-PLAN.md — Migración 0067 militancia_historica_compartida (secdef alias-keyed) + pgTAP + `/comparar` 4 ejes no-voto force-dynamic (REL-03/REL-04)
 
 **UI hint**: yes
 
