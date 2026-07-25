@@ -3,7 +3,9 @@ import { cache } from "react";
 import { createServerSupabase } from "@/lib/supabase";
 import { PARLAMENTARIO_ID_RE } from "@/lib/buscar";
 import { formatNombre } from "@/lib/format";
+import { vsimPublicEnabled } from "@/lib/vsim-gate";
 import { CompararSelector } from "@/components/comparar-selector";
+import { SimilitudVotacionComparar } from "@/components/similitud-votacion-comparar";
 import {
   RelacionesEjeComparar,
   type EjeColumna,
@@ -455,14 +457,69 @@ export async function CompararEjes({
     />
   );
 
+  // ── EJE 5 — Similitud de votación (VSIM, GATED legal, anti-DW-NOMINATE) ────────
+  // Candado B (presentación): la sección SOLO existe con `vsimPublicEnabled(process.env)`
+  // ON. Con el flag OFF (PROD default) `ejeSimilitud` queda null → cero nodo DOM, cero
+  // .rpc("coincidencia_votos_par") (el return null es ANTES del fetch, no CSS hidden).
+  // El flip a true es acto humano con sign-off legal (docs/legal/102-LEGAL-DOSSIER-VSIM),
+  // JAMÁS del agente. `vsimPublicEnabled` es el ÚNICO lector del flag (anti-flip V3):
+  // nunca leer el env crudo del flag aquí — el chokepoint vsim-gate.ts es el único lector.
+  let ejeSimilitud: React.ReactNode = null;
+  if (vsimPublicEnabled(process.env)) {
+    // Ids ya validados (PARLAMENTARIO_ID_RE) y en orden canónico [a,b].sort().
+    const sb = createServerSupabase();
+    const { data, error } = await sb.rpc("coincidencia_votos_par", {
+      p_a: a,
+      p_b: b,
+    });
+    // #34: un error real de la RPC LANZA — NUNCA se degrada a "sin votaciones
+    // compartidas" (eso es el estado honesto M=0, no un error).
+    if (error) {
+      throw new Error(`coincidencia_votos_par falló para ${a}/${b}: ${error.message}`);
+    }
+    const fila = (data as CoincidenciaVotosPar[] | null)?.[0];
+    const n = Number(fila?.n_coinciden ?? 0);
+    const m = Number(fila?.m_compartidas ?? 0);
+    // El % se computa en el SERVER (round entero, sin decimales); null cuando M=0.
+    const pct = m > 0 ? Math.round((n / m) * 100) : null;
+    // Asimetría de cobertura: A y B de cámaras distintas (nota de cobertura).
+    const camaraMixta =
+      filaA?.camara != null &&
+      filaB?.camara != null &&
+      filaA.camara !== filaB.camara;
+    const fechaCaptura = fila?.fecha_captura_max
+      ? String(fila.fecha_captura_max).slice(0, 10)
+      : null;
+    ejeSimilitud = (
+      <SimilitudVotacionComparar
+        n={n}
+        m={m}
+        pct={pct}
+        fechaConsulta={fechaConsulta}
+        fechaCaptura={fechaCaptura}
+        camaraMixta={camaraMixta}
+      />
+    );
+  }
+
   return (
     <>
       {ejeMilitancia}
       {ejeComisiones}
       {ejeCoautoria}
       {ejeZona}
+      {ejeSimilitud}
     </>
   );
+}
+
+/** Forma de la fila que emite la RPC `coincidencia_votos_par` (0068): SOLO 3
+ *  agregados del par (n_coinciden / m_compartidas / fecha_captura_max), jamás la
+ *  lista de votaciones individuales. */
+interface CoincidenciaVotosPar {
+  n_coinciden: number | string | null;
+  m_compartidas: number | string | null;
+  fecha_captura_max: string | null;
 }
 
 // ── Utilidades ────────────────────────────────────────────────────────────────────

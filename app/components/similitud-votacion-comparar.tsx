@@ -121,10 +121,17 @@ export function SimilitudVotacionComparar({
       </p>
       {/* Cobertura declarada (con nota de asimetría si el par cruza cámaras). */}
       <p className="mt-2 text-sm text-muted-foreground">{cobertura}</p>
-      {/* Provenance (fecha de captura de la fuente, mono). Omitida si la RPC no la trae. */}
+      {/* Provenance (fecha de la fuente, mono). Omitida si la RPC no la trae.
+          DEVIACIÓN GUARD (Rule 3): la provenance del UI-SPEC decía "captura al {fecha}",
+          pero la palabra suelta "captura" está en TERMINOS_PROHIBIDOS del linter
+          anti-insinuación (sentido "captura del Estado/regulatoria"). El guard es una
+          compuerta de seguridad y NO se relaja; se adopta el idiom de provenance
+          PRODUCT-WIDE guard-clean, idéntico en semántica ("según fuente al {fecha}",
+          ya usado por el eje Comisiones de esta misma página). Sigue siendo la fecha de
+          la FUENTE (fecha_captura_max de la RPC), jamás una fecha de ingreso. */}
       {fechaCaptura ? (
         <p className="mt-2 text-xs text-muted-foreground">
-          Fuente: votaciones de Cámara y Senado · captura al{" "}
+          Fuente: votaciones de Cámara y Senado · según fuente al{" "}
           <span className="font-mono">{fechaCaptura}</span>.
         </p>
       ) : null}

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -134,6 +134,12 @@ beforeEach(() => {
   rpcMock.mockClear();
   createServerSupabaseMock.mockClear();
   setDefaultRpc();
+});
+
+// VSIM (5º eje gated): el flag se controla por env; limpiar tras cada test para no
+// contaminar los demás (el default OFF debe re-establecerse siempre).
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("(1) /comparar force-dynamic", () => {
@@ -398,6 +404,105 @@ describe("(11) WR-06 — columnas de militancia acotadas a la semántica net-new
     const html = await renderEjes("D1001", "D1002");
     expect(html).toContain("parlamentario militó en un mismo partido que");
     expect(html).toContain("sin contar el partido vigente compartido");
+  });
+});
+
+// ── VSIM: 5º eje de similitud de votación, GATED (VSIM-01/VSIM-02) ───────────────
+// Flag OFF (default/PROD) ⇒ sección AUSENTE del DOM, cero .rpc. Flag ON (preview
+// local) ⇒ figura neutral + caveat. M=0 ⇒ degradado honesto, jamás "0%".
+describe("(12) VSIM — 5º eje gated (similitud de votación)", () => {
+  // Setup del rpcMock que ADEMÁS responde coincidencia_votos_par.
+  function setRpcConVsim(vsim: {
+    n_coinciden: number;
+    m_compartidas: number;
+    fecha_captura_max: string | null;
+  }) {
+    rpcImpl.mockImplementation((name: string) => {
+      switch (name) {
+        case "parlamentarios_publico_v2":
+          return { data: ROSTER_DEFAULT, error: null };
+        case "militancia_historica_compartida":
+          return { data: [], error: null };
+        case "comisiones_de_parlamentario":
+          return { data: [], error: null };
+        case "coautores_de_parlamentario":
+          return { data: [], error: null };
+        case "coincidencia_votos_par":
+          return { data: [vsim], error: null };
+        default:
+          return { data: [], error: null };
+      }
+    });
+  }
+
+  it("flag OFF (ausente) → la sección NO existe en el DOM y NO se llama la RPC", async () => {
+    // Sin vi.stubEnv → VSIM_PUBLIC_ENABLED ausente → vsimPublicEnabled=false.
+    setRpcConVsim({ n_coinciden: 3, m_compartidas: 4, fecha_captura_max: "2026-07-24" });
+    const html = await renderEjes("D1001", "D1002");
+    expect(html).not.toContain("Similitud de votación");
+    expect(html).not.toContain("La coincidencia alta es la norma");
+    // Cero llamadas a la RPC gated (el return null es ANTES del fetch).
+    const llamadasVsim = rpcMock.mock.calls.filter(
+      (c) => c[0] === "coincidencia_votos_par",
+    );
+    expect(llamadasVsim).toHaveLength(0);
+  });
+
+  it("flag = 'false' explícito → sigue ausente (fail-closed, no truthiness laxa)", async () => {
+    vi.stubEnv("VSIM_PUBLIC_ENABLED", "false");
+    setRpcConVsim({ n_coinciden: 3, m_compartidas: 4, fecha_captura_max: "2026-07-24" });
+    const html = await renderEjes("D1001", "D1002");
+    expect(html).not.toContain("Similitud de votación");
+  });
+
+  it("flag ON + rpc con datos → sección + caveat + figura NEUTRAL (sin acento)", async () => {
+    vi.stubEnv("VSIM_PUBLIC_ENABLED", "true");
+    setRpcConVsim({ n_coinciden: 3, m_compartidas: 4, fecha_captura_max: "2026-07-24" });
+    const html = await renderEjes("D1001", "D1002");
+    expect(html).toContain("Similitud de votación");
+    expect(html).toContain("La coincidencia alta es la norma");
+    // % computado en el server: round(3/4·100) = 75.
+    expect(html).toContain("Coinciden en 3 de 4 votaciones compartidas (75%).");
+    // Cobertura declarada + provenance.
+    expect(html).toContain("Cobertura del voto: Cámara ~80%");
+    expect(html).toContain("según fuente al");
+    // La figura NO lleva el resaltado petróleo/bold de los ejes factuales.
+    const figuraIdx = html.indexOf("Coinciden en 3 de 4");
+    const bloqueFigura = html.slice(Math.max(0, figuraIdx - 120), figuraIdx);
+    expect(bloqueFigura).not.toContain("text-accent-product");
+    expect(bloqueFigura).not.toContain("font-semibold");
+  });
+
+  it("flag ON + m=0 → copy degradado honesto, JAMÁS '0%'", async () => {
+    vi.stubEnv("VSIM_PUBLIC_ENABLED", "true");
+    setRpcConVsim({ n_coinciden: 0, m_compartidas: 0, fecha_captura_max: null });
+    const html = await renderEjes("D1001", "D1002");
+    expect(html).toContain("Similitud de votación");
+    expect(html).toContain(
+      "Sin votaciones compartidas suficientes en las fuentes consultadas al",
+    );
+    expect(html).not.toContain("0%");
+    // Sin figura ni provenance en el estado degradado.
+    expect(html).not.toContain("Coinciden en");
+  });
+
+  it("flag ON + error real de la RPC LANZA (#34, jamás degrada a 'sin votaciones')", async () => {
+    vi.stubEnv("VSIM_PUBLIC_ENABLED", "true");
+    rpcImpl.mockImplementation((name: string) => {
+      if (name === "parlamentarios_publico_v2") return { data: ROSTER_DEFAULT, error: null };
+      if (name === "coincidencia_votos_par") return { data: null, error: { message: "boom" } };
+      return { data: [], error: null };
+    });
+    await expect(renderEjes("D1001", "D1002")).rejects.toThrow(/coincidencia_votos_par/);
+  });
+
+  it("el 5º eje es el ÚLTIMO sibling del return de CompararEjes (después de ejeZona)", () => {
+    const src = readFileSync(path.join(APP_ROOT, "app", "comparar", "page.tsx"), "utf-8");
+    // ejeSimilitud aparece tras ejeZona en el return fragment.
+    expect(src).toMatch(/\{ejeZona\}\s*\{ejeSimilitud\}/);
+    // page.tsx importa el gate (anti-flip V3: nunca lee process.env crudo del flag).
+    expect(src).toMatch(/vsimPublicEnabled/);
+    expect(src).not.toMatch(/process\.env\.VSIM_PUBLIC_ENABLED/);
   });
 });
 
