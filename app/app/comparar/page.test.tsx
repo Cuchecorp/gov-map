@@ -525,10 +525,20 @@ describe("(12) VSIM — 5º eje gated (similitud de votación)", () => {
     expect(html).toContain("Cobertura del voto: Cámara ~80%");
     expect(html).toContain("según fuente al");
     // La figura NO lleva el resaltado petróleo/bold de los ejes factuales.
+    // WR-04 (102-REVIEW): asertar sobre el PÁRRAFO COMPLETO que contiene la figura
+    // (del `<p` que la abre hasta su `</p>`), no una ventana solo-ANTERIOR — un
+    // <span className="font-semibold text-accent-product"> envolviendo el "75%"
+    // abriría su tag DESPUÉS de figuraIdx y pasaría la ventana anterior verbatim.
     const figuraIdx = html.indexOf("Coinciden en 3 de 4");
-    const bloqueFigura = html.slice(Math.max(0, figuraIdx - 120), figuraIdx);
-    expect(bloqueFigura).not.toContain("text-accent-product");
-    expect(bloqueFigura).not.toContain("font-semibold");
+    expect(figuraIdx).toBeGreaterThan(-1);
+    const abreP = html.lastIndexOf("<p", figuraIdx);
+    const cierraP = html.indexOf("</p>", figuraIdx);
+    expect(abreP).toBeGreaterThan(-1);
+    expect(cierraP).toBeGreaterThan(figuraIdx);
+    const parrafoFigura = html.slice(abreP, cierraP + "</p>".length);
+    expect(parrafoFigura).toContain("Coinciden en 3 de 4");
+    expect(parrafoFigura).not.toContain("text-accent-product");
+    expect(parrafoFigura).not.toContain("font-semibold");
   });
 
   it("flag ON + m=0 → copy degradado honesto, JAMÁS '0%'", async () => {
