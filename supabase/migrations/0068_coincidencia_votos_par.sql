@@ -1,0 +1,69 @@
+-- 0068_coincidencia_votos_par.sql
+-- Phase 102 — RELACIONES P2b — RPC de similitud de votación (VSIM-02/VSIM-03).
+-- Coincidencia de votos entre dos parlamentarios: cuántas de las votaciones
+-- SUSTANTIVAS que ambos votaron coincidieron. GATED LEGAL (anti-DW-NOMINATE): la
+-- exposición pública de esta cifra requiere `signoff: approved` en
+-- docs/legal/102-LEGAL-DOSSIER-VSIM.md + el flip humano de VSIM_PUBLIC_ENABLED.
+-- ESCRITA en Plan 01 (Wave 0) para que la entrada `coincidencia_votos_par` del
+-- PUBLIC_RPC_ALLOWLIST no quede huérfana en el guard Direction-B (allowlist ⊆
+-- definidas). Se APLICA a PROD (Plan 02) y se CONSUME (5º eje de /comparar) en Plan
+-- 03, con su pgTAP `supabase/tests/0068_*.test.sql` contra el schema aplicado.
+--
+-- ── DISEÑO LOCKED (102-RESEARCH §Pattern 2 + Discretion) ─────────────────────────
+-- returns table = EXACTAMENTE 3 columnas AGREGADAS (n_coinciden, m_compartidas,
+-- fecha_captura_max) — NUNCA una lista per-votación (fuera de alcance, diferido: una
+-- lista voto-a-voto es máquina de sospechas). El caveat de base-alta (la coincidencia
+-- alta es la NORMA, no una señal) pesa MÁS que la cifra; el % lo redondea el server.
+-- Filtro SUSTANTIVA: `seleccion in ('si','no','abstencion')` sobre
+-- `estado_vinculo = 'confirmado'` — pareo/ausente/no_confirmado NO cuentan en el
+-- denominador. `votacion.boletin` es NOT NULL con FK→proyecto, así que toda votación
+-- ya es "de un proyecto de ley" (no hace falta join extra a proyecto).
+--
+-- ── ORDEN DE APPLY / COMANDO (Plan 02) ───────────────────────────────────────────
+-- Última migración = 0067. Ésta es la 0068 y se aplica DESPUÉS:
+--   PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" --single-transaction -f \
+--     supabase/migrations/0068_coincidencia_votos_par.sql
+-- NUNCA `supabase db push` (drift de schema_migrations). La ÚNICA prueba válida del
+-- DDL es el pgTAP contra el schema APLICADO (Pitfall 6, precedente 0060/0061/0067).
+--
+-- ── ACL (Camino A, post-0044): CERO grant ────────────────────────────────────────
+-- El sitio ejecuta con service_role (bypassa ACL/RLS). Doble-revoke explícito VERBATIM
+-- de 0067 para limpiar los DEFAULT PRIVILEGES que Postgres re-concede sobre funciones
+-- nuevas de `public`. NUNCA re-emitir grant. Molde 0067 COMPLETO: security definer,
+-- search_path = '' con nombres schema-qualified, statement_timeout = '5s' (cota DoS;
+-- benchmark 28ms), parámetros parametrizados. Cero rut/email/seleccion crudo en el
+-- returns table (solo agregados).
+
+drop function if exists public.coincidencia_votos_par(text, text);
+
+create or replace function public.coincidencia_votos_par(p_a text, p_b text)
+returns table (n_coinciden bigint, m_compartidas bigint, fecha_captura_max timestamptz)
+language sql stable security definer
+  set search_path = ''
+  set statement_timeout = '5s'
+as $$
+  with a as (
+    select v.votacion_id, v.seleccion
+    from public.voto v
+    where v.parlamentario_id = p_a
+      and v.estado_vinculo = 'confirmado'
+      and v.seleccion in ('si','no','abstencion')   -- SUSTANTIVA: pareo/ausente excluidos
+  ),
+  b as (
+    select v.votacion_id, v.seleccion
+    from public.voto v
+    where v.parlamentario_id = p_b
+      and v.estado_vinculo = 'confirmado'
+      and v.seleccion in ('si','no','abstencion')   -- SUSTANTIVA: pareo/ausente excluidos
+  )
+  select
+    count(*) filter (where a.seleccion = b.seleccion) as n_coinciden,
+    count(*)                                          as m_compartidas,
+    (select max(vt.fecha_captura)
+       from public.votacion vt
+       where vt.id in (select votacion_id from a intersect select votacion_id from b)) as fecha_captura_max
+  from a join b using (votacion_id);
+$$;
+
+revoke all on function public.coincidencia_votos_par(text, text) from public;
+revoke all on function public.coincidencia_votos_par(text, text) from anon, authenticated;

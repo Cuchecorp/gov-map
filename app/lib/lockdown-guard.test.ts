@@ -171,6 +171,7 @@ const PUBLIC_RPC_ALLOWLIST = new Set([
   "buscar_proyectos_hibrido",
   "co_comisionados_de_parlamentario",
   "coautores_de_parlamentario",
+  "coincidencia_votos_par", // ← NEW (debe existir en supabase/migrations/0068_*.sql — Direction-B; consumida en Plan 03)
   "comisiones_de_parlamentario",
   "comparar_declaraciones",
   "contratos_de_parlamentario",

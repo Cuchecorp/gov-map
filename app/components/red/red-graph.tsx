@@ -78,7 +78,6 @@ export interface RedGraphProps {
 // Etiqueta humana sobria por tipo, para el control de filtro.
 const TIPO_LABEL: Record<string, string> = {
   co_lobby_contraparte: "Audiencia de la misma contraparte",
-  co_votacion: "Misma votación",
 };
 
 const CAMARA_LABEL: Record<string, string> = {

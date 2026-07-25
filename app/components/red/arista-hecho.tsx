@@ -29,9 +29,9 @@ export function etiquetaHecho(tipo: string, contexto: string | null): string {
   switch (tipo) {
     case "co_lobby_contraparte":
       return `Ambos recibieron audiencia de ${quien}`;
-    case "co_votacion":
-      return `Registrados en la misma votación: ${quien}`;
     default:
+      // Cualquier tipo desconocido (incl. históricamente co_votacion, ahora fuera de
+      // /red por VSIM-03) cae al hecho público genérico sin insinuar co-votación.
       return `Hecho público compartido: ${quien}`;
   }
 }
