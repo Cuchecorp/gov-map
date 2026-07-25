@@ -54,7 +54,7 @@ leaderboard "los que más coinciden".
 
 **Cómputo:** RPC pairwise **on-demand** `coincidencia_votos_par(p_a, p_b)` (secdef,
 `search_path=''`, `statement_timeout '5s'`, doble-revoke CERO grant; migración 0068 aplicada
-a PROD en Plan 02, pgTAP 10/10). Emite SOLO tres agregados del par —
+a PROD en Plan 02, pgTAP 14/14). Emite SOLO tres agregados del par —
 `n_coinciden`, `m_compartidas`, `fecha_captura_max` — **jamás la lista de votaciones
 individuales**. Un solo par por request; **jamás una tabla materializada todos-contra-todos**.
 
@@ -242,7 +242,7 @@ local** (flag ON vía `vi.stubEnv`, sin deploy) para el cold-read del operador:
   - **Flag ON + error real de la RPC:** LANZA (#34), jamás degrada a "sin votaciones".
   - **Orden:** `ejeSimilitud` es el ÚLTIMO sibling del return de `CompararEjes` (después de
     `ejeZona`); `page.tsx` importa `vsimPublicEnabled` y NO lee el env crudo del flag.
-- **pgTAP `supabase/tests/0068_coincidencia_votos_par.test.sql` (Plan 02, 10/10):** contrato de
+- **pgTAP `supabase/tests/0068_coincidencia_votos_par.test.sql` (Plan 02 + fixes, 14/14):** contrato de
   la RPC (secdef, doble-revoke, returns de 3 agregados exactos) + denominador sustantiva
   (pareo/no_confirmado EXCLUIDOS de `m_compartidas`). Par real verificado D1170/D1165:
   `n_coinciden=3655 ≤ m_compartidas=3672`, `fecha_captura_max` no null.
