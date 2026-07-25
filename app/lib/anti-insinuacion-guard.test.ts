@@ -53,6 +53,7 @@ import {
   LEYENDA_MENCIONES_LOBBY,
   EMPTY_MENCIONES_LOBBY,
 } from "@/components/lobby-menciones-de-boletin";
+import { LEYENDA_SIMILITUD_VOTO } from "@/components/similitud-votacion-comparar";
 
 // ---------------------------------------------------------------------------
 // Helpers (espejo verbatim de lockdown-guard.test.ts)
@@ -344,6 +345,32 @@ const SUPERFICIES_RELACIONES: string[] = [
 ];
 
 /**
+ * Superficies VSIM (102-01, VSIM-02/VSIM-03) — similitud de votación. La sección de
+ * coincidencia de votos entre dos parlamentarios (gated legal, anti-DW-NOMINATE) es el
+ * vector #1 de insinuación de AFINIDAD/coordinación por co-votación: describir que dos
+ * parlamentarios "votan igual/juntos/parecido" o son "aliados" con una "tasa de
+ * coincidencia" tienta la lectura de bancada/señal. El copy debe ser estrictamente
+ * FACTUAL: la cifra es un CONTEO de coincidencias sobre votaciones compartidas, con
+ * caveat de base-alta obligatorio (la coincidencia alta es la NORMA, no una señal);
+ * jamás una medida de afinidad ni un ranking.
+ *
+ * TRIPWIRE ANTES DEL COPY (Wave 0, lección BLOCKER 91): `similitud-votacion-comparar.tsx`
+ * existe ya en este plan (contiene SOLO la constante LEYENDA_SIMILITUD_VOTO; su cuerpo
+ * presentacional lo llena Plan 03). `app/comparar/page.tsx` NO se duplica aquí — ya está
+ * en SUPERFICIES_RELACIONES (Pitfall 4 DEDUPE). El loader del bucle TOLERA archivos
+ * faltantes (try/catch continue).
+ *
+ * NOTA NEGACIONES_LOCKED: la sección VSIM renderiza `LEYENDA_SIMILITUD_VOTO`, que CONTIENE
+ * "afinidad" y "señal" (términos prohibidos) para NEGARLOS. Se registra verbatim en
+ * NEGACIONES_LOCKED ANTES de que SUPERFICIES_VSIM entre al scan real (Pitfall 3), o el
+ * linter se auto-cazaría sobre su propia leyenda.
+ */
+const SUPERFICIES_VSIM: string[] = [
+  "components/similitud-votacion-comparar.tsx",
+  // app/comparar/page.tsx YA está en SUPERFICIES_RELACIONES — NO duplicar (Pitfall 4).
+];
+
+/**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
  * texto RENDERIZADO (post-strip de comentarios), con límite de palabra en español
  * para no cazar identificadores snake_case: `rebeldias_de_parlamentario` (nombre de
@@ -460,6 +487,23 @@ const TERMINOS_PROHIBIDOS: string[] = [
   "colado",
   "la cámara más activa",
   "los más",
+  // --- Carril VSIM (102-01, VSIM-02/VSIM-03) — similitud de votación. Vocabulario de
+  //     afinidad/coalición por CO-VOTACIÓN + la metáfora de "señal"/"tasa" que la sección
+  //     de coincidencia de votos tienta. DEDUPE (Pitfall 4): NO se re-agregan
+  //     "afín"/"afinidad"/"aliado"/"nivel de acuerdo"/"bloque de"/"vota como"/"votan como"
+  //     — ya cubiertos arriba (carriles VOTO/PERSONAS). GENUINAMENTE NUEVOS: las variantes
+  //     "votan juntos/igual/parecido" (paráfrasis de bancada por co-votación), los plurales
+  //     "aliados"/"aliada" (el singular "aliado" ya está, pero el límite de palabra no
+  //     cubre el plural/femenino), "tasa de coincidencia" (numeraliza la afinidad) y "señal"
+  //     (la metáfora que el propio caveat NIEGA — restado vía LEYENDA_SIMILITUD_VOTO en
+  //     NEGACIONES_LOCKED). TILDES/plurales exactos (buildTermRegex NO es accent-insensitive).
+  "votan juntos",
+  "votan igual",
+  "votan parecido",
+  "aliados",
+  "aliada",
+  "tasa de coincidencia",
+  "señal",
 ];
 
 /**
@@ -490,6 +534,13 @@ const NEGACIONES_LOCKED: string[] = [
   // lobby" ("Esto no describe la actividad de lobby en torno al proyecto…"). Misma
   // razón que arriba — el copy honesto usa el término para NEGARLO explícitamente.
   EMPTY_MENCIONES_LOBBY,
+  // Leyenda SIMILITUD-VOTO (102-01, single-source en similitud-votacion-comparar.tsx).
+  // CONTIENE "señal" y "afinidad" (términos prohibidos) para NEGARLOS ("La coincidencia
+  // alta es la norma, no una señal… no indica afinidad, coordinación ni bancada…"). Sin
+  // restarla, el scan de SUPERFICIES_VSIM se auto-cazaría sobre la propia superficie que
+  // renderiza la leyenda (Pitfall 3, lección BLOCKER 91: registrar la negación ANTES de
+  // añadir la superficie al scan). Importada verbatim.
+  LEYENDA_SIMILITUD_VOTO,
 ];
 
 /**
@@ -562,7 +613,7 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
 
   it("ningún término prohibido aparece en el texto renderizado (post-strip de comentarios)", () => {
     const offenders: string[] = [];
-    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA, ...SUPERFICIES_DEEPLINK, ...SUPERFICIES_PANEL, ...SUPERFICIES_RELACIONES]) {
+    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA, ...SUPERFICIES_DEEPLINK, ...SUPERFICIES_PANEL, ...SUPERFICIES_RELACIONES, ...SUPERFICIES_VSIM]) {
       const full = path.join(APP_ROOT, rel);
       let raw: string;
       try {
@@ -805,6 +856,44 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
       expect.arrayContaining(["aliado", "bloque de", "coordina con"]),
     );
   });
+
+  it("VSIM (102-01): caza vocabulario de afinidad por co-votación inyectado (votan igual / votan juntos / votan parecido / tasa de coincidencia / señal / aliados) sobre lo NUEVO", () => {
+    // Idioms VSIM FRESCOS inyectados en un fixture EN MEMORIA que simula la sección de
+    // similitud de votación. Prueba que el guard MUERDE sobre el carril VSIM aunque la
+    // LEYENDA_SIMILITUD_VOTO (que NIEGA 'afinidad'/'señal') esté restada en
+    // NEGACIONES_LOCKED — que dos parlamentarios COINCIDAN en votaciones es un CONTEO de
+    // hechos, jamás un juicio de bancada ni una insinuación de coordinación. La cifra NO
+    // es una "señal", la coincidencia NO es una "tasa de afinidad".
+    const fixtureMutado = `
+      export function SimilitudMala() {
+        return (
+          <section>
+            <p>Estos parlamentarios votan igual, votan juntos y votan parecido; son aliados.</p>
+            <p>Su tasa de coincidencia es una señal de bancada.</p>
+          </section>
+        );
+      }
+    `;
+    const hits = detectarInsinuaciones(fixtureMutado);
+    expect(
+      hits,
+      "El detector NO cazó vocabulario de afinidad por co-votación inyectado → el guard VSIM sería un no-op",
+    ).toEqual(
+      expect.arrayContaining([
+        "votan igual",
+        "votan juntos",
+        "votan parecido",
+        "aliados",
+        "tasa de coincidencia",
+        "señal",
+      ]),
+    );
+  });
+
+  it("VSIM (102-01): caza el femenino/plural `aliada` inyectado (el límite de palabra no lo cubre desde `aliado`)", () => {
+    const fixtureMutado = `<p>Es aliada de la misma bancada.</p>`;
+    expect(detectarInsinuaciones(fixtureMutado)).toContain("aliada");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -908,5 +997,17 @@ describe("(3) Sin falsos positivos — strip de comentarios, límites de palabra
       export const E = <p>{EMPTY}</p>;
     `;
     expect(detectarInsinuaciones(conEmpty)).toEqual([]);
+  });
+
+  it("VSIM (102-01): la leyenda de similitud de voto (que NIEGA 'señal'/'afinidad') NO es offender", () => {
+    // Restada en NEGACIONES_LOCKED (Pitfall 3, lección BLOCKER 91): la leyenda CONTIENE
+    // "señal" y "afinidad" (términos prohibidos) pero los NIEGA ("La coincidencia alta es
+    // la norma, no una señal… no indica afinidad, coordinación ni bancada…") → montar
+    // verbatim → []. Sin la resta, el linter daría falso-positivo y BLOQUEARÍA la fase.
+    const conLeyenda = `
+      const LEYENDA = ${JSON.stringify(LEYENDA_SIMILITUD_VOTO)};
+      export const V = <p>{LEYENDA}</p>;
+    `;
+    expect(detectarInsinuaciones(conLeyenda)).toEqual([]);
   });
 });
