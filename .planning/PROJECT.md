@@ -24,7 +24,11 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 **Método (LOCKED por el operador):** TODO con base empírica — spikes, iteraciones BrowserOS, revisión, diseño, crítica, loop. Primero QUÉ (señales con evidencia), después CÓMO (frontend). Corrida en contexto limpio con prompt listo (`.planning/PROMPT-v10.0-build-autonomo.md`).
 
-## Current State: v9.0 shipped (2026-07-23)
+## Current State: v10.0 en curso (pasada 2)
+
+**Phases 97-100 completas** (auth spike PASS, señales honestas gate 98, materializador+cron 99, panel actualidad LIVE deploy `3198e159`). **Phase 101 completa (2026-07-24):** relaciones des-enterradas — bloque "Relaciones con otros parlamentarios" above-the-fold (5 bloques, grid 2×2), `/comparar?a=&b=` con 4 ejes factuales no-voto e intersección honesta 3-estados, RPC `militancia_historica_compartida` (0067, net-new 696) aplicada a PROD con pgTAP 9/9; audit REL: zona = solo-Senado (Cámara sin distrito en fuente), lobby-misma-contraparte DIFERIDA (contraparte_id 0/17.681), coalición Servel VIABLE (ingesta pendiente de decisión) / comités Senado DIFERIDA (host firewalled). Review clean tras fix-loop (CR-01..03, WR-01..06). Deploy + BrowserOS de 101 quedan para Phase 104 E2E (101-HUMAN-UAT.md).
+
+## Current State (history): v9.0 shipped (2026-07-23)
 
 **Shipped v9.0 — Robustez de productos estrella + seguridad final** (Phases 86-96, tres pasadas autónomas). El bug estrella de /buscar quedó FIXEADO (búsqueda híbrida RRF 100% Postgres — FTS unaccent + pgvector HNSW + short-circuit boletín — golden set 32 como regresión CI permanente), con ranking explicable, filtros island de counts honestos y deep-links de validación a la fuente oficial. Parlamentario 360 ganó bio oficial dos-etapas (155 diputados + 31 senadores + 386 membresías de comisión, 0 FK fabricado), partido DIRECTO con fuente+fecha y 4 cross-links factuales anti-causales. Lobby legible (materia completa + audiencia→PL fail-closed por boletín explícito, cobertura declarada) y /agenda por día tz Chile con cobertura parcial DECLARADA. Pasada 3 de seguridad: 9 RPCs nuevas bounded (0064), guards que MUERDEN (Direction-B, crossLinkReader, env-example — 57 tests), gitleaks historial limpio, pnpm audit 14→0 (Next 16.2.11), DB viva 0 offenders, golden gates identidad 1263 verdes, y **CSP ENFORCED en ambas superficies** (deploy final `09f1d5c2`). Audit: PASSED 29/29 reqs, integración 8/8. Detalle: `milestones/v9.0-*.md`.
 
