@@ -302,6 +302,16 @@ export async function CompararEjes({
   // prefijo Circunscripción/Distrito impide el match cruzado). En la lista
   // compartida se muestra el nombre plano (camara idéntica por construcción).
   const keyComision = (c: ComisionRow) => `${c.camara}::${c.nombre}`;
+  // WR-02 (102-REVIEW): `comisiones_de_parlamentario` (0060, bounded en 0064) capea a
+  // CAP_RPC_COMISIONES filas SIN emitir `total_n`. Disciplina CR-01 aplicada al eje:
+  // la ausencia de intersección solo es declarable con AMBAS listas completas — a
+  // diferencia de los ejes de PAR (donde una dirección completa basta), aquí una
+  // comisión compartida puede caer fuera del cap de CUALQUIERA de las dos listas.
+  // Sin `total_n`, la única señal de completitud es length < cap (length === cap se
+  // trata como posiblemente truncada: fail-closed hacia "indeterminado", jamás hacia
+  // una ausencia falsa con atribución de fuente — el riesgo #1 del proyecto).
+  const comisionesCompletas =
+    comA.length < CAP_RPC_COMISIONES && comB.length < CAP_RPC_COMISIONES;
   // WR-01: la provenance del eje usa la fecha de la FUENTE por fila (máxima
   // `fecha_captura` entre las filas de A y B) cuando existe; sin filas, se declara
   // la fecha de consulta ("consultado al"), jamás una fecha de fuente fabricada.
@@ -327,16 +337,36 @@ export async function CompararEjes({
       heading="Comisiones"
       a={{
         nombre: nombreA,
-        contenido: listaOAusencia(
-          [...nombresComA].sort((x, y) => x.localeCompare(y, "es")),
-          `Sin registros de comisiones para ${nombreA} en las fuentes consultadas al ${fechaConsulta}.`,
+        contenido: (
+          <>
+            {listaOAusencia(
+              [...nombresComA].sort((x, y) => x.localeCompare(y, "es")),
+              `Sin registros de comisiones para ${nombreA} en las fuentes consultadas al ${fechaConsulta}.`,
+            )}
+            {comA.length >= CAP_RPC_COMISIONES && (
+              <p className="text-muted-foreground">
+                Lista posiblemente truncada: el canal entrega a lo más{" "}
+                {CAP_RPC_COMISIONES} registros. Ver el detalle en la ficha.
+              </p>
+            )}
+          </>
         ),
       }}
       b={{
         nombre: nombreB,
-        contenido: listaOAusencia(
-          [...nombresComB].sort((x, y) => x.localeCompare(y, "es")),
-          `Sin registros de comisiones para ${nombreB} en las fuentes consultadas al ${fechaConsulta}.`,
+        contenido: (
+          <>
+            {listaOAusencia(
+              [...nombresComB].sort((x, y) => x.localeCompare(y, "es")),
+              `Sin registros de comisiones para ${nombreB} en las fuentes consultadas al ${fechaConsulta}.`,
+            )}
+            {comB.length >= CAP_RPC_COMISIONES && (
+              <p className="text-muted-foreground">
+                Lista posiblemente truncada: el canal entrega a lo más{" "}
+                {CAP_RPC_COMISIONES} registros. Ver el detalle en la ficha.
+              </p>
+            )}
+          </>
         ),
       }}
       interseccion={
@@ -346,9 +376,13 @@ export async function CompararEjes({
             sustantivo={comCompartidas.length === 1 ? "comisión" : "comisiones"}
             lista={comCompartidas}
           />
-        ) : (
+        ) : comisionesCompletas ? (
           <InterseccionAusente
             frase={`En las fuentes consultadas al ${fechaConsulta}, no comparten comisiones.`}
+          />
+        ) : (
+          <InterseccionIndeterminada
+            frase={`Las listas consultadas al ${fechaConsulta} pueden estar truncadas (el canal entrega a lo más ${CAP_RPC_COMISIONES} registros por parlamentario) y no permiten determinar si comparten comisiones. Ver el detalle en cada ficha.`}
           />
         )
       }
@@ -525,10 +559,13 @@ interface CoincidenciaVotosPar {
 // ── Utilidades ────────────────────────────────────────────────────────────────────
 
 // ── CR-01: intersección de PAR sobre listas cap-eadas ─────────────────────────────
-// Las RPCs cross-link (0060/0061/0067) devuelven a lo más CAP_RPC filas (orden
-// alfabético por nombre) + `total_n` (conteo completo ANTES del cap, molde WR-01 de
-// la ficha). Decidir el par por membresía en una lista truncada produce ausencias
-// FALSAS con atribución de fuente — el riesgo #1 del proyecto. Reglas:
+// Las RPCs cross-link de PAR (0061/0067, bounded en 0064) devuelven a lo más CAP_RPC
+// filas (`limit 20`, orden alfabético por nombre) + `total_n` (conteo completo ANTES
+// del cap, molde WR-01 de la ficha). `comisiones_de_parlamentario` (0060, bounded en
+// 0064) tiene OTRO cap (`limit 50` = CAP_RPC_COMISIONES) y NO emite `total_n` — su
+// disciplina de completitud vive junto al eje 2 (WR-02). Decidir el par por membresía
+// en una lista truncada produce ausencias FALSAS con atribución de fuente — el riesgo
+// #1 del proyecto. Reglas:
 //   * PRESENTE: B está en lista(A) o A está en lista(B) — un match es un hecho.
 //   * AUSENTE: solo si al menos una de las dos listas está COMPLETA (con una lista
 //     completa, la no-membresía SÍ es un hecho).
@@ -536,8 +573,14 @@ interface CoincidenciaVotosPar {
 //     JAMÁS se afirma ausencia.
 //   * Conteos: SIEMPRE `total_n` (totalHonesto), jamás el .length cap-eado.
 
-/** Cap del canal de datos de las RPCs cross-link (`limit 20` en 0060/0061/0067). */
+/** Cap del canal de datos de las RPCs cross-link de PAR (`limit 20` en 0061/0067,
+ *  re-emitidas bounded en 0064). */
 const CAP_RPC = 20;
+
+/** Cap del canal de comisiones (`limit 50` en `comisiones_de_parlamentario`,
+ *  0060 bounded en 0064) — SIN `total_n`: la completitud solo es afirmable con
+ *  length < cap (WR-02). */
+const CAP_RPC_COMISIONES = 50;
 
 /** true si la lista NO está truncada (largo bajo el cap, o `total_n` ≤ largo). */
 function listaCompleta(filas: CrossLinkRow[]): boolean {

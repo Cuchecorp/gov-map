@@ -357,6 +357,64 @@ describe("(9) CR-02 — intersección de comisiones por camara+nombre", () => {
   });
 });
 
+// ── WR-02 (102-REVIEW): comisiones con listas al cap (50, 0064) sin match →
+//    INDETERMINADO declarado, jamás ausencia atribuida a fuente desde listas truncadas.
+describe("(9b) WR-02 — comisiones cap-eadas sin match → indeterminado, no ausencia", () => {
+  function comisionesFixture(prefijo: string) {
+    return Array.from({ length: 50 }, (_, i) => ({
+      nombre: `Comisión ${prefijo} ${String(i).padStart(2, "0")}`,
+      camara: "diputados",
+      tipo: "permanente",
+      cargo: null,
+      origen: "camara",
+      fecha_captura: "2026-01-01",
+      enlace: null,
+    }));
+  }
+
+  it("ambas listas en el cap (50) y sin intersección → limitación declarada + nota de truncamiento", async () => {
+    rpcImpl.mockImplementation((name: string, args?: Record<string, unknown>) => {
+      switch (name) {
+        case "parlamentarios_publico_v2":
+          return { data: ROSTER_DEFAULT, error: null };
+        case "comisiones_de_parlamentario":
+          return {
+            data: comisionesFixture(args?.p_id === "D1002" ? "B" : "A"),
+            error: null,
+          };
+        default:
+          return { data: [], error: null };
+      }
+    });
+    const html = await renderEjes("D1001", "D1002");
+    // La limitación se DECLARA; la ausencia con atribución de fuente NO se afirma.
+    expect(html).toContain("no permiten determinar si comparten comisiones");
+    expect(html).not.toContain("no comparten comisiones.");
+    // Las columnas declaran el truncamiento del canal (a lo más 50 registros).
+    expect(html).toContain("Lista posiblemente truncada");
+  });
+
+  it("listas cortas (bajo el cap) sin intersección → la ausencia declarada se mantiene", async () => {
+    rpcImpl.mockImplementation((name: string, args?: Record<string, unknown>) => {
+      switch (name) {
+        case "parlamentarios_publico_v2":
+          return { data: ROSTER_DEFAULT, error: null };
+        case "comisiones_de_parlamentario":
+          return {
+            data: comisionesFixture(args?.p_id === "D1002" ? "B" : "A").slice(0, 3),
+            error: null,
+          };
+        default:
+          return { data: [], error: null };
+      }
+    });
+    const html = await renderEjes("D1001", "D1002");
+    expect(html).toContain("no comparten comisiones");
+    expect(html).not.toContain("no permiten determinar si comparten comisiones");
+    expect(html).not.toContain("Lista posiblemente truncada");
+  });
+});
+
 // ── WR-01: fechas honestas (jamás una fecha de cobertura horneada en build) ─────
 describe("(10) WR-01 — provenance con fecha honesta", () => {
   it("comisiones usa la fecha_captura de la FUENTE por fila; los ejes sin fecha_captura declaran la consulta", async () => {
