@@ -227,7 +227,7 @@ Plans:
 **Plans**: 3 plans
 
 - [x] 102-01-PLAN.md — Wave 0: gate fail-closed + anti-flip + linter idioms + co_votacion∉/red + 0068 escrita + allowlist + .env.example (VSIM-02/03)
-- [ ] 102-02-PLAN.md — Aplicar 0068 a PROD + pgTAP contra schema aplicado (VSIM-01)
+- [x] 102-02-PLAN.md — Aplicar 0068 a PROD + pgTAP contra schema aplicado (VSIM-01)
 - [ ] 102-03-PLAN.md — Componente neutral + 5ª sección gated en /comparar + RTL ON/OFF/M=0 + dossier legal pending (VSIM-01/02)
 
 **UI hint**: yes
@@ -1307,7 +1307,7 @@ Plans:
 | 99. SEÑALES P1b — Materializador actualidad_senal + RPCs + cron | v10.0 | 4/4 | Complete    | 2026-07-24 |
 | 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 4/4 | Complete    | 2026-07-24 |
 | 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 3/3 | Complete    | 2026-07-25 |
-| 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 1/3 | In Progress|  |
+| 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 2/3 | In Progress|  |
 | 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 0/? | Not started | - |
 | 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 0/? | Not started | - |
 

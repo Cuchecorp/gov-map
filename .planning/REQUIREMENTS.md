@@ -38,7 +38,7 @@
 
 ### VSIM — Similitud de votación (dato listo, gate legal)
 
-- [ ] **VSIM-01**: Métrica factual pairwise "coinciden en N de M votaciones compartidas" (denominador honesto: solo votaciones sustantivas donde ambos votaron) con caveat de base-alta OBLIGATORIO ("la coincidencia alta es la norma, no una señal") — nunca score/ranking/eje ideológico/mapa (anti-modelo DW-NOMINATE).
+- [x] **VSIM-01**: Métrica factual pairwise "coinciden en N de M votaciones compartidas" (denominador honesto: solo votaciones sustantivas donde ambos votaron) con caveat de base-alta OBLIGATORIO ("la coincidencia alta es la norma, no una señal") — nunca score/ranking/eje ideológico/mapa (anti-modelo DW-NOMINATE).
 - [x] **VSIM-02**: La similitud se muestra en `/comparar` detrás de flag deny-by-default (`VSIM_PUBLIC_ENABLED` o equivalente) — el flip requiere sign-off legal humano (dossier, clase MONEY/NET); el agente jamás flipea.
 - [x] **VSIM-03**: Linter anti-insinuación extendido ANTES del copy: idioms de similitud vetados ("votan juntos", "aliados", "más afín", "tasa de coincidencia" como ranking) + leyenda en NEGACIONES_LOCKED + mutation self-check; `co_votacion` JAMÁS entra a /red.
 
@@ -90,7 +90,7 @@
 | REL-03 | Phase 101 | Complete |
 | REL-04 | Phase 101 | Complete |
 | REL-05 | Phase 101 | Complete |
-| VSIM-01 | Phase 102 | Pending |
+| VSIM-01 | Phase 102 | Complete |
 | VSIM-02 | Phase 102 | Complete |
 | VSIM-03 | Phase 102 | Complete |
 | NOTIF-01 | Phase 103 | Pending |
