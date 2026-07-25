@@ -57,6 +57,7 @@ as $$
     select v.votacion_id, min(v.seleccion) as seleccion
     from public.voto v
     where v.parlamentario_id = p_a
+      and p_a <> p_b                                -- IN-01: self-pair → (0, 0, null), nunca un 100% trivial
       and v.estado_vinculo = 'confirmado'
       and v.seleccion in ('si','no','abstencion')   -- SUSTANTIVA: pareo/ausente excluidos
     group by v.votacion_id

@@ -21,7 +21,7 @@
 -- pgTAP es la ÚNICA prueba válida del DDL (Pitfall 6): typecheck no prueba que Postgres corrió el DDL.
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ── La RPC existe con su firma de entrada 2-arg (text, text) ─────────────────────────────
 select has_function('public', 'coincidencia_votos_par', ARRAY['text','text'], 'coincidencia_votos_par(text,text) existe');
@@ -140,6 +140,13 @@ select is(
   (select row(n_coinciden, m_compartidas, fecha_captura_max)::text from public.coincidencia_votos_par('T68A','T68B')),
   row(1::bigint, 2::bigint, '2024-02-01T00:00:00Z'::timestamptz)::text,
   'WR-01: seleccion en conflicto para la misma persona excluye la votación de N, M y fecha_captura_max');
+
+-- ── SELF-PAIR (IN-01): el contrato de la RPC (no solo la UI) rechaza p_a = p_b —
+--    devuelve (0, 0, null), jamás el 100% trivial de comparar a alguien consigo mismo.
+select is(
+  (select row(n_coinciden, m_compartidas, fecha_captura_max)::text from public.coincidencia_votos_par('T68A','T68A')),
+  row(0::bigint, 0::bigint, null::timestamptz)::text,
+  'IN-01: self-pair (p_a = p_b) devuelve 0/0/null, nunca 100% trivial');
 
 select * from finish();
 rollback;
