@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
 status: executing
-stopped_at: Completed 99-03-PLAN.md
-last_updated: "2026-07-25T02:31:12.320Z"
-last_activity: 2026-07-25 -- Phase 102 planning complete
+stopped_at: Completed 102-01-PLAN.md
+last_updated: "2026-07-25T02:52:09.909Z"
+last_activity: 2026-07-25
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 16
   percent: 63
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 101 — RELACIONES P2a — Audit brecha + bloque relaciones + /comparar + coalición empírica
+**Current focus:** Phase 102 — RELACIONES P2b — Similitud de votación (gated legal)
 
 ## Current Position
 
-Phase: 102
-Plan: Not started
+Phase: 102 (RELACIONES P2b — Similitud de votación (gated legal)) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-25 -- Phase 102 planning complete
+Last activity: 2026-07-25
 
 ## Performance Metrics
 
@@ -100,6 +100,7 @@ Last activity: 2026-07-25 -- Phase 102 planning complete
 | Phase 101 P01 | 14min | 2 tasks | 1 files |
 | Phase 101 P02 | 22min | 2 tasks | 7 files |
 | Phase 101 P03 | 35min | 2 tasks | 6 files |
+| Phase 102 P01 | 15min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -169,6 +170,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 101-01: audit N/M relaciones GATE — militancia histórica net-new 696 LOCKED (vs shared-ever 1966); lobby-misma-contraparte DIFERIDA (contraparte_id 0/17681 + name-match conflación CGE); zona eje SOLO Senado (diputados 155->0, NO fabricar distrito); coalición Servel VIABLE (dos-etapas R2 documentada NO ejecutada) / comités Senado DIFERIDA (sitio.senado.cl firewalled timeout 21s); RULE-1 name-match 134 parl no 136; CERO write PROD/R2
 - [Phase ?]: 101-02: Wave 0 guards ANTES del copy — SUPERFICIES_RELACIONES (4 superficies, loader tolera ausentes) + self-check muerde (aliado/bloque de/coordina con) + militancia_historica_compartida allowlistada; RULE-3: migración 0067 ESCRITA (net-new-only 696, cruce partido_alias) para no dejar huérfana la entrada en Direction-B (allowlist⊆definidas), NO aplicada a PROD; REL-02: RelacionesSection composición pura por children monta bloque relaciones above-the-fold en section id=relaciones con heading+leyenda de grupo+grid 2x2 [&>section]:mt-0 (Pitfall A4), CrossLinkBloque byte-intacto; chip #relaciones omitido del rail (conteo-driven); RULE-1: page.test.tsx resta LEYENDA_CROSS_LINK antes del negative-match
 - [Phase ?]: 0067 net-new (696) aplicada a PROD + pgTAP 6/6; /comparar 4 ejes; co-autoría count-only
+- [Phase ?]: [Phase 102] 102-01: Wave 0 gate VSIM fail-closed (=== 'true') espejo money + anti-flip V1/V2/V3 + self-check; flip = acto humano anti-DW-NOMINATE (sign-off 102-LEGAL-DOSSIER-VSIM). Linter extendido idioms VSIM DEDUPE (votan juntos/igual/parecido, aliados/aliada, tasa de coincidencia, señal) + LEYENDA_SIMILITUD_VOTO restada de NEGACIONES_LOCKED antes del scan (Pitfall 3). co_votacion ramas muertas borradas de /red + guard estatico permanente strip-comments TS/SQL. 0068_coincidencia_votos_par ESCRITA no aplicada (3 cols agregadas, filtro sustantiva seleccion in si/no/abstencion sobre estado_vinculo=confirmado, doble-revoke CERO grant) + allowlist Direction-B. VSIM_PUBLIC_ENABLED=false en .env.example. RULE-3: */ literal en JSDoc rompia esbuild -> reescrito.
 
 ### Pending Todos
 
@@ -224,8 +226,8 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-24T20:28:58.694Z
-Stopped at: Completed 99-03-PLAN.md
+Last session: 2026-07-25T02:52:09.894Z
+Stopped at: Completed 102-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
