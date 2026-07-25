@@ -113,8 +113,10 @@ LOCKED (102-UI-SPEC §Color/§Typography LOCKS, enforzadas por linter y RTL):
   DW-NOMINATE. Verificado por RTL (figura sin `text-accent-product`/`font-semibold`).
 - **`co_votacion` JAMÁS en `/red`.** La similitud de voto NO es una arista del grafo de
   influencia (Plan 01 borró las ramas muertas `co_votacion` de `/red` y montó
-  `co-votacion-red-guard.test.ts`, test estático permanente que verifica en diff que
-  `co_votacion`/`covotacion` no reaparece en ningún archivo de `/red`).
+  `co-votacion-red-guard.test.ts`, escaneo estático PERMANENTE del árbol completo de
+  `/red` (no un chequeo de diff): falla si `co_votacion`/`covotacion` reaparece en el
+  código de `/red`, y además caza la PROSA renderizada con idiomas de voto
+  ("misma votación", "votaciones", "votan"…) post-strip de comentarios).
 
 En suma: VSIM responde la pregunta literal del ciudadano ("¿votan parecido?") con
 **"Coinciden en N de M votaciones compartidas … la coincidencia alta es la norma"** — un
@@ -155,7 +157,9 @@ es la fecha de la FUENTE, JAMÁS una "fecha de ingreso" (regla LOCKED heredada).
   popular, sobre datos de votación ya públicos de Cámara y Senado.
 - **Candado de DATOS:** la RPC 0068 es secdef con **doble-revoke CERO grant**
   (`revoke ... from anon, authenticated`), `search_path=''`, `statement_timeout '5s'`. pgTAP
-  10/10 contra el schema aplicado (Plan 02) verifica que anon/authenticated NO tienen execute.
+  14/14 contra el schema aplicado (Plan 02 + fix WR-01/IN-01 de la review 102: dedupe por
+  (votación, parlamentario) y guard de self-pair) verifica que anon/authenticated NO tienen
+  execute.
 - **Candado de PRESENTACIÓN:** flag server-only `VSIM_PUBLIC_ENABLED` (default `false`,
   fail-closed, `=== "true"`) en `app/lib/vsim-gate.ts`. Con el flag OFF, la sección de
   similitud **NO existe en el DOM** — `return null` server-side ANTES de cualquier
@@ -168,9 +172,12 @@ es la fecha de la FUENTE, JAMÁS una "fecha de ingreso" (regla LOCKED heredada).
   (3) ninguna ruta lee `VSIM_PUBLIC_ENABLED` crudo fuera del único chokepoint. Un commit de
   agente que relaje el default o filtre el env crudo hace fallar CI.
 - **Linter anti-insinuación (Plan 01):** `app/lib/anti-insinuacion-guard.test.ts` escanea la
-  superficie VSIM con una blocklist de idioms de bancada/afinidad ("votan juntos/igual/parecido",
-  "aliados", "más afín", "tasa de coincidencia", "bloque de votación", "vota como", "cercano",
-  etc., con tildes exactas), y la leyenda base-alta se resta de `NEGACIONES_LOCKED` (contiene
+  superficie VSIM con una blocklist de idioms de bancada/afinidad — términos VERBATIM de
+  `TERMINOS_PROHIBIDOS`, con tildes exactas y límite de palabra: "vota como"/"votan como",
+  "nivel de acuerdo", "similar a", "aliado", "afín" (cubre "más afín"), "cercano a" (cubre
+  "cercano a su bloque"; el adjetivo suelto "cercano" sin la preposición NO está en la
+  lista), "bloque de" (cubre "bloque de votación"), "coordina con", etc. — y la leyenda
+  base-alta se resta de `NEGACIONES_LOCKED` (contiene
   "señal"/"afinidad" para NEGARLOS) para que el linter no se auto-cace.
 
 El doble candado (datos + presentación) más el guard anti-flip y el linter son defensa en
