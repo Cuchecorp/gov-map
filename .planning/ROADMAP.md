@@ -224,7 +224,10 @@ Plans:
   3. El linter anti-insinuación se extiende ANTES del copy con los idioms de similitud vetados ("votan juntos", "aliados", "más afín", "tasa de coincidencia" como ranking) + leyenda en `NEGACIONES_LOCKED` + mutation self-check
   4. `co_votacion` JAMÁS entra a /red (explosión de clique + insinuación espacial) — verificable en el diff
 
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 102-01-PLAN.md — Wave 0: gate fail-closed + anti-flip + linter idioms + co_votacion∉/red + 0068 escrita + allowlist + .env.example (VSIM-02/03)
+- [ ] 102-02-PLAN.md — Aplicar 0068 a PROD + pgTAP contra schema aplicado (VSIM-01)
+- [ ] 102-03-PLAN.md — Componente neutral + 5ª sección gated en /comparar + RTL ON/OFF/M=0 + dossier legal pending (VSIM-01/02)
 
 **UI hint**: yes
 
