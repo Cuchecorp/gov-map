@@ -50,7 +50,7 @@ select ok(
 -- ── El returns table es EXACTAMENTE 3 columnas AGREGADAS (nunca lista per-votación) ──────
 select is(
   pg_get_function_result('public.coincidencia_votos_par(text,text)'::regprocedure),
-  'TABLE(n_coinciden bigint, m_compartidas bigint, fecha_captura_max timestamptz)',
+  'TABLE(n_coinciden bigint, m_compartidas bigint, fecha_captura_max timestamp with time zone)',
   'coincidencia_votos_par emite SOLO n_coinciden/m_compartidas/fecha_captura_max (3 agregados)');
 
 -- ── FIXTURE (dentro de la transacción, se hace rollback): un par PA/PB con votaciones ────
@@ -74,16 +74,18 @@ values
 -- V2: PA 'no' / PB 'si' confirmado → cuenta pero NO coincide
 -- V3: ambos 'pareo' confirmado → NO cuenta (no sustantiva)
 -- V4: ambos 'si' pero no_confirmado → NO cuenta (estado_vinculo != confirmado)
-insert into voto (votacion_id, mencion_nombre, parlamentario_id, seleccion, estado_vinculo)
+-- `fuente_voter_id` es NOT NULL con unique (votacion_id, fuente_voter_id) desde 0009 →
+-- cada fila del fixture provee un discriminador distinto por votante (no derivar del nombre).
+insert into voto (votacion_id, mencion_nombre, parlamentario_id, seleccion, estado_vinculo, fuente_voter_id)
 values
-  ('test:v68-1', 'mA1', 'T68A', 'si',    'confirmado'),
-  ('test:v68-1', 'mB1', 'T68B', 'si',    'confirmado'),
-  ('test:v68-2', 'mA2', 'T68A', 'no',    'confirmado'),
-  ('test:v68-2', 'mB2', 'T68B', 'si',    'confirmado'),
-  ('test:v68-3', 'mA3', 'T68A', 'pareo', 'confirmado'),
-  ('test:v68-3', 'mB3', 'T68B', 'pareo', 'confirmado'),
-  ('test:v68-4', 'mA4', 'T68A', 'si',    'no_confirmado'),
-  ('test:v68-4', 'mB4', 'T68B', 'si',    'no_confirmado');
+  ('test:v68-1', 'mA1', 'T68A', 'si',    'confirmado',    'T68A'),
+  ('test:v68-1', 'mB1', 'T68B', 'si',    'confirmado',    'T68B'),
+  ('test:v68-2', 'mA2', 'T68A', 'no',    'confirmado',    'T68A'),
+  ('test:v68-2', 'mB2', 'T68B', 'si',    'confirmado',    'T68B'),
+  ('test:v68-3', 'mA3', 'T68A', 'pareo', 'confirmado',    'T68A'),
+  ('test:v68-3', 'mB3', 'T68B', 'pareo', 'confirmado',    'T68B'),
+  ('test:v68-4', 'mA4', 'T68A', 'si',    'no_confirmado', 'T68A'),
+  ('test:v68-4', 'mB4', 'T68B', 'si',    'no_confirmado', 'T68B');
 
 -- ── DENOMINADOR: m_compartidas cuenta SOLO las 2 sustantivas (V1,V2); pareo/no_confirmado NO
 select is(
