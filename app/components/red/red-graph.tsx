@@ -477,8 +477,8 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
           </li>
           <li>
             Una relación es un hecho documentado (audiencia de la misma
-            contraparte de lobby, misma votación). <strong>Nunca</strong> indica
-            afinidad, acuerdo ni motivo.
+            contraparte de lobby). <strong>Nunca</strong> indica afinidad,
+            acuerdo ni motivo.
           </li>
           <li>
             El filo izquierdo de cada tarjeta indica la cámara:{" "}
@@ -486,8 +486,8 @@ export function RedGraph({ subgrafo, seedId }: RedGraphProps) {
           </li>
         </ol>
         <p className="net-leyenda__fuente">
-          Fuente: Ley del Lobby (Ley 20.730) y votaciones de sala · datos
-          ingestados por este observatorio.
+          Fuente: Ley del Lobby (Ley 20.730) · datos ingestados por este
+          observatorio.
         </p>
       </details>
 
