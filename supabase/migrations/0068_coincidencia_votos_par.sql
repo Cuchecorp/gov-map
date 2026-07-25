@@ -19,6 +19,17 @@
 -- denominador. `votacion.boletin` es NOT NULL con FK→proyecto, así que toda votación
 -- ya es "de un proyecto de ley" (no hace falta join extra a proyecto).
 --
+-- ── DEDUPE POR (votacion, parlamentario) (WR-01, re-apply) ───────────────────────
+-- El unique real de `voto` es (votacion_id, fuente_voter_id) — NO
+-- (votacion_id, parlamentario_id) (0009). La resolución de identidad puede producir
+-- DOS filas confirmadas para la misma persona en la misma votación (p.ej. canal
+-- Cámara-id + canal Senado nombre-probable flipeado a confirmado). Un join crudo
+-- multiplicaría filas e inflaría N y M en silencio. Cada CTE agrupa por votacion_id
+-- y EXCLUYE del numerador Y del denominador toda votación donde la misma persona
+-- tenga selecciones en conflicto (`having count(distinct seleccion) = 1`): duplicado
+-- concordante colapsa a 1 fila; duplicado contradictorio = dato no confiable → fuera
+-- (honesto y determinista; jamás elegir una fila al azar bajo cifra pública gated).
+--
 -- ── ORDEN DE APPLY / COMANDO (Plan 02) ───────────────────────────────────────────
 -- Última migración = 0067. Ésta es la 0068 y se aplica DESPUÉS:
 --   PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" --single-transaction -f \
@@ -43,18 +54,22 @@ language sql stable security definer
   set statement_timeout = '5s'
 as $$
   with a as (
-    select v.votacion_id, v.seleccion
+    select v.votacion_id, min(v.seleccion) as seleccion
     from public.voto v
     where v.parlamentario_id = p_a
       and v.estado_vinculo = 'confirmado'
       and v.seleccion in ('si','no','abstencion')   -- SUSTANTIVA: pareo/ausente excluidos
+    group by v.votacion_id
+    having count(distinct v.seleccion) = 1          -- WR-01: dedupe; conflicto → fuera de N y M
   ),
   b as (
-    select v.votacion_id, v.seleccion
+    select v.votacion_id, min(v.seleccion) as seleccion
     from public.voto v
     where v.parlamentario_id = p_b
       and v.estado_vinculo = 'confirmado'
       and v.seleccion in ('si','no','abstencion')   -- SUSTANTIVA: pareo/ausente excluidos
+    group by v.votacion_id
+    having count(distinct v.seleccion) = 1          -- WR-01: dedupe; conflicto → fuera de N y M
   )
   select
     count(*) filter (where a.seleccion = b.seleccion) as n_coinciden,

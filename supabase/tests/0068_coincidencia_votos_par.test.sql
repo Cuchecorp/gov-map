@@ -12,13 +12,16 @@
 --     NUNCA una lista per-votación (máquina de sospechas, fuera de alcance),
 --   * DENOMINADOR SUSTANTIVA (VSIM-01, RESEARCH Test Map): sobre un par fixture, las filas
 --     `pareo` y `no_confirmado` NO cuentan en m_compartidas — solo `si/no/abstencion` sobre
---     `estado_vinculo='confirmado'`; y n_coinciden ≤ m_compartidas.
+--     `estado_vinculo='confirmado'`; y n_coinciden ≤ m_compartidas,
+--   * DEDUPE (WR-01): el unique real de `voto` es (votacion_id, fuente_voter_id), NO
+--     (votacion_id, parlamentario_id) — una fila confirmada duplicada para la misma persona
+--     en la misma votación NO infla N ni M; selecciones en conflicto EXCLUYEN la votación.
 -- Corre vía `PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -f` (vs PROD aplicado).
 -- Espeja 0067_militancia_historica_compartida.test.sql (has_function/is/ok, begin/plan(N)/rollback).
 -- pgTAP es la ÚNICA prueba válida del DDL (Pitfall 6): typecheck no prueba que Postgres corrió el DDL.
 
 begin;
-select plan(10);
+select plan(13);
 
 -- ── La RPC existe con su firma de entrada 2-arg (text, text) ─────────────────────────────
 select has_function('public', 'coincidencia_votos_par', ARRAY['text','text'], 'coincidencia_votos_par(text,text) existe');
@@ -104,6 +107,39 @@ select is(
   (select fecha_captura_max from public.coincidencia_votos_par('T68A','T68B')),
   '2024-02-01T00:00:00Z'::timestamptz,
   'fecha_captura_max = max de las votaciones sustantivas compartidas (no null, excluye pareo/no_confirmado)');
+
+-- ── DEDUPE (WR-01): duplicado CONCORDANTE — segunda fila confirmada de T68A en V1 con la
+--    MISMA seleccion bajo otro fuente_voter_id (legal: unique es votacion_id+fuente_voter_id).
+--    Sin dedupe, el join 2×1 inflaría m_compartidas a 3 y n_coinciden a 2.
+insert into voto (votacion_id, mencion_nombre, parlamentario_id, seleccion, estado_vinculo, fuente_voter_id)
+values ('test:v68-1', 'mA1dup', 'T68A', 'si', 'confirmado', 'T68A-dup');
+
+select is(
+  (select m_compartidas from public.coincidencia_votos_par('T68A','T68B')),
+  2::bigint,
+  'WR-01: fila duplicada confirmada (mismo parlamentario+votacion, otro fuente_voter_id) NO infla m_compartidas');
+
+select is(
+  (select n_coinciden from public.coincidencia_votos_par('T68A','T68B')),
+  1::bigint,
+  'WR-01: fila duplicada confirmada NO infla n_coinciden');
+
+-- ── DEDUPE (WR-01): duplicado CONTRADICTORIO — en V5 T68A tiene "si" Y "no" confirmados
+--    (dato no confiable) y T68B "si". La votación entera queda FUERA de N y M (jamás
+--    elegir una fila al azar bajo cifra pública gated).
+insert into votacion (id, boletin, camara, origen, enlace, fecha_captura)
+values ('test:v68-5', '68000-01', 'diputados', 'test:0068', 'https://test/0068', '2024-05-01T00:00:00Z');
+
+insert into voto (votacion_id, mencion_nombre, parlamentario_id, seleccion, estado_vinculo, fuente_voter_id)
+values
+  ('test:v68-5', 'mA5a', 'T68A', 'si', 'confirmado', 'T68A'),
+  ('test:v68-5', 'mA5b', 'T68A', 'no', 'confirmado', 'T68A-dup'),
+  ('test:v68-5', 'mB5',  'T68B', 'si', 'confirmado', 'T68B');
+
+select is(
+  (select row(n_coinciden, m_compartidas, fecha_captura_max)::text from public.coincidencia_votos_par('T68A','T68B')),
+  row(1::bigint, 2::bigint, '2024-02-01T00:00:00Z'::timestamptz)::text,
+  'WR-01: seleccion en conflicto para la misma persona excluye la votación de N, M y fecha_captura_max');
 
 select * from finish();
 rollback;
