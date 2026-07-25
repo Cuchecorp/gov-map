@@ -23,6 +23,15 @@
  * Molde: `walkSourceFiles`/`stripTsComments` de money-antiflip-guard.test.ts
  * (reproducidos módulo-local, no importados). Mutation self-check EN MEMORIA prueba que
  * el guard MUERDE si `co_votacion` se inyecta en un fixture de código.
+ *
+ * WR-03 (102-REVIEW) — tripwire de PROSA RENDERIZADA: el identificador `co_votacion`
+ * no basta. El CR-01 de 102 (la leyenda viva de /red decía "misma votación" y citaba
+ * "votaciones de sala") pasó este guard porque el copy no nombra el identificador.
+ * Lo que el régimen prohíbe es el CONCEPTO voto sobre el grafo de personas, no solo
+ * el símbolo. Por eso el guard también escanea el código post-strip de comentarios
+ * (strings/JSX incluidos) buscando idiomas de voto (votación/votaciones/vota(n/ron)/
+ * voto(s)). Los comentarios que DOCUMENTAN la exclusión siguen siendo legítimos
+ * (se strippean antes del match).
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -46,6 +55,12 @@ const NET_SCHEMA_SQL = path.join(
 
 // El patrón prohibido: co_votacion / covotacion (con o sin guion bajo).
 const CO_VOTACION_RE = /co_?votacion/i;
+
+// WR-03: idiomas de VOTO en prosa/código renderizado de /red. `votaci` cubre
+// votación/votaciones (con y sin tilde); los \b evitan falsos positivos por
+// subcadena (p.ej. "pivota" NO dispara — la 'v' no abre palabra ahí).
+const PROSA_VOTO_RE =
+  /votaci|\bvota\b|\bvotan\b|\bvotar\b|\bvotaron\b|\bvoto\b|\bvotos\b|votó/i;
 
 // ---------------------------------------------------------------------------
 // stripTsComments (espejo verbatim del molde) — quita `/* */` y `// …` (skip `://`).
@@ -133,6 +148,15 @@ export function tieneCoVotacionEnCodigo(
   return CO_VOTACION_RE.test(stripped);
 }
 
+/**
+ * Detector puro WR-03: `true` si el código TS post-strip de comentarios (strings y
+ * JSX incluidos) contiene un idioma de VOTO. En /red el concepto entero está
+ * prohibido (anti-DW-NOMINATE), no solo el identificador `co_votacion`.
+ */
+export function tieneProsaVotoEnCodigo(fileSrc: string): boolean {
+  return PROSA_VOTO_RE.test(stripTsComments(fileSrc));
+}
+
 // ---------------------------------------------------------------------------
 // (1) Guard — CERO `co_votacion` en el CÓDIGO de la superficie /red (comentarios OK).
 // ---------------------------------------------------------------------------
@@ -158,6 +182,29 @@ describe("(1) VSIM-03 — co_votacion ∉ código de la superficie /red", () => 
       `Archivo(s) de /red que nombran co_votacion en código: [${offenders.join("; ")}]. ` +
         "La co-votación/similitud JAMÁS entra al grafo /red (VSIM-03, anti-DW-NOMINATE). " +
         "Si la mención es documentación de la exclusión, envuélvela en un comentario.",
+    ).toHaveLength(0);
+  });
+
+  it("WR-03: ningún archivo de /red contiene PROSA de voto renderizada (misma votación / votaciones / votan…)", () => {
+    // El agujero por el que cayó CR-01 (102): la leyenda decía "misma votación" y
+    // "votaciones de sala" sin nombrar jamás el identificador co_votacion. El
+    // concepto voto NO existe en la superficie /red: cero idiomas de voto en el
+    // código post-strip (strings/JSX incluidos). La documentación en comentarios
+    // sigue siendo legítima (se strippea antes del match).
+    const offenders: string[] = [];
+    for (const file of redFiles) {
+      const rel = path.relative(APP_ROOT, file).split(path.sep).join("/");
+      const src = readFileSync(file, "utf-8");
+      if (tieneProsaVotoEnCodigo(src)) {
+        offenders.push(rel);
+      }
+    }
+    expect(
+      offenders,
+      `Archivo(s) de /red con prosa de voto en código renderizado: [${offenders.join("; ")}]. ` +
+        "El concepto voto/votación JAMÁS entra a la superficie /red (VSIM-03, " +
+        "anti-DW-NOMINATE) — ni como identificador ni como copy. Si es documentación " +
+        "de la exclusión, envuélvela en un comentario.",
     ).toHaveLength(0);
   });
 
@@ -208,5 +255,38 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
     const codigo =
       "alter table arista add constraint c check (tipo in ('co_lobby_contraparte','co_votacion'));";
     expect(tieneCoVotacionEnCodigo(codigo, "sql")).toBe(true);
+  });
+
+  // ── WR-03: el tripwire de PROSA muerde sobre el copy exacto del CR-01 de 102 ──
+  it("WR-03: detecta 'misma votación' en JSX renderizado (el copy del CR-01)", () => {
+    const leyendaStale = `
+      export const Paso = () => (
+        <li>Una relación es un hecho documentado (audiencia, misma votación).</li>
+      );
+    `;
+    expect(tieneProsaVotoEnCodigo(leyendaStale)).toBe(true);
+  });
+
+  it("WR-03: detecta 'votaciones de sala' en un string de fuente", () => {
+    expect(
+      tieneProsaVotoEnCodigo(`const fuente = "Ley del Lobby y votaciones de sala";`),
+    ).toBe(true);
+  });
+
+  it("WR-03: detecta 'votan'/'votaron' en prosa renderizada", () => {
+    expect(tieneProsaVotoEnCodigo(`const t = "cómo votan juntos";`)).toBe(true);
+    expect(tieneProsaVotoEnCodigo(`const t = "votaron lo mismo";`)).toBe(true);
+  });
+
+  it("WR-03: NO reporta prosa de voto SOLO en comentarios (documentación de la exclusión)", () => {
+    const soloComentario =
+      "// la leyenda ya NO dice 'misma votación' (VSIM-03)\nexport const x = 1;";
+    expect(tieneProsaVotoEnCodigo(soloComentario)).toBe(false);
+  });
+
+  it("WR-03: NO reporta subcadenas inocentes ('pivota' no es 'vota')", () => {
+    expect(tieneProsaVotoEnCodigo(`const t = "la curva pivota en el seed";`)).toBe(
+      false,
+    );
   });
 });
