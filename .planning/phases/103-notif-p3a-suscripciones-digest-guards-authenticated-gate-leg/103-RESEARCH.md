@@ -537,20 +537,21 @@ export function notifPublicEnabled(
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact "novedad" source for the digest cursor**
-   - What we know: subscriptions target proyecto or parlamentario; novedades live in `actualidad_senal` and `tramitacion_evento`.
-   - What's unclear: the precise join from a `parlamentario` subscription to "its novedades" (via authored proyectos? votes? citaciones?) vs a `proyecto` subscription (its tramitacion_evento).
-   - Recommendation: Plan a small SPIKE/query-design task defining the novedad query per subscription type; keep it factual (fuente+fecha) and reuse RPCs where possible. Start with `proyecto → tramitacion_evento since cursor` (clearest) and `parlamentario → their authored proyectos' events`.
+   - What we know: subscriptions target proyecto or parlamentario; novedades live in `tramitacion_evento` (the timeline table, monotonic `id bigint generated always as identity`).
+   - **RESOLVED:** Covered by **Plan 04 Task 1** (`packages/notificaciones/src/digest.ts` -> `computeNovedades`). Query design verified against the real schema (`supabase/migrations/0008_tramitacion.sql`, `0051_proyecto_autor.sql`):
+     - **proyecto subscription** (`suscripcion.objetivo_id` = `proyecto.boletin`): `select ... from tramitacion_evento where boletin = :objetivo_id and id > :cursor order by id` -- the cursor is the max `tramitacion_evento.id` already sent. Each event carries `fecha`, `tipo`, `descripcion`, `enlace`, `origen` -> factual fuente+fecha, no synthesis.
+     - **parlamentario subscription** (`suscripcion.objetivo_id` = `parlamentario.id`): resolve authored boletines via `proyecto_autor` (`select boletin from proyecto_autor where parlamentario_id = :objetivo_id and estado_vinculo = 'confirmado'`), then `select ... from tramitacion_evento where boletin = any(:boletines) and id > :cursor order by id`. Only `estado_vinculo = 'confirmado'` authorships are used (fail-closed -- never surface a `no_confirmado`/NULL link). Columns confirmed present: `proyecto_autor.parlamentario_id` (FK, indexed `where parlamentario_id is not null`), `proyecto_autor.boletin`, `proyecto_autor.estado_vinculo`. **No invented columns.**
+     - The cursor (`notificacion_envio.ultimo_evento_visto`) stores the max `tramitacion_evento.id` included in the last digest per user; both subscription types share the same monotonic key, so a single cursor is idempotent across mixed subscriptions. Cursor advances only on send success (atomic).
 
 2. **Where the flip to `NOTIF_PUBLIC_ENABLED=true` is applied at deploy**
    - What we know: `.env.example` stays `=false`; the flip is authorized this run.
-   - What's unclear: whether the deploy sets it via `wrangler secret`/env or the OpenNext deploy config.
-   - Recommendation: Set as a Worker env var (not a secret — it's a boolean feature flag, like the .env.example note for MONEY). Document in the deploy step; the anti-flip guard remains green because `.env.example` is untouched.
+   - **RESOLVED:** Covered by **Plan 05 Task 1 (DEPLOY-RUNBOOK) + Plan 05 Task 3 (operator checkpoint)**. The flip is set as a **Worker env var** at deploy-time (not a secret -- it's a boolean feature flag), NEVER committed to `.env.example`. The anti-flip guard (Plan 01) stays green because `.env.example` is untouched. Documented as an explicit runbook step (b/d) and executed by the operator in Task 3.
 
 3. **Does the operator's Resend account already have a verified domain?**
-   - Recommendation: Surface as the first line of the operator checkpoint alongside `RESEND_API_KEY`; without it, dry-run only.
+   - **RESOLVED:** Covered by **Plan 05 Task 3 (operator checkpoint)** -- surfaced as the first line of the checkpoint alongside `RESEND_API_KEY`. Without a verified sending domain, the digest CLI runs **dry-run only** (no send); the feature is parked behind flag OFF per the NOTIF-05 fallback documented in Plan 05 Task 1 (Flag-OFF closure).
 
 ---
 
