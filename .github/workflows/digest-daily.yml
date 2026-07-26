@@ -1,8 +1,11 @@
 name: digest-daily
 
-# Digest DIARIO por email (NOTIF-03/04) — patrón EGRESO. Corre el CLI @obs/notificaciones
-# (run-digest-prod-cli) que drena la cola notificacion_envio, computa las novedades por
-# suscripción vía cursor idempotente y EMITE el resumen por Resend.
+# Digest DIARIO por email (NOTIF-03/04) — patrón EGRESO. Corre DOS CLIs @obs/notificaciones:
+# (1) run-confirmaciones-prod-cli (WR-05): envía el correo de CONFIRMACIÓN del doble opt-in a
+#     las suscripciones 'pendiente' con ventana vigente (cierra el loop: sin esto nadie llega
+#     a 'confirmada' y el digest no tendría a quién enviar). Va PRIMERO.
+# (2) run-digest-prod-cli: drena la cola notificacion_envio, computa las novedades por
+#     suscripción vía cursor idempotente y EMITE el resumen por Resend.
 #
 # ██████ PATRÓN EGRESO — NO es la ingesta de dos etapas ██████
 # NO toca fuentes gubernamentales: el destinatario es Resend, NO una fuente. Por eso NO hay
@@ -48,14 +51,35 @@ jobs:
         # --ignore-scripts: tsx trae su propio esbuild; evita ERR_PNPM_IGNORED_BUILDS (gate pnpm 11).
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Send confirmation emails (WR-05 — double opt-in, EGRESO)
+        # WR-05: cierra el loop 21.719. Envía el correo de CONFIRMACIÓN a las suscripciones
+        # 'pendiente' con ventana vigente (deriva el token crudo de confirmación y compone
+        # /notificaciones/confirmar?t=<raw>). SIN este paso ninguna suscripción llega a
+        # 'confirmada' y el digest de abajo no tendría a quién enviar. Va ANTES del digest.
+        # Mismo EGRESO (service_role → Resend), mismo hard-cap 100/día, misma PII redactada.
+        # NOTIF_TOKEN_SECRET es OBLIGATORIO (fail-loud sin él); ausente RESEND_API_KEY ⇒ DRY-RUN.
+        env:
+          SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          NOTIF_TOKEN_SECRET: ${{ secrets.NOTIF_TOKEN_SECRET }}
+          NOTIF_BASE_URL: ${{ secrets.NOTIF_BASE_URL }}
+          NOTIF_FROM: ${{ secrets.NOTIF_FROM }}
+        run: |
+          pnpm --filter @obs/notificaciones exec tsx src/run-confirmaciones-prod-cli.ts
+
       - name: Send daily digest (EGRESO — no dos-etapas, no R2)
         # EGRESO: lee suscripciones confirmadas + novedades de la propia DB (service_role) y
         # EMITE por Resend. Sin R2, sin rate-limit gubernamental, sin robots.txt. El hard-cap
         # 100/día vive en el código (enforceCap); la PII (email) se redacta en todo log.
         # RESEND_API_KEY es un secret NUEVO (deuda de operador); ausente ⇒ el CLI hace DRY-RUN.
+        # NOTIF_TOKEN_SECRET es OBLIGATORIO para derivar el link de baja del digest (CR-03).
         env:
           SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          NOTIF_TOKEN_SECRET: ${{ secrets.NOTIF_TOKEN_SECRET }}
+          NOTIF_BASE_URL: ${{ secrets.NOTIF_BASE_URL }}
+          NOTIF_FROM: ${{ secrets.NOTIF_FROM }}
         run: |
           pnpm --filter @obs/notificaciones exec tsx src/run-digest-prod-cli.ts

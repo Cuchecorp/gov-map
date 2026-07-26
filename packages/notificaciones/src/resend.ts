@@ -139,39 +139,36 @@ Darte de baja: ${bajaUrl}`;
 }
 
 /**
- * Envía UN digest por Resend (fetch, one-click List-Unsubscribe). SIN apiKey ⇒ DRY-RUN
- * (no hay fetch, log honesto). Ante 429 respeta retry-after (espera y NO crashea) y marca
- * el envío como reintentable → el CLI NO avanza el cursor. El destinatario NUNCA se loguea
- * crudo (redactEmail). El footer siempre lleva el link de baja con el token CRUDO.
+ * POST de bajo nivel a Resend, COMPARTIDO por el digest y la confirmación (WR-05). SIN apiKey
+ * ⇒ DRY-RUN (no hay fetch, log honesto). Ante 429 respeta retry-after (espera y NO crashea) y
+ * marca reintentable. El destinatario NUNCA se loguea crudo (redactEmail). `etiqueta` es el
+ * prefijo del log ("digest"/"confirmación"); `headers` extra (p.ej. List-Unsubscribe) opcional.
  */
-export async function enviarDigest(
+async function postResend(
+  etiqueta: string,
   destinatario: string,
   asunto: string,
   html: string,
   text: string,
-  rawBajaToken: string,
   cfg: EnvioConfig,
+  extraHeaders?: Record<string, string>,
 ): Promise<ResultadoEnvio> {
   const log = cfg.log ?? ((m: string) => console.log(m));
   const doFetch = cfg.fetchImpl ?? fetch;
 
   if (!cfg.apiKey) {
     // Degrade honesto: sin API key no se envía a ciegas (mirror @obs/dinero dry-run).
-    log(`digest: RESEND_API_KEY missing → dry run (destinatario ${redactEmail(destinatario)})`);
+    log(`${etiqueta}: RESEND_API_KEY missing → dry run (destinatario ${redactEmail(destinatario)})`);
     return { sent: false, dryRun: true };
   }
 
-  const bajaUrl = `${cfg.baseUrl}/notificaciones/baja?t=${rawBajaToken}`;
   const body = JSON.stringify({
     from: cfg.from,
     to: [destinatario],
     subject: asunto,
     html,
     text,
-    headers: {
-      "List-Unsubscribe": `<${bajaUrl}>`,
-      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-    },
+    ...(extraHeaders ? { headers: extraHeaders } : {}),
   });
 
   const res = await doFetch("https://api.resend.com/emails", {
@@ -186,7 +183,7 @@ export async function enviarDigest(
   if (res.status === 429) {
     // Rate-limit de Resend: respetar retry-after, NO crashear. Reintentable → cursor NO avanza.
     const retryAfter = Number(res.headers.get("retry-after")) || 1;
-    log(`digest: 429 de Resend (destinatario ${redactEmail(destinatario)}) → retry-after ${retryAfter}s, diferido`);
+    log(`${etiqueta}: 429 de Resend (destinatario ${redactEmail(destinatario)}) → retry-after ${retryAfter}s, diferido`);
     await new Promise((r) => setTimeout(r, retryAfter * 1000));
     return { sent: false, dryRun: false, status: 429, reintentable: true };
   }
@@ -194,10 +191,86 @@ export async function enviarDigest(
   if (!res.ok) {
     // 5xx u otro: reintentable si es 5xx; nunca logueamos el body (puede llevar PII).
     const reintentable = res.status >= 500;
-    log(`digest: envío falló (status ${res.status}, destinatario ${redactEmail(destinatario)})`);
+    log(`${etiqueta}: envío falló (status ${res.status}, destinatario ${redactEmail(destinatario)})`);
     return { sent: false, dryRun: false, status: res.status, reintentable };
   }
 
-  log(`digest: enviado (destinatario ${redactEmail(destinatario)}, status ${res.status})`);
+  log(`${etiqueta}: enviado (destinatario ${redactEmail(destinatario)}, status ${res.status})`);
   return { sent: true, dryRun: false, status: res.status };
+}
+
+/**
+ * Envía UN digest por Resend (fetch, one-click List-Unsubscribe). SIN apiKey ⇒ DRY-RUN
+ * (no hay fetch, log honesto). Ante 429 respeta retry-after (espera y NO crashea) y marca
+ * el envío como reintentable → el CLI NO avanza el cursor. El destinatario NUNCA se loguea
+ * crudo (redactEmail). El footer siempre lleva el link de baja con el token CRUDO.
+ */
+export async function enviarDigest(
+  destinatario: string,
+  asunto: string,
+  html: string,
+  text: string,
+  rawBajaToken: string,
+  cfg: EnvioConfig,
+): Promise<ResultadoEnvio> {
+  const bajaUrl = `${cfg.baseUrl}/notificaciones/baja?t=${rawBajaToken}`;
+  return postResend("digest", destinatario, asunto, html, text, cfg, {
+    "List-Unsubscribe": `<${bajaUrl}>`,
+    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+  });
+}
+
+/**
+ * Renderiza el correo de CONFIRMACIÓN del doble opt-in (WR-05). Un solo CTA: el link de
+ * confirmación con el token CRUDO. Sin List-Unsubscribe (aún NO hay suscripción activa: es la
+ * PETICIÓN de confirmar). Enumera los objetivos que el usuario pidió seguir (proyecto/parl.).
+ */
+export function renderConfirmacion(
+  objetivos: string[],
+  confirmUrl: string,
+): { html: string; text: string } {
+  const lista = objetivos.length
+    ? objetivos.map((o) => `<li style="margin:4px 0;">${esc(o)}</li>`).join("")
+    : "";
+  const html = `<!doctype html><html><body style="margin:0;background:${EMAIL_HEX.background};font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${EMAIL_HEX.background};">
+<tr><td style="padding:24px;">
+<h1 style="font-size:20px;font-weight:700;margin:0 0 12px;color:${EMAIL_HEX.petroleo};">Confirma tu suscripción</h1>
+<p style="font-size:16px;line-height:1.5;color:#222;">Pediste seguir novedades en Observatorio del Congreso 360. Para empezar a recibir tu resumen diario, confirma que fuiste tú:</p>
+${lista ? `<ul style="padding-left:20px;margin:8px 0;font-size:15px;color:${EMAIL_HEX.muted};">${lista}</ul>` : ""}
+<p style="margin:20px 0;"><a href="${esc(confirmUrl)}" style="display:inline-block;padding:12px 20px;background:${EMAIL_HEX.petroleo};color:#fff;text-decoration:none;border-radius:6px;font-size:16px;">Confirmar suscripción</a></p>
+<p style="font-size:12px;line-height:1.5;color:${EMAIL_HEX.muted};">Si no fuiste tú, ignora este correo: sin confirmar, no recibirás nada. El enlace vence en 48 horas.</p>
+</td></tr></table></body></html>`;
+
+  const objetivosText = objetivos.length ? `\n\n${objetivos.map((o) => `  - ${o}`).join("\n")}` : "";
+  const text = `Confirma tu suscripción
+
+Pediste seguir novedades en Observatorio del Congreso 360. Para empezar a recibir tu resumen diario, confirma que fuiste tú abriendo este enlace:${objetivosText}
+
+${confirmUrl}
+
+Si no fuiste tú, ignora este correo: sin confirmar, no recibirás nada. El enlace vence en 48 horas.`;
+
+  return { html, text };
+}
+
+/**
+ * Envía UN correo de confirmación del doble opt-in por Resend (WR-05). Reusa `postResend`
+ * (mismo dry-run/PII/429). NO lleva List-Unsubscribe (aún no hay suscripción). Cuenta contra
+ * el mismo hard-cap 100/día que aplica el CLI vía enforceCap.
+ */
+export async function enviarConfirmacion(
+  destinatario: string,
+  html: string,
+  text: string,
+  cfg: EnvioConfig,
+): Promise<ResultadoEnvio> {
+  return postResend(
+    "confirmación",
+    destinatario,
+    "Confirma tu suscripción · Observatorio del Congreso 360",
+    html,
+    text,
+    cfg,
+  );
 }

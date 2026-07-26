@@ -22,7 +22,9 @@ export {
 
 export {
   enviarDigest,
+  enviarConfirmacion,
   renderDigest,
+  renderConfirmacion,
   type ResultadoEnvio,
   type GrupoDigest,
   type EnvioConfig,

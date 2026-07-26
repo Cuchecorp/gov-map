@@ -1,5 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
-import { enviarDigest, renderDigest, type EnvioConfig, type GrupoDigest } from "./resend";
+import {
+  enviarConfirmacion,
+  enviarDigest,
+  renderConfirmacion,
+  renderDigest,
+  type EnvioConfig,
+  type GrupoDigest,
+} from "./resend";
 import type { NovedadEvento } from "./digest";
 
 function ev(id: number): NovedadEvento {
@@ -141,5 +148,87 @@ describe("renderDigest — grupos, no-news honesto, footer baja con token crudo"
     expect(html).not.toContain("<script>x</script>");
     expect(html).toContain("&lt;script&gt;");
     expect(html).toContain("&lt;b&gt;hola&lt;/b&gt;");
+  });
+});
+
+describe("renderConfirmacion (WR-05) — correo de doble opt-in con el link de confirmación", () => {
+  const CONFIRM_URL = `${BASE}/notificaciones/confirmar?t=RAWCONFIRM`;
+
+  it("HTML y texto llevan el link de confirmación (CTA) y los objetivos pedidos", () => {
+    const { html, text } = renderConfirmacion(["14309-04", "D1074 Diputada"], CONFIRM_URL);
+    expect(html).toContain(CONFIRM_URL);
+    expect(html).toContain("Confirma tu suscripción");
+    expect(html).toContain("14309-04");
+    expect(html).toContain("D1074 Diputada");
+    expect(text).toContain(CONFIRM_URL);
+    expect(text).toContain("14309-04");
+  });
+
+  it("NO lleva link de baja / List-Unsubscribe (aún no hay suscripción activa)", () => {
+    const { html } = renderConfirmacion(["14309-04"], CONFIRM_URL);
+    expect(html).not.toContain("/notificaciones/baja");
+    expect(html).not.toContain("Darte de baja");
+  });
+
+  it("escapa HTML de los objetivos (no inyecta sin escapar)", () => {
+    const { html } = renderConfirmacion(["<script>x</script>"], CONFIRM_URL);
+    expect(html).not.toContain("<script>x</script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+});
+
+describe("enviarConfirmacion (WR-05) — dry-run/POST/PII espejo del digest", () => {
+  it("sin apiKey: no hace fetch, dry-run, log SIN email crudo", async () => {
+    const fetchSpy = vi.fn();
+    const logs: string[] = [];
+    const res = await enviarConfirmacion(
+      "juan@example.com",
+      "<p>h</p>",
+      "t",
+      cfg({ apiKey: undefined, fetchImpl: fetchSpy as unknown as typeof fetch, log: (m) => logs.push(m) }),
+    );
+    expect(res).toEqual({ sent: false, dryRun: true });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(logs.join("\n")).toContain("dry run");
+    expect(logs.join("\n")).not.toContain("juan@example.com"); // PII redactada
+  });
+
+  it("con apiKey: POST a Resend con Bearer + multipart, SIN List-Unsubscribe", async () => {
+    let capturedInit: RequestInit = {};
+    const fetchSpy = vi.fn(async (_url: string, init: RequestInit) => {
+      capturedInit = init;
+      return { ok: true, status: 200, headers: new Headers() } as Response;
+    });
+    const res = await enviarConfirmacion(
+      "ana@example.com",
+      "<p>html</p>",
+      "texto",
+      cfg({ apiKey: "re_test123", fetchImpl: fetchSpy as unknown as typeof fetch }),
+    );
+    expect(res.sent).toBe(true);
+    const headers = capturedInit.headers as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer re_test123");
+    const body = JSON.parse(capturedInit.body as string);
+    expect(body.to).toEqual(["ana@example.com"]);
+    // El correo de confirmación NO lleva header de baja (aún no hay suscripción).
+    expect(body.headers).toBeUndefined();
+  });
+
+  it("ante 429 devuelve reintentable y NO crashea (PII redactada)", async () => {
+    const fetchSpy = vi.fn(async () => ({
+      ok: false,
+      status: 429,
+      headers: new Headers({ "retry-after": "0" }),
+    }) as Response);
+    const logs: string[] = [];
+    const res = await enviarConfirmacion(
+      "pedro@example.com",
+      "<p>h</p>",
+      "t",
+      cfg({ apiKey: "re_x", fetchImpl: fetchSpy as unknown as typeof fetch, log: (m) => logs.push(m) }),
+    );
+    expect(res.reintentable).toBe(true);
+    expect(res.status).toBe(429);
+    expect(logs.join("\n")).not.toContain("pedro@example.com");
   });
 });
