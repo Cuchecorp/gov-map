@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
-status: executing
+status: Awaiting next milestone
 stopped_at: Completed 104-01-PLAN.md
-last_updated: "2026-07-26T20:36:09.007Z"
-last_activity: 2026-07-26
+last_updated: "2026-07-26T20:59:06.005Z"
+last_activity: 2026-07-26 — Milestone v10.0 completed and archived
 progress:
   total_phases: 8
   completed_phases: 8
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 ## Current Position
 
-Phase: 104
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-26
+Phase: Milestone v10.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-26 — Milestone v10.0 completed and archived
 
 ## Performance Metrics
 
@@ -252,3 +252,17 @@ Resume file: None
 ## Operator Next Steps
 
 - Start the next milestone with /gsd:new-milestone
+
+## Deferred Items
+
+Items acknowledged and deferred at milestone close on 2026-07-26:
+
+| Category | Item | Status |
+|----------|------|--------|
+| uat | 103-HUMAN-UAT (8 provisioning scenarios NOTIF: keys Supabase/Resend, secrets, flip, SC2, dry-run, email UAT) | partial |
+| uat | 97-HUMAN-UAT (SC2 evidencia post-provisión) | partial |
+| uat | 99-HUMAN-UAT (secrets cron GH) | partial |
+| verification | Phases 64-75 (v7.0) human_needed — gates operador históricos (HANDOFF-v7.0-operator-gates.md) | carried-over |
+| verification | Phases 97/99/101/103 human_needed — 101 cerrada en 104; resto = provisión operador | partial |
+| quick_task | 260623-rtl, 260702-rbb, 260713-izo, 260715-bvd, 260722-eia | unknown (probablemente completas sin marcar) |
+| seed | SEED-001 capa LLM escalonada (Granite+Phi) | dormant (por diseño — próximo milestone) |

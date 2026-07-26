@@ -1,5 +1,36 @@
 # Milestones
 
+## v10.0 Panel de actualidad legislativa + notificaciones + relaciones (Shipped: 2026-07-26)
+
+**Phases completed:** 8 phases, 26 plans, 48 tasks
+
+**Key accomplishments:**
+
+- Guards de honestidad extendidos ANTES del copy: SUPERFICIES_PANEL + vocabulario timing/editorial/anti-ranking (tildes exactas) en anti-insinuacion-guard, y panel-actualidad.tsx en los candados cero-hex + tipografia de bento — con tolerancia de superficie declarada-pero-aun-inexistente para quedar verde hoy y morder en Wave 2.
+- Componente RSC PanelActualidad que lee las señales precomputadas de la RPC bounded `actualidad_senales_panel` (cero agregación on-read), las agrupa por `tipo_senal` y renderiza cada grupo como un BentoTile con framing factual, cobertura declarada, fuente+fecha y supresión honesta verbatim — más su vista pura `TileSenal` cubierta por RTL con fixtures activa/suprimida/(sin materia). Los tres guards (anti-insinuación + cero-hex + tipografía) ahora muerden sobre la superficie real y quedan verdes.
+- La home `/` ahora monta `<PanelActualidad/>` bajo Suspense EN LUGAR del cuerpo producto-céntrico (los 3 germ tiles Votado/Urgencias/Frescura de actualidad-module.tsx): las señales SEN validadas de la RPC bounded reemplazan al folleto, reusando BentoGrid/tokens y conservando byte-idénticos el hero (kicker+h1+SearchBox), el tile accent "¿Cómo leer esto?", los 3 entry-cards (movidos debajo del panel), la URL/section[id]/scroll-margin y `export const dynamic = "force-dynamic"` (LOAD-BEARING). El test-contrato pre-existente `page.test.tsx` viajó con el código: mockea el panel (espejo del germ mock retirado) y su Contract 3 se reescribió para asertar el montaje preservando la garantía force-dynamic. Suite completa verde (1263/1263), tsc 0, guards verdes.
+- Cerrado por el orquestador
+- Matriz N/M por relación re-medida verbatim contra PROD (militancia 363/186/177, comisiones 386/34, co-autoría 9937) + zona-gap headline (eje SOLO Senado) + decisión lobby DIFERIDA + N militancia histórica net-new 696 LOCKED + veredicto coalición Servel VIABLE / comités Senado DIFERIDA
+- Wave 0 extiende ambos guards (SUPERFICIES_RELACIONES + self-check que MUERDE, militancia_historica_compartida allowlistada) ANTES de que aterrice copy/RPC; luego des-entierra por COMPOSICIÓN PURA los 4 CrossLinkBloque en un `<section id=relaciones>` above-the-fold con heading + leyenda de grupo + grid 2×2, dejando CrossLinkBloque byte-intacto.
+- La RPC net-new 0067 (secdef alias-keyed, 696 pares) se APLICA a PROD y se valida con pgTAP 6/6; el 5º bloque 'Compartieron militancia en un partido' aterriza en la ficha; y nace /comparar?a=&b= (force-dynamic, 4 ejes factuales no-voto con intersección server-side, fuente+fecha por eje, vacíos honestos, error≠vacío) con su selector GET-form y el CTA desde la ficha — SUPERFICIES_RELACIONES ahora MUERDE sobre las 4 superficies aterrizadas.
+- Gate fail-closed VSIM_PUBLIC_ENABLED (=== "true") + guard anti-flip 3-vectores + linter anti-insinuación extendido con idioms de co-votación + test estático permanente co_votacion∉/red + migración 0068 escrita (no aplicada) + entrada de allowlist — todo el enforcement montado ANTES del copy.
+- RPC `coincidencia_votos_par(text,text)` aplicada a PROD por `psql --single-transaction` (secdef, search_path='', statement_timeout='5s', doble-revoke CERO grant) y probada con pgTAP 10/10 contra el schema aplicado — incluye el test de denominador sustantiva (VSIM-01): pareo y no_confirmado NO cuentan en `m_compartidas`.
+- 5ª sección de similitud de votación montada al FINAL de `/comparar`, GATED por `VSIM_PUBLIC_ENABLED` (return null server-side ⇒ cero DOM/cero .rpc con flag OFF): componente presentacional NEUTRAL (figura sin petróleo/bold/gauge, degrade honesto M=0, cobertura + asimetría de cámara), RTL ON/OFF/M=0/error verde, y dossier legal `signoff: pending` (anti-DW-NOMINATE + caveat base-alta + base-rate empírica + evidencia del estado ON en preview local). El flip a PROD queda como acto humano.
+- 1. [Rule 2 - Missing critical functionality] Explicit `grant ... to authenticated` on 0069/0071
+- 1. [Rule 3 - Blocking issue] Stale `.next/types` referenced the deleted `/spike-auth` route
+- 1. [Rule 3 - Blocking issue] supabase-js query builder not assignable to `DbLike`
+- el executor original fue cortado por límite de sesión a mitad del plan; el orquestador cerró manualmente (safe-resume §manual closeout) verificando el estado real por filesystem/wrangler/curl.
+- Inventario E2E de cada superficie nueva de v10.0 × dato real × cross-check SQL sobre el deploy real; VSIM cuadra contra recálculo `coincidencia_votos_par` para 3 pares; defecto URI-como-partido detectado, corregido en 3 superficies de render y re-desplegado (v`b467d41a`), 101-HUMAN-UAT cerrado.
+- El primer middleware.ts del repo SOBREVIVE el build OpenNext como Edge (deprecation warning, NO error "Node.js middleware not supported") y el deploy real a Cloudflare (version 3952f9bc) sirve Camino A 200 con la middleware corriendo — SC1 cerrado empíricamente en positivo; el fallback SC4 NO se dispara.
+- Consolidada la evidencia del spike sobre el deploy real: SC1 PASS (middleware=Edge, empírico del Plan 02), SC3 PASS parcial (Camino A 5/5 → 200 + CSP `frame-ancestors`/`object-src`/`connect-src` intactos, verificado hoy por curl), y SC2 PENDING-operator (Set-Cookie+refresh bloqueado SOLO por el checkpoint de provisión diferido, con bloque de reproducción curl copy-paste). Rama A del fallback (verde estructural): el fallback SC4 NO se dispara — NOTIF-103 asume middleware+cookies, sin rewrite server-side-puro. La Phase 97 cierra sobre documented-handoff (v7/v9).
+- Task 1 — `98-SPIKE-FINDINGS.md`
+- Tabla precomputada `actualidad_senal` deny-by-default + proc full-rebuild `actualidad.materializar_senales()` (security definer, 6 señales honestas, 3 defectos de datos LOCKED, supresión-como-fila) + pg_cron intradía L-V, espejando 0039 y validado end-to-end en Postgres efímero.
+- RPC bounded PII-safe `public.actualidad_senales_panel(p_tipo)` — aguja completa espejo 0064 (security definer, search_path='', statement_timeout='5s', LIMIT 200, drop-before-create, doble-revoke, CERO grant) — que lee la tabla precomputada `actualidad_senal` y devuelve las 9 columnas del panel, registrada en `PUBLIC_RPC_ALLOWLIST` para que el guard Direction-B (Camino A) no muerda.
+- Workspace `@obs/actualidad` nuevo: `kmeans.ts` (Lloyd determinista con PRNG mulberry32 seed-fija `0x9e3779b9`, distancia coseno sobre 768d, label = `mode(materia)` factual empate-alfabético, JAMÁS LLM) + su test de determinismo, y `run-actualidad-prod-cli.ts` (service_role writer que lee `proyecto_embedding` paginado y hace full-rebuild ACOTADO de `tipo_senal='agrupacion_materia'`, disjunto del proc SQL de 99-01). Validado por dry-run live-read contra PROD: 3100 embeddings → k=10 clusters deterministas.
+- Cron GH Actions `actualidad-refresh.yml` (clon del scaffold seguro de `leyes-weekly` SIN el bloque R2 — Phase 99 no toca fuentes, sin rate-limit/robots.txt — intradía L-V que corre el CLI k-means `@obs/actualidad`), y el bloque ready-to-run del apply live-DB ADITIVO de 0065/0066 + pgTAP, DELEGADO al orquestador (que tiene .env DB access): el agente NO tocó PROD ni bloqueó en checkpoint humano.
+
+---
+
 ## v9.0 Robustez de productos estrella + seguridad final (Shipped: 2026-07-23)
 
 **Phases completed:** 11 phases (86-96), 34 plans — tres pasadas autónomas (P1 búsqueda 86-89 · P2 personas/agenda 90-94 · P3 seguridad 95-96)
@@ -18,7 +49,6 @@
 **Known deferred items at close:** 16 (ver STATE.md Deferred Items — todos pre-v9.0: 11 verificaciones human_needed de v7.0 con gates de operador + 5 quick tasks completadas sin marcador formal). Deuda de operador v9.0 propia consolidada en `phases/96-*/96-OPERATOR-HANDOFF.md` (B26, pgvector 0.8.0, HSTS preload, cold-reads).
 
 **Audit:** PASSED — 29/29 requirements, integración 8/8, flujos E2E 4/4 (milestones/v9.0-MILESTONE-AUDIT.md)
-
 
 ## v6.1 Entendible y completo (Shipped: 2026-07-11)
 

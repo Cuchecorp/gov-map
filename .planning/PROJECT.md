@@ -8,7 +8,7 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato mostrado lleva fuente, fecha y enlace original, sin afirmar nunca intención ni causalidad.
 
-## Current Milestone: v10.0 — Panel de actualidad legislativa (landing) + notificaciones
+## Current Milestone (history): v10.0 — Panel de actualidad legislativa + notificaciones + relaciones (shipped 2026-07-26)
 
 **Goal:** La landing deja de ser un folleto del producto y se convierte en un PANEL DE ACTUALIDAD cuantitativo — "qué está pasando HOY en el Congreso" derivado de datos objetivos (movimiento, urgencias, nuevos ingresos, votaciones próximas, agrupación por tema) — que alguien que va todos los días al Congreso (periodista, tramitador, asesor) pueda usar como primera pantalla del día; más la evaluación/construcción de un modelo de notificaciones por suscripción (proyecto/parlamentario). Entender el Congreso en fácil y mejorar accountability.
 
@@ -24,7 +24,7 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 **Método (LOCKED por el operador):** TODO con base empírica — spikes, iteraciones BrowserOS, revisión, diseño, crítica, loop. Primero QUÉ (señales con evidencia), después CÓMO (frontend). Corrida en contexto limpio con prompt listo (`.planning/PROMPT-v10.0-build-autonomo.md`).
 
-## Current State: v10.0 COMPLETA (8/8 fases) — pendiente audit/complete-milestone
+## Current State: v10.0 shipped (2026-07-26)
 
 **Phase 104 completa (2026-07-26):** verificación E2E "todo funciona" + deploy final. Cadena de deploys: `027efdf6` → `3cd2511d` (fix /cuenta gate-primero, era 500) → `b467d41a` (3 fixes URI-como-partido en render: PartidoChip, Militancias, faceta) → **`e89b79af` FINAL** (fixes review WR-01/02/04). **VSIM ON en PROD** (dossier 102 firmado con autorización operador verbatim "Sí — firmar y flip ON" 2026-07-26; flip por wrangler secret; `.env.example` intacto): eje "Coinciden en N de M" vivo en /comparar con caveat base-alta, cuadrado contra SQL para 3 pares. Inventario E2E: panel 6 señales vivas × SQL, relaciones conteos == total_n + truncamiento >20 + alfabético, flags OFF DOM-ausentes (NOTIF `/cuenta` gated 200, MONEY), empty states honestos, cero URI-como-partido visible, 101-HUMAN-UAT cerrada 3/3. Verificación: passed 4/4 criterios. Suite 1428 app + guards verdes.
 
@@ -149,6 +149,15 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 <!-- v1.0 MVP — Proyectos de Ley + Fundaciones de Identidad (shipped 2026-06-18). Detalle: .planning/milestones/v1.0-*.md -->
 
+**Panel de actualidad + notificaciones + relaciones (v10.0) — shipped 2026-07-26**
+- ✓ Auth-on-Workers de-riskeado: middleware Edge + @supabase/ssr sobreviven OpenNext; patrón LOCKED para dato de usuario (AUTH-01) — v10.0
+- ✓ Señales honestas con gate empírico previo (spike 98) + materializador `actualidad_senal` + RPCs bounded + cron intradía (SEN-01..06) — v10.0
+- ✓ Landing = panel de actualidad cuantitativo con supresión-como-fila, fuente+fecha, benchmark senado/cámara (PANEL-01..04) — v10.0
+- ✓ Relaciones des-enterradas: bloque above-the-fold + /comparar 4 ejes factuales + militancia histórica (0067) (REL-01..05) — v10.0
+- ✓ Similitud de votación "coinciden en N de M" con caveat base-alta — VSIM ON en PROD con dossier firmado por operador 2026-07-26 (VSIM-01..03) — v10.0
+- ✓ Primer dato de usuario: suscripciones RLS `to authenticated` + lockdown-guard extendido + digest EGRESO Resend + doble opt-in con tokens HMAC + dossier 21.719 firmado; INERTE tras Flag-OFF closure hasta provisión operador (NOTIF-01..05) — v10.0
+- ✓ Verificación E2E: inventario × dato real × BrowserOS sobre deploy final `e89b79af`, cero URI-como-partido visible (E2E-01) — v10.0
+
 **Robustez de productos estrella + seguridad final (v9.0) — shipped 2026-07-23**
 - ✓ Retrieval híbrido RRF Postgres-nativo con short-circuit boletín + golden set 32 CI (RETR-01..05) — v9.0
 - ✓ Ranking explicable (mensaje>moción, sin scores) + filtros island counts honestos incl. partido (RANK-01, FILT-01..03) — v9.0
@@ -190,6 +199,7 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 ### Active
 
+- [x] **v10.0 — panel de actualidad + notificaciones + relaciones** (shipped 2026-07-26): panel señales honestas · relaciones + /comparar + VSIM ON (dossier firmado) · primer dato de usuario (auth+RLS, digest EGRESO, inerte hasta provisión) · E2E final deploy e89b79af. Audit PASSED 25/25.
 - [x] **v9.0 — robustez de productos estrella + seguridad final** (shipped 2026-07-23): búsqueda híbrida RRF + ranking/filtros + deep-links de validación · bio oficial + partido directo + cross-links · lobby legible audiencia→PL · /agenda por día con cobertura declarada · seguridad final (bounded RPCs, guards, gitleaks, audit DB viva, CSP enforced). Audit PASSED 29/29.
 - [~] **v7.0 — votos, dinero y cierre técnico** (code-complete 2026-07-15, gates de operador abiertos — HANDOFF-v7.0-operator-gates.md): P3 voto individual (opendata.camara.cl) → P5 dimensión dinero (SERVEL + ChileCompra por RUT, prereq RUT-01) → deuda técnica/hardening. Gates pre-aprobados por el operador; RUT-01 y revisión legal 21.719 siguen como prerrequisitos reales.
 - [x] **v6.1 — entendible y completo** (shipped 2026-07-11): /red ego-network radial legible + búsqueda sobre corpus completo declarado (3.657 proyectos, techo honesto).
@@ -283,4 +293,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-26 after Phase 104 (E2E) — v10.0 8/8 fases completas, deploy final e89b79af. Antes: v9.0 milestone — Robustez de productos estrella + seguridad final SHIPPED (Phases 86-96, audit PASSED 29/29, deploy `09f1d5c2` con CSP enforced). Deuda de operador viva: 96-OPERATOR-HANDOFF.md + HANDOFF-v7.0-operator-gates.md. Antes: v8.1 Demo perfecto shipped 2026-07-15 (`3563ecc9`); v7.0 code-complete con gates de operador abiertos.*
+*Last updated: 2026-07-26 after v10.0 milestone SHIPPED — panel actualidad + notificaciones + relaciones (deploy e89b79af, audit PASSED 25/25). Deuda operador viva: 103-HUMAN-UAT (provisión NOTIF) + gates v7.0.*
