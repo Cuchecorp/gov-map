@@ -9,17 +9,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * Aquí se prueba a nivel del builder supabase-js mockeado que la ruta email usa .delete().
  */
 
-// ── Mock del builder supabase-js (registra la operación y la cadena .eq) ──────────
+// ── Mock del builder supabase-js (registra la operación + filtros) ────────────────
 type Op = "select" | "update" | "delete";
-const calls: { op: Op; table: string; eq: [string, string][]; payload?: unknown }[] = [];
+const calls: {
+  op: Op;
+  table: string;
+  eq: [string, string][];
+  or?: string;
+  payload?: unknown;
+}[] = [];
+// Control por-test del resultado del terminal (filas afectadas por update .select).
+let updateSelectRows: unknown[] = [{ id: "row" }];
 
 function makeBuilder(table: string) {
   let op: Op = "select";
   const eqs: [string, string][] = [];
+  let orFilter: string | undefined;
   let payload: unknown;
-  const rec = () => calls.push({ op, table, eq: eqs, payload });
+  const rec = () => calls.push({ op, table, eq: eqs, or: orFilter, payload });
   const chain: Record<string, unknown> = {};
-  chain.select = () => chain;
   chain.update = (p: unknown) => {
     op = "update";
     payload = p;
@@ -31,17 +39,29 @@ function makeBuilder(table: string) {
   };
   chain.eq = (col: string, val: string) => {
     eqs.push([col, val]);
-    // marcarBaja/marcarConfirmada terminan en .eq → resolver como thenable { error:null }.
-    // buscar* terminan en .maybeSingle. Damos ambos.
+    return chain;
+  };
+  chain.or = (expr: string) => {
+    orFilter = expr;
+    return chain;
+  };
+  // .select() tras update/delete es el TERMINAL (thenable). Tras un select-inicial devuelve
+  // el builder para encadenar .eq().maybeSingle() (búsquedas por token).
+  chain.select = () => {
+    if (op === "update" || op === "delete") {
+      rec();
+      return Promise.resolve({ data: updateSelectRows, error: null });
+    }
     return chain;
   };
   chain.maybeSingle = async () => {
     rec();
     return { data: null, error: null };
   };
-  chain.then = (resolve: (v: { error: null }) => void) => {
+  // marcarBaja termina en .eq (delete sin .select) → thenable { error:null }.
+  chain.then = (resolve: (v: { data: null; error: null }) => void) => {
     rec();
-    resolve({ error: null });
+    resolve({ data: null, error: null });
   };
   return chain;
 }
@@ -54,6 +74,7 @@ import { marcarBaja, marcarConfirmada } from "./notif-service";
 
 beforeEach(() => {
   calls.length = 0;
+  updateSelectRows = [{ id: "row" }]; // default: el update afecta 1 fila (confirmó)
   process.env.SUPABASE_URL = "https://proj.supabase.co";
   process.env.SUPABASE_SECRET_KEY = "sb_secret_test";
 });
@@ -75,10 +96,20 @@ describe("notif-service — WR-01: la baja por email BORRA la fila (no flip esta
     expect(op!.eq).toContainEqual(["id", "11111111-2222-3333-4444-555555555555"]);
   });
 
-  it("marcarConfirmada sigue siendo un UPDATE a estado='confirmada' (no se toca)", async () => {
-    await marcarConfirmada("22222222-3333-4444-5555-666666666666");
+  it("marcarConfirmada es un UPDATE a estado='confirmada' con guardia de ventana en el write", async () => {
+    const ok = await marcarConfirmada("22222222-3333-4444-5555-666666666666");
     const op = calls.find((c) => c.table === "suscripcion");
     expect(op!.op).toBe("update");
     expect((op!.payload as { estado?: string }).estado).toBe("confirmada");
+    // WR-02: la ventana se re-valida EN EL WRITE (filtro or gt/is null sobre confirm_expira_at).
+    expect(op!.or).toMatch(/confirm_expira_at\.gt\./);
+    expect(op!.or).toMatch(/confirm_expira_at\.is\.null/);
+    expect(ok).toBe(true); // 1 fila afectada → confirmó de verdad
+  });
+
+  it("WR-02: token vencido ⇒ el update no afecta filas ⇒ marcarConfirmada devuelve false", async () => {
+    updateSelectRows = []; // el filtro de ventana descartó la fila (expirada)
+    const ok = await marcarConfirmada("22222222-3333-4444-5555-666666666666");
+    expect(ok).toBe(false); // NO se confirmó (server-side, sin importar el caller)
   });
 });

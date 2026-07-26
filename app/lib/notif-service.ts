@@ -96,16 +96,31 @@ export async function buscarSuscripcionPorBajaToken(
   return data ?? null;
 }
 
-/** Marca la suscripción como confirmada (doble opt-in completado). */
-export async function marcarConfirmada(id: string): Promise<void> {
+/**
+ * Marca la suscripción como confirmada (doble opt-in completado).
+ *
+ * WR-02: la ventana de confirmación se re-valida EN EL WRITE, no solo en la página. El
+ * update filtra `confirm_expira_at > now()` (o NULL = sin ventana) → un token expirado NO
+ * confirma AUNQUE el caller omita el chequeo. Así la invariante "estado='confirmada'
+ * implica que ocurrió una confirmación VIGENTE" se sostiene server-side sin importar quién
+ * llame (la página, un RPC futuro, un script). Se devuelve si hubo o no confirmación real
+ * para que el caller distinga "confirmado" de "token vencido → copy de inválido".
+ */
+export async function marcarConfirmada(id: string): Promise<boolean> {
   const sb = clienteServicio();
-  const { error } = await sb
+  const ahora = new Date().toISOString();
+  const { data, error } = await sb
     .from("suscripcion")
     .update({ estado: "confirmada" })
-    .eq("id", id);
+    .eq("id", id)
+    // Ventana vigente O sin ventana (NULL). `or` de PostgREST: gt|is.
+    .or(`confirm_expira_at.gt.${ahora},confirm_expira_at.is.null`)
+    .select("id");
   if (error) {
     throw new Error(`marcarConfirmada falló: ${error.message}`);
   }
+  // Sin filas afectadas ⇒ la ventana estaba vencida (o la fila no existe) → NO se confirmó.
+  return Array.isArray(data) && data.length > 0;
 }
 
 /**

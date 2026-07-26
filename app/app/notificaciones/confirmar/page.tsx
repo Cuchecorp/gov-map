@@ -64,9 +64,12 @@ export default async function ConfirmarPage({ searchParams }: PageProps) {
         : null;
       const vigente = expira == null || expira > Date.now();
       if (vigente) {
-        await marcarConfirmada(suscripcion.id);
-        ok = true;
-        objetivo = suscripcion.objetivo_id;
+        // WR-02: la fuente de verdad es el WRITE server-side (marcarConfirmada re-valida
+        // la ventana en el update y devuelve si confirmó de verdad). El chequeo de arriba
+        // es solo un short-circuit; el `ok` lo decide el resultado del write (evita una
+        // race donde el token vence entre la lectura y el update).
+        ok = await marcarConfirmada(suscripcion.id);
+        if (ok) objetivo = suscripcion.objetivo_id;
       }
     }
   }
