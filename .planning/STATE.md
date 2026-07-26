@@ -1,12 +1,12 @@
----
+﻿---
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Capa LLM escalonada + cierre de deuda viva
 status: planning
-last_updated: "2026-07-26T21:28:07.614Z"
+last_updated: "2026-07-26T22:10:00.000Z"
 last_activity: 2026-07-26
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 104 — CIERRE P3b — Verificación E2E todo funciona
+**Current focus:** Phase 105 — BCN parser senadores en origen (arranque v11.0; roadmap 105-112 creado)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Not started (roadmap created, awaiting plan-phase)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-26 — Milestone v11.0 started
+Status: Roadmap created — 8 phases (105-112), 24/24 requirements mapped
+Last activity: 2026-07-26 — v11.0 roadmap created (BCN 105 · BENCH/TIER/INTEG 106-109 · V7GATES 110-112)
 
 ## Performance Metrics
 

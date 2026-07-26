@@ -1,4 +1,4 @@
-# Requirements: Observatorio del Congreso 360 — Milestone v11.0
+﻿# Requirements: Observatorio del Congreso 360 — Milestone v11.0
 
 **Defined:** 2026-07-26
 **Milestone:** v11.0 — Capa LLM escalonada + cierre de deuda viva
@@ -74,13 +74,47 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmap) | | |
+| BENCH-01 | Phase 106 | Pending |
+| BENCH-02 | Phase 106 | Pending |
+| BENCH-03 | Phase 106 | Pending |
+| BENCH-04 | Phase 107 | Pending |
+| BENCH-05 | Phase 107 | Pending |
+| TIER-01 | Phase 107 | Pending |
+| TIER-02 | Phase 108 | Pending |
+| TIER-03 | Phase 108 | Pending |
+| TIER-04 | Phase 108 | Pending |
+| TIER-05 | Phase 108 | Pending |
+| INTEG-01 | Phase 109 | Pending |
+| INTEG-02 | Phase 109 | Pending |
+| INTEG-03 | Phase 109 | Pending |
+| BCN-01 | Phase 105 | Pending |
+| BCN-02 | Phase 105 | Pending |
+| V7-01 | Phase 110 | Pending |
+| V7-07 | Phase 110 | Pending |
+| V7-02 | Phase 111 | Pending |
+| V7-03 | Phase 111 | Pending |
+| V7-04 | Phase 111 | Pending |
+| V7-05 | Phase 112 | Pending |
+| V7-06 | Phase 112 | Pending |
+| V7-08 | Phase 112 | Pending |
+| QT-01 | Phase 112 | Pending |
 
 **Coverage:**
 - v11.0 requirements: 24 total
-- Mapped to phases: 0
-- Unmapped: 24 ⚠️ (pre-roadmap)
+- Mapped to phases (105-112): 24/24 ✓
+- Unmapped: 0
+- Duplicates: 0
+
+**Phase distribution:**
+- Phase 105 (BCN parser en origen): BCN-01, BCN-02
+- Phase 106 (BENCH harness + golden sets): BENCH-01, BENCH-02, BENCH-03
+- Phase 107 (BENCH adapters + juez + veredicto): BENCH-04, BENCH-05, TIER-01
+- Phase 108 (TIER plomeria): TIER-02, TIER-03, TIER-04, TIER-05
+- Phase 109 (INTEG tarea menor riesgo): INTEG-01, INTEG-02, INTEG-03
+- Phase 110 (V7GATES applies + CI/B26): V7-01, V7-07
+- Phase 111 (V7GATES RUT-01 + backfills): V7-02, V7-03, V7-04
+- Phase 112 (V7GATES cold-reads + flip MONEY + close + quick tasks): V7-05, V7-06, V7-08, QT-01
 
 ---
 *Requirements defined: 2026-07-26*
-*Last updated: 2026-07-26 after initial definition (research bf796d0)*
+*Last updated: 2026-07-26 after roadmap (phases 105-112 mapped, 24/24 coverage)*

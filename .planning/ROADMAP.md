@@ -16,6 +16,7 @@
 - ✅ **v8.1 — Demo perfecto** — Phases 82-85 — shipped 2026-07-15 (`3563ecc9`); archivo: milestones/v8.1-ROADMAP.md
 - ✅ **v9.0 — Robustez de productos estrella + seguridad final** — Phases 86-96 — shipped 2026-07-23 (deploy `09f1d5c2`, CSP enforced, audit PASSED 29/29); archivo: milestones/v9.0-ROADMAP.md
 - ✅ **v10.0 — Panel de actualidad legislativa + notificaciones + relaciones** — Phases 97-104 — shipped 2026-07-26 (deploy `e89b79af`, audit PASSED 25/25, VSIM ON con dossier firmado, NOTIF inerte tras provisión operador); archivo: milestones/v10.0-ROADMAP.md
+- 🏗 **v11.0 — Capa LLM escalonada + cierre de deuda viva** — Phases 105-112 — EN CURSO (spike benchmark POR TAREA Granite/Phi/DeepSeek → plomíería TieredProvider → integración de menor riesgo · parser BCN senadores en origen · pasada de cierre gates v7.0 con operador · marcadores quick tasks)
 
 <details>
 <summary>✅ v9.0 — Robustez de productos estrella + seguridad final (Phases 86-96) — SHIPPED 2026-07-23</summary>
@@ -52,6 +53,176 @@ Detalle completo: milestones/v10.0-ROADMAP.md · Audit: milestones/v10.0-MILESTO
 Deploy final: e89b79af · VSIM ON (dossier firmado) · NOTIF inerte (provisión operador)
 
 </details>
+
+## 🏗️ v11.0 — Capa LLM escalonada + cierre de deuda viva (EN CURSO)
+
+**Milestone Goal:** La capa LLM pasa de dos-modelos-fijos (DeepSeek volumen / MiniMax crítico) a una escalera granular POR TAREA (Granite-4.0-H-Micro respond → Phi-4-mini-instruct juez → escalate al incumbente), decidida SOLO por benchmark sobre golden set POR TAREA. Además la deuda viva deja de acumularse: parser BCN senadores corregido en ORIGEN, quick tasks cerradas formalmente, y pasada de cierre de los gates v7.0 con participación del operador.
+
+**Regla LOCKED del operador (rectora de BENCH/TIER/INTEG):** ante la duda, SIEMPRE calidad. El escalonamiento optimiza latencia/costo ÚNICAMENTE donde el benchmark demuestra paridad de calidad. DeepSeek se mantiene donde luce; la adjudicación de identidad (MiniMax, golden-1263 ≥0.95) JAMÁS se degrada ni se observa este milestone.
+
+**Mode:** yolo · **Granularity:** fine (fases MUY GRANULARES, convención del proyecto) · **Numbering:** continúa desde v10.0 (Phase 104 fue la última) → v11.0 arranca en **Phase 105**.
+
+**HALLAZGO RECTOR (research HIGH, convergente):** el fit al stack es TRIVIAL — Granite y Phi son OpenAI-compatibles por `baseURL`, CERO SDK nuevo, CERO arquitectura nueva; entran a `packages/llm` como DeepSeek/MiniMax. Lo que se CONSTRUYE es: un harness `packages/llm-bench` (el PRIMER entregable y el gate de todo lo demás), un `TieredProvider` decorador que `implements LLMProvider` (drop-in en el punto de construcción del CLI, cuerpos de consumidores intactos), un `JudgeProvider` separado ESCALATE-ONLY, config declarativa tarea→escalera y telemetría sin PII. **El benchmark es el gate: NADA se integra sin paridad demostrada en el golden set es-CL de su tarea.**
+
+### Coverage
+
+- v11.0 requirements: 24 (BENCH×5, TIER×5, INTEG×3, BCN×2, V7GATES×8, QT×1)
+- Mapped to phases (105-112): 24/24 ✓
+- Orphaned: 0 · Duplicates: 0
+
+### Build order (dependencias duras de la investigación)
+
+```
+BCN (independiente, temprano):  105 (parser senadores en ORIGEN + re-corrida militancias)
+
+CAPA LLM (benchmark-first, gate DURO):
+  106 (harness llm-bench + golden sets es-CL POR TAREA + medición vs incumbente — SPIKE, load-bearing)
+        └► 107 (adapters Granite/Phi como candidatos puntuados + juez vs etiquetas HUMANAS + VEREDICTO por tarea con ε)
+              └► 108 (plomería: TieredProvider + JudgeProvider + task-ladder config + telemetría + prompt-cache intacto)
+                    └► 109 (integrar la tarea de MENOR RIESGO tras golden gate verde en CI + provider-guard PRIMER commit + rollback trivial)
+
+V7GATES (pasada de cierre con operador, paralelizable con la capa LLM; QT-01 se pliega al cierre):
+  110 (applies delegables 0052-0054 + CI/secrets + B26) ──► 111 (RUT-01 → backfills votos → backfills dinero, checkpoints operador)
+        └► 112 (cold-reads/visual + flip MONEY legal SOLO tras firma + audit/complete v7.0 + cierre formal quick tasks)
+```
+
+Notas de secuencia: los adapters (TIER-01) se construyen como candidatos DURANTE el benchmark (se necesitan para medir), pero `TieredProvider`/integración solo tras el veredicto BENCH-05. La extracción strict-schema se queda en DeepSeek y la adjudicación en MiniMax por guard estático (INTEG-02) — no son fases, son NO-GOALS enforzados. Dentro de V7GATES el orden es duro: applies → RUT-01 → backfills de voto → backfills de dinero (ChileCompra necesita RUT-01) → cold-reads → flip MONEY (SOLO tras sign-off) → B26/secrets → audit+complete (V7-08 último). Los gates humanos NUNCA los flipea un agente.
+
+### Phases
+
+- [ ] **Phase 105: BCN — Parser senadores en ORIGEN + re-corrida de militancias** — `hasPoliticalParty` URI→label legible en `@obs/bio` (mapeo determinista fail-closed), re-corrida deja cero URI-como-partido en PROD, y `partidoLegible()` (104-03) se retira o queda como cinturón según evidencia
+- [ ] **Phase 106: BENCH P1a — Harness `llm-bench` + golden sets es-CL POR TAREA (SPIKE, gate duro)** — harness que mide calidad + latencia + costo + tasa de fallo zod como métricas separadas, contra el endpoint/cuantización EXACTOS de producción, sobre golden sets es-CL estratificados y congelados ANTES de integrar
+- [ ] **Phase 107: BENCH P1b — Adapters candidatos + juez vs humanos + VEREDICTO por tarea** — `GraniteProvider`/`PhiJudge` (plantilla MiniMax tool-calling + guards fail-closed) como candidatos puntuados; juez medido contra etiquetas HUMANAS con sesgos conocidos; veredicto POR TAREA con ε explícito
+- [ ] **Phase 108: TIER P2 — Plomería `TieredProvider` + `JudgeProvider` + ladder config + telemetría** — decorador respond→validate→escalate acotado (sin loops, presupuesto por ítem), juez ESCALATE-ONLY registrado, ruteo ENTRE pipelines con prompt-cache DeepSeek intacto — testeable con `MockProvider` antes de tocar producción
+- [ ] **Phase 109: INTEG P3 — Integrar la tarea de MENOR RIESGO tras golden gate verde** — UNA tarea reversible no-legal con la escalera en producción de pipeline, golden set como regresión CI permanente, provider-guard (zod+PII) como PRIMER commit, extracción/adjudicación intocadas por guard estático, rollback trivial por config
+- [ ] **Phase 110: V7GATES P4a — Applies delegables 0052-0054 + CI/secrets + rotación B26** — el agente aplica lo delegable (migraciones con pgTAP verde, verificación) y prepara/verifica CI/secrets + rotación de DB password; el operador provee valores de secreto y rota B26
+- [ ] **Phase 111: V7GATES P4b — RUT-01 + backfills LIVE (votos + dinero) con checkpoints operador** — RUT-01 (operador escribe por runbook 69, el agente jamás escribe RUT) → backfills de votos Cámara/Senado → backfills ChileCompra (post RUT-01) + SERVEL; cobertura N/M + invariantes reportados
+- [ ] **Phase 112: V7GATES P4c — Cold-reads/visual + flip MONEY legal + audit/complete v7.0 + cierre quick tasks** — gates de comprensión/visuales sobre deploy real; flip `MONEY_PUBLIC_ENABLED` SOLO tras sign-off 21.719 (o MONEY OFF declarado honesto); `audit-milestone`→`complete-milestone v7.0`; marcador formal de cierre de las 5 quick tasks
+
+## Phase Details
+
+### Phase 105: BCN — Parser senadores en ORIGEN + re-corrida de militancias
+
+**Goal**: Que la militancia de senadores muestre el partido legible en ORIGEN, no un URI RDF — cerrando en la fuente el defecto que 104-03 tapó display-only.
+**Depends on**: Nothing (independiente de la capa LLM; puede ejecutarse temprano)
+**Requirements**: BCN-01, BCN-02
+**Componentes**: MODIFICADO (`@obs/bio` parser BCN Militancy — `hasPoliticalParty`) + EJECUCIÓN (re-corrida de militancias a PROD) + DECISIÓN documentada (retirar/conservar `partidoLegible()`)
+**Success Criteria** (what must be TRUE):
+
+  1. El parser de `@obs/bio` resuelve `hasPoliticalParty` URI→label legible en ORIGEN por mapeo determinista, y una URI desconocida NO fabrica un partido: falla-closed (encola/omite con causa, nunca inventa)
+  2. Tras la re-corrida de militancias afectadas, las filas de PROD tienen cero URI-como-partido (verificable por consulta) — el dato queda limpio en la fuente, no solo en el render
+  3. La decisión sobre `partidoLegible()` (cinturón display-only de 104-03) queda DOCUMENTADA con evidencia post-re-corrida: se retira si el origen basta, o se conserva como defensa en profundidad con justificación
+  4. El cruce por partido (filtros/facetas) sigue funcionando con la clave serializada tras el fix — sin regresión de las superficies que muestran militancia
+
+**Plans**: TBD
+
+### Phase 106: BENCH P1a — Harness `llm-bench` + golden sets es-CL POR TAREA (SPIKE, gate duro)
+
+**Goal**: Construir el instrumento de medición que gobierna TODA decisión de escalonamiento — sin él, cualquier integración es fe, no evidencia. Es el primer entregable real y load-bearing.
+**Depends on**: Nothing (el harness no depende de nada nuevo; puede baselinear el DeepSeek/MiniMax de hoy)
+**Requirements**: BENCH-01, BENCH-02, BENCH-03
+**Componentes**: NET-NEW (`packages/llm-bench` fuera de la lib de runtime) + golden sets es-CL nuevos POR TAREA (routing, clasificación, juez/validación, paridad de extracción)
+**Success Criteria** (what must be TRUE):
+
+  1. El operador puede correr `packages/llm-bench` (o equivalente) que evalúa candidatos sobre golden sets POR TAREA en español chileno legal, reportando calidad, latencia (p50/p95), costo/1k y tasa de fallo zod/structured-output como métricas de PRIMERA CLASE separadas (omitir la última sobre-recomienda modelos chicos)
+  2. Existen golden sets es-CL nuevos por tarea con distribución estratificada del corpus REAL (muestra de la distribución viva, no solo casos fáciles), sin leakage al prompt y CONGELADOS antes de cualquier integración — precedente golden 32 / golden 1263; un guard CI asegura disjunción exemplar/eval
+  3. El benchmark corre contra el endpoint/cuantización EXACTOS que servirían en producción (host+revisión pinned; spike local Ollama para calidad, re-medición de latencia/costo en el host servido) — nunca números de un host distinto al que se integra
+  4. La postura de cuantización + DPA/no-train del host servido queda registrada como dato del spike (gate legal fail-closed para `trainsOnInputs`, no un flag de conveniencia); Ollama-local es trivialmente no-training
+
+**Plans**: TBD
+**Research**: yes (SPIKE load-bearing — flags de capability por proveedor subyacente de OpenRouter, cuantización+DPA del host, metodología de calibración es-CL; pricing MEDIUM y móvil)
+
+### Phase 107: BENCH P1b — Adapters candidatos + juez vs humanos + VEREDICTO por tarea
+
+**Goal**: Producir el veredicto empírico POR TAREA que autoriza (o veta) cada integración — qué modelo aprueba qué tarea, con paridad demostrada o el incumbente se queda.
+**Depends on**: Phase 106
+**Requirements**: TIER-01, BENCH-04, BENCH-05
+**Componentes**: NET-NEW (`GraniteProvider` responder + `PhiJudge` juez, plantilla `MiniMaxProvider` tool-calling + zod + guards fail-closed) como candidatos PUNTUADOS por el harness de 106
+**Success Criteria** (what must be TRUE):
+
+  1. Los adapters Granite y Phi implementan la interfaz `LLMProvider` existente por el patrón openai@5+baseURL (cero SDK nuevo), con los guards fail-closed por construcción (`assertNoRutInLlmInput` + sensitivity) IDÉNTICOS a DeepSeek/MiniMax — tool calling o prompt-forzado + zod por proveedor, jamás asumir `response_format: json_schema` (Phi: match tool_call por nombre, nunca posición)
+  2. La capacidad de juez de Phi-4-mini se mide contra etiquetas HUMANAS (no contra el responder), con métricas de sesgo conocidas (self-preference, posición, verbosidad) sobre datos no-PII
+  3. El spike produce un veredicto POR TAREA con gate de paridad explícito (ε declarado): qué tarea aprueba qué modelo, cuáles quedan en su incumbente — y NADA se autoriza a integrar sin su gate verde
+  4. Cualquier déficit en español (es-CL legal, fidelidad/negación) es VETO DURO para esa tarea — los benchmarks en inglés son irrelevantes y no influyen en la decisión
+
+**Plans**: TBD
+**Research**: yes (parte del SPIKE — precisión del juez en casos difíciles, calibración isotónica/Platt sobre etiquetas es-CL held-out)
+
+### Phase 108: TIER P2 — Plomería `TieredProvider` + `JudgeProvider` + ladder config + telemetría
+
+**Goal**: Cablear la cascada respond→validate→escalate como composición sobre la capa enchufable — testeable determinísticamente antes de tocar cualquier tarea viva.
+**Depends on**: Phase 107 (adapters existen como candidatos; el veredicto informa la config)
+**Requirements**: TIER-02, TIER-03, TIER-04, TIER-05
+**Componentes**: NET-NEW (`tiered.ts` decorador, `JudgeProvider` interfaz, `telemetry.ts` sink noop+JSONL, `task-ladder.ts` config) + MODIFICADO aditivo (`CompletionRequest.task`, retro-compatible: ausencia de `task` reproduce el ruteo por `criticality` de hoy)
+**Success Criteria** (what must be TRUE):
+
+  1. Existe un `TieredProvider` (decorador que `implements LLMProvider`) con config declarativa tarea→escalera; los consumidores NO cambian de cuerpo (drop-in en el punto de construcción del CLI), y la ausencia de `task` reproduce el comportamiento actual byte-por-byte
+  2. El juez compone como interfaz SEPARADA (`JudgeProvider`), es ESCALATE-ONLY (puede escalar/rechazar, JAMÁS aprobar ni suavizar una compuerta), y sus veredictos quedan registrados estructurados para auditabilidad
+  3. La telemetría por llamada (modelo, tarea, latencia, costo, veredicto, escalación) NO incluye payload ni PII en logs, y la escalación está ACOTADA (1 hop/tier, presupuesto máximo por ítem, estado terminal de revisión humana — sin loops)
+  4. El ruteo ocurre ENTRE pipelines, nunca a mitad de sesión — la economía del prompt-cache DeepSeek en fichas queda intacta (verificable: `prompt_cache_hit_tokens` no regresiona)
+
+**Plans**: TBD
+
+### Phase 109: INTEG P3 — Integrar la tarea de MENOR RIESGO tras golden gate verde
+
+**Goal**: Probar el patrón completo en producción de pipeline sobre algo reversible y no-legal, con la red de seguridad (golden gate + provider-guard + rollback) como primer commit.
+**Depends on**: Phase 108
+**Requirements**: INTEG-01, INTEG-02, INTEG-03
+**Componentes**: MODIFICADO (un `new DeepSeekProvider(...)` → `new TieredProvider(...)` en el sitio de construcción del CLI de la tarea elegida) + NET-NEW (provider-wrapper guard como PRIMER commit; golden set de esa tarea como regresión CI)
+**Success Criteria** (what must be TRUE):
+
+  1. UNA tarea reversible no-legal (clasificación o routing, elegida por evidencia del spike — jamás extracción de idea-matriz ni adjudicación) corre con la escalera integrada en producción de pipeline, gated por su golden set verde en CI como regresión PERMANENTE; shadow-evaluation queda ON antes de promover
+  2. La extracción de fichas sigue en DeepSeek y la adjudicación de identidad sigue en MiniMax, sin cambio de comportamiento — un guard estático/CI que MUERDE impide que la escalera toque `adjudicacion.*` y la extracción strict-schema (enumera todos los proveedores; falla si alguno carece del wrapper zod+PII)
+  3. El rollback es trivial: apagar la escalera vuelve al incumbente por config, sin migración ni deploy especial
+  4. Monitoreo del prompt-cache DeepSeek + canario de drift del endpoint quedan activos; el veredicto de golden se mide sobre la distribución viva, no solo el golden congelado
+
+**Plans**: TBD
+
+### Phase 110: V7GATES P4a — Applies delegables 0052-0054 + CI/secrets + rotación B26
+
+**Goal**: Cerrar lo DELEGABLE de los gates v7.0 — el agente aplica migraciones, verifica pgTAP y prepara CI/secrets/rotación; el operador provee valores de secreto y rota la credencial.
+**Depends on**: Nothing (paralelizable con la capa LLM)
+**Requirements**: V7-01, V7-07
+**Componentes**: EJECUCIÓN (applies 0052/0053/0054 con pgTAP contra schema aplicado; runbooks 72/74 existentes) + CHECKPOINT operador (CLOUDFLARE_API_TOKEN/ACCOUNT_ID en GH; rotación DB password B26, runbook 75)
+**Success Criteria** (what must be TRUE):
+
+  1. Migraciones 0052/0053/0054 aplicadas a PROD (`psql --single-transaction`, NUNCA `db push`, runbooks existentes) con sus pgTAP verdes contra el schema aplicado
+  2. `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` cargados por el operador en GH settings (la referencia YAML ya es correcta; solo el workflow de deploy los necesita) con billing GH verificado
+  3. El DB password B26 queda rotado y verificado por el operador: la url vieja falla, la nueva funciona, CI/sitio verdes (blast radius solo `SUPABASE_DB_URL`; CI/sitio corren con service_role key)
+  4. El agente NO carga valores de secreto ni rota la credencial (actos de operador); documenta y verifica
+
+**Plans**: TBD
+
+### Phase 111: V7GATES P4b — RUT-01 + backfills LIVE (votos + dinero) con checkpoints operador
+
+**Goal**: Poblar los datos que los gates v7.0 dejaron pendientes — RUT-01 primero (bloqueante duro de dinero), luego votos, luego dinero — cada write LIVE es un checkpoint blocking-human.
+**Depends on**: Phase 110 (applies en su lugar); RUT-01 antes que ChileCompra
+**Requirements**: V7-02, V7-03, V7-04
+**Componentes**: EJECUCIÓN (checkpoints operador; runbooks 69/66/67/70/71 existentes) — el agente prepara/verifica cobertura e invariantes, el operador ejecuta los writes LIVE
+**Success Criteria** (what must be TRUE):
+
+  1. RUT-01 poblado en la maestra vía checkpoint blocking-human (el operador ejecuta el write por runbook 69; el agente prepara/verifica, JAMÁS escribe RUT — guard compilador-enforzado `FilaRutCorroborada`)
+  2. Backfills LIVE de votos Cámara (runbook 66) y Senado (runbook 67) corridos con checkpoint operador; cobertura N/M reportada + invariantes verificados (dipids no_confirmado=0, tokens `<SELECCION>` confirmados)
+  3. Backfills de dinero corridos con checkpoint operador: ChileCompra por RUT (runbook 70, POST RUT-01, cuota 10k/día reanudable) y SERVEL .xlsx por elección (runbook 71, cruce por nombre determinista)
+  4. Toda cobertura queda DECLARADA como techo honesto (N/M); "sin dato" ≠ "sin vínculos"; MONEY sigue `MONEY_PUBLIC_ENABLED` OFF hasta el flip legal de Phase 112
+
+**Plans**: TBD
+
+### Phase 112: V7GATES P4c — Cold-reads/visual + flip MONEY legal + audit/complete v7.0 + cierre quick tasks
+
+**Goal**: Cerrar la pasada v7.0 — comprensión validada sobre deploy real, flip MONEY solo tras firma legal (o MONEY OFF honesto), auditoría/archivado del milestone, y marcador formal de las quick tasks.
+**Depends on**: Phase 111
+**Requirements**: V7-05, V7-06, V7-08, QT-01
+**Componentes**: EJECUCIÓN (gates BrowserOS 68/73/75 sobre deploy real; audit-milestone→complete-milestone v7.0) + CHECKPOINT operador (flip MONEY tras sign-off 21.719) + DOC (cierre formal quick tasks)
+**Success Criteria** (what must be TRUE):
+
+  1. Gates de comprensión/visuales cerrados sobre el deploy real: cold-read de votos (68-BROWSEROS-GATE), cold-read de MONEY gated-preview (73), no-regresión visual de `/red` (75) — con veredicto "comprensible"
+  2. El flip `MONEY_PUBLIC_ENABLED` se ejecuta SOLO tras sign-off legal 21.719 del operador en 13-LEGAL-DOSSIER (`signoff: approved`) — el agente documenta, el operador firma y flipea; si el operador NO firma, MONEY queda OFF y el milestone lo declara honesto
+  3. v7.0 auditada y archivada (`audit-milestone` → `complete-milestone v7.0`) al cerrar los gates alcanzados, con la deuda restante declarada explícita
+  4. Las 5 quick tasks abiertas (260623-rtl, 260702-rbb, 260713-izo, 260715-bvd, 260722-eia) tienen marcador formal de cierre en su directorio y STATE.md las refleja
+
+**Plans**: TBD
+
 
 ## 🔒 v7.0 — Votos, dinero y cierre técnico (Code-complete; gates de operador abiertos)
 
