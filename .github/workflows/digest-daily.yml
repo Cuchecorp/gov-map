@@ -1,0 +1,61 @@
+name: digest-daily
+
+# Digest DIARIO por email (NOTIF-03/04) — patrón EGRESO. Corre el CLI @obs/notificaciones
+# (run-digest-prod-cli) que drena la cola notificacion_envio, computa las novedades por
+# suscripción vía cursor idempotente y EMITE el resumen por Resend.
+#
+# ██████ PATRÓN EGRESO — NO es la ingesta de dos etapas ██████
+# NO toca fuentes gubernamentales: el destinatario es Resend, NO una fuente. Por eso NO hay
+# dos etapas (Fuentes→R2→Supabase de CLAUDE.md NO aplica), NO hay R2, NO hay rate-limit
+# 2-3s/host, NO hay robots.txt. La ÚNICA cota es el hard-cap 100/día (en código, enforceCap)
+# + la redacción de PII (email) en TODO log. Sin RESEND_API_KEY el CLI degrada a DRY-RUN
+# (no envía ningún correo). Reusa los secrets Supabase ya cargados en el repo.
+#
+# ESTRENO GATED (mirror roster-weekly): se estrena con workflow_dispatch SOLO (schedule
+# COMENTADO). Validar con una corrida manual VERDE (dry-run sin RESEND_API_KEY primero).
+# Recién después el operador descomenta el schedule (L-V 12:00 UTC, DESPUÉS de las crons
+# de datos: actualidad 11 UTC, leyes 20 UTC — el digest lee lo ya ingerido).
+
+on:
+  workflow_dispatch: {}
+  # schedule:
+  #   - cron: "0 12 * * 1-5"  # L-V 12:00 UTC — descomentar SOLO tras corrida manual VERDE
+
+permissions:
+  contents: read
+
+concurrency:
+  group: digest-daily
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.4.0
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install deps
+        # --ignore-scripts: tsx trae su propio esbuild; evita ERR_PNPM_IGNORED_BUILDS (gate pnpm 11).
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Send daily digest (EGRESO — no dos-etapas, no R2)
+        # EGRESO: lee suscripciones confirmadas + novedades de la propia DB (service_role) y
+        # EMITE por Resend. Sin R2, sin rate-limit gubernamental, sin robots.txt. El hard-cap
+        # 100/día vive en el código (enforceCap); la PII (email) se redacta en todo log.
+        # RESEND_API_KEY es un secret NUEVO (deuda de operador); ausente ⇒ el CLI hace DRY-RUN.
+        env:
+          SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          pnpm --filter @obs/notificaciones exec tsx src/run-digest-prod-cli.ts
