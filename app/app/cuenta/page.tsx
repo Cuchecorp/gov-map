@@ -100,23 +100,28 @@ export default async function CuentaPage({ searchParams }: PageProps) {
   // GOTCHA 45: searchParams (Promise) se lee PRIMERO. No hay notFound() en esta ruta.
   await searchParams;
 
+  // GATE PRIMERO (fix 104-02): con el flag OFF NO se instancia el cliente user —
+  // createUserClient es fail-loud sin SUPABASE_PUBLISHABLE_KEY (provisión operador
+  // pendiente) y crearlo antes del gate convertía el "no disponible" en un 500.
+  const notifOn = notifPublicEnabled(process.env);
+  if (!notifOn) {
+    return (
+      <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16 space-y-8">
+        <h1 className="text-2xl md:text-2xl font-semibold leading-tight">{H1}</h1>
+        <p className="text-sm text-muted-foreground">{NO_INDISPONIBLE}</p>
+      </main>
+    );
+  }
+
   const supabase = await clienteRender();
   const { data: claimsData } = await supabase.auth.getClaims();
   const autenticado = typeof claimsData?.claims?.sub === "string";
-
-  const notifOn = notifPublicEnabled(process.env);
 
   return (
     <main className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-16 space-y-8">
       <h1 className="text-2xl md:text-2xl font-semibold leading-tight">{H1}</h1>
 
-      {!notifOn ? (
-        <p className="text-sm text-muted-foreground">{NO_INDISPONIBLE}</p>
-      ) : !autenticado ? (
-        <LoginBlock />
-      ) : (
-        <SesionBlock supabase={supabase} />
-      )}
+      {!autenticado ? <LoginBlock /> : <SesionBlock supabase={supabase} />}
     </main>
   );
 }
