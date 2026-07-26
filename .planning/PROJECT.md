@@ -24,7 +24,11 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 **Método (LOCKED por el operador):** TODO con base empírica — spikes, iteraciones BrowserOS, revisión, diseño, crítica, loop. Primero QUÉ (señales con evidencia), después CÓMO (frontend). Corrida en contexto limpio con prompt listo (`.planning/PROMPT-v10.0-build-autonomo.md`).
 
-## Current State: v10.0 en curso (pasada 3)
+## Current State: v10.0 COMPLETA (8/8 fases) — pendiente audit/complete-milestone
+
+**Phase 104 completa (2026-07-26):** verificación E2E "todo funciona" + deploy final. Cadena de deploys: `027efdf6` → `3cd2511d` (fix /cuenta gate-primero, era 500) → `b467d41a` (3 fixes URI-como-partido en render: PartidoChip, Militancias, faceta) → **`e89b79af` FINAL** (fixes review WR-01/02/04). **VSIM ON en PROD** (dossier 102 firmado con autorización operador verbatim "Sí — firmar y flip ON" 2026-07-26; flip por wrangler secret; `.env.example` intacto): eje "Coinciden en N de M" vivo en /comparar con caveat base-alta, cuadrado contra SQL para 3 pares. Inventario E2E: panel 6 señales vivas × SQL, relaciones conteos == total_n + truncamiento >20 + alfabético, flags OFF DOM-ausentes (NOTIF `/cuenta` gated 200, MONEY), empty states honestos, cero URI-como-partido visible, 101-HUMAN-UAT cerrada 3/3. Verificación: passed 4/4 criterios. Suite 1428 app + guards verdes.
+
+## Current State (history): v10.0 pasada 3
 
 **Phase 103 completa (2026-07-26):** primer dato de usuario — suscripciones + digest email. Lockdown-guard extendido a `authenticated` como PRIMER commit (Block D/E + self-check, 22/22); migraciones 0069-0072 APLICADAS a PROD (suscripcion RLS user-owned pgTAP dos-usuarios, cola `notificacion_envio` zero-grant service_role-only con índice de idempotencia, consentimiento 21.719); /cuenta OTP + botón Seguir gated en ambas fichas + confirmar/baja por token opaco sin login (HMAC-derivado, hash-at-rest, baja one-click a NIVEL USUARIO por CR-03); `@obs/notificaciones` EGRESO (cursor idempotente, cap 100/día, PII redactada, dry-run sin key) + `run-confirmaciones-prod-cli` cerrando el loop doble opt-in + cron `digest-daily.yml` dispatch-only; /spike-auth ELIMINADO. Dossier legal `103-LEGAL-DOSSIER-NOTIF.md` signoff:approved (pre-autorización verbatim del operador-abogado). Review 2 iteraciones: 12 hallazgos TODOS fixed (CR-01 unsubscribe muerto, CR-02 raw tokens descartados, CR-03 granularidad baja). **Flag-OFF closure ejecutado** (NOTIF-05): feature completa e INERTE — provisión operador pendiente (publishable key, OTP template, Resend dominio/DPA/key, NOTIF_TOKEN_SECRET ×2) en `103-HUMAN-UAT.md`; deploy viaja con Phase 104.
 
@@ -279,4 +283,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-26 after Phase 103 (NOTIF) completion. Antes: v9.0 milestone — Robustez de productos estrella + seguridad final SHIPPED (Phases 86-96, audit PASSED 29/29, deploy `09f1d5c2` con CSP enforced). Deuda de operador viva: 96-OPERATOR-HANDOFF.md + HANDOFF-v7.0-operator-gates.md. Antes: v8.1 Demo perfecto shipped 2026-07-15 (`3563ecc9`); v7.0 code-complete con gates de operador abiertos.*
+*Last updated: 2026-07-26 after Phase 104 (E2E) — v10.0 8/8 fases completas, deploy final e89b79af. Antes: v9.0 milestone — Robustez de productos estrella + seguridad final SHIPPED (Phases 86-96, audit PASSED 29/29, deploy `09f1d5c2` con CSP enforced). Deuda de operador viva: 96-OPERATOR-HANDOFF.md + HANDOFF-v7.0-operator-gates.md. Antes: v8.1 Demo perfecto shipped 2026-07-15 (`3563ecc9`); v7.0 code-complete con gates de operador abiertos.*
