@@ -46,7 +46,7 @@
 
 - [x] **NOTIF-01**: Un usuario autenticado (Supabase Auth, magic-link/OTP) puede suscribirse y des-suscribirse a un proyecto de ley o a un parlamentario; sus suscripciones viven en tablas user-owned con RLS real (`to authenticated`, `auth.uid()=user_id`), deny-by-default, aisladas del plano service_role.
 - [x] **NOTIF-02**: El lockdown-guard se extiende al rol `authenticated` (allowlist de tablas-de-usuario + mutation self-check) como PRIMER commit de la fase — el agujero detectado en research no llega a PROD.
-- [ ] **NOTIF-03**: Un digest diario por email (Resend; free tier 100/día declarado como techo) agrupa las novedades de las suscripciones del usuario (cursor idempotente, cola en tabla drenada por cron GH Actions — patrón EGRESO nuevo, documentado); jamás instantáneo (promesa falsa bajo crons).
+- [x] **NOTIF-03**: Un digest diario por email (Resend; free tier 100/día declarado como techo) agrupa las novedades de las suscripciones del usuario (cursor idempotente, cola en tabla drenada por cron GH Actions — patrón EGRESO nuevo, documentado); jamás instantáneo (promesa falsa bajo crons).
 - [x] **NOTIF-04**: Doble opt-in, unsubscribe por token opaco en footer (sin login), preference center mínimo, registro de consentimiento (fecha/versión/método); email de usuario = PII propia: nunca a LLM, logs de CI, ni R2.
 - [x] **NOTIF-05**: Checkpoint legal humano 21.719 ANTES de exponer la captura de emails al público (DPA del proveedor = gate de operador); sin respuesta → feature queda detrás de flag OFF con handoff documentado, la corrida cierra igual.
 
@@ -95,7 +95,7 @@
 | VSIM-03 | Phase 102 | Complete |
 | NOTIF-01 | Phase 103 | Complete |
 | NOTIF-02 | Phase 103 | Complete |
-| NOTIF-03 | Phase 103 | Pending |
+| NOTIF-03 | Phase 103 | Complete |
 | NOTIF-04 | Phase 103 | Complete |
 | NOTIF-05 | Phase 103 | Complete |
 | E2E-01 | Phase 104 | Pending |

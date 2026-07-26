@@ -259,7 +259,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2; 103-03 y 103-04 en paralelo, sin solape de archivos)*
 
 - [x] 103-03-PLAN.md — /cuenta OTP + suscripción Server Actions + botón Seguir gated + confirmar/baja por token opaco sin login + linter SUPERFICIES_NOTIF; borra /spike-auth (NOTIF-01/04/05)
-- [ ] 103-04-PLAN.md — @obs/notificaciones EGRESO (cursor idempotente + hard-cap 100/día + redacción PII + Resend fetch dry-run) + digest-daily.yml (NOTIF-03/04)
+- [x] 103-04-PLAN.md — @obs/notificaciones EGRESO (cursor idempotente + hard-cap 100/día + redacción PII + Resend fetch dry-run) + digest-daily.yml (NOTIF-03/04)
 
 **Wave 4** *(blocked on Waves 1-3)*
 
@@ -1326,7 +1326,7 @@ Plans:
 | 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 4/4 | Complete    | 2026-07-24 |
 | 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 3/3 | Complete    | 2026-07-25 |
 | 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 3/3 | Complete    | 2026-07-25 |
-| 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 3/5 | In Progress|  |
+| 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 4/5 | In Progress|  |
 | 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 0/? | Not started | - |
 
 ## ✅ v4.0 — De datos a cruces verificables

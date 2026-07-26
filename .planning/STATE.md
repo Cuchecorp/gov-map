@@ -4,13 +4,13 @@ milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
 status: executing
 stopped_at: Completed 103-02-PLAN.md
-last_updated: "2026-07-26T14:29:23.472Z"
+last_updated: "2026-07-26T14:41:07.309Z"
 last_activity: 2026-07-26
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 23
-  completed_plans: 21
+  completed_plans: 22
   percent: 75
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 103 (NOTIF P3a — Suscripciones + digest + guards authenticated + gate legal) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-07-26
 
@@ -105,6 +105,7 @@ Last activity: 2026-07-26
 | Phase 102 P02 | 8 | 2 tasks | 1 files |
 | Phase 103 P103-02 | ~18 min | 3 tasks | 6 files |
 | Phase 103 P103-03 | ~12 min | 3 tasks | 18 files |
+| Phase 103 P103-04 | ~7 min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -179,6 +180,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase 103] 103-01 (PRIMER commit NOTIF-02): lockdown-guard extendido al rol `authenticated` (nuevo esta fase; anon/public era ciego a `to authenticated` — Pitfall 1). Block D = allowlist POSITIVA `USER_OWNED_TABLES={suscripcion,consentimiento}` via `authenticatedGrantOffenders` (clona `anonGrantOffenders` invertido; extrae tabla objetivo por sentencia; scan migraciones >0044 = 0 offenders hoy, MUERDE cuando Plan 02 escriba un grant fuera de la allowlist). Block E = `notificacion_envio` service_role-only (CERO grant a authenticated, cae de Block D + fixture nombrado select/insert/update/delete/all). Mutation self-check ejercita el detector REAL EN MEMORIA (proyecto+queue→offender, suscripcion/consentimiento→0, comentario→0). `.from()` de tablas-de-usuario SCOPEADO a `supabase.ts`; `notif-service.ts` (Plan 03) tolerado explicito via `NOTIF_SERVICE_TS` (el UNICO punto service_role sancionado, espejo de como supabase.ts es el chokepoint PII). notif-gate.ts = chokepoint `=== "true"` (clon vsim-gate) + notif-antiflip-guard 3-vector (V1a-d/V2a-b/V3 app+packages) + self-check. DISTINCION vs VSIM/MONEY: operador PRE-AUTORIZO el flip esta corrida PERO `.env.example=false` y el flip es DEPLOY-TIME (env var Worker), NUNCA committeado; estrictez anti-flip IDENTICA. .env.example += `NOTIF_PUBLIC_ENABLED=false` + `RESEND_API_KEY=` (placeholder Plan 04/05). CERO paquete nuevo. tsc 0; lockdown 22/22 + notif-antiflip 20/20 (money-antiflip verde en foco; timeout 5s bajo carga full-suite = flake pre-existente NO regresion). Commits 6cf3bbc + b4331db.
 - [Phase ?]: 103-02: primeras tablas user-owned (0069 suscripcion / 0071 consentimiento) RLS to authenticated + (select auth.uid())=user_id; 0070 notificacion_envio service_role-only cola con cursor idempotente ultimo_evento_visto. RULE-2: post-0044 (ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE ALL ON TABLES FROM authenticated) las tablas net-new dan CERO grant base a authenticated -> RLS owner-scoped MUERTA (permission denied) sin grant explicito; anadido grant select,insert,delete suscripcion + select,insert consentimiento (RLS igual aisla; el grant ES el to-authenticated allowlisted que Block D espera). pgTAP 20/20 (6/6/8) en scratch DB que espeja post-0044; lockdown 22/22. Apply PROD = Plan 05.
 - [Phase ?]: [Phase 103] 103-03: user surfaces NOTIF. SUPERFICIES_NOTIF en anti-insinuacion linter ANTES del copy (Wave-0); sin NEGACIONES_LOCKED (niega 'instantáneos', no prohibido). /cuenta OTP (clon spike-auth, WR-01/WR-02) + seguir/dejarDeSeguir con user_id de getClaims().sub SERVER-SIDE (Pitfall 5, RLS with-check backstop) + consentimiento 21.719. token.ts (raw base64url en link, sha256 hex en DB, node:crypto). notif-service.ts = helper service_role DEDICADO separado de supabase.ts (ÚNICO acceso user-table service_role fuera del carril sesión, tolerado por lockdown NOTIF_SERVICE_TS). confirmar/baja login-less noindex (baja one-click). SeguirButton gate-before-render (null si flag OFF = ausente del DOM) en ambas fichas, aria-pressed, petróleo (nunca camara/senado fill). RULE-3: /spike-auth borrado + spike-auth-gate.ts + SPIKE_AUTH_ENABLED .env.example (dead code) + comment middleware→/cuenta; tsc exigió next typegen (.next/types stale). Suite 1401 verde, guards 75/75, tsc 0. Apply PROD 0069-0071 + email confirm = Plan 04/05.
+- [Phase 103] 103-04: patrón EGRESO (@obs/notificaciones) — NO es la ingesta de dos etapas: sin fuente, sin R2 crudo, sin rate-limit 2-3s/host, sin robots.txt; el destinatario es Resend, no un WAF → la regla dos-etapas de CLAUDE.md NO aplica (documentado en digest.ts/resend.ts/run-digest-prod-cli.ts/digest-daily.yml). ÚNICA cota = hard-cap 100/día (código, enforceCap) + redacción PII (redactEmail) en TODO log; email JAMÁS crudo en logs/CI/R2. computeNovedades idempotente por cursor (solo id>cursor; nuevoCursor avanza SOLO en envío exitoso → re-run=0); parlamentario fail-closed (proyecto_autor estado_vinculo='confirmado'; no_confirmado/NULL aportan CERO, T-103-21). Envío = global fetch (NO SDK Resend, CERO paquete nuevo T-103-SC) POST api.resend.com/emails + List-Unsubscribe one-click; sin RESEND_API_KEY ⇒ dry-run; 429 respeta retry-after (reintentable, cursor no avanza). renderDigest = la ÚNICA isla de hex inline sancionada (cada hex→su token). digest-daily.yml GATED (workflow_dispatch only, schedule comentado, mirror roster-weekly) + secret NUEVO RESEND_API_KEY (deuda operador). 22 tests + tsc 0. RULE-3: cast supabase-js client a DbLike para tsc -b. Deuda operador Plan 05: apply 0069-0071 + cargar RESEND_API_KEY + dominio verificado + dry-run verde antes de descomentar schedule.
 
 ### Pending Todos
 
@@ -234,7 +236,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-26T14:28:55.258Z
+Last session: 2026-07-26T14:40:18.197Z
 Stopped at: Completed 103-02-PLAN.md
 Resume file: None
 
