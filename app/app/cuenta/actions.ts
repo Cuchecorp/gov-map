@@ -9,6 +9,7 @@ import { BOLETIN_RE, PARLAMENTARIO_ID_RE } from "@/lib/buscar";
 import crypto from "node:crypto";
 
 import { deriveToken } from "../notificaciones/token";
+import { CONSENT_VERSION } from "./constants";
 
 /**
  * Server Actions de /cuenta (NOTIF-01, Phase 103) — login OTP por email +
@@ -41,9 +42,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_MAX = 254;
 // OTP de Supabase = 6 dígitos.
 const OTP_RE = /^\d{6}$/;
-
-/** Versión del texto de consentimiento informado vigente (21.719 — trazabilidad). */
-export const CONSENT_VERSION = "1";
 
 /**
  * Lee el secreto de derivación de tokens (CR-01/CR-02). Fail-loud: sin él NO se puede

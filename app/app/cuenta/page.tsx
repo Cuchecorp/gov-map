@@ -5,7 +5,6 @@ import { notifPublicEnabled } from "@/lib/notif-gate";
 import { createUserClient } from "@/lib/supabase-user";
 
 import {
-  CONSENT_VERSION,
   cerrarSesion,
   dejarDeSeguir,
   enviarOtp,
@@ -307,6 +306,3 @@ function SuscripcionItem({ suscripcion }: { suscripcion: SuscripcionRow }) {
     </li>
   );
 }
-
-// Re-export para tests / consumidores server-side (contrato de versión de consentimiento).
-export { CONSENT_VERSION };
