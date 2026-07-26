@@ -371,6 +371,42 @@ const SUPERFICIES_VSIM: string[] = [
 ];
 
 /**
+ * Superficies NOTIF (103-03, NOTIF-01/04/05) — suscripciones + digest. El frente
+ * de notificaciones ("Seguir" en las fichas + el centro de cuenta `/cuenta` + los
+ * aterrizajes login-less de confirmación/baja) es un vector de insinuación de
+ * INSTANTANEIDAD y de EDITORIALIZACIÓN del resumen: el copy JAMÁS debe prometer un
+ * aviso inmediato ("avisos instantáneos" se NIEGA explícitamente), ni describir lo
+ * que sigue el usuario con vocabulario de afinidad/ranking. El resumen es un HECHO
+ * PROGRAMADO ("una vez al día, de lunes a viernes"), cada ítem con fuente+fecha+
+ * enlace; nunca una promesa de tiempo real ni un juicio.
+ *
+ * TRIPWIRE ANTES DEL COPY (Wave-0, lección BLOCKER 91): estas superficies se
+ * declaran ANTES de escribir el copy de `/cuenta`, del botón y de las páginas de
+ * confirmar/baja. El loader del bucle TOLERA archivos faltantes (try/catch continue)
+ * → las rutas aún ausentes se saltan hoy y MUERDEN recién cuando el archivo exista.
+ *
+ * NOTA NEGACIONES_LOCKED: el copy NOTIF NIEGA "avisos instantáneos" ("No enviamos
+ * avisos instantáneos: los datos se actualizan por procesos programados."), pero
+ * "instantáneos"/"instantaneidad" NO están en TERMINOS_PROHIBIDOS → no requieren
+ * registro en NEGACIONES_LOCKED (es una negación honesta de un término NO prohibido,
+ * mismo caso que las leyendas de AGENDA "completo"/"confirma"). Si un copy futuro de
+ * NOTIF negara un término PROHIBIDO, debe registrarse verbatim ANTES de que la
+ * superficie entre al scan real (Pitfall 3).
+ *
+ * El template del email digest (`packages/notificaciones/src/digest.ts`, Plan 04)
+ * vive fuera de `app/` (APP_ROOT) → NO se escanea aquí; su copy anti-insinuación se
+ * cubre en el Plan 04 con su propio guard de paquete. Rutas relativas a app/, mismo
+ * formato que los otros arrays.
+ */
+const SUPERFICIES_NOTIF: string[] = [
+  "app/cuenta/page.tsx",
+  "app/cuenta/actions.ts",
+  "components/seguir-button.tsx",
+  "app/notificaciones/confirmar/page.tsx",
+  "app/notificaciones/baja/page.tsx",
+];
+
+/**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
  * texto RENDERIZADO (post-strip de comentarios), con límite de palabra en español
  * para no cazar identificadores snake_case: `rebeldias_de_parlamentario` (nombre de
@@ -613,7 +649,7 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
 
   it("ningún término prohibido aparece en el texto renderizado (post-strip de comentarios)", () => {
     const offenders: string[] = [];
-    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA, ...SUPERFICIES_DEEPLINK, ...SUPERFICIES_PANEL, ...SUPERFICIES_RELACIONES, ...SUPERFICIES_VSIM]) {
+    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA, ...SUPERFICIES_DEEPLINK, ...SUPERFICIES_PANEL, ...SUPERFICIES_RELACIONES, ...SUPERFICIES_VSIM, ...SUPERFICIES_NOTIF]) {
       const full = path.join(APP_ROOT, rel);
       let raw: string;
       try {
@@ -893,6 +929,27 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
   it("VSIM (102-01): caza el femenino/plural `aliada` inyectado (el límite de palabra no lo cubre desde `aliado`)", () => {
     const fixtureMutado = `<p>Es aliada de la misma bancada.</p>`;
     expect(detectarInsinuaciones(fixtureMutado)).toContain("aliada");
+  });
+
+  it("NOTIF (103-03): caza vocabulario de afinidad/ranking inyectado en el frente de suscripciones (aliado / afín / ranking) sobre lo NUEVO", () => {
+    // Idioms FRESCOS inyectados en un fixture EN MEMORIA que simula /cuenta, el botón
+    // Seguir o una página de confirmar/baja. Prueba que el guard MUERDE sobre el carril
+    // NOTIF — lo que el usuario SIGUE es una lista de objetos, jamás un juicio de
+    // afinidad ni un ranking; el resumen es un HECHO PROGRAMADO, no una editorialización.
+    const fixtureMutado = `
+      export function CuentaMala() {
+        return (
+          <main>
+            <p>Sigues a un parlamentario afín; es un aliado bien rankeado en tu ranking.</p>
+          </main>
+        );
+      }
+    `;
+    const hits = detectarInsinuaciones(fixtureMutado);
+    expect(
+      hits,
+      "El detector NO cazó vocabulario de afinidad/ranking inyectado → el guard NOTIF sería un no-op",
+    ).toEqual(expect.arrayContaining(["afín", "aliado", "ranking"]));
   });
 });
 
