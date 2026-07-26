@@ -70,7 +70,7 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({ from: (table: string) => makeBuilder(table) }),
 }));
 
-import { marcarBaja, marcarConfirmada } from "./notif-service";
+import { marcarBaja, marcarBajaUsuario, marcarConfirmada } from "./notif-service";
 
 beforeEach(() => {
   calls.length = 0;
@@ -111,5 +111,29 @@ describe("notif-service — WR-01: la baja por email BORRA la fila (no flip esta
     updateSelectRows = []; // el filtro de ventana descartó la fila (expirada)
     const ok = await marcarConfirmada("22222222-3333-4444-5555-666666666666");
     expect(ok).toBe(false); // NO se confirmó (server-side, sin importar el caller)
+  });
+});
+
+describe("notif-service — CR-03: la baja del DIGEST borra TODAS las suscripciones del usuario", () => {
+  it("marcarBajaUsuario emite un DELETE scoped por user_id (no por id de una fila)", async () => {
+    // El digest es UN correo por usuario con N suscripciones; un click de baja debe detener el
+    // correo ENTERO → se borran TODAS las filas del user_id (no una sola). Simulamos 2 filas.
+    updateSelectRows = [{ id: "susc-1" }, { id: "susc-2" }];
+    const borradas = await marcarBajaUsuario("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+    const op = calls.find((c) => c.table === "suscripcion");
+    expect(op).toBeDefined();
+    expect(op!.op).toBe("delete");
+    // Scoped por USER_ID (no por id puntual) → barre todas las suscripciones del usuario.
+    expect(op!.eq).toContainEqual(["user_id", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"]);
+    expect(op!.eq.find(([col]) => col === "id")).toBeUndefined();
+    // Devuelve el conteo de filas borradas (2 suscripciones → 2). Prueba que UN click detiene
+    // el digest de un usuario con MÚLTIPLES suscripciones (la regresión CR-03).
+    expect(borradas).toBe(2);
+  });
+
+  it("marcarBajaUsuario sobre un usuario ya sin suscripciones → 0 (no lanza, igual OK)", async () => {
+    updateSelectRows = []; // sin filas que borrar (ya dado de baja)
+    const borradas = await marcarBajaUsuario("ffffffff-0000-1111-2222-333333333333");
+    expect(borradas).toBe(0);
   });
 });

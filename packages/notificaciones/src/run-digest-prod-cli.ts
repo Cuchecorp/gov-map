@@ -26,7 +26,7 @@ import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import {
   computeNovedades,
-  deriveRawToken,
+  deriveUserBajaToken,
   enforceCap,
   filtrarConNovedades,
   HARD_CAP_DIARIO,
@@ -179,10 +179,10 @@ async function run(): Promise<void> {
   interface Pend {
     userId: string;
     grupos: { suscripcionId: string; objetivo: string; nov: NovedadEvento[]; nuevoCur: number }[];
-    // CR-01: id de la PRIMERA suscripción del usuario → deriva el token crudo del link de
-    // baja (HMAC(secret, `baja:${id}`)). NO se usa el hash guardado (ese es el sha256 del
-    // raw; ponerlo en el link doble-hasheaba y el link salía muerto — bug original).
-    bajaSuscripcionId: string;
+    // CR-03: el link de baja del digest se deriva del USER_ID (no de una suscripción). El
+    // digest es UN correo por usuario que agrega TODAS sus suscripciones → el one-click
+    // unsubscribe debe detener el correo ENTERO. deriveUserBajaToken(secret, userId) produce
+    // un token auto-autenticante (firma HMAC verificable en la landing SIN lookup en DB).
   }
   const porUsuario = new Map<string, Pend>();
   for (const s of confirmadas) {
@@ -194,7 +194,7 @@ async function run(): Promise<void> {
     const nov = await computeNovedades(sus, cursor, sb as unknown as DbLike);
     let p = porUsuario.get(s.user_id);
     if (!p) {
-      p = { userId: s.user_id, grupos: [], bajaSuscripcionId: s.id };
+      p = { userId: s.user_id, grupos: [] };
       porUsuario.set(s.user_id, p);
     }
     p.grupos.push({
@@ -245,10 +245,12 @@ async function run(): Promise<void> {
     }
     const destinatario = userData.user.email;
     const grupos: GrupoDigest[] = u.grupos.map((g) => ({ objetivo: g.objetivo, novedades: g.nov }));
-    // CR-01: DERIVAR el token CRUDO de baja (no el hash). hashToken(rawBaja) === el
-    // baja_token_hash guardado al suscribir → el link /notificaciones/baja?t=rawBaja
-    // resuelve la fila (one-click 21.719). El hash NUNCA viaja en el link.
-    const rawBaja = deriveRawToken(tokenSecret, "baja", u.bajaSuscripcionId);
+    // CR-03: DERIVAR el token de baja A NIVEL USUARIO (no por-suscripción). El digest agrega
+    // todas las suscripciones del usuario en UN correo → el one-click unsubscribe (footer +
+    // List-Unsubscribe header) debe detener el correo ENTERO. deriveUserBajaToken produce un
+    // token auto-autenticante base64url(`${userId}:${HMAC(secret,'baja-user:'+userId)}`) que la
+    // landing verifica por firma y usa para borrar TODAS las suscripciones del user (21.719).
+    const rawBaja = deriveUserBajaToken(tokenSecret, u.userId);
     const { html, text } = renderDigest(grupos, fecha, baseUrl, rawBaja);
 
     const resultado = await enviarDigest(

@@ -146,3 +146,30 @@ export async function marcarBaja(id: string): Promise<void> {
     throw new Error(`marcarBaja falló: ${error.message}`);
   }
 }
+
+/**
+ * Baja A NIVEL USUARIO del digest (CR-03, unsubscribe one-click 21.719): BORRA TODAS las
+ * suscripciones del usuario.
+ *
+ * El digest es UN correo por usuario que agrega TODAS sus suscripciones confirmadas, y el
+ * footer/`List-Unsubscribe` header llevan UN solo token (el de baja por-usuario). Un click
+ * DEBE detener el correo entero — no una sola de N suscripciones (la baja por-fila dejaba las
+ * demás vivas y el próximo digest seguía llegando). Aquí se borran TODAS las filas del user;
+ * el FK de notificacion_envio es `on delete cascade` → los cursores de envío se limpian. El
+ * `userId` viene de un token de baja por-usuario ya VERIFICADO por firma HMAC (la landing lo
+ * valida antes de llamar aquí); service_role bypassa RLS a propósito (la capacidad la porta el
+ * token verificado, no un auth.uid()). Devuelve cuántas filas se borraron (0 = ya sin
+ * suscripciones = igual OK: el usuario queda sin digest).
+ */
+export async function marcarBajaUsuario(userId: string): Promise<number> {
+  const sb = clienteServicio();
+  const { data, error } = await sb
+    .from("suscripcion")
+    .delete()
+    .eq("user_id", userId)
+    .select("id");
+  if (error) {
+    throw new Error(`marcarBajaUsuario falló: ${error.message}`);
+  }
+  return Array.isArray(data) ? data.length : 0;
+}

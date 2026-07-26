@@ -58,6 +58,32 @@ export function deriveRawToken(
   return createHmac("sha256", secret).update(`${purpose}:${suscripcionId}`).digest("base64url");
 }
 
+// ── TOKEN DE BAJA A NIVEL USUARIO (CR-03, Phase 103) ──────────────────────────────
+// El digest es UN correo por usuario que agrega TODAS sus suscripciones. El one-click
+// unsubscribe (footer + header List-Unsubscribe RFC 8058) debe detener ESE correo completo,
+// no una sola de N suscripciones (21.719). El token por-suscripción daba de baja UNA fila; el
+// digest necesita uno por USUARIO. Formato AUTO-AUTENTICANTE (sin lookup por token en la DB):
+//   base64url( `${userId}:${HMAC-SHA256(secret, "baja-user:"+userId).base64url}` )
+// La landing (app/app/notificaciones/token.ts verifyUserBajaToken) lo decodifica, re-deriva
+// la firma y, si casa, borra TODAS las suscripciones del user (marcarBajaUsuario). Debe ser
+// BYTE-IDÉNTICO al `deriveUserBajaToken` de app/app/notificaciones/token.ts.
+
+/**
+ * Deriva el token de baja A NIVEL USUARIO (CR-03) para el link del digest, byte-idéntico al
+ * `deriveUserBajaToken` de la app: base64url(`${userId}:${HMAC(secret,'baja-user:'+userId)}`).
+ * Reproducible por el CRON sin persistir nada. Fail-loud si falta el secreto.
+ */
+export function deriveUserBajaToken(secret: string, userId: string): string {
+  if (!secret) {
+    throw new Error(
+      "deriveUserBajaToken: falta NOTIF_TOKEN_SECRET. Sin él el link de baja del digest " +
+        "no puede derivarse (la firma no casaría en la landing).",
+    );
+  }
+  const firma = createHmac("sha256", secret).update(`baja-user:${userId}`).digest("base64url");
+  return Buffer.from(`${userId}:${firma}`, "utf8").toString("base64url");
+}
+
 /** Cliente Supabase mínimo que este motor necesita (real o fake en tests). */
 export interface DbLike {
   from(table: string): QueryLike;

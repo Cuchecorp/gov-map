@@ -4,6 +4,9 @@
 // no hay fuente, no hay R2, no hay rate-limit gubernamental (ver digest.ts header).
 export {
   computeNovedades,
+  deriveRawToken,
+  deriveUserBajaToken,
+  filtrarConNovedades,
   redactEmail,
   nuevoCursor,
   enforceCap,
@@ -14,6 +17,7 @@ export {
   type Suscripcion,
   type NovedadEvento,
   type PendingUser,
+  type TokenPurpose,
 } from "./digest";
 
 export {

@@ -2,7 +2,13 @@ import { createHmac } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
-import { deriveToken, generarToken, hashToken } from "./token";
+import {
+  deriveToken,
+  deriveUserBajaToken,
+  generarToken,
+  hashToken,
+  verifyUserBajaToken,
+} from "./token";
 
 /**
  * Tests de NOTIF-04 (Phase 103): el token opaco (round-trip determinista + hash no
@@ -87,5 +93,47 @@ describe("deriveToken (CR-01/CR-02) — token DERIVADO reproducible round-trip",
 
   it("sin secreto lanza (fail-loud: no derivar links muertos en silencio)", () => {
     expect(() => deriveToken("", "baja", SUSC_ID)).toThrow(/secreto/i);
+  });
+});
+
+describe("deriveUserBajaToken / verifyUserBajaToken (CR-03) — baja del DIGEST completo", () => {
+  const SECRET = "secreto-de-servidor-de-prueba";
+  const USER_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+
+  it("round-trip: verifyUserBajaToken(deriveUserBajaToken(user)) === userId (link vivo)", () => {
+    // CR-03: el digest agrega N suscripciones en UN correo; su link de baja debe detener el
+    // correo ENTERO. El token es auto-autenticante (userId + firma HMAC); la landing lo verifica
+    // por firma SIN lookup en DB y borra TODAS las suscripciones del user (one-click 21.719).
+    const token = deriveUserBajaToken(SECRET, USER_ID);
+    expect(verifyUserBajaToken(SECRET, token)).toBe(USER_ID);
+  });
+
+  it("fórmula = base64url(`${userId}:${HMAC-SHA256(secret,'baja-user:'+userId)}`) — byte-idéntica al CRON", () => {
+    // El CRON del digest (packages/notificaciones deriveUserBajaToken) DEBE reproducir este
+    // mismo token; este assert congela la fórmula compartida entre app y CRON.
+    const firma = createHmac("sha256", SECRET).update(`baja-user:${USER_ID}`).digest("base64url");
+    const esperado = Buffer.from(`${USER_ID}:${firma}`, "utf8").toString("base64url");
+    expect(deriveUserBajaToken(SECRET, USER_ID)).toBe(esperado);
+  });
+
+  it("es DETERMINISTA: mismo (secret, userId) → mismo token", () => {
+    expect(deriveUserBajaToken(SECRET, USER_ID)).toBe(deriveUserBajaToken(SECRET, USER_ID));
+  });
+
+  it("no forjable sin el secreto: firma con otro secreto → verify devuelve null", () => {
+    const forjado = deriveUserBajaToken("otro-secreto", USER_ID);
+    expect(verifyUserBajaToken(SECRET, forjado)).toBeNull();
+  });
+
+  it("token ausente/malformado → null (no crashea, copy de inválido)", () => {
+    expect(verifyUserBajaToken(SECRET, "")).toBeNull();
+    expect(verifyUserBajaToken(SECRET, "no-es-un-token-valido")).toBeNull();
+    // base64url sin ':' tras decodificar → null.
+    expect(verifyUserBajaToken(SECRET, Buffer.from("sin-separador", "utf8").toString("base64url"))).toBeNull();
+  });
+
+  it("sin secreto: deriveUserBajaToken lanza; verifyUserBajaToken devuelve null (fail-safe)", () => {
+    expect(() => deriveUserBajaToken("", USER_ID)).toThrow(/secreto/i);
+    expect(verifyUserBajaToken("", deriveUserBajaToken(SECRET, USER_ID))).toBeNull();
   });
 });

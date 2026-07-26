@@ -4,6 +4,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeNovedades,
   deriveRawToken,
+  deriveUserBajaToken,
   filtrarConNovedades,
   redactEmail,
   nuevoCursor,
@@ -269,5 +270,54 @@ describe("deriveRawToken (CR-01) — el token del link REVIVE el unsubscribe (ro
 
   it("sin secreto lanza (fail-loud: no emitir un link de baja muerto)", () => {
     expect(() => deriveRawToken("", "baja", SUSC_ID)).toThrow(/NOTIF_TOKEN_SECRET/);
+  });
+});
+
+describe("deriveUserBajaToken (CR-03) — el token del digest da de baja AL USUARIO completo", () => {
+  const SECRET = "secreto-de-servidor-de-prueba";
+  const USER_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+
+  // Re-implementa el verificador de la app (verifyUserBajaToken) para probar el ROUND-TRIP
+  // cross-package (el CRON deriva; la landing verifica). La fórmula debe ser byte-idéntica.
+  function verifyUserBajaToken(secret: string, token: string): string | null {
+    if (!secret || !token) return null;
+    const decoded = Buffer.from(token, "base64url").toString("utf8");
+    const sep = decoded.indexOf(":");
+    if (sep <= 0 || sep === decoded.length - 1) return null;
+    const userId = decoded.slice(0, sep);
+    const firmaRecibida = decoded.slice(sep + 1);
+    const firmaEsperada = createHmac("sha256", secret).update(`baja-user:${userId}`).digest("base64url");
+    return firmaRecibida === firmaEsperada ? userId : null;
+  }
+
+  it("ROUND-TRIP cross-package: verifyUserBajaToken(deriveUserBajaToken(user)) === userId", () => {
+    // Lo que el bug CR-03 dejaba roto: el digest agregaba N suscripciones pero el token de baja
+    // era de UNA sola → un click no detenía el correo. Ahora el token es POR USUARIO; la landing
+    // lo verifica por firma y borra TODAS las suscripciones del user (one-click 21.719).
+    const token = deriveUserBajaToken(SECRET, USER_ID);
+    expect(verifyUserBajaToken(SECRET, token)).toBe(USER_ID);
+  });
+
+  it("es DETERMINISTA: el CRON reproduce el mismo token en cada corrida para un userId", () => {
+    expect(deriveUserBajaToken(SECRET, USER_ID)).toBe(deriveUserBajaToken(SECRET, USER_ID));
+  });
+
+  it("no forjable sin el secreto: otro secreto → la firma NO verifica (userId null)", () => {
+    const forjado = deriveUserBajaToken("otro-secreto", USER_ID);
+    expect(verifyUserBajaToken(SECRET, forjado)).toBeNull();
+  });
+
+  it("DOS suscripciones del mismo usuario comparten UN token de baja (el del digest)", () => {
+    // El digest agrupa por usuario: aunque el user tenga 2+ suscripciones, el correo lleva UN
+    // solo token de baja (derivado del userId, no de una suscripción). Un click → baja de todo.
+    const tokenDelDigest = deriveUserBajaToken(SECRET, USER_ID);
+    // El mismo userId (dos suscripciones distintas dan el MISMO token de usuario).
+    expect(deriveUserBajaToken(SECRET, USER_ID)).toBe(tokenDelDigest);
+    // Y verifica de vuelta al userId → la landing borrará TODAS las suscripciones del user.
+    expect(verifyUserBajaToken(SECRET, tokenDelDigest)).toBe(USER_ID);
+  });
+
+  it("sin secreto lanza (fail-loud: no emitir un link de baja muerto)", () => {
+    expect(() => deriveUserBajaToken("", USER_ID)).toThrow(/NOTIF_TOKEN_SECRET/);
   });
 });

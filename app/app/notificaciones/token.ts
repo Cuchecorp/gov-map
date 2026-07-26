@@ -87,3 +87,70 @@ export function deriveToken(
     .digest("base64url");
   return { raw, hash: hashToken(raw) };
 }
+
+// ── TOKEN DE BAJA A NIVEL USUARIO (CR-03, Phase 103) ──────────────────────────────
+// El digest es UN correo por usuario que agrega TODAS sus suscripciones confirmadas. El
+// one-click unsubscribe (footer + header RFC 8058 List-Unsubscribe) DEBE detener ESE correo
+// completo — no una sola de N suscripciones (violación 21.719: silenciar un tema y seguir
+// mandando el resto). El token de baja por-suscripción (deriveToken 'baja') servía para dar
+// de baja UNA fila; el digest necesita uno por USUARIO.
+//
+// FORMATO AUTO-AUTENTICANTE (sin lookup por token en la DB): el token es
+//   base64url( `${userId}:${HMAC-SHA256(secret, "baja-user:"+userId).base64url}` )
+// La landing lo decodifica, parte en el PRIMER ':' → (userId, firma), RE-DERIVA la firma con
+// el secreto y compara en tiempo constante. Si casa → borra TODAS las suscripciones del user.
+// El userId es un UUID (no PII, no secreto), pero forjar la firma exige NOTIF_TOKEN_SECRET;
+// un atacante con el UUID pero sin el secreto no puede fabricar un token válido.
+
+/** Prefijo de dominio HMAC del token de baja por-usuario (namespacea vs 'baja'/'confirm'). */
+const BAJA_USER_MSG = "baja-user:";
+
+/** Firma HMAC (base64url) del token de baja por-usuario para un userId dado. */
+function firmaBajaUsuario(secret: string, userId: string): string {
+  return crypto
+    .createHmac("sha256", secret)
+    .update(`${BAJA_USER_MSG}${userId}`)
+    .digest("base64url");
+}
+
+/**
+ * Deriva el token de baja A NIVEL USUARIO (CR-03), auto-autenticante y reproducible por el
+ * CRON del digest: base64url(`${userId}:${HMAC(secret,'baja-user:'+userId)}`). No se persiste
+ * nada nuevo en la DB — la firma se re-deriva en la landing. Fail-loud sin el secreto.
+ */
+export function deriveUserBajaToken(secret: string, userId: string): string {
+  if (!secret) {
+    throw new Error(
+      "deriveUserBajaToken: falta el secreto (NOTIF_TOKEN_SECRET). Sin él el link de " +
+        "baja del digest no puede derivarse ni reproducirse.",
+    );
+  }
+  const firma = firmaBajaUsuario(secret, userId);
+  return Buffer.from(`${userId}:${firma}`, "utf8").toString("base64url");
+}
+
+/**
+ * Verifica un token de baja por-usuario y devuelve el `userId` si la firma casa, o null si el
+ * token es ausente/malformado/forjado. Comparación en TIEMPO CONSTANTE (timingSafeEqual) para
+ * no filtrar la firma esperada por canal de tiempo. NO consulta la DB — el token se auto-valida.
+ */
+export function verifyUserBajaToken(secret: string, token: string): string | null {
+  if (!secret || !token) return null;
+  let decoded: string;
+  try {
+    decoded = Buffer.from(token, "base64url").toString("utf8");
+  } catch {
+    return null;
+  }
+  const sep = decoded.indexOf(":");
+  if (sep <= 0 || sep === decoded.length - 1) return null;
+  const userId = decoded.slice(0, sep);
+  const firmaRecibida = decoded.slice(sep + 1);
+  const firmaEsperada = firmaBajaUsuario(secret, userId);
+  const a = Buffer.from(firmaRecibida);
+  const b = Buffer.from(firmaEsperada);
+  // timingSafeEqual exige longitudes iguales — si difieren, la firma no puede casar.
+  if (a.length !== b.length) return null;
+  if (!crypto.timingSafeEqual(a, b)) return null;
+  return userId;
+}
