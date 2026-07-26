@@ -270,7 +270,15 @@ async function run(): Promise<void> {
           enviado_at: new Date().toISOString(),
           estado: "enviado",
         } as unknown as never);
-        if (insErr) throw new Error(`digest-prod: registrar envío: ${insErr.message}`);
+        // WR-04: el índice único parcial (0072) garantiza a lo más UN 'enviado'/día por
+        // (user, suscripción). Un re-despacho del cron el mismo día choca con 23505
+        // (unique_violation) → NO es un fallo: la fila del día YA está registrada
+        // (idempotente por construcción, no solo por lectura). Se tolera y se continúa;
+        // cualquier otro error SÍ es fatal (fail-loud).
+        const code = (insErr as { code?: string } | null)?.code;
+        if (insErr && code !== "23505") {
+          throw new Error(`digest-prod: registrar envío: ${insErr.message}`);
+        }
       }
       enviados++;
     } else if (!resultado.dryRun) {
