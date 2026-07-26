@@ -26,7 +26,9 @@ import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import {
   computeNovedades,
+  deriveRawToken,
   enforceCap,
+  HARD_CAP_DIARIO,
   nuevoCursor,
   redactEmail,
   type Suscripcion,
@@ -56,6 +58,7 @@ function loadEnv(root: string): Record<string, string> {
     "RESEND_API_KEY",
     "NOTIF_BASE_URL",
     "NOTIF_FROM",
+    "NOTIF_TOKEN_SECRET",
   ]) {
     if (process.env[k]) out[k] = process.env[k]!;
   }
@@ -80,7 +83,8 @@ interface SuscripcionRow {
   user_id: string;
   tipo: "proyecto" | "parlamentario";
   objetivo_id: string;
-  baja_token_hash: string | null;
+  // CR-01: el token crudo de baja se DERIVA de (secret + id) en el envío; el hash
+  // guardado NO se lee para el link (ponerlo doble-hasheaba y mataba el unsubscribe).
 }
 
 /**
@@ -93,7 +97,7 @@ async function leerConfirmadas(sb: Sb, log: (m: string) => void): Promise<Suscri
     const to = from + PAGE_SIZE - 1;
     const { data, error } = await sb
       .from("suscripcion")
-      .select("id,user_id,tipo,objetivo_id,baja_token_hash")
+      .select("id,user_id,tipo,objetivo_id")
       .eq("estado", "confirmada")
       .order("id", { ascending: true })
       .range(from, to);
@@ -134,9 +138,20 @@ async function run(): Promise<void> {
   const apiKey = env.RESEND_API_KEY || "";
   const baseUrl = env.NOTIF_BASE_URL || "https://observatorio.example";
   const from = env.NOTIF_FROM || "Observatorio del Congreso 360 <resumen@dominio-verificado>";
+  const tokenSecret = env.NOTIF_TOKEN_SECRET || "";
 
   if (!url || !serviceKey) {
     log("digest-prod: sin SUPABASE_API_URL/SECRET_KEY → nada que leer. Salida limpia.");
+    return;
+  }
+  if (!tokenSecret) {
+    // CR-01: sin el secreto NO se puede derivar el token crudo del link de baja → cada
+    // link de unsubscribe saldría muerto (violación 21.719 one-click). Fail-loud: salir
+    // sin enviar antes que emitir correos con links inservibles.
+    log(
+      "digest-prod: falta NOTIF_TOKEN_SECRET → no se pueden derivar links de baja válidos. " +
+        "Salida sin enviar (evita emitir unsubscribe muerto).",
+    );
     return;
   }
   if (!apiKey) {
@@ -163,7 +178,10 @@ async function run(): Promise<void> {
   interface Pend {
     userId: string;
     grupos: { suscripcionId: string; objetivo: string; nov: NovedadEvento[]; nuevoCur: number }[];
-    bajaTokenHash: string | null;
+    // CR-01: id de la PRIMERA suscripción del usuario → deriva el token crudo del link de
+    // baja (HMAC(secret, `baja:${id}`)). NO se usa el hash guardado (ese es el sha256 del
+    // raw; ponerlo en el link doble-hasheaba y el link salía muerto — bug original).
+    bajaSuscripcionId: string;
   }
   const porUsuario = new Map<string, Pend>();
   for (const s of confirmadas) {
@@ -175,7 +193,7 @@ async function run(): Promise<void> {
     const nov = await computeNovedades(sus, cursor, sb as unknown as DbLike);
     let p = porUsuario.get(s.user_id);
     if (!p) {
-      p = { userId: s.user_id, grupos: [], bajaTokenHash: s.baja_token_hash };
+      p = { userId: s.user_id, grupos: [], bajaSuscripcionId: s.id };
       porUsuario.set(s.user_id, p);
     }
     p.grupos.push({
@@ -190,7 +208,7 @@ async function run(): Promise<void> {
   const usuarios = Array.from(porUsuario.values());
   const { aEnviar, diferidos } = enforceCap(usuarios);
   if (diferidos.length > 0) {
-    log(`digest-prod: cap ${100}/día → ${aEnviar.length} envíos, ${diferidos.length} diferidos a mañana (cursor sin avanzar).`);
+    log(`digest-prod: cap ${HARD_CAP_DIARIO}/día → ${aEnviar.length} envíos, ${diferidos.length} diferidos a mañana (cursor sin avanzar).`);
   }
 
   const fecha = new Date().toISOString().slice(0, 10);
@@ -210,7 +228,10 @@ async function run(): Promise<void> {
     }
     const destinatario = userData.user.email;
     const grupos: GrupoDigest[] = u.grupos.map((g) => ({ objetivo: g.objetivo, novedades: g.nov }));
-    const rawBaja = u.bajaTokenHash ?? ""; // el raw viaja en el link; hash en DB (Plan 03)
+    // CR-01: DERIVAR el token CRUDO de baja (no el hash). hashToken(rawBaja) === el
+    // baja_token_hash guardado al suscribir → el link /notificaciones/baja?t=rawBaja
+    // resuelve la fila (one-click 21.719). El hash NUNCA viaja en el link.
+    const rawBaja = deriveRawToken(tokenSecret, "baja", u.bajaSuscripcionId);
     const { html, text } = renderDigest(grupos, fecha, baseUrl, rawBaja);
 
     const resultado = await enviarDigest(

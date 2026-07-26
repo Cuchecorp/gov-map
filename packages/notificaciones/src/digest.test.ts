@@ -1,6 +1,9 @@
+import { createHash, createHmac } from "node:crypto";
+
 import { describe, it, expect } from "vitest";
 import {
   computeNovedades,
+  deriveRawToken,
   redactEmail,
   nuevoCursor,
   enforceCap,
@@ -207,5 +210,41 @@ describe("notaSinNovedades — honesto, jamás silencio (UI-SPEC S5)", () => {
     const nota = notaSinNovedades("2026-07-26");
     expect(nota).toContain("Sin novedades registradas");
     expect(nota).toContain("según las fuentes consultadas al 2026-07-26");
+  });
+});
+
+describe("deriveRawToken (CR-01) — el token del link REVIVE el unsubscribe (round-trip)", () => {
+  const SECRET = "secreto-de-servidor-de-prueba";
+  const SUSC_ID = "11111111-2222-3333-4444-555555555555";
+  // hashToken de la app = sha256 hex del raw. La DB guarda ese hash como baja_token_hash.
+  const hashToken = (raw: string) => createHash("sha256").update(raw).digest("hex");
+
+  it("ROUND-TRIP: sha256(deriveRawToken('baja')) === el baja_token_hash guardado al suscribir", () => {
+    // Al suscribir, la app guardó baja_token_hash = sha256(deriveToken(secret,'baja',id).raw),
+    // con la MISMA fórmula HMAC. El CRON reproduce ese raw y lo pone en ?t=. La página lo
+    // re-hashea (hashToken) y busca por baja_token_hash → DEBE casar. Esto es la prueba de
+    // que el link de baja YA NO está muerto (el bug CR-01 ponía el hash en ?t=).
+    const storedBajaTokenHash = hashToken(
+      createHmac("sha256", SECRET).update(`baja:${SUSC_ID}`).digest("base64url"),
+    );
+    const rawEnElLink = deriveRawToken(SECRET, "baja", SUSC_ID);
+    expect(hashToken(rawEnElLink)).toBe(storedBajaTokenHash);
+    // Y el CONTRA-EJEMPLO del bug: poner el hash en el link (doble-hash) NUNCA casa.
+    expect(hashToken(storedBajaTokenHash)).not.toBe(storedBajaTokenHash);
+  });
+
+  it("es DETERMINISTA: el CRON reproduce el mismo raw en cada corrida", () => {
+    expect(deriveRawToken(SECRET, "baja", SUSC_ID)).toBe(deriveRawToken(SECRET, "baja", SUSC_ID));
+  });
+
+  it("confirm y baja NO colisionan; otro secreto → otro raw (no forjable sin el secreto)", () => {
+    expect(deriveRawToken(SECRET, "confirm", SUSC_ID)).not.toBe(
+      deriveRawToken(SECRET, "baja", SUSC_ID),
+    );
+    expect(deriveRawToken("otro", "baja", SUSC_ID)).not.toBe(deriveRawToken(SECRET, "baja", SUSC_ID));
+  });
+
+  it("sin secreto lanza (fail-loud: no emitir un link de baja muerto)", () => {
+    expect(() => deriveRawToken("", "baja", SUSC_ID)).toThrow(/NOTIF_TOKEN_SECRET/);
   });
 });

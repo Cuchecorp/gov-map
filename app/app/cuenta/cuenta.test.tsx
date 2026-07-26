@@ -52,6 +52,7 @@ vi.mock("@/lib/notif-gate", () => ({
 
 // server-only es un no-op en tests (resuelto por vitest.config alias).
 
+import { deriveToken, hashToken } from "../notificaciones/token";
 import {
   enviarOtp,
   verificarOtp,
@@ -61,6 +62,8 @@ import {
 
 beforeEach(() => {
   notifOn = true;
+  // CR-01/CR-02: `seguir` deriva los tokens opacos de NOTIF_TOKEN_SECRET (fail-loud sin él).
+  process.env.NOTIF_TOKEN_SECRET = "secreto-de-prueba-cuenta";
   vi.clearAllMocks();
   getClaims.mockResolvedValue({ data: { claims: { sub: "user-A" } } });
   signInWithOtp.mockResolvedValue({ error: null });
@@ -106,6 +109,16 @@ describe("cuenta/actions — user_id SIEMPRE server-derived (Pitfall 5, T-103-08
     // Tokens guardados HASHEADOS (nunca el raw): 64 hex chars de sha256.
     expect(String(fila.confirm_token_hash)).toMatch(/^[0-9a-f]{64}$/);
     expect(String(fila.baja_token_hash)).toMatch(/^[0-9a-f]{64}$/);
+    // CR-01/CR-02 round-trip (subscribe-side): el `id` va en el insert y el hash guardado
+    // es el sha256 del raw DERIVABLE por el CRON. Reproducimos la derivación con el mismo
+    // secreto + id y confirmamos que casa con lo almacenado → el link del email revivirá.
+    const suscId = String(fila.id);
+    expect(suscId).toMatch(/^[0-9a-f-]{36}$/); // uuid client-side (para derivar pre-insert)
+    const secret = process.env.NOTIF_TOKEN_SECRET!;
+    expect(fila.baja_token_hash).toBe(deriveToken(secret, "baja", suscId).hash);
+    expect(fila.confirm_token_hash).toBe(deriveToken(secret, "confirm", suscId).hash);
+    // Y la invariante que el bug rompía: hashToken(rawEnElLink) === baja_token_hash.
+    expect(hashToken(deriveToken(secret, "baja", suscId).raw)).toBe(fila.baja_token_hash);
   });
 
   it("seguir también registra un consentimiento (21.719)", async () => {

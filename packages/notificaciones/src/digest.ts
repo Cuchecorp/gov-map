@@ -24,6 +24,40 @@
 //                     WHERE boletin = ANY(boletines) AND id > cursor.
 // Cada ítem es FACTUAL (fuente+fecha+enlace directo de la fila) — CERO síntesis LLM.
 
+import { createHmac } from "node:crypto";
+
+// ── TOKEN OPACO DERIVADO (CR-01/CR-02, Phase 103) ─────────────────────────────────
+// El link de baja del email lleva el token CRUDO; la DB guarda SOLO su hash. Para que el
+// CRON pueda reproducir el crudo en el momento del envío SIN persistirlo, el token se
+// DERIVA de forma determinista: raw = base64url(HMAC-SHA256(secret, `${purpose}:${id}`)).
+// Debe ser BYTE-IDÉNTICO al derivador de app/app/notificaciones/token.ts (deriveToken) —
+// misma fórmula HMAC-SHA256/base64url — para que hashToken(raw) === baja_token_hash de la
+// fila. El secreto vive solo en el entorno (NOTIF_TOKEN_SECRET); una filtración de la DB
+// NO permite forjar tokens (hace falta el secreto + el hash no es reversible).
+
+/** Propósito del token derivado (namespacea confirm vs baja de la misma suscripción). */
+export type TokenPurpose = "confirm" | "baja";
+
+/**
+ * Deriva el token opaco CRUDO (base64url) para el link del email, de forma DETERMINISTA a
+ * partir del secreto de servidor + el id de la suscripción. Reproduce el mismo `raw` que
+ * `deriveToken` de la app generó al suscribir (mismo HMAC-SHA256) → hashToken(raw) casa con
+ * `*_token_hash` guardado. Fail-loud si falta el secreto (sin él el link sería inservible).
+ */
+export function deriveRawToken(
+  secret: string,
+  purpose: TokenPurpose,
+  suscripcionId: string,
+): string {
+  if (!secret) {
+    throw new Error(
+      "deriveRawToken: falta NOTIF_TOKEN_SECRET. Sin él el link de baja del email no " +
+        "puede derivarse (hashToken(raw) no casaría con baja_token_hash).",
+    );
+  }
+  return createHmac("sha256", secret).update(`${purpose}:${suscripcionId}`).digest("base64url");
+}
+
 /** Cliente Supabase mínimo que este motor necesita (real o fake en tests). */
 export interface DbLike {
   from(table: string): QueryLike;

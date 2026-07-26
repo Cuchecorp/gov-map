@@ -6,7 +6,9 @@ import { notifPublicEnabled } from "@/lib/notif-gate";
 import { createUserClient } from "@/lib/supabase-user";
 import { BOLETIN_RE, PARLAMENTARIO_ID_RE } from "@/lib/buscar";
 
-import { generarToken } from "../notificaciones/token";
+import crypto from "node:crypto";
+
+import { deriveToken } from "../notificaciones/token";
 
 /**
  * Server Actions de /cuenta (NOTIF-01, Phase 103) — login OTP por email +
@@ -42,6 +44,22 @@ const OTP_RE = /^\d{6}$/;
 
 /** Versión del texto de consentimiento informado vigente (21.719 — trazabilidad). */
 export const CONSENT_VERSION = "1";
+
+/**
+ * Lee el secreto de derivación de tokens (CR-01/CR-02). Fail-loud: sin él NO se puede
+ * derivar un token reproducible por el CRON → los links de confirmar/baja del email
+ * quedarían muertos (el bug original). Se exige explícito para no degradar en silencio.
+ */
+function tokenSecret(): string {
+  const s = process.env.NOTIF_TOKEN_SECRET;
+  if (!s) {
+    throw new Error(
+      "cuenta: falta NOTIF_TOKEN_SECRET en el entorno del servidor (deriva los tokens " +
+        "opacos de confirmación/baja). Configúralo con un valor aleatorio secreto.",
+    );
+  }
+  return s;
+}
 /** Método de captura del consentimiento (doble opt-in por email). */
 const CONSENT_METODO = "doble_opt_in_email";
 
@@ -200,14 +218,20 @@ export async function seguir(tipo: unknown, objetivoId: unknown): Promise<void> 
   const objetivo = validarObjetivo(tipo, objetivoId);
   const supabase = await clienteConCookies();
   const userId = await userIdDeSesion(supabase);
+  const secret = tokenSecret();
 
-  // Tokens opacos: la DB guarda SOLO el hash; el raw viajará en el email (Plan 04).
-  const confirm = generarToken();
-  const baja = generarToken();
+  // CR-01/CR-02: el `id` se genera EN EL CLIENTE (uuid v4) para poder derivar los tokens
+  // opacos ANTES del insert. La derivación es DETERMINISTA (HMAC(secret, purpose:id)), así
+  // el CRON del digest reproduce el mismo `raw` para el link SIN persistir el crudo. La DB
+  // guarda SOLO el hash (hash-at-rest, LOCKED). Invariante: hashToken(raw) === *_token_hash.
+  const suscripcionId = crypto.randomUUID();
+  const confirm = deriveToken(secret, "confirm", suscripcionId);
+  const baja = deriveToken(secret, "baja", suscripcionId);
   // Ventana de confirmación del doble opt-in (48 h).
   const confirmExpiraAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
 
   const { error: errSusc } = await supabase.from("suscripcion").insert({
+    id: suscripcionId,
     user_id: userId,
     tipo: objetivo.tipo,
     objetivo_id: objetivo.objetivoId,

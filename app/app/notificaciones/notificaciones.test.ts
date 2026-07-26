@@ -1,6 +1,8 @@
+import { createHmac } from "node:crypto";
+
 import { describe, expect, it } from "vitest";
 
-import { generarToken, hashToken } from "./token";
+import { deriveToken, generarToken, hashToken } from "./token";
 
 /**
  * Tests de NOTIF-04 (Phase 103): el token opaco (round-trip determinista + hash no
@@ -39,5 +41,51 @@ describe("token opaco (NOTIF-04) — round-trip determinista + hash no reversibl
     expect(hash).not.toContain(raw);
     // Un raw distinto NUNCA colisiona al hash de otro (sanity anti-forgery).
     expect(hashToken("otro-token-cualquiera")).not.toBe(hash);
+  });
+});
+
+describe("deriveToken (CR-01/CR-02) — token DERIVADO reproducible round-trip", () => {
+  const SECRET = "secreto-de-servidor-de-prueba";
+  const SUSC_ID = "11111111-2222-3333-4444-555555555555";
+
+  it("round-trip: hashToken(raw derivado) === el hash que se guardaría (link vivo)", () => {
+    // Esto es EXACTAMENTE lo que el bug CR-01 rompía: el link del email lleva `raw`, la
+    // página lo re-hashea con hashToken y busca por *_token_hash. La invariante debe casar.
+    const baja = deriveToken(SECRET, "baja", SUSC_ID);
+    expect(hashToken(baja.raw)).toBe(baja.hash);
+    // El `raw` es lo que va en /notificaciones/baja?t=raw; su hashToken() casa con lo
+    // almacenado (baja.hash). Antes se ponía el hash en el link → doble-hash → link muerto.
+    expect(hashToken(baja.raw)).not.toBe(hashToken(baja.hash));
+  });
+
+  it("es DETERMINISTA: mismo (secret, purpose, id) → mismo raw (el CRON lo reproduce)", () => {
+    const a = deriveToken(SECRET, "baja", SUSC_ID);
+    const b = deriveToken(SECRET, "baja", SUSC_ID);
+    expect(a.raw).toBe(b.raw);
+    expect(a.hash).toBe(b.hash);
+  });
+
+  it("confirm y baja de la MISMA suscripción NO colisionan (namespaced por purpose)", () => {
+    const confirm = deriveToken(SECRET, "confirm", SUSC_ID);
+    const baja = deriveToken(SECRET, "baja", SUSC_ID);
+    expect(confirm.raw).not.toBe(baja.raw);
+    expect(confirm.hash).not.toBe(baja.hash);
+  });
+
+  it("otro secreto → otro raw (el secreto es lo que hace no-forjable el token)", () => {
+    const conA = deriveToken("secreto-A", "baja", SUSC_ID);
+    const conB = deriveToken("secreto-B", "baja", SUSC_ID);
+    expect(conA.raw).not.toBe(conB.raw);
+  });
+
+  it("fórmula = base64url(HMAC-SHA256(secret, `${purpose}:${id}`)) — byte-idéntica al CRON", () => {
+    // El CRON del digest (packages/notificaciones deriveRawToken) DEBE reproducir este
+    // mismo raw; este assert congela la fórmula compartida entre ambos lados.
+    const esperado = createHmac("sha256", SECRET).update(`baja:${SUSC_ID}`).digest("base64url");
+    expect(deriveToken(SECRET, "baja", SUSC_ID).raw).toBe(esperado);
+  });
+
+  it("sin secreto lanza (fail-loud: no derivar links muertos en silencio)", () => {
+    expect(() => deriveToken("", "baja", SUSC_ID)).toThrow(/secreto/i);
   });
 });

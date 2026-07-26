@@ -26,8 +26,15 @@ import crypto from "node:crypto";
 const TOKEN_BYTES = 32;
 
 /**
- * Genera un token opaco: `raw` (base64url, para el email) + `hash` (sha256 hex, para
- * la DB). El `raw` NUNCA se persiste; el `hash` NUNCA viaja en el link.
+ * Genera un token opaco ALEATORIO: `raw` (base64url, para el email) + `hash` (sha256 hex,
+ * para la DB). El `raw` NUNCA se persiste; el `hash` NUNCA viaja en el link.
+ *
+ * NOTA (CR-01/CR-02, Phase 103): este generador aleatorio NO permite regenerar el `raw`
+ * en el momento del envío (el `raw` se pierde al salir de scope). Para el flujo de email
+ * (confirm/baja) usar `deriveToken()` — deriva el `raw` de forma DETERMINISTA a partir de
+ * un secreto de servidor + el id de la suscripción, de modo que el CRON del digest puede
+ * reproducir el mismo `raw` para el link sin persistirlo en claro. Se conserva
+ * `generarToken` por compatibilidad con tests/otros usos.
  */
 export function generarToken(): { raw: string; hash: string } {
   const raw = crypto.randomBytes(TOKEN_BYTES).toString("base64url");
@@ -40,4 +47,43 @@ export function generarToken(): { raw: string; hash: string } {
  */
 export function hashToken(raw: string): string {
   return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
+/**
+ * Propósito del token derivado — namespacea la derivación para que el token de confirmar
+ * y el de baja de la MISMA suscripción NUNCA colisionen (dominios de capacidad separados).
+ */
+export type TokenPurpose = "confirm" | "baja";
+
+/**
+ * Deriva un token opaco DETERMINISTA (CR-01/CR-02, Phase 103):
+ *   raw  = base64url( HMAC-SHA256(secret, `${purpose}:${suscripcionId}`) )
+ *   hash = sha256(raw)   ← lo que se guarda en `*_token_hash` (hash-at-rest, LOCKED)
+ *
+ * INVARIANTE CLAVE: `hashToken(deriveToken(secret, purpose, id).raw) === storedHash`.
+ * El `raw` es reproducible en el momento del envío por el CRON del digest (mismo secreto
+ * + el `id` de la fila) SIN persistir el crudo en la DB. El secreto vive solo en el
+ * entorno del servidor (NOTIF_TOKEN_SECRET) → una filtración de la DB no permite forjar
+ * tokens (el hash no es reversible y el `raw` requiere el secreto).
+ *
+ * SEGURIDAD: HMAC-SHA256 (no un hash simple del id) evita que conocer el `id` público de
+ * la fila permita derivar el token — hace falta el secreto. `id` es un UUID (128 bits) +
+ * secreto de servidor ⇒ no adivinable ni enumerable (T-103-10).
+ */
+export function deriveToken(
+  secret: string,
+  purpose: TokenPurpose,
+  suscripcionId: string,
+): { raw: string; hash: string } {
+  if (!secret) {
+    throw new Error(
+      "deriveToken: falta el secreto (NOTIF_TOKEN_SECRET). Sin él los links de " +
+        "confirmación/baja del email no pueden derivarse ni reproducirse.",
+    );
+  }
+  const raw = crypto
+    .createHmac("sha256", secret)
+    .update(`${purpose}:${suscripcionId}`)
+    .digest("base64url");
+  return { raw, hash: hashToken(raw) };
 }
