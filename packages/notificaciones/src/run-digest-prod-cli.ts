@@ -16,8 +16,10 @@
 //   2. computeNovedades(suscripcion, cursor) — idempotente (solo id > cursor).
 //   3. enforceCap(100) — el resto queda en cola para mañana (cursor SIN avanzar).
 //   4. enviarDigest por Resend (dry-run si no hay key).
-//   5. SOLO en envío exitoso: upsert notificacion_envio (estado='enviado', enviado_at,
-//      ultimo_evento_visto = nuevoCursor) — el cursor avanza ATÓMICAMENTE. Si falla, no.
+//   5. SOLO en envío exitoso: INSERT notificacion_envio (estado='enviado', enviado_at,
+//      ultimo_evento_visto = nuevoCursor) TOLERANDO 23505 como no-op (insert-or-ignore, IN-04:
+//      NO es upsert/onConflict — el índice único de 0072 es sobre una expresión de fecha que no
+//      se puede nombrar en onConflict) — el cursor avanza ATÓMICAMENTE. Si el envío falla, no.
 //
 // Uso: tsx packages/notificaciones/src/run-digest-prod-cli.ts [--dry-run]
 

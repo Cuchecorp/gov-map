@@ -16,8 +16,13 @@
 -- `fecha`/`enviado_at` que el CLI computa en UTC (new Date().toISOString().slice(0,10)).
 -- Solo cubre estado='enviado' con enviado_at no nulo → las filas 'pendiente'/'error'
 -- (sin enviado_at o reintentables) NO entran en la restricción y pueden repetirse.
---   El CLI hace UPSERT con onConflict sobre estas columnas → un re-run del mismo día
---   ACTUALIZA la fila del día (ultimo_evento_visto/enviado_at) en vez de insertar otra.
+--   El CLI hace INSERT y TOLERA el 23505 (unique_violation) como no-op idempotente
+--   (insert-or-ignore) — NO usa .upsert()/onConflict. Un re-run del mismo día NO inserta
+--   otra fila y DEJA la existente sin cambios (no la actualiza). Eso es correcto: el cursor
+--   solo avanza en envíos exitosos y el PRIMER insert del día ya registró el nuevoCursor
+--   correcto, así que dejar la fila intacta es lo deseado. (No se usa onConflict porque la
+--   columna del índice es una EXPRESIÓN —((enviado_at at time zone 'UTC')::date)— que no se
+--   puede nombrar directamente en onConflict; de ahí el patrón insert+catch.)
 --
 -- ── IDEMPOTENTE / RE-EJECUTABLE ─────────────────────────────────────────────────
 -- `create unique index if not exists` → re-aplicar es no-op. NO altera RLS/grants de 0070
