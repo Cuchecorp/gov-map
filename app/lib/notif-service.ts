@@ -108,12 +108,24 @@ export async function marcarConfirmada(id: string): Promise<void> {
   }
 }
 
-/** Marca la suscripción como baja (unsubscribe one-click, 21.719). */
+/**
+ * Da de baja (unsubscribe one-click, 21.719) BORRANDO la fila.
+ *
+ * WR-01: se BORRA (no se flipea `estado='baja'`) para ALINEAR con la baja de UI
+ * (`dejarDeSeguir` en cuenta/actions.ts, que hace DELETE). Antes esta ruta dejaba la fila
+ * con `estado='baja'` y, como la tabla tiene `unique (user_id, tipo, objetivo_id)`, un
+ * re-seguir posterior chocaba con esa fila superviviente (el INSERT de `seguir` fallaba con
+ * el error genérico) mientras la UI mostraba al usuario como "no siguiendo" — botón vivo
+ * pero permanentemente roto. Borrar deja ambas rutas de baja en UNA sola representación
+ * ("baja = fila ausente"), así el re-seguir es siempre un INSERT limpio con id/token nuevos.
+ * El FK de notificacion_envio es `on delete cascade` → el cursor de envío se limpia con la
+ * baja (el re-seguir arranca de cero, correcto).
+ */
 export async function marcarBaja(id: string): Promise<void> {
   const sb = clienteServicio();
   const { error } = await sb
     .from("suscripcion")
-    .update({ estado: "baja" })
+    .delete()
     .eq("id", id);
   if (error) {
     throw new Error(`marcarBaja falló: ${error.message}`);
