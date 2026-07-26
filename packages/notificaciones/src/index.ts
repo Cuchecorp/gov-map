@@ -15,3 +15,11 @@ export {
   type NovedadEvento,
   type PendingUser,
 } from "./digest";
+
+export {
+  enviarDigest,
+  renderDigest,
+  type ResultadoEnvio,
+  type GrupoDigest,
+  type EnvioConfig,
+} from "./resend";
