@@ -245,7 +245,25 @@ Plans:
   3. Un digest diario por email (Resend, free 100/día declarado como techo) agrupa las novedades por cursor idempotente (cola en tabla drenada por cron GH Actions); jamás instantáneo; doble opt-in + unsubscribe por token opaco sin login + registro de consentimiento (fecha/versión/método); el email del usuario NUNCA va a LLM/logs CI/R2
   4. El checkpoint legal humano 21.719 (DPA del proveedor) es requisito ANTES de exponer la captura de emails al público; sin respuesta la feature queda detrás de flag OFF con handoff documentado y la corrida cierra igual — el agente JAMÁS provee el sign-off
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 103-01-PLAN.md — lockdown-guard extendido a `authenticated` (PRIMER commit, Block D/E + self-check) + NOTIF flag chokepoint + anti-flip guard + .env.example (NOTIF-02/05)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 103-02-PLAN.md — migraciones 0069/0070/0071 (suscripcion RLS to authenticated + notificacion_envio service_role-only + consentimiento) + pgTAP dos-usuarios A-no-ve-B (NOTIF-01/02/04)
+
+**Wave 3** *(blocked on Wave 2; 103-03 y 103-04 en paralelo, sin solape de archivos)*
+
+- [ ] 103-03-PLAN.md — /cuenta OTP + suscripción Server Actions + botón Seguir gated + confirmar/baja por token opaco sin login + linter SUPERFICIES_NOTIF; borra /spike-auth (NOTIF-01/04/05)
+- [ ] 103-04-PLAN.md — @obs/notificaciones EGRESO (cursor idempotente + hard-cap 100/día + redacción PII + Resend fetch dry-run) + digest-daily.yml (NOTIF-03/04)
+
+**Wave 4** *(blocked on Waves 1-3)*
+
+- [ ] 103-05-PLAN.md — [BLOCKING] aplicar 0069/0070/0071 a PROD + pgTAP post-apply + dossier legal 21.719 (signoff pre-autorizado) + deploy + flip NOTIF ON (Worker env) + checkpoint operador (NOTIF-01/03/05)
 
 **Research**: yes (Resend + Custom SMTP + DKIM + encaje `.env`/secrets = MEDIUM; diseño de consentimiento 21.719 merece research legal)
 **UI hint**: yes
