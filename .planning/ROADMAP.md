@@ -84,7 +84,7 @@ Detalle completo: milestones/v9.0-ROADMAP.md · Audit: milestones/v9.0-MILESTONE
 - [x] **Phase 100: PANEL P1c — Landing panel + benchmark senado/camara + gate BrowserOS** — `app/page.tsx` panel reusando BentoGrid/tokens con candados de régimen; linter home extendido a `SUPERFICIES_PANEL` ANTES del copy; benchmark BrowserOS + gate lectura fría en deploy real (completed 2026-07-24)
 - [x] **Phase 101: RELACIONES P2a — Audit brecha + bloque relaciones + /comparar + coalición empírica** — inventario N/M por relación; bloque "Relaciones con otros parlamentarios" above-the-fold; `/comparar` 1-a-1 no-voto (partido/comisiones/co-autoría/zona) orden alfabético anti-ranking; coalición Servel/comités evaluada empíricamente o DIFERIDA documentada (completed 2026-07-25)
 - [x] **Phase 102: RELACIONES P2b — Similitud de votación (gated legal)** — métrica "coinciden en N de M" con denominador honesto + caveat de base-alta OBLIGATORIO; en `/comparar` detrás de `VSIM_PUBLIC_ENABLED` OFF (flip = sign-off legal humano); linter extendido; `co_votacion` JAMÁS a /red (completed 2026-07-25)
-- [ ] **Phase 103: NOTIF P3a — Suscripciones + digest + guards authenticated + gate legal** — suscripción/des-suscripción user-owned con RLS `to authenticated`; lockdown-guard extendido a `authenticated` como PRIMER commit; digest diario Resend (cursor idempotente, cola drenada por cron); doble opt-in + unsubscribe por token opaco; checkpoint legal 21.719
+- [x] **Phase 103: NOTIF P3a — Suscripciones + digest + guards authenticated + gate legal** — suscripción/des-suscripción user-owned con RLS `to authenticated`; lockdown-guard extendido a `authenticated` como PRIMER commit; digest diario Resend (cursor idempotente, cola drenada por cron); doble opt-in + unsubscribe por token opaco; checkpoint legal 21.719 (completed 2026-07-26)
 - [ ] **Phase 104: CIERRE P3b — Verificación E2E "todo funciona"** — inventario de CADA superficie nueva × dato real × BrowserOS sobre el deploy: panel con señales vivas, relaciones verificadas contra SQL, comparador con caveat visible, flags OFF ausentes del DOM, linter verde con vocabulario nuevo, suite + guards verdes
 
 ## Phase Details (v10.0)
@@ -652,7 +652,7 @@ Sub-maestras se construyen en su bloque, NO se difieren a NET: lobista/gestor (P
   3. El spike documenta cobertura histórica (qué legislaturas/años) y comportamiento de rate detrás del WAF respetando el delay 2–3s LOCKED
   4. El resultado es una decisión binaria registrada: **confirmar y construir** Phase 10 tal cual, o **replanificar solo el bloque VOTE** (sin bloquear INT/MONEY)
 
-**Plans:** 3/3 plans complete
+**Plans:** 5/5 plans complete
 
 - [ ] 08-01-PLAN.md — Spike confirm-or-replan: corrida LIVE-gated reusando @obs/ingest + parsers v1.0, reconcilia DIPID→id_diputado_camara, registra FINDINGS + decisión binaria
 
@@ -1326,7 +1326,7 @@ Plans:
 | 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 4/4 | Complete    | 2026-07-24 |
 | 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 3/3 | Complete    | 2026-07-25 |
 | 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 3/3 | Complete    | 2026-07-25 |
-| 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 5/5 | Complete   | 2026-07-26 |
+| 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 5/5 | Complete    | 2026-07-26 |
 | 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 0/? | Not started | - |
 
 ## ✅ v4.0 — De datos a cruces verificables
