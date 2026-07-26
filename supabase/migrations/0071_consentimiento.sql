@@ -54,6 +54,15 @@ create policy consentimiento_select_own
 
 -- NO grant to anon/public/web_reader. service_role lee vía RLS bypass (cron licitud).
 
+-- ── Base GRANT a authenticated (obligatorio post-0044) ────────────────────────────
+-- Igual que 0069: post-0044 una tabla net-new no le da a authenticated privilegio base,
+-- así que sin este grant las policies owner-scoped quedan muertas (permission denied
+-- antes de RLS). SOLO insert+select (registro append-only: sin delete/update — la baja
+-- es un evento nuevo, trazabilidad legal 21.719). La RLS aísla las filas por dueño.
+-- Este grant ES el `to authenticated` que el lockdown-guard (Block D) espera sobre una
+-- tabla de USER_OWNED_TABLES.
+grant select, insert on consentimiento to authenticated;
+
 -- ── FIN NOTIF-04 (consentimiento) ─────────────────────────────────────────────────
 -- schema_migrations (insertar tras aplicar a PROD):
 -- insert into schema_migrations (version) values ('0071');

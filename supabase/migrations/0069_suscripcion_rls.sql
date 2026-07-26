@@ -72,6 +72,16 @@ create policy suscripcion_delete_own
 -- NO grant to anon/public/web_reader. NO policy para esos roles → 0 filas.
 -- service_role bypassa RLS (cron del digest).
 
+-- ── Base GRANT a authenticated (obligatorio post-0044) ────────────────────────────
+-- 0044 corrió `ALTER DEFAULT PRIVILEGES FOR ROLE postgres ... REVOKE ALL ON TABLES
+-- FROM anon, authenticated`, así que una tabla net-new NO le da a authenticated ningún
+-- privilegio base → sin este grant las policies owner-scoped quedan MUERTAS (permission
+-- denied ANTES de que RLS evalúe). El grant SOLO abre la tabla; la RLS
+-- `(select auth.uid()) = user_id` es la que aísla las filas. Este grant ES el
+-- `to authenticated` que el lockdown-guard (Block D) espera sobre una tabla de
+-- USER_OWNED_TABLES. NO update (el estado lo mueve el service_role del flujo confirm/baja).
+grant select, insert, delete on suscripcion to authenticated;
+
 -- ── FIN NOTIF-01 (suscripcion) ────────────────────────────────────────────────────
 -- schema_migrations (insertar tras aplicar a PROD):
 -- insert into schema_migrations (version) values ('0069');
