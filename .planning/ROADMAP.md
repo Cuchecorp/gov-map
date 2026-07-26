@@ -294,7 +294,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 104-03-PLAN.md — Inventario E2E BrowserOS × SQL (panel señales vivas, relaciones vs total_n, /comparar 4 ejes + VSIM cuadra vs coincidencia_votos_par, flags OFF ausentes del DOM) + cierre 101-HUMAN-UAT + evidencia
+- [x] 104-03-PLAN.md — Inventario E2E BrowserOS × SQL (panel señales vivas, relaciones vs total_n, /comparar 4 ejes + VSIM cuadra vs coincidencia_votos_par, flags OFF ausentes del DOM) + cierre 101-HUMAN-UAT + evidencia
 
 **UI hint**: yes
 
@@ -1340,7 +1340,7 @@ Plans:
 | 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 3/3 | Complete    | 2026-07-25 |
 | 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 3/3 | Complete    | 2026-07-25 |
 | 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 5/5 | Complete    | 2026-07-26 |
-| 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 2/3 | In Progress|  |
+| 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 3/3 | Complete   | 2026-07-26 |
 
 ## ✅ v4.0 — De datos a cruces verificables
 

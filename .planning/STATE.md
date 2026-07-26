@@ -4,14 +4,14 @@ milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
 status: executing
 stopped_at: Completed 104-01-PLAN.md
-last_updated: "2026-07-26T16:23:16.335Z"
-last_activity: 2026-07-26 -- Completed 104-01 (gate pre-deploy + firma dossier VSIM)
+last_updated: "2026-07-26T19:54:56.385Z"
+last_activity: 2026-07-26
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 26
-  completed_plans: 24
-  percent: 92
+  completed_plans: 26
+  percent: 100
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 104 (CIERRE P3b — Verificación E2E todo funciona) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-07-26
 
@@ -109,6 +109,7 @@ Last activity: 2026-07-26
 | Phase 103 P103-04 | ~7 min | 3 tasks | 11 files |
 | Phase 103 P103-05 | ~40 min | 3 tasks | 2 files |
 | Phase 104 P104-01 | ~8 min | 2 tasks | 1 files |
+| Phase 104 P104-03 | ~120min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -186,6 +187,8 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase 103] 103-04: patrón EGRESO (@obs/notificaciones) — NO es la ingesta de dos etapas: sin fuente, sin R2 crudo, sin rate-limit 2-3s/host, sin robots.txt; el destinatario es Resend, no un WAF → la regla dos-etapas de CLAUDE.md NO aplica (documentado en digest.ts/resend.ts/run-digest-prod-cli.ts/digest-daily.yml). ÚNICA cota = hard-cap 100/día (código, enforceCap) + redacción PII (redactEmail) en TODO log; email JAMÁS crudo en logs/CI/R2. computeNovedades idempotente por cursor (solo id>cursor; nuevoCursor avanza SOLO en envío exitoso → re-run=0); parlamentario fail-closed (proyecto_autor estado_vinculo='confirmado'; no_confirmado/NULL aportan CERO, T-103-21). Envío = global fetch (NO SDK Resend, CERO paquete nuevo T-103-SC) POST api.resend.com/emails + List-Unsubscribe one-click; sin RESEND_API_KEY ⇒ dry-run; 429 respeta retry-after (reintentable, cursor no avanza). renderDigest = la ÚNICA isla de hex inline sancionada (cada hex→su token). digest-daily.yml GATED (workflow_dispatch only, schedule comentado, mirror roster-weekly) + secret NUEVO RESEND_API_KEY (deuda operador). 22 tests + tsc 0. RULE-3: cast supabase-js client a DbLike para tsc -b. Deuda operador Plan 05: apply 0069-0071 + cargar RESEND_API_KEY + dominio verificado + dry-run verde antes de descomentar schedule.
 - [Phase ?]: 103-05: Fase 103 CERRADA. Dossier 21.719 signoff:approved (pre-autorización operador-abogado VERBATIM 2026-07-26; agente DOCUMENTA, operador AUTORIZA). 0069/0070/0071 APLICADAS a PROD (psql --single-transaction, orden FK 0069->0070->0071) + pgTAP 20/20 (6/6/8) contra schema APLICADO (RLS user-A-no-ve-B en PROD; notificacion_envio cero grant authenticated; anon no select). schema_migrations retomada en 0069 (0059-0068 applies directos sin traza, quedó en 0058). Task 3 = Flag-OFF closure (NOTIF-05): SUPABASE_PUBLISHABLE_KEY y RESEND_API_KEY AUSENTES de .env (actos operador) -> flag OFF, feature PARKED (migraciones inertes, cron dry-run), CERO email capturado; .env.example=false, notif-antiflip 20/20. DEUDA OPERADOR: publishable key + OTP {{.Token}} + dominio Resend+DPA + RESEND_API_KEY, luego wrangler secret put NOTIF_PUBLIC_ENABLED=true + redeploy (sin tocar .env.example).
 - [Phase 104] 104-01: gate pre-deploy verde — suite app 1418 (>1400 base 103) + 21 packages (~1310 tests) + tsc app/root EXIT 0 + 9 guards de régimen v10.0 individualmente verdes (268 tests: anti-insinuación 33, vsim/notif/money-antiflip 20 c/u, lockdown 22, bento 114, bento-coherencia 8, name-match-rut 15, env-example 16). Dossier VSIM firmado signoff:approved transcribiendo la autorización VERBATIM del operador de la corrida de cierre v10.0 ('Sí — firmar y flip ON', 2026-07-26): SOLO front-matter YAML editado (cuerpo del dossier byte-idéntico, 4 líneas cambiadas), .env.example intacto, VSIM anti-flip guard verde POST-firma (el flip VSIM_PUBLIC_ENABLED=true es deploy-time env var Worker Plan 104-02, NUNCA commiteado). El agente DOCUMENTA la autorización; el operador AUTORIZÓ. CERO deviación, cero fix emergente (árbol verde). Commit e0ff591. Gate pre-deploy CERRADO: Plan 02 procede sobre base sólida con flip legítimamente autorizado.
+- [Phase ?]: 104-03: E2E v10.0 verificado sobre el deploy real (v b467d41a). VSIM N/M == coincidencia_votos_par para 3 pares; '(100%)' de 3655/3672 es dossier-compliant (round firmado). 101-HUMAN-UAT cerrado 3/3.
+- [Phase ?]: 104-03: URI-como-partido (S1344, gap parser BCN Phase 90) corregido display-only con partidoLegible() en 3 chokepoints (PartidoChip/MilitanciasDeParlamentario/ParlamentariosFiltro) + 3 redeploys; clave de filtro serializada RAW por diseno; limpieza en origen = mejora datos futura.
 
 ### Pending Todos
 
@@ -241,7 +244,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-26T16:23:16.323Z
+Last session: 2026-07-26T19:54:25.167Z
 Stopped at: Completed 104-01-PLAN.md
 Resume file: None
 
