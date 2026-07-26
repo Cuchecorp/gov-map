@@ -34,6 +34,7 @@ import {
   type CrossLinkFila,
 } from "@/components/cross-links-parlamentario";
 import { RelacionesSection } from "@/components/relaciones-section";
+import { SeguirButton } from "@/components/seguir-button";
 import { formatNombre } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
@@ -231,6 +232,24 @@ export default async function ParlamentarioPage({
           <Suspense fallback={<ParlamentarioHeaderSkeleton />}>
             <HeaderSection id={id} />
           </Suspense>
+
+          {/*
+            NOTIF-05 (Phase 103) — Botón "Seguir" gated. AUSENTE del DOM cuando el flag
+            NOTIF está OFF (el propio SeguirButton retorna null como PRIMERA sentencia).
+            Vive tras su propio <Suspense> (lee sesión + estado de suscripción con el
+            cliente user). Acción PURA sobre este parlamentario — no compone hechos de
+            otro dominio; mt-6 sobrio bajo la cabecera. `id` ya validó contra
+            PARLAMENTARIO_ID_RE al inicio de la page.
+          */}
+          <div className="mt-6">
+            <Suspense fallback={null}>
+              <SeguirButton
+                tipo="parlamentario"
+                objetivoId={id}
+                next={`/parlamentario/${id}`}
+              />
+            </Suspense>
+          </div>
 
           {/*
             BIO-03 — Militancias registradas. Carril hermano (su propia <section

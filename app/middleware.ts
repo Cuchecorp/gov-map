@@ -15,12 +15,13 @@ import { updateSession } from "@/lib/supabase-user";
 
 export async function middleware(request: NextRequest) {
   // FAIL-OPEN de Camino A: el matcher cubre TODAS las rutas de la app (/, /parlamentarios,
-  // …). Si la publishable key del spike no está configurada (deploy sin el wrangler secret
-  // de Task 1), NO se hace refresh de sesión y el request PASA sin tocar. Así el middleware
-  // nuevo no puede tumbar el sitio existente (Camino A intacto, T-97-08). El cliente user
-  // (supabase-user.ts) sigue siendo fail-loud en la ruta de auth real (/spike-auth): allí SÍ
-  // debe existir la key. Cuando el operador cargue el secret, este guard deja de aplicar y
-  // updateSession() corre normal (refresh + Set-Cookie) — el camino que prueba el Plan 03.
+  // …). Si la publishable key no está configurada (deploy sin el wrangler secret de
+  // 97-Task 1), NO se hace refresh de sesión y el request PASA sin tocar. Así el middleware
+  // no puede tumbar el sitio existente (Camino A intacto, T-97-08). El cliente user
+  // (supabase-user.ts) sigue siendo fail-loud en la ruta de auth real (/cuenta, NOTIF-01,
+  // que absorbió y reemplazó al /spike-auth borrado en 103-03): allí SÍ debe existir la
+  // key. Cuando el operador cargue el secret, este guard deja de aplicar y updateSession()
+  // corre normal (refresh + Set-Cookie).
   if (!process.env.SUPABASE_PUBLISHABLE_KEY || !process.env.SUPABASE_URL) {
     return NextResponse.next({ request });
   }

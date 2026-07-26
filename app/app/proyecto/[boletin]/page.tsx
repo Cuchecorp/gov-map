@@ -29,6 +29,7 @@ import {
   type SourceSnapshotRecord,
 } from "@/components/validacion-fuente";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SeguirButton } from "@/components/seguir-button";
 import { sourceLabel } from "@/lib/types";
 import { extractoIdea } from "@/lib/format";
 import type {
@@ -98,6 +99,23 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
           <Suspense fallback={<FichaHeaderSkeleton />}>
             <FichaSection boletin={boletin} />
           </Suspense>
+
+          {/*
+            NOTIF-05 (Phase 103) — Botón "Seguir" gated. AUSENTE del DOM cuando el flag
+            NOTIF está OFF (el propio SeguirButton retorna null como PRIMERA sentencia).
+            Vive tras su propio <Suspense> (lee sesión + estado de suscripción con el
+            cliente user). Navegación/acción PURA sobre este proyecto — no compone hechos
+            de otro dominio; mt-6 sobrio bajo la cabecera.
+          */}
+          <div className="mt-6">
+            <Suspense fallback={null}>
+              <SeguirButton
+                tipo="proyecto"
+                objetivoId={boletin}
+                next={`/proyecto/${boletin}`}
+              />
+            </Suspense>
+          </div>
 
           {/*
             SC2 — "¿Dónde está hoy?" (EstadoActualBlock) como carril propio #estado
