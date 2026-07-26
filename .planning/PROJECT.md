@@ -8,6 +8,18 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato mostrado lleva fuente, fecha y enlace original, sin afirmar nunca intención ni causalidad.
 
+## Current Milestone: v11.0 — Capa LLM escalonada + cierre de deuda viva
+
+**Goal:** La capa LLM pasa de dos-modelos-fijos (DeepSeek volumen / MiniMax crítico) a una escalera granular por tarea (Granite-4.0-H-Micro para routing/preguntas simples/clasificación → Phi-4-mini-instruct como juez/validador → selector que escala a modelo mayor), decidida SOLO por benchmark sobre golden set POR TAREA — regla LOCKED del operador: **ante la duda, SIEMPRE calidad**; DeepSeek se mantiene donde el benchmark lo confirme. Además la deuda viva deja de acumularse: parser BCN senadores corregido en ORIGEN (URI-como-partido), quick tasks cerradas formalmente, y pasada de cierre de los gates v7.0 con participación del operador.
+
+**Target features (directiva del operador 2026-07-26):**
+
+1. **SEED-001 — spike de benchmark POR TAREA** (routing, clasificación, juez/validación, extracción) contra Granite-4.0-H-Micro / Phi-4-mini-instruct / DeepSeek actual, midiendo calidad/latencia/costo. Gate duro: NADA se integra sin paridad de calidad demostrada en el golden set de su tarea. Precedente CI: golden 32 (búsqueda) + golden identidad 1263.
+2. **SEED-001 — arquitectura respond→validate→escalate** sobre la capa `LLMProvider` enchufable existente (openai SDK multi-baseURL; salida estructurada = tool calling o prompt-forzado + zod POR PROVEEDOR, jamás asumir `response_format json_schema`); integración gradual por producto empezando por la tarea de menor riesgo; adjudicación de identidad JAMÁS se degrada (Phi solo como segunda opinión).
+3. **Parser BCN senadores en ORIGEN**: `hasPoliticalParty` URI→label legible en `@obs/bio` + re-corrida de militancias afectadas; `partidoLegible()` (fix display-only 104-03) queda como cinturón o se retira según evidencia.
+4. **Pasada de cierre gates v7.0** (HANDOFF-v7.0-operator-gates.md, patrón v10.0 — operador participa en la corrida): agente ejecuta lo delegable (applies 0052-0054, dry-runs, verificaciones, preparación de runbooks) y bloquea en checkpoints blocking-human para RUT-01, backfills LIVE (votos Cámara/Senado, ChileCompra, SERVEL), flip MONEY legal y cold-reads. El agente NUNCA firma ni flipea.
+5. **Quick tasks**: marcador formal de cierre en las 5 abiertas (260623-rtl, 260702-rbb, 260713-izo, 260715-bvd, 260722-eia).
+
 ## Current Milestone (history): v10.0 — Panel de actualidad legislativa + notificaciones + relaciones (shipped 2026-07-26)
 
 **Goal:** La landing deja de ser un folleto del producto y se convierte en un PANEL DE ACTUALIDAD cuantitativo — "qué está pasando HOY en el Congreso" derivado de datos objetivos (movimiento, urgencias, nuevos ingresos, votaciones próximas, agrupación por tema) — que alguien que va todos los días al Congreso (periodista, tramitador, asesor) pueda usar como primera pantalla del día; más la evaluación/construcción de un modelo de notificaciones por suscripción (proyecto/parlamentario). Entender el Congreso en fácil y mejorar accountability.
@@ -199,6 +211,7 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 ### Active
 
+- [ ] **v11.0 — capa LLM escalonada + cierre de deuda viva** (en curso): spike benchmark POR TAREA (Granite/Phi/DeepSeek) · arquitectura respond→validate→escalate sobre LLMProvider · parser BCN senadores en origen · pasada de cierre gates v7.0 con operador · marcadores quick tasks.
 - [x] **v10.0 — panel de actualidad + notificaciones + relaciones** (shipped 2026-07-26): panel señales honestas · relaciones + /comparar + VSIM ON (dossier firmado) · primer dato de usuario (auth+RLS, digest EGRESO, inerte hasta provisión) · E2E final deploy e89b79af. Audit PASSED 25/25.
 - [x] **v9.0 — robustez de productos estrella + seguridad final** (shipped 2026-07-23): búsqueda híbrida RRF + ranking/filtros + deep-links de validación · bio oficial + partido directo + cross-links · lobby legible audiencia→PL · /agenda por día con cobertura declarada · seguridad final (bounded RPCs, guards, gitleaks, audit DB viva, CSP enforced). Audit PASSED 29/29.
 - [~] **v7.0 — votos, dinero y cierre técnico** (code-complete 2026-07-15, gates de operador abiertos — HANDOFF-v7.0-operator-gates.md): P3 voto individual (opendata.camara.cl) → P5 dimensión dinero (SERVEL + ChileCompra por RUT, prereq RUT-01) → deuda técnica/hardening. Gates pre-aprobados por el operador; RUT-01 y revisión legal 21.719 siguen como prerrequisitos reales.
@@ -293,4 +306,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-26 after v10.0 milestone SHIPPED — panel actualidad + notificaciones + relaciones (deploy e89b79af, audit PASSED 25/25). Deuda operador viva: 103-HUMAN-UAT (provisión NOTIF) + gates v7.0.*
+*Last updated: 2026-07-26 — milestone v11.0 iniciado (capa LLM escalonada SEED-001 + cierre deuda viva: gates v7.0, parser BCN origen, quick tasks). Deuda operador viva: 103-HUMAN-UAT (provisión NOTIF) + gates v7.0 (entran a v11.0).*
