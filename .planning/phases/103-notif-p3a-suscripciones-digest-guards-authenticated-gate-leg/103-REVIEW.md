@@ -38,6 +38,31 @@ findings:
   info: 3
   total: 9
 status: issues_found
+rereview_iteration_2:
+  reviewed: 2026-07-26T00:00:00Z
+  depth: standard
+  scope: fixed files + new HMAC token-derivation design
+  verified_fixed: [CR-01, CR-02, WR-01, WR-02, WR-03, WR-04, IN-01, IN-02, IN-03]
+  new_findings:
+    critical: 1   # CR-03 — multi-subscription one-click unsubscribe gap, EXPOSED by the WR-01 delete-fix
+    warning: 1    # WR-05 — confirmation-email sender still absent; no row can reach estado='confirmada'
+    info: 1       # IN-04 — migration/CLI comments say UPSERT; code is insert + catch-23505
+    total: 3
+  status: all_fixed   # CR-03, WR-05, IN-04 fixed (see Re-Review Resolution below)
+rereview_iteration_2_fix:
+  fixed_at: 2026-07-26T00:00:00Z
+  fixed: 3      # CR-03, WR-05, IN-04
+  skipped: 0
+  tests: "1418 app (107 files) + 40 packages green; app tsc --noEmit clean; package tsc -b clean; lockdown-guard 22/22"
+  fix_commits:
+    CR-03: ee1338d
+    WR-05: cfa7fd1
+    IN-04: e782524
+  human_verification_recommended:  # logic paths — confirm before LIVE flip
+    - CR-03  # user-level baja token: verify one click stops the whole digest for a multi-sub user
+  pending_operator:
+    - "Set NOTIF_TOKEN_SECRET / NOTIF_BASE_URL / NOTIF_FROM as GitHub Actions secrets (both digest-daily.yml steps now read them); RESEND_API_KEY still optional (absent => DRY-RUN)"
+    - "Validate the confirmation-email step (run-confirmaciones-prod-cli) with a manual workflow_dispatch DRY-RUN before flipping NOTIF_PUBLIC_ENABLED=true, so the double opt-in loop is proven end-to-end"
 fix_status: all_fixed
 fix_summary:
   fixed: 9      # CR-01, CR-02, WR-01, WR-02, WR-03, WR-04, IN-01, IN-02, IN-03
@@ -188,3 +213,118 @@ The raw tokens are the ONLY values that can be placed in an email link (the land
 _Reviewed: 2026-07-26T00:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+---
+
+## Re-Review (iteration 2)
+
+**Reviewed:** 2026-07-26T00:00:00Z
+**Depth:** standard
+**Scope:** the fixed files + the new HMAC-derived token design (per re-review objective — token security, round-trip correctness, WR-01/03/04 semantics, no PII/dry-run regressions).
+**Verdict:** ISSUES FOUND. The eight prior findings I could re-verify are genuinely fixed and the new HMAC design is sound, but the WR-01 delete-fix **exposed a live one-click-unsubscribe defect for multi-subscription users (CR-03, BLOCKER)**, and the confirmation-email sender is still absent so no subscription can reach `confirmada` (WR-05).
+
+### Verification of prior fixes
+
+**CR-01 / CR-02 — token round-trip (VERIFIED FIXED).** The new design is cryptographically sound. `deriveToken` (app `token.ts:73-89`) and `deriveRawToken` (`digest.ts:47-59`) are byte-identical: both compute `base64url(HMAC-SHA256(secret, \`${purpose}:${suscripcionId}\`))`, and `hashToken` = `sha256(raw)` hex. Stored `*_token_hash` = `sha256(raw)`; email carries `raw`; landing pages (`baja/page.tsx:58`, `confirmar/page.tsx:59`) apply `hashToken(raw)` and look up by equality → matches. Round-trip holds for **both** confirm and baja. Tests freeze the shared formula (`notificaciones.test.ts:81-86`, `digest.test.ts:245-257`).
+- *Forgeability (review dim 1):* `suscripcion_id` is a client-generated UUID and is effectively public, but forging a token requires `HMAC(secret, …)` — an attacker with the UUID but not `NOTIF_TOKEN_SECRET` cannot derive `raw`. Correct. The secret fails loud when absent in all three consumers (`actions.ts:53-62`, `token.ts:78`, `digest.ts:52`, and the CLI exits without sending at `run-digest-prod-cli.ts:148-157`).
+- *Timing safety (review dim 1):* there is no JS string comparison of tokens — verification is a Postgres index equality on the sha256 hash, so there is no timing side channel to attack, and enumeration is infeasible (128-bit UUID + secret). No issue.
+
+**WR-02 — confirm-window in the write (VERIFIED FIXED).** `marcarConfirmada` (`notif-service.ts:109-124`) re-checks the window in the UPDATE via `.or(\`confirm_expira_at.gt.${ahora},confirm_expira_at.is.null\`)` and returns `data.length > 0`; the page (`confirmar/page.tsx:71`) honors the write result, closing the read-then-write race. The interpolated ISO timestamp contains no PostgREST `.or()` metacharacters (no comma/paren), so the filter is not injectable. Tests cover the true and zero-row cases (`notif-service.test.ts:99-114`).
+
+**WR-01 — email baja aligned to DELETE (VERIFIED FIXED, but see CR-03).** `marcarBaja` (`notif-service.ts:139-148`) now DELETEs by `id`, matching `dejarDeSeguir`. Re-follow after a single-subscription baja is a clean INSERT. Regression test asserts DELETE, not state-flip (`notif-service.test.ts:85-97`). **However, aligning both paths on "delete one row" created CR-03 below for multi-subscription users.**
+
+**WR-03 — empty digests skipped (VERIFIED FIXED).** `filtrarConNovedades` (`digest.ts:215-219`) is applied BEFORE `enforceCap` (`run-digest-prod-cli.ts:214-226`); users with all-empty groups get no email and their cursor does not advance. Tested (`digest.test.ts:195-215`).
+
+**WR-04 — idempotency (VERIFIED FIXED, with IN-04 caveat).** Migration 0072 adds the partial unique index `(user_id, suscripcion_id, ((enviado_at at time zone 'UTC')::date)) where estado='enviado' and enviado_at is not null`. The UTC date-cast matches the CLI's UTC `enviado_at` (`new Date().toISOString()`), so same-day re-inserts collide. The CLI (`run-digest-prod-cli.ts:266-282`) inserts and tolerates code `23505` as a no-op, which is a correct insert-or-ignore idempotency strategy. The `where estado='enviado'` predicate correctly leaves `pendiente`/`error` rows unconstrained. PROD apply is still pending-operator, as noted.
+
+**IN-01 / IN-02 / IN-03 (VERIFIED FIXED).** The inverted comment is gone; the cap log line interpolates `HARD_CAP_DIARIO` (`run-digest-prod-cli.ts:228`); `renderDigest` calls `notaSinNovedades(fecha)` in both HTML and text branches (`resend.ts:88,122`).
+
+**No PII / dry-run regressions (review dim 5, VERIFIED).** Every send-path log uses `redactEmail`; error logs carry only `{ status, name, code }`; the truncated `u.userId.slice(0,8)` is a UUID prefix, not PII. Dry-run without `RESEND_API_KEY` still short-circuits before `fetch` and is tested to not leak the raw email (`resend.test.ts:24-40`).
+
+### New Findings (introduced or exposed by the fixes)
+
+## Critical Issues (Re-Review)
+
+### CR-03: One-click unsubscribe stops only ONE of a multi-subscription user's targets — WR-01 delete-fix broke the List-Unsubscribe guarantee
+
+**File:** `packages/notificaciones/src/run-digest-prod-cli.ts:185-206,251`, `packages/notificaciones/src/resend.ts:114,164,172`, `app/lib/notif-service.ts:139-148`
+**Issue:** The CLI sends **one aggregated digest per user** covering all of that user's confirmed subscriptions (grouped in `porUsuario`), but derives a **single** baja token from only the *first* subscription encountered:
+```ts
+// run-digest-prod-cli.ts:197
+p = { userId: s.user_id, grupos: [], bajaSuscripcionId: s.id }; // only the FIRST id
+...
+// run-digest-prod-cli.ts:251
+const rawBaja = deriveRawToken(tokenSecret, "baja", u.bajaSuscripcionId);
+```
+That single `rawBaja` populates both the footer "Darte de baja" link and the `List-Unsubscribe` header (`resend.ts:114,164,172`). When the recipient clicks it — or when Gmail/Outlook honors the RFC 8058 one-click header — the landing page calls `marcarBaja(id)`, which after the WR-01 fix **DELETEs exactly that one subscription row** (`notif-service.ts:139-148`). The user's *other* confirmed subscriptions survive, so **the next daily digest still arrives**. This directly violates the phase's stated Ley 21.719 / `List-Unsubscribe=One-Click` obligation: the one-click action must stop the mailing, not silence one of N topics with no way to reach the rest (the footer exposes only the one link).
+
+This is a **regression exposed by the WR-01 fix**: the prior `estado='baja'` flip was also single-row, but the switch to hard-DELETE removes the row entirely and, combined with per-user aggregation, leaves no durable "this user opted out of the digest" signal and no per-group unsubscribe affordance. The digest is one email; unsubscribe must govern that email.
+
+**Fix (choose one, server-verifiable):**
+- Make unsubscribe operate at the **digest/user** granularity: derive the baja token from the `user_id` (or a per-user digest id) and have `marcarBaja` remove/suppress *all* of that user's subscriptions (or set a user-level `digest_suppressed` flag the CLI honors), so one click stops the whole mailing. Then keep per-subscription "seguir/dejar de seguir" in the UI only.
+- OR render **one unsubscribe link per group** in the footer AND keep the `List-Unsubscribe` header pointed at a token that unsubscribes the entire digest — the header cannot be per-group, so the header must map to a user-level suppression regardless.
+
+Add a test with a two-subscription user asserting that following the `List-Unsubscribe` URL results in zero subsequent digest sends for that user.
+
+## Warnings (Re-Review)
+
+### WR-05: No confirmation-email sender exists — no subscription can reach `estado='confirmada'`, so the digest still sends to nobody
+
+**File:** `app/app/cuenta/actions.ts:227-242` (derives + hashes confirm token, never emits it), whole repo (no confirm-email sender)
+**Issue:** The CR-02 fix made the confirm token *derivable* and *round-trippable* (verified), but nothing in the codebase ever emails the raw confirm token to the user. A grep across `packages/notificaciones` and `app/` finds only the `"confirm"` purpose in derivation/tests — no sender composes `/notificaciones/confirmar?t=<raw>`. Since `seguir` creates rows as `pendiente` and `leerConfirmadas` (`run-digest-prod-cli.ts:99-105`) filters `estado='confirmada'`, and the only writer of `confirmada` is `marcarConfirmada` (reachable only from the confirm landing page, which requires the raw token from an email that is never sent), **no subscription can legitimately reach `confirmada`** — so the digest CLI has nothing to send in production. This is the same substantive gap as the original CR-02, now reduced to the missing *send* step. It is explicitly deferred to "Plan 04" in code comments and the whole surface is gated (`NOTIF_PUBLIC_ENABLED=false`), so it is a Warning rather than a fresh Blocker — but the phase cannot deliver a working digest until the confirmation email actually ships.
+**Fix:** Add the double-opt-in confirmation-email step (derive `confirm` raw via `deriveToken(secret,'confirm',id)`, email `${baseUrl}/notificaciones/confirmar?t=${raw}`), and add an end-to-end test: `seguir` → confirmation email token → `/confirmar?t=` → `estado='confirmada'` → digest includes the user. Do not flip `NOTIF_PUBLIC_ENABLED=true` before this loop closes, or subscribers will sit in `pendiente` forever and never receive a digest.
+
+## Info (Re-Review)
+
+### IN-04: Migration 0072 and CLI header claim "UPSERT with onConflict"; the code uses `insert` + catch-23505
+
+**File:** `supabase/migrations/0072_notificacion_envio_idempotencia.sql:20-21`, `packages/notificaciones/src/run-digest-prod-cli.ts:19,266-282`
+**Issue:** The 0072 comment says "El CLI hace UPSERT con onConflict sobre estas columnas" and the CLI header step 5 says "upsert notificacion_envio", but the implementation calls `.insert(...)` and tolerates `23505` (`if (insErr && code !== "23505") throw`). There is no `.upsert()`/`onConflict` call (verified by grep). The insert-or-ignore behavior is functionally correct and idempotent, so this is documentation drift, not a bug — but a maintainer trusting the comment may expect the row to be *updated* (advancing `ultimo_evento_visto`) on a same-day rerun, whereas it is actually left unchanged. Since the cursor only advances on successful sends and the first same-day insert already recorded the correct `nuevoCur`, leaving it unchanged is fine; the divergence is purely descriptive.
+**Fix:** Update the 0072 comment (lines 20-21) and the CLI header (line 19) to say "insert + tolerate 23505 (insert-or-ignore)", or switch to an actual `.upsert(..., { onConflict: 'user_id,suscripcion_id,<day-expr>' })` if update-on-rerun semantics are desired (note: a partial-index expression column cannot be named directly in `onConflict`, which is itself a reason the insert+catch approach was chosen — worth stating in the comment).
+
+---
+
+_Re-Reviewed: 2026-07-26T00:00:00Z_
+_Reviewer: Claude (gsd-code-reviewer)_
+_Depth: standard_
+_Result: ISSUES FOUND (1 new Critical, 1 new Warning, 1 new Info; all 9 prior findings verified fixed)_
+
+---
+
+## Re-Review Resolution (iteration 2 fixes)
+
+**Fixed at:** 2026-07-26
+**Fixer:** Claude (gsd-code-fixer)
+**Result:** ALL FIXED — CR-03, WR-05, IN-04 resolved. Test gate GREEN (1418 app tests / 107 files + 40 package tests; app `tsc --noEmit` clean; package `tsc -b` clean; lockdown-guard 22/22).
+
+### CR-03: one-click unsubscribe now suppresses the digest at the USER level (FIXED — commit `ee1338d`)
+
+The digest is one aggregated email per user; the baja token is now derived from the **user_id**, not the first subscription. New self-authenticating token: `base64url(userId + ":" + HMAC-SHA256(secret, "baja-user:" + userId))`.
+
+- `deriveUserBajaToken` added to BOTH `app/app/notificaciones/token.ts` and `packages/notificaciones/src/digest.ts` (byte-identical HMAC formula, frozen by a cross-package round-trip test).
+- `verifyUserBajaToken` (app) base64url-decodes the token, splits on the first `:`, re-derives the HMAC over the `user_id` and compares in **constant time** (`crypto.timingSafeEqual`). No DB lookup by token — the token self-authenticates. The `user_id` (a UUID) is not secret, but forging the signature requires `NOTIF_TOKEN_SECRET`.
+- `marcarBajaUsuario(userId)` in `notif-service.ts` DELETEs **all** of the user's subscriptions (FK `on delete cascade` clears the send cursors) and returns the deleted count.
+- The baja landing (`baja/page.tsx`) tries the user-level token first (the digest links) and falls back to the legacy per-subscription token; the user-level path shows a digest-wide copy. The `List-Unsubscribe` header and footer link now carry the user-level token, so one click (or an RFC 8058 client honoring the header) stops the entire mailing.
+- The CLI (`run-digest-prod-cli.ts`) derives the baja token from `u.userId` (the `bajaSuscripcionId`/first-subscription field is gone). The per-subscription `dejarDeSeguir` in `/cuenta` is unchanged.
+- **Regression tests:** cross-package round-trip + unforgeability (`digest.test.ts`, `notificaciones.test.ts`); a two-subscription user whose one click deletes all rows — `marcarBajaUsuario` returns 2 (`notif-service.test.ts`).
+- *Human verification recommended:* confirm the end-to-end one-click behavior for a real multi-subscription user before the LIVE flip.
+
+### WR-05: the double opt-in confirmation-email sender now ships (FIXED — commit `cfa7fd1`)
+
+The confirm token was derivable but never emailed, so no row could reach `estado='confirmada'`. Added the confirmation EGRESO path:
+
+- `renderConfirmacion(objetivos, confirmUrl)` + `enviarConfirmacion` in `resend.ts` (a shared `postResend` helper now backs both the digest and the confirmation; the confirmation carries **no** `List-Unsubscribe`, since there is no active subscription yet).
+- New CLI `run-confirmaciones-prod-cli.ts`: reads `suscripcion estado='pendiente'` within the confirm window (`confirm_expira_at > now()` or null), derives the raw confirm token (`deriveRawToken 'confirm'`, the same HMAC the app used at subscribe time), composes `/notificaciones/confirmar?t=<raw>`, and sends via Resend. Dry-run without `RESEND_API_KEY`, PII-redacted logs, counts toward the 100/day cap (`enforceCap`), fail-loud without `NOTIF_TOKEN_SECRET`.
+- `digest-daily.yml` runs the confirmation CLI as a step **before** the digest drain (still `workflow_dispatch` gated); both steps now pass `NOTIF_TOKEN_SECRET` / `NOTIF_BASE_URL` / `NOTIF_FROM`.
+- **Tests:** `renderConfirmacion` (CTA + objetivos, no baja link, HTML escape) and `enviarConfirmacion` (dry-run, POST, no `List-Unsubscribe`, 429) in `resend.test.ts`.
+- *Do not flip `NOTIF_PUBLIC_ENABLED=true` until a manual `workflow_dispatch` DRY-RUN proves the loop end-to-end.*
+
+### IN-04: insert-or-ignore comment drift corrected (FIXED — commit `e782524`)
+
+The 0072 migration comment and the CLI flow-step 5 claimed "UPSERT with onConflict"; the code actually does `INSERT` + tolerate `23505` (insert-or-ignore). Corrected both comments (0072 lines 19-20, CLI header) to describe the real behavior and to note **why** `onConflict` is not used: the unique index is over an expression column `((enviado_at at time zone 'UTC')::date)` that cannot be named in `onConflict`. **0072 is already applied to PROD — the index/constraint was NOT touched, only the prose.**
+
+---
+
+_Fixed: 2026-07-26_
+_Fixer: Claude (gsd-code-fixer)_
+_Iteration: 2 (re-review fixes)_
