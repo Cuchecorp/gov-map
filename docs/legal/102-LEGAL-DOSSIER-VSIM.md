@@ -5,8 +5,8 @@ signoff: approved         # pending | approved | rejected
 asesor: "Operador (autorización directa 2026-07-26)"
 fecha_signoff: "2026-07-26"         # ISO 8601 al firmar
 observaciones: "Autorización verbatim del operador el 2026-07-26 en respuesta a AskUserQuestion de la corrida de cierre v10.0: 'Sí — firmar y flip ON'. El agente DOCUMENTA la autorización; el operador AUTORIZÓ. Flip VSIM_PUBLIC_ENABLED=true habilitado deploy-time (Worker env var, Plan 104-02); .env.example permanece false (anti-flip guard)."
-depende_de: "deuda operador (sign-off legal humano); ROADMAP Phase 102 success criterion (VSIM gated)"
-nota: "Encender VSIM_PUBLIC_ENABLED requiere signoff: approved firmado por humano."
+depende_de: "sign-off legal humano SATISFECHO (operador, 2026-07-26); ROADMAP Phase 102 success criterion (VSIM gated)"
+nota: "Encender VSIM_PUBLIC_ENABLED requiere signoff: approved firmado por humano — condición cumplida por autorización del operador el 2026-07-26."
 ---
 
 # Phase 102: Compuerta Legal — Similitud de votación (VSIM) — Dossier de Preparación
@@ -20,11 +20,15 @@ lícita**. Su único fin es **estructurar la superficie de riesgo** de exponer u
 coincidencia de votos entre dos parlamentarios, de modo que un humano (operador + asesor)
 la revise, complete y firme antes de encender el flag.
 
-El sign-off humano real es **deuda de operador** y queda fuera de esta corrida autónoma. El
-estado verificable de ese sign-off vive en el front-matter YAML de este archivo
-(`signoff: pending`). Encender la exposición pública de VSIM (`VSIM_PUBLIC_ENABLED`,
-introducido en 102-01) **depende de `signoff: approved`** — ver sección 9. El agente NO
-firma, NO pone `approved`, NO flipea el flag.
+El sign-off humano se registra en el front-matter YAML de este archivo. **Estado actual
+(2026-07-26): `signoff: approved`.** El operador autorizó directamente, verbatim
+—"Sí — firmar y flip ON"— en respuesta a la AskUserQuestion de la corrida de cierre v10.0
+(pre-autorización de esta corrida). El agente **DOCUMENTA** esa autorización en el YAML y en
+esta prosa; el agente **NO decide, NO firma por su cuenta, NO flipea el flag en prod**: el
+acto de autorizar y el flip a prod son exclusivos del operador (ver sección 9.1). Encender la
+exposición pública de VSIM (`VSIM_PUBLIC_ENABLED`, introducido en 102-01) **depende de
+`signoff: approved`** — ver sección 9 —, condición que ahora se cumple por la autorización
+del operador.
 
 **Alcance:** este dossier cubre **solo VSIM** (la 5ª sección gated de `/comparar`). No cubre
 los cuatro ejes factuales de `/comparar` (militancia histórica / comisiones / co-autoría /
@@ -254,8 +258,10 @@ Con esta evidencia, el humano puede leer en frío la superficie ON sin exponerla
 ## 9. Trazabilidad y consumo por el gate
 
 - **Sign-off como prerrequisito duro:** este dossier registra el estado del sign-off en su
-  front-matter YAML (`signoff: pending`). Mientras `signoff` no sea `approved`, el operador NO
-  debe encender el flag.
+  front-matter YAML. Estado actual: **`signoff: approved`** (operador, 2026-07-26,
+  autorización verbatim "Sí — firmar y flip ON"). El prerrequisito duro se cumple: mientras
+  `signoff` no fuera `approved`, el operador NO debía encender el flag; con `approved` firmado
+  por el operador, la condición del gate queda satisfecha.
 - **Consumo por el gate de 102-01:** encender `VSIM_PUBLIC_ENABLED`
   (`app/lib/vsim-gate.ts`, default `false`) **depende de `signoff: approved`** en este archivo.
   La dependencia es **verificable por inspección** del YAML.
