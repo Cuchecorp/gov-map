@@ -24,6 +24,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
+import { partidoLegible } from "@/lib/format";
 import type { ParlamentarioListadoRow } from "@/lib/types";
 import { ParlamentarioDirectoryRow } from "@/components/parlamentario-directory-row";
 
@@ -148,8 +149,13 @@ export function ParlamentariosFiltro({ slice }: ParlamentariosFiltroProps) {
             <legend className="text-sm font-medium">Partido</legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {todosLosPartidos.map((key) => {
+                // La CLAVE de filtro (`key`) permanece RAW (identidad del grupo);
+                // solo el LABEL visible se sanea (URI BCN → nombre legible, cero
+                // URI en el chip). partidoLegible() pasa un nombre normal verbatim.
                 const label =
-                  key === PARTIDO_SIN_DATO ? "Sin dato" : key;
+                  key === PARTIDO_SIN_DATO
+                    ? "Sin dato"
+                    : partidoLegible(key) ?? key;
                 const count = partidoCounts[key] ?? 0;
                 return (
                   <FacetChip
