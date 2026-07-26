@@ -254,7 +254,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 103-02-PLAN.md — migraciones 0069/0070/0071 (suscripcion RLS to authenticated + notificacion_envio service_role-only + consentimiento) + pgTAP dos-usuarios A-no-ve-B (NOTIF-01/02/04)
+- [x] 103-02-PLAN.md — migraciones 0069/0070/0071 (suscripcion RLS to authenticated + notificacion_envio service_role-only + consentimiento) + pgTAP dos-usuarios A-no-ve-B (NOTIF-01/02/04)
 
 **Wave 3** *(blocked on Wave 2; 103-03 y 103-04 en paralelo, sin solape de archivos)*
 
@@ -1326,7 +1326,7 @@ Plans:
 | 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 4/4 | Complete    | 2026-07-24 |
 | 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 3/3 | Complete    | 2026-07-25 |
 | 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 3/3 | Complete    | 2026-07-25 |
-| 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 1/5 | In Progress|  |
+| 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 2/5 | In Progress|  |
 | 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 0/? | Not started | - |
 
 ## ✅ v4.0 — De datos a cruces verificables

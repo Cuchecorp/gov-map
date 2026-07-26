@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
 status: executing
-stopped_at: Phase 103 UI-SPEC approved
-last_updated: "2026-07-26T14:03:57.333Z"
+stopped_at: Completed 103-02-PLAN.md
+last_updated: "2026-07-26T14:13:13.489Z"
 last_activity: 2026-07-26
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 23
-  completed_plans: 19
+  completed_plans: 20
   percent: 75
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 103 (NOTIF P3a — Suscripciones + digest + guards authenticated + gate legal) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-07-26
 
@@ -103,6 +103,7 @@ Last activity: 2026-07-26
 | Phase 101 P03 | 35min | 2 tasks | 6 files |
 | Phase 102 P01 | 15min | 3 tasks | 11 files |
 | Phase 102 P02 | 8 | 2 tasks | 1 files |
+| Phase 103 P103-02 | ~18 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: [Phase 102] 102-01: Wave 0 gate VSIM fail-closed (=== 'true') espejo money + anti-flip V1/V2/V3 + self-check; flip = acto humano anti-DW-NOMINATE (sign-off 102-LEGAL-DOSSIER-VSIM). Linter extendido idioms VSIM DEDUPE (votan juntos/igual/parecido, aliados/aliada, tasa de coincidencia, señal) + LEYENDA_SIMILITUD_VOTO restada de NEGACIONES_LOCKED antes del scan (Pitfall 3). co_votacion ramas muertas borradas de /red + guard estatico permanente strip-comments TS/SQL. 0068_coincidencia_votos_par ESCRITA no aplicada (3 cols agregadas, filtro sustantiva seleccion in si/no/abstencion sobre estado_vinculo=confirmado, doble-revoke CERO grant) + allowlist Direction-B. VSIM_PUBLIC_ENABLED=false en .env.example. RULE-3: */ literal en JSDoc rompia esbuild -> reescrito.
 - [Phase ?]: 0068 coincidencia_votos_par APLICADA a PROD (psql --single-transaction) + pgTAP 10/10 contra schema aplicado; denominador VSIM-01 (pareo/no_confirmado excluidos de m_compartidas)
 - [Phase 103] 103-01 (PRIMER commit NOTIF-02): lockdown-guard extendido al rol `authenticated` (nuevo esta fase; anon/public era ciego a `to authenticated` — Pitfall 1). Block D = allowlist POSITIVA `USER_OWNED_TABLES={suscripcion,consentimiento}` via `authenticatedGrantOffenders` (clona `anonGrantOffenders` invertido; extrae tabla objetivo por sentencia; scan migraciones >0044 = 0 offenders hoy, MUERDE cuando Plan 02 escriba un grant fuera de la allowlist). Block E = `notificacion_envio` service_role-only (CERO grant a authenticated, cae de Block D + fixture nombrado select/insert/update/delete/all). Mutation self-check ejercita el detector REAL EN MEMORIA (proyecto+queue→offender, suscripcion/consentimiento→0, comentario→0). `.from()` de tablas-de-usuario SCOPEADO a `supabase.ts`; `notif-service.ts` (Plan 03) tolerado explicito via `NOTIF_SERVICE_TS` (el UNICO punto service_role sancionado, espejo de como supabase.ts es el chokepoint PII). notif-gate.ts = chokepoint `=== "true"` (clon vsim-gate) + notif-antiflip-guard 3-vector (V1a-d/V2a-b/V3 app+packages) + self-check. DISTINCION vs VSIM/MONEY: operador PRE-AUTORIZO el flip esta corrida PERO `.env.example=false` y el flip es DEPLOY-TIME (env var Worker), NUNCA committeado; estrictez anti-flip IDENTICA. .env.example += `NOTIF_PUBLIC_ENABLED=false` + `RESEND_API_KEY=` (placeholder Plan 04/05). CERO paquete nuevo. tsc 0; lockdown 22/22 + notif-antiflip 20/20 (money-antiflip verde en foco; timeout 5s bajo carga full-suite = flake pre-existente NO regresion). Commits 6cf3bbc + b4331db.
+- [Phase ?]: 103-02: primeras tablas user-owned (0069 suscripcion / 0071 consentimiento) RLS to authenticated + (select auth.uid())=user_id; 0070 notificacion_envio service_role-only cola con cursor idempotente ultimo_evento_visto. RULE-2: post-0044 (ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE ALL ON TABLES FROM authenticated) las tablas net-new dan CERO grant base a authenticated -> RLS owner-scoped MUERTA (permission denied) sin grant explicito; anadido grant select,insert,delete suscripcion + select,insert consentimiento (RLS igual aisla; el grant ES el to-authenticated allowlisted que Block D espera). pgTAP 20/20 (6/6/8) en scratch DB que espeja post-0044; lockdown 22/22. Apply PROD = Plan 05.
 
 ### Pending Todos
 
@@ -230,8 +232,8 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-26T14:03:57.321Z
-Stopped at: Phase 103 UI-SPEC approved
+Last session: 2026-07-26T14:13:13.477Z
+Stopped at: Completed 103-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
