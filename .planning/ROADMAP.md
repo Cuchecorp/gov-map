@@ -250,7 +250,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 103-01-PLAN.md — lockdown-guard extendido a `authenticated` (PRIMER commit, Block D/E + self-check) + NOTIF flag chokepoint + anti-flip guard + .env.example (NOTIF-02/05)
+- [x] 103-01-PLAN.md — lockdown-guard extendido a `authenticated` (PRIMER commit, Block D/E + self-check) + NOTIF flag chokepoint + anti-flip guard + .env.example (NOTIF-02/05)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -1326,7 +1326,7 @@ Plans:
 | 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 4/4 | Complete    | 2026-07-24 |
 | 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 3/3 | Complete    | 2026-07-25 |
 | 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 3/3 | Complete    | 2026-07-25 |
-| 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 0/? | Not started | - |
+| 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 1/5 | In Progress|  |
 | 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 0/? | Not started | - |
 
 ## ✅ v4.0 — De datos a cruces verificables

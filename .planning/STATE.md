@@ -4,13 +4,13 @@ milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
 status: executing
 stopped_at: Phase 103 UI-SPEC approved
-last_updated: "2026-07-26T13:54:09.455Z"
-last_activity: 2026-07-26 -- Phase 103 planning complete
+last_updated: "2026-07-26T14:03:57.333Z"
+last_activity: 2026-07-26
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 23
-  completed_plans: 18
+  completed_plans: 19
   percent: 75
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 102 — RELACIONES P2b — Similitud de votación (gated legal)
+**Current focus:** Phase 103 — NOTIF P3a — Suscripciones + digest + guards authenticated + gate legal
 
 ## Current Position
 
-Phase: 103
-Plan: Not started
+Phase: 103 (NOTIF P3a — Suscripciones + digest + guards authenticated + gate legal) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-07-26 -- Phase 103 planning complete
+Last activity: 2026-07-26
 
 ## Performance Metrics
 
@@ -174,6 +174,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 0067 net-new (696) aplicada a PROD + pgTAP 6/6; /comparar 4 ejes; co-autoría count-only
 - [Phase ?]: [Phase 102] 102-01: Wave 0 gate VSIM fail-closed (=== 'true') espejo money + anti-flip V1/V2/V3 + self-check; flip = acto humano anti-DW-NOMINATE (sign-off 102-LEGAL-DOSSIER-VSIM). Linter extendido idioms VSIM DEDUPE (votan juntos/igual/parecido, aliados/aliada, tasa de coincidencia, señal) + LEYENDA_SIMILITUD_VOTO restada de NEGACIONES_LOCKED antes del scan (Pitfall 3). co_votacion ramas muertas borradas de /red + guard estatico permanente strip-comments TS/SQL. 0068_coincidencia_votos_par ESCRITA no aplicada (3 cols agregadas, filtro sustantiva seleccion in si/no/abstencion sobre estado_vinculo=confirmado, doble-revoke CERO grant) + allowlist Direction-B. VSIM_PUBLIC_ENABLED=false en .env.example. RULE-3: */ literal en JSDoc rompia esbuild -> reescrito.
 - [Phase ?]: 0068 coincidencia_votos_par APLICADA a PROD (psql --single-transaction) + pgTAP 10/10 contra schema aplicado; denominador VSIM-01 (pareo/no_confirmado excluidos de m_compartidas)
+- [Phase 103] 103-01 (PRIMER commit NOTIF-02): lockdown-guard extendido al rol `authenticated` (nuevo esta fase; anon/public era ciego a `to authenticated` — Pitfall 1). Block D = allowlist POSITIVA `USER_OWNED_TABLES={suscripcion,consentimiento}` via `authenticatedGrantOffenders` (clona `anonGrantOffenders` invertido; extrae tabla objetivo por sentencia; scan migraciones >0044 = 0 offenders hoy, MUERDE cuando Plan 02 escriba un grant fuera de la allowlist). Block E = `notificacion_envio` service_role-only (CERO grant a authenticated, cae de Block D + fixture nombrado select/insert/update/delete/all). Mutation self-check ejercita el detector REAL EN MEMORIA (proyecto+queue→offender, suscripcion/consentimiento→0, comentario→0). `.from()` de tablas-de-usuario SCOPEADO a `supabase.ts`; `notif-service.ts` (Plan 03) tolerado explicito via `NOTIF_SERVICE_TS` (el UNICO punto service_role sancionado, espejo de como supabase.ts es el chokepoint PII). notif-gate.ts = chokepoint `=== "true"` (clon vsim-gate) + notif-antiflip-guard 3-vector (V1a-d/V2a-b/V3 app+packages) + self-check. DISTINCION vs VSIM/MONEY: operador PRE-AUTORIZO el flip esta corrida PERO `.env.example=false` y el flip es DEPLOY-TIME (env var Worker), NUNCA committeado; estrictez anti-flip IDENTICA. .env.example += `NOTIF_PUBLIC_ENABLED=false` + `RESEND_API_KEY=` (placeholder Plan 04/05). CERO paquete nuevo. tsc 0; lockdown 22/22 + notif-antiflip 20/20 (money-antiflip verde en foco; timeout 5s bajo carga full-suite = flake pre-existente NO regresion). Commits 6cf3bbc + b4331db.
 
 ### Pending Todos
 
@@ -229,9 +230,9 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-26T13:14:19.332Z
+Last session: 2026-07-26T14:03:57.321Z
 Stopped at: Phase 103 UI-SPEC approved
-Resume file: .planning/phases/103-notif-p3a-suscripciones-digest-guards-authenticated-gate-leg/103-UI-SPEC.md
+Resume file: None
 
 ## Operator Next Steps
 
