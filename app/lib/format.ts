@@ -129,6 +129,39 @@ export function fechaCortaSegura(
 }
 
 /**
+ * Saneamiento DISPLAY-ONLY del valor `partido` cuando la fuente (BCN) dejó el
+ * recurso RDF crudo como valor — p.ej. la militancia de senadores de BCN emite
+ * `http://datos.bcn.cl/recurso/cl/organismo/partido-politico/partido-democratas-chile`
+ * en vez de la etiqueta legible. Renderizar ese URI como "partido" en la ficha es
+ * un DEFECTO (URI-como-partido): el ciudadano ve una URL donde debería ir el nombre.
+ *
+ * Regla LOCKED (no fabricar identidad):
+ *  1. null/vacío → null (los callers conservan su omisión honesta).
+ *  2. Si NO es un URI de partido de datos.bcn.cl → passthrough verbatim (el valor
+ *     ya es un nombre legible de la fuente; JAMÁS re-casear un nombre real).
+ *  3. Si es el URI de BCN: derivar el nombre del PROPIO slug del URI — reemplazar
+ *     "-" por espacio y Title-Case. NO se agregan tildes (el slug no las trae;
+ *     inventarlas sería fabricar), NO se traduce ni se expande: "partido-democratas
+ *     -chile" → "Partido Democratas Chile". El nombre sale del dato, no se inventa.
+ *
+ * Es display-only: la clave de matching y la proyección PII-safe no se tocan.
+ */
+export function partidoLegible(raw: string | null | undefined): string | null {
+  const s = (raw ?? "").trim();
+  if (s === "") return null;
+  // Solo el URI de partido de BCN dispara la derivación; cualquier otro valor
+  // (nombre legible de la fuente) pasa verbatim.
+  const m = /^https?:\/\/datos\.bcn\.cl\/.*\/partido-politico\/(.+?)\/?$/.exec(s);
+  if (!m) return s;
+  const slug = m[1];
+  return slug
+    .split("-")
+    .filter((p) => p.length > 0)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(" ");
+}
+
+/**
  * Partículas que quedan en minúscula en Title Case (es-CL), EXCEPTO cuando son
  * el primer token del nombre (el primer token siempre se capitaliza).
  * Lista LOCKED (54-CONTEXT / UI-SPEC Contract 1).

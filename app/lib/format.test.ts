@@ -7,6 +7,7 @@ import {
   capitalizarPrimera,
   fechaCortaSegura,
   formatNombre,
+  partidoLegible,
 } from "./format";
 
 const NOW = new Date("2026-05-20T12:00:00Z");
@@ -191,5 +192,54 @@ describe("fechaCortaSegura (degrada, nunca 'Invalid Date')", () => {
 
   it("nunca retorna la cadena 'Invalid Date'", () => {
     expect(fechaCortaSegura("2024-13-99")).toBe("fecha no informada");
+  });
+});
+
+describe("partidoLegible (saneamiento URI-como-partido, display-only)", () => {
+  it("dato real PROD (S1344): URI BCN → nombre derivado del slug, CERO URI", () => {
+    expect(
+      partidoLegible(
+        "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/partido-democratas-chile",
+      ),
+    ).toBe("Partido Democratas Chile");
+  });
+
+  it("dato real PROD: partido-republicano-de-chile", () => {
+    expect(
+      partidoLegible(
+        "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/partido-republicano-de-chile",
+      ),
+    ).toBe("Partido Republicano De Chile");
+  });
+
+  it("dato real PROD: partido-social-cristiano", () => {
+    expect(
+      partidoLegible(
+        "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/partido-social-cristiano",
+      ),
+    ).toBe("Partido Social Cristiano");
+  });
+
+  it("nunca deja pasar 'http' cuando el input es un URI BCN (invariante anti-URI)", () => {
+    const out = partidoLegible(
+      "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/partido-democratas-chile",
+    );
+    expect(out).not.toBeNull();
+    expect(out!).not.toContain("http");
+    expect(out!).not.toContain("datos.bcn.cl");
+  });
+
+  it("nombre legible de la fuente pasa VERBATIM (no re-casea un partido real)", () => {
+    expect(partidoLegible("Renovación Nacional")).toBe("Renovación Nacional");
+    expect(partidoLegible("Partido Comunista de Chile")).toBe(
+      "Partido Comunista de Chile",
+    );
+  });
+
+  it("null/vacío → null (omisión honesta preservada)", () => {
+    expect(partidoLegible(null)).toBeNull();
+    expect(partidoLegible(undefined)).toBeNull();
+    expect(partidoLegible("")).toBeNull();
+    expect(partidoLegible("   ")).toBeNull();
   });
 });

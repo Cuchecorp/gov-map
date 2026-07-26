@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { fechaCorta } from "@/lib/format";
+import { fechaCorta, partidoLegible } from "@/lib/format";
 import { sourceLabel } from "@/lib/types";
 
 /**
@@ -52,7 +52,11 @@ export function PartidoChip({
   tooltip?: boolean;
 }) {
   // Omisión honesta: sin partido → no se renderiza nada (espejo CamaraChip).
-  const nombre = (partido ?? "").trim();
+  // Saneamiento URI-como-partido: si la fuente (BCN, militancia de senadores)
+  // dejó el recurso RDF crudo (`http://datos.bcn.cl/.../partido-politico/<slug>`),
+  // `partidoLegible` deriva el nombre del propio slug — CERO URI en el DOM. Un
+  // nombre legible normal pasa verbatim.
+  const nombre = partidoLegible(partido) ?? "";
   if (nombre === "") return null;
 
   const fuente = sourceLabel(origen);
