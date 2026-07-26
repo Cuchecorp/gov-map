@@ -46,3 +46,15 @@
 | CSP en `/cuenta` | header presente (enforced) ✓ |
 
 Inventario E2E completo × dato real × BrowserOS = Plan 104-03 (evidencia en 104-E2E-EVIDENCIA.md).
+
+## Redeploys del E2E (Plan 104-03) — fix URI-como-partido
+
+Durante el inventario E2E se detectó que `/parlamentario/S1344` (Matías Walker, senador) y `/parlamentarios` renderizaban el recurso RDF crudo de BCN (`http://datos.bcn.cl/.../partido-democratas-chile`) **como valor de partido** (1 fila de militancia con URI en vez de etiqueta; gap del parser BCN de senadores, Phase 90). Defecto Rule 1 (rompe superficie ciudadana; viola "cero URI-como-partido"). Fix display-only `partidoLegible()` + 3 redeploys (un sitio de render por vez):
+
+| # | Commit | Versión | Sitio saneado |
+|---|--------|---------|---------------|
+| 1 | `a6f4057` | `600de567` | `PartidoChip` (ficha header + fila directorio) |
+| 2 | `34e4df2` | `95a9c858` | `MilitanciasDeParlamentario` (vigente + histórico) |
+| 3 | `2b86707` | **`b467d41a`** (final) | `ParlamentariosFiltro` (label de la faceta; clave de filtro RAW) |
+
+Misma secuencia Docker que deploy #1/#2 (mirror C:\Temp\obs-build → docker-build.sh + docker-deploy.sh en node:22-slim con OAuth montado en /root/.config/.wrangler). Copia targeted de los archivos cambiados al mirror (evita robocopy /MIR y su re-escritura de helper scripts). **Versión en producción tras el E2E: `b467d41a-3014-46bd-b1b5-0c810497244a`.** Cero URI-como-partido *visible*; la única ocurrencia residual de `datos.bcn.cl` en `/parlamentarios` es la clave de filtro serializada en el payload RSC del island (no-visible, RAW por diseño). Ver 104-E2E-EVIDENCIA.md §6.
