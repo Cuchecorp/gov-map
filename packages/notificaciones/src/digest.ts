@@ -206,6 +206,19 @@ export interface PendingUser {
 }
 
 /**
+ * WR-03: filtra los usuarios cuyo digest tendría CONTENIDO — al menos un grupo con
+ * `novedades.length > 0`. Un usuario cuyos TODOS los grupos están vacíos NO recibe correo
+ * (no se quema slot del hard-cap 100/día en un mail sin novedades ni se daña la reputación
+ * anti-spam). Se aplica ANTES de `enforceCap` para que los usuarios con novedades reales
+ * tengan prioridad sobre los vacíos. Genérico sobre `{ grupos: { nov: unknown[] }[] }`.
+ */
+export function filtrarConNovedades<
+  T extends { grupos: { nov: NovedadEvento[] }[] },
+>(usuarios: T[]): T[] {
+  return usuarios.filter((u) => u.grupos.some((g) => g.nov.length > 0));
+}
+
+/**
  * Aplica el cap DURO 100/día: devuelve los primeros `cap` usuarios a enviar y deja el
  * RESTO en cola (`diferidos`) con su cursor SIN avanzar → quedan para el próximo run
  * (degrade honesto, nunca se pierden — Pitfall 3 / T-103-14).

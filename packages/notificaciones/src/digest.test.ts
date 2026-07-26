@@ -4,6 +4,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeNovedades,
   deriveRawToken,
+  filtrarConNovedades,
   redactEmail,
   nuevoCursor,
   enforceCap,
@@ -188,6 +189,28 @@ describe("enforceCap — hard-cap 100/día (over-cap queda en cola, Pitfall 3)",
     const { aEnviar, diferidos } = enforceCap(users);
     expect(aEnviar).toHaveLength(HARD_CAP_DIARIO);
     expect(diferidos).toHaveLength(50); // quedan en cola, NUNCA se pierden
+  });
+});
+
+describe("filtrarConNovedades — WR-03: no se emiten digests vacíos", () => {
+  const conNov = { userId: "a", grupos: [{ nov: [ev(1, "b")] as NovedadEvento[] }] };
+  const vacio = { userId: "b", grupos: [{ nov: [] as NovedadEvento[] }, { nov: [] as NovedadEvento[] }] };
+  const mixto = { userId: "c", grupos: [{ nov: [] as NovedadEvento[] }, { nov: [ev(2, "b")] as NovedadEvento[] }] };
+
+  it("excluye a los usuarios cuyos TODOS los grupos están vacíos", () => {
+    const out = filtrarConNovedades([conNov, vacio]);
+    expect(out.map((u) => u.userId)).toEqual(["a"]); // 'b' fuera: no quema slot ni reputación
+  });
+
+  it("incluye a un usuario con AL MENOS un grupo con novedades (grupos vacíos se conservan)", () => {
+    const out = filtrarConNovedades([mixto]);
+    expect(out).toHaveLength(1);
+    // El usuario mixto pasa; sus grupos vacíos siguen ahí (la nota 'sin novedades' aplica a esos).
+    expect(out[0]!.grupos).toHaveLength(2);
+  });
+
+  it("todos vacíos → lista vacía (nada que enviar, salida limpia)", () => {
+    expect(filtrarConNovedades([vacio])).toEqual([]);
   });
 });
 

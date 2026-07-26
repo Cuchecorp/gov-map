@@ -28,6 +28,7 @@ import {
   computeNovedades,
   deriveRawToken,
   enforceCap,
+  filtrarConNovedades,
   HARD_CAP_DIARIO,
   nuevoCursor,
   redactEmail,
@@ -204,8 +205,24 @@ async function run(): Promise<void> {
     });
   }
 
+  // 2b. WR-03: NO enviar digests vacíos. Un usuario cuyos TODOS los grupos tienen cero
+  //     novedades no recibe correo — así no se quema un slot del hard-cap 100/día en un
+  //     mail sin contenido (que además daña reputación anti-spam) y los usuarios CON
+  //     novedades reales no quedan hambrientos detrás de envíos vacíos. La "nota sin
+  //     novedades" queda SOLO para grupos vacíos de un usuario que SÍ tiene ≥1 grupo con
+  //     novedades. Su cursor no avanza (no hubo envío) → si mañana hay novedades, se envía.
+  const todos = Array.from(porUsuario.values());
+  const usuarios = filtrarConNovedades(todos);
+  const vacios = todos.length - usuarios.length;
+  if (vacios > 0) {
+    log(`digest-prod: ${vacios} usuario(s) sin novedades → NO se envía correo (cap y reputación preservados).`);
+  }
+  if (usuarios.length === 0) {
+    log("digest-prod: ningún usuario con novedades → nada que enviar. Salida limpia.");
+    return;
+  }
+
   // 3. hard-cap 100/día por USUARIO (over-cap queda en cola para mañana).
-  const usuarios = Array.from(porUsuario.values());
   const { aEnviar, diferidos } = enforceCap(usuarios);
   if (diferidos.length > 0) {
     log(`digest-prod: cap ${HARD_CAP_DIARIO}/día → ${aEnviar.length} envíos, ${diferidos.length} diferidos a mañana (cursor sin avanzar).`);
