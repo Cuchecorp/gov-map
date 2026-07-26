@@ -281,7 +281,20 @@ Plans:
   3. El linter anti-insinuación corre verde con el vocabulario nuevo Y sobre las superficies nuevas (`SUPERFICIES_PANEL`, similitud, relaciones); la similitud de voto cuadra contra recálculo SQL
   4. La suite completa + todos los guards (lockdown authenticated, anti-flip VSIM, candados de régimen) están verdes; empty states honestos, cero URI-como-partido
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 104-01-PLAN.md — Pre-deploy gate: suite completa + los 9 guards/linter verdes + firma dossier VSIM (pending→approved, autorización operador verbatim)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 104-02-PLAN.md — Deploy único (OpenNext Docker + wrangler) arrastra 101+102+103 + flip VSIM_PUBLIC_ENABLED=true (Worker env var, NOTIF/MONEY OFF) + verificación curl Camino A/CSP/VSIM
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 104-03-PLAN.md — Inventario E2E BrowserOS × SQL (panel señales vivas, relaciones vs total_n, /comparar 4 ejes + VSIM cuadra vs coincidencia_votos_par, flags OFF ausentes del DOM) + cierre 101-HUMAN-UAT + evidencia
 
 **UI hint**: yes
 
