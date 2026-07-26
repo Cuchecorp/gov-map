@@ -1,296 +1,399 @@
 # Architecture Research
 
-**Domain:** v10.0 — Panel de actualidad legislativa (landing) + señales + notificaciones por suscripción
-**Researched:** 2026-07-23
-**Confidence:** HIGH (integración contra código real leído; auth-on-Workers verificado con docs actuales)
+**Domain:** Tiered LLM layer (respond→validate→escalate) over an existing pluggable `LLMProvider` in a pnpm/TypeScript monorepo — batch/CLI execution, not a synchronous request path
+**Researched:** 2026-07-26
+**Confidence:** HIGH (grounded in the actual `packages/llm` code; small-model availability MEDIUM/HIGH)
 
-> Alcance: cómo las TRES capacidades nuevas —(a) señales de actualidad, (b) landing-panel, (c) suscripciones+notificaciones— se enchufan al monorepo existente sin romper invariantes LOCKED. Todo lo afirmado abajo se ancla a archivos reales citados. Lo NO verificado se marca.
-
----
-
-## Standard Architecture (estado actual — leído del repo)
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│  FRONTEND  — Next.js 16 App Router, OpenNext → Cloudflare Workers          │
-│  app/app/page.tsx (home bento, force-dynamic) · /buscar /parlamentarios    │
-│  /agenda /proyecto/[b] /parlamentario/[id]                                 │
-│  Lee SOLO server-side vía createServerSupabase() = service_role (bypassa   │
-│  RLS). SIN auth, SIN middleware, SIN dato de usuario. import "server-only" │
-├──────────────────────────────────────────────────────────────────────────┤
-│  SEGURIDAD  — Camino A (app/lib/supabase.ts)                               │
-│  service_role ES el boundary. Guards CI que MUERDEN (app/lib/*.test.ts):   │
-│   · lockdown-guard   : (A) migr >0044 sin grant anon/public               │
-│                        (B) árbol público no toca .from(PII) ni .rpc(∉ALLOW)│
-│   · anti-insinuacion : denylist de vocabulario sobre SUPERFICIES_* (incl.  │
-│                        app/page.tsx + actualidad-module.tsx)               │
-│   · bento-guards     : cero-hex + tipografía-whitelist + bare-var          │
-├──────────────────────────────────────────────────────────────────────────┤
-│  DATOS  — Supabase Postgres (Pro), migraciones 0001-0064                   │
-│  Tablas normalizadas (NO-PII: proyecto/votacion/tramitacion_evento/        │
-│  citacion/lobby_audiencia/proyecto_ficha…) + tablas PII (parlamentario/    │
-│  cruce_senal/…). RLS habilitada SIN policies (deny-by-default) + revoke.   │
-│  RPCs security-definer PII-safe, bounded (LIMIT + statement_timeout 5s).   │
-│  cruce_senal = precedente de SEÑAL precomputada (0039) por pg_cron.        │
-├──────────────────────────────────────────────────────────────────────────┤
-│  INGESTA  — dos etapas LOCKED: fuente → R2 crudo → Supabase                │
-│  GH Actions crons (.github/workflows/*.yml) corriendo CLIs TS/@obs con     │
-│  SUPABASE_SECRET_KEY. leyes-weekly = L-V 20:00 UTC. Repo público =         │
-│  minutos ilimitados. pg_cron interno para materializar cruce_senal.        │
-└──────────────────────────────────────────────────────────────────────────┘
-```
-
-### Component Responsibilities (nuevos vs existentes)
-
-| Component | Responsibility | Nuevo / Modificado |
-|-----------|----------------|--------------------|
-| `actualidad_senal` (tabla) | Señales precomputadas del panel (movimiento, ingresos, urgencias, próximas votaciones, leyes nuevas) | **NUEVO** — espeja `cruce_senal` (0039) |
-| `actualidad.materializar_senales()` (proc) | Full-rebuild transaccional de las señales, invocado por pg_cron/CLI | **NUEVO** — espeja `cruces.materializar_cruces()` |
-| RPC(s) `actualidad_*` PII-safe bounded | Lectura del panel desde la landing | **NUEVO** — enhebra la aguja 0064 + allowlist |
-| `app/app/page.tsx` | Landing = panel de actualidad (reemplaza bento producto-céntrico) | **MODIFICADO** (conserva BentoGrid/tiles/tokens) |
-| `suscripcion` + `notificacion_envio` (tablas user-owned) | Primer dato DE USUARIO; RLS `to authenticated` real | **NUEVO** — primer uso de RLS con policies |
-| Supabase Auth + `@supabase/ssr` + `middleware.ts` | Sesión de usuario (cookies) sobre Workers | **NUEVO** — primer auth del sistema |
-| Cron de EGRESO (GH Actions) | Computa novedades por suscripción → envía email | **NUEVO patrón** (no es ingesta de dos etapas) |
+> Scope: SEED-001. This file answers **how the tiering integrates** with the code that exists today. Every claim below is anchored to a real signature in `packages/llm/src` or a real call site. Model *selection* per task is decided by the benchmark harness (out of scope here); this is the plumbing that the harness's verdicts flow into.
 
 ---
 
-## Recommended Project Structure (deltas sobre el repo real)
+## Ground Truth: what exists today (quoted from the code)
+
+The whole design hinges on one interface. From `packages/llm/src/types.ts:49`:
+
+```typescript
+export interface LLMProvider {
+  readonly id: string;
+  readonly trainsOnInputs: boolean;
+  complete<T>(req: CompletionRequest, schema: ZodType<T>): Promise<T>;
+}
+```
+
+`CompletionRequest` (`types.ts:25`) carries `{ system?, user, criticality, sensitivity, maxRepairAttempts?, temperature? }` where `Criticality = "critical" | "bulk"` and `Sensitivity = "public" | "personal"`.
+
+Four facts from the code are load-bearing for the whole recommendation:
+
+1. **`complete()` returns an already-zod-validated `T`, not raw text.** The compuerta única (`validate.ts:parseAndValidate`) and the repair loop live *inside* each adapter (`deepseek.ts:90`, `minimax.ts:123`). A caller never sees raw model output. **Consequence:** a judge that inspects "the raw answer" cannot sit *outside* `complete()` unless the answer type is surfaced — the tier design must respect that the unit of exchange is a *validated object*, not a string.
+
+2. **The compliance gates are fail-closed *by construction inside every adapter*** — `assertNoRutInLlmInput` + `assertSensitivityAllowed` run before any network call (`deepseek.ts:65-68`, `minimax.ts:69-72`). **Consequence:** any new tier provider (Granite, Phi) is subject to the same gates automatically *if and only if* it implements `LLMProvider` the same way. This is the single most important constraint: new rungs MUST be `LLMProvider` implementations, not a bespoke path that bypasses the gates.
+
+3. **The router (`selectProvider`) and config (`loadRouterConfigFromEnv`) are DORMANT in production.** Grep across `packages/**` and `apps/**` (excluding tests/dist) shows `selectProvider` / `loadRouterConfigFromEnv` are referenced **only** in `router.ts` / `config.ts` themselves. Every real consumer hard-instantiates a concrete provider:
+   - `fichas/src/pipeline-cli.ts:191` → `new DeepSeekProvider({ apiKey: ... })`
+   - `adjudication` receives a provider injected; golden CI passes `MockProvider`, LIVE passes `new MiniMaxProvider(...)`
+   - `agenda/src/run-agenda-prod-cli.ts:130`, `cruces/src/clasificar-fichas-cli.ts:200` → `new DeepSeekProvider(...)`
+   - `cruces/src/clasificar-lobby-cli.ts:190` → `new MiniMaxProvider(...)`
+
+   **Consequence:** there is no central selection seam to hook. The cascade cannot be "wire it into the router" because nothing calls the router. It has to be a **new `LLMProvider` implementation** that consumers opt into at their existing instantiation site (change `new DeepSeekProvider(...)` → `new TieredProvider(...)`), OR a revived-and-extended `selectProvider`. The former is far lower-risk and touches one line per consumer.
+
+4. **Consumers inject the provider; they don't reach into `@obs/llm` internals.** `extraer(texto, proyecto, provider)` (`fichas/src/extraer.ts:26`) and `correrPipeline(mencion, maestra, provider, writer)` (`adjudication/src/pipeline.ts:88`) both take an `LLMProvider` as a parameter. **This is the decisive fact for the whole SEED:** because consumers are already dependency-injected on the interface, a composed tiered provider is a **drop-in** — the consumer body does not change at all, only the object handed to it at the CLI boundary.
+
+---
+
+## Recommended Architecture
+
+**Answer to (a): the cascade lives in a new `TieredProvider` class that `implements LLMProvider` (composition/decorator).** Not the router, not per-consumer wiring, not a separate orchestrator that consumers call directly.
+
+Rationale, from the code above:
+- Consumers already take `LLMProvider` by injection (fact 4) → a decorator is a zero-change drop-in at the call sites.
+- The router is dead code (fact 3) → reviving it as the seam means resurrecting an unused path *and* it only maps `Criticality` (2 values) to *one* provider — it cannot express a *ladder*. The ladder is a richer concept than the router models.
+- A separate orchestrator module that consumers must call would force every consumer body to change (violates "without touching consumers", question b).
+- Because `TieredProvider` *is* an `LLMProvider`, the fail-closed gates (fact 2) are enforced by the inner rung providers automatically — the tiered wrapper never sees a RUT bypass path.
+
+### System Overview
 
 ```
-supabase/migrations/
-├── 0065_actualidad_senal.sql          # tabla + proc materializador + pg_cron (espeja 0039)
-├── 0066_actualidad_rpc.sql            # RPC(s) bounded PII-safe del panel (espeja 0064)
-├── 0067_auth_suscripcion.sql          # suscripcion + notificacion_envio + RLS to authenticated
-│                                       #   PRIMERA migración con CREATE POLICY (rol authenticated)
-packages/
-├── @obs/actualidad/                    # (opción A) CLI materializador reusable local+CI
-│   └── src/run-actualidad-prod-cli.ts  # espeja run-tramitacion-prod-cli.ts
-└── @obs/notificaciones/                # egreso: computa novedades por suscripción + envía email
-    └── src/run-notificaciones-cli.ts
-.github/workflows/
-├── actualidad-refresh.yml              # (si materializa por CLI, no pg_cron) L-V intradía
-└── notificaciones-daily.yml            # EGRESO diario: novedades → email (nuevo patrón)
-app/
-├── middleware.ts                       # NUEVO — refresco de sesión Supabase (auth)
-├── lib/supabase-user.ts                # NUEVO — cliente @supabase/ssr (rol authenticated, NO service_role)
-├── app/page.tsx                        # MODIFICADO — panel de actualidad
-├── app/(auth)/…                        # login/verify/unsubscribe
-├── components/panel/*.tsx              # NUEVO — tiles del panel (reusan BentoGrid/BentoTile)
-└── lib/*.test.ts                       # guards extendidos (allowlist, anti-insinuación, bento)
+┌───────────────────────────────────────────────────────────────────────┐
+│  CONSUMERS (unchanged bodies — inject LLMProvider)                      │
+│  fichas/extraer(..., provider)   adjudication/correrPipeline(..., prov) │
+│  cruces/clasificar   agenda/tabla                                       │
+│         │ (one-line change at the CLI: which provider they construct)   │
+├─────────┴─────────────────────────────────────────────────────────────┤
+│  @obs/llm  —  NEW: TieredProvider  implements LLMProvider               │
+│  ┌───────────────────────────────────────────────────────────────┐    │
+│  │ complete<T>(req, schema):                                       │    │
+│  │   ladder = ladderFor(req)      ← from TaskLadderConfig (task→…) │    │
+│  │   for rung in ladder.responders:                                │    │
+│  │      answer = rung.provider.complete(req, schema)  ← zod-valid  │    │
+│  │      verdict = ladder.judge?.judge(req, answer, schema)         │    │
+│  │      telemetry.record({rung, verdict, latency, cost, …})        │    │
+│  │      if verdict.ok  → return answer   (escalate no further)     │    │
+│  │   throw / return last  (per ladder.onExhausted policy)          │    │
+│  └───────────────────────────────────────────────────────────────┘    │
+│        │ delegates to                    │ optional second opinion       │
+│  ┌─────┴──────┐ ┌──────────┐ ┌───────────┴──┐   ┌──────────────────┐    │
+│  │ Granite    │ │ DeepSeek │ │ MiniMax      │   │ JudgeProvider    │    │
+│  │ Provider   │ │ Provider │ │ Provider     │   │ (Phi-4-mini)     │    │
+│  │ (new rung) │ │ (exists) │ │ (exists)     │   │ (new, separate   │    │
+│  └────────────┘ └──────────┘ └──────────────┘   │  interface)      │    │
+│    each implements LLMProvider → fail-closed     └──────────────────┘    │
+│    gates + repair loop run inside each                                   │
+├──────────────────────────────────────────────────────────────────────┤
+│  TELEMETRY SINK (NEW): per-call {task, rung, model, verdict,           │
+│  latency_ms, tokens/cost, escalated} → JSONL / Supabase table          │
+│  feeds the benchmark loop                                              │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### Component Responsibilities
+
+| Component | Responsibility | New / Modified / Unchanged |
+|-----------|----------------|------------------|
+| `LLMProvider` interface (`types.ts`) | Stable contract; unit of exchange = validated `T` | **Unchanged** (do NOT touch — everything composes on it) |
+| `GraniteProvider` (`providers/granite.ts`) | New responder rung for routing/classification/simple tasks; OpenAI-compat via `baseURL`; tool-calling structured output + zod (like MiniMax) | **New** |
+| `PhiJudge` (`providers/phi-judge.ts`) | Judge/validator rung. Takes `(req, candidateAnswer, schema)` → `Verdict{ ok, reason, confidence }`. Own interface, not `LLMProvider` (see c) | **New** |
+| `TieredProvider` (`tiered.ts`) | The cascade. Implements `LLMProvider`; reads a `TaskLadder`, runs respond→judge→escalate, emits telemetry | **New** |
+| `TaskLadderConfig` (`task-ladder.ts`) | Config map `task → ladder` (responders in order + optional judge + escalation policy). The swappable piece the benchmark writes into | **New** |
+| Telemetry sink (`telemetry.ts`) | Per-call record; pluggable writer (JSONL local, Supabase table in CI/LIVE) | **New** |
+| `DeepSeekProvider` / `MiniMaxProvider` | Concrete rungs, delegated to by `TieredProvider` | **Unchanged** |
+| `selectProvider` / `loadRouterConfigFromEnv` (`router.ts`/`config.ts`) | Dead code today | **Leave as-is or delete**; do NOT extend into the ladder (see anti-pattern 1) |
+| Consumers (`fichas`, `adjudication`, `cruces`, `agenda`) | Business logic; already DI'd on `LLMProvider` | **Bodies unchanged**; only the object constructed at the CLI boundary changes (one line) |
+
+---
+
+## Recommended Project Structure
+
+```
+packages/llm/src/
+├── types.ts                 # UNCHANGED — LLMProvider, CompletionRequest, …
+├── validate.ts              # UNCHANGED — parseAndValidate (compuerta única)
+├── data-routing.ts          # UNCHANGED — assertNoRutInLlmInput, assertSensitivityAllowed
+├── json-schema.ts           # UNCHANGED — zodToToolSchema (reused by Granite + Phi)
+├── router.ts / config.ts    # LEFT ALONE (dormant); NOT the seam for the ladder
+├── providers/
+│   ├── deepseek.ts          # UNCHANGED
+│   ├── minimax.ts           # UNCHANGED
+│   ├── granite.ts           # NEW — responder rung (tool-calling + zod)
+│   └── phi-judge.ts         # NEW — judge rung (JudgeProvider, not LLMProvider)
+├── judge.ts                 # NEW — JudgeProvider interface + Verdict type
+├── tiered.ts                # NEW — TieredProvider implements LLMProvider
+├── task-ladder.ts           # NEW — TaskId, TaskLadder, ladder config loader
+└── telemetry.ts             # NEW — TelemetryEvent + pluggable sink
+
+packages/llm-bench/           # NEW package (kept OUT of @obs/llm to avoid shipping
+├── src/                      #   test/eval deps into the runtime lib)
+│   ├── harness.ts            # runs a golden set for a task across a set of providers
+│   ├── metrics.ts            # quality/latency/cost aggregation
+│   └── tasks/                # per-task golden sets (routing, clasificación, juez, extracción)
+└── ...
 ```
 
 ### Structure Rationale
 
-- **Materialización de señales:** hay DOS precedentes en el repo — pg_cron interno (`cruce_senal`, 0039) y CLI-en-GH-Actions (`run-tramitacion-prod-cli`). Recomendación: **CLI en GH Actions** para las señales (ver Decisión 1), reservando pg_cron solo si la señal es 100% SQL sin lógica TS.
-- **Auth aislado en `supabase-user.ts`:** el cliente de usuario (`authenticated`, respeta RLS) NUNCA es el mismo objeto que `createServerSupabase()` (`service_role`, bypassa RLS). Separarlos evita que un guard/refactor confunda superficies.
-- **`@obs/notificaciones` separado:** el egreso NO es ingesta; mezclarlo con conectores fuente→R2 contaminaría la regla de dos etapas.
+- **`tiered.ts` inside `@obs/llm`:** the cascade is part of the provider layer's public surface; consumers import it the same way they import `DeepSeekProvider`. It belongs next to the interface it composes.
+- **`llm-bench` as a *separate* package:** the benchmark harness needs golden fixtures, live-API-gated tests, and metric tooling that must NOT become runtime dependencies of `@obs/llm` (which runs in Deno/edge). This mirrors the existing split where golden sets live in the *consumer* package (`adjudication/src/golden`, `fichas/src/golden`) rather than in `@obs/llm`.
+- **`phi-judge.ts` separate from `granite.ts`:** the judge answers a different question (is *this answer* good?) than a responder (produce an answer). Different interface (see c) → different file.
 
 ---
 
-## Decisión 1 — ¿Dónde viven las señales?
+## Architectural Patterns
 
-**Recomendación: tabla `actualidad_senal` precomputada por materializador full-rebuild (espejo `cruce_senal`/0039), + RPC(s) bounded PII-safe para leerla. NO agregación on-read pesada, NO vistas materializadas.**
+### Pattern 1: Decorator provider (the cascade)
 
-### Opciones evaluadas contra el repo real
+**What:** `TieredProvider implements LLMProvider` and holds N inner `LLMProvider`s + an optional `JudgeProvider`. Its `complete<T>` runs the ladder and returns the first answer the judge accepts, escalating on rejection.
 
-| Opción | Precedente en repo | Veredicto |
-|--------|--------------------|-----------|
-| (i) RPC de agregación **on-read** | `parlamentarios_publico_v2` (0064), `actualidad-module.tsx` lee `.from()` en vivo con `force-dynamic` | OK para señales BARATAS y acotadas (votado-esta-semana ya se hace así). NO para agregaciones caras (clustering por tema, "más movimiento" sobre 3.657 proyectos) — chocaría con `statement_timeout 5s` (0057/0064) |
-| (ii) **Tabla precomputada** por cron (`actualidad_senal`) | `cruce_senal` (0039) + `cruces.materializar_cruces()` full-rebuild + pg_cron | **ELEGIDA.** El cómputo caro corre offline; la landing lee filas ya materializadas → RPC trivialmente bounded. Full-rebuild transaccional (delete+insert) da conteos/evidencia coherentes por corrida (D-11 de 0039) |
-| (iii) Vistas materializadas + `REFRESH` | — (sin precedente en el repo) | RECHAZADA. Introduce un mecanismo nuevo sin precedente; `REFRESH MATERIALIZED VIEW CONCURRENTLY` compite por locks y no encaja con el idiom de proc-security-definer + provenance-inline que ya usa el repo |
+**When to use:** for any task whose ladder config lists more than one rung. A single-rung ladder (e.g. `extraccion → [deepseek]` with no judge) collapses to a straight delegation — identical behavior to today.
 
-### Trade-offs con el modelo bounded-RPC (statement_timeout 5s) y Pro-plan
+**Trade-offs:**
+- Pro: zero consumer-body changes; gates + repair loop enforced by inner rungs; ladder is pure config.
+- Pro: because `complete()` returns a validated `T`, "the responder failed schema" is already handled *below* the tier by the repair loop — the judge only adjudicates *semantic* quality, not JSON validity.
+- Con: the judge sees a *validated object* `T`, not raw prose. That is actually correct here (we judge the extracted fact, not the token stream), but it means the judge prompt must serialize `T` back to text. Acceptable.
 
-- El panel lee de `actualidad_senal` (filas ya computadas) → la RPC de lectura es un `select … order … limit N` que cabe holgado en 5s. Mismo patrón que las 9 RPCs de 0064.
-- El cómputo pesado (clustering, "más movimiento", ranking factual de recencia) vive en el materializador (offline), donde NO hay `statement_timeout 5s` de RPC pública. Puede tomar segundos sin afectar la superficie.
-- **Clustering por tema:** los embeddings pgvector 768-dim ya existen (v6.1). El agrupamiento factual (jamás editorial — PROJECT §core) corre **offline en el materializador** y escribe `grupo_tema_id` a las filas de `actualidad_senal`, NO on-read. Evita HNSW-kNN por cada request de la landing.
+**Example:**
+```typescript
+// packages/llm/src/tiered.ts
+export class TieredProvider implements LLMProvider {
+  readonly id = "tiered";
+  // trainsOnInputs is the OR of the rungs the ladder can actually reach for a
+  // given task; conservatively expose true only if a reachable rung trains.
+  readonly trainsOnInputs: boolean;
 
-### Frecuencia de cron y qué cambia en los YAML
+  constructor(
+    private ladders: TaskLadderConfig,
+    private telemetry: TelemetrySink,
+  ) { /* … */ }
 
-- **Fuentes YA ingeridas:** el panel deriva de datos que `leyes-weekly` / `agenda-weekly` ya trajeron a Supabase. El materializador de señales **NO toca las fuentes** (lee Supabase) → NO aplica el rate-limit 2-3s del WAF ni robots.txt. Puede correr tan seguido como se quiera.
-- **GH Actions scheduling:** cron mínimo es 5 min; el scheduler puede retrasarse en horas pico (best-effort, no garantizado — no apto para "tiempo real", sí para intradía). Repo público = minutos ilimitados (ya explotado por `leyes-weekly`).
-- **YAML nuevo `actualidad-refresh.yml`:** clona el molde de `leyes-weekly.yml` (checkout/pnpm/node 22/install `--ignore-scripts`) pero **sin R2** (no descarga crudo) y con `SUPABASE_SECRET_KEY`+`SUPABASE_API_URL` solamente. Cambio de cadencia: `cron: "0 11,14,17,20 * * 1-5"` (varias veces intradía L-V) en lugar del único `0 20`.
-- Si algún día una señal SÍ requiere ingesta nueva de fuente (p.ej. leyes recién publicadas en BCN que no estén ingeridas), ESO va por el pipeline de dos etapas normal (fuente→R2→Supabase), separado del materializador.
-
----
-
-## Decisión 2 — Landing panel: qué se reemplaza vs conserva
-
-### Conservar (LOCKED de v8.0/bento)
-
-- **Primitivas:** `BentoGrid`, `BentoTile` (spans 2/4/6, variants), contenedor `max-w-[1120px]`, tokens `--radius-tile`/`--radius-control`, `import Link`, `force-dynamic`.
-- **Régimen de diseño (candados que MUERDEN):** `bento-guards.test.ts` escanea `app/page.tsx` + `components/actualidad-module.tsx` por (I) cero-hex, (II) tipografía-whitelist, (III) bare-var. **El linter home SÍ muerde sobre la nueva landing** → todo tile nuevo del panel debe usar tokens (`bg-[var(--…)]`, `text-accent-product`) y cualquier arbitrary value nuevo (`text-[Npx]`) debe añadirse a `WHITELIST_ARBITRARIOS` con razón, o el CI falla.
-- **Anti-insinuación:** `anti-insinuacion-guard.test.ts` ya incluye `app/page.tsx` y `actualidad-module.tsx` en `SUPERFICIES_HOME`. El copy del panel ("más movimiento", "urgencias") pasa por la denylist → prohibido vocabulario de ranking/juicio/causalidad. Conteos factuales en Mono en-dash, como `conteoVotacion`.
-
-### Reemplazar
-
-- El **hero producto-céntrico** ("Busca cualquier proyecto…") y las 3 entry-cards se degradan/reordenan; el protagonista pasa a ser "qué está pasando HOY". La SearchBox puede conservarse como tile secundario.
-- Los 3 tiles de `actualidad-module.tsx` (votado/urgencias/frescura) son el **germen del panel** — se amplían con nuevas señales, no se botan.
-
-### ¿Lee RPCs nuevas o reusa?
-
-- **Reusa** el patrón `.from()` server-side de `actualidad-module.tsx` para señales baratas sobre tablas NO-PII (votado-esta-semana ya lo hace, sin RPC — decisión Phase 78 "cero RPC nueva").
-- **RPCs nuevas allowlisted** SOLO para leer `actualidad_senal` (tabla precomputada) o para agregaciones que excedan un `.from()` simple. Cada RPC nueva enhebra la aguja LOCKED (ver Integración/invariantes).
-- **Clustering:** corre offline en el materializador (Decisión 1), NO on-read. La landing lee `grupo_tema_id` ya escrito.
-
----
-
-## Decisión 3 — Suscripciones + notificaciones (el cambio más estructural)
-
-### 3a. Supabase Auth en App Router sobre OpenNext/Workers — VERIFICADO
-
-- `@supabase/ssr` es el paquete vigente (auth-helpers deprecado). Usa cookies HTTP-only para la sesión; **requiere Next.js middleware** para refrescar el token (Server Components no pueden escribir cookies).
-- **OpenNext Cloudflare:** usa runtime **Node.js** (nodejs_compat de Workers), NO Edge. **Soporta middleware estándar**. **CAVEAT verificado (docs OpenNext, 2026):** "Node Middleware (introducido en Next 15.2) NO está soportado aún" → el `middleware.ts` debe ser el middleware clásico (Edge-style API, que OpenNext ejecuta en Node), NO el nuevo `runtime: 'nodejs'` middleware. Confianza: MEDIUM (docs lo dicen; NO probado en este repo — flag para spike).
-- **Impacto estructural:** el sitio HOY **no tiene `middleware.ts`** y todo es `force-dynamic` sin auth. Añadir auth introduce el PRIMER middleware del repo → riesgo de deploy nuevo (el build OpenNext ya es delicado: symlinks Windows, corre en Linux CI). **Recomendación: spike de deploy con un `middleware.ts` mínimo ANTES de construir la feature completa.**
-- Cookies: el cliente de usuario (`@supabase/ssr` `createServerClient`) lee/escribe cookies vía las APIs de Next; en Workers las cookies funcionan bajo nodejs_compat. Verificar en el spike que `Set-Cookie` sobrevive el pipeline OpenNext.
-
-### 3b. Tablas user-owned con RLS real — PRIMERA VEZ, convivencia con el lockdown-guard
-
-- `suscripcion(user_id uuid references auth.users, tipo, target_id, …)` + `notificacion_envio(…)`. **Primera vez que el proyecto usa `CREATE POLICY` con filas accesibles** (hoy TODAS las tablas son deny-by-default sin policies).
-- **Convivencia con `lockdown-guard` (Bloque A):** el guard bloquea `GRANT … TO anon`, `GRANT … TO public`, y `CREATE POLICY … TO anon` / `FOR SELECT TO anon` en migraciones >0044. **`authenticated` es OTRO rol** — el regex del guard matchea SOLO `anon|public` (líneas 221, 266-268 de `lockdown-guard.test.ts`). **Por lo tanto `CREATE POLICY … TO authenticated USING (auth.uid() = user_id)` NO dispara el guard.** Esto es correcto y deseado: `authenticated` es el rol de usuario logueado, distinto de la superficie anónima que el lockdown cierra.
-  - VERIFICADO leyendo el regex: `grantToAnon = /grant\s+\S[\s\S]*?\bto\s+[\w,\s]*\b(anon|public)\b/` y `/create\s+policy\s+[\s\S]*?\bto\s+[\w,\s]*\banon\b/`. Un policy `to authenticated` no contiene `anon` ni `public` tras el `to` → 0 offenders.
-  - CUIDADO: NO usar policies `to public` (dispara el guard, y `authenticated` no es `public`). El idiom seguro es policy explícita `to authenticated` con `USING (auth.uid() = user_id)` por operación (select/insert/update/delete).
-- **Cliente de acceso:** las tablas user-owned se leen/escriben con el cliente **`authenticated`** (`@supabase/ssr`, respeta RLS), NUNCA con `service_role`. Si se accediera por `service_role` se bypasearía RLS y un usuario vería suscripciones de otro (AP2).
-  - Decisión de guard: extender `lockdown-guard` para exigir que `suscripcion`/`notificacion_envio` se toquen SOLO vía `supabase-user.ts` desde la web (no `.from()` service_role público). No basta con añadirlas a `PII_TABLES` porque el cron de egreso SÍ las lee con service_role (job de servidor, fuera del árbol web).
-
-### 3c. Envío de alertas = EGRESO (nuevo patrón, NO dos etapas)
-
-- La regla de dos etapas (fuente→R2→Supabase) es de **ingesta**. El envío de emails es **egreso** y NO cabe en ella. Es un patrón nuevo LEGÍTIMO: "cron lee Supabase → computa novedades por suscripción → envía email".
-- **Dónde corre:** GH Actions diario (`notificaciones-daily.yml`) con `@obs/notificaciones` CLI, MISMO molde que los crons existentes (Node 22, `SUPABASE_SECRET_KEY`). Alternativa: Supabase Edge Function + pg_cron + pg_net (patrón documentado Supabase). Recomendación: **GH Actions** (consistente con el repo; los Edge Functions no están desplegados hoy — deuda v1.0).
-- **Proveedor de email:** Resend (SDK simple, DKIM/dominio verificable) es el estándar actual con Supabase. Confianza MEDIUM. La API key va en `.env` / secret de repo (constraint PROJECT §secrets).
-- **Cómputo de novedades:** el cron compara el estado actual de `proyecto`/`tramitacion_evento`/`votacion` contra un cursor por suscripción (columna `ultima_notificacion` en `suscripcion`), espejo del patrón cursor de `leylobby_cursor_estado` (0053) y `leyes_rotacion_estado` (0054). Idempotencia: registra cada envío en `notificacion_envio` para no re-enviar.
-- **Cliente en el cron:** el CLI de notificaciones corre con `service_role` (como todos los crons) → lee `suscripcion` bypasseando RLS, lo cual es correcto para un job de servidor (no es superficie de usuario). RLS protege la superficie WEB, no el job.
-
-### 3d. Unsubscribe / verificación de email
-
-- **Double opt-in:** al suscribirse, enviar email de verificación con token firmado; solo activar la suscripción tras click. Evita suscribir a terceros y spam.
-- **Unsubscribe:** link con token opaco (no adivinable) en cada email → ruta pública `/desuscribir?token=…` que marca la fila inactiva. NO requiere login (one-click, requisito legal de emails). Esta ruta escribe con un RPC bounded security-definer específico (token → update), NO expone la tabla.
-- **Ley 21.719 / minimización:** el email del usuario es dato personal → almacenar mínimo, con base de licitud (consentimiento explícito del double opt-in), y este subsistema entra en la pasada de asesoría legal (constraint PROJECT §legal).
-
----
-
-## Decisión 4 — Build order sugerido
-
-**Orden: (0) spike auth-on-Workers → (1) señales+panel intercalados → (2) notificaciones. Con checkpoint humano legal antes de exponer suscripciones.**
-
-```
-Fase 0  SPIKE deploy: middleware.ts mínimo + @supabase/ssr sobre OpenNext/Workers
-        → de-risk el bloqueante estructural ANTES de construir nada encima.
-        (Verifica cookies + Set-Cookie + middleware clásico en Node runtime.)
-             │  (si el spike falla → replantear auth; el panel de datos NO depende de esto)
-             ▼
-Fase 1  SEÑALES (datos, empírico primero): SPIKE de qué es computable HOY
-        → 0065 actualidad_senal + materializador + YAML refresh intradía
-        → 0066 RPC(s) bounded del panel
-             │
-             ▼  (intercalado: cada señal validada → tile en el panel)
-Fase 2  PANEL (frontend): app/page.tsx reemplaza bento → tiles del panel
-        reusando BentoGrid; guards bento+anti-insinuación muerden; BrowserOS gate
-        + benchmark UX vs senado.cl/camara.cl
-             │
-             ▼
-Fase 3  NOTIFICACIONES (usuario): 0067 suscripcion+RLS to authenticated
-        → auth UI (login/verify) → @obs/notificaciones egreso cron
-        → unsubscribe/double-opt-in
-             │
-             ▼
-        [CHECKPOINT HUMANO LEGAL] antes de exponer captura de emails al público
-        (Ley 21.719 — acto humano, jamás un agente)
+  async complete<T>(req: CompletionRequest, schema: ZodType<T>): Promise<T> {
+    const ladder = this.ladders.for(req);           // task → ladder
+    let last: { answer: T; verdict: Verdict } | undefined;
+    for (const rung of ladder.responders) {
+      const t0 = performance.now();
+      // Inner complete() runs assertNoRut + assertSensitivity + repair loop.
+      const answer = await rung.complete(req, schema);
+      const verdict = ladder.judge
+        ? await ladder.judge.judge(req, answer, schema)
+        : { ok: true, reason: "no-judge", confidence: 1 };
+      this.telemetry.record({
+        task: ladder.task, rung: rung.id, judge: ladder.judge?.id ?? null,
+        verdict, latencyMs: performance.now() - t0, /* + cost/tokens */
+      });
+      if (verdict.ok) return answer;                 // accepted → stop escalating
+      last = { answer, verdict };
+    }
+    // exhausted: policy decides. For CRITICAL never silently return a rejected
+    // answer — throw so the caller's fail-closed gate (e.g. compuerta) engages.
+    return ladder.onExhausted(last, req);
+  }
+}
 ```
 
-### Rationale del orden
+### Pattern 2: Task-keyed ladder config (granularity without touching consumers)
 
-- **Señales antes que panel** lo pide el operador (PROJECT §método: "Primero QUÉ, después CÓMO"). Pero **intercalar** panel por señal permite validar cada tile con BrowserOS sin esperar todas las señales.
-- **Notificaciones al final:** es el cambio más estructural (auth, RLS real, egreso) y el ÚNICO con checkpoint legal humano → aislarlo evita que su riesgo bloquee el panel, que es puro dato ya ingerido.
-- **Spike de auth en Fase 0** (paralelo a señales, sin dependencia): el mayor riesgo desconocido es OpenNext+middleware+cookies. De-riskearlo temprano evita descubrir en Fase 3 que el deploy no soporta la sesión.
+**What (answer to b):** a config map `TaskId → { responders: LLMProvider[]; judge?: JudgeProvider; onExhausted }`. The task is identified per call. Because `CompletionRequest` today has only `criticality`/`sensitivity` (too coarse to name a *task*), add **one optional field** `task?: TaskId` to `CompletionRequest` — a backward-compatible, additive change. Consumers set it once at their call site (e.g. `extraer` sets `task: "extraccion.idea_matriz"`), which is *inside the @obs package boundary they already own*, not a change to business logic flow.
+
+**When to use:** always — this is how per-product/task tiering is expressed. Simple tasks (routing) get `[granite]`; classification gets `[granite]` + Phi judge, escalating to DeepSeek; extraction stays `[deepseek]` where the benchmark confirms it; adjudication gets `[minimax]` + optional Phi *second opinion* (never a Phi-first responder).
+
+**Trade-offs:**
+- Pro: adding/reordering rungs for a task = edit config, redeploy, zero code change (mirrors the existing FND-06 "cambiar de modelo = cambiar config" principle already stated in `config.ts`).
+- Pro: fallback when `task` is absent → a default ladder that reproduces today's `criticality`-based routing (`critical→minimax`, `bulk→deepseek`) so unmigrated call sites behave identically.
+- Con: `task` string is stringly-typed; mitigate with a `TaskId` union + a zod enum so an unknown task fails loudly rather than silently taking the default.
+
+**Example:**
+```typescript
+// packages/llm/src/task-ladder.ts
+export type TaskId =
+  | "adjudicacion.parlamentario" | "adjudicacion.entidad"
+  | "extraccion.idea_matriz" | "clasificacion.sector"
+  | "agenda.tabla" | "routing.simple";
+
+export interface TaskLadder {
+  task: TaskId;
+  responders: LLMProvider[];        // ordered lowest-cost → escalation
+  judge?: JudgeProvider;
+  onExhausted: <T>(last: { answer: T; verdict: Verdict } | undefined,
+                   req: CompletionRequest) => T;
+}
+// The ladder for each task is what the benchmark harness FILLS IN, per evidence.
+```
+
+### Pattern 3: Judge as a separate `JudgeProvider` interface (not `LLMProvider`)
+
+**What (answer to c):** the judge is a distinct interface because its shape is different — it does not *produce* a `T`, it *rates* one. It also does not need `<T>`-generic `complete`; it needs the request, the candidate answer, and (optionally) the schema for context.
+
+**When to use:** on any ladder rung where the benchmark shows a small responder is *usually* right but needs a cheap gate before trusting it; and as a **read-only second opinion** on critical tasks.
+
+**Trade-offs:**
+- Pro: keeps `LLMProvider` clean; the judge can be backed by any model (Phi-4-mini today) via its own OpenAI-compat adapter, reusing `zodToToolSchema` + `parseAndValidate` to force a structured verdict.
+- Pro: verdicts are structured and zod-validated → directly recordable for audit/benchmark feedback (see telemetry).
+- Con: a judge is itself an LLM call — it has a false-accept / false-reject rate. Therefore the judge's own accuracy is a *benchmarked quantity* on the "juez/validación" golden set before it gates anything. Never let an unbenchmarked judge decide escalation.
+
+**Example:**
+```typescript
+// packages/llm/src/judge.ts
+export interface Verdict {
+  ok: boolean;                 // true = accept the candidate answer
+  reason: string;              // why (recorded for audit)
+  confidence: number;          // [0,1]
+}
+export interface JudgeProvider {
+  readonly id: string;
+  readonly trainsOnInputs: boolean;   // subject to the SAME data-routing gate
+  judge<T>(req: CompletionRequest, candidate: T, schema: ZodType<T>): Promise<Verdict>;
+}
+```
+The Phi judge implementation runs the SAME fail-closed gates before its call:
+`assertNoRutInLlmInput(serialize(candidate))` + `assertSensitivityAllowed(req, this)` — a judge that trains on inputs must never see personal data, exactly like a responder.
 
 ---
 
-## Anti-Patterns (específicos de este milestone)
+## Data Flow
 
-### AP1: Agregar la landing/panel con clustering pgvector on-read
-**Qué:** correr HNSW-kNN o "más movimiento sobre 3.657 proyectos" en cada request de `/`.
-**Por qué mal:** choca con `statement_timeout 5s` de las RPCs públicas; la home es `force-dynamic` (una query cara por visita); DoS barato en repo público (Pitfall 12 del CLAUDE.md).
-**En vez:** precomputar en `actualidad_senal` offline (materializador + pg_cron/CLI); la landing lee filas ya listas.
+### Non-critical task (e.g. classification) — respond → validate → escalate
 
-### AP2: Leer tablas user-owned (`suscripcion`) con service_role desde la web
-**Qué:** usar `createServerSupabase()` (service_role) para mostrar "mis suscripciones".
-**Por qué mal:** service_role bypassa RLS → un usuario vería/editaría suscripciones de otro. Es una fuga de dato de usuario.
-**En vez:** cliente `@supabase/ssr` (`authenticated`) que respeta RLS `USING (auth.uid() = user_id)`. service_role SOLO en el cron de egreso (job de servidor, no superficie).
+```
+consumer.complete({ task:"clasificacion.sector", user, criticality:"bulk", sensitivity:"public" }, SectorSchema)
+   ↓
+TieredProvider.complete → ladder = [granite, deepseek], judge = phi
+   ↓
+granite.complete(req, SectorSchema)         → validated Sector  (gates+repair inside)
+   ↓
+phi.judge(req, sector, SectorSchema)        → Verdict{ok:false, "sector too broad", 0.4}
+   ↓  telemetry.record({rung:granite, verdict:reject, latency, cost, escalated:true})
+deepseek.complete(req, SectorSchema)        → validated Sector
+   ↓
+phi.judge(...)                              → Verdict{ok:true, …, 0.9}
+   ↓  telemetry.record({rung:deepseek, verdict:accept, escalated:false})
+return sector    (DeepSeek used only because Granite's answer was judged insufficient)
+```
 
-### AP3: Escribir el copy del panel sin pasar por la denylist anti-insinuación
-**Qué:** tiles con "los proyectos más activos", "el diputado que más se reúne", ranking, %.
-**Por qué mal:** `anti-insinuacion-guard.test.ts` (SUPERFICIES_HOME incluye page.tsx) falla el CI; y viola la regla rectora (riesgo existencial #2, "máquina de sospechas").
-**En vez:** conteos factuales fechados con fuente/enlace, Mono en-dash; "N trámites esta semana" no "el más activo".
+### Critical task (adjudication) — MUST NOT degrade (answer to d)
 
-### AP4: Meter el envío de email en el pipeline de dos etapas
-**Qué:** tratar el email como un "conector" con paso R2.
-**Por qué mal:** dos etapas es INGESTA (fuente inmutable→R2→derivado). Email es EGRESO, no tiene fuente ni crudo que versionar.
-**En vez:** patrón nuevo explícito `@obs/notificaciones` (cron lee Supabase → computa → Resend), idempotente vía `notificacion_envio` + cursor por suscripción.
+The adjudication ladder is **MiniMax-as-responder, Phi-as-read-only-second-opinion**, and the escalation direction is *toward more human review, never toward auto-accepting a small model*:
 
-### AP5: Hardcodear un arbitrary value nuevo en un tile del panel
-**Qué:** `text-[17px]` o `gap-[20px]` ad-hoc en un tile nuevo.
-**Por qué mal:** `bento-guards.test.ts` (II) falla el CI (no está en `WHITELIST_ARBITRARIOS`).
-**En vez:** usar paso Tailwind estándar, `[var(--token)]`, o añadir el off-step a la whitelist con razón documentada.
+```
+correrPipeline → provider.complete({ task:"adjudicacion.parlamentario", criticality:"critical",
+                                     sensitivity:"personal", temperature:0 }, AdjudicacionSchema)
+   ↓
+TieredProvider → ladder.responders = [minimax]   (Phi is NOT a responder here)
+   ↓
+minimax.complete(...) → validated Adjudicacion    (unchanged behavior)
+   ↓
+phi.judge(req, adjudicacion, AdjudicacionSchema)  → Verdict recorded ONLY
+   ↓  telemetry.record({task:adjudicacion, responder:minimax, judge_verdict, …})
+return adjudicacion   ← the AUTHORITATIVE answer is ALWAYS MiniMax's
+   ↓
+aplicarCompuerta(adjudicacion, …)  ← existing fail-closed gate, UNCHANGED, still decides
+```
+
+**The compuerta (`compuerta.ts:UMBRAL=0.9`, strict `<`) remains the sole authority for auto-accept vs revision.** The Phi verdict is *observed and recorded* but does not (in phase 1) alter the compuerta decision. A future, benchmark-earned enhancement could route "MiniMax-accepted BUT Phi-disagreed" cases to human revision — i.e. Phi can only ever make the gate *stricter*, never looser. This preserves the LOCKED rule "ante la duda, SIEMPRE calidad" and the golden-1263 CI gate.
+
+### `fichas` prompt-cache: what changes vs stays (answer to d)
+
+- **Stays:** `SYSTEM_EXTRACCION` is a stable prefix passed as `req.system`; DeepSeek puts system first (`deepseek.ts:72`) precisely for prompt-cache. As long as `extraccion.*` ladders keep DeepSeek as the responder for that task, **the prompt-cache assumption is untouched** — `TieredProvider` delegates the identical `req` to `DeepSeekProvider.complete`, which builds the identical messages array. The decorator adds nothing to the prompt.
+- **Watch out:** if a benchmark ever routes extraction through Granite-first, the cache warms on a *different* model/endpoint and the DeepSeek cache benefit is only realized on escalation. Keep extraction single-rung (DeepSeek) unless the benchmark shows Granite parity on the fidelity golden set — and remember the fidelity gate is the golden set, not zod (`extraer.ts` docstring: zod can't catch a fluent hallucination).
+- **Judge + cache:** if a judge is ever added to the extraction ladder, its call is a *separate* endpoint and does not perturb the DeepSeek cache.
+
+---
+
+## Telemetry (answer to f)
+
+**Every `complete()` emits one `TelemetryEvent` per rung attempt** (so an escalated call emits ≥2 rows), plus one judge row per judge invocation. This is the substrate the benchmark loop consumes.
+
+```typescript
+// packages/llm/src/telemetry.ts
+export interface TelemetryEvent {
+  ts: string;                 // ISO
+  task: TaskId | "default";
+  rung: string;               // provider id used for THIS attempt
+  role: "responder" | "judge";
+  model: string;              // concrete model id (from ProviderConfig)
+  latencyMs: number;
+  promptTokens?: number; completionTokens?: number;   // from usage when the API returns it
+  costUsd?: number;           // derived from tokens × per-model price table
+  verdict?: { ok: boolean; reason: string; confidence: number };  // judge/responder outcome
+  escalated: boolean;         // did the ladder move on after this rung?
+  repairAttempts?: number;    // from the inner repair loop, if surfaced
+  outcome: "accepted" | "rejected" | "exhausted" | "error";
+}
+export interface TelemetrySink { record(e: TelemetryEvent): void; }
+```
+
+- **Sink is pluggable** (mirrors the existing `FichasWriter` noop-vs-Supabase pattern in `pipeline-cli.ts`): a `JsonlSink` for local operator runs, a `SupabaseSink` (a new `llm_call_audit` table, service-role/zero-grant like `notificacion_envio`) for CI/LIVE aggregation. Default = noop, so telemetry can't break a run.
+- **Never log the prompt or answer content** — this must mirror `LLMValidationError` (`validate.ts:23`: "el objeto solo lleva los issues zod; jamás incluye el prompt ni credenciales"). Telemetry records *metrics and verdict reason*, not payloads. This is both a secret-hygiene rule and a Ley-21.719 minimization rule (personal-data prompts must not be logged).
+- **The benchmark loop** (`llm-bench`) reads aggregated telemetry to answer, per task: quality (vs golden), p50/p95 latency, cost, and escalation rate — which is exactly what SEED-001's "gate duro: paridad de calidad demostrada" needs.
+
+---
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Reviving `selectProvider`/router as the tiering seam
+**What people do:** extend `RouterConfig.byCriticality` to a ladder and make consumers call `selectProvider`.
+**Why it's wrong:** `selectProvider` is unused (grep-verified) and its model is a *single* provider per `Criticality` (2 values) — it can't express an ordered ladder, a judge, or an escalation policy. Wiring consumers to it means changing every call site to a path that doesn't exist today. It also splits selection logic (router) from execution (the cascade needs to run the calls), which the decorator unifies.
+**Do this instead:** `TieredProvider implements LLMProvider`, injected at the existing instantiation sites. Leave the router dormant or delete it.
+
+### Anti-Pattern 2: Judge or small-model rung that bypasses the fail-closed gates
+**What people do:** call Granite/Phi through a bespoke fetch or a "lightweight" path that skips `assertNoRutInLlmInput`/`assertSensitivityAllowed`.
+**Why it's wrong:** it re-opens the exact hole the adapters close by construction (`deepseek.ts:65`, `minimax.ts:69`). A RUT or personal document could reach a training-tier endpoint.
+**Do this instead:** every rung is an `LLMProvider` (or a `JudgeProvider` with the same two asserts run before its call). The gates run inside `complete()`/`judge()`, before the network.
+
+### Anti-Pattern 3: Letting a small model or a judge auto-accept a critical adjudication
+**What people do:** put Phi/Granite first on the adjudication ladder, or let a Phi "ok" verdict upgrade a MiniMax result to `confirmado`.
+**Why it's wrong:** violates SEED-001 ("adjudicación JAMÁS se degrada; Phi solo como segunda opinión") and the LOCKED rule "ante la duda, SIEMPRE calidad". The compuerta's strict `<` at 0.90 and golden-1263 are the existential-risk-#1 guardrails.
+**Do this instead:** MiniMax stays the sole responder for `adjudicacion.*`; Phi is read-only/recorded; escalation for critical tasks points to *human revision*, never to auto-accept. A judge may only make the gate stricter.
+
+### Anti-Pattern 4: Benchmark-free tiering
+**What people do:** ship a Granite-first ladder because it's cheaper.
+**Why it's wrong:** SEED-001 gate: "NADA se integra sin paridad de calidad demostrada en el golden set de su tarea." Precedent: golden 32 (búsqueda), golden 1263 (identidad).
+**Do this instead:** the ladder config for a task is *written from* the benchmark verdict, and the per-task golden set becomes a CI regression gate before that ladder goes live.
 
 ---
 
 ## Integration Points
 
-### Internal Boundaries (nuevas)
+### External Services
+
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| Granite-4.0-H-Micro | OpenAI-compat `baseURL` (OpenRouter / self-host vLLM / Docker `ai/granite-4.0-micro`); 3B, **native tool-calling** | Reuse the MiniMax adapter shape: tool-calling forced + `zodToToolSchema` + `parseAndValidate`. `response_format: json_schema` NOT assumed (project rule). MEDIUM/HIGH: tool-calling confirmed by IBM model card + OpenRouter. |
+| Phi-4-mini-instruct | OpenAI-compat `baseURL` (OpenRouter / Puter / self-host); 3.8B, 128K ctx | Judge adapter. Force a structured `Verdict` via tool-calling + zod. Benchmark its judge accuracy on the "juez" golden set before it gates anything. |
+| DeepSeek / MiniMax | Existing adapters, unchanged | `TieredProvider` delegates to them. |
+| Supabase (`llm_call_audit`) | New table, service-role / zero-grant (pattern of `notificacion_envio`, migration >0072) | Telemetry sink for CI/LIVE. No PII in rows. |
+
+### Internal Boundaries
 
 | Boundary | Communication | Notes |
 |----------|---------------|-------|
-| Landing panel ↔ señales | `.from()` NO-PII barato + RPC bounded sobre `actualidad_senal` | Reusa patrón `actualidad-module.tsx`; clustering ya materializado |
-| Materializador ↔ Supabase | proc security-definer (pg_cron) O CLI GH Actions (service_role) | Espeja `cruces.materializar_cruces()` (0039); NO toca fuentes → sin rate-limit |
-| Web usuario ↔ `suscripcion` | cliente `@supabase/ssr` (`authenticated`, RLS `auth.uid()=user_id`) | PRIMER uso de RLS con policies; NUNCA service_role |
-| Cron egreso ↔ email | `@obs/notificaciones` (service_role read) → Resend | Nuevo patrón EGRESO; idempotente vía `notificacion_envio` |
-| Middleware ↔ sesión | `middleware.ts` clásico (Edge-style, ejecutado en Node por OpenNext) | Node Middleware 15.2+ NO soportado por OpenNext → usar el clásico |
-
-### Invariantes LOCKED que toca cada pieza (y cómo se extienden sin romperlos)
-
-| Invariante LOCKED | Pieza que la toca | Extensión segura |
-|-------------------|-------------------|------------------|
-| **Dos etapas fuente→R2→Supabase** | Señales (materializa desde Supabase) · Notificaciones (egreso) | NO la violan: no ingieren de fuente. Si una señal requiere fuente nueva → pipeline normal aparte |
-| **PUBLIC_RPC_ALLOWLIST + bounded** | RPC(s) `actualidad_*` + RPC unsubscribe-por-token | Cada RPC nueva: migración >0044 cero-grant + security-definer + `set search_path=''` + `set statement_timeout='5s'` + LIMIT + añadir a `PUBLIC_RPC_ALLOWLIST` (guard Direction-B exige que exista la función) |
-| **RLS deny-by-default (sin policies)** | `suscripcion`/`notificacion_envio` (SÍ policies, `to authenticated`) | Primera excepción: policies `to authenticated USING (auth.uid()=user_id)`. NO dispara lockdown-guard (matchea solo anon/public). `actualidad_senal` sigue deny-by-default + revoke |
-| **lockdown-guard Bloque B (.from PII / .rpc allowlist)** | Cliente de usuario nuevo | El guard escanea `app/`; el cliente `authenticated` es legítimo. Extender guard: exigir que `suscripcion` se toque solo vía `supabase-user.ts` |
-| **Camino A: web lee service_role** | Auth añade un SEGUNDO cliente (`authenticated`) | Coexisten: service_role para datos públicos (panel, señales), `authenticated` para datos de usuario. Documentar la dualidad en `supabase-user.ts` como se hizo en `supabase.ts` |
-| **Candados bento (cero-hex/tipografía/bare-var) + anti-insinuación** | Panel (page.tsx + tiles nuevos) | Los guards YA muerden sobre page.tsx → tiles nuevos deben cumplir tokens/whitelist/denylist o el CI falla |
-| **Checkpoint legal humano (Ley 21.719)** | Captura de emails (primer dato de usuario) | Gate humano antes de exponer suscripción pública; jamás lo flipea un agente (precedente MONEY/NET flags) |
+| consumer ↔ `@obs/llm` | DI of `LLMProvider` (unchanged) | Only the *constructed object* at the CLI changes: `new DeepSeekProvider` → `new TieredProvider(ladders, sink)`. Bodies of `extraer`/`correrPipeline`/etc. untouched. |
+| `TieredProvider` ↔ rung providers | `LLMProvider.complete` | Gates + repair enforced inside each rung. |
+| `TieredProvider` ↔ judge | `JudgeProvider.judge` | Separate interface; same fail-closed asserts. |
+| `TieredProvider` ↔ telemetry | `TelemetrySink.record` | Pluggable; noop default; never logs payloads. |
+| `CompletionRequest.task` | additive optional field | Backward-compatible; absent `task` → default ladder = today's `criticality` routing. |
 
 ---
 
-## Scaling Considerations
+## Suggested Build Order (answer to e — dependency-aware)
 
-| Escala | Ajuste |
-|--------|--------|
-| 0–1k usuarios | Materializador intradía L-V; cron notificaciones diario; Resend free/starter. Pro-plan holgado |
-| 1k–100k | Señales precomputadas siguen O(1) por request; el cron de egreso se vuelve el cuello (N suscripciones × comparación) → batch + cursor + posible mover a pgmq/Edge Function; Resend de pago |
-| 100k+ | Notificaciones event-driven (Database Webhooks al insertar `tramitacion_evento`) en vez de barrido diario; fan-out por cola |
+1. **Benchmark harness first (`packages/llm-bench`).** Golden sets per task (routing, clasificación, juez, extracción) + a runner that drives *any* `LLMProvider` and records quality/latency/cost. Depends on nothing new; it can score today's DeepSeek/MiniMax to establish baselines. This is the SEED-001 gate and the source of every ladder decision. Add the Granite/Phi adapters (step 2) as *candidates* the harness can score.
+2. **`GraniteProvider` + `PhiJudge` adapters** (as harness candidates). Copy the MiniMax adapter shape (tool-calling + `zodToToolSchema` + `parseAndValidate` + the two fail-closed asserts). Cheap, isolated, no consumer impact. Needed by the harness in step 1 to produce evidence.
+3. **Telemetry (`telemetry.ts` + noop sink).** Pure, no deps; unblocks observability for both the harness and the runtime tier. Add `SupabaseSink` + `llm_call_audit` migration when LIVE aggregation is needed.
+4. **`TaskLadderConfig` + `CompletionRequest.task` additive field.** Config scaffolding with a default ladder that reproduces today's behavior (so nothing changes until a task opts in). Unit-testable without any model.
+5. **`TieredProvider`.** Compose steps 2–4. Test with mock rungs + mock judge (the codebase already has `MockProvider` patterns in `fichas/src/mock-provider.ts` and `adjudication/src/mock-provider.ts`). Prove escalation + telemetry + fail-closed-on-exhaust behavior deterministically.
+6. **Integrate the LOWEST-RISK task first.** Per SEED-001: pick a `bulk`/`public` task where a wrong answer is cheap and reversible — **`agenda.tabla` (agenda-PDF extraction) or `clasificacion.sector`**, NOT extraction-of-idea-matriz (feeds search) and NEVER adjudication first. Swap that one CLI's `new DeepSeekProvider(...)` → `new TieredProvider(...)`, gate its ladder behind the task's golden set in CI. Measure with telemetry.
+7. **Widen by evidence.** Extraction stays DeepSeek until the fidelity golden set shows parity. Adjudication gets Phi as *recorded second opinion only* (no behavior change) last, behind golden-1263 staying green.
 
-### Primer cuello de botella real
-El **cron de egreso** (computar novedades por suscripción). Mitigación desde el día 1: cursor `ultima_notificacion` por suscripción + registro idempotente en `notificacion_envio` → nunca recomputa histórico. NO el panel (lee filas precomputadas).
-
----
-
-## Gaps / spikes recomendados
-
-1. **Spike auth-on-Workers (Fase 0, bloqueante estructural):** `middleware.ts` mínimo + `@supabase/ssr` desplegado en OpenNext/Workers → verificar cookies `Set-Cookie` + refresh de sesión. Confianza actual MEDIUM (docs OpenNext dicen "middleware clásico sí, Node Middleware 15.2+ no"; NO probado en este repo).
-2. **Spike señales computables (Fase 1, pide el operador):** qué señales salen de datos YA ingeridos vs requieren ingesta nueva (leyes recién publicadas BCN — ¿ingeridas?).
-3. **Decisión materializador:** pg_cron (100% SQL, como 0039) vs CLI GH Actions (si hay lógica TS de clustering). Verificar si el clustering por embeddings es expresable en SQL puro o necesita TS.
-4. **Proveedor email:** confirmar Resend vs alternativa; verificar dominio/DKIM y encaje con `.env`/secrets del repo. Confianza MEDIUM.
+**Dependency summary:** harness (1) unblocks every decision; adapters (2) feed the harness; telemetry (3) and config (4) are independent leaves; `TieredProvider` (5) needs 2+3+4; consumer integration (6) needs 5 + a green per-task golden gate. Critical-task changes are strictly last.
 
 ---
 
 ## Sources
 
-- Repo real (HIGH): `app/app/page.tsx`, `app/components/actualidad-module.tsx`, `app/lib/supabase.ts`, `app/lib/lockdown-guard.test.ts`, `app/lib/bento-guards.test.ts`, `app/lib/anti-insinuacion-guard.test.ts`, `supabase/migrations/0039_cruce_senal.sql`, `0052_…`, `0064_bounded_rpc_statement_timeout.sql`, `.github/workflows/{leyes-weekly,roster-weekly,deploy-cloudflare,ci}.yml`, `.planning/PROJECT.md`, `CLAUDE.md`
-- [Setting up Server-Side Auth for Next.js — Supabase Docs](https://supabase.com/docs/guides/auth/server-side/nextjs) — @supabase/ssr, middleware para refrescar sesión — HIGH
-- [@opennextjs/cloudflare docs](https://opennext.js.org/cloudflare) — Node runtime, middleware estándar soportado, Node Middleware 15.2+ NO soportado — MEDIUM (no probado en este repo)
-- [Sending Emails — Supabase Docs](https://supabase.com/docs/guides/functions/examples/send-emails) / [Resend + Supabase Edge Functions](https://resend.com/docs/send-with-supabase-edge-functions) — patrón de egreso email — MEDIUM
-- [Scheduling Edge Functions / Supabase Cron](https://supabase.com/docs/guides/functions/schedule-functions) — pg_cron + pg_net, ≤8 jobs ≤10 min — HIGH
+- `packages/llm/src/types.ts`, `router.ts`, `config.ts`, `validate.ts`, `data-routing.ts`, `json-schema.ts`, `providers/deepseek.ts`, `providers/minimax.ts` — the actual `LLMProvider` contract, gates, compuerta, and adapter shape — HIGH (read directly)
+- `packages/fichas/src/extraer.ts` / `pipeline-cli.ts:191`, `packages/adjudication/src/pipeline.ts` + `compuerta.ts` (UMBRAL 0.9 strict `<`) + `golden/golden-set.ts` — consumer call patterns, DI, critical-task fail-closed gate — HIGH (read directly)
+- Grep of `packages/**` + `apps/**`: `selectProvider`/`loadRouterConfigFromEnv` unused in prod; consumers hard-`new` concrete providers — HIGH (verified)
+- `.planning/PROJECT.md` (v11.0 milestone), `.planning/seeds/SEED-001-*.md` — scope, LOCKED rules, benchmark gate precedent (golden 32 / 1263) — HIGH
+- [ibm-granite/granite-4.0-h-micro — Hugging Face](https://huggingface.co/ibm-granite/granite-4.0-h-micro) / [Granite 4.0 Micro — OpenRouter](https://openrouter.ai/ibm-granite/granite-4.0-h-micro) — 3B, native tool-calling, OpenAI-compat endpoint — MEDIUM/HIGH
+- [Phi-4-mini-instruct — OpenRouter](https://openrouter.ai/microsoft/phi-4-mini-instruct) / [Phi-4-mini — Puter](https://developer.puter.com/ai/microsoft/phi-4-mini-instruct/) — 3.8B, 128K ctx, OpenAI-compat endpoint — MEDIUM/HIGH
 
 ---
-*Architecture research for: v10.0 panel de actualidad + notificaciones*
-*Researched: 2026-07-23*
+*Architecture research for: tiered LLM layer over pluggable LLMProvider*
+*Researched: 2026-07-26*

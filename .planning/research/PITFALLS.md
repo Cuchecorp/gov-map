@@ -1,232 +1,418 @@
-# Domain Pitfalls
+# Pitfalls Research
 
-**Domain:** Panel de actualidad legislativa cuantitativo (landing) + clustering por tema + notificaciones por suscripción, sobre Observatorio del Congreso 360
-**Milestone:** v10.0
-**Researched:** 2026-07-23
-**Overall confidence:** HIGH (los locks del sistema están leídos en código; los patrones externos verificados)
+**Domain:** Adding a tiered LLM cascade (respond→validate→escalate) to a production extraction/classification pipeline for a civic-accountability platform with defamation/legal risk and an all-Chilean-Spanish legal corpus (v11.0 — SEED-001)
+**Researched:** 2026-07-26
+**Confidence:** HIGH (verified against arXiv 2024-2026 cascade/judge/quantization literature + model cards; MEDIUM where model-specific Spanish numbers are inferred)
 
-> Ranking por likelihood × impacto PARA ESTE SISTEMA. Pitfalls específicos de AÑADIR estas features a este sistema — no OWASP genérico. Cada uno declara qué fase debería abordarlo y las señales de alerta.
+> **Reading guide.** This system is NOT greenfield. It already has: `LLMProvider` enchufable (openai SDK multi-baseURL), zod validation per provider, golden-set CI gates (búsqueda 32, identidad 1263), fail-closed reconciliation, "RUT never crosses to LLM" guard, and the operator's LOCKED rule **"ante la duda, SIEMPRE calidad."** Every pitfall below is framed as *what breaks when you bolt tiering onto THIS*. The dominant failure mode of this milestone is **silent quality degradation that a green CI does not catch** — because a cheaper model that passes the golden set but is worse on the live distribution produces a *false, credible* claim (riesgo existencial #1), which is a legal event, not a latency regression.
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause a false public claim, a legal breach under 21.719, a broken security regime, or a rewrite.
+### Pitfall 1: Judge weaker than the responder (silent validation theater)
 
-### Pitfall 1: "Sin movimiento" ≠ "no se scrapeó" — la señal factual miente por cobertura parcial
+**What goes wrong:**
+The seed proposes Phi-4-mini (3.8B) as *juez/validador* of outputs that may come from DeepSeek V4 or MiniMax. A judge cannot reliably detect errors that require capability beyond its own ceiling — it rubber-stamps subtly-wrong extractions of legal text and mis-adjudicated identities, so the "validate" step reports HIGH confidence on exactly the outputs that most need escalation. The cascade *looks* safer than the current two-model system while being *less* safe.
 
-**What goes wrong:** El panel dice "Este proyecto no tuvo movimiento esta semana" cuando en realidad la fuente de ese proyecto NO se ingirió esta semana (cron saltado, WAF, boletín fuera del corpus 2022-2026, embedding faltante del 15,4%). El usuario objetivo (periodista/tramitador) toma "sin movimiento" como un HECHO del Congreso; es un hecho del scraper. GovTrack documenta exactamente esto: "screen scrapers can be easily confused… unanticipated cases (like bills without sponsors) cause incorrect information being shown."
+**Why it happens:**
+Cascade tutorials frame the judge as a cheap gate; teams assume "any second opinion helps." The literature is explicit: a weaker model cannot recognize quality patterns beyond its own capability ceiling, and hints from a weaker LLM when it is uncertain do not help the stronger LLM. On Spanish legal text (see Pitfall 8) Phi's ceiling is lower still.
 
-**Why it happens:** El panel deriva señales de la ausencia de filas (`WHERE fecha >= inicio_semana` → 0 rows). Ausencia de filas tiene DOS causas indistinguibles sin metadato de frescura: (a) no pasó nada, (b) no se miró. El `actualidad-module.tsx` ya tiene el molde correcto para el caso positivo ("Sin votaciones registradas **en las fuentes consultadas**") pero una señal NUEVA de "actividad reciente por proyecto/tema" invierte el riesgo: ahora la AUSENCIA es la señal, y la ausencia es donde vive la mentira.
+**How to avoid:**
+- Never let a small judge *gate* a task where its measured task-accuracy is below the responder's. Phi is allowed as a **second opinion that can only trigger escalation, never suppress it** — exactly the seed's "Phi solo como segunda opinión, jamás degrada la adjudicación." Encode this as: judge disagreement → escalate; judge agreement → **still** apply the existing zod + golden gate, never short-circuit.
+- Prefer **asymmetric-safe** validation: the judge's only power is to raise the tier, never to approve a bypass of existing gates.
+- Measure judge–responder agreement against **human labels**, not against the responder (agreeing with a wrong responder is worthless).
 
-**Consequences:** Afirmación falsa y creíble — el riesgo existencial #1 del proyecto, ahora en la página más visitada. Un periodista publica "el proyecto X está congelado" cuando solo estaba el cron caído.
+**Warning signs:**
+- Judge approval rate ≈ 100% on a task where the responder's golden-set accuracy is <95%.
+- Escalation rate near 0% on the identity/extraction tasks.
+- CI green but spot-checks of live outputs find errors the judge "passed."
 
-**Prevention:**
-- Toda señal de "actualidad" se computa SOLO sobre fuentes con frescura conocida y RECIENTE. Cruzar cada señal contra `fecha_captura` de su tabla (ya existe `pnpm freshness` con umbral por fuente): si la fuente está STALE, la señal NO se emite — se degrada a "sin datos frescos de esta fuente", nunca a "sin movimiento".
-- **Jamás emitir una señal NEGATIVA como afirmación** ("no se movió", "proyecto inactivo", "sin actividad"). El panel afirma solo lo POSITIVO observado ("se registró trámite X el día Y"). La ausencia se muestra como cobertura, no como hecho.
-- Banner de cobertura declarada en el panel, igual que /buscar ("sobre 3.100 proyectos…") y /agenda (cobertura N/M por celda) — patrón LOCKED del proyecto. El panel hereda ese contrato: "muestra actividad de las N fuentes con datos al día DD/MM".
-- Nunca leer `?? []` un error de query como "sin actividad" — el molde `throw` de `actualidad-module.tsx` (#34) es LOCKED y debe replicarse en toda señal nueva.
-
-**Detection:** Test que inyecta una tabla STALE (fecha_captura vieja) y verifica que la señal se SUPRIME, no que muestra 0. Cold-read BrowserOS del panel un lunes tras un cron saltado del viernes.
-
-**Phase:** Etapa DATOS (la primera — "QUÉ señales son computables con evidencia"). Es la decisión rectora: cada señal candidata se clasifica "requiere frescura declarada" antes de tocar frontend.
-
----
-
-### Pitfall 2: Sesgo de cámara amplificado — "más movimiento" porque una cámara se scrapea mejor
-
-**What goes wrong:** El ranking "proyectos con más movimiento" o el conteo de actividad por tema queda dominado por la Cámara o el Senado no porque haya más actividad real, sino porque una fuente tiene mejor cobertura. El brief lo nombra: "citaciones thin en Cámara". Un ranking que ordena por conteo de eventos ingeridos amplifica la asimetría del scraping y la presenta como asimetría del Congreso.
-
-**Why it happens:** Los conectores de las dos cámaras tienen cobertura desigual por construcción (Cámara = HTML/WAF frágil vs Senado = XML limpio; voto individual de Cámara aún backfill pendiente; citaciones Cámara delgadas). Cualquier agregación cross-cámara sin normalizar por cobertura hereda ese sesgo. Un "top 10 de proyectos más activos" es un top 10 de "proyectos mejor scrapeados".
-
-**Consequences:** Sesgo sistemático presentado como señal editorial ("el Senado está más activo"). Cruza la línea anti-insinuación por la puerta de atrás: es una comparación institucional que el dato no sostiene.
-
-**Prevention:**
-- NO construir rankings cross-cámara que sumen eventos de cobertura desigual sin declararlo. Preferir señales POR proyecto/POR tema dentro de una misma fuente homogénea, o declarar explícitamente la asimetría.
-- Si hay "top de movimiento", que el criterio sea un HECHO discreto y verificable (p.ej. "tuvo votación en sala esta semana" — evento único, no conteo acumulado que premia al mejor-scrapeado).
-- Evitar el vocabulario comparativo ya vetado por el linter ("los más…", "ranking" está PROHIBIDO en `TERMINOS_PROHIBIDOS`). El `actualidad-module.tsx` ya lo dice: "CERO ranking / score / 'los más…' / porcentaje-como-veredicto / 'quién ganó' (T-52-13)". Una feature de "más movimiento" choca de frente con este lock — hay que resolverlo en diseño, no rodearlo.
-
-**Detection:** Comparar el "top de actividad" contra la distribución de `fecha_captura`/conteo de filas por fuente: si el top correlaciona con cobertura y no con actividad independiente, está sesgado. Revisión de diseño explícita.
-
-**Phase:** Etapa DATOS. El conflicto ranking-vs-linter debe resolverse ANTES del frontend (el linter home ya bloqueará "los más movidos").
+**Phase to address:** SPIKE (benchmark per task must report judge accuracy vs **human** labels, and the *conditional* accuracy: "when Phi says OK, how often is the small responder actually right?"). Gate: judge only earns gating power if it beats the responder on that task.
 
 ---
 
-### Pitfall 3: Insinuación disfrazada de señal — el vocabulario NUEVO que el linter aún no veta
+### Pitfall 2: Cheap model passes the golden set but is worse on the live distribution (benchmarking the wrong distribution)
 
-**What goes wrong:** Señales que suenan factuales pero afirman intención: "presentado a último momento", "proyecto zombie revivido", "urgencia de madrugada", "colgado en comisión", "tramitación exprés", "ingreso sospechoso". Cada una cruza de hecho fechado a editorial. El clustering por tema con labels LLM es el vector más peligroso: un cluster etiquetado "proyectos polémicos de seguridad" o "leyes contra la delincuencia" editorializa por construcción.
+**What goes wrong:**
+Granite/Phi are benchmarked on the *existing* golden sets (búsqueda 32, identidad 1263) — which were curated to catch *known* failure classes and are heavily weighted toward clean cases. A small model can hit parity on those 32/1263 while degrading on the long tail of real Chilean bill text (scanned PDFs, archaic legal formulae, multi-norma amendments). CI stays green; production quality silently drops. This is the single most dangerous failure for this project: silent quality regression surfaces as a *false published claim*, not a dashboard blip.
 
-**Why it happens:** El linter `anti-insinuacion-guard.test.ts` es una **denylist EXACTA** — su propio JSDoc (WR-01) admite que "NO previene la insinuación: paráfrasis, sinónimos, yuxtaposición temporal e inglés se le escapan por construcción". El vocabulario de una feature de "actualidad" es TODO nuevo (temporal: "último momento", "madrugada", "revivido", "exprés") y NO está en `TERMINOS_PROHIBIDOS`. El linter pasará verde sobre copy insinuante que nunca vio.
+**Why it happens:**
+Golden sets are small and were built as regression tripwires for a *specific* model's mistakes, not as a representative sample of the production distribution. Model selection that optimizes the eval set overfits to it (a recognized contamination/overfitting vector). 32 cases is far below the 50–500-case pre-merge gate the routing literature recommends.
 
-**Consequences:** Difamación/editorialización — riesgo existencial #2 ("máquina de sospechas"). "Presentado a último momento" afirma una intención (esconder, apurar) que el dato no prueba.
+**How to avoid:**
+- Before tiering, **expand each task's golden set to a stratified sample of the live distribution** (by source: Cámara doGet vs Senado XML vs BCN obtxml; by document quality: clean vs scanned; by era). Freeze it *before* touching schema (the v9.0 "golden congelado ANTES del schema" precedent).
+- Add **shadow evaluation**: run the candidate small model in parallel with the incumbent on live traffic, diff outputs, human-review disagreements — do not route real users to it until the diff distribution is understood.
+- Report a **disagreement-with-incumbent rate on live data**, not just golden accuracy.
 
-**Prevention:**
-- **Extender `TERMINOS_PROHIBIDOS` con el vocabulario temporal/editorial NUEVO ANTES de escribir el panel** — no después. Candidatos a vetar: "último momento", "última hora", "a escondidas", "madrugada", "exprés", "express", "zombie", "revivido", "resucitado", "colgado", "estancado", "durmiente", "sospechoso/a", "polémico/a", "controvertido/a", "silencioso/a", "a la rápida", "de apuro", "maniobra", "aprovechando". El panel entra a un array `SUPERFICIES_PANEL` nuevo del linter (patrón idéntico a `SUPERFICIES_AGENDA`/`SUPERFICIES_HOME`).
-- **Clustering por tema = etiquetas FACTUALES, jamás editoriales.** El label de un cluster debe ser descriptivo-neutro derivable del contenido literal (palabras clave de las ideas matrices), no un juicio LLM. Riesgo LLM: el modelo etiquetará "proyectos anti-inmigración" o "leyes punitivas" si se le deja. Usar el eval propio del proyecto (el patrón de "etiquetado de sector con eval propio, NO el de extracción literal", ya establecido en v4 cruces) y un gate de fidelidad. Preferir labels neutros tipo "Seguridad pública", "Trabajo y previsión" sobre cualquier adjetivo.
-- **Señales temporales = solo el hecho fechado, nunca la interpretación.** "Ingresó el 2026-07-22" bien. "Ingresó a último momento" mal. "Urgencia calificada suma el DD/MM a las HH:MM" bien (si la fuente da la hora); "urgencia de madrugada" mal (el "de madrugada" es el juicio).
-- El linter es un TRIPWIRE, no una garantía (su JSDoc lo dice). La garantía real es (1) sign-off legal humano del copy del panel y (2) revisión de diseño anti-insinuación. No confiar en el linter verde como aprobación.
+**Warning signs:**
+- Golden-set accuracy is high but shadow-diff rate vs DeepSeek/MiniMax is >5%.
+- The golden set has not grown when new source types (opendata votes, scanned norms) were added.
+- "It passes 32/32" used as the sole go/no-go.
 
-**Detection:** Mutation self-check nuevo en el guard (el patrón ya existe: inyecta término, verifica que muerde). Revisión humana del copy de cada señal contra "¿esto afirma una intención?".
-
-**Phase:** Etapa DATOS (definir qué señales) + fase FRONTEND del panel (extender el linter con el array + vocabulario NUEVO como PRIMER commit de la fase, antes del copy).
-
----
-
-### Pitfall 4: El primer login re-abre la superficie REST que el lockdown mató
-
-**What goes wrong:** Notificaciones = primer dato de usuario = primer uso de auth. Hoy `anon` está MUERTA (0044 revocó todo; el sitio lee con `service_role` que bypassa RLS — Camino A). Añadir auth introduce el rol `authenticated`. Una policy `CREATE POLICY … TO authenticated` mal escrita sobre una tabla de suscripciones puede, por herencia o por un `GRANT … TO authenticated` amplio, re-exponer lectura de tablas que se creían cerradas. Peor: el `lockdown-guard.test.ts` solo veta grants a `anon`/`public` — **NO menciona `authenticated`**. El guard pasará verde mientras un grant a `authenticated` abre superficie.
-
-**Why it happens:** El régimen de seguridad actual asume DOS roles (anon-muerto, service_role-todo). `authenticated` es un tercer rol que el guard nunca contempló. `anonGrantOffenders` matchea `to anon|public` — un `grant … to authenticated` no dispara. El modelo mental "el sitio lee con service_role" se rompe: ahora hay un camino de lectura autenticado real por PostgREST.
-
-**Consequences:** Regresión de seguridad silenciosa en un repo público con sujetos hostiles (parlamentarios). Un usuario autenticado podría leer tablas PII vía REST si una policy se escribe mal. El lockdown-guard da falsa confianza.
-
-**Prevention:**
-- **Extender `lockdown-guard.test.ts` para tratar `authenticated` con el mismo rigor que `anon`/`public`** ANTES de la primera migración de auth. Regla: `authenticated` obtiene grants SOLO sobre las tablas de suscripción del propio usuario, con RLS `USING (user_id = auth.uid())`, y CERO sobre cualquier tabla del modelo de datos público o PII. El guard debe FALLAR ante `grant … to authenticated` sobre cualquier tabla que no sea la allowlist explícita de tablas-de-usuario.
-- **Tablas de usuario nuevas (suscripción, consentimiento) NO viven en el mismo plano de grants que el modelo público.** RLS deny-by-default, policy por `auth.uid()`, probada con pgTAP (el usuario A no ve las suscripciones del usuario B).
-- Deny-by-default es directiva del brief ("auth + RLS real… diseño de seguridad es parte del alcance").
-- No usar `service_role` para operaciones de usuario (bypassa RLS → cualquier bug expone todo). Las lecturas/escrituras de suscripción van con el token del usuario (`authenticated`), no con la service key.
-
-**Detection:** pgTAP: usuario A no lee filas de usuario B; `authenticated` no lee `parlamentario.rut` ni ninguna PII_TABLE. Guard extendido que muerde ante grant-to-authenticated fuera de la allowlist de tablas-de-usuario.
-
-**Phase:** Fase NOTIFICACIONES / AUTH (diseño de seguridad primero). El guard extendido es prerrequisito de la primera migración de auth, no un follow-up.
+**Phase to address:** SPIKE (build stratified per-task eval + shadow harness *first*). Integration phase must keep shadow on for the low-risk task before promoting.
 
 ---
 
-### Pitfall 5: Emails de usuario = PII REAL bajo 21.719 — consentimiento, baja, DPA del proveedor de email
+### Pitfall 3: Golden-set leakage into prompts (self-referential benchmark)
 
-**What goes wrong:** Hasta hoy TODA la PII del sistema es de terceros públicos (parlamentarios, declarada por fuentes oficiales, minimizada). Un email de suscriptor es la PRIMERA PII de un DATA SUBJECT PRIVADO que el sistema RECOLECTA directamente. Cambia el régimen legal: bajo 21.719 (plena vigencia 2026-12-01, DENTRO del horizonte de este milestone) el consentimiento debe ser "libre, específico, informado e inequívoco y revocable"; el proveedor de email (Resend/SendGrid/etc.) es un ENCARGADO DE TRATAMIENTO que requiere contrato/DPA escrito; y hay que registrar consentimiento (fecha/hora, versión del aviso, método).
+**What goes wrong:**
+The tiered design uses few-shot examples / prompt-forced structure (the stack rule for providers without `json_schema`). If those few-shot exemplars are drawn from — or are near-duplicates of — the golden set, every candidate model "has seen the answer." The benchmark then measures memorization of the prompt, not task capability, and picks the wrong model.
 
-**Why it happens:** El equipo trata la PII como "dato de tercero público minimizado" (el régimen entero del proyecto). Un email de usuario NO es eso: es dato recolectado, con un titular que tiene derechos de acceso/supresión/portabilidad. El instinto de "solo mostramos lo que la fuente ya publicó" no aplica — aquí el sistema ES la fuente.
+**Why it happens:**
+Convenient reuse: the golden set is the highest-quality labeled data on hand, so it gets pasted into both the prompt and the eval. Few-shot leakage is a named contamination mode — few-shot exemplars and eval cases must live in strictly separate pools.
 
-**Consequences:** Incumplimiento de 21.719 en el único punto donde el sistema recolecta PII propia. El proyecto tiene "pasada de asesoría legal antes del lanzamiento" como constraint LOCKED — notificaciones AÑADE una superficie legal nueva que esa pasada debe cubrir.
+**How to avoid:**
+- **Strict pool separation**: `prompt_exemplars/` and `golden_eval/` are disjoint by construction, enforced by a test that fails if any boletín/entity ID appears in both.
+- Prefer synthetic-but-representative exemplars, or exemplars from a *held-out era* not in the eval.
+- When comparing models, keep the exemplar set **identical and fixed** across all candidates.
 
-**Prevention:**
-- **Doble opt-in (double opt-in) obligatorio:** el email no entra a ninguna lista hasta que el titular confirma vía enlace enviado a ese email. Estándar recomendado explícitamente para 21.719 (Fidelizador, Confidata). Sin confirmar = registro pendiente, nunca activo.
-- **Registro de consentimiento:** fecha/hora, versión del aviso de privacidad, método de recolección — como fila auditada (el proyecto ya tiene el patrón `identidad_audit` inmutable; reusar la disciplina).
-- **Baja (unsubscribe) en cada email + en la cuenta.** Revocable = requisito legal, no cortesía. Supresión efectiva de la fila, no solo un flag.
-- **DPA del proveedor de email:** el proveedor es subencargado (igual que el LLM tier "sin entrenamiento/DPA" ya en el modelo mental del proyecto). Elegir un proveedor con DPA firmable y tier de no-reuso. Documentar el contrato como gate de operador (acción humana, no de agente — igual que los sign-offs legales).
-- **Minimización:** recolectar SOLO el email (y quizás un nombre opcional). Nunca cruzar el email del suscriptor con la maestra de identidad ni con PII de terceros.
-- **Retención:** política explícita — cuánto se guarda un email tras la baja (idealmente supresión inmediata + log de la baja sin el email).
+**Warning signs:**
+- The same boletín appears in a prompt template and in `golden_eval`.
+- A model's golden accuracy collapses when exemplars are swapped for held-out ones.
 
-**Detection:** Checklist legal como gate de operador (no lo flipea un agente, igual que MONEY/NET). pgTAP de que un email no-confirmado nunca aparece en la lista de envío.
-
-**Phase:** Fase NOTIFICACIONES. El sign-off legal 21.719 sobre emails de usuario es un GATE HUMANO nuevo, análogo a los sign-offs MONEY/NET — el agente construye deny-by-default hasta el gate.
-
----
-
-### Pitfall 6: Romper los candados de régimen v8/v9 en el rewrite de la landing
-
-**What goes wrong:** La landing es la superficie MÁS candada del proyecto. El rewrite del bento producto-céntrico a panel de actualidad puede romper, silenciosamente y en verde local: (a) el copy hero LOCKED byte-idéntico ("Busca cualquier proyecto de ley por tema o número de boletín", decisión operador 2026-07-15); (b) `bento-guards.test.ts` cero-hex; (c) la whitelist tipográfica dura (`text-[11px]`/`[13px]`/`[15px]`… — cualquier `text-[Npx]` nuevo ad-hoc FALLA); (d) el shorthand `-[--var]` de Tailwind v4 (compila a valor inválido → elemento sin color, INVISIBLE hasta getComputedStyle en deploy real — este defecto ha reaparecido 3 veces); (e) `export const dynamic = "force-dynamic"` en `page.tsx` (sin él Next hornea `/` estática → panel congelado/500 en runtime — gotcha F50 LOCKED).
-
-**Why it happens:** El régimen bento es invisible al ojo — vive en tests de guard y en tokens. Un ejecutor que "solo cambia el layout" puede meter un hex, un `text-[16px]`, o borrar el `force-dynamic` sin que el navegador local lo delate. La cascada CSS de Tailwind v4 (`-[--var]` bare) solo se caza en deploy real (memoria: v6.1/v8.0).
-
-**Consequences:** Deploy roto en runtime (force-dynamic), o degradación visual invisible en local que solo aparece en producción. Re-trabajo. El copy hero cambiado sin autorización viola una decisión de operador LOCKED.
-
-**Prevention:**
-- Tratar `bento-guards.test.ts` + `anti-insinuacion-guard.test.ts` + el copy hero como CONTRATO. Cualquier token/tipografía nueva del panel se AÑADE a `WHITELIST_ARBITRARIOS` con razón documentada, o usa un paso Tailwind estándar. Cero hex, cero `-[--var]` bare.
-- `export const dynamic = "force-dynamic"` es LOCKED en la home — nunca removerlo. El panel lee datos vivos por request; es dinámico por definición.
-- Gate BrowserOS de comprensión en DEPLOY REAL (no local) — es donde se cazan la cascada CSS, el scroll-margin, el `-[--var]` (patrón LOCKED del proyecto: getComputedStyle en deploy).
-- El copy hero solo cambia con autorización explícita del operador (precedente: el copy es MOCKUP, el operador ANULÓ cambios de copy en v8.1).
-
-**Detection:** `pnpm test` (guards muerden) + build (force-dynamic) + BrowserOS en deploy. El scan de `page.tsx`/`actualidad-module.tsx` ya está en los tres guards; el panel nuevo debe entrar a esos arrays.
-
-**Phase:** Fase FRONTEND del panel. Añadir el panel a los arrays de los 3 guards es parte del scaffolding, no un cierre.
+**Phase to address:** SPIKE (harness design). Add a CI guard (mirrors existing linter/guard culture) asserting disjoint pools.
 
 ---
 
-## Moderate Pitfalls
+### Pitfall 4: Comparing models across different structured-output modes (apples-to-oranges benchmark)
 
-### Pitfall 7: Crons más frecuentes → ráfagas que el WAF gubernamental bloquea
+**What goes wrong:**
+DeepSeek supports `json_object`; MiniMax needs tool-calling; Granite/Phi via OpenAI-compat endpoints may support neither reliably (the CLAUDE.md rule: never assume `response_format json_schema` universal). If the benchmark lets each model use its "best" structured mode, differences in the *harness* masquerade as differences in *model quality* — and worse, a model can win on schema-validation-rate while losing on field-level value accuracy.
 
-**What goes wrong:** El brief autoriza "crons más frecuentes" para frescura del panel. Más frecuencia intradía contra las fuentes gubernamentales choca con el WAF que bloquea ráfagas (rate-limit 2-3s LOCKED, "no opcional"). Un cron cada hora que reingiere sin hash-check puede gatillar bloqueo del WAF → paradójicamente CERO frescura.
+**Why it happens:**
+Each provider's SDK path is the path of least resistance, so the benchmark accidentally varies two things at once (model AND output mode). Research shows structured-output APIs enforce schema compliance more reliably but can *reduce* field-level value accuracy vs instruction-following prompts — so "which mode" changes the ranking.
 
-**Prevention:** La frecuencia mayor NO significa más requests a la fuente. Respetar el patrón LOCKED de DOS ETAPAS: hash-check ANTES de descargar (`If-None-Match`/sha256 en R2) → salir temprano si no cambió. Lotes acotados, solo novedades. El rate-limit 2-3s/host es intocable. Preferir refrescar la VISTA/agregación (barata, interna) más seguido que re-scrapear la fuente.
+**How to avoid:**
+- Fix the output contract at the **zod schema**, and measure two metrics separately per model: (a) **schema-valid rate** (does it parse?) and (b) **field-value accuracy** (are the values right vs human label?). A model that is 100% schema-valid but wrong on `idea_matriz` text is a defamation risk, not a win.
+- For each model, pick its *most reliable* mode empirically but **report the mode used** and hold the *evaluation* metric identical.
+- Re-run the zod gate for every model in the benchmark exactly as production will (no lenient parsing in the harness).
 
-**Phase:** Etapa DATOS / fase de ingesta del panel.
+**Warning signs:**
+- Benchmark table reports one accuracy number without separating parse-rate from value-accuracy.
+- The winning model uses a different output mode than the one it will use in prod.
+- zod retries are silently swallowed in the harness but counted as latency/cost in prod.
 
-### Pitfall 8: GH Actions cron drift/skip → panel de "actualidad" sirviendo actualidad vieja
-
-**What goes wrong:** Las señales de actualidad DEPENDEN de frescura, y los crons de GH Actions se retrasan o se SALTAN — confirmado: "delays or even be dropped during high load (midnight UTC)", "no SLA", y GH SUSPENDE crons en repos sin commit en 60 días. Un cron saltado el viernes → panel muestra "actualidad" del jueves como si fuera de hoy, sin avisar.
-
-**Prevention:** El panel muestra SIEMPRE la fecha de última actualización por fuente (el bloque `UltimaActualizacion` ya existe — reusarlo como contrato). NUNCA implicar "hoy" sin respaldarlo con `fecha_captura`. Evitar cron a medianoche UTC (pico de load → drops); usar horario off-peak. Añadir `workflow_dispatch` para disparo manual. Monitoreo de staleness (`pnpm freshness` ya existe, exit 1 si stale) como alerta. Pitfall 1 (no emitir señal si la fuente está stale) es la red de seguridad de esto.
-
-**Phase:** Etapa DATOS + operacional.
-
-### Pitfall 9: statement_timeout vs agregaciones caras en la página más visitada
-
-**What goes wrong:** El panel agrega ("proyectos con más movimiento", conteos por tema, clustering) sobre las tablas más grandes (3.657 proyectos, eventos de tramitación, embeddings). En la página más visitada, una agregación cara por request choca con `statement_timeout` (las RPCs nuevas son bounded con timeout por diseño — key decision v9) → 500 en la home. Además `force-dynamic` = sin cache = cada visita re-computa.
-
-**Prevention:** Agregaciones de actualidad = vistas materializadas o RPCs bounded refrescadas por cron, NO computadas por request. El panel LEE un resultado pre-computado barato. Toda RPC nueva enhebra la aguja LOCKED (v9): migración >0044 cero-grant + security-definer PII-safe + `PUBLIC_RPC_ALLOWLIST` + bounded (LIMIT + statement_timeout + cap). Clustering pgvector se pre-computa offline, jamás en el request de la home.
-
-**Phase:** Etapa DATOS (definir qué es pre-computable) + FRONTEND.
-
-### Pitfall 10: Vista materializada stale sirviendo "actualidad" vieja + cache de Cloudflare
-
-**What goes wrong:** La solución al Pitfall 9 (materializar) crea su espejo: una MV que no se refresca sirve "actualidad" congelada, ahora con apariencia de dato fresco. Y Cloudflare puede cachear la respuesta del panel sirviendo una versión vieja a usuarios distintos.
-
-**Prevention:** La MV lleva su propio `refreshed_at` y el panel lo muestra (misma disciplina que `fecha_captura`). Si la MV está stale, degradar honestamente. Verificar los headers de cache de Cloudflare sobre la home dinámica: `force-dynamic` + no-store donde corresponda; validar en deploy real que no se sirve una portada cacheada. (El proyecto ya lidió con "cache de Cloudflare sirviendo panel viejo" en memoria de deploys.)
-
-**Phase:** Etapa DATOS + operacional/deploy.
-
-### Pitfall 11: Enumeración de suscriptores + unsubscribe token sin auth
-
-**What goes wrong:** Endpoints de suscripción que revelan si un email ya está suscrito (respuesta distinta para existe/no-existe) = enumeración de suscriptores (quién sigue a qué parlamentario → dato sensible en sí mismo). Unsubscribe por link sin token firmado = cualquiera da de baja a cualquiera; token adivinable = igual.
-
-**Prevention:** Respuesta idéntica exista o no el email ("te enviamos un correo si corresponde"). Unsubscribe con token opaco firmado, de un solo uso, ligado al email — sin exponer el id de usuario ni requerir login (pero criptográficamente ligado). Nunca listar suscriptores en ninguna superficie pública ni admin sin gate.
-
-**Phase:** Fase NOTIFICACIONES.
+**Phase to address:** SPIKE (metric design: parse-rate + value-accuracy, mode logged per model).
 
 ---
 
-## Minor Pitfalls
+### Pitfall 5: Degrading the CRITICAL identity-adjudication path (riesgo existencial #1)
 
-### Pitfall 12: Spam/bounce quema el dominio de envío
+**What goes wrong:**
+Identity adjudication (today MiniMax at umbral 0.90, golden 1263) is the load-bearing subsystem: a wrong match produces a false, credible public claim about a named politician. Introducing a small responder or a small judge *anywhere* in this path — even "just for pre-filtering obvious matches" — creates a route where a Granite/Phi false-positive slips a bad adjudication through before MiniMax ever sees it.
 
-**What goes wrong:** Envío masivo sin SPF/DKIM/DMARC configurados, o a emails no confirmados (bounces altos) → el dominio entra en blocklists → ningún email llega (ni los de confirmación). El doble opt-in (Pitfall 5) ya reduce bounces; falta la infra DNS.
+**Why it happens:**
+Cascades tempt teams to "handle the easy 80% cheaply." But adjudication has no cheap-and-safe subset: the "obvious" matches are where a small model's overconfidence (Pitfall 6) does the most damage, and RUT (the strongest key) is deliberately withheld from the LLM.
 
-**Prevention:** SPF/DKIM/DMARC en el dominio antes del primer envío. Proveedor con buena reputación IP. Solo enviar a emails confirmados. Monitorear tasa de bounce/complaint.
+**How to avoid:**
+- **Adjudication path is off-limits to small responders.** The seed already says this ("jamás se degrada; Phi solo como segunda opinión"). Enforce architecturally: adjudication `LLMProvider` is pinned to MiniMax; the only permitted small-model role is a *second opinion that can escalate/flag for human review*, never approve.
+- Keep the golden-1263 gate and the ≥0.95 CI threshold as a hard, unchanged gate for anything touching this path.
+- Keep the "RUT never crosses" guard intact — verify the new tiers inherit the same PII redaction (Pitfall 12).
 
-**Phase:** Fase NOTIFICACIONES (config de infra, gate de operador — DNS es acción humana).
+**Warning signs:**
+- Any config where an adjudication request can resolve without MiniMax.
+- Escalation-loop cost pressure creates a temptation to "route easy adjudications to Granite."
+- golden-1263 pass rate dips even 0.5%.
 
-### Pitfall 13: Copiar los anti-patterns de UX de senado.cl / camara.cl
-
-**What goes wrong:** El brief pide benchmark UX contra senado.cl y camara.cl "para superar". Riesgo: copiar sus patrones porque "así lo hace el sitio oficial" — tablas densas ASP.NET WebForms, paginación con postback, jerga interna ("prmID", "boletín" sin explicar), fechas ambiguas, cero jerarquía visual. Son sitios de tramitación interna, no de comprensión ciudadana.
-
-**Prevention:** El benchmark es para APRENDER QUÉ EVITAR tanto como qué imitar. El proyecto ya tiene un régimen de comprensión (gate BrowserOS "cold read", leyenda "cómo leer esto", 3 capas cognitivas). El panel se mide contra ESE estándar, no contra los sitios oficiales. Traducir jerga (nunca mostrar "prmID" a un ciudadano). Cierre con crítica de diseño (parte del brief).
-
-**Phase:** Fase de benchmark + FRONTEND.
-
-### Pitfall 14: SEO/deep-links existentes rotos por el rewrite de la landing
-
-**What goes wrong:** El rewrite de `/` puede romper deep-links, anchors, o metadata OG existentes que prensa/redes ya enlazan. El proyecto ya cazó "scroll-margin no cubría section[id]" solo en deploy.
-
-**Prevention:** Preservar rutas y anchors existentes; verificar OG/metadata; el gate BrowserOS en deploy real caza los anchors rotos (precedente F81). No cambiar la URL de la home.
-
-**Phase:** Fase FRONTEND del panel.
+**Phase to address:** Integration phase, but as an **explicit non-goal / guard**, not a feature. Start integration with the *lowest-risk* task (routing/classification), reach adjudication last or never.
 
 ---
 
-## Phase-Specific Warnings
+### Pitfall 6: Small-model confidence miscalibration drives bad escalation decisions
 
-| Fase | Pitfall probable | Mitigación |
-|------|------------------|------------|
-| **Etapa DATOS (QUÉ señales)** | Señal falsa por cobertura parcial (P1); sesgo de cámara (P2); ranking choca con linter (P2); definir vocabulario a vetar (P3) | Clasificar cada señal candidata: "¿requiere frescura declarada? ¿es cross-cámara sesgada? ¿el label afirma intención?" ANTES de tocar frontend |
-| **Fase NOTIFICACIONES / AUTH** | Login re-abre REST (P4); email = PII 21.719 (P5); enumeración/token (P11); bounce (P12) | Extender lockdown-guard a `authenticated` como PRIMER commit; doble opt-in + registro de consentimiento + DPA como gate humano; deny-by-default RLS por `auth.uid()` |
-| **Fase FRONTEND del panel** | Romper candados bento/copy/force-dynamic (P6); vocabulario insinuante nuevo (P3); SEO/anchors (P14); anti-patterns gubernamentales (P13) | Añadir panel a los 3 arrays de guards + extender `TERMINOS_PROHIBIDOS` como scaffolding; gate BrowserOS en DEPLOY real; copy hero solo con autorización operador |
-| **Operacional / crons** | WAF por ráfagas (P7); cron drift/skip (P8); MV stale + cache CF (P10); timeout en home (P9) | Hash-check antes de descargar; frescura declarada siempre; off-peak + workflow_dispatch; agregaciones pre-computadas bounded, nunca por request |
-| **Clustering por tema** | Labels LLM editoriales (P3) | Labels factuales derivados de contenido literal + eval propio + gate de fidelidad; pre-computado offline, nunca en el request |
+**What goes wrong:**
+The cascade decides escalate/stop from the small model's confidence. Small models are systematically miscalibrated and prompt-wording-sensitive — they are confidently wrong on hard cases and under-confident on easy ones. Result: hard, legally-sensitive cases *don't* escalate (false claim ships) while easy cases *do* escalate (cost blows up). A threshold tuned on the golden set fails on live traffic.
+
+**Why it happens:**
+Teams treat a self-reported confidence or token log-prob as if it were calibrated probability. The literature is blunt: calibration — not threshold tuning — is the part worth engineering; raw confidence signals are noisy and workload-specific.
+
+**How to avoid:**
+- **Calibrate** the escalation signal (e.g., isotonic/Platt fit on a held-out labeled set) rather than picking a raw-confidence threshold.
+- Bias the calibration toward **over-escalation under uncertainty** — this *is* "ante la duda, SIEMPRE calidad" expressed numerically. Cost is the safe direction to fail; a false claim is not.
+- Re-validate calibration per task and per source; do not reuse one threshold across routing/classification/extraction.
+
+**Warning signs:**
+- Escalation threshold is a hand-picked constant (e.g., "escalate if confidence < 0.8").
+- Escalation rate is stable in the golden set but swings wildly on live data.
+- Reliability diagram (confidence vs actual accuracy) is never plotted.
+
+**Phase to address:** SPIKE (measure calibration, plot reliability curves per task) → Integration (implement calibrated router, per-task thresholds).
 
 ---
+
+### Pitfall 7: Cascade adds MORE latency (and cost) than the single big model on escalation-heavy tasks
+
+**What goes wrong:**
+On a task where the small model is often insufficient, every request pays small-model time + judge time + big-model time *sequentially* — strictly worse than just calling the big model once. Extraction of dense legal text (DeepSeek's current home, with prompt-cache) is exactly this kind of task. The "optimization" makes the platform slower and more expensive.
+
+**Why it happens:**
+Cascade wins are real *only when most requests stop early*; the median-latency reductions (61–82%) reported in the literature assume the small tier resolves the majority. If the accuracy gap between tiers is insufficient or the small model rarely suffices, the cascade cannot identify what to escalate and the savings evaporate — you pay for all tiers plus routing overhead.
+
+**How to avoid:**
+- In the spike, compute **expected end-to-end latency and cost per task** = P(stop@small)·(t_small+t_judge) + P(escalate)·(t_small+t_judge+t_big). Compare against single-big-model baseline. **Only adopt tiering where this is a win.**
+- Explicitly mark high-escalation tasks (dense extraction) as **stay-single-model** unless the small tier clears a high stop-rate bar.
+- Account for zod-retry round-trips in the latency/cost math (a small model that fails schema and retries twice is not cheap).
+
+**Warning signs:**
+- Extraction p50 latency rises after tiering.
+- Escalation rate >~40% on a task (rule of thumb: cascade rarely wins there).
+- Cost per task exceeds the old DeepSeek-only cost.
+
+**Phase to address:** SPIKE (per-task expected-cost/latency model is a required deliverable of the benchmark, not an afterthought).
+
+---
+
+### Pitfall 8: Spanish-language (Chilean legal register) quality gap in small models
+
+**What goes wrong:**
+The ENTIRE corpus is Chilean-Spanish legal text (ideas matrices, cuerpos legales, lobby materias, agenda). Phi-4 is ~92% English-trained; Microsoft's own card states non-English languages "experience worse performance." Granite-micro is likewise English-centric. A model that benchmarks fine on English SLM leaderboards can mangle Spanish legal phrasing — dropping a negation, mistranslating a legal term, or hallucinating a norma — which becomes a *published false statement*.
+
+**Why it happens:**
+Model marketing and generic benchmarks are English-first; teams extrapolate "it's a strong small model" to a domain (formal es-CL legal) where it was barely trained. Instruction-following and multilingual capability are the *first* things to degrade under both scale and quantization (Pitfall 9).
+
+**How to avoid:**
+- Benchmark **exclusively on the real Chilean-Spanish corpus** — English SLM benchmarks are irrelevant here and must not influence the decision.
+- Weight the eval toward **negation, legal-term fidelity, and idea-matriz literalidad** (the existing "extracción literal" guardrail #2 already targets this — reuse its fidelity metric).
+- Treat any Spanish-quality shortfall as a hard veto for that task, per "ante la duda, SIEMPRE calidad."
+
+**Warning signs:**
+- Model chosen on English benchmark scores.
+- Spot-checks find dropped negations or invented norma citations in Spanish output.
+- Fidelity metric drops vs DeepSeek even where "overall accuracy" looks similar.
+
+**Phase to address:** SPIKE (Spanish-corpus-only benchmark with fidelity/negation metrics is mandatory).
+
+---
+
+### Pitfall 9: Quantization quality loss on serverless / hosted endpoints (invisible variable)
+
+**What goes wrong:**
+Granite/Phi accessed via a serverless OpenAI-compat host may be served **quantized** (Q4/Q8) without it being obvious. Quantization hits multilingual and instruction-following *first and hardest* (Q4_K_M dropped ~15–20% on Chinese eval; multilingual is the first thing to break), and smaller models are the fragile zone. So the model you benchmark (maybe FP16 locally) is not the model that serves prod (Q4 on the host) — a silent, uncontrolled quality variable stacked on top of the Spanish gap.
+
+**Why it happens:**
+Hosts rarely surface quantization level in the API; teams assume "same model name = same weights." Below 4-bit, degradation accelerates fast, and it magnifies a model's *existing* weaknesses (Spanish, exactly this project's weak spot).
+
+**How to avoid:**
+- **Benchmark against the exact endpoint/quantization that will serve production**, not a local FP16 copy. Pin the provider + model revision.
+- Ask/verify the host's quantization; prefer endpoints that disclose it. Treat an undisclosed/variable quantization as a reason to distrust the endpoint.
+- Re-run the golden gate if the host silently changes quantization (add an endpoint-drift canary — mirrors the existing provider-quirk vigilance).
+
+**Warning signs:**
+- Benchmark ran locally; prod uses a different host.
+- Quality quietly drops with no code change (host re-quantized).
+- Host cannot state the quantization level.
+
+**Phase to address:** SPIKE (pin exact prod endpoint in benchmark) + Integration (endpoint-drift canary in CI/monitoring).
+
+---
+
+### Pitfall 10: Escalation loops and cost blow-ups (thrashing between tiers)
+
+**What goes wrong:**
+respond→validate→escalate can loop: small model answers, judge rejects, selector escalates, big model answers, a re-validation rejects again, retries… Combined with zod-retry loops per provider, a single hard document can trigger many paid calls. Under a public repo with hostile actors (the project's stated threat model), crafted inputs can *deliberately* trigger max-escalation on every request.
+
+**Why it happens:**
+No hard ceiling on tier transitions; validation and escalation are wired as "retry until pass." Adversarial inputs exploit exactly this — efficiency backfires when cascades trigger cascade-failure under attack.
+
+**How to avoid:**
+- **Bounded escalation:** at most one hop per tier, a global max-calls-per-request budget, and a terminal state = "escalate to human review / mark low-confidence" rather than infinite retry.
+- Cap zod-retries per provider (e.g., 2) and count a persistent schema failure as a *fail-closed* outcome, not a loop.
+- Rate-limit / budget per source and per session; alert on requests hitting the call ceiling (possible abuse).
+
+**Warning signs:**
+- A request issues >N model calls.
+- Cost per request has a long tail far above median.
+- One boletín repeatedly ping-pongs between tiers.
+
+**Phase to address:** Integration (bounded router with hard budgets) — mirrors the existing "bounded RPC" discipline (LIMIT + statement_timeout).
+
+---
+
+### Pitfall 11: Breaking DeepSeek prompt-cache economics by routing mid-pipeline
+
+**What goes wrong:**
+DeepSeek's extraction economics depend on the long, stable prefix (system + schema + exemplars) hitting the disk cache (cache-hit ≈ $0.014/Mtok, ~90% cheaper). Inserting a small-model tier *in front of* extraction, or swapping providers *within* one extraction pipeline, invalidates the cached prefix — each swap re-writes full context at 1.25× instead of reading at 0.1×. The tiering meant to save money can 10× the extraction bill.
+
+**Why it happens:**
+Routing is designed per-request without regard to cache locality. The economics rule is explicit: **route between pipelines, not mid-session** — every step sharing accumulated context must stay on one family.
+
+**How to avoid:**
+- Keep extraction as a **single-family pipeline on DeepSeek** with its cached prefix intact; do the tiering *before* the request is classified into "goes to extraction," not inside it.
+- Route **between** pipelines (a routing/classification tier decides *which* pipeline), never mid-pipeline provider swaps.
+- Monitor `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens`; alert when hit-rate drops below the breakeven floor after tiering ships.
+
+**Warning signs:**
+- DeepSeek cache-hit rate falls after tiering deploy.
+- Extraction cost rises despite "cheaper" small models added.
+- The same stable prefix is being rewritten per request.
+
+**Phase to address:** Integration (route between pipelines; add cache-hit monitoring). Flag in SPIKE cost model.
+
+---
+
+### Pitfall 12: Provider-quirk drift breaks the zod gates / PII guard across new tiers
+
+**What goes wrong:**
+Each new provider (Granite host, Phi host) has its own structured-output quirks, tokenizer, and failure modes. If the new tiers are wired without extending the per-provider zod validation and the "RUT never crosses" redaction, one of them can (a) emit malformed JSON that a lenient path lets through, or (b) receive un-redacted PII because the guard was only applied on the old code path.
+
+**Why it happens:**
+The enchufable `LLMProvider` makes adding a baseURL trivial — too trivial. Teams add the endpoint but forget that the zod gate, retry policy, and PII redaction are *per-provider contracts*, not global defaults.
+
+**How to avoid:**
+- Every new provider must pass the **same zod gate + PII-redaction guard** as a construction requirement — extend the existing per-provider validation, don't add a bypass. Add a guard/test that *muerde* (bites): fails CI if a provider is registered without a redaction+zod wrapper.
+- Reuse the existing "guard that bites" culture (Direction-B, env-example, lockdown guards) for the LLM layer: a static test enumerating all registered providers and asserting each is wrapped.
+- Never assume `response_format json_schema`; keep tool-calling-or-prompt-forced + zod per provider (CLAUDE.md LOCKED rule).
+
+**Warning signs:**
+- A provider added with a fresh code path instead of the shared wrapper.
+- PII-redaction unit tests only cover DeepSeek/MiniMax.
+- zod failures logged-and-ignored on the new tier.
+
+**Phase to address:** Integration (extend guards to cover all providers as first commit — the v10.0 "lockdown-guard extended as PRIMER commit" pattern).
+
+---
+
+### Pitfall 13: Small-model tool-calling / instruction-following brittleness on long prompts
+
+**What goes wrong:**
+The stack uses tool-calling or long prompt-forced instructions to get structured output. Granite-micro/Phi-mini follow simple, short instructions but degrade on long, multi-constraint prompts and complex tool workflows (Granite "eye-balls" instead of using the right strategy; struggles to recover from repeated tool-call errors). The current extraction/adjudication prompts are long and constraint-heavy (guardrails, anti-causal rules, literal-only). Small models will drop constraints — e.g., ignore the "literal only, no paraphrase" guardrail — producing paraphrased/invented legal content.
+
+**Why it happens:**
+Prompts written for DeepSeek/MiniMax are ported verbatim to small models. Small models have less instruction-following headroom, so the *last* constraints in a long prompt are the first dropped — and those are often the safety constraints.
+
+**How to avoid:**
+- Do **not** reuse the big-model prompts unchanged; for small tiers, shorten and front-load the safety-critical constraints, and prefer tool-calling with a tight schema over free-form JSON where the host supports it reliably.
+- Measure **constraint-adherence explicitly** (did it obey "literal only"? did it emit only allowed fields?) as a benchmark metric, separate from accuracy.
+- If a small model cannot reliably hold the safety constraints on this corpus, it fails the gate for that task — no exceptions per "SIEMPRE calidad."
+
+**Warning signs:**
+- Small model paraphrases idea matriz instead of extracting literally.
+- Emits fields outside the schema / ignores anti-causal wording rules.
+- Adherence drops as prompt length grows.
+
+**Phase to address:** SPIKE (constraint-adherence metric) + Integration (small-tier-specific prompts, not ported).
+
+---
+
+## Technical Debt Patterns
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Benchmark small models on existing golden 32/1263 only | Fast, no new labeling | Overfit to tripwire cases; silent live-distribution degradation → false published claims | Never as the *only* eval; OK as a *regression floor* alongside a stratified live-distribution set |
+| Reuse golden cases as few-shot exemplars | No exemplar curation work | Self-referential benchmark picks wrong model | Never |
+| Port DeepSeek/MiniMax prompts to Granite/Phi unchanged | Zero prompt work | Dropped safety constraints, paraphrased legal text | Never for extraction/adjudication; OK to prototype routing/classification, then rewrite |
+| Hand-pick a single escalation confidence threshold | Ships fast | Miscalibrated on live data; hard cases don't escalate | MVP of the *routing* task only, with over-escalation bias, replaced by calibrated router before extraction/adjudication |
+| Benchmark FP16 locally, serve quantized on host | Convenient | Prod is a different (worse) model, esp. in Spanish | Never — pin the prod endpoint |
+| Add a new provider without the shared zod+PII wrapper | Trivial baseURL add | PII leak / malformed output slips through | Never |
+| Let judge approvals short-circuit the existing zod/golden gate | Lower latency | Weak judge rubber-stamps errors | Never |
+
+## Integration Gotchas
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| DeepSeek (extraction, prompt-cache) | Insert tier mid-pipeline or swap provider within a request → cache invalidation, ~12× write cost | Route *between* pipelines; keep extraction single-family; monitor `prompt_cache_hit_tokens` |
+| MiniMax (adjudication) | Front it with a small responder for "easy" matches | Pin adjudication to MiniMax; small model may only *escalate/flag*, never approve |
+| Granite/Phi via OpenAI-compat host | Assume `response_format json_schema`; assume FP16 weights | Tool-calling-or-prompt-forced + zod per provider; pin + verify quantization; endpoint-drift canary |
+| New `LLMProvider` registration | Add baseURL, forget PII redaction + zod wrapper | Guard that fails CI if any registered provider lacks the shared redaction+zod wrapper |
+| Judge model | Judge trained/evaluated to agree with the *responder* | Evaluate judge vs *human* labels; judge power limited to raising the tier |
+| zod retries | Swallowed in benchmark, counted in prod | Count retries in cost/latency model; cap retries; persistent fail = fail-closed |
+
+## Performance Traps
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Cascade on escalation-heavy task | p50 latency & cost rise after tiering | Adopt tiering only where expected-cost math wins; keep dense extraction single-model | Escalation rate >~40% |
+| Escalation loop / thrashing | Long tail of >N calls per request | Bounded escalation (1 hop/tier), global call budget, terminal human-review state | Any adversarial or hard input in a public repo |
+| zod-retry storms on small models | Cost per request spikes on malformed-JSON-prone models | Cap retries (≤2); fail-closed on persistent invalid | Small model + long/complex schema |
+| DeepSeek cache-miss after routing | Extraction bill rises despite "cheaper" tiers | Route between pipelines, not mid-session; alert on hit-rate < breakeven | Every request that swaps family mid-pipeline |
+| Threshold tuned on golden set | Escalation rate swings on live traffic | Calibrate on held-out live sample; per-task thresholds | Distribution shift (new source, scanned PDFs) |
+
+## Security Mistakes
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| New tier bypasses "RUT never crosses" redaction | PII (RUT/family data) leaks to a small-model host / subprocessor without DPA | Shared redaction wrapper mandatory per provider; CI guard enumerates providers |
+| Unbounded escalation on public repo | Hostile actor crafts inputs that force max-tier on every request → cost DoS | Global per-request call budget + per-source rate limits + abuse alerting |
+| New provider = new subprocessor, no DPA / trains on data | 21.719 violation (LLM API = subencargado; tier sin entrenamiento / DPA required) | Legal check of each new provider's data-retention/training terms *before* it touches real corpus (operator/legal gate) |
+| Trusting host-reported "no training" without verification | Silent data retention on Granite/Phi host | Prefer providers with explicit no-train + DPA; document per-provider legal posture |
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Tier choice changes displayed content silently | Same bill shows different idea-matriz text depending on which model happened to answer → erodes trazabilidad | Output must be model-invariant for user-facing fields; log which model produced each field for audit, but gate on equivalence |
+| Small model paraphrases legal text | Published text no longer matches the source → violates "cada dato lleva fuente" and defamation exposure | Literal-only constraint measured per model; paraphrase = fail |
+| Low-confidence output shown as fact | Citizen/press treats an escalation-worthy guess as authoritative | Terminal low-confidence state = suppress or mark, never publish (fail-closed, matches existing empty-state honesty) |
+
+## "Looks Done But Isn't" Checklist
+
+- [ ] **Benchmark:** passes golden 32/1263 — but was it also run on a **stratified live-distribution sample** and a **Spanish-only fidelity/negation** metric? Verify both exist.
+- [ ] **Judge:** wired in — but is its power limited to **escalate-only**, and was it measured vs **human** labels (not vs the responder)? Verify it cannot suppress escalation.
+- [ ] **Router:** escalation works — but is the threshold **calibrated** (reliability curve plotted) and biased to **over-escalate under uncertainty**? Verify per-task thresholds.
+- [ ] **Cost:** "cheaper models added" — but is DeepSeek **cache-hit rate unchanged** and is per-task **expected cost/latency** actually lower than single-big-model? Verify monitoring + math.
+- [ ] **Prompts:** small tier runs — but are the **safety constraints** (literal-only, anti-causal, schema-only) still obeyed, measured as constraint-adherence? Verify small-tier-specific prompts.
+- [ ] **Providers:** new baseURLs registered — but do **all** pass the shared **zod + PII-redaction** wrapper, enforced by a biting guard? Verify CI guard enumerates them.
+- [ ] **Endpoint:** benchmark model == **prod-served quantization/revision**? Verify pin + drift canary.
+- [ ] **Adjudication:** untouched — verify no config path resolves identity without MiniMax; golden-1263 ≥0.95 still green.
+- [ ] **Escalation:** bounded — verify a hard max-calls-per-request budget and terminal human-review state exist.
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Cheap model shipped, degrading live quality silently | HIGH (false published claims already live) | Kill-switch route back to incumbent (LLMProvider swap by config); audit outputs produced during window; re-verify against source; issue corrections |
+| Weak judge rubber-stamped errors | HIGH | Disable judge gating (escalate-only); re-run affected outputs through incumbent; add human-label eval before re-enabling |
+| DeepSeek cache economics broken | LOW/MEDIUM | Revert to pipeline-level routing; re-establish stable prefix; watch hit-rate recover |
+| Escalation loop / cost blow-up | LOW | Deploy call-budget cap + terminal state; add per-source rate limit |
+| PII leaked to new tier | HIGH (legal, 21.719) | Halt provider; assess exposure; legal notification path; add redaction guard before re-enable |
+| Threshold miscalibrated | LOW | Refit calibration on held-out live sample; redeploy router config |
+
+## Pitfall-to-Phase Mapping
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| 1 — Weak judge gating | SPIKE (judge vs human labels) + Integration (escalate-only guard) | Judge cannot suppress escalation; conditional accuracy reported |
+| 2 — Wrong-distribution benchmark | SPIKE (stratified live eval + shadow harness) | Shadow-diff rate vs incumbent <threshold before promotion |
+| 3 — Golden-set leakage into prompts | SPIKE (harness) + CI guard | Test asserts prompt-exemplars ∩ golden-eval = ∅ |
+| 4 — Mixed structured-output modes | SPIKE (metric design) | Parse-rate and value-accuracy reported separately; mode logged |
+| 5 — Degrading adjudication | Integration (explicit non-goal + guard) | No path resolves identity without MiniMax; golden-1263 ≥0.95 |
+| 6 — Confidence miscalibration | SPIKE (reliability curves) + Integration (calibrated router) | Reliability diagram per task; over-escalation bias verified |
+| 7 — Cascade adds latency/cost | SPIKE (expected cost/latency model) | Adopt only where math beats single-big-model; extraction p50 not worse |
+| 8 — Spanish quality gap | SPIKE (es-CL-only benchmark) | Fidelity/negation metric on real corpus; English benchmarks excluded |
+| 9 — Quantization loss | SPIKE (pin prod endpoint) + Integration (drift canary) | Benchmark endpoint == prod; quantization documented |
+| 10 — Escalation loops | Integration (bounded router) | Hard call budget; >N-call alerting |
+| 11 — DeepSeek cache broken | SPIKE (cost model) + Integration (route between pipelines) | cache-hit rate monitored; unchanged post-deploy |
+| 12 — Provider-quirk / PII drift | Integration (guards first commit) | CI guard enumerates all providers wrapped w/ zod+redaction |
+| 13 — Small-model brittleness on long prompts | SPIKE (constraint-adherence metric) + Integration (small-tier prompts) | Constraint-adherence measured; literal-only obeyed |
+
+**Phasing summary:** The SPIKE (SEED-001 benchmark-por-tarea) must carry pitfalls 1–4, 6–9, 13 as *measured deliverables* — the benchmark is not "which model is most accurate" but "which model is safe enough on THIS Spanish legal distribution, with calibrated escalation, at a genuine cost/latency win, without leaking or paraphrasing." The Integration phase carries the *guards* (5, 10, 11, 12) and must begin with the **lowest-risk task** (routing/classification), keep **adjudication and dense extraction on their incumbents** until (and unless) the spike proves parity, and land the provider-wrapper guard as its first commit.
 
 ## Sources
 
-- `app/lib/anti-insinuacion-guard.test.ts` (leído) — denylist EXACTA, `TERMINOS_PROHIBIDOS`, arrays `SUPERFICIES_*`, JSDoc WR-01 ("NO previene insinuación… paráfrasis/temporal se escapan"), `NEGACIONES_LOCKED` — HIGH
-- `app/lib/lockdown-guard.test.ts` (leído) — guard veta SOLO `anon`/`public`, NO `authenticated`; `PUBLIC_RPC_ALLOWLIST`; Camino A service_role bypassa RLS; PII_TABLES — HIGH
-- `app/components/actualidad-module.tsx` (leído) — molde "en las fuentes consultadas", `throw` no `?? []` (#34), "CERO ranking/score/los más… (T-52-13)", frescura NO-PII, tz Chile — HIGH
-- `app/lib/bento-guards.test.ts` (leído) — cero-hex, whitelist tipográfica dura, `-[--var]` shorthand inválido Tailwind v4 (reaparecido 3×) — HIGH
-- `app/app/page.tsx` (leído) — copy hero LOCKED, `force-dynamic` gotcha F50, EXAMPLE_CHIPS/ENTRY_CARDS LOCKED — HIGH
-- `.planning/PROJECT.md` / `.planning/MILESTONES.md` (leídos) — anti-insinuación LOCKED, Camino A, cobertura declarada, 21.719 (2026-12-01), WAF 2-3s, gates humanos — HIGH
-- [GovTrack — About Our Data](https://www.govtrack.us/about-our-data) / [JoshData Medium](https://medium.com/civic-tech-thoughts-from-joshdata/govtrack-now-actually-uses-open-government-data-5fc16f377e86) — screen-scrapers se confunden, casos no anticipados (bills sin sponsor) → info incorrecta mostrada — MEDIUM
-- [OpenSecrets — coverage disclosure](https://www.opensecrets.org/about/policy) — cobertura desigual declarada (19/50 estados con datos de lobbying) — MEDIUM
-- [GitHub community #156282 — cron delays](https://github.com/orgs/community/discussions/156282) / [Monitoring GH Actions scheduled workflows — DEV](https://dev.to/krissv/monitoring-github-actions-scheduled-workflows-a-practical-guide-31h7) / [Prevent GitHub suspending cron — DEV](https://dev.to/gautamkrishnar/how-to-prevent-github-from-suspending-your-cronjob-based-triggers-knf) — cron delayed/dropped en high load, sin SLA, suspende tras 60 días sin commit — MEDIUM/HIGH
-- [Ley 21.719 y email marketing — Fidelizador](https://blog.fidelizador.com/2025/11/26/nueva-ley-de-proteccion-de-datos-en-chile-como-redefine-el-email-marketing-responsable/) / [Gestión de consentimiento — Confidata](https://confidata.cl/blog/como-implementar-gestion-consentimiento) / [RSM Chile](https://www.rsm.global/chile/es/news/ley-21719-proteccion-de-datos-personales) — doble opt-in recomendado, consentimiento libre/específico/informado/revocable, registro (fecha/hora/versión/método), encargado de tratamiento requiere contrato escrito — MEDIUM/HIGH
+- [Is Escalation Worth It? A Decision-Theoretic Characterization of LLM Cascades — arXiv 2605.06350](https://arxiv.org/html/2605.06350) — when escalation does/doesn't pay; accuracy-gap requirement — HIGH
+- [UCCI: Calibrated Uncertainty for Cost-Optimal LLM Cascade Routing — arXiv 2605.18796](https://arxiv.org/abs/2605.18796) — calibration > threshold tuning; isotonic fit — HIGH
+- [Do Small Language Models Know When They're Wrong? Confidence-Based Cascade Scoring — arXiv 2604.19781](https://arxiv.org/html/2604.19781v1) — small-model confidence miscalibration — HIGH
+- [When Efficiency Backfires: Cascading LLMs Trigger Cascade Failure under Adversarial Attack — arXiv 2605.17288](https://arxiv.org/html/2605.17288) — adversarial escalation / cost DoS — HIGH
+- [SLMJury: Can Small Language Models Judge as Well as Large Ones? — arXiv 2606.07810](https://arxiv.org/html/2606.07810) — small-judge limits — MEDIUM
+- [Enabling Weak LLMs to Judge Response Reliability via Meta Ranking — arXiv 2402.12146](https://arxiv.org/pdf/2402.12146) — weak-judge caveats; hints from uncertain weak model don't help — HIGH
+- [Justice or Prejudice? Quantifying Biases in LLM-as-a-Judge](https://llm-judge-bias.github.io/) — position/verbosity/self-preference biases + mitigations — HIGH
+- [Self-Preference Bias in LLM-as-a-Judge — arXiv 2410.21819](https://arxiv.org/pdf/2410.21819) — self-preference quantified — HIGH
+- [Are You Making These 7 LLM-as-a-Judge Mistakes? — Galileo](https://galileo.ai/blog/why-llm-as-a-judge-fails) — judge ≥ responder capability rule — MEDIUM
+- [LLM Model Routing 2026: Cost-Quality Optimization — DigitalApplied](https://www.digitalapplied.com/blog/llm-model-routing-2026-cost-quality-optimization-engineering-guide) — silent quality regression; 50–500-case pre-merge gate — MEDIUM
+- [Prompt Caching Economics: Cache-First Agent Design — DigitalApplied](https://www.digitalapplied.com/blog/prompt-caching-economics-cache-first-agent-architecture-2026) — route between pipelines not mid-session; 1.25× write vs 0.1× read — MEDIUM
+- [DeepSeek Context Caching on Disk — DeepSeek API Docs](https://api-docs.deepseek.com/news/news0802/) — cache-hit pricing; prompt_cache_hit/miss tokens — HIGH
+- [microsoft/Phi-4-mini-instruct — Hugging Face](https://huggingface.co/microsoft/Phi-4-mini-instruct) — English-primary training; non-English worse performance — HIGH
+- [Phi-4-Mini Technical Report — arXiv 2503.01743](https://arxiv.org/pdf/2503.01743) — 92% English data; multilingual limits — HIGH
+- [ibm-granite/granite-4.0-h-micro — Hugging Face](https://huggingface.co/ibm-granite/granite-4.0-h-micro) — model card / capabilities — HIGH
+- [How Do LLMs Fail In Agentic Scenarios? — arXiv 2512.07497](https://arxiv.org/pdf/2512.07497) — Granite tool-calling strengths/weaknesses, error-recovery limits — MEDIUM
+- [Q4 vs Q5 vs Q6 vs Q8 Quantization: Real Quality Loss Numbers (2026) — runaihome](https://runaihome.com/blog/quantization-q4-q5-q6-q8-quality-loss-2026/) — multilingual first to break; small models fragile; ~15–20% non-English drop — MEDIUM
+- [LLM Quantization Guide (2026) — llmhardware.io](https://llmhardware.io/guides/llm-quantization-guide) — Q4/Q8/FP16 tradeoffs — MEDIUM
+- [Structured Output Benchmarks are Riddled with Mistakes — Cleanlab](https://cleanlab.ai/blog/structured-output-benchmark/) — schema-valid vs field-value accuracy; benchmark errors — HIGH
+- [Structured Outputs with LLMs: JSON Mode vs Function Calling — Towards Data Science](https://towardsdatascience.com/structured-outputs-with-llms-json-mode-function-calling-and-when-to-use-each/) — mode differences affect ranking — MEDIUM
+- [On Leakage of Code Generation Evaluation Datasets — arXiv 2407.07565](https://arxiv.org/pdf/2407.07565) — few-shot leakage; separate exemplar/eval pools — HIGH
+- [Benchmark Data Contamination of LLMs: A Survey — arXiv 2406.04244](https://arxiv.org/html/2406.04244v1) — contamination modes incl. overfitting to eval during model selection — HIGH
+
+---
+*Pitfalls research for: tiered LLM cascade on a Spanish-legal civic-accountability pipeline with defamation risk (v11.0 SEED-001)*
+*Researched: 2026-07-26*

@@ -1,123 +1,172 @@
 # Stack Research
 
-**Domain:** v10.0 — Panel de actualidad legislativa (landing) + notificaciones por suscripción, sobre Observatorio del Congreso 360 (Next.js 16 App Router / OpenNext-Cloudflare Workers + Supabase Postgres/pgvector 0.8 + R2 + GH Actions)
-**Researched:** 2026-07-23
-**Confidence:** HIGH (señales + clustering); MEDIUM/HIGH (notificaciones — depende de decisión de seguridad del operador)
+**Domain:** v11.0 — Tiered LLM layer (respond→validate→escalate) — adding two small models as new rungs to the existing pluggable `LLMProvider` layer (`packages/llm`, `openai@5` multi-provider by `baseURL`)
+**Researched:** 2026-07-26
+**Confidence:** HIGH (model specs, licensing, IDs verified against HF/OpenRouter/IBM/Microsoft official pages; pricing MEDIUM — hosting landscape moves fast)
 
-> **Regla de oro de este milestone:** casi todo lo que se necesita YA está en el sobre actual (Postgres + pg_cron + GH Actions + R2). Las UNICAS piezas net-new son: (1) un envío de email transaccional (Resend), y (2) el primer subsistema de datos-de-usuario (Supabase Auth + tablas con RLS real + publishable key). Todo lo demás son patrones SQL/cron sobre datos ya ingeridos. **No añadir infra de cola, cache ni broker.**
+## TL;DR for the roadmap
 
----
+The two new models fit the existing stack with **zero new SDKs and zero new architecture**. Both are OpenAI-compatible via `baseURL` and slot into the current `openai@5` + `LLMProvider` pattern exactly like DeepSeek/MiniMax. What you actually add is: (1) **one hosting account** (OpenRouter, single key, both models — recommended primary) plus **Ollama** for a zero-cost local benchmark rig; (2) **two new `ProviderConfig` entries** in `config.ts`; (3) possibly **two thin adapter classes** (or one generic OpenAI-compat tool-calling adapter) that pick the right structured-output strategy per host. Nothing else.
+
+The hard rule of this stack still holds and is the ONLY real risk: **never assume `response_format: json_schema` is honored end-to-end.** For Granite/Phi on OpenRouter/DeepInfra/Ollama, tool-calling is the safe structured-output path (Granite is fine-tuned for it; Phi supports it but is documented to hallucinate function names — so keep the existing external zod gate + repair loop, and prefer `tool_choice`-forced single-function exactly like the current `MiniMaxProvider`).
 
 ## Recommended Stack
 
-### Core Technologies (nuevas / cambios)
+### Core Technologies (NEW — the two model rungs)
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| **Tabla de señales precomputada** (`senal_actualidad`, tabla normal Postgres) refrescada por **pg_cron** | Postgres 15+ (ya en Supabase) | (a) Señales cuantitativas del panel — movimiento, nuevos ingresos, urgencias, votaciones próximas, leyes publicadas | Cero infra nueva. El panel lee de una tabla plana e indexada (rápido, SSR-friendly bajo service_role), y un job la reconstruye. Preferible a **materialized view** aquí porque las señales combinan varias fuentes/ventanas y quieres control de orden/etiqueta/dedup; una tabla `TRUNCATE`+`INSERT` (o `UPSERT`) en una transacción da lecturas consistentes sin el lock de `REFRESH` no-concurrente ni la unique-index de `CONCURRENTLY`. |
-| **Supabase Auth — Email OTP (6-dígitos) / Magic Link** | GoTrue actual (Supabase plataforma) | (c) Identidad del usuario que se suscribe | Sin password (el proyecto no quiere gestionar credenciales). OTP/magic-link es el flujo mínimo defendible. **Requiere Custom SMTP** (ver Resend) — el SMTP interno de Supabase da solo **2 auth-emails/hora** y no es para producción. |
-| **Supabase publishable key** (`sb_publishable_…`) **+ RLS estricta** SOLO en el esquema/tablas de suscripción | Formato de llaves nuevo (GA 2026; legacy anon/service_role se retiran fin de 2026) | (c) Primer acceso de baja-privilegio del navegador, ACOTADO a `suscripcion`/`usuario_perfil` | Hoy la anon está MUERTA y el sitio corre service_role (bypassa RLS). Para datos de usuario necesitas lo contrario: privilegio bajo + RLS que muerde. La publishable key = mismo privilegio bajo que la anon legacy, con RLS `auth.uid() = user_id`. **Se introduce sin resucitar la anon**: es una llave nueva, y las tablas de suscripción son las UNICAS con policies `to authenticated`; el resto del esquema público sigue sin exposición anon. |
-| **Resend** (email transaccional) | API v4 / SDK `resend` 4.x | (c) Entrega de: (1) los correos de auth de Supabase (OTP/magic link) vía Custom SMTP, y (2) el digest/alertas de suscripción vía API HTTP | Free tier **3.000 emails/mes, 100/día, 1 dominio verificado, logs 30 días** ([Resend quotas](https://resend.com/docs/knowledge-base/account-quotas-and-limits)). Cubre arranque holgado. SDK TS nativo, funciona desde GH Actions (Node) y desde Edge/Workers (HTTP). Un solo proveedor cubre AMBOS caminos (auth SMTP + digest API) → una sola verificación de dominio, una sola factura. |
+| Technology | Version / Model ID | Purpose | Why Recommended |
+|------------|--------------------|---------|-----------------|
+| **IBM Granite-4.0-H-Micro** | `ibm-granite/granite-4.0-h-micro` (OpenRouter) · `granite4:micro-h` (Ollama) · `ibm-granite/granite-4.0-micro` = dense variant (HF weights) | Router / triage, simple Q&A, classification (low-risk, high-volume rung) | 3B params, **Apache 2.0** (clean commercial license, ISO 42001 certified, cryptographically signed). Hybrid Mamba-2/transformer (**4 attention / 36 Mamba2** layers) → low memory + fast → strong latency class for the "cheap first responder" rung. **Fine-tuned for long-context tool calling** (OpenAI function schema) → structured output is first-class. 128K–131K context. |
+| **Microsoft Phi-4-mini-instruct** | `microsoft/phi-4-mini-instruct` (OpenRouter) · `phi4-mini` (Ollama) · `microsoft/Phi-4-mini-instruct` (HF weights) | Judge / validator rung (second-opinion on other models' outputs) | 3.84B params, **MIT license** (maximally permissive). Post-trained specifically for instruction-following + function calling; strong reasoning-per-parameter (ties larger models on ARC-Challenge). 128K/131K context. Ideal as a cheap, fast "did the first answer satisfy the schema/task?" checker. **Caveat: documented to sometimes hallucinate function names/URLs in tool-calling** → validate hard. |
+| **openai (SDK)** | `npm:openai@5` (already installed) | Same client for both new models via `baseURL` | The stack rule is LOCKED: one SDK, multi-provider by `baseURL`. Both new models are exposed OpenAI-compatible on every recommended host. **No new SDK is added.** |
 
-### Supporting Libraries / patrones
+### Hosting / Inference Options (the real decision)
 
-| Library / patrón | Version | Purpose | When to Use |
+Ranked by fit for this project (single `.env` key discipline, cheap/free tiers, OpenAI-compat, both models under one account).
+
+| Host | Serves both models? | OpenAI-compat endpoint | Pricing (per 1M tok, in/out) | Free tier | Recommendation |
+|------|--------------------|-----------------------|------------------------------|-----------|----------------|
+| **OpenRouter** (PRIMARY) | ✅ Both. `ibm-granite/granite-4.0-h-micro` + `microsoft/phi-4-mini-instruct` | `https://openrouter.ai/api/v1` | Granite-H-Micro ≈ **$0.017 / $0.112**; Phi-4-mini ≈ **$0.08 / $0.35** | Small credit + `:free` variants on some models; pay-as-you-go, no minimum | **Use as the single hosted production/benchmark endpoint.** One key, both models, cheapest Granite price found, OpenAI-native tool-calling + `response_format` passthrough (capability-dependent per underlying provider — verify per model page). Least ceremony with the `baseURL` pattern. |
+| **Ollama (local)** (BENCHMARK RIG) | ✅ Both. `ollama pull granite4:micro-h`, `ollama pull phi4-mini` | `http://localhost:11434/v1` | **Free** (your hardware) | N/A (local) | **Use for the SEED-001 golden-set benchmark spike and CI-free local iteration.** 3–4B models run on a laptop/modest GPU; zero marginal cost to run the golden set repeatedly per task. ⚠️ Ollama's `/v1` is a partial OpenAI surface — JSON-schema structured output, logprobs, some streaming differ; use tool-calling or `format:json` and keep the external zod gate. Measure *quality* here; re-measure *latency/cost* against OpenRouter before integrating. |
+| **DeepInfra** | Phi: historically yes (usage-gated — a Phi multimodal variant was retired for low usage; verify `phi-4-mini-instruct` is live before committing). Granite: verify in catalog. | `https://api.deepinfra.com/v1/openai` | Cheapest blended Phi-4 provider (~$0.09 blended) per analyses | Small starting credit | **Secondary / cost-optimization fallback.** Cheapest at volume, OpenAI-compat, but small-model availability is churny — do not hard-depend. Pure `baseURL` swap target if OpenRouter markup matters at scale. |
+| **Together AI** | Granite/Phi small-model availability **not confirmed** in current catalog searches | `https://api.together.xyz/v1` | Competitive, per-model | Starting credit | **Only if catalog confirms the exact model ID at run time.** Do not assume presence. |
+| **IBM watsonx.ai** | Granite: ✅ first-party (canonical Granite host). Phi: no. | OpenAI-compat available on watsonx chat endpoints | Enterprise pricing | Trial | Consider **only** if you later want IBM's SLA/first-party Granite guarantees or an ISO-42001 provenance story for the legal dossier. Overkill for the benchmark spike. |
+| **Azure AI Foundry** | Phi: ✅ first-party (Microsoft's canonical Phi host). Granite: via Foundry catalog partners, verify. | Azure OpenAI-style endpoint (Azure-specific auth + deployment names, not a plain `baseURL`+bearer) | Azure per-token (~$0.22 blended Phi-4, pricier) | Azure credits | **Not recommended for this project's `.env`+`baseURL` discipline.** Azure auth/deployment-name model breaks the clean `apiKey`+`baseURL` adapter shape. Skip unless an enterprise Azure mandate appears. |
+
+**Decision: OpenRouter as the single hosted endpoint for both new models + Ollama for the local benchmark spike.** One production key, both models, cheapest Granite, OpenAI-native tool-calling — fewest moving parts for the pluggable layer. DeepInfra held as a cost fallback via a pure `baseURL` swap.
+
+### Supporting Libraries (already present — NO additions)
+
+| Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| **k-means en SQL puro** (Lloyd sobre `vector` con `<=>`) o **extensión `kmeans` PGXN** | pgvector 0.8.x | (b) Agrupar por TEMA los proyectos con movimiento reutilizando los embeddings 768d ya existentes | k pequeño (p.ej. 8–15 clusters sobre las ~decenas/cientos de PLs con movimiento reciente), corrido **OFFLINE en el mismo cron de señales** con **seed fija** → determinista. No necesita índice; es un scan sobre un subconjunto pequeño. Guardar `cluster_id` + `centroid` en `senal_actualidad`. |
-| **Etiqueta factual del cluster = moda de `materia`/`comisión`** (SQL `mode()`), NO LLM | — | (b) Nombrar el cluster sin editorializar | El proyecto ya tiene materia/comisión por PL. La etiqueta del cluster = la materia/comisión más frecuente del cluster (dato de la fuente, con fuente/fecha). Cero riesgo de "máquina de sospechas" ni de alucinación. Cae dentro de la regla rectora: label es dato, no interpretación. |
-| **`web-push` / `pushforge`** | pushforge (zero-dep, Workers-compatible) | (c, FALLBACK) Web push VAPID como canal alternativo al email | Solo si el operador quiere push. `pushforge` corre en Cloudflare Workers/Deno sin deps nativas ([PushForge](https://github.com/draphy/pushforge)). Requiere Service Worker en el cliente + tabla `push_subscription`. **Recomendado DIFERIR** (ver "What NOT to Use" — CSP + service worker + gestión de VAPID añaden superficie; email cubre el caso 1). |
-| **Supabase JS** (`@supabase/supabase-js`) v2 | ya en el repo | Cliente Auth (`signInWithOtp`, `verifyOtp`) en Route Handlers/Server Actions + cliente RLS con publishable key | Reutiliza el cliente existente; solo se añade el flujo de Auth. |
-| **`resend` SDK** | 4.x | Envío del digest desde el cron (Node en GH Actions) | `import { Resend } from 'resend'`; una línea por email o batch. |
+| **openai** | `npm:openai@5` | OpenAI-compatible client for both new hosts (OpenRouter/DeepInfra/Ollama) via `baseURL` | Every new provider adapter. Already the base of `DeepSeekProvider`/`MiniMaxProvider`. |
+| **zod** | 3.x / 4.x | External validation gate on every structured output (`parseAndValidate`) | Unchanged. Applies identically to Granite/Phi outputs — the LOCKED "never trust the provider's schema enforcement" rule. |
+| **`json-schema.ts` (`zodToToolSchema`)** | in-repo (`packages/llm/src/json-schema.ts`) | Derive tool `parameters` from a zod schema (single source of truth) for tool-calling structured output | Reuse verbatim for Granite/Phi tool-calling adapters — same as `MiniMaxProvider`. |
 
 ### Development Tools
 
 | Tool | Purpose | Notes |
 |------|---------|-------|
-| **pg_cron** (ya instalado) | Scheduler del refresco de señales + clustering, y (opción B) del digest | Añadir 1–2 jobs: `senal-actualidad-refresh` (intradía, p.ej. cada 3–6 h L–V) y opcionalmente `digest-diario`. ≤8 jobs concurrentes, ≤10 min/job — el refresco es un agregado sobre datos ya en DB, sub-segundo. |
-| **GitHub Actions cron** (ya en uso) | Alternativa/host del digest diario (Node + `resend`) | Si el digest requiere lógica TS compleja o llamar Resend con retry/observabilidad, correrlo en Actions (ya hay el patrón de crons semanales). GH Actions NO tiene el límite de 10ms CPU de Workers ni los 100/día de invocaciones. |
+| **Ollama** | Local inference for the golden-set benchmark spike (SEED-001 step 1) | `ollama pull granite4:micro-h`; `ollama pull phi4-mini`. OpenAI-compat at `http://localhost:11434/v1`. Free, repeatable, no rate limits — ideal for running per-task golden sets many times. |
+| **OpenRouter model pages** | Verify per-model structured-output + tool support at run time | OpenRouter auto-selects extraction strategy (jsonSchema → functionCalling → jsonMode fallback) and support **varies by underlying provider** — check the model page's capability flags before relying on `response_format: json_schema`. |
 
 ## Installation
 
 ```bash
-# Frontend / Route Handlers (ya existe @supabase/supabase-js)
-pnpm add resend                      # SDK email (digest + fallback)
-# (opcional, solo si se hace web push)
-pnpm add pushforge                   # VAPID web push, Workers-compatible
+# NO new packages. The openai SDK is already a dependency of @obs/llm.
+# import OpenAI from "npm:openai@5";  // Deno edge — unchanged
 
-# Postgres (SQL, una vez) — pg_cron ya instalado; solo nuevos jobs + tablas
-#   create table senal_actualidad (...);            -- tabla plana precomputada
-#   create table usuario_perfil (...);              -- RLS: auth.uid()=id
-#   create table suscripcion (...);                 -- RLS: auth.uid()=user_id
-#   create table notificacion_pendiente (...);      -- cola de digest (tabla, no broker)
-#   select cron.schedule('senal-actualidad', '0 */4 * * 1-5', $$ call refrescar_senales() $$);
+# Local benchmark rig (SEED-001 spike):
+#   ollama pull granite4:micro-h    # IBM Granite-4.0-H-Micro (hybrid, 3B)
+#   ollama pull phi4-mini           # Microsoft Phi-4-mini-instruct (3.84B)
+#   # OpenAI-compat: http://localhost:11434/v1
 
-# Supabase Dashboard (acción de operador, no código):
-#   - Auth > Providers > Email: enable Email OTP / Magic Link
-#   - Auth > SMTP: Custom SMTP = Resend (host smtp.resend.com, credenciales de Resend)
-#   - Settings > API Keys: crear publishable key (sb_publishable_…) — NO reactivar anon legacy
+# .env additions (mirror the existing DEEPSEEK_*/MINIMAX_* pattern):
+#   OPENROUTER_API_KEY=...
+#   GRANITE_MODEL=ibm-granite/granite-4.0-h-micro
+#   GRANITE_BASE_URL=https://openrouter.ai/api/v1
+#   PHI_MODEL=microsoft/phi-4-mini-instruct
+#   PHI_BASE_URL=https://openrouter.ai/api/v1
 ```
+
+## Integration into the existing `LLMProvider` layer
+
+The layer (`packages/llm/src/{types,config,router}.ts` + `providers/{deepseek,minimax}.ts`) already models exactly what SEED-001 needs. Concretely:
+
+1. **`config.ts` — add two `ProviderConfig` entries** (swappable by env, literal defaults; keep `trainsOnInputs` NOT env-configurable — that compliance invariant is deliberate):
+   ```
+   granite: { model: env.GRANITE_MODEL ?? "ibm-granite/granite-4.0-h-micro",
+              baseURL: env.GRANITE_BASE_URL ?? "https://openrouter.ai/api/v1",
+              trainsOnInputs: false }   // verify host DPA before setting false
+   phi:     { model: env.PHI_MODEL ?? "microsoft/phi-4-mini-instruct",
+              baseURL: env.PHI_BASE_URL ?? "https://openrouter.ai/api/v1",
+              trainsOnInputs: false }
+   ```
+   ⚠️ **`trainsOnInputs` is a legal gate, not a convenience flag.** Confirm the chosen host's data-use/DPA (OpenRouter forwards to underlying providers; Ollama local = trivially false) before hardcoding `false`. The fail-closed router (`selectProvider`) refuses any personal-data route to a `trainsOnInputs:true` provider. If Phi (as judge) ever sees personal data from an adjudication output, its host MUST be non-training.
+
+2. **Adapters — reuse, don't reinvent.** Both new models support OpenAI tool-calling, so the **`MiniMaxProvider` shape is the correct template** (forced single-function `emit_result` via `tool_choice`, tool_call matched by NAME not position, external `parseAndValidate` + repair loop). Two options:
+   - **Minimal:** a single generic `OpenAICompatToolCallingProvider(id, model, baseURL)` parameterized by id — Granite and Phi both instantiate it. DeepSeek keeps its `json_object` adapter.
+   - **Explicit:** `GraniteProvider` + `PhiProvider` cloned from `MiniMaxProvider` with different `id`/defaults. Prefer this if per-model prompt tuning diverges.
+
+3. **`types.ts` `Criticality` needs extension.** Today it's `"critical" | "bulk"` (a 2-tier ladder). SEED-001's respond→validate→escalate is a **finer ladder** — expect to add tiers (e.g. `"triage" | "classify" | "judge"`) or a separate `task`/`stage` axis so the router maps task→rung. This is the one type-level change; keep it additive and keep the fail-closed sensitivity gate intact for every new rung.
+
+4. **respond→validate→escalate is orchestration ABOVE the providers**, not inside them. Each adapter stays a dumb `complete()`. The escalation selector is a NEW module (e.g. `packages/llm/src/escalate.ts`) that: calls the small model → runs the Phi judge (`complete()` with a verdict schema like `{ verdict: "pass"|"fail", reason: string }`) → on fail, re-routes to a larger model (DeepSeek/MiniMax) by criticality. The existing `selectProvider` + registry is the substrate; the ladder logic sits on top. The judge verdict is itself a structured output → same zod gate.
+
+## Structured-output strategy per host+model (the load-bearing table)
+
+| Host | Model | Strategy | Quirk / rule |
+|------|-------|----------|--------------|
+| OpenRouter | Granite-4.0-H-Micro | **Tool-calling forced** (`tool_choice` single function), like MiniMax | Granite is fine-tuned for OpenAI-schema tool calling → reliable. `response_format: json_schema` may pass through, but support is provider-dependent → prefer tool-calling + zod gate. |
+| OpenRouter | Phi-4-mini-instruct | **Tool-calling forced** + strict zod gate + repair loop | Phi **documented to hallucinate function names/URLs** → match tool_call by name (the existing `MiniMaxProvider` already does `find(c => c.function.name === TOOL_NAME)`), never by position; missing/renamed call = invalid → repair. |
+| DeepInfra | either | Tool-calling (OpenAI-compat) | Same; verify model is live in catalog first. |
+| Ollama (local) | either | Tool-calling OR `format: "json"` | `/v1` is a partial OpenAI surface — **do not rely on `response_format: json_schema`**. Use native tool-calling or Ollama's `format:json`; external zod gate mandatory. Don't trust its tool-fidelity/latency as representative of the hosted endpoint. |
+
+**LOCKED (unchanged from CLAUDE.md):** never assume `response_format: json_schema` universal. For Granite/Phi the safe path is tool-calling (or prompt-forced JSON) + zod per provider + repair loop.
 
 ## Alternatives Considered
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| Tabla `senal_actualidad` precomputada por pg_cron | **Materialized view + `REFRESH CONCURRENTLY`** | Si la señal fuera UNA sola query determinista y no necesitaras dedup/orden/etiqueta cruzada. `CONCURRENTLY` exige unique index y recomputa todo; para señales multi-fuente la tabla + `TRUNCATE/UPSERT` en txn es más simple y evita el lock del refresh no-concurrente. |
-| Tabla `senal_actualidad` precomputada | **SQL agregado directo en cada request** | Solo si las señales fueran triviales y de bajo costo. En la landing (primera pantalla, mucho tráfico) precomputar evita recalcular agregados por visita y da latencia estable bajo service_role. |
-| k-means SQL con seed fija (determinista) | **Agrupación por vecindad HNSW** (kNN transitivo / componentes conexas sobre umbral de similitud) | Si prefieres clusters "orgánicos" sin fijar k. Riesgo: menos determinista y clusters de tamaño desigual. k-means con seed fija es reproducible y explicable — mejor para un producto que exige trazabilidad. |
-| Etiqueta = moda de materia/comisión (factual) | **Label por LLM** (DeepSeek/MiniMax) | Solo si materia/comisión no discriminan bien el cluster Y con eval propio + guardrail anti-editorial + validación humana. Contradice la regla rectora si se usa por defecto → evitar en v10.0. |
-| Resend (email) | **Supabase Auth interno SMTP** | NUNCA en producción para volumen: 2 auth-emails/hora. Solo dev. |
-| Resend | **Amazon SES / Postmark / SendGrid** | SES si superas 3.000/mes de forma sostenida (más barato a escala, más setup). Postmark si necesitas mejor deliverability transaccional pagada. Para el arranque, Resend free basta. |
-| Digest desde **GH Actions cron** | **pg_cron + pg_net → Edge Function** | Si quieres el digest 100% dentro de Supabase sin CI. Válido; pero GH Actions ya es el patrón de crons del repo y no tiene límites de CPU/tiempo de Edge — menos fricción reutilizar el mismo host. |
-| Email (canal primario) | **Web push (pushforge/VAPID)** | Si el operador prioriza alertas instantáneas y hay apetito por Service Worker + CSP-tuning. Diferir a un milestone posterior. |
+| OpenRouter (one key, both models) | DeepInfra | High volume where OpenRouter markup matters AND the exact model is confirmed live in DeepInfra's catalog. Pure `baseURL` swap. |
+| OpenRouter | IBM watsonx (Granite) / Azure Foundry (Phi) first-party | Need first-party SLAs, ISO-42001 provenance for the legal dossier (watsonx/Granite), or an existing enterprise Azure contract. Costs the clean `baseURL`+bearer adapter shape (Azure especially). |
+| Ollama for the benchmark spike | Rented GPU / hosted eval | Only if local hardware can't fit 3–4B models (it can) or you need production-representative latency — then benchmark directly against OpenRouter. |
+| Granite-4.0-**H**-Micro (hybrid) | Granite-4.0-Micro (dense) | If a host only offers the dense variant or the hybrid Mamba path shows tool-calling quirks in benchmark. Dense = `ibm-granite/granite-4.0-micro`; same 3B/128K/Apache-2.0, higher memory, no Mamba latency edge. |
+| Reuse `MiniMaxProvider` tool-calling shape | Bespoke JSON-mode adapters per model | Only if a host lacks tool-calling for that model (none of the recommended ones do). |
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| **Reactivar la anon key legacy** para leer tablas de suscripción | Resucitar la anon reabre superficie en TODO el esquema (RLS histórica no diseñada para anon); rompe el lockdown Camino A | **Publishable key nueva** (`sb_publishable_`) + RLS `to authenticated` SOLO en `suscripcion`/`usuario_perfil`; resto del esquema intacto |
-| **service_role para escribir suscripciones desde el navegador** | service_role bypassa RLS → un cliente hostil podría suscribir/leer de otros usuarios; repo público = sujetos hostiles | **RLS real** con la publishable key: policies `auth.uid() = user_id`; o Route Handler server-side que valida la sesión y escribe con service_role tras `auth.getUser()` |
-| **`response_format`/LLM para etiquetar clusters por defecto** | Editorializa; riesgo "máquina de sospechas" (riesgo existencial #2 del PROJECT) | Etiqueta factual = moda de materia/comisión (dato de fuente) |
-| **Materialized view con `REFRESH` no-concurrente en tabla que la landing lee** | Toma `ACCESS EXCLUSIVE` lock → la landing se bloquea durante el refresh | Tabla precomputada con `TRUNCATE`+`INSERT`/UPSERT en una txn, o matview + `CONCURRENTLY` (con unique index) |
-| **Web push como canal primario en v10.0** | Service Worker + VAPID + `connect-src`/`worker-src` en la CSP enforced (deploy `09f1d5c2`) + gestión de suscripciones caducadas = superficie nueva sin payoff inmediato | Email vía Resend primero; push como fase futura opcional |
-| **BullMQ/Redis o cualquier broker para el digest** | Infra extra que contradice "todo en Supabase/CF/GH" | Tabla `notificacion_pendiente` como cola + cron que la drena (o pgmq si ya está instalado) |
-| **Enviar el correo del usuario al LLM o loguearlo en claro en repo público** | El email es PII real bajo **Ley 21.719** (vigencia plena 2026-12-01) → dato personal, no "fuente pública" | Email vive solo en `auth.users` (Supabase) + `usuario_perfil`; nunca en logs de CI, nunca al LLM, nunca en R2 crudo |
-| **Cloudflare Workers Cron para el digest pesado** | Free plan = 10 ms CPU/invocación + 100k req/día + sin retries automáticos | GH Actions (sin límite de CPU) o pg_cron+Edge |
+| **Any new SDK** (`@ibm/watsonx`, `@azure/ai-inference`, LangChain, litellm, etc.) | Violates the LOCKED stack rule — one `openai@5` SDK, multi-provider by `baseURL`. Both new models are OpenAI-compatible on every recommended host. Adds surface, breaks the uniform adapter shape. | `npm:openai@5` + `baseURL`, existing adapter pattern. |
+| **Assuming `response_format: json_schema` works on Granite/Phi endpoints** | Support is provider-dependent on OpenRouter/DeepInfra; Ollama's `/v1` doesn't fully implement it. Silent schema drift breaks downstream. | Tool-calling forced (`tool_choice`) + external zod gate + repair loop (existing MiniMax pattern). |
+| **Trusting Phi-4-mini tool calls by position / without validation** | Phi is documented to hallucinate function names/URLs in tool-calling. | Match tool_call by exact name (already done in `MiniMaxProvider`); invalid → repair → fail-closed. |
+| **Azure AI Foundry for this project's key discipline** | Azure needs deployment names + Azure-specific auth, not plain `apiKey`+`baseURL`; breaks `.env` + adapter uniformity. Also pricier (~$0.22 blended vs $0.08 OpenRouter). | OpenRouter (`microsoft/phi-4-mini-instruct`). |
+| **Hard-depending on Together/DeepInfra having the small model** | Small-model availability on these hosts is churny (DeepInfra retired a Phi multimodal variant for low usage). | OpenRouter primary; verify Together/DeepInfra catalog at run time before any swap. |
+| **Degrading identity adjudication to Granite/Phi** | SEED-001 + operator rule: adjudication NEVER degrades; Phi is a *second-opinion judge only*, quality-first. | Keep MiniMax for adjudication; Phi as a validator rung that can only *escalate*, never replace. |
+| **Setting `trainsOnInputs:false` without checking the host DPA** | It's a legal fail-closed gate (Ley 21.719). A wrong `false` could route personal data to a training tier. | Verify each host's data-use/DPA; Ollama-local is trivially non-training; keep the router gate mandatory for every new rung. |
 
 ## Stack Patterns by Variant
 
-**Si el operador quiere el modelo de seguridad más simple y auditable (RECOMENDADO):**
-- Toda escritura/lectura de suscripción pasa por **Route Handlers server-side**: `supabase.auth.getUser()` valida la sesión (cookie), y el handler escribe con service_role tras filtrar por `user.id`.
-- Porque mantiene UN solo cliente privilegiado, no expone ninguna llave nueva al navegador, y el boundary es el mismo patrón "cada superficie valida" del PROJECT (Key Decision v9.0: cada RPC enhebra la aguja). RLS queda como defensa en profundidad, no como único muro.
+**If the benchmark spike runs locally (SEED-001 step 1):**
+- Use Ollama (`granite4:micro-h`, `phi4-mini`) at `http://localhost:11434/v1` with the same `openai@5` client.
+- Because it's free and repeatable across per-task golden sets — measure *quality* only; re-measure latency/cost against OpenRouter before integrating.
 
-**Si el operador quiere lecturas reactivas directas desde el cliente (realtime de "mis suscripciones"):**
-- Emitir **publishable key** + RLS `auth.uid() = user_id` estricta SOLO en `suscripcion`/`usuario_perfil` (+ `revoke all` al resto para el rol `authenticated`).
-- Porque habilita el cliente Supabase en el navegador con privilegio bajo real, sin resucitar la anon. Requiere `connect-src 'self' + *.supabase.co` en la CSP (ya está para el proyecto).
+**If a host only exposes the dense Granite variant:**
+- Swap `GRANITE_MODEL=ibm-granite/granite-4.0-micro` (dense) via env — zero code change.
+- Because config swappability is already built in; the dense variant is the same license/context, just without the Mamba latency edge.
 
-**Si el volumen de digest supera 100 emails/día:**
-- Agrupar en **digest diario batched** (1 email por usuario con N novedades) y/o subir a Resend pago ($20/mes, 50k) o Amazon SES.
-- Porque el free tier tope real es 100/día, no 3.000/mes; el digest batched mantiene 1 email/usuario/día → 100 usuarios activos caben en free.
+**If cost dominates at volume after launch:**
+- Swap `GRANITE_BASE_URL`/`PHI_BASE_URL` to DeepInfra (`https://api.deepinfra.com/v1/openai`) after confirming the model IDs are live.
+- Because it's the cheapest blended provider and a pure `baseURL` swap; keep OpenRouter as fallback.
+
+**If a rung handles personal data (e.g. Phi judging an adjudication output with personal fields):**
+- Its host MUST be non-training (or run Ollama-local); the fail-closed router refuses otherwise.
+- Because `trainsOnInputs` is a compliance boundary, not a tuning knob.
 
 ## Version Compatibility
 
 | Package A | Compatible With | Notes |
 |-----------|-----------------|-------|
-| `resend` 4.x | Node 18+ (GH Actions) / Fetch (Workers, Edge) | SDK usa fetch; funciona server-side en ambos hosts. Nunca desde el navegador (expone API key). |
-| Supabase publishable key | RLS policies existentes | Comportamiento idéntico a anon legacy en permisos; convive con service_role sin afectarlo. Legacy anon/service_role válidas hasta que se desactiven manualmente (retiro fin 2026). |
-| Custom SMTP (Resend) | Supabase Auth (GoTrue) | Sube el límite de auth-emails de 2/h (interno) a 30 nuevos usuarios/h (custom SMTP default, configurable). |
-| pushforge | Cloudflare Workers / Deno / Node | Zero-dep, TS-first; si se adopta push. Requiere VAPID keypair en secrets. |
-| k-means SQL / kmeans PGXN | pgvector 0.8.x `vector`/`halfvec` | Opera sobre columnas `vector(768)` ya existentes; `<=>` (cosine) como distancia — consistente con cómo se generaron los embeddings Gemini. |
-| pg_cron (nuevos jobs) | pg_net (ya instalado) | Solo se necesita pg_net si el cron invoca una Edge Function; si el refresco es SQL puro (`call refrescar_senales()`), no. |
+| `openai@5` (SDK) | OpenRouter / DeepInfra / Ollama `/v1` | All OpenAI-compatible via `baseURL`; tool-calling shape identical to existing MiniMax adapter. Runs in Deno 2.x edge. |
+| `granite-4.0-h-micro` | OpenAI function-calling schema | Fine-tuned for tool calling; returns tool_calls in OpenAI shape. Apache 2.0, 128K–131K ctx, 3B, hybrid Mamba2/attn. |
+| `phi-4-mini-instruct` | OpenAI function-calling schema | Function calling supported; MIT, 128K–131K ctx, 3.84B. Watch tool-name hallucination. |
+| Ollama `/v1` | `openai@5` | Partial OpenAI surface — JSON-schema/logprobs/streaming edge cases differ; use tool-calling or `format:json`. |
+| `zodToToolSchema` (in-repo) | Granite/Phi tool `parameters` | Reuse as-is; single source of truth for the forced-function schema. |
 
 ## Sources
 
-- [Resend — account quotas and limits](https://resend.com/docs/knowledge-base/account-quotas-and-limits) / [New Free Tier](https://resend.com/blog/new-free-tier) — free 3.000/mes, 100/día, 1 dominio, logs 30d — **HIGH**
-- [Supabase — Understanding API keys](https://supabase.com/docs/guides/getting-started/api-keys) / [Migrating to publishable and secret keys](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys) / [Discussion #40300](https://github.com/orgs/supabase/discussions/40300) — publishable = privilegio bajo (RLS respetada), legacy retiro fin 2026, proyectos nuevos ya sin anon/service_role legacy — **HIGH**
-- [Supabase — Custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp) / [Going into prod checklist](https://supabase.com/docs/guides/deployment/going-into-prod) — SMTP interno 2 auth-emails/h no apto prod; custom SMTP obligatorio; Resend/SES/Postmark soportados — **HIGH**
-- [kmeans PGXN extension](https://pgxn.org/dist/kmeans/doc/kmeans.html) / [pgvector production 2026](https://devstarsj.github.io/2026/06/22/pgvector-postgres-vector-database-production-2026/) / [Encore — you probably don't need a vector DB](https://encore.dev/blog/you-probably-dont-need-a-vector-database) — k-means como window function en PG; pgvector < 10M vectores = simple/rápido; clusters semánticos emergen de embeddings — **MEDIUM/HIGH**
-- [PostgreSQL — materialized views with concurrent refresh](https://www.postgresql.org/about/featurematrix/detail/materialized-views-with-concurrent-refresh) / [Stormatics — matviews when caching makes sense](https://stormatics.tech/blogs/postgresql-materialized-views-when-caching-your-query-results-makes-sense) — `CONCURRENTLY` requiere unique index + recomputa todo; refresh no-concurrente toma lock; pg_cron cadencia — **HIGH**
-- [PushForge (GitHub)](https://github.com/draphy/pushforge) / [Cloudflare Agents — push notifications](https://developers.cloudflare.com/agents/guides/push-notifications/) — VAPID web push zero-dep en Workers/Deno; Push API soporte universal 2026 — **MEDIUM**
-- [Cloudflare Workers Cron Triggers limits 2026 (Runhooks)](https://runhooks.app/blog/cloudflare-workers-cron-triggers-limits/) / [Crontap](https://crontap.com/blog/cloudflare-workers-cron-minute-limit) — free 5 crons, 100k req/día, 10ms CPU, sin retries — **MEDIUM/HIGH**
+- [IBM Granite-4.0-Micro — Hugging Face](https://huggingface.co/ibm-granite/granite-4.0-micro) — 3B, Apache 2.0, 128K ctx, tool calling, dense vs H(hybrid 4 attn/36 Mamba2) distinction — HIGH
+- [Granite 4.0 language models — GitHub (ibm-granite)](https://github.com/ibm-granite/granite-4.0-language-models) / [IBM Granite docs](https://www.ibm.com/granite/docs/models/granite) — Apache 2.0, ISO 42001, tool-calling via OpenAI schema, `<tool_call>` tags — HIGH
+- [Granite 4.0 Micro — OpenRouter](https://openrouter.ai/ibm-granite/granite-4.0-h-micro) — model ID `ibm-granite/granite-4.0-h-micro`, 131K ctx, ~$0.017/$0.112, "fine-tuned for long context tool calling" — HIGH (ID/spec), MEDIUM (price drift)
+- [microsoft/Phi-4-mini-instruct — Hugging Face](https://huggingface.co/microsoft/Phi-4-mini-instruct) / [license: mit (raw README)](https://huggingface.co/microsoft/Phi-4-mini-instruct/raw/4665bce29c0e7cab6a0f8fd003355308fe61f9c8/README.md) — MIT, 3.84B, 128K ctx, function calling supported, documented function-name/URL hallucination — HIGH
+- [Phi 4 Mini Instruct — OpenRouter](https://openrouter.ai/microsoft/phi-4-mini-instruct) — model ID `microsoft/phi-4-mini-instruct`, 131K ctx, ~$0.08/$0.35, released Oct 2025 — HIGH (ID/spec), MEDIUM (price)
+- [Phi-4 providers — Artificial Analysis](https://artificialanalysis.ai/models/phi-4/providers) — DeepInfra cheapest blended (~$0.09), Azure ~$0.22 — MEDIUM
+- [OpenRouter Structured Outputs docs](https://openrouter.ai/docs/guides/features/structured-outputs) — jsonSchema→functionCalling→jsonMode auto-selection; enforcement varies by provider — HIGH
+- [Ollama: phi4-mini](https://ollama.com/library/phi4-mini) / [granite4:micro-h](https://ollama.com/library/granite4:micro-h) — local pull tags, OpenAI-compat `/v1` (partial surface) — HIGH
+- [Run Granite/Phi locally — IBM Developer](https://developer.ibm.com/tutorials/awb-local-ai-copilot-ibm-granite-code-ollama-continue/) — `ollama pull granite4:*`, `http://localhost:11434/v1`, partial OpenAI surface caveat — MEDIUM
+- In-repo: `packages/llm/src/{types,config,router}.ts` + `providers/{deepseek,minimax}.ts` — the exact integration target (LLMProvider, baseURL config, tool-calling shape, external zod gate) — HIGH
 
 ---
-*Stack research for: v10.0 panel de actualidad + notificaciones (adiciones al sobre existente Supabase/Cloudflare/GH Actions)*
-*Researched: 2026-07-23*
+*Stack research for: v11.0 tiered LLM layer (Granite-4.0-H-Micro + Phi-4-mini-instruct as new rungs)*
+*Researched: 2026-07-26*
+*Prior milestone stack archived at STACK-v10.md*

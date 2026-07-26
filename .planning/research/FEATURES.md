@@ -1,223 +1,162 @@
 # Feature Research
 
-**Domain:** Panel de actualidad legislativa (landing cuantitativa) + notificaciones por suscripción — producto cívico chileno (Observatorio del Congreso 360, v10.0)
-**Researched:** 2026-07-23
-**Confidence:** HIGH (comparables verificados en fuente; señales mapeadas a schema real del repo)
+**Domain:** Tiered LLM architecture (cascade / model-routing / LLM-as-judge) for a civic-data extraction+classification platform
+**Researched:** 2026-07-26
+**Confidence:** HIGH (Granite/Phi benchmarks from official model cards + peer-reviewed judge study; cascade/judge patterns from FrugalGPT + multiple production sources)
+
+> **Scope note:** This file covers ONLY the new capability from SEED-001 — per-task model tiering with quality-parity gates over the existing `LLMProvider` layer. It does NOT re-cover the extraction/adjudication/embedding features already built. The operator rule is LOCKED: **"ante la duda, SIEMPRE calidad"** — tiering optimizes latency/cost ONLY where the benchmark proves quality parity on that task's golden set. Every recommendation below is filtered through that rule.
 
 ---
 
-## Contexto rector (LOCKED — filtra TODA señal)
+## Task Taxonomy for Tiering (which tasks are safe for small models)
 
-Cada señal del panel debe ser **100% derivable de dato objetivo con fuente+fecha+enlace** y **JAMÁS insinuar intención, causalidad ni anomalía valorativa** (riesgo existencial #2 = "máquina de sospechas"). Una señal factual sobre *timing* ("presentado un viernes a las 19:00", "sin movimiento 400 días") es permisible **solo si se presenta como conteo/fecha neutra**; en cuanto el copy sugiere que el timing fue *deliberado* o *sospechoso*, se convierte en anti-feature. El linter de texto anti-insinuante ya existe en el proyecto y debe cubrir el panel.
+Industry evidence is remarkably consistent on WHICH tasks small (~3B) models handle at parity, and which they do NOT. This drives the whole architecture.
 
-**Dos audiencias, mismo dato, distinta densidad:**
-- **Ciudadano/prensa general:** "qué pasó esta semana en el Congreso" — pocas señales, lenguaje claro, titulares navegables.
-- **Tramitador/periodista/asesor:** "mi primera pantalla del día" — densidad, velocity, filtros por comisión/tema, suscripción granular.
+| Task type | Small-model safety | Evidence | Recommendation for this project |
+|-----------|-------------------|----------|--------------------------------|
+| **Routing / triage** (which pipeline, which model, yes/no gate) | SAFE | "classification tasks, yes/no questions, structured extraction, and summarisation are almost always fine on small models" (leanlm/truefoundry consensus). A sub-ms static rule beats a learned router at the front door. | Granite-4.0-H-Micro candidate; but **prefer static rules first** where the routing signal is a known field (source type, boletín present, PDF vs XML). Model routing only where the signal is genuinely semantic. |
+| **Classification** (theme/sector labeling, señal typing) | SAFE-with-golden-set | Granite-4.0-H-Micro: IFEval 84.3% avg, MMLU 67.4% — "strong generalist... summarization, classification, extraction". Classification is the canonical small-model win. | Granite candidate. GATE: needs a per-task golden set (theme/sector labels) with a quality-parity threshold vs DeepSeek before flipping. Spanish caveat below. |
+| **Judging / validation** (was the small model's output good enough?) | SAFE-as-second-opinion, NOT-as-authority | Phi-4-mini's ancestor (Phi-3.5, 3.8B → Flow-Judge-v0.1) reached parity with much larger judges on held-out + OOD binary classification (HaluEval/Covid-QA style). But the 14B Phi-4 judge still beat the 3.8B, and "grounding and alignment remain essential." | Phi-4-mini candidate as the **validate** step (binary/Likert "is this extraction faithful / is this label plausible"). NEVER as the sole authority on a critical output. Identity adjudication is explicitly OUT (see anti-features). |
+| **Extraction** (idea matriz literal, agenda tables from PDF) | RISKY on ~3B — keep DeepSeek | 3B models "achieve near-zero schema accuracy via direct prompting"; Llama-3.2-3B "zero tool attempts across 9 scenarios." Extraction with strict schema + fidelity is exactly where small models fail. | KEEP DeepSeek for `packages/fichas` extraction and agenda-table extraction. This is where the seed says "DeepSeek SOLO donde luce." Do not tier this without a golden set proving parity (unlikely at 3B). |
+| **Identity adjudication** (MiniMax, golden 1263, CI ≥0.95) | DO NOT TOUCH | Riesgo existencial #1 (PROJECT.md): a false match = false-but-credible claim. | LOCKED. Phi may only be a **second opinion** layered ON TOP; the primary decision never degrades. |
 
----
-
-## Hallazgos de comparables (empírico)
-
-| Producto | Qué muestra en home/panel | Granularidad de suscripción | Digest vs instantáneo |
-|----------|---------------------------|-----------------------------|-----------------------|
-| **GovTrack** (US) | "Coming Up" (agendados esta semana), "Trending" (bills con más interés), Roll Call Votes recientes, bills en las noticias, "Track all legislative activity" (feed de introducción/acción mayor) | bill · legislator (nuevos bills + votos) · **subject/keyword** · committee · toda actividad · **tracker lists** (listas propias) | Email + RSS; feeds por lista |
-| **LegiScan** (US, 50 estados) | **"National Trends"** = bill activity de las **últimas 72h medido por interés público + actividad**; hot bills; monitor list; mapas | full-text saved search · bill monitor list con **Topic/Client labels** propios | Email **de semanal a diario**; alerta cuando bill monitoreado tiene hearing/cambio, y cuando saved search matchea nuevo/enmendado |
-| **Congress.gov** (LoC) | Saved-search alerts; bill alerts granulares | measure · nomination · treaty · **Member** · committee · saved search — y por bill puedes elegir **qué campos** rastrear (cosponsors, actions, amendments, committees, summary, subject) | Email; **consolidación** de varias saved-searches en 1 email opcional |
-| **TheyWorkForYou** (UK, mySociety) | (home = transcripciones + actividad) | **keyword/frase exacta** (con OR/comillas) · **persona específica (tu MP) al hablar** | **1 email/día** batcheado (chequeo diario automatizado); preference center para suspender/reanudar/borrar |
-| **openparliament.ca** | Debates recientes + **"word of the day"** (término más discutido, **LLM-generado, con disclaimer de posibles fabricaciones**), bills por etapa, votos recientes; búsqueda/filtro de bills/votes/MPs/debates/committees; **RSS de todo** | alertas por interés que matchean; RSS por MP y por contenido | Email "cada vez que pasa algo que matchea"; RSS |
-| **senado.cl** (oficial CL) | **Editorial-first**: "Noticias" (titulares redactados), "Actividad legislativa" (Sala/Comisiones), "Lo que está pasando", "Interés ciudadano". NO es panel cuantitativo. | — (sin suscripción granular pública) | — |
-| **camara.cl** (oficial CL) | "Destacados", "Actividad Legislativa", "Sesiones de Sala", **"Últimos Proyectos Ingresados"** (señal factual real), "Diputada/o", Leyes y Normas | — | — |
-
-**Lecturas rectoras:**
-1. El estándar de clase mundial es **velocity + agenda + trending + nuevos ingresos**, con suscripción a **bill · legislator · keyword · committee** y **listas/labels propias del usuario**. Congress.gov añade granularidad de *qué campo del bill* rastrear.
-2. El modelo de notificación dominante para cívico es **digest diario batcheado** (TheyWorkForYou), no instantáneo — encaja con nuestros crons diarios y evita alert-fatigue (unsubscribe se quintuplica >5 emails/semana).
-3. Los portales chilenos oficiales son **editoriales/redactados**, no cuantitativos — ahí está el hueco que v10.0 llena. camara.cl ya valida "Últimos Proyectos Ingresados" como señal esperada; senado.cl no da nada factual-agregado.
-4. openparliament demuestra el **riesgo**: su "word of the day"/resúmenes LLM llevan disclaimer de "total fabrications". Para nosotros eso es anti-feature salvo clustering estrictamente factual con label oficial.
-
----
-
-## Datos ya en el sistema (base de mapeo de señales)
-
-| Tabla / columna | Contenido | Frescura |
-|-----------------|-----------|----------|
-| `tramitacion_evento(boletin, fecha, camara, tipo, descripcion)`, `tipo ∈ {tramite, urgencia, informe, oficio, votacion}` | **El reloj real del movimiento**: cada trámite/urgencia/informe con su fecha | cron leyes-weekly (semanal hoy) |
-| `proyecto(boletin, titulo, iniciativa, camara_origen, autores[], materia, estado, etapa, subetapa, fecha_captura, enlace)` | Ficha base. **`materia` = taxonomía oficial factual**. **`iniciativa` = Mensaje/Moción** (Ejecutivo vs parlamentario). **NO hay `fecha_ingreso`** — solo `fecha_captura` (cuándo scrapeamos) | 3.657 proyectos (2022-2026) |
-| `citacion`, `citacion_punto(boletin)`, `sesion_sala`, `sesion_tabla_item(boletin)` | **Agenda**: citaciones de comisión + tabla de sala, ligadas a boletín | cron agenda-weekly |
-| `votacion(boletin, fecha, etapa, resultado…)`, `voto` | Votaciones registradas | — |
-| `proyecto_ficha` + embeddings pgvector 768-dim (HNSW) | Idea matriz + vectores → **clustering temático factual disponible sin costo nuevo** | 84,6% cobertura |
-| `cruce_senal`, lobby, `citacion_punto`→PL | Cruces factuales existentes | gated donde aplica |
-
-**Consecuencia dura para el roadmap:** el reloj de "cuándo entró/se movió un proyecto" es `tramitacion_evento.fecha`, **no** una fecha de ingreso en `proyecto`. Toda señal temporal ("nuevos ingresos", "revividos", "presentado viernes tarde") depende de tener `tramitacion_evento` poblado con la fecha del **primer trámite** (o de ingerir `fecha_ingreso` explícito). Hoy `tramitacion_evento` existe pero su **cobertura/frescura debe auditarse en el SPIKE** antes de prometer cualquier señal de velocity — ese es el gate de datos que el operador pide "antes que frontend".
+**Key taxonomy insight:** the safe tasks (routing, classification, judging) are *reasoning/decision* tasks with small output spaces. The risky task (extraction) is a *strict-structured-generation* task. Tier the former, protect the latter.
 
 ---
 
 ## Feature Landscape
 
-### Table Stakes (el panel se siente incompleto sin esto)
+### Table Stakes (a serious tiered-LLM system is expected to have these)
 
-| Feature | Por qué se espera | Complejidad | Dato fuente concreto |
-|---------|-------------------|-------------|----------------------|
-| **Nuevos ingresos** (proyectos ingresados en ventana N días) | camara.cl ya lo destaca ("Últimos Proyectos Ingresados"); es la señal #1 esperada | MEDIUM | `tramitacion_evento` primer evento por boletín, **o** ingerir `fecha_ingreso` (dato nuevo). **NO computable fielmente hoy con `proyecto.fecha_captura`** (fecha de scrape ≠ ingreso) → **requiere SPIKE/ingesta** |
-| **Movimiento reciente / velocity** (proyectos con más trámites en ventana temporal) | GovTrack "Trending", LegiScan "National Trends 72h" — estándar de clase mundial | MEDIUM | `count(tramitacion_evento) where fecha in [ventana]` group by boletín. **Computable HOY** si `tramitacion_evento` tiene frescura; **requiere cron más frecuente** para ser "de hoy" |
-| **Agenda: qué se vota/cita próximamente** | GovTrack "Coming Up"; ya tenemos /agenda | LOW | `citacion.fecha`, `sesion_sala.fecha`, `sesion_tabla_item` (futuro). **Computable HOY** (agenda ya ingerida) |
-| **Urgencias vivas del Ejecutivo** (proyectos con urgencia vigente esta semana) | Señal factual de "el Ejecutivo está apurando esto"; ya hay token 3-estados en la ficha | MEDIUM | `tramitacion_evento where tipo='urgencia'` + estado urgencia 3-estados ya modelado. **Computable HOY** si el evento urgencia se ingiere; agregación nueva |
-| **Leyes recién publicadas** (normas promulgadas en ventana) | GovTrack/openparliament cierran el ciclo "de proyecto a ley"; el ciudadano quiere ver el resultado | MEDIUM | **Requiere ingesta nueva**: BCN "últimas leyes publicadas" (portada_ulp, últimos 12 meses) o Cámara `leyes_promulgadas.aspx` / Senado "leyes publicadas". No hay endpoint XML de recency directo — `obtxml opt=6` es por categoría estática, no por fecha. Scrapear la portada ULP o la tabla Cámara |
-| **Agrupación por tema/materia** (proyectos con movimiento agrupados por materia oficial) | LegiScan Topic labels; el usuario piensa por tema, no por boletín | MEDIUM | `proyecto.materia` (**taxonomía oficial BCN/comisión = label factual, reusable directo**). **Computable HOY**. Clustering por embeddings como capa secundaria opcional |
-| **Trazabilidad por señal** (cada dato del panel con fuente+fecha+enlace) | Principio rector del proyecto; sin esto el panel no puede existir | LOW | `origen`/`fecha_captura`/`enlace` ya inline en cada tabla |
-| **Suscripción a un proyecto** (novedades de un boletín) | GovTrack/Congress.gov/LegiScan lo tienen todos | MEDIUM-HIGH | `tramitacion_evento` diff por boletín. **Requiere auth + RLS + tabla de suscripción + email** (primer dato de usuario) |
-| **Suscripción a un parlamentario** (nuevos proyectos que presenta, cómo vota) | GovTrack "track legislators", Congress.gov "Member" | MEDIUM-HIGH | `proyecto.autores[]` + `voto`; misma infra de auth/email |
-| **Digest por email** (diario o semanal, batcheado) | TheyWorkForYou modelo dominante cívico; encaja con crons | MEDIUM | Cron que arma digest desde diffs; doble opt-in + unsubscribe en footer (legal + deliverability) |
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Per-task golden set + parity gate before any tier flip** | The project's LOCKED method (golden 32, golden 1263 as CI precedent). Without it, tiering is a quality gamble. | MEDIUM | Depends on: building 4 new golden sets (routing, classification, judge, extraction). Reuse the golden-32 / golden-1263 harness pattern. The gate is a hard CI gate, not a dashboard. |
+| **Eval harness measuring quality + latency + cost + structured-output validity** | A spike that measures only accuracy is useless for a latency/cost decision; a spike that ignores schema-failure rate hides the 3B failure mode. | MEDIUM | Must record: task accuracy (vs golden), p50/p95 latency, cost/1k calls, and **zod-validation failure rate** (retries + malformed JSON). The last one is the small-model killer per the 3B evidence. |
+| **`baseURL`-swap over existing `LLMProvider`** | The seed's whole thesis: "encaja sin re-arquitectura." Granite/Phi/DeepSeek all expose OpenAI-compatible endpoints. | LOW | Reuse `packages/llm` openai-SDK multi-baseURL. Per CLAUDE.md: NEVER assume `response_format: json_schema` — tool-calling or prompt-forced + **zod per provider** applies to Granite/Phi too. |
+| **respond → validate → escalate cascade** | The canonical FrugalGPT pattern; the operator designed exactly this. Cheap model responds, judge validates, selector escalates on fail. | MEDIUM | FrugalGPT reports 50–98% cost savings at same quality. But quality is bounded by the routing/validation signal — see the miscalibration pitfall. |
+| **Escalation on validation-fail (not just confidence)** | Raw token-confidence from small models is "typically miscalibrated" (UCCI, cascade-scoring papers). A judge-model verdict is a stronger signal than self-reported confidence. | MEDIUM | Prefer judge-based escalation (Phi validates) over self-confidence thresholds. Fail-open UP the ladder (escalate on doubt), never fail-down. |
+| **Separation of generation and evaluation models** | "self-evaluation should be avoided in production" — a model judging its own output inflates 5–7% (self-enhancement bias). | LOW | Granite responds → Phi (different family) judges. Different family is itself a bias-mitigation per the judge literature. Do NOT let the same model be responder and judge. |
+| **Deterministic judge (low temperature)** | Reproducible gates require deterministic evaluation. | LOW | temp≈0 for the validate step so the gate result is stable across CI runs. |
 
-### Differentiators (ventaja competitiva, alineados al Core Value)
+### Differentiators (align with the project's Core Value + LOCKED quality rule)
 
-| Feature | Propuesta de valor | Complejidad | Dato fuente concreto |
-|---------|--------------------|-------------|----------------------|
-| **Panel unificado bicameral** (Cámara + Senado en una pantalla) | Ningún portal oficial chileno cruza ambas cámaras en un panel de actualidad; los oficiales son mono-cámara y editoriales | MEDIUM | `tramitacion_evento.camara` + `citacion` ambas cámaras — ya bicameral en el modelo |
-| **"Proyectos revividos"** (sin movimiento largo → trámite nuevo) | Señal factual valiosa para prensa: "esto estaba dormido y volvió"; nadie más la ofrece | MEDIUM | gap entre penúltimo y último `tramitacion_evento.fecha` por boletín > umbral. Presentar como **fecha neutra** ("último movimiento previo: hace 412 días"), JAMÁS "revivido sospechosamente". Requiere `tramitacion_evento` con historia completa |
-| **Comisiones más activas de la semana** | Tramitador quiere saber dónde está el trabajo real; factual puro | LOW-MEDIUM | `count(citacion)` group by comisión en ventana + `tramitacion_evento` por etapa/comisión. **Computable HOY** (agenda) |
-| **Clustering temático factual sobre materia + embeddings** | Agrupar "lo que se mueve" por tema legible sin categoría editorial; los embeddings YA existen | MEDIUM-HIGH | `proyecto.materia` como label primario (oficial) + pgvector para agrupar los que comparten idea matriz. **Label debe ser la materia oficial**, nunca un tema inventado por LLM |
-| **Suscripción por keyword/materia** (no solo bill/persona) | TheyWorkForYou keyword + LegiScan Topic; potente para asesores temáticos | HIGH | FTS `websearch_to_tsquery` (ya existe RRF) + `proyecto.materia`; matchear diffs contra el término suscrito |
-| **Suscripción por comisión** | Tramitador sigue "su" comisión entera | MEDIUM | `citacion`/`tramitacion_evento` filtrado por comisión |
-| **Ventana "hoy / esta semana" con tz Chile explícita** | Gotcha ya conocido del proyecto (date-only UTC = día chileno); hacerlo bien es diferenciador de confianza | LOW | Reusar la lógica tz de /agenda ya resuelta |
-| **RSS/feeds además de email** | GovTrack y openparliament lo dan; barato, sirve a power-users y evita fricción de auth | LOW-MEDIUM | Render de los mismos diffs a Atom/RSS server-side |
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Quality-parity-ONLY tiering (never cost-first)** | Inverts the industry default. Most cascade work optimizes cost; here cost/latency is a *side-effect* of proven parity. Directly encodes "ante la duda, SIEMPRE calidad." | MEDIUM | The gate says: flip to small model ONLY if parity_delta ≤ ε on the task golden set. Otherwise DeepSeek/MiniMax stays. This is the differentiator vs generic FrugalGPT. |
+| **Gradual per-product rollout starting at lowest-risk task** | De-risks: prove the pattern on theme-classification or routing (reversible, non-legal) before touching anything user-facing or legal. | LOW | Seed says exactly this. Suggested order: routing → classification (señal/tema) → judge-as-second-opinion → (extraction stays DeepSeek). |
+| **Judge-as-second-opinion on critical outputs (never as gate-flip)** | Adds a cheap quality signal to identity/extraction WITHOUT degrading them — pure upside, no risk to the LOCKED subsystems. | MEDIUM | Phi flags "this MiniMax adjudication looks weak → route to human review" — it *raises* the human-review rate, never lowers the primary model's authority. |
+| **Provenance of model choice per record** | Consistent with the project's trazabilidad rule: store which model produced each derived value + model version. | LOW-MEDIUM | Extends the existing `embedding_model`/`embedding_version` per-row pattern to LLM-derived fields. Enables re-processing when a tier changes and audit of which model made which call. |
+| **Static-rule router before learned router** | Cheaper, faster, auditable, no extra failure mode. A static rule is "sub-ms noise against a 500ms generation." | LOW | Where the routing key is a known field, a `switch` beats an LLM. Keep the model-router only for genuinely semantic routing decisions. |
 
-### Anti-Features (parecen buenas, editorializan o rompen el principio rector)
+### Anti-Features (seem good, create problems — DO NOT build)
 
-| Feature | Por qué se pide | Por qué es problemático | Alternativa |
-|---------|-----------------|-------------------------|-------------|
-| **"Presentado a último momento / anomalías de timing"** como señal destacada | El brief lo menciona; suena revelador | En cuanto se rotula "a último momento", "viernes tarde", "pre-receso" con framing de sospecha → **insinúa intención deliberada** = máquina de sospechas (riesgo existencial #2). Un viernes tarde puede ser rutina | Mostrar **solo la fecha/hora factual neutra** dentro de la ficha ("ingresado vie 18/07 19:14"), **sin** módulo de panel que lo destaque como anomalía ni ranking de "sospechosos". El usuario saca su conclusión |
-| **Resúmenes/"word of the day" generados por LLM** | openparliament lo hace; da narrativa | openparliament mismo advierte "inaccuracies or total fabrications" → un resumen alucinado con la marca del Observatorio destruye la credibilidad y viola trazabilidad | Titulares = **texto oficial literal** (título del proyecto, materia oficial). Clustering factual por materia/embedding, sin prosa generada |
-| **Ranking de "urgencia" que ordene parlamentarios/proyectos por juicio** | Parece útil priorizar | Un score compuesto = afirmación editorial; el proyecto prohíbe scores de correlación (ya LOCKED en cruces) | Conteos factuales ordenables por el usuario (más trámites, más reciente), nunca un "índice" propietario |
-| **Notificaciones instantáneas / real-time push** | "Enterarme al segundo" | Alert-fatigue (unsubscribe 5x >5 emails/sem); nuestros datos llegan por cron, no en tiempo real → "instantáneo" sería una promesa falsa | **Digest diario batcheado** (modelo TheyWorkForYou), con opción semanal en preference center |
-| **Feed público de "toda la actividad" sin auth pero con datos de usuario** | Simplicidad | El primer dato de usuario exige auth+RLS real (anon está muerta, sitio corre service_role) — mezclar suscripciones en superficie anon reabre el boundary de seguridad | Panel de actualidad = **público sin auth** (solo datos oficiales agregados); suscripciones = **detrás de auth con RLS deny-by-default** |
-| **Sentiment / clasificación de "polémico" o "importante"** | Editorializa lo relevante | Juicio de valor no derivable de dato objetivo | "Con más movimiento" / "más citaciones" — factual, deja el juicio al lector |
-| **Trending por vistas del propio sitio** | GovTrack usa "public interest" | Requiere analytics de usuarios y sesga hacia lo ya popular; frágil y no factual-legislativo | Trending = **actividad legislativa objetiva** (conteo de trámites en ventana), no popularidad de clicks |
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **Learned/ML router as the primary routing mechanism** | "Intelligent routing" sounds sophisticated; papers show 85% savings. | Adds a trained artifact to maintain + retrain, a new miscalibration failure mode, and non-determinism, for a routing problem that is mostly a known-field `switch` here. Overkill for "well-defined, predictable use cases" (which this is). | Static rules on known fields (source, boletín-present, task type); reserve model-classification routing for the few genuinely semantic splits, gated by a golden set. |
+| **Per-request dynamic pricing/cost optimization** | Squeeze every cent per call. | Introduces non-determinism into which model runs (breaks reproducibility of the golden-set gate), and micro-optimizes a cost that free tiers already cover (MiniMax 45k/wk free, Gemini free). Contradicts "SIEMPRE calidad." | Static per-task model assignment decided once by the benchmark; re-benchmark on model-version change, not per request. |
+| **Self-confidence-threshold escalation as the only signal** | Simplest to implement (just read logprobs). | Small-model confidence is "typically miscalibrated" (UCCI + cascade-scoring papers) — the escalation trigger would be noise. | Judge-model verdict (Phi) as the escalation signal; self-confidence only as a coarse cheap pre-filter, never the sole gate. |
+| **Small model (~3B) doing strict-schema extraction to save cost** | It's the biggest DeepSeek consumer; tempting target. | 3B models hit "near-zero schema accuracy via direct prompting" / "zero tool attempts." Would silently corrupt idea-matriz fidelity — a Core-Value violation. | KEEP DeepSeek for extraction. If ever revisited, requires constrained decoding + a golden fidelity gate proving parity (improbable at 3B). |
+| **Small model replacing MiniMax on identity adjudication** | Latency/cost win on a hot path. | Riesgo existencial #1. A degraded adjudicator = false-but-credible claims. The golden-1263 ≥0.95 gate exists precisely to prevent this. | Phi ONLY as an additive second opinion that can *escalate to human*, never as a replacement or a downgrade. LOCKED. |
+| **Fine-tuning a small model to fix its structured-output weakness** | SLOT paper shows 1B → 88.9% schema accuracy after SFT. | Adds a training/data pipeline, a fine-tuned artifact to host and version, and drifts from "capa enchufable OpenAI-compat." Out of scope for a swap-by-baseURL milestone. | Prompt-forced + zod + retry-with-bigger-model (the cascade already handles the failure). Fine-tuning is a future consideration, not this milestone. |
+| **Ensemble/majority-vote judging (3–5 models) everywhere** | Reduces judge bias 30–40%. | Costs 3–5x; the judge literature says "reserve for high-stakes decisions only." Applying it to every classification defeats the tiering purpose. | Single different-family judge (Phi) for routine validation; reserve ensemble only if a specific high-stakes gate demands it. |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[Panel de actualidad público]
-    └──requires──> [Auditoría de frescura/cobertura de tramitacion_evento]  (SPIKE, gate de datos)
-                       └──requires──> [Cron más frecuente que semanal]  (para "hoy")
+[4 per-task golden sets]  (routing, classification, judge, extraction-parity)
+        └──requires──> [eval harness: quality + latency + cost + zod-fail-rate]
+                              └──requires──> [existing LLMProvider baseURL swap]
+                                                   └──requires──> [zod-per-provider validation (existing)]
 
-[Nuevos ingresos] ──requires──> [fecha de ingreso real]
-    (tramitacion_evento primer evento  O  ingesta de fecha_ingreso)   ← NO existe en proyecto hoy
+[Parity gate (CI)]  ──requires──> [4 per-task golden sets]
+        └── precedent ── [golden 32 (búsqueda)] + [golden 1263 (identidad)]
 
-[Movimiento/velocity] ──requires──> [tramitacion_evento fresco]
-[Proyectos revividos] ──requires──> [tramitacion_evento con HISTORIA completa por boletín]
-[Urgencias vivas] ──requires──> [tramitacion_evento tipo=urgencia + estado 3-estados]
-[Leyes recién publicadas] ──requires──> [ingesta nueva BCN portada_ulp / Cámara leyes_promulgadas]
-[Agrupación por tema] ──uses──> [proyecto.materia (oficial)] ──enhanced-by──> [embeddings pgvector (ya existen)]
+[respond→validate→escalate cascade]
+        └──requires──> [separation of generation + judge models]
+        └──requires──> [judge-based escalation signal]  ──conflicts──> [self-confidence-only escalation]
 
-[Suscripciones a proyecto/parlamentario]
-    └──requires──> [Auth + RLS real (deny-by-default)]   ← primer dato de usuario del sistema
-                       └──requires──> [tabla suscripcion + email provider + doble opt-in]
-                              └──requires──> [motor de diff por boletín/autor]
-                                     └──requires──> [digest cron batcheado]
+[Gradual per-product rollout]  ──requires──> [Parity gate passing on the lowest-risk task first]
 
-[Suscripción por keyword] ──requires──> [FTS websearch_to_tsquery (ya existe, RRF)]
-[Suscripción por comisión] ──requires──> [tramitacion_evento/citacion por comisión]
-
-[Benchmark UX senado.cl/camara.cl] ──informs──> [diseño del panel]  (empírico BrowserOS, milestone frontend)
+[Judge-as-second-opinion on identity]  ──enhances──> [existing MiniMax adjudication]
+        (additive only; MUST NOT degrade the golden-1263 ≥0.95 gate)
 ```
 
-### Notas de dependencia
+### Dependency Notes
 
-- **El SPIKE de datos gatea TODO el panel:** el operador pidió "QUÉ antes que CÓMO". La pregunta empírica #1 es *¿tiene `tramitacion_evento` la frescura y cobertura para sostener velocity/nuevos ingresos/revividos?* Si no, la primera obra es ingesta (fecha de ingreso + cron más frecuente), no frontend.
-- **`proyecto` no tiene `fecha_ingreso`:** cualquier señal de "nuevo" hoy usaría `fecha_captura` (fecha de scrape), que es **incorrecto** — un backfill masivo capturó proyectos viejos con `fecha_captura` reciente. Esto haría un panel mentiroso. Resolver en el SPIKE.
-- **Suscripciones = subsistema de seguridad, no un feature UI:** es el primer dato de usuario. Auth + RLS deny-by-default es parte del alcance, no un add-on. Bajo Camino A (service_role bypassa RLS), el diseño debe aislar datos de usuario en un boundary con RLS real, no en el mismo plano service_role del sitio público.
-- **Digest depende de motor de diff:** para notificar hay que comparar el estado de ayer vs hoy por boletín/autor — requiere snapshot o log de cambios (`tramitacion_evento` ya es append-only, sirve como log).
+- **Everything depends on the eval harness + golden sets.** The spike (SEED-001 item 1) is the true first deliverable; the cascade (item 2) cannot be flipped for any task until that task's parity gate passes. This mirrors v9.0's "golden set congelado ANTES del schema" ordering.
+- **The harness must measure zod-validation-failure-rate as a first-class metric,** not just accuracy. The 3B structured-output evidence means a small model can be "accurate when it works" but fail schema often — that failure rate IS the latency/cost story (retries + escalations erase the savings). A spike that omits it will over-recommend small models.
+- **Judge model must be a different family from the responder** (Granite responds → Phi judges) — this is both an architecture requirement and a bias-mitigation per the judge literature.
+- **Identity adjudication is an enhance-only edge:** Phi layers on top of MiniMax; the dependency is one-directional and non-degrading. Any change to the primary path is out of scope.
 
 ---
 
 ## MVP Definition
 
-### Launch With (v10.0 core)
+### Launch With (the spike + first safe integration)
 
-**Etapa datos (SPIKE primero — gate del operador):**
-- [ ] Auditoría empírica de `tramitacion_evento`: frescura, cobertura, ¿sirve para velocity? ¿hay primer-evento fiable por boletín? — **decide qué señales son honestas**
-- [ ] Decisión de ingesta: ¿`fecha_ingreso` explícito? ¿cron diario/más frecuente? (repo público, GH Actions OK)
+- [ ] **Eval harness** measuring quality (vs golden) + p50/p95 latency + cost/1k + zod-fail-rate, over `LLMProvider` baseURL swap — essential; it IS the empirical basis the project requires.
+- [ ] **Per-task golden sets** for at least: routing, classification, judge — essential; the gate has nothing to measure otherwise. (Extraction golden = parity-check that likely KEEPS DeepSeek.)
+- [ ] **Parity gate as hard CI check** (parity_delta ≤ ε per task) — essential; encodes "SIEMPRE calidad."
+- [ ] **One lowest-risk integration** (classification of theme/señal OR a semantic routing split) behind the gate — essential to validate the pattern end-to-end on something reversible and non-legal.
 
-**Panel público (frontend, tras el SPIKE):**
-- [ ] **Movimiento reciente** (velocity, ventana semana) — computable si el SPIKE valida frescura; señal ancla del panel
-- [ ] **Agenda próxima** (votaciones/citaciones) — ya ingerido, bajo costo, alto valor "coming up"
-- [ ] **Urgencias vivas del Ejecutivo** — factual, diferenciador, token 3-estados ya existe
-- [ ] **Agrupación por materia oficial** — `proyecto.materia`, label factual reusable directo
-- [ ] **Nuevos ingresos** — condicionado a resolver la fecha de ingreso en el SPIKE
-- [ ] **Trazabilidad por señal** (fuente+fecha+enlace) — no negociable
-- [ ] **Ventana hoy/semana tz Chile** — reusar lógica /agenda
+### Add After Validation (next tier of integration)
 
-### Add After Validation (v10.x)
+- [ ] **respond→validate→escalate cascade** wired for the validated task — trigger: parity gate green on the first task.
+- [ ] **Judge-as-second-opinion on extraction fidelity** (Phi flags weak DeepSeek extractions for review) — trigger: judge golden set shows Phi correlates with fidelity failures.
+- [ ] **Provenance-of-model-choice per derived record** — trigger: more than one task tiered, so audit/re-processing matters.
 
-- [ ] **Leyes recién publicadas** (ingesta BCN portada_ulp / Cámara leyes_promulgadas) — cierra el ciclo, requiere conector nuevo → segunda ola
-- [ ] **Proyectos revividos** — requiere historia completa de `tramitacion_evento`; alto valor prensa, presentar neutro
-- [ ] **Comisiones más activas** — barato una vez el panel existe
-- [ ] **Suscripciones a proyecto + parlamentario** con **digest diario** — el bloque de auth/RLS/email; construir "lo defendible" tras validar el panel público
-- [ ] **RSS/Atom feeds** de las mismas señales
+### Future Consideration (defer)
 
-### Future Consideration (v11+)
-
-- [ ] **Suscripción por keyword/materia y por comisión** — potente para asesores, pero exige el motor de matching sobre diffs maduro
-- [ ] **Congress.gov-style: elegir qué campo del proyecto rastrear** (solo urgencias, solo votos) — granularidad fina, tras validar demanda
-- [ ] **Preference center** completo (frecuencia diaria/semanal, pausar/reanudar) — cuando haya volumen de suscriptores
-- [ ] **Clustering por embeddings como vista temática secundaria** — cuando la materia oficial se quede corta
-
----
+- [ ] **Judge-as-second-opinion on identity adjudication** — defer: touches the most critical subsystem; only after the pattern is proven elsewhere and with explicit "additive-only" guards. Never a replacement.
+- [ ] **Learned/semantic router** — defer until static rules demonstrably can't express a needed routing split.
+- [ ] **Fine-tuning a small model for structured output** — defer indefinitely; contradicts the plug-in, benchmark-swap thesis.
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Priority | Audiencia |
-|---------|------------|---------------------|----------|-----------|
-| SPIKE frescura/cobertura tramitacion_evento | HIGH (gatea todo) | LOW-MEDIUM | **P1** | interno |
-| Movimiento/velocity semanal | HIGH | MEDIUM | **P1** | tramitador + ciudadano |
-| Agenda próxima (coming up) | HIGH | LOW | **P1** | ambos |
-| Urgencias vivas del Ejecutivo | HIGH | MEDIUM | **P1** | tramitador + prensa |
-| Agrupación por materia oficial | HIGH | MEDIUM | **P1** | ambos |
-| Nuevos ingresos | HIGH | MEDIUM (depende fecha_ingreso) | **P1** (condicional) | ambos |
-| Trazabilidad por señal | HIGH (rector) | LOW | **P1** | ambos |
-| Leyes recién publicadas | MEDIUM-HIGH | MEDIUM (ingesta nueva) | **P2** | ciudadano |
-| Comisiones más activas | MEDIUM | LOW-MEDIUM | **P2** | tramitador |
-| Proyectos revividos | MEDIUM-HIGH (prensa) | MEDIUM | **P2** | periodista |
-| Suscripción proyecto/parlamentario + digest | HIGH | HIGH (auth+RLS+email) | **P2** | ambos |
-| RSS/Atom feeds | MEDIUM | LOW-MEDIUM | **P2** | power-user |
-| Suscripción keyword/materia/comisión | HIGH (asesor) | HIGH | **P3** | tramitador/asesor |
-| Preference center avanzado | MEDIUM | MEDIUM | **P3** | suscriptores |
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| Eval harness (quality/latency/cost/zod-fail) | HIGH | MEDIUM | P1 |
+| Per-task golden sets (routing/class/judge) | HIGH | MEDIUM | P1 |
+| Parity gate (CI, hard) | HIGH | LOW | P1 |
+| Static-rule router (known-field splits) | MEDIUM | LOW | P1 |
+| respond→validate→escalate cascade | MEDIUM | MEDIUM | P2 |
+| Judge-as-second-opinion (extraction) | MEDIUM | MEDIUM | P2 |
+| Provenance of model choice per record | MEDIUM | LOW | P2 |
+| Judge-as-second-opinion (identity) | LOW-but-sensitive | MEDIUM | P3 |
+| Learned/semantic router | LOW | HIGH | P3 |
+| Small-model fine-tuning | LOW | HIGH | P3 (avoid) |
 
-**Clave:** P1 = imprescindible v10.0 · P2 = segunda ola misma milestone / v10.x · P3 = futuro.
+## Known Quality Profiles of the Candidate Small Models
 
----
+| Model | Params / Arch | Strengths (evidence) | Weaknesses / risks for THIS project | Best role |
+|-------|---------------|----------------------|-------------------------------------|-----------|
+| **Granite-4.0-H-Micro** | ~3B, hybrid Mamba-2/transformer; ~70% less memory, ~2x faster inference | IFEval 84.3% avg (Instruct-strict 86.9%), MMLU 67.4%, GSM8K 81.4%, HumanEval 81%. Explicitly targeted at "summarization, classification, extraction, function-calling." Supports Spanish. | BFCL tool-calling only **57.6%** → strict-schema/tool-call reliability is a real risk (matches the 3B structured-output evidence). Model card: multilingual "might not be similar to English"; recommends few-shot. | Routing + classification (small output space), few-shot prompted, zod-guarded. NOT strict-schema extraction. |
+| **Phi-4-mini-instruct** | 3.8B dense | Ancestor (Phi-3.5→Flow-Judge-v0.1, 3.8B) reached parity with larger judges on binary hallucination/QA classification (HaluEval ~0.88, Covid-QA ~0.90 for the 14B; the 3.8B judge line is competitive). ~92% on long-answer judging with a strong meta-judge. Strong multilingual reasoning for its size. | The 14B Phi-4 judge still **beats** the 3.8B → a small judge is "good enough for routine validation," not authoritative on hard cases. Judge biases (position ~40%, verbosity ~15%, self-enhancement 5–7%) still apply → mitigate with A/B order swap + 1–4 scale + different family. | The **validate/judge** step (binary/Likert faithfulness & plausibility). Second opinion, not authority. |
+| **DeepSeek V4 (incumbent)** | large, prompt-cache | Proven on extraction (fichas, golden-gated) + agenda tables. `json_object` mode (not strict schema) — already handled by zod. | Cost/latency at volume (the reason for the seed). | KEEP for strict-schema extraction; the tier that small models must BEAT on a golden set to displace (they likely won't for extraction). |
+| **MiniMax M3 (incumbent)** | large, tool-calling structured output | Identity adjudication, golden-1263 ≥0.95 CI gate. | — | LOCKED for identity. Phi may only add a second opinion on top. |
 
-## Competitor Feature Analysis
-
-| Feature | GovTrack | LegiScan | TheyWorkForYou | Congress.gov | Nuestro enfoque |
-|---------|----------|----------|----------------|--------------|-----------------|
-| Panel "qué pasa ahora" | Coming Up + Trending + votos | National Trends 72h | debates+word-of-day | (search-céntrico) | **Velocity + agenda + urgencias + materia, bicameral, factual** |
-| Trending | interés público (clicks) | actividad 72h | — | — | **Actividad legislativa objetiva** (conteo trámites), no clicks |
-| Nuevos ingresos | feed de introducción | monitor | — | alerts | Sí, **si el SPIKE resuelve fecha de ingreso** |
-| Agrupación temática | subject areas | Topic labels propios | keyword | subject | **Materia oficial BCN** (factual) + embeddings opcional |
-| Suscripción granular | bill/legislator/subject/committee/lista | bill/topic/full-text | keyword/persona | measure/member/committee/campo | proyecto/parlamentario → luego keyword/comisión |
-| Modelo notificación | email+RSS | email semanal→diario | **1 email/día batcheado** | email consolidable | **Digest diario batcheado + doble opt-in + RSS** |
-| Resúmenes LLM | no | no | no | no | **NO** (anti-feature; solo texto oficial literal) |
-| Timing "anómalo" | no | no | no | no | **NO como señal destacada** (solo fecha neutra en ficha) |
-
----
+**Cross-cutting risk for both small models: Spanish.** Both model cards flag multilingual < English. This project is 100% Spanish (Congreso de Chile). The golden sets MUST be Spanish, and few-shot Spanish exemplars are likely required. A spike that benchmarks on English would over-estimate parity.
 
 ## Sources
 
-- [GovTrack — home + how-to-use](https://www.govtrack.us/how-to-use) — módulos Coming Up/Trending/votos, granularidad bill/legislator/subject/committee/tracker-lists — HIGH (home HTML inspeccionado directo)
-- [GovTrack — Track All Legislative Activity](https://www.govtrack.us/events/bill-activity) — feed de introducción/acción mayor — HIGH
-- [LegiScan — features](https://legiscan.com/features) / [National Trends](https://legiscan.com/trends) / [monitor](https://legiscan.com/gaits/monitor) — "National Trends = bill activity últimas 72h por interés público + actividad"; Topic labels; email semanal→diario — MEDIUM-HIGH (search verificado, página 403 a fetch directo)
-- [Congress.gov — About Alerts](https://www.congress.gov/help/alerts) / [Get Alerts](https://www.congress.gov/get-alerts) — granularidad por campo del bill; consolidación de saved-searches — HIGH
-- [TheyWorkForYou — Email Alerts](https://www.theyworkforyou.com/alert/) / [mySociety — keyword alerts](https://www.mysociety.org/2014/07/23/want-to-know-what-your-mp-is-saying-subscribe-to-a-theyworkforyou-alert/) / [improving alerts 2025](https://www.mysociety.org/2025/10/23/improving-theyworkforyou-email-alerts/) — 1 email/día batcheado; keyword/persona; preference center — HIGH
-- [openparliament.ca — Email alerts](https://openparliament.ca/alerts/) / [home](https://openparliament.ca/) — word-of-day LLM con disclaimer de fabricaciones; RSS de todo — MEDIUM (home 403 a fetch, corroborado por search + páginas de debate)
-- [BCN LeyChile — Últimas leyes publicadas (portada_ulp)](https://www.bcn.cl/leychile/Consulta/portada_ulp) — leyes publicadas últimos 12 meses ordenadas por número/fecha; **fuente para "leyes recién publicadas"** (no hay endpoint XML de recency directo; `obtxml opt=6/opt=30` son categorías estáticas, verificado) — MEDIUM
-- [Cámara — Leyes Promulgadas](https://www.camara.cl/legislacion/ProyectosDeLey/leyes_promulgadas.aspx) / [Senado — Leyes publicadas](https://www.senado.cl/actividad-legislativa/informacion-legislativa/leyes-publicadas) — alternativas de ingesta de leyes publicadas — MEDIUM
-- senado.cl / camara.cl homes (HTML inspeccionado directo, UA identificatorio) — oficiales = editorial-first; camara.cl destaca "Últimos Proyectos Ingresados", ambos "Actividad Legislativa"/"Sesiones de Sala" — HIGH
-- Repo `supabase/migrations/0008_tramitacion.sql` + `0010_agenda.sql` — schema real: `tramitacion_evento(tipo urgencia/tramite/…)`, `proyecto.materia`, **sin `fecha_ingreso`**, agenda ligada a boletín — HIGH
-- [Notification best practices — alert fatigue / unsubscribe](https://www.smtp2go.com/blog/15-email-unsubscribe-best-practices/) — digest vs instant, doble opt-in, unsubscribe 5x >5 emails/sem, preference center — MEDIUM
+- [ibm-granite/granite-4.0-h-micro — Hugging Face](https://huggingface.co/ibm-granite/granite-4.0-h-micro) — IFEval 84.3%, BFCL 57.6%, MMLU 67.4%, hybrid Mamba, Spanish support, few-shot rec — HIGH
+- [Granite 4.0 | IBM Granite docs](https://www.ibm.com/granite/docs/models/granite) — hybrid Mamba-2/transformer, ~70% memory / 2x inference, classification/extraction/tool-calling positioning — HIGH
+- [microsoft/Phi-4-mini-instruct — Hugging Face](https://huggingface.co/microsoft/Phi-4-mini-instruct) — 3.8B, synthetic+filtered data, multilingual reasoning — HIGH
+- [Phi-4 as an LLM Evaluator — Flow AI](https://flow-ai.com/blog/phi-4-as-llm-evaluator) — Likert/binary judge benchmarks; 14B > 3.8B; Flow-Judge-v0.1 (Phi-3.5, 3.8B) parity; grounding essential — HIGH
+- [Phi-4-Mini Technical Report — arXiv](https://arxiv.org/html/2503.01743v1) — 92.26% long-answer judging; multilingual reasoning at 3.8B — MEDIUM/HIGH
+- [FrugalGPT — EmergentMind](https://www.emergentmind.com/topics/frugalgpt) — cascade pattern, 50–98% cost savings at same quality, confidence-threshold escalation — HIGH
+- [UCCI: Calibrated Uncertainty for Cost-Optimal LLM Cascade Routing — arXiv](https://arxiv.org/pdf/2605.18796) — LLM confidence miscalibration; cascade bounded by routing signal — MEDIUM
+- [Do Small Language Models Know When They're Wrong? Confidence-Based Cascade Scoring — arXiv](https://arxiv.org/pdf/2604.19781) — small-model confidence miscalibration in cascades — MEDIUM
+- [LLM Model Routing — leanlm.ai](https://leanlm.ai/blog/llm-model-routing) — "classification, yes/no, extraction, summarisation almost always fine on small models"; static vs learned router — MEDIUM
+- [Intelligent LLM Routing — TrueFoundry](https://www.truefoundry.com/blog/llm-routing-cost-quality-aware-model-selection) — static rules for well-defined use cases; sub-ms rule vs semantic overhead — MEDIUM
+- [LLM-as-a-judge complete guide — Evidently AI](https://www.evidentlyai.com/llm-guide/llm-as-a-judge) — separate generation/eval models, no self-eval, low temp, bias mitigation — HIGH
+- [Exploring LLM-as-a-Judge — Weights & Biases](https://wandb.ai/site/articles/exploring-llm-as-a-judge/) — position/verbosity/self-enhancement bias %s, ensemble reserve-for-high-stakes — MEDIUM
+- [When Correct Isn't Usable: Structured Output Reliability in Small LMs — arXiv](https://arxiv.org/pdf/2605.02363) — 3B near-zero schema accuracy via direct prompting; mitigation stack — HIGH
+- [Why Small LLMs Fail at Tool Calling: Llama 3B Benchmark — DEV](https://dev.to/anak_wannaphaschaiyong_11/why-small-llms-fail-at-tool-calling-the-shocking-discovery-from-our-llama-3b-benchmark-5lg) — Llama-3.2-3B zero tool attempts across 9 scenarios — MEDIUM
+- [SLOT: Structuring the Output of LLMs — arXiv](https://arxiv.org/html/2505.04016v1) — SFT raises 1B to 88.9% schema accuracy (fine-tuning as future-only option) — MEDIUM
 
 ---
-*Feature research for: panel de actualidad legislativa + notificaciones (Observatorio del Congreso 360 v10.0)*
-*Researched: 2026-07-23*
+*Feature research for: tiered LLM cascade / routing / judge layer (SEED-001, milestone v11.0)*
+*Researched: 2026-07-26*
