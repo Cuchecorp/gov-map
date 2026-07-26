@@ -46,6 +46,15 @@ const REPO_ROOT = path.resolve(APP_ROOT, ".."); // monorepo root
 const MIGRATIONS_DIR = path.join(REPO_ROOT, "supabase", "migrations");
 const SUPABASE_TS = path.join(APP_ROOT, "lib", "supabase.ts");
 
+// (Block D/E, Phase 103) El helper service_role DEDICADO de lookup de tokens/suscripciones
+// (`app/lib/notif-service.ts`, creado en Plan 03) es el ÚNICO punto sancionado de acceso
+// service_role a tablas de usuario. La prohibición de `.from('<tabla_de_usuario>')` está
+// SCOPEADA a `app/lib/supabase.ts` (el chokepoint público, espejo de cómo supabase.ts es el
+// chokepoint público de PII); notif-service.ts queda explícitamente tolerado. Si una fase
+// futura ensancha el scan de `.from()` de tablas de usuario al árbol `app/` completo, DEBE
+// saltar esta ruta (mismo idiom que isAdminAllowlisted para PII).
+const NOTIF_SERVICE_TS = path.join(APP_ROOT, "lib", "notif-service.ts");
+
 /** Parse el prefijo numerico de un nombre de archivo de migracion (ej. "0044_foo.sql" -> 44) */
 function migrationNumber(filename: string): number | null {
   const m = /^(\d+)_/.exec(filename);
@@ -143,6 +152,15 @@ const PII_TABLES = [
   "revision_entidad",
 ];
 
+// (Block D/E, Phase 103) Tablas de-usuario allowlisted para el rol `authenticated`.
+// El rol `authenticated` aparece por PRIMERA vez en esta fase (Pitfall 1: el guard
+// anon/public es CIEGO a `to authenticated`). Block D invierte a allowlist POSITIVA:
+// un `grant/create policy … to authenticated` cuya tabla objetivo NO esté aquí es un
+// offender. `suscripcion`/`consentimiento` son las tablas RLS de-usuario (own-row).
+// `notificacion_envio` (cola de envío) NO va aquí: es service_role-only (Block E) —
+// ningún grant a `authenticated` es legítimo sobre ella.
+const USER_OWNED_TABLES = new Set(["suscripcion", "consentimiento"]);
+
 /**
  * Archivos/dirs autorizados a tocar tablas PII directamente: la superficie admin
  * (detras de `adminRevisionEnabled`) y su cliente service-role dedicado. El resto
@@ -225,6 +243,61 @@ function anonGrantOffenders(strippedLowerSql: string): string[] {
   for (const stmt of strippedLowerSql.split(";")) {
     if (!grantToAnon.test(stmt)) continue;
     offenders.push(stmt.trim().replace(/\s+/g, " ").slice(0, 100));
+  }
+  return offenders;
+}
+
+/**
+ * (Block D/E, Phase 103) — Clona `anonGrantOffenders` pero INVIERTE la lógica a una
+ * allowlist POSITIVA para el rol `authenticated` (nuevo en esta fase; el guard anon/public
+ * es ciego a él — Pitfall 1). Una sentencia `grant … to authenticated` O
+ * `create policy … to authenticated` cuya TABLA OBJETIVO no esté en `allowlist`
+ * (USER_OWNED_TABLES) es un offender:
+ *
+ *   - Block D: over-grant a una tabla NO-de-usuario (ej. `to authenticated` sobre `proyecto`).
+ *   - Block E: `notificacion_envio` (cola service_role-only) NUNCA está en la allowlist ⇒
+ *     cualquier grant/policy a `authenticated` sobre ella cae automáticamente como offender.
+ *
+ * Extracción de la tabla objetivo por sentencia:
+ *   - `grant <privs> on [table] public.<tabla> to authenticated` → token tras `on [table] public.`
+ *     (el qualifier `public.` es opcional; `table`/`sequence`/`all tables in schema` no aplican
+ *     al idiom real de estas migraciones, pero el regex tolera `public.` ausente).
+ *   - `create policy <n> on public.<tabla> for … to authenticated …` → token tras `on public.`
+ *     y antes de `for`/`to`/`as`/`using`/`with`.
+ *
+ * Recibe el SQL YA con comentarios stripeados y en minúscula (mismo contrato que
+ * `anonGrantOffenders`) — `stripSqlComments` elimina `-- grant … to authenticated` antes del
+ * scan, así que un comentario NO dispara. Por-sentencia (`split(";")`) para reportar el
+ * offender exacto.
+ */
+function authenticatedGrantOffenders(
+  strippedLowerSql: string,
+  allowlist: Set<string>,
+): string[] {
+  const offenders: string[] = [];
+  const grantToAuth =
+    /grant\s+\S[\s\S]*?\bto\s+[\w,\s]*\bauthenticated\b/;
+  const policyToAuth =
+    /create\s+policy\s+[\s\S]*?\bto\s+[\w,\s]*\bauthenticated\b/;
+  // Tabla de un GRANT: token tras `on [table|sequence] [public.]` (qualifier opcional).
+  const grantTable =
+    /\bon\s+(?:table\s+|sequence\s+)?(?:public\.)?([a-z_][\w]*)/;
+  // Tabla de un CREATE POLICY: token tras `on [public.]`, antes de for/to/as/using/with.
+  const policyTable =
+    /create\s+policy\s+[\s\S]*?\bon\s+(?:public\.)?([a-z_][\w]*)/;
+
+  for (const stmt of strippedLowerSql.split(";")) {
+    const isGrant = grantToAuth.test(stmt);
+    const isPolicy = policyToAuth.test(stmt);
+    if (!isGrant && !isPolicy) continue;
+    const m = isPolicy
+      ? policyTable.exec(stmt)
+      : grantTable.exec(stmt);
+    const table = m ? m[1] : null;
+    // Si no logramos extraer la tabla, o la tabla NO está allowlisted → offender.
+    if (!table || !allowlist.has(table)) {
+      offenders.push(stmt.trim().replace(/\s+/g, " ").slice(0, 100));
+    }
   }
   return offenders;
 }
@@ -345,6 +418,153 @@ describe("(A) Guard — ninguna migracion nueva re-expone anon", () => {
       anonGrantOffenders(
         "grant execute on function public.f(text) to service_role;",
       ),
+    ).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (D) Guard — `to authenticated` SOLO sobre tablas de-usuario allowlisted (Phase 103)
+//
+// El rol `authenticated` aparece por PRIMERA vez en esta fase. El guard anon/public (A)
+// es CIEGO a `to authenticated` (Pitfall 1): una migración >0044 podría `grant all on
+// <tabla_no_de_usuario> to authenticated` y pasar CI verde. Block D invierte a allowlist
+// POSITIVA: un `grant/create policy … to authenticated` cuya tabla objetivo NO esté en
+// USER_OWNED_TABLES (suscripcion/consentimiento) es offender. Se escribe RED-first: hoy
+// no hay migración >0068 con `to authenticated`, así que el scan da 0 offenders; MUERDE
+// en cuanto Plan 02 escriba un grant fuera de la allowlist.
+// ---------------------------------------------------------------------------
+
+describe("(D) Guard — `to authenticated` SOLO sobre tablas de-usuario allowlisted (Phase 103)", () => {
+  const LOCKDOWN_CUTOFF = 44;
+
+  const futureMigrations = readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .filter((f) => {
+      const n = migrationNumber(f);
+      return n !== null && n > LOCKDOWN_CUTOFF;
+    })
+    .sort();
+
+  it("USER_OWNED_TABLES contiene EXACTAMENTE suscripcion y consentimiento (NO notificacion_envio)", () => {
+    expect([...USER_OWNED_TABLES].sort()).toEqual(["consentimiento", "suscripcion"]);
+    // Block E: la cola de envío es service_role-only; jamás allowlisted para authenticated.
+    expect(USER_OWNED_TABLES.has("notificacion_envio")).toBe(false);
+  });
+
+  it("ninguna migracion > 0044 concede `authenticated` sobre una tabla fuera de USER_OWNED_TABLES", () => {
+    const offenders: string[] = [];
+    for (const filename of futureMigrations) {
+      const raw = readFileSync(`${MIGRATIONS_DIR}/${filename}`, "utf-8");
+      const stripped = stripSqlComments(raw).toLowerCase();
+      for (const off of authenticatedGrantOffenders(stripped, USER_OWNED_TABLES)) {
+        offenders.push(`${filename}: ${off}`);
+      }
+    }
+    expect(
+      offenders,
+      `Migraciones con GRANT/POLICY a authenticated fuera de la allowlist de tablas-de-usuario ` +
+        `(over-grant al rol authenticated — Pitfall 1): [${offenders.join(", ")}] — ` +
+        `authenticated solo puede tocar suscripcion/consentimiento (own-row RLS); si la tabla ` +
+        `es de-usuario legítima, añádela a USER_OWNED_TABLES.`,
+    ).toHaveLength(0);
+  });
+
+  it("mutation self-check: authenticatedGrantOffenders MUERDE por fixture (proyecto+notificacion_envio) y tolera suscripcion", () => {
+    // Ejercita el detector REAL (mismo objeto de función) sobre SQL en memoria — un no-op
+    // verde es imposible. Espeja el idiom del self-check de Direction-B (parseDefinedRpcNames).
+    const norm = (sql: string) => stripSqlComments(sql).toLowerCase();
+
+    // (a) grant sobre tabla NO-de-usuario → offender (Block D).
+    expect(
+      authenticatedGrantOffenders(
+        norm("grant select on public.proyecto to authenticated;"),
+        USER_OWNED_TABLES,
+      ),
+    ).toHaveLength(1);
+
+    // (b) grant sobre notificacion_envio → offender (Block E: cola service_role-only).
+    expect(
+      authenticatedGrantOffenders(
+        norm("grant insert on public.notificacion_envio to authenticated;"),
+        USER_OWNED_TABLES,
+      ),
+    ).toHaveLength(1);
+
+    // (c) create policy own-row sobre suscripcion → NO offender (allowlisted).
+    expect(
+      authenticatedGrantOffenders(
+        norm(
+          "create policy x on suscripcion for select to authenticated using ((select auth.uid()) = user_id);",
+        ),
+        USER_OWNED_TABLES,
+      ),
+    ).toHaveLength(0);
+
+    // (d) create policy sobre consentimiento → NO offender (allowlisted).
+    expect(
+      authenticatedGrantOffenders(
+        norm(
+          "create policy c on public.consentimiento for insert to authenticated with check ((select auth.uid()) = user_id);",
+        ),
+        USER_OWNED_TABLES,
+      ),
+    ).toHaveLength(0);
+
+    // (e) comentario SQL `-- grant … to authenticated` → 0 offenders (stripSqlComments lo borra).
+    expect(
+      authenticatedGrantOffenders(
+        norm("-- grant select on public.proyecto to authenticated\nselect 1;"),
+        USER_OWNED_TABLES,
+      ),
+    ).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (E) Guard — notificacion_envio: CERO grant a authenticated (cola service_role-only)
+//
+// Cae automáticamente de Block D (notificacion_envio NO está en USER_OWNED_TABLES), pero
+// se afirma EXPLÍCITAMENTE con un fixture nombrado: la cola de envío del digest se drena
+// SOLO por el cron service_role; el rol authenticated no debe tener NINGÚN privilegio
+// sobre ella. Un grant a authenticated en notificacion_envio es siempre offender.
+// ---------------------------------------------------------------------------
+
+describe("(E) Guard — notificacion_envio es service_role-only (CERO grant a authenticated)", () => {
+  it("un `grant … on notificacion_envio to authenticated` es SIEMPRE offender (Block E)", () => {
+    const norm = (sql: string) => stripSqlComments(sql).toLowerCase();
+    for (const priv of ["select", "insert", "update", "delete", "all"]) {
+      expect(
+        authenticatedGrantOffenders(
+          norm(`grant ${priv} on public.notificacion_envio to authenticated;`),
+          USER_OWNED_TABLES,
+        ),
+        `grant ${priv} on notificacion_envio to authenticated debe ser offender`,
+      ).toHaveLength(1);
+    }
+  });
+
+  it("ninguna migracion > 0044 concede authenticated sobre notificacion_envio (scan real)", () => {
+    const offenders: string[] = [];
+    const migs = readdirSync(MIGRATIONS_DIR)
+      .filter((f) => f.endsWith(".sql"))
+      .filter((f) => {
+        const n = migrationNumber(f);
+        return n !== null && n > 44;
+      });
+    const patron =
+      /(?:grant\s+\S[\s\S]*?\bon\s+(?:table\s+)?(?:public\.)?notificacion_envio|create\s+policy\s+[\s\S]*?\bon\s+(?:public\.)?notificacion_envio)[\s\S]*?\bto\s+[\w,\s]*\bauthenticated\b/;
+    for (const filename of migs) {
+      const stripped = stripSqlComments(
+        readFileSync(`${MIGRATIONS_DIR}/${filename}`, "utf-8"),
+      ).toLowerCase();
+      for (const stmt of stripped.split(";")) {
+        if (patron.test(stmt)) offenders.push(`${filename}: ${stmt.trim().slice(0, 80)}`);
+      }
+    }
+    expect(
+      offenders,
+      `notificacion_envio (cola service_role-only) recibe grant/policy a authenticated: ` +
+        `[${offenders.join(", ")}] — la cola se drena SOLO por el cron service_role.`,
     ).toHaveLength(0);
   });
 });
@@ -561,5 +781,55 @@ describe("(B) Guard — el arbol publico (service-role) no toca tablas PII", () 
       if (pattern.test(stripped)) hits.push(col);
     }
     expect(hits, `app/lib/supabase.ts proyecta columnas PII: [${hits.join(", ")}]`).toHaveLength(0);
+  });
+
+  // (Block D/E, Phase 103) — El chokepoint público `app/lib/supabase.ts` NUNCA toca las
+  // tablas de-usuario ni la cola de envío. El acceso service_role a tablas de-usuario vive
+  // SOLO en el helper dedicado `app/lib/notif-service.ts` (Plan 03) — que NO se escanea aquí
+  // (el scan está scopeado a SUPABASE_TS), quedando tolerado por construcción.
+  it("el chokepoint supabase.ts nunca hace .from('suscripcion'|'consentimiento'|'notificacion_envio')", () => {
+    const stripped = stripTsComments(readFileSync(SUPABASE_TS, "utf-8"));
+    const hits: string[] = [];
+    for (const table of ["suscripcion", "consentimiento", "notificacion_envio"]) {
+      const pattern = new RegExp(
+        `\\.from\\(\\s*['"\`]${table}['"\`]\\s*\\)`,
+        "i",
+      );
+      if (pattern.test(stripped)) hits.push(table);
+    }
+    expect(
+      hits,
+      `app/lib/supabase.ts (chokepoint público) accede tablas de-usuario/cola: [${hits.join(", ")}]. ` +
+        `El acceso service_role a suscripcion/consentimiento vive SOLO en app/lib/notif-service.ts (Plan 03); ` +
+        `notificacion_envio es cron-only.`,
+    ).toHaveLength(0);
+  });
+
+  it("ningun archivo del arbol app/ hace .from('notificacion_envio') (cola cron-only, service_role)", () => {
+    const offenders: string[] = [];
+    const pattern = /\.from\(\s*['"`]notificacion_envio['"`]\s*\)/i;
+    for (const file of sourceFiles) {
+      const stripped = stripTsComments(readFileSync(file, "utf-8"));
+      if (pattern.test(stripped)) {
+        const rel = path.relative(APP_ROOT, file).split(path.sep).join("/");
+        offenders.push(rel);
+      }
+    }
+    expect(
+      offenders,
+      `Acceso a la cola notificacion_envio desde app/ (es cron-only, service_role): ` +
+        `[${offenders.join("; ")}]. La cola se drena SOLO desde el CLI del digest (packages/notificaciones).`,
+    ).toHaveLength(0);
+  });
+
+  it("app/lib/notif-service.ts (Plan 03) NO es flaggeado por la prohibición de tablas de-usuario (tolerancia explícita)", () => {
+    // La prohibición de `.from('suscripcion'|'consentimiento')` está SCOPEADA a SUPABASE_TS;
+    // notif-service.ts es el ÚNICO punto service_role sancionado (allowlist NOTIF_SERVICE_TS).
+    // Aunque el archivo aún no exista (lo crea Plan 03), la ruta allowlisted está declarada;
+    // este assert documenta el contrato: si un scan futuro se ensancha a app/, DEBE saltar esta ruta.
+    const rel = path.relative(APP_ROOT, NOTIF_SERVICE_TS).split(path.sep).join("/");
+    expect(rel).toBe("lib/notif-service.ts");
+    // El chokepoint escaneado (SUPABASE_TS) y el helper tolerado (NOTIF_SERVICE_TS) son distintos.
+    expect(NOTIF_SERVICE_TS).not.toBe(SUPABASE_TS);
   });
 });
