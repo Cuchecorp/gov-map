@@ -151,7 +151,11 @@ export function partidoLegible(raw: string | null | undefined): string | null {
   if (s === "") return null;
   // Solo el URI de partido de BCN dispara la derivación; cualquier otro valor
   // (nombre legible de la fuente) pasa verbatim.
-  const m = /^https?:\/\/datos\.bcn\.cl\/.*\/partido-politico\/(.+?)\/?$/.exec(s);
+  // Scheme+host case-INSENSITIVE (RFC 3986): scheme y host son case-insensitive,
+  // así que `HTTP://DATOS.BCN.CL/.../partido-politico/x` DEBE disparar la derivación
+  // igual que el lowercase. Sin la flag `i`, un URI con host en mayúscula caería en
+  // el passthrough (regla 2) y el raw URI se filtraría al DOM (defecto URI-como-partido).
+  const m = /^https?:\/\/datos\.bcn\.cl\/.*\/partido-politico\/(.+?)\/?$/i.exec(s);
   if (!m) return s;
   const slug = m[1];
   return slug

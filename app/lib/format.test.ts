@@ -229,6 +229,16 @@ describe("partidoLegible (saneamiento URI-como-partido, display-only)", () => {
     expect(out!).not.toContain("datos.bcn.cl");
   });
 
+  it("WR-01: URI BCN con scheme/host en MAYÚSCULA también se sanea (case-insensitive)", () => {
+    const out = partidoLegible(
+      "HTTP://DATOS.BCN.CL/recurso/cl/organismo/partido-politico/partido-social-cristiano",
+    );
+    expect(out).toBe("Partido Social Cristiano");
+    // Invariante anti-URI cubre también el casing del host: cero URI en el DOM.
+    expect(out!.toLowerCase()).not.toContain("http");
+    expect(out!.toLowerCase()).not.toContain("datos.bcn.cl");
+  });
+
   it("nombre legible de la fuente pasa VERBATIM (no re-casea un partido real)", () => {
     expect(partidoLegible("Renovación Nacional")).toBe("Renovación Nacional");
     expect(partidoLegible("Partido Comunista de Chile")).toBe(
