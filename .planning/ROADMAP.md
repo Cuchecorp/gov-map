@@ -263,7 +263,7 @@ Plans:
 
 **Wave 4** *(blocked on Waves 1-3)*
 
-- [ ] 103-05-PLAN.md — [BLOCKING] aplicar 0069/0070/0071 a PROD + pgTAP post-apply + dossier legal 21.719 (signoff pre-autorizado) + deploy + flip NOTIF ON (Worker env) + checkpoint operador (NOTIF-01/03/05)
+- [x] 103-05-PLAN.md — [BLOCKING] aplicar 0069/0070/0071 a PROD + pgTAP post-apply + dossier legal 21.719 (signoff pre-autorizado) + deploy + flip NOTIF ON (Worker env) + checkpoint operador (NOTIF-01/03/05)
 
 **Research**: yes (Resend + Custom SMTP + DKIM + encaje `.env`/secrets = MEDIUM; diseño de consentimiento 21.719 merece research legal)
 **UI hint**: yes
@@ -1326,7 +1326,7 @@ Plans:
 | 100. PANEL P1c — Landing panel + benchmark + gate BrowserOS | v10.0 | 4/4 | Complete    | 2026-07-24 |
 | 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 3/3 | Complete    | 2026-07-25 |
 | 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 3/3 | Complete    | 2026-07-25 |
-| 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 4/5 | In Progress|  |
+| 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 5/5 | Complete   | 2026-07-26 |
 | 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 0/? | Not started | - |
 
 ## ✅ v4.0 — De datos a cruces verificables

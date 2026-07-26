@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
-status: executing
+status: verifying
 stopped_at: Completed 103-02-PLAN.md
-last_updated: "2026-07-26T14:41:07.309Z"
+last_updated: "2026-07-26T14:55:16.637Z"
 last_activity: 2026-07-26
 progress:
   total_phases: 8
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 23
-  completed_plans: 22
-  percent: 75
+  completed_plans: 23
+  percent: 88
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 103 (NOTIF P3a — Suscripciones + digest + guards authenticated + gate legal) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-26
 
 ## Performance Metrics
@@ -106,6 +106,7 @@ Last activity: 2026-07-26
 | Phase 103 P103-02 | ~18 min | 3 tasks | 6 files |
 | Phase 103 P103-03 | ~12 min | 3 tasks | 18 files |
 | Phase 103 P103-04 | ~7 min | 3 tasks | 11 files |
+| Phase 103 P103-05 | ~40 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -181,6 +182,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 103-02: primeras tablas user-owned (0069 suscripcion / 0071 consentimiento) RLS to authenticated + (select auth.uid())=user_id; 0070 notificacion_envio service_role-only cola con cursor idempotente ultimo_evento_visto. RULE-2: post-0044 (ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE ALL ON TABLES FROM authenticated) las tablas net-new dan CERO grant base a authenticated -> RLS owner-scoped MUERTA (permission denied) sin grant explicito; anadido grant select,insert,delete suscripcion + select,insert consentimiento (RLS igual aisla; el grant ES el to-authenticated allowlisted que Block D espera). pgTAP 20/20 (6/6/8) en scratch DB que espeja post-0044; lockdown 22/22. Apply PROD = Plan 05.
 - [Phase ?]: [Phase 103] 103-03: user surfaces NOTIF. SUPERFICIES_NOTIF en anti-insinuacion linter ANTES del copy (Wave-0); sin NEGACIONES_LOCKED (niega 'instantáneos', no prohibido). /cuenta OTP (clon spike-auth, WR-01/WR-02) + seguir/dejarDeSeguir con user_id de getClaims().sub SERVER-SIDE (Pitfall 5, RLS with-check backstop) + consentimiento 21.719. token.ts (raw base64url en link, sha256 hex en DB, node:crypto). notif-service.ts = helper service_role DEDICADO separado de supabase.ts (ÚNICO acceso user-table service_role fuera del carril sesión, tolerado por lockdown NOTIF_SERVICE_TS). confirmar/baja login-less noindex (baja one-click). SeguirButton gate-before-render (null si flag OFF = ausente del DOM) en ambas fichas, aria-pressed, petróleo (nunca camara/senado fill). RULE-3: /spike-auth borrado + spike-auth-gate.ts + SPIKE_AUTH_ENABLED .env.example (dead code) + comment middleware→/cuenta; tsc exigió next typegen (.next/types stale). Suite 1401 verde, guards 75/75, tsc 0. Apply PROD 0069-0071 + email confirm = Plan 04/05.
 - [Phase 103] 103-04: patrón EGRESO (@obs/notificaciones) — NO es la ingesta de dos etapas: sin fuente, sin R2 crudo, sin rate-limit 2-3s/host, sin robots.txt; el destinatario es Resend, no un WAF → la regla dos-etapas de CLAUDE.md NO aplica (documentado en digest.ts/resend.ts/run-digest-prod-cli.ts/digest-daily.yml). ÚNICA cota = hard-cap 100/día (código, enforceCap) + redacción PII (redactEmail) en TODO log; email JAMÁS crudo en logs/CI/R2. computeNovedades idempotente por cursor (solo id>cursor; nuevoCursor avanza SOLO en envío exitoso → re-run=0); parlamentario fail-closed (proyecto_autor estado_vinculo='confirmado'; no_confirmado/NULL aportan CERO, T-103-21). Envío = global fetch (NO SDK Resend, CERO paquete nuevo T-103-SC) POST api.resend.com/emails + List-Unsubscribe one-click; sin RESEND_API_KEY ⇒ dry-run; 429 respeta retry-after (reintentable, cursor no avanza). renderDigest = la ÚNICA isla de hex inline sancionada (cada hex→su token). digest-daily.yml GATED (workflow_dispatch only, schedule comentado, mirror roster-weekly) + secret NUEVO RESEND_API_KEY (deuda operador). 22 tests + tsc 0. RULE-3: cast supabase-js client a DbLike para tsc -b. Deuda operador Plan 05: apply 0069-0071 + cargar RESEND_API_KEY + dominio verificado + dry-run verde antes de descomentar schedule.
+- [Phase ?]: 103-05: Fase 103 CERRADA. Dossier 21.719 signoff:approved (pre-autorización operador-abogado VERBATIM 2026-07-26; agente DOCUMENTA, operador AUTORIZA). 0069/0070/0071 APLICADAS a PROD (psql --single-transaction, orden FK 0069->0070->0071) + pgTAP 20/20 (6/6/8) contra schema APLICADO (RLS user-A-no-ve-B en PROD; notificacion_envio cero grant authenticated; anon no select). schema_migrations retomada en 0069 (0059-0068 applies directos sin traza, quedó en 0058). Task 3 = Flag-OFF closure (NOTIF-05): SUPABASE_PUBLISHABLE_KEY y RESEND_API_KEY AUSENTES de .env (actos operador) -> flag OFF, feature PARKED (migraciones inertes, cron dry-run), CERO email capturado; .env.example=false, notif-antiflip 20/20. DEUDA OPERADOR: publishable key + OTP {{.Token}} + dominio Resend+DPA + RESEND_API_KEY, luego wrangler secret put NOTIF_PUBLIC_ENABLED=true + redeploy (sin tocar .env.example).
 
 ### Pending Todos
 
@@ -236,7 +238,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-26T14:40:18.197Z
+Last session: 2026-07-26T14:55:03.777Z
 Stopped at: Completed 103-02-PLAN.md
 Resume file: None
 
