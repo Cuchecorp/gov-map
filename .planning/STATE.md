@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v10.0
 milestone_name: — Panel de actualidad legislativa + notificaciones + relaciones
 status: executing
-stopped_at: Completed 103-02-PLAN.md
-last_updated: "2026-07-26T16:16:15.936Z"
-last_activity: 2026-07-26 -- Phase 104 planning complete
+stopped_at: Completed 104-01-PLAN.md
+last_updated: "2026-07-26T16:23:16.335Z"
+last_activity: 2026-07-26 -- Completed 104-01 (gate pre-deploy + firma dossier VSIM)
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 26
-  completed_plans: 23
-  percent: 88
+  completed_plans: 24
+  percent: 92
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 103 — NOTIF P3a — Suscripciones + digest + guards authenticated + gate legal
+**Current focus:** Phase 104 — CIERRE P3b — Verificación E2E todo funciona
 
 ## Current Position
 
-Phase: 104
-Plan: Not started
+Phase: 104 (CIERRE P3b — Verificación E2E todo funciona) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-26 -- Phase 104 planning complete
+Last activity: 2026-07-26
 
 ## Performance Metrics
 
@@ -108,6 +108,7 @@ Last activity: 2026-07-26 -- Phase 104 planning complete
 | Phase 103 P103-03 | ~12 min | 3 tasks | 18 files |
 | Phase 103 P103-04 | ~7 min | 3 tasks | 11 files |
 | Phase 103 P103-05 | ~40 min | 3 tasks | 2 files |
+| Phase 104 P104-01 | ~8 min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -184,6 +185,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: [Phase 103] 103-03: user surfaces NOTIF. SUPERFICIES_NOTIF en anti-insinuacion linter ANTES del copy (Wave-0); sin NEGACIONES_LOCKED (niega 'instantáneos', no prohibido). /cuenta OTP (clon spike-auth, WR-01/WR-02) + seguir/dejarDeSeguir con user_id de getClaims().sub SERVER-SIDE (Pitfall 5, RLS with-check backstop) + consentimiento 21.719. token.ts (raw base64url en link, sha256 hex en DB, node:crypto). notif-service.ts = helper service_role DEDICADO separado de supabase.ts (ÚNICO acceso user-table service_role fuera del carril sesión, tolerado por lockdown NOTIF_SERVICE_TS). confirmar/baja login-less noindex (baja one-click). SeguirButton gate-before-render (null si flag OFF = ausente del DOM) en ambas fichas, aria-pressed, petróleo (nunca camara/senado fill). RULE-3: /spike-auth borrado + spike-auth-gate.ts + SPIKE_AUTH_ENABLED .env.example (dead code) + comment middleware→/cuenta; tsc exigió next typegen (.next/types stale). Suite 1401 verde, guards 75/75, tsc 0. Apply PROD 0069-0071 + email confirm = Plan 04/05.
 - [Phase 103] 103-04: patrón EGRESO (@obs/notificaciones) — NO es la ingesta de dos etapas: sin fuente, sin R2 crudo, sin rate-limit 2-3s/host, sin robots.txt; el destinatario es Resend, no un WAF → la regla dos-etapas de CLAUDE.md NO aplica (documentado en digest.ts/resend.ts/run-digest-prod-cli.ts/digest-daily.yml). ÚNICA cota = hard-cap 100/día (código, enforceCap) + redacción PII (redactEmail) en TODO log; email JAMÁS crudo en logs/CI/R2. computeNovedades idempotente por cursor (solo id>cursor; nuevoCursor avanza SOLO en envío exitoso → re-run=0); parlamentario fail-closed (proyecto_autor estado_vinculo='confirmado'; no_confirmado/NULL aportan CERO, T-103-21). Envío = global fetch (NO SDK Resend, CERO paquete nuevo T-103-SC) POST api.resend.com/emails + List-Unsubscribe one-click; sin RESEND_API_KEY ⇒ dry-run; 429 respeta retry-after (reintentable, cursor no avanza). renderDigest = la ÚNICA isla de hex inline sancionada (cada hex→su token). digest-daily.yml GATED (workflow_dispatch only, schedule comentado, mirror roster-weekly) + secret NUEVO RESEND_API_KEY (deuda operador). 22 tests + tsc 0. RULE-3: cast supabase-js client a DbLike para tsc -b. Deuda operador Plan 05: apply 0069-0071 + cargar RESEND_API_KEY + dominio verificado + dry-run verde antes de descomentar schedule.
 - [Phase ?]: 103-05: Fase 103 CERRADA. Dossier 21.719 signoff:approved (pre-autorización operador-abogado VERBATIM 2026-07-26; agente DOCUMENTA, operador AUTORIZA). 0069/0070/0071 APLICADAS a PROD (psql --single-transaction, orden FK 0069->0070->0071) + pgTAP 20/20 (6/6/8) contra schema APLICADO (RLS user-A-no-ve-B en PROD; notificacion_envio cero grant authenticated; anon no select). schema_migrations retomada en 0069 (0059-0068 applies directos sin traza, quedó en 0058). Task 3 = Flag-OFF closure (NOTIF-05): SUPABASE_PUBLISHABLE_KEY y RESEND_API_KEY AUSENTES de .env (actos operador) -> flag OFF, feature PARKED (migraciones inertes, cron dry-run), CERO email capturado; .env.example=false, notif-antiflip 20/20. DEUDA OPERADOR: publishable key + OTP {{.Token}} + dominio Resend+DPA + RESEND_API_KEY, luego wrangler secret put NOTIF_PUBLIC_ENABLED=true + redeploy (sin tocar .env.example).
+- [Phase 104] 104-01: gate pre-deploy verde — suite app 1418 (>1400 base 103) + 21 packages (~1310 tests) + tsc app/root EXIT 0 + 9 guards de régimen v10.0 individualmente verdes (268 tests: anti-insinuación 33, vsim/notif/money-antiflip 20 c/u, lockdown 22, bento 114, bento-coherencia 8, name-match-rut 15, env-example 16). Dossier VSIM firmado signoff:approved transcribiendo la autorización VERBATIM del operador de la corrida de cierre v10.0 ('Sí — firmar y flip ON', 2026-07-26): SOLO front-matter YAML editado (cuerpo del dossier byte-idéntico, 4 líneas cambiadas), .env.example intacto, VSIM anti-flip guard verde POST-firma (el flip VSIM_PUBLIC_ENABLED=true es deploy-time env var Worker Plan 104-02, NUNCA commiteado). El agente DOCUMENTA la autorización; el operador AUTORIZÓ. CERO deviación, cero fix emergente (árbol verde). Commit e0ff591. Gate pre-deploy CERRADO: Plan 02 procede sobre base sólida con flip legítimamente autorizado.
 
 ### Pending Todos
 
@@ -239,8 +241,8 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-26T14:55:03.777Z
-Stopped at: Completed 103-02-PLAN.md
+Last session: 2026-07-26T16:23:16.323Z
+Stopped at: Completed 104-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

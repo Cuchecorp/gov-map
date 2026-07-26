@@ -286,7 +286,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 104-01-PLAN.md — Pre-deploy gate: suite completa + los 9 guards/linter verdes + firma dossier VSIM (pending→approved, autorización operador verbatim)
+- [x] 104-01-PLAN.md — Pre-deploy gate: suite completa + los 9 guards/linter verdes + firma dossier VSIM (pending→approved, autorización operador verbatim)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -1340,7 +1340,7 @@ Plans:
 | 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 3/3 | Complete    | 2026-07-25 |
 | 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 3/3 | Complete    | 2026-07-25 |
 | 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 5/5 | Complete    | 2026-07-26 |
-| 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 0/? | Not started | - |
+| 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 1/3 | In Progress|  |
 
 ## ✅ v4.0 — De datos a cruces verificables
 

@@ -52,7 +52,7 @@
 
 ### E2E — Verificación final (pedido del operador)
 
-- [ ] **E2E-01**: Fase final "todo funciona": inventario de CADA superficie nueva × dato real × BrowserOS sobre el deploy (panel con señales vivas, relaciones con conteos honestos verificados contra SQL, comparador con caveat visible, flags OFF ausentes del DOM, linter verde con vocabulario nuevo, suite completa + guards verdes).
+- [x] **E2E-01**: Fase final "todo funciona": inventario de CADA superficie nueva × dato real × BrowserOS sobre el deploy (panel con señales vivas, relaciones con conteos honestos verificados contra SQL, comparador con caveat visible, flags OFF ausentes del DOM, linter verde con vocabulario nuevo, suite completa + guards verdes).
 
 ## Future Requirements (deferred)
 
@@ -98,6 +98,6 @@
 | NOTIF-03 | Phase 103 | Complete |
 | NOTIF-04 | Phase 103 | Complete |
 | NOTIF-05 | Phase 103 | Complete |
-| E2E-01 | Phase 104 | Pending |
+| E2E-01 | Phase 104 | Complete |
 
 *Filled by roadmap: 25 requirements total (AUTH 1, SEN 6, PANEL 4, REL 5, VSIM 3, NOTIF 5, E2E 1) — mapeados 25/25 a Phases 97-104, 0 huérfanos, 0 duplicados. Nota: el brief citó "24"; la enumeración real del bloque SEN es de 6 (SEN-01..06), total 25.*
