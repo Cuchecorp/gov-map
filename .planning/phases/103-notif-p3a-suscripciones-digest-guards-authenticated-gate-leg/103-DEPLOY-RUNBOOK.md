@@ -222,8 +222,24 @@ Pasos EJECUTABLES de la clausura Flag-OFF:
 
 > Completar por el ejecutor tras (a)/(b) y la decisión (e)-vs-(f).
 
-- **(a) Apply a PROD:** _(pendiente de registrar tras el apply — ver 103-05-SUMMARY)_
-- **(b) pgTAP contra schema aplicado:** _(pendiente — ok-counts 0069/0070/0071)_
+- **(a) Apply a PROD (2026-07-26):** EJECUTADO por el agente (apply autorizado esta corrida).
+  0069 → 0070 → 0071 aplicadas en orden vía `PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL"
+  --single-transaction -v ON_ERROR_STOP=1 -f …` (cada una, EXIT 0). PROD = Postgres 17.6, ref
+  `bctyygbmqcvizyplktuw`. Las tres tablas presentes con RLS habilitada
+  (`suscripcion`/`notificacion_envio`/`consentimiento`, `relrowsecurity=t`). `schema_migrations`
+  rows 0069/0070/0071 insertadas (la traza directa se había quedado en 0058; 0059-0068 fueron
+  applies directos sin traza — se retomó la traza con estas tres, `on conflict do nothing`).
+- **(b) pgTAP contra schema aplicado (2026-07-26):** **20/20 ok, 0 not ok** contra el schema
+  APLICADO en PROD (pgtap 1.3.3), cada test wrapped en BEGIN/ROLLBACK (cero residuo en PROD):
+  - **0069 = 6/6** (A ve su fila; B NO ve la de A — RLS aísla T-103-04; B NO borra la de A
+    T-103-05; anon sin select T-103-07).
+  - **0070 = 6/6** (`ultimo_evento_visto` presente; `authenticated` sin select/insert/update —
+    cola service_role-only T-103-06).
+  - **0071 = 8/8** (columnas `version_texto`/`metodo`/`created_at`; C ve su fila, D NO — RLS
+    aísla; anon sin select).
+  - lockdown-guard 22/22 + notif-antiflip-guard 20/20 verdes contra el schema aplicado
+    (Block D allowlist acepta el `to authenticated` en suscripcion/consentimiento; Block E
+    confirma `notificacion_envio` cero grant a authenticated; `.env.example` sigue false).
 - **(c)-(e) Deploy + flip + provisión:** BLOQUEADO por credenciales de operador ausentes
   (`SUPABASE_PUBLISHABLE_KEY` y `RESEND_API_KEY` NO están en `.env`; dominio Resend no provisto).
 - **(f) Flag-OFF closure EJECUTADA:** flag OFF, feature parked (migraciones aplicadas e inertes,
