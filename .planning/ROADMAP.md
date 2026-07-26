@@ -114,7 +114,12 @@ Notas de secuencia: los adapters (TIER-01) se construyen como candidatos DURANTE
   3. La decisión sobre `partidoLegible()` (cinturón display-only de 104-03) queda DOCUMENTADA con evidencia post-re-corrida: se retira si el origen basta, o se conserva como defensa en profundidad con justificación
   4. El cruce por partido (filtros/facetas) sigue funcionando con la clave serializada tras el fix — sin regresión de las superficies que muestran militancia
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 105-01-PLAN.md — Fix fail-closed del parser BCN (URI→label determinista, mapa con evidencia real) + tests
+- [ ] 105-02-PLAN.md — Re-corrida --from-r2 a PROD (cero URI verificado) + decisión partidoLegible() documentada (BCN-02)
+
 
 ### Phase 106: BENCH P1a — Harness `llm-bench` + golden sets es-CL POR TAREA (SPIKE, gate duro)
 
