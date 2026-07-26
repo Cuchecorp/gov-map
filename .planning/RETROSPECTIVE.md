@@ -144,6 +144,42 @@ Búsqueda híbrida RRF Postgres-nativa que arregla el bug estrella (literal/bole
 - Sesiones: 3 (una por pasada).
 - Notable: pasada 3 completa (2 fases, 5 planes, audit + lifecycle) en una sola sesión de orquestador con ~35 checkpoints de subagente.
 
+## Milestone: v10.0 — Panel de actualidad + notificaciones + relaciones
+
+**Shipped:** 2026-07-26
+**Phases:** 8 | **Plans:** 26
+
+### What Was Built
+Landing convertida en panel de actualidad cuantitativo (señales precomputadas honestas + supresión-como-fila), relaciones entre parlamentarios des-enterradas (/comparar 4 ejes + bloque above-the-fold), similitud de votación VSIM encendida en PROD con dossier firmado, y el primer dato de usuario del sistema (suscripciones RLS authenticated + digest EGRESO Resend, inerte tras Flag-OFF closure). Deploy final e89b79af.
+
+### What Worked
+- Gate empírico de datos ANTES del frontend (spike 98) evitó un panel mentiroso — el patrón spike-primero se consolidó.
+- Guard-first como primer commit (lockdown → authenticated) hizo que las migraciones nacieran vigiladas: cero over-grant llegó a PROD.
+- Pre-autorización legal del operador en la invocación permitió cerrar 2 gates legales (NOTIF + VSIM) sin detener la corrida.
+- Review-loop de 2-3 iteraciones cazó bugs arquitectónicos reales (unsubscribe muerto, raw tokens descartados, granularidad de baja) que la suite no veía.
+- Safe-resume tras corte de sesión: spot-check por wrangler/git/curl permitió cerrar el deploy sin re-ejecutar trabajo.
+
+### What Was Inefficient
+- 4 deploys en la fase 104 (fix /cuenta + 3 sitios URI-partido uno a uno + fixes review) — un pre-flight con flag OFF simulado y un grep de URI-como-partido antes del primer deploy habría ahorrado 2 ciclos Docker.
+- La derivación HMAC quedó duplicada (app/token.ts vs packages/digest.ts) por el límite app↔packages — deuda anotada.
+- Flake recurrente de la suite bajo carga paralela (timeout 5s) consumió re-runs de diagnóstico.
+
+### Patterns Established
+- Cron EGRESO (leer DB propia → enviar fuera) documentado como distinto de la ingesta dos-etapas — sin R2, sin rate-limit de fuentes.
+- Tokens opacos deterministas: HMAC(secret, purpose:id) con hash-at-rest — sin almacenar raw, regenerable al enviar.
+- Flag-OFF closure como cierre sancionado de fase cuando la provisión es de operador (NOTIF-05).
+- Gate-before-client en RSC: chequear flags ANTES de instanciar clientes fail-loud.
+
+### Key Lessons
+- Un fail-loud útil en auth se convierte en 500 público si el gate va después — orden del gate es load-bearing.
+- Las cifras firmadas en dossier legal (round(N/M)) son inmutables aunque el redondeo se vea raro (100% con N≠M): el caveat las neutraliza, el código no se desvía.
+- audit-open acumula human_needed históricos (v7.0) — acknowledger explícito por cierre mantiene la deuda visible sin bloquear.
+
+### Cost Observations
+- Model mix: ~100% opus (orquestador + subagentes).
+- Sesiones: 1 corrida autónoma (con 1 corte de límite recuperado).
+- Notable: 103 completa (5 planes + 2 review-loops + apply PROD) y 104 (3 planes + 4 deploys + E2E) en un día.
+
 ## Cross-Milestone Trends
 
 | Métrica | v1.0 | v5.0 | v6.1 |
