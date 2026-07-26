@@ -1,10 +1,10 @@
 ---
 documento: 102-LEGAL-DOSSIER-VSIM
 alcance: VSIM (similitud de votación — coincidencia de votos entre dos parlamentarios)
-signoff: pending          # pending | approved | rejected
-asesor: ""                # nombre del asesor legal externo (vacío hasta firmar)
-fecha_signoff: ""         # ISO 8601 al firmar
-observaciones: ""
+signoff: approved         # pending | approved | rejected
+asesor: "Operador (autorización directa 2026-07-26)"
+fecha_signoff: "2026-07-26"         # ISO 8601 al firmar
+observaciones: "Autorización verbatim del operador el 2026-07-26 en respuesta a AskUserQuestion de la corrida de cierre v10.0: 'Sí — firmar y flip ON'. El agente DOCUMENTA la autorización; el operador AUTORIZÓ. Flip VSIM_PUBLIC_ENABLED=true habilitado deploy-time (Worker env var, Plan 104-02); .env.example permanece false (anti-flip guard)."
 depende_de: "deuda operador (sign-off legal humano); ROADMAP Phase 102 success criterion (VSIM gated)"
 nota: "Encender VSIM_PUBLIC_ENABLED requiere signoff: approved firmado por humano."
 ---
