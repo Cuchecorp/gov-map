@@ -57,4 +57,8 @@ Durante el inventario E2E se detectó que `/parlamentario/S1344` (Matías Walker
 | 2 | `34e4df2` | `95a9c858` | `MilitanciasDeParlamentario` (vigente + histórico) |
 | 3 | `2b86707` | **`b467d41a`** (final) | `ParlamentariosFiltro` (label de la faceta; clave de filtro RAW) |
 
-Misma secuencia Docker que deploy #1/#2 (mirror C:\Temp\obs-build → docker-build.sh + docker-deploy.sh en node:22-slim con OAuth montado en /root/.config/.wrangler). Copia targeted de los archivos cambiados al mirror (evita robocopy /MIR y su re-escritura de helper scripts). **Versión en producción tras el E2E: `b467d41a-3014-46bd-b1b5-0c810497244a`.** Cero URI-como-partido *visible*; la única ocurrencia residual de `datos.bcn.cl` en `/parlamentarios` es la clave de filtro serializada en el payload RSC del island (no-visible, RAW por diseño). Ver 104-E2E-EVIDENCIA.md §6.
+Misma secuencia Docker que deploy #1/#2 (mirror C:\Temp\obs-build → docker-build.sh + docker-deploy.sh en node:22-slim con OAuth montado en /root/.config/.wrangler). Copia targeted de los archivos cambiados al mirror (evita robocopy /MIR y su re-escritura de helper scripts). Versión tras el E2E: `b467d41a`. Cero URI-como-partido *visible*; la única ocurrencia residual de `datos.bcn.cl` en `/parlamentarios` es la clave de filtro serializada en el payload RSC del island (no-visible, RAW por diseño). Ver 104-E2E-EVIDENCIA.md §6.
+
+## Redeploy post-review (fixes WR-01/02/04 del 104-REVIEW)
+
+Fixes del code review de fase (partidoLegible case-insensitive + slug degenerado → null, SesionBlock sin interpolación de errores Postgres) + dossier VSIM reconciliado (WR-03, doc-only). Suite 1428/1428 + tsc limpio. Redeploy targeted → **VERSIÓN FINAL EN PRODUCCIÓN: `e89b79af-3741-4d72-8056-123858b56ba6`** (2026-07-26). Smoke re-verificado: `/cuenta` gated 200, VSIM caveat vivo, home 200. PROD == master (`cac1ffa` + review docs).
