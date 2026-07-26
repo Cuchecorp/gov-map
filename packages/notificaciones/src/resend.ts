@@ -13,7 +13,7 @@
 // SIN RESEND_API_KEY ⇒ DRY-RUN: no hay fetch, se degrada honestamente (mirror
 // del precedente dry-run de @obs/dinero / @obs/actualidad). Nunca se envía a ciegas.
 
-import { redactEmail, type NovedadEvento } from "./digest";
+import { notaSinNovedades, redactEmail, type NovedadEvento } from "./digest";
 
 /** Resultado de un intento de envío (para el log del CLI y el avance del cursor). */
 export interface ResultadoEnvio {
@@ -85,7 +85,7 @@ export function renderDigest(
       const items =
         g.novedades.length === 0
           ? `<p style="color:${EMAIL_HEX.muted};font-size:14px;margin:8px 0;">${esc(
-              `Sin novedades registradas hoy para lo que sigues, según las fuentes consultadas al ${fecha}.`,
+              notaSinNovedades(fecha),
             )}</p>`
           : g.novedades
               .map((n) => {
@@ -119,7 +119,7 @@ ${listWrap}</td></tr>`;
       const head = g.objetivo;
       const body =
         g.novedades.length === 0
-          ? `  Sin novedades registradas hoy para lo que sigues, según las fuentes consultadas al ${fecha}.`
+          ? `  ${notaSinNovedades(fecha)}`
           : g.novedades
               .map((n) => `  - ${n.descripcion ?? n.tipo} · ${n.origen}, ${fechaCorta(n.fecha)}${n.enlace ? ` · ${n.enlace}` : ""}`)
               .join("\n");
