@@ -143,6 +143,10 @@ export function fechaCortaSegura(
  *     "-" por espacio y Title-Case. NO se agregan tildes (el slug no las trae;
  *     inventarlas sería fabricar), NO se traduce ni se expande: "partido-democratas
  *     -chile" → "Partido Democratas Chile". El nombre sale del dato, no se inventa.
+ *  4. Si es un URI de BCN de partido pero SIN slug utilizable (vacío/solo "/") →
+ *     null (omisión honesta), JAMÁS el raw URI. La invariante "CERO URI en el DOM"
+ *     pesa más que mostrar algo: sin slug no hay nombre derivable del dato, y filtrar
+ *     el URI contradiría el propósito de la función.
  *
  * Es display-only: la clave de matching y la proyección PII-safe no se tocan.
  */
@@ -155,14 +159,18 @@ export function partidoLegible(raw: string | null | undefined): string | null {
   // así que `HTTP://DATOS.BCN.CL/.../partido-politico/x` DEBE disparar la derivación
   // igual que el lowercase. Sin la flag `i`, un URI con host en mayúscula caería en
   // el passthrough (regla 2) y el raw URI se filtraría al DOM (defecto URI-como-partido).
-  const m = /^https?:\/\/datos\.bcn\.cl\/.*\/partido-politico\/(.+?)\/?$/i.exec(s);
-  if (!m) return s;
-  const slug = m[1];
-  return slug
-    .split("-")
-    .filter((p) => p.length > 0)
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join(" ");
+  // El test PRIMERO reconoce que es un URI BCN de partido; LUEGO extrae el slug. Un URI
+  // BCN reconocible pero con slug vacío → null (regla 4), NUNCA passthrough del raw URI.
+  if (/^https?:\/\/datos\.bcn\.cl\/.*\/partido-politico\//i.test(s)) {
+    const m = /\/partido-politico\/(.+?)\/?$/i.exec(s);
+    const slug = m?.[1] ?? "";
+    const words = slug.split("-").filter((p) => p.length > 0);
+    return words.length
+      ? words.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ")
+      : null;
+  }
+  // No es un URI BCN de partido → nombre legible de la fuente, pasa verbatim.
+  return s;
 }
 
 /**

@@ -252,4 +252,26 @@ describe("partidoLegible (saneamiento URI-como-partido, display-only)", () => {
     expect(partidoLegible("")).toBeNull();
     expect(partidoLegible("   ")).toBeNull();
   });
+
+  it("WR-02: URI BCN con slug VACÍO (solo trailing slash) → null, nunca el raw URI", () => {
+    const out = partidoLegible(
+      "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/",
+    );
+    expect(out).toBeNull();
+  });
+
+  it("WR-02: URI BCN con slug degenerado (sin trailing slash, sin segmento) → null", () => {
+    // Tras el trim, "…/partido-politico/   " colapsa a "…/partido-politico/".
+    const out = partidoLegible(
+      "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/   ",
+    );
+    expect(out).toBeNull();
+  });
+
+  it("WR-02: URI BCN con slug de solo guiones → null (sin palabras utilizables)", () => {
+    const out = partidoLegible(
+      "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/--",
+    );
+    expect(out).toBeNull();
+  });
 });
