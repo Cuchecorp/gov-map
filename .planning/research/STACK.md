@@ -35,6 +35,16 @@ Ranked by fit for this project (single `.env` key discipline, cheap/free tiers, 
 
 **Decision: OpenRouter as the single hosted endpoint for both new models + Ollama for the local benchmark spike.** One production key, both models, cheapest Granite, OpenAI-native tool-calling — fewest moving parts for the pluggable layer. DeepInfra held as a cost fallback via a pure `baseURL` swap.
 
+> **ADDENDUM (operador, 2026-07-26) — Cloudflare Workers AI entra como candidato PRIMARIO para Granite; el spike (106) lo dirime.**
+>
+> Verificado contra docs oficiales: Workers AI sirve **`@cf/ibm-granite/granite-4.0-h-micro`** — $0.017/M input, $0.11/M output (paridad con OpenRouter), 131K context, **function calling soportado**, endpoint OpenAI-compat `/v1/chat/completions` → `baseURL = https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/v1` con `openai@5`, cero SDK nuevo. Fit superior para ESTE proyecto: la cuenta Cloudflare YA existe (Workers deploy + R2), sin vendor nuevo, inferencia edge = latencia baja (pedido explícito del operador).
+>
+> **Candidatura por modelo:** Granite → Workers AI PRIMARIO, OpenRouter fallback (baseURL swap trivial). Phi-4-mini → sigue OpenRouter (presencia en catálogo Workers AI NO confirmada — verificar en el research de Phase 106).
+>
+> **El spike (106) debe verificar en Workers AI:** (a) cuantización servida NO declarada en la página del modelo → benchmark de calidad contra el endpoint REAL, jamás asumir que los números Ollama-local transfieren (Pitfall 9); (b) `max_tokens` default 256 → fijarlo explícito en el adapter; (c) postura no-train/DPA de Workers AI como dato del gate legal `trainsOnInputs` (Cloudflare declara no entrenar con inference data — confirmar términos vigentes); (d) fidelidad tool-calling servida (mismo patrón tool_choice forzado + zod, match por nombre).
+>
+> Fuentes: [granite-4.0-h-micro — Cloudflare Workers AI](https://developers.cloudflare.com/ai/models/@cf/ibm-granite/granite-4.0-h-micro/) · [IBM Granite 4.0 announcement](https://www.ibm.com/new/announcements/ibm-granite-4-0-hyper-efficient-high-performance-hybrid-models)
+
 ### Supporting Libraries (already present — NO additions)
 
 | Library | Version | Purpose | When to Use |
