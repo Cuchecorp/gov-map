@@ -1,5 +1,5 @@
 import { DetalleColapsable } from "@/components/detalle-colapsable";
-import { fechaCorta } from "@/lib/format";
+import { fechaCorta, partidoLegible } from "@/lib/format";
 import type { MilitanciaRow } from "@/lib/types";
 
 /**
@@ -57,7 +57,9 @@ export function MilitanciasDeParlamentario({
 
       {vigente ? (
         <div className="mt-4">
-          <p className="text-base font-semibold">{vigente.partido}</p>
+          <p className="text-base font-semibold">
+            {partidoLegible(vigente.partido) ?? vigente.partido}
+          </p>
           <p className="text-sm text-muted-foreground">
             <span className="font-mono">{rango(vigente.desde, null)}</span>
             <span aria-hidden="true"> · </span>
@@ -80,7 +82,9 @@ export function MilitanciasDeParlamentario({
             <ul className="space-y-3">
               {historicas.map((m, i) => (
                 <li key={`${m.partido}-${m.desde}-${i}`}>
-                  <p className="text-base font-semibold">{m.partido}</p>
+                  <p className="text-base font-semibold">
+                    {partidoLegible(m.partido) ?? m.partido}
+                  </p>
                   <p className="text-sm text-muted-foreground font-mono">
                     {rango(m.desde, m.hasta)}
                   </p>
