@@ -290,7 +290,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 104-02-PLAN.md — Deploy único (OpenNext Docker + wrangler) arrastra 101+102+103 + flip VSIM_PUBLIC_ENABLED=true (Worker env var, NOTIF/MONEY OFF) + verificación curl Camino A/CSP/VSIM
+- [x] 104-02-PLAN.md — Deploy único (OpenNext Docker + wrangler) arrastra 101+102+103 + flip VSIM_PUBLIC_ENABLED=true (Worker env var, NOTIF/MONEY OFF) + verificación curl Camino A/CSP/VSIM
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -1340,7 +1340,7 @@ Plans:
 | 101. RELACIONES P2a — Audit brecha + ficha + /comparar + coalición | v10.0 | 3/3 | Complete    | 2026-07-25 |
 | 102. RELACIONES P2b — Similitud de votación (gated legal) | v10.0 | 3/3 | Complete    | 2026-07-25 |
 | 103. NOTIF P3a — Suscripciones + digest + guards authenticated + legal | v10.0 | 5/5 | Complete    | 2026-07-26 |
-| 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 1/3 | In Progress|  |
+| 104. CIERRE P3b — Verificación E2E todo funciona | v10.0 | 2/3 | In Progress|  |
 
 ## ✅ v4.0 — De datos a cruces verificables
 
