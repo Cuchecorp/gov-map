@@ -218,10 +218,20 @@ async function SesionBlock({
         .limit(1),
     ]);
   if (suscErr) {
-    throw new Error(`cuenta: no se pudieron leer las suscripciones: ${suscErr.message}`);
+    // WR-04 (espeja actions.ts WR-02): NO interpolar el mensaje upstream de
+    // Postgres/PostgREST — puede filtrar detalle de schema/columna/constraint.
+    // Se registra solo `code` (no-PII) para diagnóstico server-side y se lanza un
+    // mensaje fijo genérico al error boundary.
+    console.error("cuenta: leer suscripciones falló", {
+      code: (suscErr as { code?: string }).code,
+    });
+    throw new Error("cuenta: no se pudieron leer las suscripciones");
   }
   if (consErr) {
-    throw new Error(`cuenta: no se pudo leer el consentimiento: ${consErr.message}`);
+    console.error("cuenta: leer consentimiento falló", {
+      code: (consErr as { code?: string }).code,
+    });
+    throw new Error("cuenta: no se pudo leer el consentimiento");
   }
   const suscripciones = (suscData ?? []) as SuscripcionRow[];
   const consentimiento = ((consData ?? []) as ConsentimientoRow[])[0] ?? null;
