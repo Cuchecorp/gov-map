@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: Validación general producto-a-producto
-status: planning
-last_updated: "2026-07-27T20:09:55.260Z"
+status: in_progress
+last_updated: "2026-07-27T21:30:00.000Z"
 last_activity: 2026-07-27
 progress:
-  total_phases: 0
+  total_phases: 13
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** PASADA 3 CERRADA (110-112 completas). Milestone lifecycle: audit v11.0 → complete v7.0 + v11.0 → cleanup → tag → push.
+**Current focus:** v12.0 planificado — 13 fases (113-125) en 4 carriles: inventario+links+fechas (113-117), crons+escalera (118-121), cruces (122), Supabase (123-124), cierre E2E (125). Próximo: `/gsd:plan-phase 113`.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 113 — INV inventario rector de superficies (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-27 — Milestone v12.0 started
+Status: Roadmap v12.0 creado (13 fases, coverage 13/13)
+Last activity: 2026-07-27 — ROADMAP.md + REQUIREMENTS.md traceability escritos
+
+### Roadmap v12.0 (Phases 113-125)
+
+Orden de construcción: 113 (inventario, rector) → {114 links internos, 115 links externos, 116→117 fechas, 122 cruces}; carril crons 118→119→120→121 (paralelizable); carril Supabase 123→124 (paralelizable); cierre 125 (deploy + BrowserOS) depende de 114/115/117/119/120/122/124.
+
+Checkpoints de operador previstos: provisión de keys Workers AI antes del flip `CLASIFICACION_ESCALERA=1` (Phase 120). Nada destructivo en Supabase sin checkpoint (Phase 124). Flags MONEY/NOTIF NO se tocan.
+
+Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP-archive.md`.
 
 ### Quick tasks CERRADAS (QT-01, Phase 112)
 

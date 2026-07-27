@@ -54,11 +54,24 @@
 
 ## Traceability
 
-Filled by roadmap creation.
+Mapeado por el roadmap v12.0 (Phases 113-125). Coverage 13/13 — cero huérfanos, cero duplicados.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| LINK-01 | Phase 113 — INV inventario rector de superficies | Pending |
+| LINK-02 | Phase 114 — LINK-INT links internos exhaustivos | Pending |
+| LINK-03 | Phase 115 — LINK-EXT patrones de link a fuente oficial | Pending |
+| FECHA-01 | Phase 116 — FECHA-AUDIT semántica de cada fecha visible | Pending |
+| FECHA-02 | Phase 117 — FECHA-FIX etiquetas de fecha corregidas | Pending |
+| CRON-01 | Phase 118 — CRON-AUDIT veredicto por cron con evidencia | Pending |
+| CRON-02 | Phase 119 — CRON-FIX robustez de ingesta | Pending |
+| CRON-03 | Phase 120 — ESCALERA-ON flip `CLASIFICACION_ESCALERA=1` | Pending |
+| CRON-04 | Phase 121 — ESCALERA-DOC extensión solo con benchmark | Pending |
+| CRUCE-01 | Phase 122 — CRUCE-SQL cruces visibles × SQL de PROD | Pending |
+| SUPA-01 | Phase 123 — SUPA-AUDIT auditoría de estructura Supabase | Pending |
+| SUPA-02 | Phase 124 — SUPA-FIX migraciones aditivas a PROD | Pending |
+| E2E-01 | Phase 125 — E2E pasada final sobre el deploy real | Pending |
 
 ---
 *Requirements defined: 2026-07-27*
-*Last updated: 2026-07-27*
+*Last updated: 2026-07-27 — traceability mapeada por el roadmap v12.0 (Phases 113-125)*
