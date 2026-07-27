@@ -978,6 +978,131 @@ Renderiza el chrome (`C-01`..`C-03`; **sin** breadcrumbs) más un único link.
 
 Tabla B: **sin links externos**. Tabla C: **sin fechas** (copy estático).
 
+### 4.2 `/proyecto/[boletin]` — la ruta más densa en links externos
+
+**Tipo:** pública, **dinámica** (`app/app/proyecto/[boletin]/page.tsx`; `[boletin]` validado contra
+`BOLETIN_RE` **antes** de tocar la DB, `page.tsx:60-62`).
+
+**Sujetos usados** (§1, ambos con `enlace` = `tramitacion.senado.cl/wspublico/...` ⇒ ambos
+ejercitan el rewrite de `enlaceHumanoProyecto`):
+
+| sujeto | boletín | URL PROD | qué ejercita |
+|--------|---------|----------|--------------|
+| C — boletín A (bicameral) | `14309-04` | `https://observatorio-congreso.thevalis.workers.dev/proyecto/14309-04` | 7 votaciones, 1 embedding (similares), **47 cruces**, `prm_id_camara=14891` ⇒ **rama CON `buildCamaraUrl`** |
+| D — boletín B (zona solo-Senado) | `17870-05` | `https://observatorio-congreso.thevalis.workers.dev/proyecto/17870-05` | 256 votaciones, 355 eventos de tramitación, `prm_id_camara IS NULL` ⇒ **rama SIN `buildCamaraUrl`** |
+
+**Chrome:** `→ C-01`, `→ C-02`, `→ C-03`, `→ C-04` (breadcrumbs montados por `page.tsx:79-85`:
+`Inicio` → `/`, `Proyectos` → `/buscar`, y `Boletín {boletin}` **sin href**). **No se repiten aquí.**
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `#{seccion}` (`#estado`, `#timeline`, `#votaciones`, `#autores`, `#lobby-tramitacion`, `#lobby-menciones`, `#cruces`, `#idea-matriz`, `#cuerpos-legales`, `#similares`, `#validacion-fuente`) | → E-042 `app/components/ficha-rail.tsx:59`, entradas armadas en `page.tsx:290-337` | **sí** | `#autores` solo si hay autores (`page.tsx:301-303`); `#cruces` solo con **CRUCES** ON (`:317-319`) ⇒ 10 entradas ON / 9 OFF | misma ruta (scroll) |
+| A2 | `#idea-matriz` ("Ver la idea matriz completa") | → E-048 `app/app/proyecto/[boletin]/page.tsx:568` | **sí** | solo si `ficha.idea_matriz != null` (`:564`) | misma ruta |
+| A3 | `/agenda?semana={semanaIso}` | → E-032 `app/components/estado-actual-block.tsx:477,492` | — | solo si el boletín está en tabla de sala | `/agenda` |
+| A4 | `buildUrgenciasHref(boletin, p.id, true\|false)` | → E-010 `app/components/timeline-view.tsx:256,273` | — | dentro de `DetalleColapsable` de tramitación; expande/colapsa un período de urgencia (`?urgencias=<id>`) | misma ruta |
+| A5 | `href` del paso del stepper | → E-045 `app/components/capa1/tramitacion-stepper.tsx:133` | **sí** | solo pasos con destino derivable | misma ruta |
+| A6 | `/parlamentario/{voto.parlamentario_id}` | → E-026 `app/components/voto-row.tsx:43`, montado por `voto-detalle.tsx:51` ← `votacion-card.tsx:108` | — | **solo si la mención está `confirmado`** (guarda de identidad); desglose solo en votaciones con `voto(*)` | `/parlamentario/[id]` |
+| A7 | `/parlamentario/{autor.parlamentario_id}` | → E-035 `app/components/autor-row.tsx:44` | — | **solo si el autor está confirmado**; si no, `IdentityMarker` sin link (`:51-53`) | `/parlamentario/[id]` |
+| A8 | `/parlamentario/{row.parlamentario_id}` (menciones de lobby) | → E-020 `app/components/lobby-menciones-de-boletin.tsx:138` | — | LOB-03; la sección degrada a `null` si la RPC 0062 no está | `/parlamentario/[id]` |
+| A9 | `/parlamentario/{row.parlamentario_id}` (cruces) | → E-044 `app/components/cruces-de-proyecto.tsx:130` | — | **CRUCES** (ON); contraparte de lobby en texto plano, **nunca** enlazada (52-03) | `/parlamentario/[id]` |
+| A10 | `/proyecto/{boletin}` (tarjetas de proyectos similares) | → E-028 `app/components/search-result-card.tsx:80`, montado por `proyectos-similares.tsx:98` | — | solo si hay vecinos kNN; sin embedding → estado vacío honesto | `/proyecto/[boletin]` |
+| A11 | `/cuenta?next={encodeURIComponent("/proyecto/{boletin}")}` | → E-039 `app/components/seguir-button.tsx:73` (montado en `page.tsx:112-116`) | — | **NOTIF** (OFF) — `no emitido en el deploy auditado` | `/cuenta` |
+
+**Diferencia por sujeto:** el boletín D (`17870-05`, 355 eventos) hace pesado el `DetalleColapsable`
+de tramitación (A4); el boletín C (`14309-04`, 47 cruces) es el que ejercita A9 con volumen.
+Ninguna fila de la Tabla A depende de `prm_id_camara`.
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | senado (`tramitacion.senado.cl`) | **columna** `tabla.proyecto.enlace` = `https://tramitacion.senado.cl/wspublico/...` (XML) → **href emitido POST-rewrite** = `buildSenadoUrl(boletin)` = `https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini={boletin}` | `enlaceHumanoProyecto` (§3.2 nº 3) sobre `columna` | `enlaceHumanoProyecto(proyecto.enlace \|\| "", proyecto.boletin) \|\| null` | **badge** → E-043 `app/components/ficha-header.tsx:65,70-73` (§3.1.4 fila 8) | — |
+| B2 | camara (`www.camara.cl`) | `buildCamaraUrl(proyecto.boletin, proyecto.prm_id_camara)` (§3.2 nº 2) | **builder** | `prm_id_camara` + `boletin` | → E-043 `app/components/ficha-header.tsx:82` | — · **solo si `prm_id_camara !== null`** (`ficha-header.tsx:78`) ⇒ **C sí (`prmID=14891`), D NO** |
+| B3 | senado (`tramitacion.senado.cl`) | `buildSenadoUrl(boletin)` (§3.2 nº 1) | **builder** | `boletin` COMPLETO con sufijo | → E-027 `app/components/validacion-fuente.tsx:117,149` | — · SIEMPRE (si supera `safeExternalHref`) |
+| B4 | camara (`www.camara.cl`) | `buildCamaraUrl(boletin, prm_id_camara)` (§3.2 nº 2) | **builder** | `prm_id_camara` + `boletin` | → E-027 `app/components/validacion-fuente.tsx:118-119,167` | — · **solo si `prm_id_camara !== null`** ⇒ **C sí, D NO** (fail-honest: fila ausente, sin placeholder) |
+| B5 | senado / camara — **sin `enlaceHumanoProyecto`** | **columna** `tabla.tramitacion_evento.enlace` **VERBATIM** (982 filas en `tramitacion.senado.cl`, §3.3.6 nº 4) | `columna` (sin builder, sin rewrite) | `evento.enlace` | → E-038 `app/components/timeline-event.tsx:42` | — · **candidato #1 de 115** |
+| B6 | camara (`opendata.camara.cl`) + senado (`tramitacion.senado.cl`) | **columna** `tabla.votacion.enlace` + `.boletin` → **href POST-rewrite** | `enlaceHumanoProyecto` sobre `columna` | `enlaceHumanoProyecto(votacion.enlace \|\| "", votacion.boletin) \|\| null` | **badge** → E-056 `app/components/votacion-card.tsx:95,101-104` (§3.1.4 fila 14) | — |
+| B7 | senado (`tramitacion.senado.cl`) | **columna** `tabla.proyecto_autor.enlace` + `.boletin` → **href POST-rewrite** | `enlaceHumanoProyecto` sobre `columna` | `enlaceHumanoProyecto(autor.enlace \|\| "", autor.boletin) \|\| null` | **badge** → E-035 `app/components/autor-row.tsx:56,64` (§3.1.4 fila 3) | — |
+| B8 | senado (`tramitacion.senado.cl`) | **columna** `tabla.proyecto.enlace` de cada vecino kNN → **href POST-rewrite** | `enlaceHumanoProyecto` sobre `columna` | `enlaceHumanoProyecto(p.enlace ?? "", p.boletin) \|\| null` | **badge** → E-028 `app/components/search-result-card.tsx:93` ← `proyectos-similares.tsx:106-109` | — |
+| B9 | camara (`www.camara.cl`) + leylobby (`www.leylobby.gob.cl`) | **columna** `RPC:lobby_en_tramitacion` ← `tabla.lobby_audiencia.enlace` | `columna` | `href` de la audiencia | → E-041 `app/components/lobby-en-tramitacion.tsx:150` | — |
+| B10 | camara (`www.camara.cl`) + leylobby (`www.leylobby.gob.cl`) | **columna** `RPC:lobby_menciones_de_boletin` ← `tabla.lobby_audiencia.enlace` | `columna` | `href` de la audiencia | → E-020 `app/components/lobby-menciones-de-boletin.tsx:164` | — |
+| B11 | camara (`www.camara.cl`) + leylobby | **columna** `RPC:cruces_de_proyecto` → `cruce_senal.evidencia` jsonb, clave `enlace_fuente` | `columna` (jsonb) | `sourceUrl={item.enlace_fuente}` | **badge** → E-044 `app/components/cruces-de-proyecto.tsx:176,179` (§3.1.4 fila 7) | **CRUCES** (ON) |
+| B12 | **ninguna — badge SIN link por diseño** | `sourceUrl={null}` literal; el badge sólo lleva `capturedAt` | — (ni builder ni columna) | `null` | **badge** → E-048 `app/app/proyecto/[boletin]/page.tsx:489,492` (§3.1.4 fila 1) | — |
+| B13 | **ninguna — badge SIN link por diseño** | `sourceUrl: null` literal (`page.tsx:390`): `texto_r2_path` es key R2 interna, **jamás** href público | — (ni builder ni columna) | `null` | **badge** → E-058 `app/components/idea-matriz-block.tsx:48` ← `page.tsx:381-392` | — |
+| B14 | **ninguna — key R2 nunca se enlaza** | `tabla.source_snapshot.r2_path` (allowlist de prefijo `tramitacion/*`) se muestra como **fecha + hash abreviado**, sin `<a>` | — | — | → E-027 `app/components/validacion-fuente.tsx:186-201` (comentario LOCKED en `:200`) | — |
+
+**Registro del rewrite (LOCKED, §3.2):** en B1, B6, B7 y B8 el inventario registra el **href
+finalmente emitido**, no el valor crudo de la columna. Para ambos sujetos el valor de
+`proyecto.enlace` es `https://tramitacion.senado.cl/wspublico/...` (host `tramitacion.senado.cl` +
+path `/wspublico/` ⇒ **la condición del rewrite se cumple**) y el href emitido es
+`buildSenadoUrl('14309-04')` / `buildSenadoUrl('17870-05')`. **B5 es la excepción**: pasa la
+columna verbatim, sin rewrite.
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | `Actualizado {hace X}` (cabecera de la ficha) | `relativeTimeEs` + `esStale` | `tabla.proyecto.fecha_captura` | **sí** | **sí** | — | → E-043 `app/components/ficha-header.tsx:19,66` |
+| C2 | `Actualizado {hace X}` (heading "Tramitación") — **frescura del set de eventos** | `relativeTimeEs` + `esStale` | `tabla.tramitacion_evento.fecha_captura` **MÁS RECIENTE** del set (`page.tsx:478-482`) | **sí** | **sí** | — | → E-048 `app/app/proyecto/[boletin]/page.tsx:489-490` |
+| C3 | fecha de cada evento de tramitación | `fechaCorta` | `tabla.tramitacion_evento.fecha` — **el hecho** | no | no | — | → E-038 `app/components/timeline-event.tsx:32` |
+| C4 | mes-año de agrupación del timeline | `Intl.DateTimeFormat("es-CL")` | `tabla.tramitacion_evento.fecha` — el hecho | no | no | — | → E-010 `app/components/timeline-view.tsx:22` |
+| C5 | fecha de hito del stepper / inicio de urgencia vigente | `fechaCorta` | `tabla.tramitacion_evento.fecha` — el hecho | no | no | — | → E-045 `app/components/capa1/tramitacion-stepper.tsx:99,194` |
+| C6 | fecha del último hito | `fechaCorta` | `tabla.tramitacion_evento.fecha` — el hecho | no | no | — | → E-032 `app/components/estado-actual-block.tsx:397` |
+| C7 | inicio de la urgencia vigente (`{fecha}` + `hace X`) | `fechaCorta` + `relativeTimeEs` | `tabla.tramitacion_evento.fecha` (evento de presentación de urgencia) — el hecho | no | no | — | → E-032 `app/components/estado-actual-block.tsx:413,417` |
+| C8 | `según {fuente} al {fecha}` (coletilla del token de urgencia) | `fechaCorta` | `tabla.tramitacion_evento.fecha_captura` MÁS RECIENTE (`estado-actual-block.tsx:332-339`) | **sí** | **no** — el bloque la formatea por su cuenta | — | → E-032 `app/components/estado-actual-block.tsx:429` |
+| C9 | fecha de la citación vigente / próximas | `fechaCorta` + `diaCalendarioCitacion` | `tabla.citacion.fecha` (date-only medianoche UTC: la parte fecha UTC **es** el día chileno) vía `tabla.citacion_punto` (`:541`) | no (el hecho) | no | — | → E-032 `app/components/estado-actual-block.tsx:189,221,237,270,445,460` |
+| C10 | fecha en tabla de sala | `fechaCorta` | `tabla.sesion_tabla_item` (`:551`) → fecha de la sesión — el hecho | no | no | — | → E-032 `app/components/estado-actual-block.tsx:475,497` |
+| C11 | fecha de la votación | `fechaCorta` | `tabla.votacion.fecha` — el hecho | no | no | — | → E-056 `app/components/votacion-card.tsx:39` |
+| C12 | `Actualizado {hace X}` (por votación) | `relativeTimeEs` | `tabla.votacion.fecha_captura` (`:23`) | **sí** | **sí** | — | → E-056 `app/components/votacion-card.tsx:95-96` |
+| C13 | `Actualizado {hace X}` (por autor) | `relativeTimeEs` | `tabla.proyecto_autor.fecha_captura` | **sí** | **sí** | — | → E-035 `app/components/autor-row.tsx:56-58` |
+| C14 | `Actualizado {hace X}` (idea matriz) | `relativeTimeEs` | `tabla.proyecto_ficha.fecha_captura` (`page.tsx:384`) | **sí** | **sí** | — | → E-058 `app/components/idea-matriz-block.tsx:48` |
+| C15 | `Actualizado {hace X}` (por proyecto similar) | `relativeTimeEs` | `tabla.proyecto.fecha_captura` del vecino (`proyectos-similares.tsx:106`) | **sí** | **sí** | — | → E-028 `app/components/search-result-card.tsx:93` |
+| C16 | `Reunión registrada el {fecha}` (lobby del período) | `fechaCorta` | `RPC:lobby_en_tramitacion.fecha` — el hecho | no | no | — | → E-041 `app/components/lobby-en-tramitacion.tsx:144` |
+| C17 | fecha de la audiencia (menciones de lobby) | `fechaCorta` | `RPC:lobby_menciones_de_boletin.fecha` — el hecho | no | no | — | → E-020 `app/components/lobby-menciones-de-boletin.tsx:129` |
+| C18 | `Reunión registrada el {fecha}` (cruces) | `fechaCortaSegura` | `RPC:cruces_de_proyecto.fecha` — el hecho | no | no | **CRUCES** (ON) | → E-044 `app/components/cruces-de-proyecto.tsx:168` |
+| C19 | `Actualizado {hace X}` (por señal de cruce) | `relativeTimeEs` | `RPC:cruces_de_proyecto.fecha_captura` (`:177`) | **sí** | **sí** | **CRUCES** (ON) | → E-044 `app/components/cruces-de-proyecto.tsx:176-177` |
+| C20 | `según fuente al {fecha}` (validación de fuente) | `toLocaleDateString("es-CL", { timeZone: "America/Santiago" })` (`formatFechaCaptura`, `:224-233`) | `tabla.proyecto.fecha_captura` (`page.tsx:677`) | **sí** | **no** — el bloque la formatea por su cuenta | — | → E-027 `app/components/validacion-fuente.tsx:139-141` |
+| C21 | `Respaldo del {fecha} · hash {…}` | `toLocaleDateString("es-CL", { timeZone: "America/Santiago" })` (`formatFetchedAt`, `:236-246`) | `tabla.source_snapshot.fetched_at` (`page.tsx:650`) — momento del **snapshot en R2** | **sí** (reloj de scraping) | **no** | — | → E-027 `app/components/validacion-fuente.tsx:189-191` |
+
+**La frescura NUNCA se presenta como el hecho.** C2, C8, C20 y C21 son relojes de captura/scraping
+y su copy lo dice literalmente: `Actualizado hace X`, `según {fuente} al {fecha}`,
+`Respaldo del {fecha} · Esto decía la fuente ese día`. Las fechas del **hecho** de tramitación son
+C3-C7 y C9-C10, todas desde `tramitacion_evento.fecha` / `citacion.fecha` / `sesion_tabla_item`.
+
+**Correspondencia badge ↔ tablas (verificación de la regla LOCKED):** los 7 badges de la ruta
+—`ficha-header:65`, `page.tsx:489`, `votacion-card:95`, `autor-row:56`, `idea-matriz-block:48`,
+`search-result-card:93`, `cruces-de-proyecto:176`— aportan **B1, B6, B7, B8, B11, B12, B13** en
+Tabla B (los dos últimos declarando `sourceUrl={null}`) y **C1, C2, C12, C13, C14, C15, C19** en
+Tabla C. Cero badges solo-C.
+
+**Nota de esta ruta (corrección del catálogo):** `E-048` registraba el `capturedAt` de `page.tsx:490`
+como `tabla.source_snapshot`. La evidencia del código es otra: `masReciente` sale del `reduce` sobre
+los eventos de `tramitacion_evento` (`page.tsx:478-482`), y `source_snapshot` sólo alimenta el
+respaldo R2 de `validacion-fuente` (C21). Queda corregido en C2/C21.
+
+#### 4.2.b `app/app/proyecto/[boletin]/not-found.tsx`
+
+Es la **misma ruta en estado 404** (la disparan el guard `BOLETIN_RE`, `page.tsx:60-62`, y
+`FichaSection` cuando `leerProyecto` devuelve 0 filas, `:429-431`). Emite **3 hrefs**, dos de ellos
+**externos** — 115 debe validarlos igual que los de la ficha viva.
+
+Tabla A (internos):
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `/` | → E-023 `app/app/proyecto/[boletin]/not-found.tsx:37` | — | siempre | `/` |
+
+Tabla B (externos):
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | **senado** (`www.senado.cl`) | literal `https://www.senado.cl/appsenado/index.php?mo=tramitacion&ac=getDetalleProyecto` | literal en código (ni builder ni columna) | — (buscador genérico, sin boletín) | → E-023 `app/app/proyecto/[boletin]/not-found.tsx:18` | — |
+| B2 | **camara** (`www.camara.cl`) | literal `https://www.camara.cl/legislacion/ProyectosDeLey/proyectos_ley.aspx` | literal en código (ni builder ni columna) | — (buscador genérico, sin boletín) | → E-023 `app/app/proyecto/[boletin]/not-found.tsx:27` | — |
+
+Tabla C: **sin fechas** (copy estático).
+
 ## 5. Gates y su estado
 
 **Método:** estado **OBSERVADO** contra el deploy vivo el **2026-07-27**, con `curl -s` + grep del
