@@ -36,35 +36,31 @@ Corrida autónoma v11.0 "Capa LLM escalonada + cierre de deuda viva" — PASADA 
   Verificación 8/8. **Contrato aditivo nuevo en `@obs/llm`:** `CompletionRequest.onValidationOutcome` +
   `ValidationOutcome` en `validate.ts` (prod sin cambio) — la escalera de 108 lo puede usar para telemetría.
 
-## ✅ VEREDICTO LIVE YA CORRIDO (2026-07-27) — hay GATE VERDE para 109
+## ✅ VEREDICTO DEFINITIVO full-40 CORRIDO (2026-07-27) — GATE VERDE SOLO para CLASIFICACIÓN
 
-El VEREDICTO por tarea (BENCH-05) SE CORRIÓ contra endpoints reales (`LLM_BENCH_LIMIT=10`, ver
-`107-VEREDICTO-LIVE-2026-07-27.md` + `107-SPIKE-FINDINGS-hosts.md`). Resultado real:
-- **routing → APPROVED (Granite @ Workers AI)** Δ+0.10; **clasificación → APPROVED (Granite)** Δ0.00
-  (paridad). Granite: structured/zod fail 0.0, ~**100× más barato** que DeepSeek. → **GATE VERDE**: 109
-  puede integrar routing o clasificación (ambas reversibles, no-legales).
-- **extracción → DeepSeek se queda** Δ−0.80 (Granite value-precision 0.2 vs 1.0 — 3B falla extracción
-  strict-schema como predijo el research). NO tocar. Decisión por evidencia.
-- **juez (BENCH-04) → pending-evidence** (los 32 llamados a Phi dieron HTTP 402 "insufficient credits" en
-  OpenRouter → sin medición). NO gatea 109 (la tarea reversible no usa juez).
+Los 3 follow-ups quedaron RESUELTOS (commits `93a3989` fix + `be0b1b9` artefacto). El VEREDICTO DEFINITIVO
+por tarea (BENCH-05) se corrió sobre los golden es-CL **COMPLETOS** (`LLM_BENCH_LIMIT=0`, 996s PASSED,
+juez con créditos), ver **`107-VEREDICTO-LIVE-FULL-2026-07-27.md`** (el `107-VEREDICTO-LIVE-2026-07-27.md`
+de 10-sample quedó SUPERSEDED). Resultado real y DEFINITIVO — MANDA sobre el 10-sample:
+- **routing → 🔒 incumbent-stays (DeepSeek)** Δ**−0.10** (Granite cobertura 0.5 < DeepSeek 0.6). El
+  10-sample daba approved(+0.10) pero **el full-40 lo REVIRTIÓ**. **routing NO se integra.**
+- **clasificación → ✅ APPROVED (Granite)** Δ**0.0000** (paridad EXACTA sobre los 40); structured/zod fail
+  0.0, ~**84× más barato**. → **ÚNICA tarea con GATE VERDE → 109 integra CLASIFICACIÓN.**
+- **extracción → 🔒 DeepSeek se queda** — **veto es-CL DURO directo** (Granite `negacion.accuracy` 0/3 vs
+  DeepSeek 1/3; value P/R 0.098/0.182 vs 1.0/1.0). NO tocar. INTOCABLE.
+- **juez (BENCH-04) → Phi VALIDADO** (n=32, `recall_rechazo` 0.917, `precision_ok` 0.95, 0 fallos, SIN
+  auto-preferencia). No gatea 109 (la tarea reversible no usa juez). Juez-de-identidad sigue DIFERIDO.
 
 **Host reality (verificado):** Granite SOLO en Workers AI (`@cf/ibm-granite/granite-4.0-h-micro`, tools OK;
-`WORKERS_AI_API_TOKEN`+`CLOUDFLARE_ACCOUNT_ID` YA en `.env`, funcionando). Phi juez: `microsoft/phi-4` en
-OpenRouter vía **modo prompt-forced+zod ya implementado** en `PhiJudge` (`structuredMode:"prompt"`); solo
-falta **saldo OpenRouter** para BENCH-04.
+`WORKERS_AI_API_TOKEN`+`CLOUDFLARE_ACCOUNT_ID` YA en `.env`, funcionando). Phi juez `microsoft/phi-4` en
+OpenRouter vía modo prompt-forced+zod (`structuredMode:"prompt"`), con saldo.
 
-**FOLLOW-UPS para esta pasada (antes de flipear una integración productiva en 109):**
-1. **Confirmar routing/clasificación sobre los 40 golden completos** — el full-40 TIMED OUT contra el
-   límite hardcodeado 600s de vitest. Subir `TIMEOUT_MS` en `candidatos.live.test.ts` o correr por-tarea/
-   chunked. El 10-sample es evidencia fuerte pero el flip productivo merece los 40. (extracción ya vetada → segura.)
-2. **BENCH-04 juez:** cargar saldo OpenRouter (centavos) y re-correr → número real de Phi vs humano.
-3. **Fix reporte juez degenerado:** `computarVeredicto` marca un juez con 0 veredictos válidos como
-   `incumbent-stays` (escalar 0) en vez de `pending-evidence`. Corregir a pending-evidence (honesto).
-
-**Implicación para 108/109:** 108 NO depende de nada de esto (MockProvider). 109 YA tiene gate verde
-(routing/clasificación) → integra UNA de ellas con la red de seguridad completa; el flip productivo real
-espera la confirmación full-40. Si por lo que sea el gate se cae en el full-40, 109 cierra honesto
-(integración diferida) — resultado VÁLIDO. NO fabricar aprobación sin evidencia.
+**Implicación para 108/109:** 108 NO depende de nada de esto (MockProvider). **109 integra CLASIFICACIÓN**
+(la ÚNICA tarea aprobada; routing quedó fuera por el full-40) con la red de seguridad completa. La escalera
+usa Granite@WorkersAI para clasificación, DeepSeek incumbente como fallback/escalón. NO integrar routing
+(no alcanzó paridad) ni extracción (vetada) ni adjudicación (INTOCABLE). El veredicto ya es full-40 real
+—no hay confirmación pendiente. Si algo se cayera al integrar, 109 cierra honesto (integración diferida) —
+resultado VÁLIDO. NO fabricar aprobación sin evidencia.
 
 ## 108 (TIER P2 — plomería) — scope
 
@@ -87,8 +83,8 @@ espera la confirmación full-40. Si por lo que sea el gate se cae en el full-40,
 
 ## 109 (INTEG P3 — integrar la tarea de MENOR RIESGO) — scope, GATED por veredicto verde
 
-- Integrar UNA tarea reversible NO-legal (clasificación o routing — la que el veredicto 107 APRUEBE;
-  JAMÁS extracción de idea-matriz ni adjudicación) con:
+- Integrar **CLASIFICACIÓN** (la ÚNICA tarea que el veredicto DEFINITIVO full-40 APROBÓ; routing quedó
+  fuera al revertirse en los 40; JAMÁS extracción de idea-matriz ni adjudicación) con:
   - **provider-guard (zod+PII wrapper enumerando TODOS los providers) como PRIMER COMMIT** (patrón
     lockdown-guard-first v10.0),
   - golden set de la tarea como regresión CI PERMANENTE,
