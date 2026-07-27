@@ -1,7 +1,8 @@
 ---
 phase: 113
 titulo: Inventario rector de superficies
-deploy_auditado: "pendiente — se registra en §5 tras observar el deploy"
+deploy_auditado: "observado 2026-07-27 23:04 UTC (Cloudflare no expone id de versión en headers; ver §5)"
+gates_observados: { NET: ON, CRUCES: ON, VSIM: ON, MONEY: OFF, NOTIF: OFF }
 base_url: https://observatorio-congreso.thevalis.workers.dev
 fecha_corrida: 2026-07-27
 estado: en construcción
@@ -326,4 +327,41 @@ _(pendiente — Plan 02/03/04)_
 
 ## 5. Gates y su estado
 
-_(pendiente — Task 3 de este plan.)_
+**Método:** estado **OBSERVADO** contra el deploy vivo el **2026-07-27**, con `curl -s` + grep del
+HTML de superficies testigo (los sujetos de §1). **Prohibido copiar el estado de STATE.md** — el
+research lo tenía como assumption A1 y aquí queda cerrada por evidencia.
+
+**Deploy auditado:** base `https://observatorio-congreso.thevalis.workers.dev`, observada
+`2026-07-27 23:04 UTC`. La respuesta incluye `x-opennext: 1` y `server: cloudflare`; **el
+identificador de versión de Cloudflare NO se expone en los headers**, así que el deploy se ancla
+por fecha/hora de observación, no por hash. (STATE menciona `e89b79af`; eso NO se usa como
+evidencia aquí.)
+
+Los **5 gates son server-only**: ninguno lleva prefijo `NEXT_PUBLIC_`, y cada módulo abre con
+`import "server-only"` ⇒ **el flag jamás llega al bundle del navegador**. La única lectura de cada
+env var es su función de gate (chokepoint); ninguna ruta lee `process.env.<FLAG>` crudo. Todos son
+fail-closed: solo el literal `"true"` enciende (`env.X === "true"`).
+
+| gate | env var | chokepoint (archivo:línea) | estado observado | evidencia (comando + resultado) | efecto en links/fechas |
+|------|---------|----------------------------|------------------|---------------------------------|------------------------|
+| NET | `NET_PUBLIC_ENABLED` | `app/lib/net-gate.ts:35-39` (`netPublicEnabled`) | **ON** | `curl -s "$B/" \| grep -o 'href="/red"' \| wc -l` → **1**; `curl -o /dev/null -w "%{http_code}" "$B/red"` → **200** | `/red` es superficie pública real; el ítem `/red` del nav (`header-nav.tsx:63`) SÍ se emite; el grafo emite links a fichas |
+| CRUCES | `CRUCES_PUBLIC_ENABLED` | `app/lib/cruces-gate.ts:37-41` (`crucesPublicEnabled`) | **ON** | `curl -s "$B/proyecto/14309-04" \| grep -o '<section id="cruces"'` → **presente**; en `/parlamentario/D1165` la sección `id="cruces"` (rotulada "Lobby por sector", `count: 11`) → **presente** | los bloques de cruces emiten links y `ProvenanceBadge` (fecha de captura del FULL REBUILD diario) en ambas fichas |
+| VSIM | `VSIM_PUBLIC_ENABLED` | `app/lib/vsim-gate.ts:33-37` (`vsimPublicEnabled`) | **ON** | `curl -s "$B/comparar?a=D1165&b=D1012" \| grep -o '<h2[^>]*>[^<]*</h2>'` → incluye **"Similitud de votación"**, con `1054 de 3609 votaciones compartidas (29%)` | `/comparar` emite el eje `coincidencia_votos_par` y su `fecha_captura_max` del par |
+| MONEY | `MONEY_PUBLIC_ENABLED` | `app/lib/money-gate.ts:30-34` (`moneyPublicEnabled`) | **OFF** | `curl -o /dev/null -w "%{http_code}" "$B/contraparte/c:76000000-0"` → **404**; `grep -c 'href="/contraparte/'` en `/parlamentario/D1165` y `/proyecto/14309-04` → **0** y **0**; la ficha emite en su lugar `<section id="financiamiento-pendiente" class="mt-12 opacity-60">` con el rótulo "Financiamiento y contratos" y `count: "pendiente"` | financiamiento / contratos / aportes **no emitidos en el deploy auditado**: cero links a `/contraparte/[id]`, cero links externos a mercadopublico/servel, cero fechas de esos bloques. La ruta `/contraparte/[id]` 404ea entera (gate como PRIMERA sentencia, `page.tsx:50-52`) |
+| NOTIF | `NOTIF_PUBLIC_ENABLED` | `app/lib/notif-gate.ts:35-39` (`notifPublicEnabled`) | **OFF** | `curl -s "$B/parlamentario/D1165" \| grep -oic 'Seguir'` → **0** (el `SeguirButton` está ausente del DOM); `/notificaciones/confirmar?token=x` responde **200** pero sin efecto útil (feature inerte) | ningún botón de seguir ⇒ cero links de suscripción; `/cuenta` y `/notificaciones/*` existen como rutas pero no emiten superficie útil |
+
+### 5.1 Convención LOCKED de la columna `gate`
+
+- **Toda** fila de las secciones **3 (catálogo de emisores)** y **4 (las 15 rutas)** lleva una
+  columna `gate` con valor de la **lista cerrada**: `—` | `NET` | `CRUCES` | `VSIM` | `MONEY` |
+  `NOTIF`. `—` significa "sin gate: se emite siempre".
+- Un bloque cuyo gate está **OFF se inventaría igual** (existe en el código y es parte del
+  denominador), pero se marca con la cadena literal **`no emitido en el deploy auditado`**.
+  Así 114/115/125 no persiguen links inexistentes y 116 sabe que existe copy de fecha bajo MONEY
+  que hoy no se ve.
+- Si una observación resultara ambigua, se registra `estado observado: indeterminado` con su causa.
+  **Nunca se inventa el estado de un gate.** (En esta corrida ninguno quedó indeterminado: los 5
+  se resolvieron por evidencia directa.)
+- Consecuencia inmediata para el inventario: `/contraparte/[id]` (MONEY) es hoy una ruta **404** y
+  `/admin/revisar-entidades` está **EXCLUIDA** por decisión LOCKED del CONTEXT — ninguna de las dos
+  se presenta como superficie pública viva.
