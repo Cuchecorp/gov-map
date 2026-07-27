@@ -1539,6 +1539,222 @@ de DOM mientras el gate está OFF). Renderiza el chrome (`C-01`..`C-03`; **sin**
 
 Tabla B: **sin links externos**. Tabla C: **sin fechas** (copy estático).
 
+### 4.10 `/metodologia`
+
+**Tipo:** pública, **estática** (`app/app/metodologia/page.tsx`, copy fijo con
+`export const metadata` en `:15`). **Sin `searchParams`, sin lectura de DB**
+(`grep -n "rpc(\|from(" app/app/metodologia/page.tsx` → **sin match**).
+
+**Sujeto usado:** `—`.
+**URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/metodologia`
+
+**Chrome:** `→ C-01`, `→ C-02`, `→ C-03`. **Sin** `C-04`. **No se repiten aquí.** Nótese que el
+footer (`C-01`) ya emite `/metodologia`, `/sobre`, el CC BY 4.0 y el `mailto:`; abajo solo van los
+links **propios de la página**.
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `/` ("Volver al inicio") | → E-025 `app/app/metodologia/page.tsx:129` | — | siempre | `/` |
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | otro (Creative Commons) | literal `https://creativecommons.org/licenses/by/4.0/deed.es` | literal en código (ni builder ni columna) | — | → E-025 `app/app/metodologia/page.tsx:93` | — |
+| B2 | otro (`mailto:`, no es http) | literal `mailto:contacto@observatoriocongreso.cl` — **buzón institucional público**, no PII de persona natural | literal en código | — | → E-025 `app/app/metodologia/page.tsx:119` | — |
+
+**Nota:** B1 duplica en la página el link de licencia que el footer ya emite (`C-01` nº 1) — es un
+link **propio** de esta página (distinta línea, distinto emisor) y por eso se registra aquí; no es
+una repetición de chrome. Es el mismo caso de B2 con el `mailto:`.
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | ninguna — **copy estático, cero fechas renderizadas** | — | — | — | — | — | → E-025 `app/app/metodologia/page.tsx` (`grep` de formatters → sin match) |
+
+### 4.11 `/sobre`
+
+**Tipo:** pública, **estática** (`app/app/sobre/page.tsx`, `export const metadata` en `:14`). **Sin
+`searchParams`, sin lectura de DB.**
+
+**Sujeto usado:** `—`.
+**URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/sobre`
+
+**Chrome:** `→ C-01`, `→ C-02`, `→ C-03`. **Sin** `C-04`. **No se repiten aquí.**
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `/buscar` | → E-009 `app/app/sobre/page.tsx:62` | — | siempre | `/buscar` |
+| A2 | `/agenda` | → E-009 `app/app/sobre/page.tsx:70` | — | siempre | `/agenda` |
+| A3 | `/parlamentarios` | → E-009 `app/app/sobre/page.tsx:78` | — | siempre | `/parlamentarios` |
+| A4 | `/` ("Volver al inicio") | → E-009 `app/app/sobre/page.tsx:107` | — | siempre | `/` |
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | otro (Creative Commons) | literal `https://creativecommons.org/licenses/by/4.0/deed.es` | literal en código (ni builder ni columna) | — | → E-009 `app/app/sobre/page.tsx:94` | — |
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | ninguna — **copy estático, cero fechas renderizadas** | — | — | — | — | — | → E-009 `app/app/sobre/page.tsx` (menciona "fecha" en prosa, `:33,52`, sin renderizar ninguna) |
+
+### 4.12 `/cuenta`
+
+**Naturaleza:** **auth (OTP por email)** — no es una superficie de datos públicos. Se inventaría
+porque está en el universo LOCKED del CONTEXT, marcando su naturaleza.
+**Gate:** **`NOTIF`** (**OFF** en el deploy auditado, §5). El gate es la **primera** decisión tras
+leer `searchParams` (`app/app/cuenta/page.tsx:106-115`) y devuelve un `<main>` con el `H1` + el copy
+`NO_INDISPONIBLE`; **no** hay `notFound()` (la ruta responde 200 con un estado honesto, nunca 404).
+⇒ **Toda la superficie de datos de esta ruta lleva la marca `no emitido en el deploy auditado`.**
+
+**Sujeto usado:** `—` (ruta de sesión; no depende de ningún id de §1).
+**URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/cuenta`
+
+**REGLA DE PRIVACIDAD APLICADA (T-113-08):** este documento **no registra ningún email**. El campo
+`email` se cita como **nombre de input/columna** (`page.tsx:152-154`, `:171-173`), jamás un valor.
+El código mismo lo prohíbe: *"NUNCA renderizar el email crudo ni el token"* (`page.tsx:27`).
+
+**Chrome:** `→ C-01`, `→ C-02`, `→ C-03`. **Sin** `C-04`. **No se repiten aquí.**
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | **ninguno propio** — la ruta emite **0 hrefs** fuera del chrome | → E-052 `app/app/cuenta/page.tsx` (`grep -n "href=\|<Link" app/app/cuenta/page.tsx` → **sin match**) | — | **NOTIF** (OFF) — con el gate ON tampoco emitiría links: la interacción es por Server Actions | — |
+
+**No es un href:** login y baja son `<form action={serverAction}>` con Server Actions
+(`page.tsx:129-141`, `:313` `accionBaja`). **Inbound:** el único link *hacia* esta ruta es
+`/cuenta?next=...` desde `SeguirButton` (→ E-039, §4.1 A1 8), que con **NOTIF OFF** tampoco se emite.
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | ninguna — **la ruta no emite ningún link externo propio** | — | — | — | — (los externos visibles son los del footer, `→ C-01`) | **NOTIF** (OFF) — `no emitido en el deploy auditado` |
+
+**Cero `ProvenanceBadge`:** `grep -n "ProvenanceBadge" app/app/cuenta/page.tsx` → sin match.
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | `Consentimiento registrado el {fecha}` | `fechaCorta` **local** (`Intl.DateTimeFormat("en-CA")`, `page.tsx:90-96`) — homónimo del helper de `lib/format`, definido en la propia página | `tabla.consentimiento.created_at` (`page.tsx:215-217`) | no — es el **acto del usuario** (aceptación), no scraping | no | **NOTIF** (OFF) — `no emitido en el deploy auditado` | → E-052 `app/app/cuenta/page.tsx:282` |
+| C2 | `Suscrito el {fecha}` (por suscripción) | mismo `fechaCorta` local | `tabla.suscripcion.created_at` (`page.tsx:210-213`) | no — el acto del usuario | no | **NOTIF** (OFF) — `no emitido en el deploy auditado` | → E-052 `app/app/cuenta/page.tsx:310` |
+
+**Nota para 116:** C1 y C2 son las **únicas** fechas del sitio que describen un acto del **usuario**
+(no de la fuente gubernamental). No son `fecha_captura` ni "el hecho legislativo": son datos
+personales de la propia cuenta. Con **NOTIF OFF** ninguna se emite hoy.
+
+### 4.13 `/notificaciones/baja`
+
+**Naturaleza:** **token-based** (login-less) + **`noindex`**. `export const metadata = { robots:
+{ index: false, follow: false } }` (`app/app/notificaciones/baja/page.tsx:35-36`).
+**Gate:** ninguno a nivel de ruta — la página responde 200 siempre; con **NOTIF OFF** la feature es
+**inerte** (§5: nadie recibe el digest que emite estos links, así que en la práctica el token no
+existe). Se marca la superficie útil como `no emitido en el deploy auditado`.
+
+**Sujeto usado:** `—` (ruta de token; **no se eligió ni se inventó ningún token**).
+**URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/notificaciones/baja?t=<token>` —
+el placeholder `<token>` es literal; **este documento no contiene ningún token real ni de ejemplo**.
+
+**Mecanismo de token (descripción, cero secretos — T-113-08):** el `?t=` viaja **crudo en el link**
+y **nunca** se persiste crudo. Dos formas conviven (`page.tsx:12-27,71-90`):
+
+| forma | verificación | lookup en DB |
+|-------|--------------|--------------|
+| token **por-usuario** (el que emite el digest) | firma **HMAC** con `NOTIF_TOKEN_SECRET` vía `verifyUserBajaToken` — **fail-loud** si falta el secreto | **ninguno** — no hay búsqueda por token |
+| token **por-suscripción** (legado) | se **hashea** el `?t=` (`hashToken`) y se compara contra la columna | `tabla.suscripcion.baja_token_hash` (helper `service_role` dedicado) |
+
+En DB vive **solo el hash**, jamás el token. Un token ausente / inválido / ya usado → copy
+`Enlace no válido` (`page.tsx:110-116`), nunca un error ni una filtración.
+
+**Chrome:** `→ C-01`, `→ C-02`, `→ C-03`. **Sin** `C-04`. **No se repiten aquí.**
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | **ninguno propio** — la ruta emite **0 hrefs** fuera del chrome | `grep -n "href=\|<Link" app/app/notificaciones/baja/page.tsx` → **sin match** | — | **NOTIF** (OFF) — feature inerte, `no emitido en el deploy auditado` | — |
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | ninguna — **la ruta no emite ningún link externo propio** | — | — | — | — (los externos visibles son los del footer, `→ C-01`) | **NOTIF** (OFF) — `no emitido en el deploy auditado` |
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | ninguna — **copy fijo (`OK_*` / `INVALID_COPY`), cero fechas renderizadas** | — | — | — | — | **NOTIF** (OFF) — `no emitido en el deploy auditado` | → `app/app/notificaciones/baja/page.tsx:92-118` |
+
+**Dato mostrado (no es fecha):** con token válido por-suscripción la página muestra
+`suscripcion.objetivo_id` (`page.tsx:88,102-105`) — un **id de parlamentario o boletín**, público
+por definición. Cero PII.
+
+### 4.14 `/notificaciones/confirmar`
+
+**Naturaleza:** **token-based** (doble opt-in, login-less) + **`noindex`** (`export const metadata =
+{ robots: { index: false, follow: false } }`, `app/app/notificaciones/confirmar/page.tsx:27-28`).
+**Gate:** ninguno a nivel de ruta (responde 200; §5 verificó `/notificaciones/confirmar?token=x` →
+**200** sin efecto útil). Con **NOTIF OFF** la superficie útil lleva `no emitido en el deploy
+auditado`.
+
+**Sujeto usado:** `—` (**no se eligió ni se inventó ningún token**).
+**URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/notificaciones/confirmar?t=<token>`
+— `<token>` es un placeholder literal.
+
+**Mecanismo de token (descripción, cero secretos):** el `?t=` opaco viaja **crudo en el link** y en
+DB vive **solo su hash**: se hashea con `hashToken` y se busca por `tabla.suscripcion.confirm_token_hash`
+vía helper `service_role` (`page.tsx:11-18,59`). Además hay **ventana de expiración**
+(`confirm_expira_at`) re-validada **en el write** (`marcarConfirmada`, `page.tsx:62-71`) para cerrar
+la race entre lectura y update. Token ausente / inválido / expirado → copy `Enlace no válido`
+(`page.tsx:88-94`).
+
+**Chrome:** `→ C-01`, `→ C-02`, `→ C-03`. **Sin** `C-04`. **No se repiten aquí.**
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | **ninguno propio** — la ruta emite **0 hrefs** fuera del chrome | `grep -n "href=\|<Link" app/app/notificaciones/confirmar/page.tsx` → **sin match** | — | **NOTIF** (OFF) — feature inerte, `no emitido en el deploy auditado` | — |
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | ninguna — **la ruta no emite ningún link externo propio** | — | — | — | — (los externos visibles son los del footer, `→ C-01`) | **NOTIF** (OFF) — `no emitido en el deploy auditado` |
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | ninguna — **copy fijo, cero fechas renderizadas**; `confirm_expira_at` se **usa** en la lógica pero **nunca se muestra** (`page.tsx:61-65`) | — | `tabla.suscripcion.confirm_expira_at` (**leída, no renderizada**) | no | no | **NOTIF** (OFF) — `no emitido en el deploy auditado` | → `app/app/notificaciones/confirmar/page.tsx:61-71` |
+
+### 4.15 `/admin/revisar-entidades` — **EXCLUIDA**
+
+| ruta | estado en el inventario | razón |
+|------|-------------------------|-------|
+| `/admin/revisar-entidades` (`app/app/admin/revisar-entidades/page.tsx`) | **EXCLUIDA** | **gated admin, no pública (decisión LOCKED del CONTEXT, §Alcance de rutas)**. Se **LISTA** para que el denominador de 15 rutas cierre, pero **no se inventaría**: cero Tabla A, cero Tabla B, cero Tabla C, cero enumeración de su superficie (mitigación T-113-04, ASVS V4 — no exponer el mapa de una superficie administrativa en un documento público) |
+
+**Consecuencia para las fases consumidoras:** 114 / 115 / 116 / 122 / 125 **no** persiguen links,
+fechas ni cruces de esta ruta. Su chrome sí la alcanza (§2 declara que `C-01`..`C-04` aplican a las
+15 rutas), pero eso es una propiedad del layout, no una enumeración de la ruta.
+
+**Lo único que se registra de ella** (metadato de esquema, no superficie): es la **única** ruta del
+universo que **escribe** en la DB — `sb.rpc("resolver_entidad", …)` (`page.tsx:132`) y un
+`fecha_captura` **fabricado en el momento de la revisión** (`new Date().toISOString()`,
+`page.tsx:126`). Se anota porque 116 debe saber que existe una `fecha_captura` cuyo origen es el
+**reloj del revisor**, no el scraping — y que **no se muestra en ninguna superficie pública**.
+
 ## 5. Gates y su estado
 
 **Método:** estado **OBSERVADO** contra el deploy vivo el **2026-07-27**, con `curl -s` + grep del
