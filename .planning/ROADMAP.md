@@ -158,7 +158,14 @@ Plans:
   3. El spike produce un veredicto POR TAREA con gate de paridad explícito (ε declarado): qué tarea aprueba qué modelo, cuáles quedan en su incumbente — y NADA se autoriza a integrar sin su gate verde
   4. Cualquier déficit en español (es-CL legal, fidelidad/negación) es VETO DURO para esa tarea — los benchmarks en inglés son irrelevantes y no influyen en la decisión
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 107-01-PLAN.md — Adapters GraniteProvider + JudgeProvider/Verdict + PhiJudge (clon MiniMax, guards idénticos, match-by-name, max_tokens explícito) + placeholders .env.example (TIER-01)
+- [ ] 107-02-PLAN.md — Máquina VEREDICTO por tarea (pura, ε explícito, es-CL veto duro, "nada aprueba") + puente PhiJudge→juez-vs-humano (BENCH-05, BENCH-04)
+- [ ] 107-03-PLAN.md — DIFERIDO (autonomous:false): corrida LIVE candidatos + veredicto definitivo, env-gated, requiere 3 keys operador (BENCH-04, BENCH-05)
+
 **Research**: yes (parte del SPIKE — precisión del juez en casos difíciles, calibración isotónica/Platt sobre etiquetas es-CL held-out)
 
 ### Phase 108: TIER P2 — Plomería `TieredProvider` + `JudgeProvider` + ladder config + telemetría
