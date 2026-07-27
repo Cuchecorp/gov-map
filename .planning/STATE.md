@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.0
-milestone_name: — Capa LLM escalonada + cierre de deuda viva
-status: Awaiting next milestone
-stopped_at: Completed 106-03-PLAN.md
-last_updated: "2026-07-27T19:14:29.062Z"
-last_activity: 2026-07-27 — Milestone v11.0 completed and archived
+milestone: v12.0
+milestone_name: Validación general producto-a-producto
+status: planning
+last_updated: "2026-07-27T20:09:55.260Z"
+last_activity: 2026-07-27
 progress:
-  total_phases: 8
-  completed_phases: 3
-  total_plans: 19
-  completed_plans: 18
-  percent: 38
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 ## Current Position
 
-Phase: Milestone v11.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-27 — Milestone v11.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-07-27 — Milestone v12.0 started
 
 ### Quick tasks CERRADAS (QT-01, Phase 112)
 

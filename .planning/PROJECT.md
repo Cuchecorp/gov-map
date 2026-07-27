@@ -8,7 +8,18 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato mostrado lleva fuente, fecha y enlace original, sin afirmar nunca intención ni causalidad.
 
-## Current Milestone: v11.0 — Capa LLM escalonada + cierre de deuda viva
+## Current Milestone: v12.0 — Validación general producto-a-producto
+
+**Goal:** Todo el sitio queda validado empíricamente producto por producto (cada página × dato real × fuente), con links y fechas verificados, crons robustos con la escalera LLM encendida donde el benchmark aprobó, y cruces + estructura Supabase auditados — corrida autónoma granular (Sonnet ejecuta, validadores Opus validan, Fable decide), en modo validar-y-arreglar.
+
+**Target features (directiva del operador 2026-07-27):**
+
+1. **Links + fechas por producto**: inventario de superficies; links internos exhaustivos; links externos a fuentes (camara.cl, senado.cl, BCN, leylobby) validados por patrón de generación + muestra live estratificada por tipo (rate-limit 2-3s/host); cada fecha mostrada verificada semánticamente — fecha del hecho vs fecha de captura (gotcha LOCKED: `fecha_captura` JAMÁS se presenta como el hecho).
+2. **Crons robustos + escalera LLM ON**: auditoría E2E de todos los workflows/crons (GH Actions + pg_cron); flip `CLASIFICACION_ESCALERA=1` **AUTORIZADO por el operador 2026-07-27** — se ejecuta tras shadow-eval verde + drift canary + rollback-by-config, con checkpoint de provisión de keys Workers AI con el operador; extensión de la escalera a otras tareas SOLO con benchmark nuevo que demuestre paridad (regla LOCKED: ante la duda, SIEMPRE calidad; DeepSeek se mantiene donde el benchmark lo confirmó; adjudicación de identidad INTOCABLE).
+3. **Cruces + estructura Supabase**: cada cruce visible validado contra SQL de PROD (conteos cuadrados, denominadores honestos); auditoría de schema/RLS/grants/RPCs bounded/PUBLIC_RPC_ALLOWLIST (supabase-reviewer como gate); fixes aditivos a PROD según precedente 0055+.
+4. **Modo validar-y-arreglar**: fix inline de lo delegable (código, migraciones aditivas, redeploy); solo lo destructivo/legal bloquea en checkpoint blocking-human. Flags no autorizados (MONEY, NOTIF) NO se tocan; guards de régimen son la vara del validador.
+
+## Current Milestone (history): v11.0 — Capa LLM escalonada + cierre de deuda viva (shipped 2026-07-27)
 
 **Goal:** La capa LLM pasa de dos-modelos-fijos (DeepSeek volumen / MiniMax crítico) a una escalera granular por tarea (Granite-4.0-H-Micro para routing/preguntas simples/clasificación → Phi-4-mini-instruct como juez/validador → selector que escala a modelo mayor), decidida SOLO por benchmark sobre golden set POR TAREA — regla LOCKED del operador: **ante la duda, SIEMPRE calidad**; DeepSeek se mantiene donde el benchmark lo confirme. Además la deuda viva deja de acumularse: parser BCN senadores corregido en ORIGEN (URI-como-partido), quick tasks cerradas formalmente, y pasada de cierre de los gates v7.0 con participación del operador.
 
@@ -211,7 +222,8 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 ### Active
 
-- [ ] **v11.0 — capa LLM escalonada + cierre de deuda viva** (en curso): spike benchmark POR TAREA (Granite/Phi/DeepSeek) · arquitectura respond→validate→escalate sobre LLMProvider · parser BCN senadores en origen · pasada de cierre gates v7.0 con operador · marcadores quick tasks.
+- [ ] **v12.0 — validación general producto-a-producto** (en curso): links + fechas por producto (internos exhaustivos, externos patrón+muestra) · crons robustos + flip escalera clasificación autorizado · cruces × SQL PROD + auditoría estructura Supabase · validar-y-arreglar.
+- [x] **v11.0 — capa LLM escalonada + cierre de deuda viva** (shipped 2026-07-27): benchmark por tarea (Granite APPROVED solo clasificación) · TieredProvider respond→validate→escalate default-OFF · parser BCN en origen · 0052 a PROD + quick tasks cerradas. Audit 20/24 (4 deferred operator-debt).
 - [x] **v10.0 — panel de actualidad + notificaciones + relaciones** (shipped 2026-07-26): panel señales honestas · relaciones + /comparar + VSIM ON (dossier firmado) · primer dato de usuario (auth+RLS, digest EGRESO, inerte hasta provisión) · E2E final deploy e89b79af. Audit PASSED 25/25.
 - [x] **v9.0 — robustez de productos estrella + seguridad final** (shipped 2026-07-23): búsqueda híbrida RRF + ranking/filtros + deep-links de validación · bio oficial + partido directo + cross-links · lobby legible audiencia→PL · /agenda por día con cobertura declarada · seguridad final (bounded RPCs, guards, gitleaks, audit DB viva, CSP enforced). Audit PASSED 29/29.
 - [~] **v7.0 — votos, dinero y cierre técnico** (code-complete 2026-07-15, gates de operador abiertos — HANDOFF-v7.0-operator-gates.md): P3 voto individual (opendata.camara.cl) → P5 dimensión dinero (SERVEL + ChileCompra por RUT, prereq RUT-01) → deuda técnica/hardening. Gates pre-aprobados por el operador; RUT-01 y revisión legal 21.719 siguen como prerrequisitos reales.
@@ -306,4 +318,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-26 — milestone v11.0 iniciado (capa LLM escalonada SEED-001 + cierre deuda viva: gates v7.0, parser BCN origen, quick tasks). Deuda operador viva: 103-HUMAN-UAT (provisión NOTIF) + gates v7.0 (entran a v11.0).*
+*Last updated: 2026-07-27 — milestone v12.0 iniciado (validación general producto-a-producto: links+fechas, crons+escalera clasificación flip autorizado, cruces+Supabase). Deuda operador viva: CF secrets + rotación B26 (110), RUT-01 + backfills LIVE (111), flip MONEY (112), provisión NOTIF (103-HUMAN-UAT).*
