@@ -97,6 +97,83 @@ Para capturar el baseline COMPLETO, corre con `LLM_BENCH_LIMIT=0` y sobrescribe 
 
 ---
 
+## 2b. VEREDICTO LIVE de candidatos (Granite + Phi vs DeepSeek) — env-gated, NUNCA en CI
+
+Este es el deliverable de **BENCH-04 + BENCH-05**: la ÚNICA corrida que produce el VEREDICTO
+por tarea definitivo. Corre en `src/candidatos.live.test.ts` y está **DIFERIDA** — requiere
+credenciales de CANDIDATO ausentes de `.env` (ver "Estado" abajo). Espeja el split LIVE/CI de la
+sección 2 (`describe.skip` sin `LLM_BENCH_LIVE=1`; `it.skipIf` sobre TODAS las keys).
+
+### Estado: PENDING-EVIDENCE (checkpoint de operador SURFACEADO, sin provisión)
+
+El VEREDICTO LIVE está **pending-evidence**: las tres keys de candidato NO están en `.env`
+(verificado 2026-07-27: `WORKERS_AI_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `OPENROUTER_API_KEY`
+ausentes; `DEEPSEEK_API_KEY` del incumbente SÍ presente). Un veredicto "pending-evidence" es un
+resultado de milestone **VÁLIDO** (107-CONTEXT §credentials, LOCKED, patrón v7/v9/v10): la máquina
+de veredicto + los adapters + los tests están verdes con mock; sólo faltan los NÚMEROS LIVE, que
+requieren provisión del operador. El handoff documentado está en
+`.planning/phases/107-*/107-OPERATOR-HANDOFF.md`.
+
+### Provisión (operador): las tres keys de CANDIDATO en `.env` (NUNCA en `.env.example`)
+
+Agregar a `.env` (LOCAL). `.env.example` mantiene los placeholders VACÍOS. `DEEPSEEK_API_KEY` YA
+existe (el incumbente se re-corre en el MISMO bloque, WARNING-1 baseline pinneado):
+
+| Key | Dónde se obtiene | Para qué |
+|-----|------------------|----------|
+| `WORKERS_AI_API_TOKEN` | Cloudflare Dashboard → My Profile → API Tokens → Create Token (permiso Workers AI) | Candidato PRIMARIO Granite en Workers AI |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Dashboard → cuenta | baseURL Workers AI `https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/v1` |
+| `OPENROUTER_API_KEY` | openrouter.ai → Keys → Create Key (`sk-or-…`) | Phi-4-mini juez (`microsoft/phi-4-mini-instruct`) + fallback baseURL-swap de Granite |
+
+- **Vía Workers AI (primario):** requiere `WORKERS_AI_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`;
+  Granite corre como `@cf/ibm-granite/granite-4.0-h-micro`.
+- **Vía OpenRouter (fallback):** con `OPENROUTER_API_KEY` Granite corre como
+  `ibm-granite/granite-4.0-h-micro` (baseURL-swap).
+- **El juez Phi vive SOLO en OpenRouter** → su medición (BENCH-04) requiere `OPENROUTER_API_KEY`.
+  Sin él, el bloque corre candidato+incumbente+veredicto pero el juez queda pending-evidence.
+- El test SALTA (no falla, no inventa números) salvo que estén `DEEPSEEK_API_KEY` (incumbente)
+  Y al menos una vía de candidato (Workers AI o OpenRouter).
+
+### Comando (operador, LIVE, fuera de CI)
+
+```bash
+# Carga .env SIN imprimir las keys, activa el gate LIVE, corre SOLO el test del veredicto:
+set -a; source .env; set +a
+LLM_BENCH_LIVE=1 pnpm --filter @obs/llm-bench exec vitest run src/candidatos.live.test.ts
+```
+
+En PowerShell (Windows) — cargar `.env` a variables de entorno de la sesión (sin imprimir), luego:
+
+```powershell
+$env:LLM_BENCH_LIVE = "1"
+pnpm --filter @obs/llm-bench exec vitest run src/candidatos.live.test.ts
+```
+
+- Smoke por defecto (3 casos/tarea). `LLM_BENCH_LIMIT=0` corre las golden GATE sets COMPLETAS
+  (más lento, decenas de llamadas reales). **El MISMO cap se aplica al candidato Y al incumbente**
+  → comparación apples-to-apples (WARNING-1).
+- Imprime, como artefacto: el `MetricasModelo` del candidato Y del incumbente same-run, las
+  `MetricasJuez` de PhiJudge-vs-humano, y el `Veredicto` por tarea
+  `{tarea → approved-model | incumbent-stays | pending-evidence}`. Cópialo/commitea con su
+  `endpoint` + `tarifaFecha`.
+
+### Interpretación (LOCKED)
+
+- **"nada aprueba paridad" / "pending-evidence" es un resultado VÁLIDO** — NO fuerces una
+  integración ni fabriques números. El test asierta que el veredicto fue COMPUTADO (todas las
+  tareas presentes con estado válido), NUNCA que algo aprobó.
+- **VETO DURO es-CL:** cualquier déficit de `negacion.accuracy` del candidato bajo el incumbente
+  veta esa tarea, sin importar métricas agregadas. Los benchmarks en INGLÉS son IRRELEVANTES.
+- **Provenance (Pitfall 9):** el veredicto SOLO vale contra el endpoint SERVIDO
+  (Workers AI / OpenRouter). Los números Ollama-local NO transfieren.
+- **`trainsOnInputs` (gate legal):** registrar la postura no-train/DPA del host servido
+  (Workers AI DPA / OpenRouter) como dato de provisión — hoy fijo conservador (`false`).
+
+> Privacidad (T-107-08): el sink recibe SOLO latencia + conteos de tokens; jamás el prompt/
+> respuesta ni la API key. El test NUNCA imprime keys ni URLs con credenciales.
+
+---
+
 ## 3. Cómo leer el `Reporte`
 
 Cada `MetricasModelo` trae, POR MODELO y etiquetado con su `endpoint`:
