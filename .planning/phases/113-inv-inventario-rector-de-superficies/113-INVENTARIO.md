@@ -1189,6 +1189,356 @@ MONEY — no se repite aquí). No corresponde a ninguna fila de PROD
 gate sea re-ejecutable. Es el único match del patrón de RUT en todo el archivo y **no** pertenece a
 §4.
 
+### 4.4 /
+
+_(la raíz del sitio; el header va sin comillas para que `check-inventario.sh` lo matchee con
+`^### 4\.[0-9]+ /[[:space:]]*$` — la ruta `/` matchearía cualquier línea con `grep -F`.)_
+
+**Tipo:** pública, **estática en el archivo pero `force-dynamic`** (`app/app/page.tsx:15`): el panel
+de actualidad lee la RPC en cada request. **Sin `searchParams`** — la portada no acepta parámetros.
+
+**Sujeto usado:** `—` (ruta sin sujeto; no depende de un id de §1).
+**URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/`
+
+**Chrome:** `→ C-01` (footer), `→ C-02` (nav), `→ C-03` (wordmark). **Sin** `C-04` (no hay
+breadcrumbs en la portada). **No se repiten aquí.**
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `/sobre` (accent tile "¿Cómo leer esto?") | → E-024 `app/app/page.tsx:110` (tile `asChild` sobre `BentoTile`, → E-046) | — | siempre | `/sobre` |
+| A2 | `/buscar` (entry tile "Proyectos de ley") | → E-024 `app/app/page.tsx:146`, href literal en `ENTRY_CARDS` (`page.tsx:62`) | — | siempre | `/buscar` |
+| A3 | `/parlamentarios` (entry tile "Parlamentarios 360") | → E-024 `app/app/page.tsx:146`, href literal en `ENTRY_CARDS` (`page.tsx:68`) | — | siempre | `/parlamentarios` |
+| A4 | `/agenda` (entry tile "Agenda de la semana") | → E-024 `app/app/page.tsx:146`, href literal en `ENTRY_CARDS` (`page.tsx:74`) | — | siempre | `/agenda` |
+
+**No es un href (registro explícito):** el `SearchBox` del hero es un `<form method="get"
+action="/buscar">` (`app/components/search-box.tsx:89-92`) — navega a `/buscar` **sin emitir
+`<a>`**. 114/125 no deben buscarlo como link; sí es una arista de navegación para 125 (E2E).
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | ninguna — **la ruta no emite ningún link externo propio** | — | — | — | — (los únicos externos visibles son el CC BY 4.0 y el `mailto:` del footer, `→ C-01`) | — |
+
+**Cero `ProvenanceBadge` en esta ruta:** `grep -n "ProvenanceBadge" app/app/page.tsx
+app/components/panel-actualidad.tsx app/components/bento/bento-tile.tsx` → **sin match**. Por eso
+Tabla B queda sin filas de badge (la regla de badge DUAL se cumple por vacío).
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | `Fuente: {fuente} · datos al {fecha}` (tiles de agenda: `agenda_citacion`, `agenda_sala`) | `diaCalendarioCitacion` (`panel-actualidad.tsx:104`) — date-only medianoche UTC, **sin** conversión de zona | `RPC:actualidad_senales_panel.fecha_max` | **no** — es el máximo del **hecho** (citación/sesión), no el reloj de scraping | no | — | → E-055 `app/components/panel-actualidad.tsx:100-108,227` |
+| C2 | `Fuente: {fuente} · datos al {fecha}` (resto de tiles: `velocity`, `urgencias`, `nuevos_ingresos`, `archivados`, `agrupacion_materia`) | `fechaCorta` (`panel-actualidad.tsx:107`) | `RPC:actualidad_senales_panel.fecha_max` | **no** — el hecho (`votacion.fecha` / `tramitacion_evento.fecha` agregados por la RPC 0066) | no | — | → E-055 `app/components/panel-actualidad.tsx:100-108,227` |
+| C3 | `{supresion_causa} — en las fuentes consultadas al {fecha}` (tile suprimido) | mismo `rotuloFecha` que C1/C2 | `RPC:actualidad_senales_panel.fecha_max` | **no** | no | — | → E-055 `app/components/panel-actualidad.tsx:166,176-178` |
+
+**Hallazgo de instanciación (corrección del plan, Rule 1 — evidencia por grep):** el plan anticipaba
+`fecha_captura` en el módulo de actualidad. **En el deploy auditado `/` NO emite ninguna
+`fecha_captura`.** Dos evidencias: (1) `grep -n "fecha_captura" app/components/panel-actualidad.tsx`
+→ **sin match** (el contrato de 9 columnas de la RPC, `:35-45`, ni siquiera la trae); (2) el módulo
+que **sí** tenía ese comportamiento, `actualidad-module.tsx` (**E-008**), es un **emisor huérfano**
+(§3.0.1) — fue superseded por `panel-actualidad.tsx`. Consecuencia para **116**: en `/` no hay
+ninguna fecha candidata a "fecha de captura mostrada como el hecho"; el riesgo de esta ruta es el
+inverso — `fecha_max` es un **agregado** de la RPC y 116 debe verificar que la 0066 lo derive del
+hecho y no del reloj.
+
+**Hallazgo de catálogo (corrección, Rule 1):** el catálogo §3.0 lista **E-032**
+(`estado-actual-block.tsx`) en las rutas `/proyecto/[boletin]` **y `/`**, y **E-046**
+(`bento-tile.tsx`) como receptor de `href` desde **E-055**. Ambas son inexactas para esta ruta:
+`grep -rn "EstadoActualBlock" app --include=*.tsx | grep -v "\.test\."` → el único call-site es
+`app/app/proyecto/[boletin]/page.tsx:9,128`; y `PanelActualidad`/`TileSenal` montan `BentoTile`
+**sin** prop `href` (`panel-actualidad.tsx:155`, `:288-292`) ⇒ el panel **no emite ningún link**.
+Los `href` de bento tiles de `/` salen exclusivamente de E-024 (A1-A4). Registrado aquí por
+evidencia de import; el catálogo se lee con esta corrección.
+
+### 4.5 `/agenda`
+
+**Tipo:** pública, **dinámica por `searchParams`** (`app/app/agenda/page.tsx`).
+
+| searchParam | forma | validación | degradación |
+|-------------|-------|-----------|-------------|
+| `semana` | `YYYY-Www` | `parseISOWeek` (`page.tsx:75`) valida `\d{4}-W\d{2}` | ausente/malformado → semana ISO actual, **sin redirect** (T-06-10) |
+| `q` | texto libre | `trim` + cap `MAX_QUERY_CHARS` (`page.tsx:78-79`) | `q` que matchea `BOLETIN_RE` → `redirect("/proyecto/{q}")` (`page.tsx:83-85`) |
+| `camara` | `camara` \| `senado` | `parseCamaraFiltro` (`page.tsx:62-64`) | cualquier otro valor → `undefined` (ambas) |
+
+**Sujeto usado:** `—` (ruta sin sujeto de §1; la semana se resuelve por `searchParams` o por reloj).
+**URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/agenda`
+
+**GOTCHA LOCKED de fecha (registro, no corrección):** `citacion.fecha` y `sesion_sala.fecha` son
+**date-only medianoche UTC** — la **parte fecha UTC ES el día chileno publicado por la fuente**.
+Convertir a `America/Santiago` fabrica el día anterior (regresión live Phase 94). El contrato lo
+codifican los helpers **`diaCalendario`** (`app/lib/dia-calendario.ts`: `diaCalendarioCitacion` /
+`dayLabelCitacion`), documentado en `agenda/page.tsx:66-70` y `:432-436`. **El inventario REGISTRA
+el origen; no convierte ninguna fecha.**
+
+**Chrome:** `→ C-01`, `→ C-02`, `→ C-03`. **Sin** `C-04`. **No se repiten aquí.**
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `/agenda` ("← Volver a la vista semanal") | → E-004 `app/app/agenda/page.tsx:119-120` | — | solo en la rama `buscando` (`q` no vacío) | `/agenda` |
+| A2 | `/agenda?q={q}&camara={value}` (chips Ambas/Cámara/Senado) | → E-004 `app/app/agenda/page.tsx:171-172` (render `:178-180`) | — | solo en la rama `buscando`; 3 opciones, la activa lleva `aria-current` | `/agenda` |
+| A3 | `/proyecto/{c.boletin}` (resultado de búsqueda) | → E-004 `app/app/agenda/page.tsx:267-268` | — | solo si la citación resultante trae `boletin` | `/proyecto/[boletin]` |
+| A4 | `/buscar` (empty-state de la semana sin citaciones) | → E-004 `app/app/agenda/page.tsx:413-415` | — | solo si `citaciones.length === 0` | `/buscar` |
+| A5 | `/agenda?semana={semanaIsoKey(prev)}` | → E-007 `app/components/week-nav.tsx:29-30` | — | solo en la vista semanal (no en `buscando`) | `/agenda` |
+| A6 | `/agenda?semana={semanaIsoKey(next)}` | → E-007 `app/components/week-nav.tsx:40-41` | — | solo en la vista semanal | `/agenda` |
+| A7 | `/proyecto/{boletin}` (tarjeta de citación) | → E-033 `app/components/citacion-card.tsx:129-130`, montada por `app/components/agenda-filtros.tsx:346-373` | — | solo si la citación tiene un `citacion_punto` con boletín (`primerBoletin`, `page.tsx:480-486`) | `/proyecto/[boletin]` |
+| A8 | `/proyecto/{item.boletin}` (fila de la tabla de sala) | → E-018 `app/components/sala-table-section.tsx:93-94` | — | modo `available`; solo si el ítem de tabla trae boletín | `/proyecto/[boletin]` |
+
+**No es un href:** el buscador de citaciones es un `<form role="search" action="/agenda"
+method="get">` (`page.tsx:94`) y el filtro de cámara viaja como `<input type="hidden" name="camara">`
+(`:103`). SSR-first: funciona sin JS y **no emite `<a>`**.
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | camara (`www.camara.cl`, 164) + senado (`web-back.senado.cl`, 125) — §3.3.3 | `tabla.citacion.enlace` | `columna` (sin builder), vía `safeExternalHref` | `sourceUrl: c.enlace ?? null` (`app/app/agenda/page.tsx:463`, re-hidratado en `agenda-filtros.tsx:373`) | **badge** → E-033 `app/components/citacion-card.tsx:140` | — |
+| B2 | senado (`web-back.senado.cl`, 16) + camara (`www.camara.cl`, 2) — §3.3.3 | `tabla.sesion_sala.enlace` | `columna` (sin builder), vía `safeExternalHref` | `sourceUrl: s.enlace ?? null` (`app/app/agenda/page.tsx:504`) | **badge** → E-018 `app/components/sala-table-section.tsx:59` | — |
+| B3 | camara (`www.camara.cl`) | literal `CAMARA_TABLA_PDF_URL = "https://www.camara.cl/verDoc.aspx?prmId=0&prmTipo=TABLASEMANAL"` (`app/lib/agenda-types.ts:84-85`) | literal en código (ni builder ni columna) | `camaraPdfUrl` (`page.tsx:627`) | → E-018 `app/components/sala-table-section.tsx:150-151` (`target="_blank" rel="noopener noreferrer"`) | — — **solo en modo `degraded`** (la Cámara no publica tabla estructurada) |
+
+**Nota de B3 (gotcha LOCKED de agenda):** `prmId=0` **no** es un placeholder roto — es la **semana
+vigente** del `verDoc.aspx` de la Cámara. El invariante declarado en `agenda-types.ts:82` exige que
+coincida **verbatim** con el `CAMARA_TABLA_PDF_URL` del conector (`packages/agenda/src/connector-camara.ts`)
+para que el link que ve el usuario sea exactamente el que el sistema validó.
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | encabezado de día del listado (p. ej. `martes 22 de julio`) | `dayLabelCitacion` (**`diaCalendario`**, date-only UTC) | `tabla.citacion.fecha` | no (el hecho: el día citado) | no | — | → E-004 `app/app/agenda/page.tsx:439` (agrupación `:438`), render → `app/components/agenda-filtros.tsx:346-349` |
+| C2 | día de la citación en resultados de búsqueda | `dayLabelCitacion` (**`diaCalendario`**) | `RPC:buscar_citaciones.fecha` ← `tabla.citacion.fecha` | no (el hecho) | no | — | → E-004 `app/app/agenda/page.tsx:257-258` |
+| C3 | `Actualizado {hace X}` (por citación) | `relativeTimeEs` + `esStale` | `tabla.citacion.fecha_captura` (`page.tsx:461`) | **sí** | **sí** | — | → E-033 `app/components/citacion-card.tsx:140` |
+| C4 | `Actualizado {hace X}` (por sesión de sala) | `relativeTimeEs` + `esStale` | `tabla.sesion_sala.fecha_captura` (`page.tsx:502`) | **sí** | **sí** | — | → E-018 `app/components/sala-table-section.tsx:59` |
+| C5 | rango de cobertura declarada de la Cámara (`{min}` – `{max}`) | `diaCalendarioCitacion` (**`diaCalendario`**) | `tabla.citacion.fecha` (min y max vía `.order().limit(1)`, `page.tsx:305-315,334-335`) | no (extremos del hecho) | no | — | → E-004 `app/app/agenda/page.tsx:334-335` → `app/components/agenda-cobertura.tsx` |
+| C6 | rótulo de la semana (`weekLabel`) | `formatWeekLabel` (`app/lib/week-utils.ts`) | **derivado del `searchParam` `semana`** (o del reloj si ausente) — **no** viene de la DB | no | no | — | → E-004 `app/app/agenda/page.tsx:560`, consumido por E-018 `sala-table-section.tsx` |
+
+**Correspondencia badge ↔ tablas:** los 2 badges de la ruta —`citacion-card:140`,
+`sala-table-section:59`— aportan **B1, B2** en Tabla B y **C3, C4** en Tabla C. Cero badges solo-C.
+
+### 4.6 `/buscar`
+
+**Tipo:** pública, **dinámica por `searchParams`** (`app/app/buscar/page.tsx`).
+
+| searchParam | forma | validación | degradación |
+|-------------|-------|-----------|-------------|
+| `q` | texto libre | `trim` + cap `MAX_QUERY_CHARS` = 300 (`page.tsx:47`, `lib/buscar.ts:58`) | `q` vacío → prompt sin lista ni error (`page.tsx:72-76`); `q` que matchea `BOLETIN_RE` → `redirect("/proyecto/{q}")` (`page.tsx:52-54`) |
+| `page` | entero | `clampPage` (`page.tsx:37`): `[1, MAX_PAGE]` | no parseable → `1` |
+
+**Sujeto usado:** `—` (ruta sin sujeto de §1; los resultados dependen de `q`).
+**URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/buscar?q=...`
+
+**COMENTARIO LOCKED de fecha (registro literal, T-88-10):** el **año** que muestra cada tarjeta sale
+de **`min(tramitacion_evento.fecha)`** (evento de ingreso) y **JAMÁS de `fecha_captura`**. El código
+lo declara verbatim en `app/app/buscar/page.tsx:160`: *"T-88-10: año solo de min(fecha) de
+tramitacion_evento; JAMÁS de fecha_captura"*. La derivación filtra fechas no parseables **antes** de
+tomar el mínimo (`:196`, WR-03) y prefiere el evento de tipo ingreso (`:200`).
+
+**Chrome:** `→ C-01`, `→ C-02`, `→ C-03`. **Sin** `C-04`. **No se repiten aquí.**
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `/agenda` (empty-state "Sin resultados") | → E-017 `app/app/buscar/page.tsx:119-120` | — | solo si `pageSlice.length === 0` | `/agenda` |
+| A2 | `/buscar?q={q}&page={page - 1}` | → E-017 `app/app/buscar/page.tsx:263` | — | solo si `page > 1` (el botón inexistente no se emite) | `/buscar` |
+| A3 | `/buscar?q={q}&page={page + 1}` | → E-017 `app/app/buscar/page.tsx:272` | — | solo si `hayMas` | `/buscar` |
+| A4 | `/proyecto/{boletin}` (título de cada tarjeta) | → E-028 `app/components/search-result-card.tsx:79-80`, montada por `app/components/buscar-filtros.tsx:481` | — | una por resultado de la página | `/proyecto/[boletin]` |
+
+**No es un href:** `SearchBox` es un `<form method="get" action="/buscar">`
+(`app/components/search-box.tsx:89-92`); las *pills* de ejemplo de `/` también navegan por form, no
+por `<a>`.
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | senado (`tramitacion.senado.cl`, 3658) + camara (`opendata.camara.cl`, 1) — §3.3.3 | `tabla.proyecto.enlace` — **CRUDO, sin `enlaceHumanoProyecto`** | `columna` (sin builder), vía `safeExternalHref` | `sourceUrl: row.enlace ?? null` (`app/components/buscar-filtros.tsx:493`, alimentado por `app/app/buscar/page.tsx:237`) | **badge** → E-028 `app/components/search-result-card.tsx:93` | — |
+
+**Hallazgo rector para 115 (registro, no corrección):** `/buscar` es la **única** superficie que
+pasa `proyecto.enlace` al badge **sin** el rewrite de `enlaceHumanoProyecto` (§3.2 nº 3). En
+`/proyecto/[boletin]` el mismo valor pasa por `ficha-header.tsx:70-73` y se convierte en
+`buildSenadoUrl(boletin)`; aquí llega **verbatim**. Como **3.658** de las 3.659 filas de
+`proyecto.enlace` apuntan a `tramitacion.senado.cl/wspublico/...` (XML crudo, ilegible para
+humanos), el "fuente oficial ↗" de cada tarjeta de resultado apunta hoy al XML. **Candidato #2 de
+115** (junto a `tramitacion_evento.enlace`, §3.3.6 nº 4). Esta fase **no lo arregla**.
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | chip de **año** del proyecto (`{anio}` o `Sin dato`) | `deriveAnio` sobre `min(fecha)` (año entero, no `Intl`) | **`min(tabla.tramitacion_evento.fecha)`** — evento de ingreso; **JAMÁS `fecha_captura`** (`page.tsx:160`) | **no** — y está prohibido que lo sea | no | — | → E-028 `app/components/search-result-card.tsx:68-77`; derivación en `app/app/buscar/page.tsx:188-200,231` |
+| C2 | `Actualizado {hace X}` (por resultado) | `relativeTimeEs` + `esStale` | `tabla.proyecto.fecha_captura` (`page.tsx:237` → `buscar-filtros.tsx:491`) | **sí** | **sí** | — | → E-028 `app/components/search-result-card.tsx:93` |
+
+**Correspondencia badge ↔ tablas:** el único badge de la ruta —`search-result-card:93`— aporta
+**B1** en Tabla B y **C2** en Tabla C. Cero badges solo-C.
+
+### 4.7 `/comparar`
+
+**Tipo:** pública, **dinámica por `searchParams`** (`app/app/comparar/page.tsx`). Los ids `a` y `b`
+se validan contra **`PARLAMENTARIO_ID_RE`** (`page.tsx:187`, importado de `lib/buscar.ts`) **ANTES**
+de cualquier `.rpc()` — un id que no matchea se descarta sin tocar la DB.
+
+**Sujetos usados** (§1, ids verbatim):
+
+| sujeto | id | URL PROD | qué ejercita |
+|--------|----|----------|--------------|
+| A — diputado | `D1165` | `https://observatorio-congreso.thevalis.workers.dev/comparar?a=D1165&b=S1338` | columna A con datos en los 4 ejes no-gated |
+| B — senador | `S1338` | `https://observatorio-congreso.thevalis.workers.dev/comparar?a=D1165&b=S1338` | columna B con **ausencias declaradas** (0 comisiones, 0 lobby) |
+
+**Chrome:** `→ C-01`, `→ C-02`, `→ C-03`. **Sin** `C-04`. **No se repiten aquí.**
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | **ninguno propio** — la ruta emite **0 hrefs** fuera del chrome | → E-051 `app/app/comparar/page.tsx` (0 hrefs); `grep -n "href=\|<Link" app/components/comparar-selector.tsx app/components/relaciones-eje-comparar.tsx app/components/similitud-votacion-comparar.tsx` → **sin match** | — | — | — |
+
+**No es un href:** `CompararSelector` navega por `searchParams` (`?a=`/`?b=`), no por `<a>`. La
+entrada a esta ruta viene de `/parlamentario/[id]` (`A1` de §4.1, `/comparar?a={id}`).
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | ninguna — **la ruta no emite ningún link externo propio** | — | — | — | — (los externos visibles son el CC BY 4.0 y el `mailto:` del footer, `→ C-01`) | — |
+
+**Cero `ProvenanceBadge` en esta ruta:** la procedencia de cada eje se emite como **micro-texto**
+(`provenance: string`, `relaciones-eje-comparar.tsx:52-53,79-80`), no como badge ⇒ **cero
+`sourceUrl`** y cero links externos. La regla de badge DUAL se cumple por vacío.
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | `En las fuentes consultadas al {fecha}` (ejes Militancia, Co-autoría, Zona y todos los empty-states) | `Intl.DateTimeFormat("en-CA")` (`page.tsx:54-55`) | **reloj del request** (`force-dynamic`), **no** una columna de la DB | **no** — es fecha de **consulta**, no de captura ni el hecho | no | — | → E-051 `app/app/comparar/page.tsx:234,279,283,344,361,381,428,463,486` |
+| C2 | `Fuente: Cámara/Senado · según fuente al {fecha}` (eje Comisiones) | `String(...).slice(0,10)` sobre el **máximo** de las filas de A y B | `RPC:comisiones_de_parlamentario.fecha_captura` (`page.tsx:318-322`) | **sí** | no — micro-texto del eje | — | → E-051 `app/app/comparar/page.tsx:323-325` |
+| C3 | `Fuente: votaciones de Cámara y Senado · según fuente al {fecha}` (eje Similitud de votación) | `String(...).slice(0,10)` (`page.tsx:524-525`) | **`RPC:coincidencia_votos_par.fecha_captura_max`** (agregado del **par**; contrato tipado en `page.tsx:556`) | **sí** — es `fecha_captura` (máxima del par) | no — micro-texto del eje | **VSIM** (ON, §5) | → E-051 `app/app/comparar/page.tsx:524-533` → `app/components/similitud-votacion-comparar.tsx:132-135` |
+| C4 | `Cobertura del voto: … solo votaciones registradas en las fuentes al {fecha}` (nota de cobertura del eje VSIM) | `Intl.DateTimeFormat("en-CA")` (heredado de `fechaConsulta`) | **reloj del request** | no (fecha de consulta) | no | **VSIM** (ON) | → E-051 → `app/components/similitud-votacion-comparar.tsx:55-56,105` |
+
+**Nota LOCKED de C3 (§102-REVIEW, registrada verbatim en el código):** el copy dice **"según fuente
+al {fecha}"** y **no** "captura al {fecha}" — la palabra "captura" pelada está vetada por el guard
+de vocabulario (`similitud-votacion-comparar.tsx:124-131`). Sigue siendo, semánticamente, la
+`fecha_captura` máxima del par: por eso C3 se marca **`sí`** en la columna *¿es fecha_captura?*.
+
+**Nota de gate:** con `VSIM` OFF, `page.tsx:502` devuelve **antes** del `.rpc("coincidencia_votos_par")`
+⇒ C3/C4 llevarían la marca `no emitido en el deploy auditado`. En el deploy auditado **VSIM está ON**
+(§5, evidencia: el `<h2>` "Similitud de votación" está presente), así que se emiten.
+
+### 4.8 `/parlamentarios`
+
+**Tipo:** pública, **dinámica por `searchParams`** (`app/app/parlamentarios/page.tsx`).
+
+| searchParam | forma | validación | degradación |
+|-------------|-------|-----------|-------------|
+| `q` | texto libre | `trim` + cap `MAX_QUERY_CHARS` (`page.tsx:47`) + `maxLength` en el input (`:81`) | filtro en memoria por `nombre.toLowerCase().includes(needle)` (`:127-129`); sin match → empty honesto (`:132-142`) |
+| `camara` | `diputados` \| `senado` | filtro server sobre la columna NOT NULL (`page.tsx:124`) | ausente → ambas cámaras |
+
+**Sujeto usado:** `—` (la ruta lista el universo completo; no depende de un id de §1). Los sujetos A
+(`D1165`) y B (`S1338`) aparecen aquí como **destinos** de A1.
+**URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/parlamentarios`
+
+**Chrome:** `→ C-01`, `→ C-02`, `→ C-03`. **Sin** `C-04`. **No se repiten aquí.**
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `/parlamentario/{p.id}` (**la fila entera es el anchor**, WR-04) | → E-012 `app/components/parlamentario-directory-row.tsx:40`, montada por el island `ParlamentariosFiltro` (`page.tsx:146-149`) | — | una por fila del slice ya filtrado (cámara + `q`) | `/parlamentario/[id]` |
+
+**No es un href:** el filtro server es un `<form action="/parlamentarios" method="get">`
+(`page.tsx:69-71`); el filtro por partido es un island **en memoria** que **nunca** re-consulta
+Supabase (contrato FichaRail, `page.tsx:145-146`).
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | ninguna — **link desactivado a propósito** (mismo caso que B10 de §4.1) | `RPC:parlamentarios_publico_v2.partido` ← URIs `datos.bcn.cl/.../partido-politico/{slug}` (48 filas, §3.3.3) | **`partidoLegible`** (§3.2 nº 4): **NO construye link**, extrae el slug en Title Case | — | → E-019 `app/components/partido-chip.tsx:60` (`partidoLegible(partido)`) | — (invariante **"CERO URI en el DOM"**) |
+
+**Cero `ProvenanceBadge` en esta ruta:** `grep -n "ProvenanceBadge" app/app/parlamentarios/page.tsx
+app/components/parlamentario-directory-row.tsx app/components/partido-chip.tsx` → **sin match**. La
+procedencia del chip viaja en `title`/`aria-label` (`partido-chip.tsx:74`), **no** en un badge ⇒
+cero `sourceUrl` y cero links externos emitidos. Regla de badge DUAL cumplida por vacío.
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | `según {fuente} al {fecha}` (procedencia del chip de partido, en `title` + `aria-label`) | `fechaCorta` (`partido-chip.tsx:64-68`) | `RPC:parlamentarios_publico_v2.partido_fecha_captura` (pasada como prop en `parlamentario-directory-row.tsx:48`) | **sí** | **no** — el chip la formatea por su cuenta (variante `tooltip={false}`, plana) | — | → E-019 `app/components/partido-chip.tsx:64-74` |
+
+**Nota (degradación honesta):** sin `partido_fecha_captura` el chip muestra `según {fuente}` a secas
+(`partido-chip.tsx:71-73`) — **jamás fabrica una fecha**. Y sin `partido` legible el chip **no se
+renderiza** (`:61`), en vez de mostrar un URI.
+
+### 4.9 `/red`
+
+**Tipo:** pública, **dinámica** (`app/app/red/page.tsx`, `export const dynamic = "force-dynamic"`).
+Gate **`NET`** como **PRIMERA sentencia** (`page.tsx:52-54`, ANTES de `searchParams` y de cualquier
+RPC/heading): con `NET` OFF la ruta **entera** sirve `not-found.tsx` y **cero DOM de NET** se filtra.
+En el deploy auditado **NET está ON** (§5), así que la superficie se emite.
+
+| searchParam | forma | validación | degradación |
+|-------------|-------|-----------|-------------|
+| `seed` | id de parlamentario | `PARLAMENTARIO_ID_RE` **antes** de tocar la DB (paso 4 del gate, `page.tsx:24-26`) | ausente → **selector** server-rendered JS-free (`<form action="/red">`, `:90-129`); inválido → `notFound()` |
+
+**Sujetos usados** (§1): `D1165` (con vecindario de lobby) y `S1338` (**0 lobby confirmado** ⇒
+ejercita el grafo vacío como **estado honesto**, nunca un error).
+**URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/red?seed=D1165`
+
+**Chrome:** `→ C-01`, `→ C-02` (el ítem `/red` del nav **sí** se emite con NET ON), `→ C-03`.
+**Sin** `C-04`. **No se repiten aquí.**
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `/red?seed={vecinoId}` ("Ver la red de esta persona →") | → E-011 `app/components/red/red-graph.tsx:210` | — | **NET** (ON) — una por vecino con detalle abierto | `/red` |
+| A2 | `/parlamentarios` (empty-state de grafo sin aristas) | → E-011 `app/components/red/red-graph.tsx:435-436` | — | **NET** (ON) — solo si `aristas.length === 0` (rama del sujeto **B**, `S1338`) | `/parlamentarios` |
+
+**No es un href:** el selector de semilla es un `<form method="get" action="/red">` con
+`<select name="seed">` agrupado por cámara (`page.tsx:90-129`). Es deliberadamente JS-free y **no
+emite `<a>`**; además **nunca** se consulta el grafo entero (`subgrafo_red` exige semilla — evita
+enumeración de todos los nodos).
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | camara (`www.camara.cl`, **7394** filas — §3.3.3) | `RPC:subgrafo_red` → arista `enlace` ← `tabla.arista.enlace` | `columna` (sin builder), vía `safeExternalHref` (`red-graph.tsx:159`) | `href={enlaceSeguro}` con el texto `Ver fuente oficial ↗` (`:194-201`) | → E-011 `app/components/red/red-graph.tsx:159,189-205` | **NET** (ON) |
+
+**Degradación:** si `safeExternalHref` devuelve `null` la fila de procedencia del enlace **no se
+emite** (`red-graph.tsx:189`), igual que en el badge (§3.1.2) — nunca un href roto. Nótese que `/red`
+**no** usa `ProvenanceBadge`: emite su propia `<dl class="net-prov">` con Fuente / Periodo /
+Registro / Licencia + enlace (`:167-205`). Por eso su fila B1 **no** tiene contraparte en Tabla C
+vía badge, y la regla de badge DUAL no aplica aquí.
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | ventana del hecho: `entre {desde} y {hasta}` / `el {d}` / `desde {d}` / `hasta {d}` | **`fechaLiteral`** (`app/components/red/arista-hecho.tsx:15-20`): toma la parte `yyyy-mm-dd` **verbatim**, sin reinterpretar zona | `RPC:subgrafo_red` → arista `desde` / `hasta` ← `tabla.arista.desde` / `.hasta` | no — es la ventana del **hecho** (audiencia de lobby) | no | **NET** (ON) | → E-011 `app/components/red/red-graph.tsx:158,166-168`, `:180-183` (fila `Periodo`) |
+
+**Nota de método:** `/red` es la única superficie que formatea fechas **sin** `Intl` ni `fechaCorta`:
+`fechaLiteral` extrae la parte de fecha con un regex y la muestra tal cual (`arista-hecho.tsx:17-19`).
+116 debe tratarla como un formatter propio, no asumir el pipeline común.
+
+#### 4.9.b `app/app/red/not-found.tsx`
+
+Sirve **dos** casos: el 404 del gate `NET` OFF y una semilla inválida
+(`PARLAMENTARIO_ID_RE`). Por diseño **no contiene ningún heading ni dato de NET** (cero filtración
+de DOM mientras el gate está OFF). Renderiza el chrome (`C-01`..`C-03`; **sin** breadcrumbs) más un
+único link.
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `/` | → E-047 `app/app/red/not-found.tsx:19` | — | siempre | `/` |
+
+Tabla B: **sin links externos**. Tabla C: **sin fechas** (copy estático).
+
 ## 5. Gates y su estado
 
 **Método:** estado **OBSERVADO** contra el deploy vivo el **2026-07-27**, con `curl -s` + grep del
