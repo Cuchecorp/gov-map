@@ -24,3 +24,6 @@ export * from "./tasks/routing/scorer";
 export * from "./tasks/clasificacion/scorer";
 export * from "./tasks/juez/scorer";
 export * from "./tasks/extraccion/scorer";
+
+// --- Máquinas de decisión (107-02, NET-NEW: no del set placeholder 106) ---
+export * from "./veredicto";
