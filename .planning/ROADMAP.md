@@ -65,7 +65,7 @@ Notas de secuencia: el inventario 113 es load-bearing — sin él las fases de l
 
 ### Phases
 
-- [ ] **Phase 113: INV — Inventario rector de superficies** — toda ruta pública × links que emite (internos/externos por tipo) × fechas que muestra (con su columna de origen); artefacto rector del milestone
+- [x] **Phase 113: INV — Inventario rector de superficies** — toda ruta pública × links que emite (internos/externos por tipo) × fechas que muestra (con su columna de origen); artefacto rector del milestone (completed 2026-07-27)
 - [ ] **Phase 114: LINK-INT — Links internos exhaustivos** — cero 404 y cero anclas rotas verificados sobre el deploy real, con corrida reproducible
 - [ ] **Phase 115: LINK-EXT — Patrones de link a fuente oficial** — validación por construcción + muestra live estratificada por tipo/host con rate-limit 2-3s; patrón malo se arregla, fuente caída se declara
 - [ ] **Phase 116: FECHA-AUDIT — Semántica de cada fecha visible** — veredicto hecho/captura/ambigua por fecha, cruzado contra dato real de PROD
@@ -119,7 +119,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 113-05-PLAN.md — (w6) Gate de cierre: checklist estricto + validador Opus independiente (7 criterios, 2 rondas)
+- [x] 113-05-PLAN.md — (w6) Gate de cierre: checklist estricto + validador Opus independiente (7 criterios, 2 rondas)
 
 ### Phase 114: LINK-INT — Links internos exhaustivos
 
@@ -310,7 +310,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 113. INV | 5/6 | In Progress|  |
+| 113. INV | 6/6 | Complete   | 2026-07-27 |
 | 114. LINK-INT | 0/? | Not started | - |
 | 115. LINK-EXT | 0/? | Not started | - |
 | 116. FECHA-AUDIT | 0/? | Not started | - |
