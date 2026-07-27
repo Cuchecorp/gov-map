@@ -147,7 +147,170 @@ con `STRICT=1` (falla ante cualquier falta).
 
 ## 1. Sujetos deterministas
 
-_(pendiente — Task 2 de este plan.)_
+**Ancla temporal:** `select now()::date` → **`2026-07-27`** (corrida de esta fase).
+**Deploy auditado:** ver §5 (observado, no copiado de STATE). Base:
+`https://observatorio-congreso.thevalis.workers.dev`.
+
+Todas las queries son re-ejecutables verbatim con
+`set -a; source .env; set +a` + `PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -c "..."`
+(el valor de `SUPABASE_DB_URL` nunca se imprime ni se escribe aquí). Todo `ORDER BY` lleva
+**desempate estable** por la PK, para que dos corridas den el mismo sujeto. Los conteos van por
+`psql`, nunca por REST (cap 1.000). Criterio de riqueza = **bloques VISIBLES**: MONEY está OFF
+(§5), así que contratos y aportes **no cuentan** como riqueza.
+
+### 1.1 Sujeto A — Parlamentario diputado con máxima riqueza de bloques visibles
+
+```sql
+with base as (
+  select p.id, p.camara,
+    (select count(*) from voto v                    where v.parlamentario_id  = p.id) n_votos,
+    (select count(*) from lobby_audiencia l         where l.parlamentario_id  = p.id
+                                                      and l.estado_vinculo = 'confirmado') n_lobby,
+    (select count(*) from declaracion d             where d.parlamentario_id  = p.id) n_patrimonio,
+    (select count(*) from cruce_senal c             where c.parlamentario_id  = p.id) n_cruces,
+    (select count(*) from comision_membresia cm     where cm.parlamentario_id = p.id) n_comisiones,
+    (select count(*) from parlamentario_militancia m where m.parlamentario_id = p.id) n_militancias
+  from parlamentario p where p.camara = 'diputados'
+)
+select id, n_votos, n_lobby, n_patrimonio, n_cruces, n_comisiones, n_militancias,
+  (case when n_votos>0 then 1 else 0 end)+(case when n_lobby>0 then 1 else 0 end)
+ +(case when n_patrimonio>0 then 1 else 0 end)+(case when n_cruces>0 then 1 else 0 end)
+ +(case when n_comisiones>0 then 1 else 0 end)+(case when n_militancias>0 then 1 else 0 end) bloques
+from base
+order by bloques desc,
+         (n_votos+n_lobby+n_patrimonio+n_cruces+n_comisiones+n_militancias) desc,
+         id asc                       -- desempate estable por PK
+limit 1;
+-- D1165|3752|112|6|11|2|2|6      (votos|lobby|patrimonio|cruces|comisiones|militancias|bloques)
+```
+
+- **Sujeto:** `D1165` — id en formato **PK string** (el `href` usa este id, nunca un numérico).
+- **URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/parlamentario/D1165`
+- **Expectativa declarada:** ficha 360 con los **6** bloques visibles poblados — votos (3.752),
+  lobby confirmado (112), patrimonio/declaraciones (6), cruces (11), comisiones (2), militancias
+  (2). Financiamiento/contratos/aportes **no emitidos en el deploy auditado** (MONEY OFF, §5).
+
+### 1.2 Sujeto B — Parlamentario senador con máxima riqueza de bloques visibles
+
+```sql
+with base as (
+  select p.id,
+    (select count(*) from voto v                    where v.parlamentario_id  = p.id) n_votos,
+    (select count(*) from lobby_audiencia l         where l.parlamentario_id  = p.id
+                                                      and l.estado_vinculo = 'confirmado') n_lobby,
+    (select count(*) from declaracion d             where d.parlamentario_id  = p.id) n_patrimonio,
+    (select count(*) from cruce_senal c             where c.parlamentario_id  = p.id) n_cruces,
+    (select count(*) from comision_membresia cm     where cm.parlamentario_id = p.id) n_comisiones,
+    (select count(*) from parlamentario_militancia m where m.parlamentario_id = p.id) n_militancias
+  from parlamentario p where p.camara = 'senado'
+)
+select id, n_votos, n_lobby, n_patrimonio, n_cruces, n_comisiones, n_militancias,
+  (case when n_votos>0 then 1 else 0 end)+(case when n_lobby>0 then 1 else 0 end)
+ +(case when n_patrimonio>0 then 1 else 0 end)+(case when n_cruces>0 then 1 else 0 end)
+ +(case when n_comisiones>0 then 1 else 0 end)+(case when n_militancias>0 then 1 else 0 end) bloques
+from base
+order by bloques desc,
+         (n_votos+n_lobby+n_patrimonio+n_cruces+n_comisiones+n_militancias) desc,
+         id asc                       -- desempate estable por PK
+limit 1;
+-- S1338|949|0|9|0|0|1|3
+```
+
+- **Sujeto:** `S1338` — **PK bio en formato string**. Ojo gotcha 105-02: existe además
+  `parlamentario.parlid_senado = 1338` numérico; el href y la URL usan **`S1338`**, jamás `1338`.
+- **URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/parlamentario/S1338`
+- **Expectativa declarada:** ficha con votos (949), patrimonio (9) y militancia (1). **Cero lobby,
+  cero cruces, cero comisiones** — y esto NO es un bug de wiring: el mejor senador de PROD tiene
+  `n_lobby = 0` y `n_cruces = 0`. Sirve justamente como sujeto de **estados vacíos honestos** para
+  114/116/122. (`lobby_audiencia.parlamentario_id` confirmado es hoy exclusivo de diputados.)
+
+### 1.3 Sujeto C — Boletín A: con votaciones + similares + cruces (bicameral)
+
+```sql
+select p.boletin,
+       (select count(*) from votacion vo          where vo.boletin = p.boletin) n_votaciones,
+       (select count(*) from proyecto_embedding e where e.boletin  = p.boletin) n_embedding,
+       (select count(*) from cruces_de_proyecto(p.boletin))                     n_cruces,
+       (p.prm_id_camara is not null)                                            tiene_camara
+from proyecto p
+where exists (select 1 from proyecto_ficha f
+               where f.boletin = p.boletin and f.sector_id is not null)
+  and p.prm_id_camara is not null
+  and exists (select 1 from proyecto_embedding e where e.boletin = p.boletin)
+order by (select count(*) from cruces_de_proyecto(p.boletin)) desc,
+         (select count(*) from votacion vo where vo.boletin = p.boletin) desc,
+         p.boletin asc                -- desempate estable por PK
+limit 1;
+-- 14309-04|7|1|47|t
+select boletin, etapa, estado, prm_id_camara,
+       split_part(enlace,'/',3) as host, split_part(enlace,'/',4) as path1
+  from proyecto where boletin = '14309-04';
+-- 14309-04|Comisión Mixta por rechazo de modificaciones (Senado)|En tramitación|14891|tramitacion.senado.cl|wspublico
+```
+
+- **Sujeto:** boletín `14309-04` (con sufijo COMPLETO — sin él `buildSenadoUrl` devuelve lista, no
+  ficha). `prm_id_camara = 14891` ⇒ ejercita la rama **con** `buildCamaraUrl`.
+- **URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/proyecto/14309-04`
+- **Expectativa declarada:** 7 votaciones, 1 embedding (bloque "proyectos similares"), **47 cruces**
+  y ambos links de validación de fuente (Senado + Cámara). `proyecto.enlace` apunta a
+  `tramitacion.senado.cl/wspublico/...` (XML crudo, roto para humanos) ⇒ **`enlaceHumanoProyecto`
+  debe reescribirlo** a `buildSenadoUrl('14309-04')`. El inventario registra el link
+  **post-rewrite**, no el crudo.
+
+### 1.4 Sujeto D — Boletín B: zona solo-Senado (sin `prm_id_camara`)
+
+```sql
+select p.boletin,
+       (select count(*) from votacion vo           where vo.boletin = p.boletin) n_votaciones,
+       (select count(*) from proyecto_embedding e  where e.boletin  = p.boletin) n_embedding,
+       (select count(*) from tramitacion_evento t  where t.boletin  = p.boletin) n_eventos,
+       split_part(p.enlace,'/',3) as host
+from proyecto p
+where p.prm_id_camara is null
+order by (select count(*) from votacion vo where vo.boletin = p.boletin) desc,
+         (select count(*) from tramitacion_evento t where t.boletin = p.boletin) desc,
+         p.boletin asc                -- desempate estable por PK
+limit 1;
+-- 17870-05|256|1|355|tramitacion.senado.cl
+select count(*) from proyecto where prm_id_camara is null;   -- 1110
+select max(fecha)::date from votacion
+ where boletin = '17870-05' and fecha <= current_date;       -- 2025-11-26
+```
+
+- **Sujeto:** boletín `17870-05`, uno de los **1.110** proyectos sin `prm_id_camara`.
+- **URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/proyecto/17870-05`
+- **Expectativa declarada:** ejercita la rama **sin** `buildCamaraUrl` — la validación de fuente
+  debe emitir **solo** el link a `tramitacion.senado.cl` y **ningún** link a `www.camara.cl`. 256
+  votaciones y 355 eventos de tramitación (timeline denso).
+- **Higiene de fechas (Pitfall 8):** el `max(fecha)` va filtrado con `fecha <= current_date` porque
+  PROD tiene filas con fechas corruptas en el futuro (p. ej. `2626-05-25`). El resultado
+  `2025-11-26` es la última votación **real**.
+
+### 1.5 Sujeto E — Contraparte: **no elegible** (degradación honesta)
+
+```sql
+select 'c:' || c.rut_proveedor as contraparte_id, count(*) as n
+  from contrato c where c.tipo_persona = 'juridica'
+ group by 1
+ order by n desc, contraparte_id asc      -- desempate estable por la llave
+ limit 1;
+-- (0 filas)
+select count(*) from contrato;   -- 0
+select count(*) from aporte;     -- 0
+```
+
+**`contraparte no elegida — causa:` las tablas de hecho que alimentan
+`agregado_por_contraparte` (`contrato`, `aporte`) tienen CERO filas en PROD, y además la ruta
+`/contraparte/[id]` está **gated MONEY**: `app/app/contraparte/[id]/page.tsx:50-52` hace
+`if (!moneyPublicEnabled(process.env)) notFound();` como PRIMERA sentencia ⇒ con MONEY OFF la ruta
+**entera** devuelve 404 (§5).**
+
+- **URL PROD:** `https://observatorio-congreso.thevalis.workers.dev/contraparte/<id>` —
+  **`no emitido en el deploy auditado`** (404 por gate MONEY).
+- **Consecuencia para las fases consumidoras:** 114/116/122/125 **no** deben perseguir links ni
+  fechas de `/contraparte/[id]`. La ruta se inventaría igual desde el código (§4), con su columna
+  `gate = MONEY` y la marca `no emitido en el deploy auditado`. No se inventó ningún id de
+  contraparte: no existe ninguno real que elegir.
 
 ## 2. Chrome compartido
 
