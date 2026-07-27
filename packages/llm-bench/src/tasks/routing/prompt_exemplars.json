@@ -1,0 +1,7 @@
+[
+  { "id": "rx01-clasif", "input": "Proyecto que crea un seguro obligatorio de responsabilidad civil para ciclistas urbanos", "label": "clasificacion", "estrato": "xml-clean|modern|short|camara" },
+  { "id": "rx02-extraccion", "input": "DFL N 850 de 1997: fija el texto refundido de la ley organica del Ministerio de Obras Publicas", "label": "extraccion", "estrato": "scanned-pdf|archaic|short|bcn" },
+  { "id": "rx03-clasif", "input": "Consejo Nacional de la Cultura y las Artes", "label": "clasificacion", "estrato": "xml-clean|modern|short|senado" },
+  { "id": "rx04-extraccion", "input": "Reemplazase en el articulo octavo la palabra podra por debera segun el texto propuesto", "label": "extraccion", "estrato": "scanned-pdf|archaic|short|bcn|negacion" },
+  { "id": "rx05-abstencion", "input": "Proyecto de acuerdo que declara persona ilustre a un deportista nacional", "label": null, "estrato": "xml-clean|modern|short|camara|abstencion" }
+]
