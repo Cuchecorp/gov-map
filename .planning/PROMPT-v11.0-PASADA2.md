@@ -36,27 +36,35 @@ Corrida autónoma v11.0 "Capa LLM escalonada + cierre de deuda viva" — PASADA 
   Verificación 8/8. **Contrato aditivo nuevo en `@obs/llm`:** `CompletionRequest.onValidationOutcome` +
   `ValidationOutcome` en `validate.ts` (prod sin cambio) — la escalera de 108 lo puede usar para telemetría.
 
-## ⚠ HALLAZGO CRÍTICO DE HOST (spike 107 validado 2026-07-27) — GATE del veredicto
+## ✅ VEREDICTO LIVE YA CORRIDO (2026-07-27) — hay GATE VERDE para 109
 
-El VEREDICTO por tarea (BENCH-05) que autoriza integrar en 109 está **PENDING-EVIDENCE** por un gap de
-HOST, NO por falta de código (ver `.planning/phases/107-*/107-SPIKE-FINDINGS-hosts.md`):
+El VEREDICTO por tarea (BENCH-05) SE CORRIÓ contra endpoints reales (`LLM_BENCH_LIMIT=10`, ver
+`107-VEREDICTO-LIVE-2026-07-27.md` + `107-SPIKE-FINDINGS-hosts.md`). Resultado real:
+- **routing → APPROVED (Granite @ Workers AI)** Δ+0.10; **clasificación → APPROVED (Granite)** Δ0.00
+  (paridad). Granite: structured/zod fail 0.0, ~**100× más barato** que DeepSeek. → **GATE VERDE**: 109
+  puede integrar routing o clasificación (ambas reversibles, no-legales).
+- **extracción → DeepSeek se queda** Δ−0.80 (Granite value-precision 0.2 vs 1.0 — 3B falla extracción
+  strict-schema como predijo el research). NO tocar. Decisión por evidencia.
+- **juez (BENCH-04) → pending-evidence** (los 32 llamados a Phi dieron HTTP 402 "insufficient credits" en
+  OpenRouter → sin medición). NO gatea 109 (la tarea reversible no usa juez).
 
-- **Granite-4.0-H-Micro (responder):** OpenRouter lo lista pero SIN endpoint de tool-use (HTTP 404 con
-  `tool_choice` forzado). **Único host viable = Workers AI** (`@cf/ibm-granite/granite-4.0-h-micro`, con
-  function calling, catálogo CF confirmado). Requiere `WORKERS_AI_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`
-  en `.env` (AUSENTES). `candidatos.live.test.ts` ya elige la rama Workers AI cuando ambas existen — CERO cambio de código.
-- **Phi-4-mini (juez, BENCH-04):** NO está en OpenRouter (solo `microsoft/phi-4` sin tools) NI en Workers
-  AI (solo Phi-2 deprecado). **Ningún host con function-calling confirmado.** Verificar en esta pasada:
-  DeepInfra / Azure AI Foundry (ambos listan Phi-4-mini) → confirmar que tool-calling pasa, agregar
-  baseURL/key; O (decisión operador) un juez chico alternativo servido con tools; O variante prompt-forzado+zod
-  del juez (sin `tool_choice` forzado) como último recurso sancionado.
-- **`OPENROUTER_API_KEY` YA está en `.env`** (válido) pero **NO basta** para ningún candidato.
+**Host reality (verificado):** Granite SOLO en Workers AI (`@cf/ibm-granite/granite-4.0-h-micro`, tools OK;
+`WORKERS_AI_API_TOKEN`+`CLOUDFLARE_ACCOUNT_ID` YA en `.env`, funcionando). Phi juez: `microsoft/phi-4` en
+OpenRouter vía **modo prompt-forced+zod ya implementado** en `PhiJudge` (`structuredMode:"prompt"`); solo
+falta **saldo OpenRouter** para BENCH-04.
 
-**Implicación para la pasada 2:** 108 NO depende de esto (se testea con MockProvider). 109 SÍ — solo se
-integra la tarea que el veredicto REAL apruebe. Si al momento de 109 el veredicto sigue pending (sin
-Workers AI / sin host Phi), **109 cierra HONESTO**: plomería testeada en mock, integración DIFERIDA
-documentada. Eso es un resultado VÁLIDO (la regla es calidad, no shippear la escalera). NO fabricar
-integración sin evidencia.
+**FOLLOW-UPS para esta pasada (antes de flipear una integración productiva en 109):**
+1. **Confirmar routing/clasificación sobre los 40 golden completos** — el full-40 TIMED OUT contra el
+   límite hardcodeado 600s de vitest. Subir `TIMEOUT_MS` en `candidatos.live.test.ts` o correr por-tarea/
+   chunked. El 10-sample es evidencia fuerte pero el flip productivo merece los 40. (extracción ya vetada → segura.)
+2. **BENCH-04 juez:** cargar saldo OpenRouter (centavos) y re-correr → número real de Phi vs humano.
+3. **Fix reporte juez degenerado:** `computarVeredicto` marca un juez con 0 veredictos válidos como
+   `incumbent-stays` (escalar 0) en vez de `pending-evidence`. Corregir a pending-evidence (honesto).
+
+**Implicación para 108/109:** 108 NO depende de nada de esto (MockProvider). 109 YA tiene gate verde
+(routing/clasificación) → integra UNA de ellas con la red de seguridad completa; el flip productivo real
+espera la confirmación full-40. Si por lo que sea el gate se cae en el full-40, 109 cierra honesto
+(integración diferida) — resultado VÁLIDO. NO fabricar aprobación sin evidencia.
 
 ## 108 (TIER P2 — plomería) — scope
 
