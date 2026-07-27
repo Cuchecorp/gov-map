@@ -16,7 +16,9 @@ findings:
   warning: 4
   info: 3
   total: 7
-status: issues_found
+status: resolved
+resolved_at: 2026-07-27
+resolution: WR-01..WR-04 fixed; IN-01..IN-03 accepted as debt (see 109-REVIEW-FIX.md)
 ---
 
 # Phase 109: Code Review Report
@@ -58,7 +60,7 @@ repo (grep across the whole tree):
   `it.skipIf(!keys)`, keyed on env vars CI never sets. Rate-limit 2.5s between calls.
   Shadow observes only (no DB persist, no productive-output change). Drift canary
   invalidates on model mismatch. No keys, tokens, or credentialed URLs are printed
-  (drift prints only `baseURL` which contains the account-id, see WR-03).
+  (WR-03 fixed: drift now redacts the account-id in the provenance log — `***`).
 - **RUT never crosses to LLM / no json_schema assumed:** `clasificar.ts` runs
   `assertNoRutInLlmInput` before any LLM call; `GraniteProvider` uses forced `tool_choice`,
   never `response_format: json_schema`.
@@ -68,7 +70,7 @@ violate the LOCKED invariants but should be addressed.
 
 ## Warnings
 
-### WR-01: `createClient` can be called with empty URL in dry-run-with-key path
+### WR-01: `createClient` can be called with empty URL in dry-run-with-key path — RESOLVED (337acd5)
 
 **File:** `packages/cruces/src/clasificar-fichas-cli.ts:271-275`
 **Issue:** In the dry-run branch, when `opts.filas === undefined && serviceKey.length > 0`,
@@ -95,7 +97,7 @@ if (dryRun) {
 ```
 And symmetrically fail-fast in the LIVE branch: `if (url.length === 0) throw new Error(...)`.
 
-### WR-02: Coverage denominator can silently understate the gate when abstentions cluster early
+### WR-02: Coverage denominator can silently understate the gate when abstentions cluster early — RESOLVED (337acd5)
 
 **File:** `packages/cruces/src/clasificar-fichas-cli.ts:298,306-307`
 **Issue:** `coberturaMuestra = asignadosMuestra / tamMuestra` where
@@ -113,7 +115,7 @@ style.
 .limit(limite);
 ```
 
-### WR-03: Drift-canary and resolver interpolate account-id into a URL that is later logged
+### WR-03: Drift-canary and resolver interpolate account-id into a URL that is later logged — RESOLVED (f1d34b6)
 
 **File:** `packages/cruces/src/drift-canary.test.ts:112-118`; `packages/cruces/src/clasificar-fichas-cli.ts:228-229`
 **Issue:** `CLOUDFLARE_ACCOUNT_ID` is a tenant identifier that is embedded into `baseURL`
@@ -129,7 +131,7 @@ but log files get pasted into tickets.
 same masking anywhere the tiered resolver logs its provider choice if `baseURL` is ever
 added to that log line.
 
-### WR-04: provider-guard uses substring `.includes()` — a provider mentioning the guards only in a comment false-greens
+### WR-04: provider-guard uses substring `.includes()` — a provider mentioning the guards only in a comment false-greens — RESOLVED (59dca9e)
 
 **File:** `packages/llm/src/provider-guard.test.ts:23-28`
 **Issue:** `esProviderSinGuard` returns "has guard" if the source string merely *contains*
