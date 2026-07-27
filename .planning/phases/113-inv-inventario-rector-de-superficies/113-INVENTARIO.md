@@ -207,6 +207,57 @@ están; (2) las 4 `not-found.tsx` están; (3) los 4 builders citados; (4) ≥ 5 
 (uno por sujeto determinista); (5) la Cobertura declarada. Las waves 2-4 lo corren con `STRICT=0` (reporta sin fallar); el Plan 05
 con `STRICT=1` (falla ante cualquier falta).
 
+### 0.7 Verificación de cierre — Plan 05, ronda 1 (2026-07-27)
+
+**Checklist estricto** — `STRICT=1 bash check-inventario.sh` → **exit 0**, los 5 checks en OK:
+
+```
+OK check 1 — las 15 rutas page.tsx están en el inventario
+OK check 2 — las 4 not-found.tsx están apendizadas
+OK check 3 — los 4 builders de URL externa están citados
+OK check 4 — 8 bloques sql (>= 5 sujetos deterministas)
+OK check 5 — declaración de Cobertura presente
+---
+RESULTADO: sin faltas (STRICT=1)
+```
+
+**Higiene de seguridad y privacidad** (T-113-01, T-113-02, T-113-08):
+
+| # | Verificación | Comando | Resultado |
+|---|--------------|---------|-----------|
+| H1 | cero credenciales de conexión | `grep -nE 'postgres(ql)?://' 113-INVENTARIO.md` | **sin match** (exit 1) |
+| H2 | cero RUT | `grep -nE '[0-9]{7,8}-[0-9kK]' 113-INVENTARIO.md` | **sin match** (exit 1) tras el cierre del hallazgo del §5, abajo |
+| H3 | cero celdas de tabla vacías | `grep -nE '^\|.*\|[[:space:]]*\|' 113-INVENTARIO.md` menos separadoras | **sin match** — ver el límite documentado abajo |
+| H4 | cero ids `E-NNN` duplicados | `grep -oE '^\| ?\*?\*?E-[0-9]{3}' \| sort \| uniq -d` | **vacío** — 60 definiciones, 60 ids únicos (`E-001`…`E-060`) |
+| H5 | cero email de persona natural | `grep -oE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+' \| sort -u` | una sola dirección: `contacto@observatoriocongreso.cl`, el **buzón institucional público** del footer (§2, fila B2) |
+
+**H2 — hallazgo cerrado en esta ronda.** La evidencia del gate MONEY (§5) probaba la ruta con un id
+con forma de RUT (`c:` + un RUT de empresa sintético; el valor **no se reproduce aquí**, justamente
+porque reproducirlo volvería a disparar la compuerta). Era un valor **sintético** (en PROD `contrato` y `aporte` tienen
+0 filas, §1 sujeto E ⇒ no existe contraparte real que nombrar), pero igual matcheaba el patrón de la
+compuerta H2. Se sustituyó por `c:sujeto-inexistente`. La evidencia **no pierde poder**: el gate es
+la PRIMERA sentencia de `app/app/contraparte/[id]/page.tsx:50-52`, así que cualquier id 404ea —
+comprobado el 2026-07-27 corriendo `curl` con **ambos** ids contra el deploy vivo, **404 y 404**.
+
+**H3 — límite documentado (heredado del Plan 04).** El patrón amplio `grep -nE '\|[[:space:]]*\|'`
+devuelve **2 matches irreducibles**, ambos **FUERA de toda tabla**, dentro de bloques de código
+citados **verbatim**: el `||` de concatenación SQL del Sujeto E (`select 'c:' || c.rut_proveedor …`)
+y el `||` lógico del cuerpo de `safeExternalHref` (`proto === "https:" || proto === "http:"`).
+Alterarlos rompería la re-ejecutabilidad de la evidencia, que es el bien que protege el régimen de
+§0.1. La verificación válida es la **acotada a filas de tabla** (`^\|.*\|[[:space:]]*\|`, menos las
+separadoras) → **cero matches**, que es lo que la compuerta realmente busca: celdas vacías.
+
+**No-regresión de la suite** — `pnpm test` → **exit 0**, idéntico al baseline de §0.5:
+
+| Workspace | Test files | Tests passed | Skipped | vs. baseline |
+|-----------|-----------:|-------------:|--------:|--------------|
+| `app` | 107 | 1428 | 0 | **=** |
+| `packages/*` (18) | 176 | 1535 | 11 | **=** |
+| **Total** | **283** | **2963** | **11** | **=** |
+
+Cero fallos nuevos, cero desviación de conteo. Consistente con el régimen: la fase **no toca código
+de producto** (`git status --porcelain app/ packages/` → vacío).
+
 ## 1. Sujetos deterministas
 
 **Ancla temporal:** `select now()::date` → **`2026-07-27`** (corrida de esta fase).
@@ -1838,7 +1889,7 @@ fail-closed: solo el literal `"true"` enciende (`env.X === "true"`).
 | NET | `NET_PUBLIC_ENABLED` | `app/lib/net-gate.ts:35-39` (`netPublicEnabled`) | **ON** | `curl -s "$B/" \| grep -o 'href="/red"' \| wc -l` → **1**; `curl -o /dev/null -w "%{http_code}" "$B/red"` → **200** | `/red` es superficie pública real; el ítem `/red` del nav (`header-nav.tsx:63`) SÍ se emite; el grafo emite links a fichas |
 | CRUCES | `CRUCES_PUBLIC_ENABLED` | `app/lib/cruces-gate.ts:37-41` (`crucesPublicEnabled`) | **ON** | `curl -s "$B/proyecto/14309-04" \| grep -o '<section id="cruces"'` → **presente**; en `/parlamentario/D1165` la sección `id="cruces"` (rotulada "Lobby por sector", `count: 11`) → **presente** | los bloques de cruces emiten links y `ProvenanceBadge` (fecha de captura del FULL REBUILD diario) en ambas fichas |
 | VSIM | `VSIM_PUBLIC_ENABLED` | `app/lib/vsim-gate.ts:33-37` (`vsimPublicEnabled`) | **ON** | `curl -s "$B/comparar?a=D1165&b=D1012" \| grep -o '<h2[^>]*>[^<]*</h2>'` → incluye **"Similitud de votación"**, con `1054 de 3609 votaciones compartidas (29%)` | `/comparar` emite el eje `coincidencia_votos_par` y su `fecha_captura_max` del par |
-| MONEY | `MONEY_PUBLIC_ENABLED` | `app/lib/money-gate.ts:30-34` (`moneyPublicEnabled`) | **OFF** | `curl -o /dev/null -w "%{http_code}" "$B/contraparte/c:76000000-0"` → **404**; `grep -c 'href="/contraparte/'` en `/parlamentario/D1165` y `/proyecto/14309-04` → **0** y **0**; la ficha emite en su lugar `<section id="financiamiento-pendiente" class="mt-12 opacity-60">` con el rótulo "Financiamiento y contratos" y `count: "pendiente"` | financiamiento / contratos / aportes **no emitidos en el deploy auditado**: cero links a `/contraparte/[id]`, cero links externos a mercadopublico/servel, cero fechas de esos bloques. La ruta `/contraparte/[id]` 404ea entera (gate como PRIMERA sentencia, `page.tsx:50-52`) |
+| MONEY | `MONEY_PUBLIC_ENABLED` | `app/lib/money-gate.ts:30-34` (`moneyPublicEnabled`) | **OFF** | `curl -o /dev/null -w "%{http_code}" "$B/contraparte/c:sujeto-inexistente"` → **404** (el id es un **placeholder sintético, jamás un RUT**: el gate es la PRIMERA sentencia de `page.tsx:50-52`, así que **cualquier** id 404ea idéntico — verificado 2026-07-27 con dos ids distintos, ambos **404**); `grep -c 'href="/contraparte/'` en `/parlamentario/D1165` y `/proyecto/14309-04` → **0** y **0**; la ficha emite en su lugar `<section id="financiamiento-pendiente" class="mt-12 opacity-60">` con el rótulo "Financiamiento y contratos" y `count: "pendiente"` | financiamiento / contratos / aportes **no emitidos en el deploy auditado**: cero links a `/contraparte/[id]`, cero links externos a mercadopublico/servel, cero fechas de esos bloques. La ruta `/contraparte/[id]` 404ea entera (gate como PRIMERA sentencia, `page.tsx:50-52`) |
 | NOTIF | `NOTIF_PUBLIC_ENABLED` | `app/lib/notif-gate.ts:35-39` (`notifPublicEnabled`) | **OFF** | `curl -s "$B/parlamentario/D1165" \| grep -oic 'Seguir'` → **0** (el `SeguirButton` está ausente del DOM); `/notificaciones/confirmar?token=x` responde **200** pero sin efecto útil (feature inerte) | ningún botón de seguir ⇒ cero links de suscripción; `/cuenta` y `/notificaciones/*` existen como rutas pero no emiten superficie útil |
 
 ### 5.1 Convención LOCKED de la columna `gate`
