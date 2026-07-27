@@ -181,7 +181,7 @@ Comando declarable: `for f in $(find app/app app/components -name "*.tsx" -not -
 **Chokepoint de `fecha_captura`: `ProvenanceBadge`** — usado por **25 archivos** [VERIFIED: grep]:
 `app/contraparte/[id]/page.tsx`, `app/proyecto/[boletin]/page.tsx`, `components/{aportes-por-contraparte, autor-row, citacion-card, comisiones-de-parlamentario, contratos-de-parlamentario, contratos-por-contraparte, cruces-de-parlamentario, cruces-de-proyecto, ficha-header, financiamiento-de-parlamentario, idea-matriz-block, lobby-de-parlamentario, parlamentario-header, partido-chip, patrimonio-de-parlamentario, sala-table-section, search-result-card, timeline-event, validacion-fuente, votacion-card, voto-ficha-row, votos-por-parlamentario}`.
 
-Su prop es `capturedAt` y usa `relativeTimeEs` + `esStale`. **Regla del inventario:** toda fecha que llega vía `capturedAt` se MARCA como `fecha_captura` sin más análisis; toda otra fecha requiere rastreo a su columna.
+Su prop es `capturedAt` y usa `relativeTimeEs` + `esStale`. **CORRECCIÓN (plan-checker, 2026-07-27): el badge es chokepoint DUAL** — además de la fecha, renderiza un link EXTERNO vía su prop `sourceUrl` (`<a href={safeExternalHref(sourceUrl)}>`, `provenance-badge.tsx:25,37,62`), y `sourceUrl=` aparece en **16 archivos** [VERIFIED: `grep -rl "sourceUrl=" app/components app/app | wc -l` → 16]. Es el mayor emisor de links externos del sitio: la Tabla B de cada ruta debe recibir una fila por instancia de badge, no solo la Tabla C. **Regla del inventario:** toda fecha que llega vía `capturedAt` se MARCA como `fecha_captura` sin más análisis; toda otra fecha requiere rastreo a su columna.
 
 **Call-sites de `fecha_captura` ya localizados** (muestra, non-test) [VERIFIED: grep]:
 `agenda/page.tsx:461,502` (citación + sala), `buscar/page.tsx:160` (comentario LOCKED: año de `min(tramitacion_evento.fecha)`, jamás de `fecha_captura`) y `:237`, `comparar/page.tsx:319,524-525,556` (`fecha_captura_max` del par VSIM), `proyecto/[boletin]/page.tsx:384,475-490,677` (frescura = `fecha_captura` MÁS RECIENTE del set de eventos), `components/actualidad-module.tsx:479-491`, `components/cruces-de-parlamentario.tsx:189` (`fecha_captura = now()` del FULL REBUILD diario, cron `23 3 * * *`), + los tipos `fecha_captura: string` en aportes/contratos/autor-row.
@@ -470,19 +470,21 @@ No aplica materialmente: la fase no depende de librerías externas ni de APIs co
 | A3 | `MAX_QUERY_CHARS` y demás constantes de validación no emiten links | §Inventario | Riesgo nulo |
 | A4 | `.planning/milestones/v9.0-phases/93-*/93-WIRING-EVIDENCIA.md` sigue siendo el mejor molde (no fue superado por un formato posterior) | §Sujetos | Bajo: formato mejorable, no incorrecto |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **¿Las 4 `not-found.tsx` entran al inventario?**
+> Las 3 preguntas quedaron resueltas en planificación (2026-07-27). Cada una lleva su `RESOLVED:` inline con el plan/task que la ejecuta.
+
+1. **¿Las 4 `not-found.tsx` entran al inventario?** — **RESOLVED: SÍ**, como sub-superficie de su ruta padre. Ejecutado por 113-03 (T1/T2/T3, sub-secciones `4.N.b`) y 113-04 (T2, verificación de las 4) y chequeado por `check-inventario.sh`.
    - Lo que sabemos: emiten links (incl. externos), no son `page.tsx`, el CONTEXT LOCKEA el universo en 15 `page.tsx`.
    - Lo incierto: si el validador Opus lo leerá como violación del scope.
    - Recomendación: **incluirlas como sub-superficie de su ruta padre**, con nota explícita en §Cobertura. No contradice el CONTEXT (misma ruta, estado 404) y evita un agujero real para 114.
 
-2. **¿Cómo enumerar exhaustivamente los patrones de URL almacenados en columnas?**
+2. **¿Cómo enumerar exhaustivamente los patrones de URL almacenados en columnas?** — **RESOLVED:** descubrimiento por catálogo (`information_schema.columns` con `column_name ~ 'url|enlace|link'`), NO por lista adivinada — el patrón `url_fuente|enlace_fuente|link_*` omitía `enlace`/`enlace_detalle` de audiencias de lobby, que es donde vive leylobby. Ejecutado por 113-02 T4, con criterio duro de que las 4 clases (camara/senado/BCN/leylobby) queden resueltas.
    - Lo que sabemos: el análisis de código no los alcanza; psql sí.
    - Lo incierto: cuántas columnas de URL distintas hay (se observan `proyecto.enlace`, `url_fuente`, `enlace_fuente`, `link_*`).
    - Recomendación: una query por columna de URL (`select distinct split_part(<col>,'/',3) host, count(*) ...`) y registrar el resultado en Tabla B como "familias por host". Es barato y cierra el agujero de 115.
 
-3. **¿Estado real de los gates en el deploy?**
+3. **¿Estado real de los gates en el deploy?** — **RESOLVED:** se OBSERVA contra el deploy (curl + grep de superficies testigo) y se registra la evidencia; prohibido copiarlo de STATE. Ejecutado por 113-01 T3 (corre DESPUÉS de los sujetos T2, que aporta las fichas testigo). Cierra la assumption A1.
    - Recomendación: verificar el flag efectivo por observación del deploy (¿aparece `/red` en el nav? ¿hay bloque de financiamiento?) y registrar la evidencia, en vez de copiar STATE.
 
 ## Sources

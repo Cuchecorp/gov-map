@@ -94,14 +94,15 @@ Notas de secuencia: el inventario 113 es load-bearing — sin él las fases de l
   3. Por cada ruta, el inventario lista cada fecha visible con su columna/RPC de origen, quedando MARCADAS las que provienen de `fecha_captura`
   4. El inventario declara su método y su cobertura (qué se enumeró exhaustivo vs por muestra) — cero rutas "asumidas" sin evidencia
 
-**Plans**: 5 plans
+**Plans**: 6 plans
 
 Plans:
-- [ ] 113-01-PLAN.md — Método + gates verificados + 5 sujetos deterministas por SQL + script de checklist
-- [ ] 113-02-PLAN.md — Chrome compartido + catálogo de emisores (4 builders, chokepoints, URL-desde-columna)
-- [ ] 113-03-PLAN.md — Rutas dinámicas densas: /parlamentario/[id], /proyecto/[boletin], /contraparte/[id]
-- [ ] 113-04-PLAN.md — 12 rutas restantes + not-found + Tabla D de cobertura
-- [ ] 113-05-PLAN.md — Gate de cierre: checklist estricto + validador Opus (7 criterios)
+- [ ] 113-01-PLAN.md — (w1) Método + 5 sujetos deterministas por SQL + gates observados + script de checklist
+- [ ] 113-02-PLAN.md — (w2) Chrome compartido + catálogo de emisores E-NNN
+- [ ] 113-06-PLAN.md — (w3) Chokepoints (ProvenanceBadge DUAL + safeExternalHref), 4 builders, URL-desde-columna
+- [ ] 113-03-PLAN.md — (w4) Rutas dinámicas densas: /parlamentario/[id], /proyecto/[boletin], /contraparte/[id]
+- [ ] 113-04-PLAN.md — (w5) 12 rutas restantes + not-found + Tabla D de cobertura
+- [ ] 113-05-PLAN.md — (w6) Gate de cierre: checklist estricto + validador Opus independiente (7 criterios, 2 rondas)
 
 ### Phase 114: LINK-INT — Links internos exhaustivos
 
