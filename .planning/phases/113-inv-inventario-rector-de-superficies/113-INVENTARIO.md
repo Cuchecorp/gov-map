@@ -118,7 +118,7 @@ _(pendiente — Plan 04. Se llena con una fila por cada una de las 15 rutas + la
 
 | ruta | links enumerados por | fechas enumeradas por | sujeto usado | ¿exhaustivo o muestra? | evidencia |
 |------|----------------------|-----------------------|--------------|------------------------|-----------|
-| _(pendiente — Plan 04)_ | | | | | |
+| _(pendiente — Plan 04)_ | _(pendiente — Plan 04)_ | _(pendiente — Plan 04)_ | _(pendiente — Plan 04)_ | _(pendiente — Plan 04)_ | _(pendiente — Plan 04)_ |
 
 ### 0.5 Baseline de suite (pre-fase)
 
@@ -381,7 +381,148 @@ documentado en el propio componente (`breadcrumbs.tsx:12-14`). N ítems ⇒ N-1 
 
 ## 3. Catálogo de emisores
 
-_(pendiente — Plan 02/03/04)_
+**Qué es:** el índice canónico de *quién* emite links y *quién* muestra fechas. §4 (las 15 rutas)
+referencia estos ids `E-NNN` en vez de re-derivar la misma semántica 15 veces.
+
+**Regeneración (comandos de §0.2, re-corridos 2026-07-27):**
+
+| comando | resultado observado |
+|---------|---------------------|
+| loop de conteo `<Link\|href=` sobre `app/app` + `app/components` (non-test) | **50** archivos emiten links |
+| `grep -rl` de formatters de fecha sobre `app/app app/components app/lib` (non-test) | **28** archivos formatean/renderizan fechas |
+| `grep -rln "ProvenanceBadge" \| grep -v .test.` | **25** archivos |
+| `grep -rl "sourceUrl="` (non-test) | **15** archivos (14 call-sites + el propio `provenance-badge.tsx` recibe el prop) |
+| `grep -rhno '.from("[a-z_]*"'` | **18** tablas distintas |
+
+Los **50** emisores de links son `E-001`..`E-050` (orden **densidad descendente** del loop, desempate
+por el `sort` del propio comando); los **10** emisores que no emiten hrefs propios pero sí muestran
+fechas o alimentan el badge son `E-051`..`E-060`. Total **60** ids.
+
+### Vocabulario de la columna *origen*
+
+Cerrado a las dos listas de §0.2. **Ampliación declarada con evidencia** (autorizada por el plan):
+el `grep -rn "\.rpc("` expone 7 RPCs de datos que la lista del research no traía porque su nombre
+llega por variable o por segundo argumento multilínea. Se añaden con su `archivo:línea` probatorio:
+
+| RPC añadida | evidencia (archivo:línea) |
+|-------------|---------------------------|
+| `votos_de_parlamentario` | `app/components/votos-por-parlamentario.tsx:992`, `app/lib/parlamentario-resumen-conteos.ts:280` |
+| `lobby_de_parlamentario` | `app/components/lobby-de-parlamentario.tsx:718`, `app/lib/parlamentario-resumen-conteos.ts:313` |
+| `declaraciones_de_parlamentario` | `app/components/patrimonio-de-parlamentario.tsx:949`, `app/lib/parlamentario-resumen-conteos.ts:338` |
+| `bienes_de_parlamentario` | `app/components/patrimonio-de-parlamentario.tsx:963` |
+| `comparar_declaraciones` | `app/components/patrimonio-de-parlamentario.tsx:1011` |
+| `contratos_de_parlamentario` | `app/components/contratos-de-parlamentario.tsx:326`, `app/lib/parlamentario-resumen-conteos.ts:404` |
+| `aportes_de_parlamentario` | `app/components/financiamiento-de-parlamentario.tsx:488`, `app/lib/parlamentario-resumen-conteos.ts:413` |
+| `buscar_proyectos_hibrido` | `app/lib/buscar.ts:213` |
+| `copartidarios_de_parlamentario`, `de_la_misma_zona`, `co_comisionados_de_parlamentario` | `app/app/parlamentario/[id]/page.tsx:198-200` (vía `crossLinkReader(rpc)`, `:187-190`) |
+
+Cero nombres inventados: **todo** valor de la columna origen sale o de la lista de §0.2 o de esta
+tabla de ampliación probada por grep.
+
+### Convenciones de lectura
+
+- `→ ver §3.1` en las columnas *hrefs* y/o *fechas* = el emisor renderiza `<ProvenanceBadge>`; el
+  trazado de sus props `capturedAt`/`sourceUrl` hasta su columna de origen lo escribe el **Plan 06**
+  en §3.1, para no duplicarlo 25 veces.
+- Columna `gate`: lista cerrada de §5.1 (`—` | `NET` | `CRUCES` | `VSIM` | `MONEY` | `NOTIF`).
+- `—` = no aplica. **Nunca** una celda vacía.
+- `props` = componente presentacional: no consulta la DB; su origen es el del llamante, citado.
+
+### 3.0 Catálogo
+
+| id | componente (archivo) | hrefs que emite | fechas que muestra (formatter → origen) | gate | rutas donde aparece |
+|----|----------------------|-----------------|------------------------------------------|------|---------------------|
+| E-001 | `app/components/votos-por-parlamentario.tsx` | `/proyecto/{boletin}` (`:483,490`), `buildVotosVerHref(...)` (`:561`), `/parlamentarios` (`:597`), `buildHref(id,{materia})` (`:726,739,819,835`) → ver §3.1 | `fechaCortaSegura(e.fecha)` (`:528`) → `RPC:votos_de_parlamentario.fecha`; `Intl.DateTimeFormat("es-CL")` mes-año (`:287`) → mismo campo → ver §3.1 | — | `/parlamentario/[id]` |
+| E-002 | `app/components/lobby-de-parlamentario.tsx` | `/parlamentario/{id}#lobby` (`:255`), `/parlamentario/{id}?vista=cronologica#lobby` (`:262`), `/buscar` (`:352,376`), `buildHref(id,page±1,"cronologica")` (`:552,565`) → ver §3.1 | `fechaCorta(new Date(a.fecha))` (`:153,478`) → `RPC:lobby_de_parlamentario.fecha` → ver §3.1 | — | `/parlamentario/[id]` |
+| E-003 | `app/components/voto-ficha-row.tsx` | `/proyecto/{voto.boletin}` (`:119,126,199,206`) → ver §3.1 | `props` → `RPC:votos_de_parlamentario.fecha` / `.fecha_captura` (`:134,218`) → ver §3.1 | — | **ninguna — emisor HUÉRFANO** (cero imports non-test de `VotoFichaRow`; ver §3.0.1) |
+| E-004 | `app/app/agenda/page.tsx` | `/agenda` (`:120`), `href(o.value)` filtros (`:180`), `/proyecto/{c.boletin}` (`:268`), `/buscar` (`:414`) | `diaCalendarioCitacion(...)` (`:334,335,438`) → `tabla.citacion.fecha` (date-only medianoche UTC — jamás convertir tz) | — | `/agenda` |
+| E-005 | `app/components/patrimonio-de-parlamentario.tsx` | `CC_BY_40_URL` externo (`:215`), `buildVerHref(id,version_id)` (`:502`), `buildHistorialHref(id,page±1)` (`:595,608`) → ver §3.1 | `fechaCortaSegura(version.fecha_presentacion)` (`:418,687,701,728`) → `RPC:declaraciones_de_parlamentario.fecha_presentacion`; comparación vía `RPC:comparar_declaraciones` y detalle vía `RPC:bienes_de_parlamentario`; frescura vía `tabla.probidad_ingesta_estado` (`:989`) → ver §3.1 | — | `/parlamentario/[id]` |
+| E-006 | `app/app/layout.tsx` | **ver §2 C-01** (CC BY 4.0, `/metodologia`, `/sobre`, `mailto:`) | `—` (el chrome no muestra fechas) | — | las 15 rutas |
+| E-007 | `app/components/week-nav.tsx` | `/agenda?semana={semanaIsoKey(...)}` (`:30,41`) | `—` (deriva la semana ISO de la URL, no de la DB) | — | `/agenda` |
+| E-008 | `app/components/actualidad-module.tsx` | `href` de señal (`:207`), `/proyecto/{it.boletin}` (`:216,321`) | `fechaCorta(it.fecha)` (`:202,203,451`), `fechaCorta(it.desde)` (`:318`) → `tabla.votacion.fecha` / `tabla.tramitacion_evento.fecha`; `Intl.DateTimeFormat` día-Chile (`:46,53,95`) | — | **ninguna — emisor HUÉRFANO** (superseded por `panel-actualidad.tsx`, E-055; ver §3.0.1) |
+| E-009 | `app/app/sobre/page.tsx` | `/buscar` (`:62`), `/agenda` (`:70`), `/parlamentarios` (`:78`), CC BY 4.0 externo (`:94`), `/` (`:107`) | `—` (copy estático) | — | `/sobre` |
+| E-010 | `app/components/timeline-view.tsx` | `buildUrgenciasHref(boletin,p.id,true\|false)` (`:256,273`) | `Intl.DateTimeFormat("es-CL")` mes-año (`:22`) → `tabla.tramitacion_evento.fecha` | — | `/proyecto/[boletin]` |
+| E-011 | `app/components/red/red-graph.tsx` | `enlaceSeguro` externo vía `safeExternalHref` (`:194`), `/red?seed={vecinoId}` (`:210`), `/parlamentarios` (`:436`) | `—` | **NET** | `/red` |
+| E-012 | `app/components/parlamentario-directory-row.tsx` | `/parlamentario/{p.id}` (`:40`) | `props` → `RPC:parlamentarios_publico_v2` (fecha vía E-019 `partido-chip`) | — | `/parlamentarios` |
+| E-013 | `app/components/financiamiento-de-parlamentario.tsx` | `buildHref(id,page±1)` (`:420,433`) → ver §3.1 | `fechaCorta(a.fecha_aporte)` (`:176`), `fechaCorta(a.fecha_corte)` (`:179,355`) → `RPC:aportes_de_parlamentario`; frescura vía `tabla.aportes_ingesta_estado` (`:517`) → ver §3.1 | **MONEY** | `/parlamentario/[id]` — `no emitido en el deploy auditado` |
+| E-014 | `app/components/contratos-por-contraparte.tsx` | `buildHref(id,page±1)` (`:238,251`) → ver §3.1 | `fechaCorta(c.fecha_oc)` (`:136`), `fechaCorta(c.fecha_corte)` (`:139`) → `RPC:agregado_por_contraparte` → ver §3.1 | **MONEY** | `/contraparte/[id]` — `no emitido en el deploy auditado` |
+| E-015 | `app/components/contratos-de-parlamentario.tsx` | `buildHref(id,page±1)` (`:268,281`) → ver §3.1 | `fechaCorta(c.fecha_oc)` (`:135`), `fechaCorta(c.fecha_corte)` (`:138,225`) → `RPC:contratos_de_parlamentario`; frescura vía `tabla.contratos_ingesta_estado` (`:353`) → ver §3.1 | **MONEY** | `/parlamentario/[id]` — `no emitido en el deploy auditado` |
+| E-016 | `app/components/aportes-por-contraparte.tsx` | `buildHref(id,page±1)` (`:290,303`) → ver §3.1 | `fechaCorta(a.fecha_aporte)` (`:149`), `fechaCorta(a.fecha_corte)` (`:152`) → `RPC:agregado_por_contraparte` → ver §3.1 | **MONEY** | `/contraparte/[id]` — `no emitido en el deploy auditado` |
+| E-017 | `app/app/buscar/page.tsx` | `/agenda` (`:120`), `/buscar?q=...&page=±1` (`:263,272`) | `—` (las fechas del resultado las pone E-028) | — | `/buscar` |
+| E-018 | `app/components/sala-table-section.tsx` | `/proyecto/{item.boletin}` (`:94`), `camaraPdfUrl` externo (`:151`) → ver §3.1 | `props` → `tabla.sesion_sala` / `tabla.sesion_tabla_item` → ver §3.1 | — | `/agenda` |
+| E-019 | `app/components/partido-chip.tsx` | `partidoLegible` **desactiva** URIs de partido (no emite href de partido); chip sin link salvo el badge → ver §3.1 | `fechaCorta(...)` (`:65`) → `props` ← `RPC:parlamentarios_publico_v2` / `RPC:parlamentario_publico_v2` (militancia vigente) → ver §3.1 | — | `/parlamentarios`, `/parlamentario/[id]` |
+| E-020 | `app/components/lobby-menciones-de-boletin.tsx` | `/parlamentario/{row.parlamentario_id}` (`:138`), `href` externo de la audiencia (`:164`) | `fechaCorta(fecha)` (`:129`) → `RPC:lobby_menciones_de_boletin.fecha` | — | `/proyecto/[boletin]` |
+| E-021 | `app/components/header-nav.tsx` | **ver §2 C-02** (`/buscar`, `/parlamentarios`, `/agenda`, `/red`, `/sobre`) | `—` | **NET** (sólo la fila `/red`) | las 15 rutas |
+| E-022 | `app/components/cross-links-parlamentario.tsx` | `/parlamentario/{p.id}` (`:112`), `verTodosHref` (`:130`) | `—` | — | `/parlamentario/[id]` |
+| E-023 | `app/app/proyecto/[boletin]/not-found.tsx` | `senado.cl/appsenado/...getDetalleProyecto` externo (`:18`), `camara.cl/legislacion/ProyectosDeLey/...` externo (`:27`), `/` (`:37`) | `—` (copy estático) | — | sub-superficie 404 de `/proyecto/[boletin]` |
+| E-024 | `app/app/page.tsx` | `/sobre` (`:110`), `card.href` de los bento tiles (`:146`) | `—` (las fechas del panel las pone E-055) | — | `/` |
+| E-025 | `app/app/metodologia/page.tsx` | CC BY 4.0 externo (`:93`), `mailto:contacto@observatoriocongreso.cl` (`:119`), `/` (`:129`) | `—` (copy estático) | — | `/metodologia` |
+| E-026 | `app/components/voto-row.tsx` | `/parlamentario/{voto.parlamentario_id}` (`:43`) | `props` → `tabla.votacion.fecha` (vía E-056) / `RPC:votos_de_parlamentario` | — | `/proyecto/[boletin]`, `/parlamentario/[id]` (anidado en E-001, E-003, `voto-detalle.tsx`) |
+| E-027 | `app/components/validacion-fuente.tsx` | `senadoUrl` = `buildSenadoUrl(boletin)` (`:149`), `camaraUrl` = `buildCamaraUrl(boletin, prm_id_camara)` (`:167`) → ver §3.1 | `toLocaleDateString("es-CL")` (`:226,239`) → `tabla.proyecto` (`boletin`, `prm_id_camara`) y `props` de fecha del llamante → ver §3.1 | — | `/proyecto/[boletin]` (y anidado en E-032, E-035, E-043, E-057) |
+| E-028 | `app/components/search-result-card.tsx` | `/proyecto/{boletin}` (`:80`) → ver §3.1 | `props` → `RPC:match_proyectos` / `RPC:buscar_proyectos_hibrido` → ver §3.1 | — | `/buscar`, `/proyecto/[boletin]` (bloque de similares) |
+| E-029 | `app/components/parlamentario-resumen.tsx` | anclas internas `#{carril}` vía `ch.href` (`:91`) | `—` (los conteos vienen de `app/lib/parlamentario-resumen-conteos.ts`: `RPC:votos_de_parlamentario`, `lobby_de_parlamentario`, `declaraciones_de_parlamentario`, `cruces_de_parlamentario`, `contratos_de_parlamentario`, `aportes_de_parlamentario`) | — | `/parlamentario/[id]` |
+| E-030 | `app/components/mencion-boletin-chip.tsx` | `/proyecto/{boletin}` (`:41`) | `—` | — | `/parlamentario/[id]` (anidado en E-002) |
+| E-031 | `app/components/global-header.tsx` | **ver §2 C-03** (`/`) | `—` | — | las 15 rutas |
+| E-032 | `app/components/estado-actual-block.tsx` | `/agenda?semana={semanaIso}` (`:477,492`) | `fechaCorta(...)` (`:397,413,429,445,460,475,497`), `relativeTimeEs(...)` (`:417`), `diaCalendarioCitacion(...)` (`:189,221,237,270`) → `tabla.tramitacion_evento.fecha`, `tabla.citacion.fecha`, `tabla.citacion_punto` (`:541`), `tabla.sesion_tabla_item` (`:551`). **`:429` = `urgenciaFuente.fechaCaptura`** ⇒ fecha de *scraping*, jamás el hecho | — | `/proyecto/[boletin]`, `/` |
+| E-033 | `app/components/citacion-card.tsx` | `/proyecto/{boletin}` (`:130`) → ver §3.1 | `props` → `tabla.citacion.fecha` → ver §3.1 | — | `/agenda` |
+| E-034 | `app/components/breadcrumbs.tsx` | **ver §2 C-04** (hrefs dinámicos; último ítem sin href) | `—` | — | `/parlamentario/[id]`, `/proyecto/[boletin]`, `/contraparte/[id]` |
+| E-035 | `app/components/autor-row.tsx` | `/parlamentario/{autor.parlamentario_id}` (`:44`), `enlaceHumanoProyecto(autor.enlace, autor.boletin)` externo (`:64`) → ver §3.1 | `props` (`:57`) → `tabla.proyecto_autor` + `tabla.proyecto.enlace` → ver §3.1 | — | `/proyecto/[boletin]` |
+| E-036 | `app/app/parlamentario/[id]/page.tsx` | `/comparar?a={id}` (`:305`), `/red?seed={id}` (`:328`) | `—` (las fechas las ponen los bloques hijos) | **NET** (sólo la fila `/red?seed=`) | `/parlamentario/[id]` |
+| E-037 | `app/components/ui/button.tsx` | primitiva `asChild`: no emite href propio, lo hereda del hijo `<Link>`/`<a>` | `—` | — | transversal (primitiva de UI) |
+| E-038 | `app/components/timeline-event.tsx` | `evento.enlace` externo (`:42`) → ver §3.1 | `fechaCorta(fecha)` (`:32`) → `tabla.tramitacion_evento.fecha` → ver §3.1 | — | `/proyecto/[boletin]` (anidado en E-010) |
+| E-039 | `app/components/seguir-button.tsx` | `/cuenta?next={encodeURIComponent(next)}` (`:73`) | `—` (lee `tabla.suscripcion` en `:50` sin renderizar fecha) | **NOTIF** | `/parlamentario/[id]`, `/proyecto/[boletin]` — `no emitido en el deploy auditado` |
+| E-040 | `app/components/provenance-badge.tsx` | `safeUrl` = `safeExternalHref(sourceUrl)` (`:62`) — **chokepoint DUAL, ver §3.1** | `relativeTimeEs(capturedAt)` + `esStale` (`:52`) → **`fecha_captura` de la tabla/RPC de cada call-site — ver §3.1** | — | transversal (25 archivos lo renderizan) |
+| E-041 | `app/components/lobby-en-tramitacion.tsx` | `href` externo de la audiencia (`:150`) | `fechaCorta(fecha)` (`:144`) → `RPC:lobby_en_tramitacion.fecha` | — | `/proyecto/[boletin]` |
+| E-042 | `app/components/ficha-rail.tsx` | anclas internas `#{e.id}` (`:59`) | `—` | — | `/parlamentario/[id]`, `/proyecto/[boletin]` |
+| E-043 | `app/components/ficha-header.tsx` | `buildCamaraUrl(proyecto.boletin, proyecto.prm_id_camara)` externo (`:82`) → ver §3.1 | `props` (`:66`) → `tabla.proyecto` → ver §3.1 | — | `/proyecto/[boletin]` |
+| E-044 | `app/components/cruces-de-proyecto.tsx` | `/parlamentario/{row.parlamentario_id}` (`:130`) → ver §3.1 | `fechaCortaSegura(item.fecha)` (`:168`) → `RPC:cruces_de_proyecto.fecha`; `capturedAt = row.fecha_captura` (`:177`) → ver §3.1 | **CRUCES** | `/proyecto/[boletin]` |
+| E-045 | `app/components/capa1/tramitacion-stepper.tsx` | `href` del paso (`:133`) | `fechaCorta(d)` (`:99`), `fechaCorta(estado.urgenciaVigente.desde)` (`:194`) → `tabla.tramitacion_evento.fecha` | — | `/proyecto/[boletin]` |
+| E-046 | `app/components/bento/bento-tile.tsx` | `href` recibido por prop del llamante (E-024, E-008, E-055) | `—` | — | `/` |
+| E-047 | `app/app/red/not-found.tsx` | `/` (`:19`) | `—` (copy estático) | **NET** | sub-superficie 404 de `/red` |
+| E-048 | `app/app/proyecto/[boletin]/page.tsx` | ancla `#idea-matriz` (`:568`) → ver §3.1 | `capturedAt = masReciente.fecha_captura` (`:490`, con `sourceUrl={null}`) → `tabla.source_snapshot` (`:649`); datos de `tabla.proyecto_ficha` (`:364`), `tabla.proyecto_autor` (`:589`) → ver §3.1 | — | `/proyecto/[boletin]` |
+| E-049 | `app/app/parlamentario/[id]/not-found.tsx` | `/` (`:17`) | `—` (copy estático) | — | sub-superficie 404 de `/parlamentario/[id]` |
+| E-050 | `app/app/contraparte/[id]/not-found.tsx` | `/` (`:19`) | `—` (copy estático) | **MONEY** | sub-superficie 404 de `/contraparte/[id]` — `no emitido en el deploy auditado` |
+| E-051 | `app/app/comparar/page.tsx` | `—` (0 hrefs propios) | `Intl.DateTimeFormat("en-CA")` (`:55`) → `RPC:coincidencia_votos_par` (`fecha_captura_max` del par); ejes vía `RPC:militancia_historica_compartida`, `RPC:comisiones_de_parlamentario`, `RPC:coautores_de_parlamentario`, `RPC:parlamentarios_publico_v2` | **VSIM** (sólo el eje de similitud de votación) | `/comparar` |
+| E-052 | `app/app/cuenta/page.tsx` | `—` (0 hrefs propios) | `fechaCorta` local `Intl.DateTimeFormat("en-CA")` (`:90-91`) usado en `:282` y `:310` → `tabla.consentimiento.created_at` (`:215`) y `tabla.suscripcion.created_at` (`:210`) | **NOTIF** | `/cuenta` — `no emitido en el deploy auditado` |
+| E-053 | `app/components/cruces-de-parlamentario.tsx` | `—` (0 hrefs propios) → ver §3.1 | `fechaCorta(item.fecha)` (`:178`) → `RPC:cruces_de_parlamentario.fecha`; `capturedAt = s.fecha_captura` (`:195`) → ver §3.1 | **CRUCES** | `/parlamentario/[id]` |
+| E-054 | `app/components/militancias-de-parlamentario.tsx` | `—` (0 hrefs propios; `partidoLegible` desactiva las URIs de partido) | `fechaCorta(desde)` / `fechaCorta(hasta)` (`:26,27`) → `RPC:militancias_de_parlamentario.desde` / `.hasta` (sin `hasta` ⇒ el copy dice "vigente", nunca una fecha inventada) | — | `/parlamentario/[id]` |
+| E-055 | `app/components/panel-actualidad.tsx` | `—` (delega el href a E-046) | `diaCalendarioCitacion(iso)` para `agenda_*` (`:104`) y `fechaCorta(d)` para el resto (`:107`) → `RPC:actualidad_senales_panel` (contrato documentado en `:96-97`) | — | `/` |
+| E-056 | `app/components/votacion-card.tsx` | `—` (delega los links a E-027) → ver §3.1 | `fechaCorta(fecha)` (`:39`) → `tabla.votacion.fecha`; `capturedAt` (`:96`) → `tabla.votacion.fecha_captura` → ver §3.1 | — | `/proyecto/[boletin]` |
+| E-057 | `app/components/comisiones-de-parlamentario.tsx` | `—` (0 hrefs propios) → ver §3.1 | `RPC:comisiones_de_parlamentario` → ver §3.1 | — | `/parlamentario/[id]` (anidado en E-059) |
+| E-058 | `app/components/idea-matriz-block.tsx` | `—` (0 hrefs propios) → ver §3.1 | `tabla.proyecto_ficha` (leída por E-048) → ver §3.1 | — | `/proyecto/[boletin]` |
+| E-059 | `app/components/parlamentario-header.tsx` | `—` (delega a E-034 y E-019) → ver §3.1 | `capturedAt` (`:116`) y `sourceUrl={parlamentario.enlace}` (`:118`) → `RPC:parlamentario_publico_v2` → ver §3.1 | — | `/parlamentario/[id]` |
+| E-060 | `app/app/contraparte/[id]/page.tsx` | `—` (0 hrefs propios; delega a E-034, E-014, E-016) → ver §3.1 | `RPC:agregado_por_contraparte` (`:` llamada única con `{ p_id: id }`); **su match de `ProvenanceBadge` es sólo un COMENTARIO** (`:19`), no un render — el badge real lo ponen E-014/E-016 → ver §3.1 | **MONEY** | `/contraparte/[id]` — `no emitido en el deploy auditado` (404 entero, `page.tsx:50-52`) |
+
+### 3.0.1 Emisores huérfanos (hallazgo)
+
+`E-003` (`voto-ficha-row.tsx`, 8 hrefs) y `E-008` (`actualidad-module.tsx`, 5 hrefs) aparecen en el
+loop de conteo pero **ningún archivo non-test los importa**:
+
+```bash
+grep -rn "VotoFichaRow\|ActualidadModule" app --include=*.tsx --include=*.ts | grep -v "\.test\."
+# → sólo definiciones propias, tipos en app/lib/types.ts y menciones en comentarios; cero call-sites
+```
+
+Consecuencia para las fases consumidoras: **114/125 no deben perseguir esos 13 hrefs en el DOM** —
+no se renderizan en ninguna de las 15 rutas. Se inventarían igual porque existen en el código y son
+parte del denominador (misma regla que un bloque gated OFF). `panel-actualidad.tsx` (E-055) es el
+near-clone vivo que reemplazó a `actualidad-module.tsx` en `/`.
+
+### 3.1 Chokepoints (`ProvenanceBadge`: `capturedAt` + `sourceUrl`)
+
+_(pendiente — Plan 06. Traza los 25 call-sites de `ProvenanceBadge` y las 15 expresiones `sourceUrl=`
+hasta su columna de origen. Se registra la EXPRESIÓN del prop y la columna, **nunca** valores de URL
+de filas reales.)_
+
+### 3.2 Builders de URL externa
+
+_(pendiente — Plan 06. Los 4 builders de §0.3: `buildSenadoUrl`, `buildCamaraUrl`,
+`enlaceHumanoProyecto`, `partidoLegible`.)_
+
+### 3.3 Familias de URL-desde-columna
+
+_(pendiente — Plan 06. Hosts por `split_part(...,'/',3)` + `count(*)` contra PROD, sin `select` de
+la columna completa.)_
 
 ## 4. Las 15 rutas
 
