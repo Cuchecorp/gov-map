@@ -224,7 +224,9 @@ Plans:
   3. El DB password B26 queda rotado y verificado por el operador: la url vieja falla, la nueva funciona, CI/sitio verdes (blast radius solo `SUPABASE_DB_URL`; CI/sitio corren con service_role key)
   4. El agente NO carga valores de secreto ni rota la credencial (actos de operador); documenta y verifica
 
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 110-01-PLAN.md — Apply 0052 + pgTAP verde contra schema aplicado; verify no-op de 0053/0054 (agente-delegable)
+- [ ] 110-02-PLAN.md — CI secrets CLOUDFLARE + rotación DB password B26 (checkpoint operador; agente documenta y verifica)
 
 ### Phase 111: V7GATES P4b — RUT-01 + backfills LIVE (votos + dinero) con checkpoints operador
 
