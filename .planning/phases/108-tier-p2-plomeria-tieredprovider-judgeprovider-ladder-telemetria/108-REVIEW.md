@@ -19,7 +19,12 @@ findings:
   warning: 6
   info: 5
   total: 11
-status: issues_found
+status: resolved
+resolution:
+  fixed: [WR-01, WR-02, WR-03, WR-04, WR-05, WR-06, IN-01]
+  accepted_debt: [IN-02, IN-03, IN-04, IN-05]
+  fix_report: 108-REVIEW-FIX.md
+  suite: green (llm 152 passed, llm-bench 131 passed, tsc 0)
 ---
 
 # Phase 108: Code Review Report
@@ -68,6 +73,9 @@ invoked — directly violating the "invoked EXACTLY once" contract that
 
 ### WR-01: Tier-0 output forwarded to judge without RUT guard (defense-in-depth hole)
 
+> **RESOLVED (c935b54):** `assertNoRutInLlmInput(answer)` + guard on `judgeContext` added at the judge hop in `tiered.ts`. Test: `tiered.test.ts` describe "RUT-guard hop al juez (WR-01)".
+
+
 **File:** `packages/llm/src/tiered.ts:162-168`
 **Issue:** `TieredProvider` builds `const answer = JSON.stringify(tier0Result)` and passes
 it straight to `this.judge.judge({ answer, ... })`. There is NO `assertNoRutInLlmInput`
@@ -89,6 +97,9 @@ if (this.judge && !tier0Failed) {
 ```
 
 ### WR-02: `onValidationOutcome` can fire twice per `complete()` (breaks single-outcome contract)
+
+> **RESOLVED (c935b54):** Tier-0 and tier-1 request wrappers now CAPTURE the outcome but do NOT forward the caller callback; the decorator fires `req.onValidationOutcome` EXACTLY once (idempotent `fireCallerOutcome`), with the outcome of the tier that produced the returned value (or the terminal path). Load-bearing test asserts call count === 1 on an escalating `complete()` — fails on double-fire.
+
 
 **File:** `packages/llm/src/tiered.ts:128-134, 232`
 **Issue:** The wrapped request (`wrappedReq`, lines 128-134) forwards the caller's
@@ -119,6 +130,9 @@ const escalationReq: CompletionRequest = {
 
 ### WR-03: Judge never re-evaluates the escalated tier-1 output (silent gate bypass on escalation)
 
+> **RESOLVED (c935b54) — option (a):** documented explicitly in `tiered.ts` that escalation returns UNJUDGED output BY DESIGN (bounded 1-hop, no re-judge loop). Test asserts `judge.callCount === 1` on the escalated path and that telemetry carries the tier-0 `judgeVerdict` (causal signal) while `providerId` points to tier-1 (so the consumer knows the returned value was not judged). No loop added.
+
+
 **File:** `packages/llm/src/tiered.ts:159-173, 231-244`
 **Issue:** The judge runs only against tier-0 (`if (this.judge && !tier0Failed)`). When
 the judge says `ok:false` and the call escalates, tier-1's output is returned **unjudged**
@@ -134,6 +148,9 @@ the escalated path (currently only asserted implicitly); or (b) re-judge tier-1 
 surface its verdict in telemetry. Do NOT add a loop.
 
 ### WR-04: `validationOutcome` and `judgeVerdict` from tier-0 are dropped on successful escalation
+
+> **RESOLVED (c935b54):** on successful (and all-tiers-failed) escalation the emitted event now sets `validationOutcome: capturedOutcome` (the tier-0 terminal outcome that forced escalation) instead of `null`. `judgeVerdict` was already emitted. The causal signal for WHY escalation happened is preserved in the single per-`complete()` event.
+
 
 **File:** `packages/llm/src/tiered.ts:233-243`
 **Issue:** On a successful escalation the emitted event sets `validationOutcome: null`
@@ -155,6 +172,9 @@ signal worth logging).
 
 ### WR-05: `_estimateCost` fixed 120-token estimate ignores budget accuracy (budget gate is coarse)
 
+> **RESOLVED (c935b54) — option (implement):** a real running-cost check now runs before escalation. For a POSITIVE `maxBudgetUsd`, if the tier-0 estimated cost already meets/exceeds the budget, or if adding the escalation-tier estimate would exceed it, escalation is aborted with `EscalationExhaustedError("budget-exceeded")`. Sentinel `0` still disables escalation; `undefined` is still unlimited. Tests: positive budget exceeded → skip escalation; positive budget sufficient → escalation proceeds. (The 120-token estimate remains coarse but is now actually compared — accuracy of the estimate is separate accepted debt, noted below.)
+
+
 **File:** `packages/llm/src/tiered.ts:195-196, 268-272`
 **Issue:** The budget gate only trips when `maxBudgetUsd <= 0` (line 196) — any positive
 budget is treated as unlimited for escalation purposes, because actual accumulated cost is
@@ -172,6 +192,9 @@ mismatch is a correctness/robustness trap for callers who set a nonzero budget e
 enforcement.
 
 ### WR-06: MockProvider emits synthetic telemetry that can mask real TieredProvider events in tests
+
+> **RESOLVED (f67f29e):** the mock's synthetic telemetry emission is now OPT-IN behind an explicit `emitTelemetry: true` flag (default `false`). Even with a `telemetrySink` injected, the mock does not emit unless asked — so it can never mask the `TieredProvider`'s authoritative events. Doc comment spells out the footgun and that mock and TieredProvider must not share a sink.
+
 
 **File:** `packages/llm/src/test-mock.ts:86-103`
 **Issue:** `MockProvider.complete` emits its OWN `TelemetryEvent` to `opts.telemetrySink`
@@ -193,6 +216,9 @@ emission entirely since the tiered layer is the emission authority.
 
 ### IN-01: `parseAndValidate` `console.warn` leaks first 80 chars of raw LLM output
 
+> **RESOLVED (b7b909f):** the `console.warn` in `validate.ts` `safeJsonParse` now logs only `raw.length` (a structural fact), never a content slice — matching the payload-free discipline of the telemetry layer.
+
+
 **File:** `packages/llm/src/validate.ts:100-102` (dependency, not a Phase-108 file)
 **Issue:** `safeJsonParse` logs `raw[0..80]` on parse failure. This is out of the Phase-108
 diff scope but is directly relevant to the payload-free invariant this phase enforces: a
@@ -205,6 +231,9 @@ belongs to the validate.ts owner.
 
 ### IN-02: `escalated: true` telemetry on non-escalation failures is semantically misleading
 
+> **ACCEPTED DEBT:** changing the semantics of the `escalated` field (or adding `escalationAttempted`) is a telemetry-contract change with downstream consumers (JSONL parsers) — out of scope for a warning-fix pass and not adjacent to the WR fixes. Left for a deliberate telemetry-schema revision.
+
+
 **File:** `packages/llm/src/tiered.ts:207, 224`
 **Issue:** When budget is exceeded (line 207) or there is no escalation tier (line 224),
 the emitted event sets `escalated: true` even though NO escalation actually occurred —
@@ -216,6 +245,9 @@ document the chosen semantics either way.
 
 ### IN-03: `id` string uses non-ASCII arrow `→` in a stable identifier
 
+> **ACCEPTED DEBT:** the provider `id` is a stable identifier that may already be keyed/compared in telemetry downstream; changing the separator (`→` → `>`) is a value change with ripple risk and is not adjacent to any WR fix. Left as-is to avoid shifting a stable key without a coordinated consumer update.
+
+
 **File:** `packages/llm/src/tiered.ts:106`
 **Issue:** `this.id = "tiered:" + this.tiers.map((t) => t.id).join("→")`. Using U+2192 in
 a provider id that may be logged, keyed, or compared across systems (JSONL telemetry,
@@ -223,6 +255,9 @@ grep) invites encoding surprises. Cosmetic but the id is a stable identifier.
 **Fix:** Use an ASCII separator (e.g. `>` or `+`): `join(">")`.
 
 ### IN-04: Duplicated telemetry-emit blocks (5 near-identical `this._emit({...})` sites)
+
+> **ACCEPTED DEBT:** a `_buildEvent(partial)` refactor is a good cleanup but is a broader structural change touching all five emit sites at once — higher-risk than a targeted warning fix, and the WR-04 divergence it enabled is now closed by the specific fix. Deferred to a focused refactor pass. (The five sites are now consistent post-WR-04.)
+
 
 **File:** `packages/llm/src/tiered.ts:180-189, 200-209, 217-226, 234-243, 248-257`
 **Issue:** Five `_emit` call sites repeat the same event shape with small deltas
@@ -232,6 +267,9 @@ future edit to fix one path and miss another (this is how WR-04's `null` slipped
 each site only specifies the deltas. Reduces the chance of divergent telemetry across paths.
 
 ### IN-05: `task-ladder.ts` module-doc claims a forward-reference that is now resolved
+
+> **ACCEPTED DEBT:** stale Wave-1/Wave-2 doc note in `task-ladder.ts`. Cosmetic, out of the changed-file set for this pass, not adjacent to a WR fix. Left for the module owner (trivial doc edit).
+
 
 **File:** `packages/llm/src/task-ladder.ts:12-15, 93-94`
 **Issue:** The header still says `./tiered` is "escrito por Plan 02 (Wave 2)... tsc -b
