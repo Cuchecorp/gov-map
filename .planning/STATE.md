@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: — Capa LLM escalonada + cierre de deuda viva
 status: executing
-stopped_at: Completed 104-01-PLAN.md
-last_updated: "2026-07-27T01:21:19.892Z"
+stopped_at: Completed 106-03-PLAN.md
+last_updated: "2026-07-27T01:34:06.562Z"
 last_activity: 2026-07-27
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 8
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 106 (BENCH harness llm-bench + golden sets es-CL) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-27
 
@@ -197,6 +197,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 106-01: @obs/llm-bench scaffolded FUERA de @obs/llm (dep @obs/llm nunca al revés; tsc references NO paths). Barrel src/index.ts = single-owner 106-01 (forward re-exports core+2 guards+4 scorers); Wave-2 solo llena los 6 placeholders export{}, jamás toca el barrel.
 - [Phase ?]: 106-01: las dos tasas de fallo son campos SEPARADOS de primera clase — structured_output_fail_rate FUERA de zod_fail_rate.{repaired,terminal} (Pitfall B, test lo asevera). instrumentedFetch devuelve la Response ORIGINAL (lee un clon), sink solo latencia+tokens NUNCA payload (T-106-02); repair round-trips en el wall clock (Pitfall 7). PRICING dated 2026-07-26 [ASSUMED] MEDIUM solo incumbentes (Granite/Phi+secret=107). 18/18 tests + tsc -b root/pkg exit 0; CERO paquete nuevo; @obs/llm intacto.
 - [Phase ?]: 106-02: golden sets routing+clasificación es-CL congelados (sha256), scoring top-1+abstención generalizado de cruces, guards que muerden (∩=∅/no-RUT/frozen-hash); SECTOR_CODIGOS inlineado; símbolos con sufijo por el barrel export* plano
+- [Phase ?]: 106-03: golden de juez = pares (answer, human_label), accuracy condicional vs humano; extracción parse-rate SEPARADO de value-accuracy
 
 ### Pending Todos
 
@@ -252,8 +253,8 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-27T01:21:13.783Z
-Stopped at: Completed 104-01-PLAN.md
+Last session: 2026-07-27T01:34:06.546Z
+Stopped at: Completed 106-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
