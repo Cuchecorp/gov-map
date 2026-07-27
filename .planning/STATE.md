@@ -4,13 +4,13 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: executing
 stopped_at: Completed 106-03-PLAN.md
-last_updated: "2026-07-27T23:33:04.648Z"
+last_updated: "2026-07-27T23:43:54.758Z"
 last_activity: 2026-07-27
 progress:
   total_phases: 13
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 113 (INV — Inventario rector de superficies) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-07-27
 
@@ -131,6 +131,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 107 P107-03 | 9min | 1 tasks | 3 files |
 | Phase 108 P02 | 15 | 2 tasks | 6 files |
 | Phase 113 P01 | 45m | 3 tasks | 2 files |
+| Phase 113 P04 | 1 sesión | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -224,6 +225,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 113-01: deploy auditado anclado por fecha/hora; contraparte NO elegida (contrato/aporte 0 filas + gate MONEY)
 - [Phase ?]: 113-03: el link a Senado se registra POST-rewrite de enlaceHumanoProyecto, con la columna cruda en la misma fila
 - [Phase ?]: 113-03: todo ProvenanceBadge aporta fila en Tabla B aunque sourceUrl sea null (se declara que el <a> no se emite)
+- [Phase ?]: 113-04: header de la raíz como '### 4.4 /' sin comillas para que check-inventario.sh lo matchee; /admin/revisar-entidades EXCLUIDA sin tablas A/B/C
 
 ### Pending Todos
 
@@ -284,7 +286,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-27T23:32:53.298Z
+Last session: 2026-07-27T23:43:50.731Z
 Stopped at: Completed 106-03-PLAN.md
 Resume file: None
 

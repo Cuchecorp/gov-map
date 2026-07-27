@@ -115,7 +115,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 113-04-PLAN.md — (w5) 12 rutas restantes + not-found + Tabla D de cobertura
+- [x] 113-04-PLAN.md — (w5) 12 rutas restantes + not-found + Tabla D de cobertura
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -310,7 +310,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 113. INV | 4/6 | In Progress|  |
+| 113. INV | 5/6 | In Progress|  |
 | 114. LINK-INT | 0/? | Not started | - |
 | 115. LINK-EXT | 0/? | Not started | - |
 | 116. FECHA-AUDIT | 0/? | Not started | - |
