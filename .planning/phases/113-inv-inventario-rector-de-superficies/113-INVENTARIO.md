@@ -627,10 +627,218 @@ link efectivo es `buildSenadoUrl('14309-04')`.
 **Fuera de estos 4:** todo el resto de los hrefs externos son **valores almacenados en columnas** —
 inventariados en §3.3.
 
-### 3.3 Familias de URL-desde-columna
+### 3.3 Familias de URL almacenadas en columnas
 
-_(pendiente — Plan 06. Hosts por `split_part(...,'/',3)` + `count(*)` contra PROD, sin `select` de
-la columna completa.)_
+Cierra el hallazgo rector de §0.3: la mayoría de los hrefs externos **no** se construyen en TSX —
+son valores de columnas de la DB. El universo de columnas se **descubre por catálogo**, nunca por
+lista adivinada: el patrón de nombres `url_fuente|enlace_fuente|link_*` del research **omitía**
+`enlace`/`enlace_detalle` de `lobby_audiencia`, que es justamente donde vive **leylobby**.
+
+**Restricciones de seguridad aplicadas (T-113-05 / T-113-06):** todas las queries devuelven
+únicamente `split_part(<col>,'/',3)` (el **host**) y `count(*)`. **Cero** `select <col>` completo,
+cero URLs fila a fila, cero credenciales; `SUPABASE_DB_URL` nunca se ecoa ni se escribe. Tampoco se
+listan keys de `r2_path`: sólo el prefijo `tramitacion/` está allowlistado por `esR2PathPermitido`
+(`validacion-fuente.tsx:46-52`), y los dominios PII (`infoprobidad/`, `servel/`, `money/`, `rut/`)
+quedan fuera por completo. Ancla temporal: `select now()::date` → **2026-07-27**.
+
+#### 3.3.1 Paso 1 — descubrimiento por catálogo
+
+Query del plan, **verbatim**, con su resultado inline:
+
+```sql
+select table_name, column_name from information_schema.columns
+where table_schema='public' and data_type like '%char%'
+  and column_name ~ 'url|enlace|link'
+order by table_name, column_name;
+-- (0 filas)
+```
+
+**Hallazgo (corrección de la query, Rule 1):** el filtro `data_type like '%char%'` devuelve **cero
+filas** porque en Postgres las columnas `text` reportan `data_type = 'text'`, no
+`'character varying'` — y **todas** las columnas de URL de este esquema son `text`. Usar esa query
+tal cual habría producido un §3.3 vacío y un falso "no hay URLs en columnas". Query corregida
+(predicado de tipo ampliado; el resto idéntico) con su resultado inline:
+
+```sql
+select table_name, column_name, data_type from information_schema.columns
+where table_schema='public'
+  and data_type in ('text','character varying','character')
+  and column_name ~ 'url|enlace|link'
+order by table_name, column_name;
+-- actualidad_senal|enlace|text
+-- aporte|enlace|text
+-- arista|enlace|text
+-- citacion|enlace|text
+-- comision|enlace|text
+-- comision_membresia|enlace|text
+-- contratista|enlace|text
+-- contrato|enlace|text
+-- cruce_senal|enlace|text
+-- declaracion|enlace|text
+-- declaracion_accion_derecho|enlace|text
+-- declaracion_actividad|enlace|text
+-- declaracion_bien_inmueble|enlace|text
+-- declaracion_bien_mueble|enlace|text
+-- declaracion_familiar|enlace|text
+-- declaracion_pasivo|enlace|text
+-- declaracion_valor|enlace|text
+-- donante|enlace|text
+-- entidad_tercero|enlace|text
+-- lobby_audiencia|enlace|text
+-- lobby_audiencia|enlace_detalle|text
+-- lobby_contraparte|enlace|text
+-- parlamentario|enlace|text
+-- parlamentario_bio|enlace|text
+-- parlamentario_militancia|enlace|text
+-- pii_contraparte_declaracion|enlace|text
+-- proyecto|enlace|text
+-- proyecto_autor|enlace|text
+-- sesion_sala|enlace|text
+-- source_snapshot|source_url|text
+-- tramitacion_evento|enlace|text
+-- vinculo_entidad|enlace|text
+-- vinculo_identidad|enlace|text
+-- votacion|enlace|text
+-- (34 filas)
+```
+
+**34 columnas** en **33 tablas** (`lobby_audiencia` aporta dos). Nótese que **ninguna** se llama
+`url_fuente`, `enlace_fuente` ni `link_*`: el patrón de nombres del research habría descubierto
+**cero**. `enlace_fuente` existe sólo como **clave dentro del jsonb** `cruce_senal.evidencia`
+(§3.1.4 filas 6-7), no como columna.
+
+#### 3.3.2 Paso 2 — familias por host
+
+Por cada columna descubierta, con `<tabla>`/`<col>` sustituidos:
+
+```sql
+select split_part(<col>,'/',3) as host, count(*)
+  from <tabla> where <col> is not null
+ group by 1 order by 2 desc, 1 asc;
+```
+
+Resultados inline (34 corridas, 2026-07-27):
+
+```text
+actualidad_senal.enlace              (0 filas)
+aporte.enlace                        (0 filas)
+arista.enlace                        www.camara.cl|7394
+citacion.enlace                      www.camara.cl|164 ; web-back.senado.cl|125
+comision.enlace                      www.camara.cl|34
+comision_membresia.enlace            www.camara.cl|386
+contratista.enlace                   (0 filas)
+contrato.enlace                      (0 filas)
+cruce_senal.enlace                   www.camara.cl|781
+declaracion.enlace                   datos.cplt.cl|1065
+declaracion_accion_derecho.enlace    datos.cplt.cl|935
+declaracion_actividad.enlace         datos.cplt.cl|690
+declaracion_bien_inmueble.enlace     datos.cplt.cl|2841
+declaracion_bien_mueble.enlace       datos.cplt.cl|1476
+declaracion_familiar.enlace          (0 filas)
+declaracion_pasivo.enlace            datos.cplt.cl|1820
+declaracion_valor.enlace             datos.cplt.cl|614
+donante.enlace                       (0 filas)
+entidad_tercero.enlace               (0 filas)
+lobby_audiencia.enlace               www.camara.cl|17730 ; www.leylobby.gob.cl|32
+lobby_audiencia.enlace_detalle       www.leylobby.gob.cl|32
+lobby_contraparte.enlace             www.camara.cl|17681
+parlamentario.enlace                 opendata.camara.cl|155 ; tramitacion.senado.cl|31
+parlamentario_bio.enlace             (0 filas)
+parlamentario_militancia.enlace      opendata.camara.cl|315 ; datos.bcn.cl|48
+pii_contraparte_declaracion.enlace   (0 filas)
+proyecto.enlace                      tramitacion.senado.cl|3658 ; opendata.camara.cl|1
+proyecto_autor.enlace                tramitacion.senado.cl|19983
+sesion_sala.enlace                   web-back.senado.cl|16 ; www.camara.cl|2
+source_snapshot.source_url           tramitacion.senado.cl|4380 ; datos.cplt.cl|3
+tramitacion_evento.enlace            www.senado.cl|5790 ; opendata.camara.cl|3797 ; tramitacion.senado.cl|982
+vinculo_entidad.enlace               (0 filas)
+vinculo_identidad.enlace             (0 filas)
+votacion.enlace                      opendata.camara.cl|3806 ; tramitacion.senado.cl|1049
+```
+
+**8 hosts distintos** en total. `pii_contraparte_declaracion.enlace` se consultó con el mismo
+`split_part`+`count(*)` (host y conteo, jamás valores) y devolvió **0 filas** — no se expuso nada.
+
+#### 3.3.3 Tabla de familias
+
+Sólo las columnas con `n > 0`. Las 10 columnas con 0 filas se listan en §3.3.5.
+
+| tabla.columna | host | n | fuente | emisor que la renderiza |
+|---------------|------|--:|--------|--------------------------|
+| `arista.enlace` | `www.camara.cl` | 7394 | camara | E-011 `red/red-graph.tsx:194` (`safeExternalHref`) — gate **NET** |
+| `citacion.enlace` | `www.camara.cl` | 164 | camara | E-033 `citacion-card.tsx` / E-004 `/agenda` |
+| `citacion.enlace` | `web-back.senado.cl` | 125 | senado | E-033 `citacion-card.tsx` / E-004 `/agenda` |
+| `comision.enlace` | `www.camara.cl` | 34 | camara | E-057 `comisiones-de-parlamentario.tsx` (vía `RPC:comisiones_de_parlamentario`) |
+| `comision_membresia.enlace` | `www.camara.cl` | 386 | camara | E-057 `comisiones-de-parlamentario.tsx` |
+| `cruce_senal.enlace` | `www.camara.cl` | 781 | camara | columna **no renderizada directo**; lo que llega al DOM es `evidencia->enlace_fuente` → §3.1.4 filas 6-7 (E-044/E-053, gate **CRUCES**) |
+| `declaracion.enlace` | `datos.cplt.cl` | 1065 | otro (CPLT) | §3.1.4 filas 12-13 (E-005 `patrimonio-de-parlamentario.tsx:446,769`) |
+| `declaracion_accion_derecho.enlace` | `datos.cplt.cl` | 935 | otro (CPLT) | E-005 — detalle vía `RPC:bienes_de_parlamentario`; el badge usa el `enlace` de la versión |
+| `declaracion_actividad.enlace` | `datos.cplt.cl` | 690 | otro (CPLT) | E-005 — ídem |
+| `declaracion_bien_inmueble.enlace` | `datos.cplt.cl` | 2841 | otro (CPLT) | E-005 — ídem |
+| `declaracion_bien_mueble.enlace` | `datos.cplt.cl` | 1476 | otro (CPLT) | E-005 — ídem |
+| `declaracion_pasivo.enlace` | `datos.cplt.cl` | 1820 | otro (CPLT) | E-005 — ídem |
+| `declaracion_valor.enlace` | `datos.cplt.cl` | 614 | otro (CPLT) | E-005 — ídem |
+| `lobby_audiencia.enlace` | `www.camara.cl` | 17730 | camara | §3.1.4 fila 10 (E-002 `lobby-de-parlamentario.tsx:537`, mapeo `:601`) |
+| `lobby_audiencia.enlace` | `www.leylobby.gob.cl` | 32 | **leylobby** | §3.1.4 fila 10 (E-002) |
+| `lobby_audiencia.enlace_detalle` | `www.leylobby.gob.cl` | 32 | **leylobby** | E-020 `lobby-menciones-de-boletin.tsx:111`, E-041 `lobby-en-tramitacion.tsx:124` (ambos `safeExternalHref(row.enlace_detalle)`); y fallback de E-002 (`:601` `f.enlace ?? f.enlace_detalle`) |
+| `lobby_contraparte.enlace` | `www.camara.cl` | 17681 | camara | **ninguno** — la contraparte se muestra como TEXTO CRUDO sin enlace (`lobby-de-parlamentario.tsx:272,289-290`); columna presente en DB, **no** emitida al DOM |
+| `parlamentario.enlace` | `opendata.camara.cl` | 155 | camara | §3.1.4 fila 11 (E-059 `parlamentario-header.tsx:118`) |
+| `parlamentario.enlace` | `tramitacion.senado.cl` | 31 | senado | §3.1.4 fila 11 (E-059) |
+| `parlamentario_militancia.enlace` | `opendata.camara.cl` | 315 | camara | E-054 `militancias-de-parlamentario.tsx` — **no emite href**; `partidoLegible` (§3.2 #4) desactiva URIs |
+| `parlamentario_militancia.enlace` | `datos.bcn.cl` | 48 | **BCN** | E-054 / E-019 `partido-chip.tsx` — **no emite href**: `partidoLegible` deriva el nombre legible del slug (invariante "CERO URI en el DOM") |
+| `proyecto.enlace` | `tramitacion.senado.cl` | 3658 | senado | §3.1.4 fila 8 (E-043 `ficha-header.tsx:70-73`), **post-rewrite** `enlaceHumanoProyecto` (el path es `/wspublico/`, XML crudo) |
+| `proyecto.enlace` | `opendata.camara.cl` | 1 | camara | E-043 — pasa **verbatim** (host ≠ `tramitacion.senado.cl` ⇒ sin rewrite) |
+| `proyecto_autor.enlace` | `tramitacion.senado.cl` | 19983 | senado | §3.1.4 fila 3 (E-035 `autor-row.tsx:64`), **post-rewrite** |
+| `sesion_sala.enlace` | `web-back.senado.cl` | 16 | senado | E-018 `sala-table-section.tsx` (`camaraPdfUrl` / enlace de sesión) |
+| `sesion_sala.enlace` | `www.camara.cl` | 2 | camara | E-018 `sala-table-section.tsx:151` |
+| `source_snapshot.source_url` | `tramitacion.senado.cl` | 4380 | senado | **no renderizada como href**: E-048 pasa `sourceUrl={null}` (§3.1.4 fila 1); el snapshot sólo alimenta `capturedAt` y el respaldo R2 (`esR2PathPermitido`, prefijo `tramitacion/`) |
+| `source_snapshot.source_url` | `datos.cplt.cl` | 3 | otro (CPLT) | ídem — no emitida al DOM |
+| `tramitacion_evento.enlace` | `www.senado.cl` | 5790 | senado | E-038 `timeline-event.tsx:42` (anidado en E-010) |
+| `tramitacion_evento.enlace` | `opendata.camara.cl` | 3797 | camara | E-038 `timeline-event.tsx:42` |
+| `tramitacion_evento.enlace` | `tramitacion.senado.cl` | 982 | senado | E-038 `timeline-event.tsx:42` — **sin rewrite**: `enlaceHumanoProyecto` no se aplica aquí (candidato a revisar en 115 si el path es `/wspublico/`) |
+| `votacion.enlace` | `opendata.camara.cl` | 3806 | camara | §3.1.4 fila 14 (E-056 `votacion-card.tsx:101-104`), **post-rewrite** |
+| `votacion.enlace` | `tramitacion.senado.cl` | 1049 | senado | §3.1.4 fila 14 (E-056), **post-rewrite** a `buildSenadoUrl(boletin)` |
+
+#### 3.3.4 Criterio duro de cierre — las 4 clases del ROADMAP
+
+| clase | ¿resuelta? | evidencia |
+|-------|------------|-----------|
+| **camara** | **SÍ** — 4 hosts | `www.camara.cl` (arista 7394, lobby_audiencia 17730, lobby_contraparte 17681, cruce_senal 781, comision_membresia 386, citacion 164, comision 34, sesion_sala 2) · `opendata.camara.cl` (votacion 3806, tramitacion_evento 3797, parlamentario_militancia 315, parlamentario 155, proyecto 1) |
+| **senado** | **SÍ** — 3 hosts | `tramitacion.senado.cl` (proyecto_autor 19983, source_snapshot 4380, proyecto 3658, votacion 1049, tramitacion_evento 982, parlamentario 31) · `www.senado.cl` (tramitacion_evento 5790) · `web-back.senado.cl` (citacion 125, sesion_sala 16) |
+| **BCN** | **SÍ** — 1 host, y **jamás como href** | `datos.bcn.cl` en `parlamentario_militancia.enlace` → **48** filas. Query de respaldo: `select split_part(enlace,'/',3) host, count(*) from parlamentario_militancia where enlace like '%bcn.cl%' group by 1;` → `datos.bcn.cl\|48`. Estas 48 son URIs `.../partido-politico/{slug}` que `partidoLegible` (§3.2 #4) **desactiva**: se renderiza el nombre legible, **nunca** el URI. Cero hrefs a BCN en el DOM |
+| **leylobby** | **SÍ** — 1 host, 2 columnas | `www.leylobby.gob.cl` en `lobby_audiencia.enlace` (**32**) y `lobby_audiencia.enlace_detalle` (**32**). Búsqueda por VALOR de respaldo: `select 'lobby_audiencia.enlace', count(*) from lobby_audiencia where enlace like '%leylobby%' union all select 'lobby_audiencia.enlace_detalle', count(*) from lobby_audiencia where enlace_detalle like '%leylobby%';` → `lobby_audiencia.enlace\|32` y `lobby_audiencia.enlace_detalle\|32`. **Ninguna** de las dos columnas matchea el patrón `url_fuente\|enlace_fuente\|link_*` del research — de ahí el descubrimiento por catálogo |
+
+Las 4 clases quedan **resueltas con host + conteo**; ninguna requirió la declaración de cero.
+
+#### 3.3.5 Columnas descubiertas con cero ocurrencias en PROD al 2026-07-27
+
+| tabla.columna | n | fuente esperada | causa |
+|---------------|--:|-----------------|-------|
+| `actualidad_senal.enlace` | 0 | otro | el panel de actualidad arma su `href` interno en `panel-actualidad.tsx` (E-055), no desde esta columna |
+| `aporte.enlace` | 0 | otro (Servel) | tabla vacía (`select count(*) from aporte` → **0**, §1.5); gate **MONEY** OFF |
+| `contrato.enlace` | 0 | otro (Mercado Público) | tabla vacía (`select count(*) from contrato` → **0**, §1.5); gate **MONEY** OFF |
+| `contratista.enlace` | 0 | otro (Mercado Público) | sin filas — dominio MONEY sin poblar |
+| `declaracion_familiar.enlace` | 0 | otro (CPLT) | sin filas con enlace |
+| `donante.enlace` | 0 | otro (Servel) | sin filas — dominio MONEY sin poblar |
+| `entidad_tercero.enlace` | 0 | otro | sin filas |
+| `parlamentario_bio.enlace` | 0 | camara/senado | el enlace vive en `parlamentario.enlace`, no en la bio |
+| `pii_contraparte_declaracion.enlace` | 0 | otro | sin filas — **dominio PII**: sólo se consultó host+conteo, jamás valores |
+| `vinculo_entidad.enlace` | 0 | otro | sin filas |
+| `vinculo_identidad.enlace` | 0 | otro | sin filas |
+
+#### 3.3.6 Consecuencias para 115
+
+1. Validar sólo los 4 builders de §3.2 cubriría **~24.700** hrefs de un universo de **~78.000**
+   valores de URL almacenados. El grueso llega **desde columna**, vía `safeExternalHref`.
+2. `lobby_contraparte.enlace` (17.681) y `source_snapshot.source_url` (4.383) existen en DB pero
+   **no se emiten al DOM** — 115/125 no deben perseguirlas.
+3. `datos.bcn.cl` (48) es el único host que el producto **desactiva a propósito**: cualquier URI BCN
+   visible en el DOM es una regresión del invariante "CERO URI".
+4. `tramitacion_evento.enlace` tiene **982** filas en `tramitacion.senado.cl` que **no** pasan por
+   `enlaceHumanoProyecto` (E-038). Si su path fuera `/wspublico/`, serían links a XML crudo:
+   **candidato #1 de 115**, registrado aquí sin corregir (esta fase no arregla).
+5. Los 4 call-sites MONEY de §3.1.4 tienen columnas de respaldo **vacías**: aunque el gate se
+   encendiera, no habría link. Cero valor en perseguirlos.
 
 ## 4. Las 15 rutas
 
