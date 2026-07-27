@@ -510,14 +510,122 @@ near-clone vivo que reemplazó a `actualidad-module.tsx` en `/`.
 
 ### 3.1 Chokepoints (`ProvenanceBadge`: `capturedAt` + `sourceUrl`)
 
-_(pendiente — Plan 06. Traza los 25 call-sites de `ProvenanceBadge` y las 15 expresiones `sourceUrl=`
-hasta su columna de origen. Se registra la EXPRESIÓN del prop y la columna, **nunca** valores de URL
-de filas reales.)_
+`app/components/provenance-badge.tsx` es un chokepoint **DUAL**. No es decoración: es a la vez el
+único punto por donde pasa la fecha de captura y el **mayor emisor de links externos del sitio**.
 
-### 3.2 Builders de URL externa
+#### 3.1.1 Cara A — fecha (`capturedAt`)
 
-_(pendiente — Plan 06. Los 4 builders de §0.3: `buildSenadoUrl`, `buildCamaraUrl`,
-`enlaceHumanoProyecto`, `partidoLegible`.)_
+| propiedad | valor |
+|-----------|-------|
+| prop | `capturedAt: Date \| null` (`provenance-badge.tsx:21`) |
+| formatter | `relativeTimeEs(capturedAt)` (`:52`) + `esStale(capturedAt)` (`:33`, umbral 48 h → amber) |
+| `null` | renderiza **"Sin fecha de actualización"** (`:54`) y `sourceName` se degrada a `"fuente desconocida"` (`:34`) — el badge **nunca** se omite (UI-SPEC §6.3) |
+| tooltip | `capturedAt.toISOString()` (`:86`) — el instante crudo de *scraping* |
+
+> **REGLA LOCKED:** toda fecha que llega a la UI vía `capturedAt` se **MARCA como `fecha_captura`**
+> sin más análisis — es el reloj del scraping, jamás el hecho (gotcha Phase 98). Toda **otra** fecha
+> renderizada exige rastreo explícito hasta su columna/RPC en §4. Consecuencia para 116: las fechas
+> del badge NO son candidatas a "fecha del hecho" en ninguna ruta.
+
+#### 3.1.2 Cara B — link externo (`sourceUrl`)
+
+| propiedad | valor |
+|-----------|-------|
+| prop | `sourceUrl: string \| null` (`provenance-badge.tsx:25`) |
+| guard | `const safeUrl = safeExternalHref(sourceUrl)` (`:37`) |
+| render | `<a href={safeUrl} target="_blank" rel="noopener noreferrer">` (`:61-69`) con el texto literal **`fuente oficial ↗`** (`:68`) y `aria-label` `Fuente oficial: {displaySource} (abre en nueva pestaña)` (`:66`) |
+| degradación | si `safeExternalHref` devuelve `null`, el `<a>` **no se emite** (`:58` `{safeUrl !== null && ...}`) — el badge queda "sin enlace", nunca un href roto ni un `javascript:` inyectado |
+| tooltip | `{safeUrl}` (`:87`) — el href post-guard, no el valor crudo |
+
+> **REGLA LOCKED:** el badge es el **mayor emisor de links externos del sitio** (15 call-sites
+> non-test, ver tabla). 115 debe tratarlo como **superficie de primera clase**, no como decoración:
+> validar el patrón de link externo del badge cubre más hrefs externos que los 4 builders juntos.
+
+#### 3.1.3 `safeExternalHref` — guard único de href externo (chokepoint de LINK-03)
+
+```ts
+// app/lib/utils.ts:15-23
+export function safeExternalHref(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const proto = new URL(url).protocol;
+    return proto === "https:" || proto === "http:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+```
+
+Semántica: **allowlist de esquema** (`http:` / `https:` únicamente); cualquier otra cosa
+(`javascript:`, `data:`, string vacío, URL no parseable) → `null` ⇒ **no se emite `<a>`**.
+Es **fail-closed** y no reescribe la URL: la devuelve verbatim o nada. Todo href externo del sitio
+—badge, builders de §3.2, hrefs desde columna de §3.3— pasa por aquí. **Chokepoint de LINK-03.**
+
+#### 3.1.4 Tabla de call-sites de `sourceUrl`
+
+Universo (re-corrido 2026-07-27): `grep -rl "sourceUrl=" app/components app/app | wc -l` → **16**
+archivos (15 de producción + 1 de test). El propio `provenance-badge.tsx` **no** aparece en este
+grep porque *declara* el prop, no lo *pasa*; se contabiliza aparte como E-040.
+
+Convención: `origen` cita el vocabulario cerrado de §0.2 + la tabla de ampliación de §3
+(`RPC:<nombre>.<campo>` ← `tabla.<columna>`). Los hosts de la columna *fuente* salen de §3.3 —
+esta tabla **no** registra ningún valor de URL de fila real (T-113-10).
+
+| # | archivo:línea | expresión del prop (verbatim) | columna/RPC de origen | fuente | gate |
+|---|---------------|-------------------------------|-----------------------|--------|------|
+| 1 | `app/app/proyecto/[boletin]/page.tsx:492` | `sourceUrl={null}` | — (literal `null`; el badge sólo lleva `capturedAt` ← `tabla.source_snapshot.fecha_captura`) | ninguna — **badge sin link** por diseño | — |
+| 2 | `app/components/aportes-por-contraparte.tsx:199` | `sourceUrl={a.enlace}` | `RPC:agregado_por_contraparte` (rama aportes) ← `tabla.aporte.enlace` | otro (Servel) — **0 filas en PROD** (§3.3) | **MONEY** — `no emitido en el deploy auditado` |
+| 3 | `app/components/autor-row.tsx:64` | `sourceUrl={enlaceHumanoProyecto(autor.enlace \|\| "", autor.boletin) \|\| null}` | `tabla.proyecto_autor.enlace` + `.boletin`, **post-rewrite** por `enlaceHumanoProyecto` (§3.2) | senado (`tramitacion.senado.cl`) | — |
+| 4 | `app/components/contratos-de-parlamentario.tsx:195` | `sourceUrl={c.enlace}` | `RPC:contratos_de_parlamentario` ← `tabla.contrato.enlace` | otro (Mercado Público) — **0 filas en PROD** (§3.3) | **MONEY** — `no emitido en el deploy auditado` |
+| 5 | `app/components/contratos-por-contraparte.tsx:178` | `sourceUrl={c.enlace}` | `RPC:agregado_por_contraparte` (rama contratos) ← `tabla.contrato.enlace` | otro (Mercado Público) — **0 filas en PROD** (§3.3) | **MONEY** — `no emitido en el deploy auditado` |
+| 6 | `app/components/cruces-de-parlamentario.tsx:197` | `sourceUrl={item.enlace_fuente}` | `RPC:cruces_de_parlamentario` → `cruce_senal.evidencia` jsonb, clave `enlace_fuente` ← `tabla.lobby_audiencia.enlace` (`0039_cruce_senal.sql:107`, `0052_...sql:99`) / `tabla.contrato.enlace` (`0052_...sql:154`) | camara (`www.camara.cl`) + leylobby | **CRUCES** |
+| 7 | `app/components/cruces-de-proyecto.tsx:179` | `sourceUrl={item.enlace_fuente}` | `RPC:cruces_de_proyecto` → misma `evidencia.enlace_fuente` que la fila 6 | camara (`www.camara.cl`) + leylobby | **CRUCES** |
+| 8 | `app/components/ficha-header.tsx:70-73` | `sourceUrl={` `enlaceHumanoProyecto(proyecto.enlace \|\| "", proyecto.boletin) \|\|` `null` `}` | `tabla.proyecto.enlace` + `.boletin`, **post-rewrite** por `enlaceHumanoProyecto` (§3.2) | senado (`tramitacion.senado.cl`) | — |
+| 9 | `app/components/financiamiento-de-parlamentario.tsx:234` | `sourceUrl={a.enlace}` | `RPC:aportes_de_parlamentario` ← `tabla.aporte.enlace` | otro (Servel) — **0 filas en PROD** (§3.3) | **MONEY** — `no emitido en el deploy auditado` |
+| 10 | `app/components/lobby-de-parlamentario.tsx:537` | `sourceUrl={a.enlace}` — donde `a.enlace` se arma en `:601` como `enlace: f.enlace ?? f.enlace_detalle` | `RPC:lobby_de_parlamentario` ← `tabla.lobby_audiencia.enlace` con **fallback** a `tabla.lobby_audiencia.enlace_detalle` | camara (`www.camara.cl`) + **leylobby** (`www.leylobby.gob.cl`) | — |
+| 11 | `app/components/parlamentario-header.tsx:118` | `sourceUrl={parlamentario.enlace ?? null}` | `RPC:parlamentario_publico_v2.enlace` ← `tabla.parlamentario.enlace` | camara (`opendata.camara.cl`) + senado (`tramitacion.senado.cl`) | — |
+| 12 | `app/components/patrimonio-de-parlamentario.tsx:446` | `sourceUrl={version.enlace}` | `RPC:declaraciones_de_parlamentario` ← `tabla.declaracion.enlace` | otro (CPLT, `datos.cplt.cl`) | — |
+| 13 | `app/components/patrimonio-de-parlamentario.tsx:769` | `sourceUrl={c.enlace}` (una por columna comparada, `columnas.map`) | `RPC:comparar_declaraciones` ← `tabla.declaracion.enlace` | otro (CPLT, `datos.cplt.cl`) | — |
+| 14 | `app/components/votacion-card.tsx:101-104` | `sourceUrl={` `enlaceHumanoProyecto(votacion.enlace \|\| "", votacion.boletin) \|\|` `null` `}` | `tabla.votacion.enlace` + `.boletin`, **post-rewrite** por `enlaceHumanoProyecto` (§3.2) | camara (`opendata.camara.cl`) + senado (`tramitacion.senado.cl`) | — |
+| 15 | `app/components/voto-ficha-row.tsx:136` y `:220` | `sourceUrl={voto.enlace ?? null}` (dos veces, mismo prop) | `RPC:votos_de_parlamentario.enlace` ← `tabla.votacion.enlace` | camara + senado | — (**emisor HUÉRFANO**, E-003/§3.0.1: no se renderiza en ninguna ruta) |
+| 16 | `app/components/votos-por-parlamentario.tsx:547` | `sourceUrl={e.enlace ?? null}` | `RPC:votos_de_parlamentario.enlace` ← `tabla.votacion.enlace` | camara (`opendata.camara.cl`) + senado (`tramitacion.senado.cl`) | — |
+| 17 | `app/components/provenance-badge.test.tsx:15,35,46,60` | literales de test (`"https://www.camara.cl/fuente"`, `"https://www.senado.cl/fuente"`, `null`, `"javascript:alert(1)"`) | — (fixture; **no** es superficie) | — | — |
+
+**Conteo:** 17 filas ≥ 16 archivos del grep (la fila 17 es el archivo de test, listado para que el
+denominador cierre; las filas 1-16 son los 15 archivos de producción, con `voto-ficha-row.tsx`
+agrupando sus dos ocurrencias en una fila). Cero orígenes `indeterminado`: los 16 se rastrearon
+estáticamente hasta columna o literal.
+
+**Reconciliación con §3.0** (corrección de esta corrida): la fila del cuadro de regeneración de §3
+decía *"15 archivos"* usando el denominador **non-test**. El grep del plan (`app/components app/app`,
+sin filtro) devuelve **16**. Ambos números son correctos con su denominador: **16 archivos totales =
+15 de producción + 1 de test**; `provenance-badge.tsx` (E-040) queda fuera de ambos porque declara
+el prop en vez de pasarlo.
+
+**Nota de gate:** 4 de los 15 call-sites de producción (filas 2, 4, 5, 9) están bajo **MONEY OFF** ⇒
+`no emitido en el deploy auditado`. Y sus columnas de respaldo (`aporte.enlace`, `contrato.enlace`)
+tienen **0 filas** en PROD (§3.3): aunque MONEY se encendiera, el badge no emitiría link. 115/125 no
+deben perseguirlos.
+
+### 3.2 Constructores de URL externa
+
+Los **4** constructores de §0.3, con plantilla **verbatim** del código. Ninguno emite `<a>` por sí
+mismo: el `<a>` lo pone el llamante, siempre detrás de `safeExternalHref` (§3.1.3).
+
+| # | builder (archivo:línea) | plantilla verbatim | precondición | llamantes |
+|---|-------------------------|--------------------|--------------|-----------|
+| 1 | `buildSenadoUrl` (`app/components/validacion-fuente.tsx:60-62`) | `https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=${encodeURIComponent(boletin)}` | **boletín COMPLETO con sufijo** — sin sufijo el Senado devuelve *lista*, no ficha (`:57-58`) | `validacion-fuente.tsx:117` (E-027); `enlaceHumanoProyecto:94` |
+| 2 | `buildCamaraUrl` (`app/components/validacion-fuente.tsx:67-69`) | `https://www.camara.cl/legislacion/ProyectosDeLey/tramitacion.aspx?prmID=${encodeURIComponent(prmId)}&prmBOLETIN=${encodeURIComponent(boletin)}` | **SOLO si `prm_id_camara != null`** (fail-honest, `:65`); `validacion-fuente.tsx:118-119` lo condiciona con `prm_id_camara !== null` | `validacion-fuente.tsx:119` (E-027); `ficha-header.tsx:82` (E-043) |
+| 3 | `enlaceHumanoProyecto` (`app/components/validacion-fuente.tsx:87-100`) | **rewrite por host+path**: si `new URL(enlace)` parsea **y** `url.hostname.toLowerCase() === "tramitacion.senado.cl"` **y** `url.pathname.toLowerCase().includes("/wspublico/")` → devuelve `buildSenadoUrl(boletin)`; en **cualquier** otro caso (host distinto, path sin `/wspublico/`, parseo fallido) → devuelve `enlace` **VERBATIM** | detección por **host+path SIEMPRE**, nunca por substring suelto (`:82-84`): un boletín o el literal `wspublico` en el query de otro host no debe gatillar el rewrite | `autor-row.tsx:64` (E-035), `ficha-header.tsx:71` (E-043), `votacion-card.tsx:102` (E-056) |
+| 4 | `partidoLegible` (`app/lib/format.ts:153-174`) | **NO construye link.** Si el valor matchea `/^https?:\/\/datos\.bcn\.cl\/.*\/partido-politico\//i` extrae el slug con `/\/partido-politico\/(.+?)\/?$/i` y lo devuelve en Title Case; si el URI es reconocible pero el slug queda vacío → `null`, **nunca** passthrough del URI crudo. Cualquier otro valor pasa **verbatim** como nombre legible | invariante **"CERO URI en el DOM"**: *desactiva* los URIs `datos.bcn.cl/.../partido-politico/{slug}`. Scheme+host case-**INSENSITIVE** (RFC 3986) — sin la flag `i` un host en mayúsculas filtraría el URI al DOM | `partido-chip.tsx` (E-019), `militancias-de-parlamentario.tsx` (E-054) |
+
+**Registro del link post-rewrite (LOCKED):** para `enlaceHumanoProyecto` el inventario y las fases
+consumidoras registran **el link resultante**, no el `proyecto.enlace` crudo. En el Sujeto C
+(`14309-04`, §1.3) el crudo es `tramitacion.senado.cl/wspublico/...` (XML, roto para humanos) y el
+link efectivo es `buildSenadoUrl('14309-04')`.
+
+**Fuera de estos 4:** todo el resto de los hrefs externos son **valores almacenados en columnas** —
+inventariados en §3.3.
 
 ### 3.3 Familias de URL-desde-columna
 
