@@ -1,4 +1,9 @@
-# VEREDICTO LIVE por tarea — Granite (Workers AI) vs DeepSeek + Phi juez (2026-07-27)
+> ⚠ **SUPERSEDIDO por el full-40 definitivo** → ver `107-VEREDICTO-LIVE-FULL-2026-07-27.md`.
+> Este es el 10-sample DIRECCIONAL de pasada 1. El full-40 con juez real (créditos cargados) **REVIRTIÓ routing**
+> a `incumbent-stays` (Granite 0.5 < DeepSeek 0.6) y llevó el **juez de VOID a evidencia real** (Phi recall 0.917).
+> Veredicto definitivo para 109: integrar **SOLO clasificación** con Granite. routing y extracción se quedan DeepSeek.
+
+# VEREDICTO LIVE por tarea — Granite (Workers AI) vs DeepSeek + Phi juez (2026-07-27) — 10-SAMPLE (superseded)
 
 **Corrida:** `LLM_BENCH_LIVE=1 LLM_BENCH_LIMIT=10` sobre `candidatos.live.test.ts` — PASSED (500s).
 **Muestra:** 10 casos/tarea de los golden es-CL FROZEN (mismos sets, candidato + incumbente same-run, apples-to-apples).
