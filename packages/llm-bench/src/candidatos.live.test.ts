@@ -205,7 +205,23 @@ const DEBE_SALTAR = !TIENE_INCUMBENTE || !TIENE_CANDIDATO;
         }
 
         // ── (d) VEREDICTO DEFINITIVO por tarea contra el incumbente DE LA MISMA CORRIDA ──
-        const veredicto = computarVeredicto(candidato, incumbente);
+        // WR-01: la señal AUTORITATIVA del juez es la medición PhiJudge-vs-HUMANO (BENCH-04),
+        // NO el `juez` que el harness computa corriendo al RESPONDER (Granite) como juez-por-
+        // completion. Antes, el veredicto leía ese `juez` del responder → un operador
+        // atribuiría (mal) el estado `juez` a Phi. Aquí se SOBREESCRIBE la tarea `juez` del
+        // candidato con `metricasJuez` (Phi real). Si Phi NO se midió (sin OPENROUTER_API_KEY),
+        // se ELIMINA la entrada `juez` del responder → la máquina emite pending-evidence para
+        // el juez (nunca un número mal atribuido).
+        const candidatoParaVeredicto: MetricasModelo = {
+          ...candidato,
+          calidad_por_tarea: { ...candidato.calidad_por_tarea },
+        };
+        if (metricasJuez !== undefined) {
+          candidatoParaVeredicto.calidad_por_tarea.juez = metricasJuez;
+        } else {
+          delete candidatoParaVeredicto.calidad_por_tarea.juez;
+        }
+        const veredicto = computarVeredicto(candidatoParaVeredicto, incumbente);
 
         // Artefacto: JSON + tablas legibles (el operador lo captura/commitea).
         console.log("\n=== VEREDICTO LIVE — CANDIDATO (JSON) ===");
@@ -225,10 +241,23 @@ const DEBE_SALTAR = !TIENE_INCUMBENTE || !TIENE_CANDIDATO;
           );
         }
         console.log("\n=== VEREDICTO POR TAREA (definitivo, same-run incumbente) ===");
+        console.log(
+          "  NOTA (WR-01): la tarea `juez` refleja PhiJudge-vs-HUMANO (BENCH-04), la señal",
+        );
+        console.log(
+          "  AUTORITATIVA del juez — NO el responder-como-juez del harness. routing/clasificacion/",
+        );
+        console.log("  extraccion reflejan el RESPONDER candidato (Granite).");
         console.log(JSON.stringify(veredicto, null, 2));
         for (const task of TAREAS) {
           const r = veredicto[task];
-          console.log(`  ${task}: ${r.estado}${r.modelo ? ` (${r.modelo})` : ""} — ${r.razon}`);
+          const etiqueta =
+            task === "juez"
+              ? " [PhiJudge vs HUMANO — señal autoritativa del juez]"
+              : " [responder Granite]";
+          console.log(
+            `  ${task}: ${r.estado}${r.modelo ? ` (${r.modelo})` : ""}${etiqueta} — ${r.razon}`,
+          );
         }
 
         // ── ASERCIONES: SOLO provenance + que el veredicto fue COMPUTADO (NUNCA que aprobó) ──
