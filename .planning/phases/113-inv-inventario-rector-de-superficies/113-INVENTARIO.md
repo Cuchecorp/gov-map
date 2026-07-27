@@ -315,7 +315,69 @@ select count(*) from aporte;     -- 0
 
 ## 2. Chrome compartido
 
-_(pendiente — Plan 02/03/04)_
+**Alcance LOCKED:** las 4 piezas de esta sección se montan en `app/app/layout.tsx` (o son
+invocadas desde las fichas) y por lo tanto aplican a **las 15 rutas** del universo de §4 — incluida
+`/admin/revisar-entidades` (EXCLUIDA del inventario público) y `/contraparte/[id]` (que hoy 404ea
+por gate MONEY: el 404 igual renderiza el chrome de `layout.tsx`).
+
+**Regla de no-repetición:** §4 **NO** repite estos hrefs ruta por ruta; los referencia por id
+(`C-01`..`C-04`). Un href que aparezca en §4 es, por definición, específico de esa ruta.
+
+Números de línea re-verificados por `grep -n` contra el árbol actual (2026-07-27), no copiados del
+research.
+
+### C-01 — `app/app/layout.tsx` (footer global)
+
+| # | href | tipo | emisor (archivo:línea) | condicional/gate |
+|---|------|------|------------------------|------------------|
+| 1 | `https://creativecommons.org/licenses/by/4.0/deed.es` | externo | `app/app/layout.tsx:58` | — (siempre; `target="_blank"` + `rel="noopener noreferrer"`) |
+| 2 | `/metodologia` | interno | `app/app/layout.tsx:70-71` | — |
+| 3 | `/sobre` | interno | `app/app/layout.tsx:76-77` | — |
+| 4 | `mailto:contacto@observatoriocongreso.cl` | mailto | `app/app/layout.tsx:83` | — |
+
+Nota: el link CC BY 4.0 es el ÚNICO link externo del chrome, y es **estático en TSX** — no pasa por
+`safeExternalHref` ni por una columna de la DB (contraste con §0.3). El footer declara SCOPE-CAVEAT:
+la licencia cubre la compilación propia, no re-afirma términos por-dataset.
+
+### C-02 — `app/components/header-nav.tsx` (nav principal, `"use client"`)
+
+Los 5 ítems se declaran en la constante `NAV_ITEMS` (`header-nav.tsx:36-42`) y se renderizan en un
+único `<Link href={item.href}>` (`header-nav.tsx:72-73`).
+
+| # | href | tipo | emisor (archivo:línea) | condicional/gate |
+|---|------|------|------------------------|------------------|
+| 1 | `/buscar` | interno | `app/components/header-nav.tsx:37` (render `:72-73`) | — |
+| 2 | `/parlamentarios` | interno | `app/components/header-nav.tsx:38` (render `:72-73`) | — |
+| 3 | `/agenda` | interno | `app/components/header-nav.tsx:39` (render `:72-73`) | — |
+| 4 | `/red` | interno | `app/components/header-nav.tsx:40` (render `:72-73`) | **NET** — el ítem se FILTRA del array cuando el gate está OFF (`header-nav.tsx:61-63`, `NAV_ITEMS.filter((item) => item.href !== "/red")`); con NET OFF el nodo está **AUSENTE del DOM**, nunca un link a 404 |
+| 5 | `/sobre` | interno | `app/components/header-nav.tsx:41` (render `:72-73`) | — |
+
+Nota de gate (LOCKED): el flag crudo `NET_PUBLIC_ENABLED` **jamás** llega a este islote cliente. Se
+lee server-side en `global-header.tsx:30` (`netPublicEnabled(process.env)`) y baja como el boolean
+no-sensible `showRed` (`global-header.tsx:43` → `header-nav.tsx:56,59`). En el deploy auditado NET
+está **ON** (§5) ⇒ los 5 ítems se emiten.
+
+### C-03 — `app/components/global-header.tsx` (wordmark)
+
+| # | href | tipo | emisor (archivo:línea) | condicional/gate |
+|---|------|------|------------------------|------------------|
+| 1 | `/` | interno | `app/components/global-header.tsx:35-36` (wordmark `gov-map` + `BrandIcon`) | — |
+
+### C-04 — `app/components/breadcrumbs.tsx` (migaja de ruta)
+
+`Breadcrumbs` es un Server Component presentacional **puro**: no emite hrefs propios; renderiza los
+`items` LITERALES que le pasa cada página. Call-sites non-test: `app/app/parlamentario/[id]/page.tsx`,
+`app/app/proyecto/[boletin]/page.tsx`, `app/app/contraparte/[id]/page.tsx` (gate MONEY) y
+`app/components/parlamentario-header.tsx`.
+
+| # | href | tipo | emisor (archivo:línea) | condicional/gate |
+|---|------|------|------------------------|------------------|
+| 1 | `{item.href}` (dinámico, provisto por la página llamante) | interno | `app/components/breadcrumbs.tsx:38-39` | — (se emite solo si `item.href` está definido) |
+
+**Nota de comportamiento (no es un href):** el **último ítem va SIN href** — es el segmento actual y
+se renderiza como `<span aria-current="page">` (`breadcrumbs.tsx:44-50`), nunca como link. Contrato
+documentado en el propio componente (`breadcrumbs.tsx:12-14`). N ítems ⇒ N-1 separadores. Por eso
+§4 registra los hrefs de breadcrumb **en la fila de la ruta llamante**, no aquí.
 
 ## 3. Catálogo de emisores
 
