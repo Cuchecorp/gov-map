@@ -109,11 +109,16 @@ const LIVE = process.env.CLASIFICACION_DRIFT_CHECK === "1";
         }
 
         // Provenance confirmada: el modelo servido coincide con el pinneado del veredicto.
+        // LOCKED (CLAUDE.md): NUNCA imprimir keys ni URLs con credenciales. El baseURL
+        // contiene CLOUDFLARE_ACCOUNT_ID (identificador de tenant, credential-adjacent).
+        // Se REDACTA el account-id antes de imprimir — se conserva el host/path como
+        // provenance no sensible (WR-03).
+        const endpointRedactado = baseURL.replace(accountId, "***");
         console.log(
           `[drift-canary] provenance OK:\n` +
             `  modelo servido : ${modeloServido}\n` +
             `  modelo pinneado: ${MODELO_PINNEADO}\n` +
-            `  endpoint       : ${baseURL}\n` +
+            `  endpoint       : ${endpointRedactado}\n` +
             `  fecha veredicto: ${FECHA_PINNEADA}\n` +
             `  → El veredicto full-40 sigue siendo válido.`,
         );
