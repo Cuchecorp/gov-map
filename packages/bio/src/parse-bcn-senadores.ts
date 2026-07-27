@@ -164,7 +164,9 @@ export function resolverPartido(
   if (label) return { label }; // (1) happy path: label verbatim de la fuente
   const uri = b.party?.value?.trim() ?? "";
   if (uri === "") return { label: null, uriDesconocida: null }; // sin URI → no resoluble
-  const mapeado = PARTIDO_URI_A_LABEL[uri];
+  // `Object.hasOwn` evita que una URI igual a `constructor`/`toString`/etc. camine la cadena de
+  // prototipo y devuelva una función heredada (truthy) que burlaría el fail-closed (WR-01, 105).
+  const mapeado = Object.hasOwn(PARTIDO_URI_A_LABEL, uri) ? PARTIDO_URI_A_LABEL[uri] : undefined;
   if (mapeado) return { label: mapeado }; // (2) URI conocida → label del mapa
   return { label: null, uriDesconocida: uri }; // (3) fail-closed: reportar la URI, jamás fabricar
 }
