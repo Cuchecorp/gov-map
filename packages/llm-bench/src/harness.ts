@@ -135,6 +135,21 @@ async function completarClasificando<T>(
   }
 }
 
+/** Opciones de corrida del harness. */
+export interface OpcionesCorrida {
+  /**
+   * Cap de casos POR TAREA. `undefined` = todas (default, la corrida completa del gate). Un
+   * cap acota el costo/tiempo de una corrida LIVE (smoke) sin cambiar el driver; el `Reporte`
+   * simplemente mide menos casos (n_muestras lo refleja, y el p95 queda más indicativo aún).
+   */
+  limitePorTarea?: number;
+}
+
+/** Recorta un set al cap por-tarea (o lo devuelve entero si no hay cap). */
+function acotar<C>(set: C[], limite: number | undefined): C[] {
+  return limite === undefined ? set : set.slice(0, Math.max(0, limite));
+}
+
 /**
  * Drive las CUATRO golden GATE sets con `provider`, recolectando los `CallOutcome` de cada
  * completion. Devuelve la calidad por tarea + los outcomes agregables. Las `CallMetric`
@@ -144,11 +159,13 @@ async function completarClasificando<T>(
  */
 export async function correrTareas(
   provider: LLMProvider,
+  opciones: OpcionesCorrida = {},
 ): Promise<{ calidad: CalidadPorTarea; outcomes: CallOutcome[] }> {
   const outcomes: CallOutcome[] = [];
+  const lim = opciones.limitePorTarea;
 
   // ── routing ──
-  const routing = await evaluarRouting(GOLDEN_SET_GATE_ROUTING, async (caso) => {
+  const routing = await evaluarRouting(acotar(GOLDEN_SET_GATE_ROUTING, lim), async (caso) => {
     const out = await completarClasificando(
       provider,
       reqPublico(caso.input),
@@ -160,7 +177,7 @@ export async function correrTareas(
 
   // ── clasificación ──
   const clasificacion = await evaluarClasificacion(
-    GOLDEN_SET_GATE_CLASIF,
+    acotar(GOLDEN_SET_GATE_CLASIF, lim),
     async (caso) => {
       const out = await completarClasificando(
         provider,
@@ -174,7 +191,7 @@ export async function correrTareas(
 
   // ── extracción ──
   const extraccion = await evaluarExtraccion(
-    GOLDEN_SET_GATE_EXTRACCION,
+    acotar(GOLDEN_SET_GATE_EXTRACCION, lim),
     async (caso) => {
       const out = await completarClasificando(
         provider,
@@ -188,7 +205,7 @@ export async function correrTareas(
   );
 
   // ── juez ──
-  const juez = await evaluarJuez(GOLDEN_SET_SCORING_JUEZ, async (caso) => {
+  const juez = await evaluarJuez(acotar(GOLDEN_SET_SCORING_JUEZ, lim), async (caso) => {
     const out = await completarClasificando(
       provider,
       reqPublico(`¿Es correcta esta respuesta?\n${caso.answer}`),
@@ -217,9 +234,11 @@ export async function correrTareas(
 export async function correrHarness(
   provider: LLMProvider,
   id: IdentidadModelo,
-  opts: { drenarMetricas: () => CallMetric[] },
+  opts: { drenarMetricas: () => CallMetric[]; limitePorTarea?: number },
 ): Promise<MetricasModelo> {
-  const { calidad, outcomes } = await correrTareas(provider);
+  const { calidad, outcomes } = await correrTareas(provider, {
+    limitePorTarea: opts.limitePorTarea,
+  });
 
   const muestras = opts.drenarMetricas();
   const latencias = muestras.map((m) => m.latencyMs);

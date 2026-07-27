@@ -1,0 +1,314 @@
+{
+  "fecha": "2026-07-27T01:53:04.457Z",
+  "pricingFecha": "2026-07-26",
+  "modelos": [
+    {
+      "modelo": "deepseek-v4-flash",
+      "endpoint": "https://api.deepseek.com",
+      "tarifaFecha": "2026-07-26",
+      "calidad_por_tarea": {
+        "routing": {
+          "total": 3,
+          "correctos": 1,
+          "noCubiertos": 1,
+          "misclasificaciones": 1,
+          "cobertura": 0.3333333333333333,
+          "errores": 1,
+          "detalle": [
+            {
+              "id": "r01-clasif-xml-modern-camara",
+              "resultado": "correcto",
+              "nota": "match exacto (clasificacion)"
+            },
+            {
+              "id": "r02-clasif-xml-modern-senado",
+              "resultado": "misclasificacion",
+              "nota": "MISCLASIFICACIÓN — esperaba clasificacion, obtuvo extraccion"
+            },
+            {
+              "id": "r03-clasif-xml-modern-camara2",
+              "resultado": "no-cubierto",
+              "nota": "abstención (null) → no-cubierto (no es error)"
+            }
+          ]
+        },
+        "clasificacion": {
+          "total": 3,
+          "correctos": 3,
+          "noCubiertos": 0,
+          "misclasificaciones": 0,
+          "cobertura": 1,
+          "errores": 0,
+          "detalle": [
+            {
+              "id": "c01-salud-ficha",
+              "resultado": "correcto",
+              "nota": "match exacto (salud)"
+            },
+            {
+              "id": "c02-educacion-ficha",
+              "resultado": "correcto",
+              "nota": "match exacto (educacion)"
+            },
+            {
+              "id": "c03-mineria-ficha",
+              "resultado": "correcto",
+              "nota": "match exacto (mineria_energia)"
+            }
+          ]
+        },
+        "extraccion": {
+          "schema_parse_rate": 0.3333333333333333,
+          "value": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "precision": 1,
+            "recall": 1
+          },
+          "detalle": [
+            {
+              "id": "e01-datos-personales",
+              "parseOk": false,
+              "ok": false,
+              "nota": "payload NO parseó/validó (structured-output fail) → baja parse-rate, NO cuenta en value"
+            },
+            {
+              "id": "e02-jornada-laboral",
+              "parseOk": false,
+              "ok": false,
+              "nota": "payload NO parseó/validó (structured-output fail) → baja parse-rate, NO cuenta en value"
+            },
+            {
+              "id": "e03-feriado",
+              "parseOk": true,
+              "ok": true,
+              "nota": "idea: substring literal correcto (tp)"
+            }
+          ]
+        },
+        "juez": {
+          "n": 3,
+          "precision_ok": 1,
+          "recall_rechazo": null,
+          "conteos": {
+            "okYCorrecta": 2,
+            "ok": 2,
+            "rechazoYMala": 0,
+            "malas": 0
+          },
+          "hooks": {
+            "porProductor": {
+              "deepseek": {
+                "ok": 0,
+                "total": 1
+              },
+              "minimax": {
+                "ok": 1,
+                "total": 1
+              },
+              "granite": {
+                "ok": 1,
+                "total": 1
+              }
+            },
+            "porLongitud": {
+              "corta": {
+                "ok": 2,
+                "total": 3
+              },
+              "larga": {
+                "ok": 0,
+                "total": 0
+              }
+            }
+          },
+          "detalle": [
+            {
+              "id": "j01",
+              "veredictoJuez": false,
+              "human_label": true,
+              "nota": "DESACUERDO — juez rechazó, humano correcta"
+            },
+            {
+              "id": "j02",
+              "veredictoJuez": true,
+              "human_label": true,
+              "nota": "acuerdo con humano (OK)"
+            },
+            {
+              "id": "j03",
+              "veredictoJuez": true,
+              "human_label": true,
+              "nota": "acuerdo con humano (OK)"
+            }
+          ]
+        }
+      },
+      "latencia_p50_ms": 477.78289999999834,
+      "latencia_p95_ms": 543.3250000000007,
+      "p95Indicativo": true,
+      "n_muestras": 24,
+      "costo_por_1k": 0.4533858333333333,
+      "zod_fail_rate": {
+        "repaired": 0,
+        "terminal": 0
+      },
+      "structured_output_fail_rate": 0.25
+    },
+    {
+      "modelo": "MiniMax-M3",
+      "endpoint": "https://api.minimax.io/v1",
+      "tarifaFecha": "2026-07-26",
+      "calidad_por_tarea": {
+        "routing": {
+          "total": 3,
+          "correctos": 2,
+          "noCubiertos": 0,
+          "misclasificaciones": 1,
+          "cobertura": 0.6666666666666666,
+          "errores": 1,
+          "detalle": [
+            {
+              "id": "r01-clasif-xml-modern-camara",
+              "resultado": "correcto",
+              "nota": "match exacto (clasificacion)"
+            },
+            {
+              "id": "r02-clasif-xml-modern-senado",
+              "resultado": "correcto",
+              "nota": "match exacto (clasificacion)"
+            },
+            {
+              "id": "r03-clasif-xml-modern-camara2",
+              "resultado": "misclasificacion",
+              "nota": "MISCLASIFICACIÓN — esperaba clasificacion, obtuvo extraccion"
+            }
+          ]
+        },
+        "clasificacion": {
+          "total": 3,
+          "correctos": 3,
+          "noCubiertos": 0,
+          "misclasificaciones": 0,
+          "cobertura": 1,
+          "errores": 0,
+          "detalle": [
+            {
+              "id": "c01-salud-ficha",
+              "resultado": "correcto",
+              "nota": "match exacto (salud)"
+            },
+            {
+              "id": "c02-educacion-ficha",
+              "resultado": "correcto",
+              "nota": "match exacto (educacion)"
+            },
+            {
+              "id": "c03-mineria-ficha",
+              "resultado": "correcto",
+              "nota": "match exacto (mineria_energia)"
+            }
+          ]
+        },
+        "extraccion": {
+          "schema_parse_rate": 1,
+          "value": {
+            "tp": 1,
+            "fp": 5,
+            "fn": 2,
+            "precision": 0.16666666666666666,
+            "recall": 0.3333333333333333
+          },
+          "detalle": [
+            {
+              "id": "e01-datos-personales",
+              "parseOk": true,
+              "ok": false,
+              "nota": "idea: substring literal correcto (tp); cuerpo: FALSO POSITIVO — norma fabricada no en el texto (ley n° 19.628 sobre proteccion de la vida privada::4); cuerpo: no recuperó norma esperada (ley n° 19.628::articulo 4)"
+            },
+            {
+              "id": "e02-jornada-laboral",
+              "parseOk": true,
+              "ok": false,
+              "nota": "idea: FALSO POSITIVO — NO es substring del texto (paráfrasis/alucinación/negación caída); cuerpo: FALSO POSITIVO — norma fabricada no en el texto (codigo del trabajo::22|28); cuerpo: no recuperó norma esperada (codigo del trabajo::articulo 22|articulo 28)"
+            },
+            {
+              "id": "e03-feriado",
+              "parseOk": true,
+              "ok": false,
+              "nota": "idea: FALSO POSITIVO — NO es substring del texto (paráfrasis/alucinación/negación caída); cuerpo: FALSO POSITIVO — norma fabricada no en el texto (codigo del trabajo::articulo 38)"
+            }
+          ]
+        },
+        "juez": {
+          "n": 3,
+          "precision_ok": 1,
+          "recall_rechazo": null,
+          "conteos": {
+            "okYCorrecta": 3,
+            "ok": 3,
+            "rechazoYMala": 0,
+            "malas": 0
+          },
+          "hooks": {
+            "porProductor": {
+              "deepseek": {
+                "ok": 1,
+                "total": 1
+              },
+              "minimax": {
+                "ok": 1,
+                "total": 1
+              },
+              "granite": {
+                "ok": 1,
+                "total": 1
+              }
+            },
+            "porLongitud": {
+              "corta": {
+                "ok": 3,
+                "total": 3
+              },
+              "larga": {
+                "ok": 0,
+                "total": 0
+              }
+            }
+          },
+          "detalle": [
+            {
+              "id": "j01",
+              "veredictoJuez": true,
+              "human_label": true,
+              "nota": "acuerdo con humano (OK)"
+            },
+            {
+              "id": "j02",
+              "veredictoJuez": true,
+              "human_label": true,
+              "nota": "acuerdo con humano (OK)"
+            },
+            {
+              "id": "j03",
+              "veredictoJuez": true,
+              "human_label": true,
+              "nota": "acuerdo con humano (OK)"
+            }
+          ]
+        }
+      },
+      "latencia_p50_ms": 5738.7837,
+      "latencia_p95_ms": 22556.0202,
+      "p95Indicativo": true,
+      "n_muestras": 12,
+      "costo_por_1k": 0.5012,
+      "zod_fail_rate": {
+        "repaired": 0,
+        "terminal": 0
+      },
+      "structured_output_fail_rate": 0
+    }
+  ]
+}
