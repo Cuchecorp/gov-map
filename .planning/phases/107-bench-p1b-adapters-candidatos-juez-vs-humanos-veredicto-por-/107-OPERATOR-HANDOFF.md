@@ -5,6 +5,15 @@
 **Estado:** **PENDING-EVIDENCE** (resultado de milestone VÁLIDO, LOCKED — patrón v7/v9/v10)
 **Fecha:** 2026-07-27
 
+> **ACTUALIZACIÓN 2026-07-27 (tras provisión de `OPENROUTER_API_KEY`):** se corrió el spike LIVE.
+> El instrumento + pipeline QUEDÓ VALIDADO end-to-end (incumbente DeepSeek corrió, veredicto computado).
+> PERO los candidatos NO son servibles por donde apuntábamos: **OpenRouter no sirve Granite-4.0-H-Micro
+> con tool-calling, y no tiene phi-4-mini** (HTTP 404 en ambos). Ver `107-SPIKE-FINDINGS-hosts.md`.
+> Conclusión: `OPENROUTER_API_KEY` NO basta. Granite → **provisionar Workers AI**
+> (`WORKERS_AI_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`; catálogo CF confirma `@cf/ibm-granite/granite-4.0-h-micro`
+> con function calling). Phi-4-mini → **host por confirmar** (ni OpenRouter ni Workers AI lo sirven con
+> tools; evaluar DeepInfra/Azure en pasada 2). El veredicto sigue PENDING-EVIDENCE con razón más nítida.
+
 ---
 
 ## TL;DR
