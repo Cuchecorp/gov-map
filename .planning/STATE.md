@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: — Capa LLM escalonada + cierre de deuda viva
-status: verifying
+status: executing
 stopped_at: Completed 106-03-PLAN.md
-last_updated: "2026-07-27T03:24:12.184Z"
+last_updated: "2026-07-27T14:23:41.820Z"
 last_activity: 2026-07-27
 progress:
   total_phases: 8
   completed_phases: 0
-  total_plans: 12
-  completed_plans: 9
+  total_plans: 14
+  completed_plans: 10
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 107 — BENCH adapters Granite/Phi + juez + veredicto
+**Current focus:** Phase 108 — TIER P2 — Plomería TieredProvider + JudgeProvider + ladder + telemetría
 
 ## Current Position
 
-Phase: 107 (BENCH adapters Granite/Phi + juez + veredicto) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 108 (TIER P2 — Plomería TieredProvider + JudgeProvider + ladder + telemetría) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-07-27
 
 ## Performance Metrics
@@ -261,7 +261,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-27T03:23:29.522Z
+Last session: 2026-07-27T14:23:41.800Z
 Stopped at: Completed 106-03-PLAN.md
 Resume file: None
 

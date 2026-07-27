@@ -184,7 +184,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 108-01-PLAN.md — Contratos: CompletionRequest.task aditivo + telemetry.ts payload-free + task-ladder.ts config + MockProvider local + barrel
+
+- [x] 108-01-PLAN.md — Contratos: CompletionRequest.task aditivo + telemetry.ts payload-free + task-ladder.ts config + MockProvider local + barrel
 - [ ] 108-02-PLAN.md — TieredProvider decorador (cascada acotada respond→validate→escalate, juez ESCALATE-ONLY, RUT-guard, budget) + suite MockProvider + guard estructural TIER-05
 
 ### Phase 109: INTEG P3 — Integrar la tarea de MENOR RIESGO tras golden gate verde
