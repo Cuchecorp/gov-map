@@ -9,8 +9,10 @@ import { z } from "zod";
 import { TieredProvider, EscalationExhaustedError } from "./tiered";
 import { MockProvider, MockJudgeProvider } from "./test-mock";
 import { LLMValidationError } from "./validate";
+import type { ValidationOutcome } from "./validate";
 import type { TelemetryEvent } from "./telemetry";
 import type { CompletionRequest } from "./types";
+import { RutInLlmInputError } from "./data-routing";
 
 // Schema simple para tests
 const SimpleSchema = z.object({ value: z.string() });
@@ -318,5 +320,218 @@ describe("TieredProvider — between-pipelines: escalera inmutable, nunca mid-se
     // Los resultados provienen del mismo tier-0 (escalera inmutable)
     expect(r1).toEqual({ value: "tier-0" });
     expect(r2).toEqual({ value: "tier-0" });
+  });
+});
+
+// ─── I: onValidationOutcome EXACTAMENTE una vez a través de escalación (WR-02) ─
+
+describe("TieredProvider — onValidationOutcome exactly-once (WR-02, LOAD-BEARING)", () => {
+  // Los providers reales reenvían el observador a `parseAndValidate`, que dispara
+  // `onValidationOutcome` ANTES del throw terminal. Simulamos ese comportamiento haciendo
+  // que el responder del mock invoque `req.onValidationOutcome`. SIN el fix, tier-0 (fallo
+  // terminal) + tier-1 (clean) disparan el callback del caller DOS veces; con el fix, el
+  // decorador lo dispara EXACTAMENTE una vez, con el outcome del tier que produjo el valor
+  // retornado.
+  it("una escalación (tier-0 zod-terminal → tier-1) dispara el callback del caller UNA sola vez", async () => {
+    const tier0 = new MockProvider(
+      (req) => {
+        // Emula parseAndValidate: dispara el outcome terminal ANTES de lanzar.
+        req.onValidationOutcome?.({ kind: "zod-terminal", issues: [] });
+        throw new LLMValidationError([]);
+      },
+      { id: "tier-0" },
+    );
+    const tier1 = new MockProvider(
+      (req) => {
+        // tier-1 valida limpio y dispara su propio outcome.
+        req.onValidationOutcome?.({ kind: "clean" });
+        return { value: "de tier-1" };
+      },
+      { id: "tier-1" },
+    );
+
+    const outcomes: ValidationOutcome[] = [];
+    const tiered = new TieredProvider({ tiers: [tier0, tier1] });
+
+    const callerReq: CompletionRequest = {
+      ...baseReq,
+      onValidationOutcome: (o) => outcomes.push(o),
+    };
+
+    const result = await tiered.complete(callerReq, SimpleSchema);
+
+    expect(result).toEqual({ value: "de tier-1" });
+    // EXACTAMENTE una invocación del callback del caller (rompe con double-fire).
+    expect(outcomes).toHaveLength(1);
+    // El outcome es el del tier que produjo el valor retornado (tier-1, clean).
+    expect(outcomes[0]).toEqual({ kind: "clean" });
+    expect(tier0.callCount).toBe(1);
+    expect(tier1.callCount).toBe(1);
+  });
+
+  it("sin escalación (tier-0 clean) dispara el callback del caller UNA sola vez", async () => {
+    const tier0 = new MockProvider(
+      (req) => {
+        req.onValidationOutcome?.({ kind: "clean" });
+        return { value: "tier-0" };
+      },
+      { id: "tier-0" },
+    );
+    const tier1 = new MockProvider(() => ({ value: "tier-1" }), { id: "tier-1" });
+
+    const outcomes: ValidationOutcome[] = [];
+    const tiered = new TieredProvider({ tiers: [tier0, tier1] });
+    const callerReq: CompletionRequest = {
+      ...baseReq,
+      onValidationOutcome: (o) => outcomes.push(o),
+    };
+
+    await tiered.complete(callerReq, SimpleSchema);
+
+    expect(outcomes).toHaveLength(1);
+    expect(outcomes[0]).toEqual({ kind: "clean" });
+    expect(tier1.callCount).toBe(0);
+  });
+
+  it("escalación por juez ok:false dispara el callback del caller UNA sola vez (con outcome de tier-1)", async () => {
+    const tier0 = new MockProvider(
+      (req) => {
+        req.onValidationOutcome?.({ kind: "clean" });
+        return { value: "tier-0" };
+      },
+      { id: "tier-0" },
+    );
+    const tier1 = new MockProvider(
+      (req) => {
+        req.onValidationOutcome?.({ kind: "zod-repaired", attempts: 1 });
+        return { value: "tier-1" };
+      },
+      { id: "tier-1" },
+    );
+    const judge = new MockJudgeProvider({ verdict: { ok: false } });
+
+    const outcomes: ValidationOutcome[] = [];
+    const tiered = new TieredProvider({ tiers: [tier0, tier1], judge });
+    const callerReq: CompletionRequest = {
+      ...baseReq,
+      onValidationOutcome: (o) => outcomes.push(o),
+    };
+
+    const result = await tiered.complete(callerReq, SimpleSchema);
+
+    expect(result).toEqual({ value: "tier-1" });
+    expect(outcomes).toHaveLength(1);
+    // El valor retornado es de tier-1 → su outcome es el autoritativo.
+    expect(outcomes[0]).toEqual({ kind: "zod-repaired", attempts: 1 });
+  });
+});
+
+// ─── J: RUT-guard en el hop AL JUEZ (WR-01) ───────────────────────────────────
+
+describe("TieredProvider — RUT-guard hop al juez (WR-01, defensa en profundidad)", () => {
+  it("un RUT en la salida de tier-0 NO cruza al juez: lanza RutInLlmInputError, judge.callCount==0", async () => {
+    // tier-0 produce una salida schema-válida que CONTIENE un RUT (p.ej. una extracción
+    // que hizo eco de un identificador). El decorador debe morder ANTES de llamar al juez.
+    const tier0 = new MockProvider(
+      () => ({ value: "el RUT es 12.345.678-9" }),
+      { id: "tier-0" },
+    );
+    const tier1 = new MockProvider(() => ({ value: "tier-1" }), { id: "tier-1" });
+    const judge = new MockJudgeProvider({ verdict: { ok: true } });
+
+    const tiered = new TieredProvider({ tiers: [tier0, tier1], judge });
+
+    const err = await tiered.complete(baseReq, SimpleSchema).catch((e) => e);
+    expect(err).toBeInstanceOf(RutInLlmInputError);
+    // El juez NUNCA recibió la salida con RUT (guard mordió en el hop al juez).
+    expect(judge.callCount).toBe(0);
+    // No hubo escalación (falló por guard, no por veredicto).
+    expect(tier1.callCount).toBe(0);
+  });
+
+  it("salida de tier-0 SIN RUT sí llega al juez (el guard no sobre-bloquea)", async () => {
+    const tier0 = new MockProvider(() => ({ value: "texto limpio sin identificadores" }), { id: "tier-0" });
+    const judge = new MockJudgeProvider({ verdict: { ok: true } });
+    const tiered = new TieredProvider({ tiers: [tier0], judge });
+
+    const result = await tiered.complete(baseReq, SimpleSchema);
+
+    expect(result).toEqual({ value: "texto limpio sin identificadores" });
+    expect(judge.callCount).toBe(1);
+  });
+});
+
+// ─── K: budget POSITIVO enforced (WR-05) ──────────────────────────────────────
+
+describe("TieredProvider — budget positivo enforced (WR-05)", () => {
+  it("maxBudgetUsd positivo excedido por el costo de tier-0 → NO escala (budget-exceeded)", async () => {
+    const tier0 = new MockProvider(
+      () => { throw new LLMValidationError([]); },
+      { id: "tier-0" },
+    );
+    const tier1 = new MockProvider(() => ({ value: "no debería" }), { id: "tier-1" });
+
+    // costPerToken 0.001 * 120 tokens = 0.12 USD por el tier-0, > maxBudgetUsd 0.05.
+    const tiered = new TieredProvider({
+      tiers: [tier0, tier1],
+      maxBudgetUsd: 0.05,
+      costPerToken: 0.001,
+      escalationCostPerToken: 0.001,
+    });
+
+    const err = await tiered.complete(baseReq, SimpleSchema).catch((e) => e);
+    expect(err).toBeInstanceOf(EscalationExhaustedError);
+    expect(err.message).toContain("budget-exceeded");
+    // tier-1 NUNCA fue llamado: el budget positivo abortó la escalación.
+    expect(tier0.callCount).toBe(1);
+    expect(tier1.callCount).toBe(0);
+  });
+
+  it("maxBudgetUsd positivo suficiente → SÍ escala (budget no bloquea)", async () => {
+    const tier0 = new MockProvider(
+      () => { throw new LLMValidationError([]); },
+      { id: "tier-0" },
+    );
+    const tier1 = new MockProvider(() => ({ value: "de tier-1" }), { id: "tier-1" });
+
+    // 0.0000001 * 120 = 0.000012 por tier; total 0.000024 << 1.0 budget.
+    const tiered = new TieredProvider({
+      tiers: [tier0, tier1],
+      maxBudgetUsd: 1.0,
+      costPerToken: 0.0000001,
+      escalationCostPerToken: 0.0000001,
+    });
+
+    const result = await tiered.complete(baseReq, SimpleSchema);
+    expect(result).toEqual({ value: "de tier-1" });
+    expect(tier1.callCount).toBe(1);
+  });
+});
+
+// ─── L: escalación retorna salida NO juzgada (WR-03, bound deliberado) ─────────
+
+describe("TieredProvider — escalación retorna salida NO juzgada (WR-03)", () => {
+  it("juez ok:false escala; el juez NO re-evalúa tier-1 (judge.callCount==1, sin loop)", async () => {
+    const tier0 = new MockProvider(() => ({ value: "tier-0" }), { id: "tier-0" });
+    const tier1 = new MockProvider(() => ({ value: "tier-1" }), { id: "tier-1" });
+    const judge = new MockJudgeProvider({ verdict: { ok: false } });
+
+    const events: TelemetryEvent[] = [];
+    const tiered = new TieredProvider({
+      tiers: [tier0, tier1],
+      judge,
+      telemetrySink: (e) => events.push(e),
+    });
+
+    const result = await tiered.complete(baseReq, SimpleSchema);
+
+    expect(result).toEqual({ value: "tier-1" });
+    // El juez corrió UNA sola vez (sobre tier-0). tier-1 se retorna SIN re-juzgar (bound).
+    expect(judge.callCount).toBe(1);
+    expect(events).toHaveLength(1);
+    // El evento apunta a tier-1 pero conserva el judgeVerdict de tier-0 (señal causal).
+    expect(events[0]!.providerId).toBe("tier-1");
+    expect(events[0]!.escalated).toBe(true);
+    expect(events[0]!.judgeVerdict?.ok).toBe(false);
   });
 });
