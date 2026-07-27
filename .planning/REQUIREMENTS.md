@@ -13,8 +13,8 @@
 - [x] **BENCH-01**: Operador puede correr un harness de benchmark (`packages/llm-bench` o equivalente) que evalúa candidatos (Granite-4.0-H-Micro, Phi-4-mini-instruct, DeepSeek actual) sobre golden sets POR TAREA en español chileno legal, midiendo calidad, latencia, costo y tasa de fallo zod/structured-output como métricas de primera clase separadas
 - [x] **BENCH-02**: Existen golden sets es-CL nuevos por tarea (routing, clasificación, juez/validación, paridad de extracción) con distribución estratificada del corpus real — sin leakage al prompt, congelados ANTES de cualquier integración (precedente golden 32 / golden 1263)
 - [x] **BENCH-03**: El benchmark corre contra el endpoint/cuantización EXACTOS que servirían en producción (pinned host+revision; spike local Ollama para calidad, re-medición latencia/costo en host servido) — nunca números de un host distinto al que se integra
-- [ ] **BENCH-04**: La capacidad de juez de Phi-4-mini se mide contra etiquetas HUMANAS (no contra el responder), con métricas de sesgo conocidas (self-preference, posición, verbosidad) sobre datos no-PII
-- [ ] **BENCH-05**: El spike produce un veredicto POR TAREA con gate de paridad explícito (ε declarado): qué tarea aprueba qué modelo, cuáles quedan en su incumbente — NADA se integra sin su gate verde
+- [x] **BENCH-04**: La capacidad de juez de Phi-4-mini se mide contra etiquetas HUMANAS (no contra el responder), con métricas de sesgo conocidas (self-preference, posición, verbosidad) sobre datos no-PII
+- [x] **BENCH-05**: El spike produce un veredicto POR TAREA con gate de paridad explícito (ε declarado): qué tarea aprueba qué modelo, cuáles quedan en su incumbente — NADA se integra sin su gate verde
 
 ### TIER — Plomería del escalonamiento (respond→validate→escalate)
 
@@ -77,8 +77,8 @@
 | BENCH-01 | Phase 106 | Complete |
 | BENCH-02 | Phase 106 | Complete |
 | BENCH-03 | Phase 106 | Complete |
-| BENCH-04 | Phase 107 | Pending |
-| BENCH-05 | Phase 107 | Pending |
+| BENCH-04 | Phase 107 | Complete |
+| BENCH-05 | Phase 107 | Complete |
 | TIER-01 | Phase 107 | Complete |
 | TIER-02 | Phase 108 | Pending |
 | TIER-03 | Phase 108 | Pending |

@@ -4,7 +4,7 @@ milestone: v11.0
 milestone_name: — Capa LLM escalonada + cierre de deuda viva
 status: executing
 stopped_at: Completed 106-03-PLAN.md
-last_updated: "2026-07-27T03:07:22.299Z"
+last_updated: "2026-07-27T03:15:53.634Z"
 last_activity: 2026-07-27
 progress:
   total_phases: 8
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 107 (BENCH adapters Granite/Phi + juez + veredicto) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-07-27
 
@@ -115,6 +115,7 @@ Last activity: 2026-07-27
 | Phase 106 P106-01 | 6min | 3 tasks | 16 files |
 | Phase 106 P106-02 | 10 min | 3 tasks | 14 files |
 | Phase 107 P107-01 | 6min | 2 tasks | 8 files |
+| Phase 107 P107-02 | 7min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -201,6 +202,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 106-03: golden de juez = pares (answer, human_label), accuracy condicional vs humano; extracción parse-rate SEPARADO de value-accuracy
 - [Phase ?]: 106-04: harness driver host-agnóstico; baseline LIVE DeepSeek/MiniMax corrido de verdad (provenance real), env-gated NUNCA en CI; el Reporte solo reporta (nada-aprueba-paridad); artefacto commiteado sin secrets
 - [Phase ?]: 107-01: GraniteProvider verbatim MiniMax clone + EXPLICIT max_tokens=2048 (Workers AI 256 truncates); host-agnostic baseURL Workers AI/OpenRouter. JudgeProvider SEPARADO en judge.ts, JudgeRequest LOCKED {answer,system?,sensitivity?,temperature?,context?}. PhiJudge determinista temp0 + match-by-name (Phi alucina nombres) + guards IDENTICOS (RUT answer+system, sensitivity). 3 placeholders .env.example VACIOS, guard verde. CERO SDK nuevo. VEREDICTO LIVE=Plan 03 (provision operador).
+- [Phase ?]: 107-02: sub-métrica es-CL negacion{total,correctas,accuracy} ADITIVA al scorer de extracción (casos.json+sha256 INTACTOS); correctas ride la MISMA regla de substring literal de idea_matriz. VEREDICTO puro ε-gated (EPSILON_POR_TAREA explícito, extracción la más estricta 0.01) con VETO DURO es-CL que lee negacion.accuracy INDEPENDIENTE de value.precision y CORTOCIRCUITA antes del gate agregado; fixture load-bearing: mejor precision/recall pero peor negacion.accuracy = VETADO. Ausencia de métrica -> pending-evidence; 'nada aprueba' expresable; fallo=gate primera clase. Puente PhiJudge->JuzgarFn (ok->bool, throw->null WR-04) vs human_label, hooks ejercitados; CI mock, LIVE=Plan 03.
 
 ### Pending Todos
 
@@ -256,7 +258,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-27T03:06:59.214Z
+Last session: 2026-07-27T03:15:30.785Z
 Stopped at: Completed 106-03-PLAN.md
 Resume file: None
 
