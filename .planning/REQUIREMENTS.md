@@ -26,9 +26,9 @@
 
 ### INTEG — Integración de la tarea de menor riesgo
 
-- [ ] **INTEG-01**: UNA tarea reversible no-legal (clasificación o routing, elegida por evidencia del spike) corre con la escalera integrada en producción de pipeline, gated por su golden set verde en CI como regresión permanente
+- [x] **INTEG-01**: UNA tarea reversible no-legal (clasificación o routing, elegida por evidencia del spike) corre con la escalera integrada en producción de pipeline, gated por su golden set verde en CI como regresión permanente
 - [x] **INTEG-02**: Extracción de fichas sigue en DeepSeek y adjudicación de identidad sigue en MiniMax, sin cambio de comportamiento — guard estático/CI que impide que la escalera toque `adjudicacion.*` y la extracción strict-schema
-- [ ] **INTEG-03**: Rollback trivial: apagar la escalera vuelve al incumbente por config, sin migración ni deploy especial
+- [x] **INTEG-03**: Rollback trivial: apagar la escalera vuelve al incumbente por config, sin migración ni deploy especial
 
 ### BCN — Parser senadores en origen
 
@@ -84,9 +84,9 @@
 | TIER-03 | Phase 108 | Complete |
 | TIER-04 | Phase 108 | Complete |
 | TIER-05 | Phase 108 | Complete |
-| INTEG-01 | Phase 109 | Pending |
+| INTEG-01 | Phase 109 | Complete |
 | INTEG-02 | Phase 109 | Complete |
-| INTEG-03 | Phase 109 | Pending |
+| INTEG-03 | Phase 109 | Complete |
 | BCN-01 | Phase 105 | Complete |
 | BCN-02 | Phase 105 | Complete |
 | V7-01 | Phase 110 | Pending |
