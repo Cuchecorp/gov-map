@@ -17,7 +17,7 @@
 import type { LLMProvider } from "./types";
 import type { JudgeProvider } from "./judge";
 import type { TelemetrySink } from "./telemetry";
-import type { TieredProvider, TieredProviderOptions } from "./tiered"; // forward ref — Plan 02
+import { TieredProvider, type TieredProviderOptions } from "./tiered"; // implementado por Plan 02
 
 /**
  * Especificación de un tier individual dentro de una escalera. Combina un provider
@@ -112,11 +112,5 @@ export function buildTieredProvider(
     escalationCostPerToken: config.escalation?.costPerToken,
   };
 
-  // Plan 02 (Wave 2) provee la implementación real de TieredProvider en ./tiered.
-  // Esta fábrica se activa solo cuando Plan 02 exista. Por ahora el cuerpo
-  // referencia opts para que el compilador no lo marque como "declared but never used".
-  void opts;
-  throw new Error(
-    "buildTieredProvider: TieredProvider (./tiered) no disponible en Wave 1 — implementado por Plan 108-02",
-  );
+  return new TieredProvider(opts);
 }

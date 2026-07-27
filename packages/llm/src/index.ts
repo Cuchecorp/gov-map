@@ -22,3 +22,4 @@ export * from "./providers/phi-judge";
 export * from "./providers/gemini-embeddings";
 export * from "./telemetry";
 export * from "./task-ladder";
+export * from "./tiered";
