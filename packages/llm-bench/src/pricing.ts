@@ -3,9 +3,11 @@
  *
  * Espeja la disciplina de provenance de embeddings (`@obs/llm` types:
  * model/dims/version): todo número de costo del reporte carga su `fecha` de
- * tarifa para ser trazable. Confianza MEDIUM — se re-verifica en 107 (LOCKED).
- * SOLO los incumbentes (DeepSeek/MiniMax); las tarifas de candidatos
- * (Granite/Phi) son alcance de 107 y NO viven aquí.
+ * tarifa para ser trazable. Confianza MEDIUM.
+ *
+ * Incluye los INCUMBENTES (DeepSeek/MiniMax) y, desde 107 (esta fase LOS posee),
+ * los CANDIDATOS de la capa escalonada (Granite responder / Phi juez). Añadir la
+ * tarifa NO carga secreto alguno: es un número dateable, no una credencial.
  */
 
 import type { Tarifa } from "./metrics";
@@ -21,7 +23,12 @@ export const PRICING = {
     // per 1M tokens, in/out — [ASSUMED] MEDIUM — re-verify in 107
     "deepseek-v4-flash": { in: 0.27, out: 1.1 },
     "MiniMax-M3": { in: 0.3, out: 1.2 },
-    // candidates (Granite/Phi) = 107 scope — NOT listed here (no new secret / no candidate rates)
+    // candidates (Granite responder / Phi juez) — 107 owns these now.
+    // [ASSUMED] MEDIUM — dated 2026-07-26; re-verify against the LIVE host rate
+    // (Workers AI / OpenRouter) in Plan 03. Números placeholder; el reporte embebe
+    // PRICING.fecha para que ningún costo quede sin datar.
+    "@cf/ibm-granite/granite-4.0-h-micro": { in: 0.03, out: 0.03 },
+    "microsoft/phi-4-mini-instruct": { in: 0.07, out: 0.14 },
   },
 } as const;
 
