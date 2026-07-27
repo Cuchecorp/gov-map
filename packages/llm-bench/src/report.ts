@@ -45,10 +45,25 @@ export interface MetricasModelo {
   latencia_p95_ms: number;
   /** Marca de incertidumbre small-N sobre p95 (true si N es chico). */
   p95Indicativo: boolean;
-  /** Número de muestras — hace legible la incertidumbre del p95. */
+  /** Número de muestras (round-trips de red medidos) — hace legible la incertidumbre del p95. */
   n_muestras: number;
-  /** Costo por 1000 casos de esta tarea; null si el host omite usage. */
+  /**
+   * Número de CASOS lógicos driven (una completion lógica por caso del golden), INDEPENDIENTE
+   * de los round-trips que gastó el repair loop. Es el denominador de `costo_por_1k` (WR-02).
+   */
+  n_casos: number;
+  /**
+   * HEADLINE de costo (WR-02): costo por 1000 CASOS = Σcosto / n_casos × 1000. Normalizado por
+   * casos (NO por round-trips) para que dos modelos con distinta tasa de reparación se comparen
+   * manzana-con-manzana en 107. null si el host omite usage o no hay tarifa (nunca 0).
+   */
   costo_por_1k: number | null;
+  /**
+   * Companion de costo: costo por 1000 LLAMADAS (round-trips de red) = Σcosto / n_muestras ×
+   * 1000. Útil para leer el sobrecosto de red del repair loop; NO es comparable entre modelos
+   * con distinta tasa de reparación. null bajo las mismas condiciones que `costo_por_1k`.
+   */
+  costo_por_1k_llamadas: number | null;
   /** Fallo zod separado en reparado (no terminal) vs terminal (duro). */
   zod_fail_rate: TasasDeFallo["zod_fail_rate"];
   /** Fallo de structured-output en el intento 0 — SEPARADO de zod y de calidad. */

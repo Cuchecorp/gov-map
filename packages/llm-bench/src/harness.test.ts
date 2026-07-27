@@ -368,3 +368,42 @@ describe("harness — CR-01: outcome recuperado del repair loop real", () => {
     expect(m.structured_output_fail_rate).toBe(0);
   });
 });
+
+// ── WR-02: el costo headline se normaliza por CASOS, no por round-trips ──
+describe("harness — WR-02: costo por caso vs por llamada", () => {
+  it("un modelo que repara: costo_por_1k (por caso) < costo_por_1k_llamadas (por round-trip)", async () => {
+    // Routing repara una vez (2 fetches para 1 caso); las otras 3 tareas 1 fetch c/u → 5 muestras
+    // para 4 casos lógicos. El costo por CASO reparte el sobrecosto de red entre menos unidades.
+    const muestras: CallMetric[] = [];
+    const provider = new ProviderRepairLoop(
+      [JSON.stringify({ label: "NO_ES_UNA_ETIQUETA" }), JSON.stringify({ label: null })],
+      sinkSintetico(muestras),
+    );
+    const m = await correrHarness(
+      provider,
+      { modelo: "deepseek-v4-flash", endpoint: "https://api.deepseek.com" },
+      { drenarMetricas: () => muestras.slice(), limitePorTarea: 1 },
+    );
+    // El denominador de casos es MENOR que el de muestras (hubo al menos una reparación).
+    expect(m.n_casos).toBeLessThan(m.n_muestras);
+    expect(m.n_casos).toBe(4);
+    expect(m.costo_por_1k).not.toBeNull();
+    expect(m.costo_por_1k_llamadas).not.toBeNull();
+    // Per-caso reparte el mismo costo total entre MENOS unidades → per-caso > per-llamada.
+    // (headline por-caso es el número comparable; el per-llamada es el sobrecosto de red).
+    expect(m.costo_por_1k!).toBeGreaterThan(m.costo_por_1k_llamadas!);
+    // Sanity de la relación exacta: costo_por_1k / costo_por_1k_llamadas === n_muestras / n_casos.
+    expect(m.costo_por_1k! / m.costo_por_1k_llamadas!).toBeCloseTo(m.n_muestras / m.n_casos, 6);
+  });
+
+  it("sin reparaciones (todo clean): n_casos === n_muestras y ambos costos coinciden", async () => {
+    const { provider, drenarMetricas } = mockConSink(responderOro);
+    const m = await correrHarness(
+      provider,
+      { modelo: "deepseek-v4-flash", endpoint: "https://api.deepseek.com" },
+      { drenarMetricas, limitePorTarea: 2 },
+    );
+    expect(m.n_casos).toBe(m.n_muestras);
+    expect(m.costo_por_1k).toBeCloseTo(m.costo_por_1k_llamadas!, 6);
+  });
+});

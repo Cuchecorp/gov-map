@@ -184,12 +184,24 @@ function acotar<C>(set: C[], limite: number | undefined): C[] {
 export async function correrTareas(
   provider: LLMProvider,
   opciones: OpcionesCorrida = {},
-): Promise<{ calidad: CalidadPorTarea; outcomes: CallOutcome[] }> {
+): Promise<{ calidad: CalidadPorTarea; outcomes: CallOutcome[]; nCasos: number }> {
   const outcomes: CallOutcome[] = [];
   const lim = opciones.limitePorTarea;
 
+  // WR-02: el número de CASOS lógicos driven (una completion lógica por caso), INDEPENDIENTE
+  // de cuántos round-trips de red gastó el repair loop. Es el denominador correcto del costo
+  // "por caso" (dos modelos con distinta tasa de reparación se comparan manzana-con-manzana).
+  const setsAcotados = [
+    acotar(GOLDEN_SET_GATE_ROUTING, lim),
+    acotar(GOLDEN_SET_GATE_CLASIF, lim),
+    acotar(GOLDEN_SET_GATE_EXTRACCION, lim),
+    acotar(GOLDEN_SET_SCORING_JUEZ, lim),
+  ] as const;
+  const nCasos = setsAcotados.reduce((s, set) => s + set.length, 0);
+  const [setRouting, setClasif, setExtraccion, setJuez] = setsAcotados;
+
   // ── routing ──
-  const routing = await evaluarRouting(acotar(GOLDEN_SET_GATE_ROUTING, lim), async (caso) => {
+  const routing = await evaluarRouting(setRouting, async (caso) => {
     const out = await completarClasificando(
       provider,
       reqPublico(caso.input),
@@ -201,7 +213,7 @@ export async function correrTareas(
 
   // ── clasificación ──
   const clasificacion = await evaluarClasificacion(
-    acotar(GOLDEN_SET_GATE_CLASIF, lim),
+    setClasif,
     async (caso) => {
       const out = await completarClasificando(
         provider,
@@ -215,7 +227,7 @@ export async function correrTareas(
 
   // ── extracción ──
   const extraccion = await evaluarExtraccion(
-    acotar(GOLDEN_SET_GATE_EXTRACCION, lim),
+    setExtraccion,
     async (caso) => {
       const out = await completarClasificando(
         provider,
@@ -229,7 +241,7 @@ export async function correrTareas(
   );
 
   // ── juez ──
-  const juez = await evaluarJuez(acotar(GOLDEN_SET_SCORING_JUEZ, lim), async (caso) => {
+  const juez = await evaluarJuez(setJuez, async (caso) => {
     const out = await completarClasificando(
       provider,
       reqPublico(`¿Es correcta esta respuesta?\n${caso.answer}`),
@@ -243,13 +255,15 @@ export async function correrTareas(
   return {
     calidad: { routing, clasificacion, extraccion, juez },
     outcomes,
+    nCasos,
   };
 }
 
 /**
  * Corre el harness completo sobre `provider` y ensambla UN `MetricasModelo`:
  *  - drena el sink de CallMetrics → latencia p50/p95 (percentile) + n_muestras + p95Indicativo,
- *  - costo_por_1k = Σ costoUsd(muestra) / n × 1000 (null si el host omite usage o no hay tarifa),
+ *  - costo_por_1k = Σ costoUsd(muestra) / n_casos × 1000 (HEADLINE per-caso; WR-02),
+ *  - costo_por_1k_llamadas = Σ costoUsd(muestra) / n_muestras × 1000 (per-round-trip, companion),
  *  - agregarFallos(outcomes) → structured_output_fail_rate + zod_fail_rate.{repaired,terminal},
  *  - estampa endpoint + tarifaFecha (PRICING.fecha) — provenance BENCH-03.
  *
@@ -260,7 +274,7 @@ export async function correrHarness(
   id: IdentidadModelo,
   opts: { drenarMetricas: () => CallMetric[]; limitePorTarea?: number },
 ): Promise<MetricasModelo> {
-  const { calidad, outcomes } = await correrTareas(provider, {
+  const { calidad, outcomes, nCasos } = await correrTareas(provider, {
     limitePorTarea: opts.limitePorTarea,
   });
 
@@ -269,10 +283,14 @@ export async function correrHarness(
   const n = latencias.length;
 
   const tarifa = tarifaDe(id.modelo);
-  // Costo por 1000 casos: promedio de costo por muestra × 1000. null si CUALQUIER muestra
-  // carece de usage o no hay tarifa (nunca 0 silencioso — Pitfall A).
+  // WR-02: el costo se normaliza por CASOS (headline), NO por round-trips de red. Un modelo
+  // que repara a menudo hace más fetches por caso; dividir por muestras daría un costo
+  // "por round-trip" NO comparable entre candidatos. El costo por-llamada se conserva como
+  // companion explícito (costo_por_1k_llamadas). Ambos son null si CUALQUIER muestra carece de
+  // usage o no hay tarifa (nunca 0 silencioso — Pitfall A).
   let costo_por_1k: number | null = null;
-  if (tarifa !== undefined && n > 0) {
+  let costo_por_1k_llamadas: number | null = null;
+  if (tarifa !== undefined && n > 0 && nCasos > 0) {
     let suma = 0;
     let todasConCosto = true;
     for (const m of muestras) {
@@ -286,7 +304,11 @@ export async function correrHarness(
       }
       suma += c;
     }
-    costo_por_1k = todasConCosto ? (suma / n) * 1000 : null;
+    if (todasConCosto) {
+      // Denominador = CASOS lógicos (headline, comparable); companion = round-trips medidos.
+      costo_por_1k = (suma / nCasos) * 1000;
+      costo_por_1k_llamadas = (suma / n) * 1000;
+    }
   }
 
   const fallos = agregarFallos(outcomes);
@@ -307,7 +329,9 @@ export async function correrHarness(
     latencia_p95_ms: percentile(latencias, 95),
     p95Indicativo: n < N_INDICATIVO_P95,
     n_muestras: n,
+    n_casos: nCasos,
     costo_por_1k,
+    costo_por_1k_llamadas,
     zod_fail_rate: fallos.zod_fail_rate,
     structured_output_fail_rate: fallos.structured_output_fail_rate,
   };

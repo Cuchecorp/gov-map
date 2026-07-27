@@ -42,9 +42,10 @@ function tablaLegible(m: MetricasModelo): string {
   const fmt = (x: number | null): string => (x === null ? "n/a" : x.toFixed(4));
   return [
     `── ${m.modelo} @ ${m.endpoint} (tarifa ${m.tarifaFecha}) ──`,
-    `  n_muestras:                   ${m.n_muestras}`,
+    `  n_casos / n_muestras:         ${m.n_casos} / ${m.n_muestras}`,
     `  latencia p50 / p95 (ms):      ${fmt(m.latencia_p50_ms)} / ${fmt(m.latencia_p95_ms)}${m.p95Indicativo ? " (p95 INDICATIVO, N chico)" : ""}`,
-    `  costo por 1k casos (USD):     ${fmt(m.costo_por_1k)}`,
+    `  costo por 1k CASOS (USD):     ${fmt(m.costo_por_1k)} (headline, comparable)`,
+    `  costo por 1k llamadas (USD):  ${fmt(m.costo_por_1k_llamadas)} (round-trips; no comparable)`,
     `  structured_output_fail_rate:  ${fmt(m.structured_output_fail_rate)}`,
     `  zod_fail_rate repaired/term.: ${fmt(m.zod_fail_rate.repaired)} / ${fmt(m.zod_fail_rate.terminal)}`,
     `  tareas medidas:               ${Object.keys(m.calidad_por_tarea).join(", ")}`,
