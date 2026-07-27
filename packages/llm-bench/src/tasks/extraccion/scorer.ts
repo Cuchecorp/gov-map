@@ -134,6 +134,21 @@ export interface MetricasValorExtraccion {
 }
 
 /**
+ * Sub-métrica es-CL de PRIMERA CLASE (Task 0, 107-02) — señal de negación INDEPENDIENTE de
+ * `value.precision`. El VETO DURO es-CL del veredicto (107-02) lee ESTE campo, NO `value.precision`,
+ * de modo que una negación caída es medible por sí sola sin plegarse en el agregado de fidelidad.
+ * ADITIVA: `casos.json` + su sha256 quedan INTACTOS — solo el tipo de salida gana un campo.
+ */
+export interface MetricasNegacionExtraccion {
+  /** #casos de la muestra cuyo `estrato` contiene el token `negacion` (split por `|`). */
+  total: number;
+  /** #casos de negación manejados correctamente (idea substring que PRESERVA la negación). */
+  correctas: number;
+  /** correctas/total; 1 cuando total===0 (no hay casos de negación en el set). */
+  accuracy: number;
+}
+
+/**
  * Resultado de la corrida del golden de extracción. `schema_parse_rate` (¿parseó+validó el
  * payload?) es un campo SEPARADO de `value` (fidelidad literal) — NUNCA se colapsan (Cleanlab).
  */
@@ -142,6 +157,12 @@ export interface MetricasExtraccion {
   schema_parse_rate: number;
   /** Precisión/recall de fidelidad literal (solo sobre los casos que parsearon). */
   value: MetricasValorExtraccion;
+  /**
+   * es-CL FIRST-CLASS negation signal — INDEPENDIENTE de `value.precision`; el VETO DURO es-CL
+   * del veredicto 107 lee ESTE campo, así una negación caída es medible sin plegarse en el
+   * agregado. ADITIVA: casos.json + sha256 INTACTOS.
+   */
+  negacion: MetricasNegacionExtraccion;
   detalle: { id: string; parseOk: boolean; ok: boolean; nota: string }[];
 }
 
@@ -170,12 +191,20 @@ export async function evaluarExtraccion(
   let tp = 0;
   let fp = 0;
   let fn = 0;
+  // ── es-CL FIRST-CLASS negation signal (Task 0) — contadores separados del agregado `value` ──
+  let negacionTotal = 0;
+  let negacionCorrectas = 0;
   const detalle: { id: string; parseOk: boolean; ok: boolean; nota: string }[] = [];
 
   for (const caso of set) {
+    // ¿Es un caso de negación es-CL? (estrato con el token `negacion`). Cuenta en la sub-métrica.
+    const esCasoNegacion = caso.estrato.split("|").includes("negacion");
+    if (esCasoNegacion) negacionTotal++;
+
     const respuesta = await ejecutar(caso);
 
     if (respuesta === null) {
+      // Un caso de negación que NO parsea NO cuenta como correcta (suma a total, no a correctas).
       detalle.push({
         id: caso.id,
         parseOk: false,
@@ -188,6 +217,10 @@ export async function evaluarExtraccion(
 
     const textoNorm = normalizarLiteral(caso.textoFuente);
     let casoOk = true;
+    // Reutiliza EL MISMO chequeo de substring literal de la rama idea_matriz para la sub-métrica de
+    // negación: la negación es `correcta` sólo cuando la idea afirmada es substring literal (una
+    // negación caída/invertida deja de ser substring → idea NO ok → negación NO correcta).
+    let ideaOk = true;
     const notas: string[] = [];
 
     // ── idea_matriz: fidelidad literal por substring (negación caída = NO substring = fp) ──
@@ -195,21 +228,25 @@ export async function evaluarExtraccion(
     const esperadaIdea = caso.expected.idea_matriz_substring;
     if (esperadaIdea !== null) {
       if (afirmada == null) {
-        fn++; casoOk = false; notas.push("idea: esperaba literal, modelo devolvió null (fn)");
+        fn++; casoOk = false; ideaOk = false; notas.push("idea: esperaba literal, modelo devolvió null (fn)");
       } else if (textoNorm.includes(normalizarLiteral(afirmada))) {
         tp++; notas.push("idea: substring literal correcto (tp)");
       } else {
-        fp++; casoOk = false;
+        fp++; casoOk = false; ideaOk = false;
         notas.push("idea: FALSO POSITIVO — NO es substring del texto (paráfrasis/alucinación/negación caída)");
       }
     } else {
       if (afirmada != null) {
-        fp++; casoOk = false;
+        fp++; casoOk = false; ideaOk = false;
         notas.push("idea: FALSO POSITIVO — afirmó idea cuando el texto no la enuncia (degradación deshonesta)");
       } else {
         notas.push("idea: degradación honesta (null) correcta");
       }
     }
+
+    // ── es-CL negation sub-metric: una negación es `correcta` si parseó Y la idea es substring
+    //    literal (misma regla que la rama idea_matriz; una negación caída/invertida la rompe). ──
+    if (esCasoNegacion && ideaOk) negacionCorrectas++;
 
     // ── cuerpos_legales: F1 por conjunto de claves norma+artículos ──
     const esperadosCuerpos = new Set(caso.expected.cuerpos.map(claveCuerpo));
@@ -238,6 +275,11 @@ export async function evaluarExtraccion(
   return {
     schema_parse_rate: total === 0 ? 1 : parseados / total,
     value: { tp, fp, fn, precision, recall },
+    negacion: {
+      total: negacionTotal,
+      correctas: negacionCorrectas,
+      accuracy: negacionTotal === 0 ? 1 : negacionCorrectas / negacionTotal,
+    },
     detalle,
   };
 }
