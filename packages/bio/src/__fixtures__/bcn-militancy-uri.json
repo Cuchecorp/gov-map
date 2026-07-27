@@ -1,0 +1,34 @@
+{
+  "head": {
+    "vars": ["person", "personLabel", "idSenado", "party", "partyLabel", "beginDate", "endDate"]
+  },
+  "comment": "Fixture hermano (105-01): bindings SIN partyLabel para ejercitar la resolución URI→label fail-closed. URIs REALES del crudo R2 (envelope bio/envelope/2026-07-22/1fab3cb0...json), corroboradas por SPARQL en vivo. (1) URI CONOCIDA sin label = partido-democratas-chile (caso testigo S1344/Matías Walker, SIN_LABEL en BCN). (2) URI DESCONOCIDA sin label = slug inventado que NO está en el mapa (fail-closed). (3) label presente = happy path verbatim.",
+  "results": {
+    "distinct": false,
+    "ordered": true,
+    "bindings": [
+      {
+        "person": { "type": "uri", "value": "http://datos.bcn.cl/recurso/persona/9001" },
+        "personLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "Matías Walker Prieto" },
+        "idSenado": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "1344" },
+        "party": { "type": "uri", "value": "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/partido-democratas-chile" },
+        "beginDate": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "2023-01-01" }
+      },
+      {
+        "person": { "type": "uri", "value": "http://datos.bcn.cl/recurso/persona/9002" },
+        "personLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "Persona Sin Partido Mapeable" },
+        "idSenado": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "9999" },
+        "party": { "type": "uri", "value": "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/partido-inexistente-no-en-el-mapa" },
+        "beginDate": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "2020-01-01" }
+      },
+      {
+        "person": { "type": "uri", "value": "http://datos.bcn.cl/recurso/persona/9003" },
+        "personLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "Persona Con Label Directo" },
+        "idSenado": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "9998" },
+        "party": { "type": "uri", "value": "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/partido-socialista-de-chile" },
+        "partyLabel": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "Partido Socialista de Chile" },
+        "beginDate": { "type": "typed-literal", "datatype": "http://www.w3.org/2001/XMLSchema#string", "value": "2019-01-01" }
+      }
+    ]
+  }
+}

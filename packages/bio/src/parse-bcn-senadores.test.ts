@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
   parseBcnSenadores,
+  parseBcnSenadoresConReporte,
   enlazarSenadores,
   enlazarSenadoresPorParlid,
   buildSparqlUrl,
@@ -19,9 +20,14 @@ import { normalizarNombre } from "@obs/core";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(here, "__fixtures__", "bcn-militancy.json");
+const FIXTURE_URI = join(here, "__fixtures__", "bcn-militancy-uri.json");
 
 function cargar(): SparqlResults {
   return JSON.parse(readFileSync(FIXTURE, "utf8")) as SparqlResults;
+}
+
+function cargarUri(): SparqlResults {
+  return JSON.parse(readFileSync(FIXTURE_URI, "utf8")) as SparqlResults;
 }
 
 function maestraRow(id: string, libre: string): MaestraRow {
@@ -92,6 +98,66 @@ describe("parse-bcn-senadores — mapeo sparql-results (allowlist)", () => {
     const json = JSON.stringify(mil);
     expect(json).not.toContain("nacimiento");
     expect(json).not.toContain("rut");
+  });
+});
+
+describe("parse-bcn-senadores — resolución URI→label fail-closed (BCN-01, Phase 105)", () => {
+  // Evidencia (Task 1): 27 URIs de partido DISTINCT en el crudo R2 (envelope
+  // bio/envelope/2026-07-22/1fab3cb0…json), corroboradas 1:1 por SPARQL en vivo. 7 SIN rdfs:label
+  // (BCN no expone literal alguno para su recurso) — esas disparaban el bug URI-como-partido. El
+  // caso testigo S1344 (Matías Walker) = partido-democratas-chile, SIN_LABEL.
+
+  it("Test A — label presente → verbatim (happy path intacto, 3 bindings originales)", () => {
+    const mil = parseBcnSenadores(cargar());
+    expect(mil).toHaveLength(3);
+    expect(mil.map((m) => m.partido)).toEqual([
+      "Partido Por la Democracia",
+      "Partido Socialista de Chile",
+      "Partido Demócrata Cristiano",
+    ]);
+    // Ningún partido es un URI.
+    expect(mil.every((m) => !/^https?:\/\//.test(m.partido))).toBe(true);
+  });
+
+  it("Test B — URI conocida sin label → label del mapa determinista (NO el URI)", () => {
+    const mil = parseBcnSenadores(cargarUri());
+    // Caso testigo S1344: partido-democratas-chile (SIN_LABEL en BCN) → label legible del mapa.
+    const walker = mil.find((m) => m.parlidSenado === "1344")!;
+    expect(walker).toBeDefined();
+    expect(walker.partido).not.toMatch(/^https?:\/\//);
+    expect(walker.partido).toBe("Partido Demócratas de Chile");
+  });
+
+  it("Test C — URI desconocida sin label → fail-closed (omite + reporta la URI)", () => {
+    const { militancias, partidosDesconocidos } = parseBcnSenadoresConReporte(cargarUri());
+    // La persona con URI fuera del mapa (parlid 9999) NO produce militancia.
+    expect(militancias.find((m) => m.parlidSenado === "9999")).toBeUndefined();
+    // La URI desconocida queda REPORTADA con su causa (jamás emitida como partido).
+    expect(partidosDesconocidos).toContain(
+      "http://datos.bcn.cl/recurso/cl/organismo/partido-politico/partido-inexistente-no-en-el-mapa",
+    );
+    // JAMÁS se deriva del slug: ninguna militancia trae "Inexistente" como partido.
+    expect(militancias.every((m) => !m.partido.toLowerCase().includes("inexistente"))).toBe(true);
+  });
+
+  it("Test D — regresión anti-URI: ningún `partido` de salida empieza con http/https", () => {
+    for (const cargador of [cargar, cargarUri]) {
+      const mil = parseBcnSenadores(cargador());
+      for (const m of mil) {
+        expect(m.partido).not.toMatch(/^https?:\/\//);
+      }
+    }
+    // También sobre el reporte completo.
+    const { militancias } = parseBcnSenadoresConReporte(cargarUri());
+    expect(militancias.every((m) => !/^https?:\/\//.test(m.partido))).toBe(true);
+  });
+
+  it("parseBcnSenadores (forma array) delega en el mismo resolver que la forma con reporte", () => {
+    const arr = parseBcnSenadores(cargarUri());
+    const { militancias } = parseBcnSenadoresConReporte(cargarUri());
+    expect(arr).toEqual(militancias);
+    // El fixture-uri tiene 3 bindings; 1 fail-closed (9999) → 2 militancias mapeadas.
+    expect(arr).toHaveLength(2);
   });
 });
 
