@@ -67,11 +67,28 @@ function wrongNameOnlyResponse(args: string): string {
   });
 }
 
+/** Respuesta chat-completions con `content` (modo prompt-forzado, sin tool_calls). */
+function contentResponse(content: string): string {
+  return JSON.stringify({
+    choices: [
+      {
+        index: 0,
+        message: { role: "assistant", content },
+        finish_reason: "stop",
+      },
+    ],
+  });
+}
+
 const VALID_VERDICT = JSON.stringify({ ok: true, reason: "cumple", confidence: 0.8 });
 const INVALID_VERDICT = JSON.stringify({ reason: "falta ok" }); // sin `ok` boolean
 
 function makeJudge(fetchFn: typeof fetch) {
   return new PhiJudge({ apiKey: "k", baseURL: BASE, fetchFn });
+}
+
+function makePromptJudge(fetchFn: typeof fetch) {
+  return new PhiJudge({ apiKey: "k", baseURL: BASE, fetchFn, structuredMode: "prompt" });
 }
 
 describe("PhiJudge", () => {
@@ -175,5 +192,93 @@ describe("PhiJudge", () => {
       p.judge({ answer: "x", sensitivity: "personal" }),
     ).rejects.toBeInstanceOf(SensitiveRoutingError);
     expect(mock.calls).toHaveLength(0);
+  });
+});
+
+describe("PhiJudge — modo prompt-forzado (structuredMode: 'prompt')", () => {
+  it("content JSON-only -> Verdict validado por zod; POST SIN tools/tool_choice, temperature 0, response_format json_object", async () => {
+    const mock = makeMockFetch({ [URL]: { status: 200, body: contentResponse(VALID_VERDICT) } });
+    const p = makePromptJudge(mock.fn);
+    const v: Verdict = await p.judge({ answer: "la respuesta a evaluar" });
+    expect(VerdictSchema.safeParse(v).success).toBe(true);
+    expect(v).toEqual({ ok: true, reason: "cumple", confidence: 0.8 });
+
+    expect(mock.calls).toHaveLength(1);
+    const body = JSON.parse(String(mock.calls[0]!.body));
+    expect(body.temperature).toBe(0);
+    // El modo prompt NO usa tool-calling (host sin forced tool_choice).
+    expect(body.tools).toBeUndefined();
+    expect(body.tool_choice).toBeUndefined();
+    // Se pide json_object (no json_schema); la compuerta zod es la autoridad.
+    expect(body.response_format).toEqual({ type: "json_object" });
+  });
+
+  it("content envuelto en fences/prosa -> extrae el objeto balanceado y valida (sin repair)", async () => {
+    const fenced = "Here is my verdict:\n```json\n" + VALID_VERDICT + "\n```\nDone.";
+    const mock = makeMockFetch({ [URL]: { status: 200, body: contentResponse(fenced) } });
+    const p = makePromptJudge(mock.fn);
+    const v = await p.judge({ answer: "x" });
+    expect(v).toEqual({ ok: true, reason: "cumple", confidence: 0.8 });
+    // Se resolvio en el intento inicial (extraccion), sin round-trip de repair.
+    expect(mock.calls).toHaveLength(1);
+  });
+
+  it("content invalido primero -> repair -> content valido -> Verdict correcto", async () => {
+    const mock = makeMockFetch({
+      [URL]: [
+        { status: 200, body: contentResponse(INVALID_VERDICT) },
+        { status: 200, body: contentResponse(VALID_VERDICT) },
+      ],
+    });
+    const p = makePromptJudge(mock.fn);
+    const v = await p.judge({ answer: "x" });
+    expect(v).toEqual({ ok: true, reason: "cumple", confidence: 0.8 });
+    expect(mock.calls).toHaveLength(2);
+  });
+
+  it("content persistentemente invalido -> LLMValidationError (nunca verdict no estructurado)", async () => {
+    const mock = makeMockFetch({
+      [URL]: [
+        { status: 200, body: contentResponse(INVALID_VERDICT) },
+        { status: 200, body: contentResponse(INVALID_VERDICT) },
+      ],
+    });
+    const p = makePromptJudge(mock.fn);
+    await expect(p.judge({ answer: "x" })).rejects.toBeInstanceOf(LLMValidationError);
+  });
+
+  it("RUT en req.answer -> RutInLlmInputError y CERO fetches (guard bite en modo prompt)", async () => {
+    const mock = makeMockFetch({ [URL]: { status: 200, body: contentResponse(VALID_VERDICT) } });
+    const p = makePromptJudge(mock.fn);
+    await expect(
+      p.judge({ answer: "el sujeto 12.345.678-9 declara" }),
+    ).rejects.toBeInstanceOf(RutInLlmInputError);
+    expect(mock.calls).toHaveLength(0);
+  });
+
+  it("RUT en req.system -> RutInLlmInputError y CERO fetches (guard-on-system, modo prompt)", async () => {
+    const mock = makeMockFetch({ [URL]: { status: 200, body: contentResponse(VALID_VERDICT) } });
+    const p = makePromptJudge(mock.fn);
+    await expect(
+      p.judge({ answer: "ok", system: "rubrica 1.234-5" }),
+    ).rejects.toBeInstanceOf(RutInLlmInputError);
+    expect(mock.calls).toHaveLength(0);
+  });
+
+  it("RUT en req.context -> RutInLlmInputError y CERO fetches (guard-on-context CR-01, modo prompt)", async () => {
+    const mock = makeMockFetch({ [URL]: { status: 200, body: contentResponse(VALID_VERDICT) } });
+    const p = makePromptJudge(mock.fn);
+    await expect(
+      p.judge({ answer: "ok", context: "el lobista 12.345.678-9 se reunio" }),
+    ).rejects.toBeInstanceOf(RutInLlmInputError);
+    expect(mock.calls).toHaveLength(0);
+  });
+
+  it("respeta req.temperature explicita en modo prompt", async () => {
+    const mock = makeMockFetch({ [URL]: { status: 200, body: contentResponse(VALID_VERDICT) } });
+    const p = makePromptJudge(mock.fn);
+    await p.judge({ answer: "x", temperature: 0.3 });
+    const body = JSON.parse(String(mock.calls[0]!.body));
+    expect(body.temperature).toBe(0.3);
   });
 });

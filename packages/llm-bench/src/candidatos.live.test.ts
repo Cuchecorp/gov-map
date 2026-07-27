@@ -21,9 +21,11 @@
  *       `DEEPSEEK_API_KEY`) con `instrumentedFetch` y el MISMO `limitePorTarea` → candidato e
  *       incumbente se miden contra los MISMOS sets congelados en UNA sola corrida, manzana-con-
  *       manzana;
- *   (c) instancia el `PhiJudge` REAL (OpenRouter, `microsoft/phi-4-mini-instruct`,
+ *   (c) instancia el `PhiJudge` REAL (OpenRouter, `microsoft/phi-4`, `structuredMode: "prompt"`,
  *       `OPENROUTER_API_KEY`) con `instrumentedFetch` y llama `medirJuezVsHumano(phiJudge)` →
- *       MetricasJuez del juez Phi contra las etiquetas HUMANAS (BENCH-04);
+ *       MetricasJuez del juez Phi contra las etiquetas HUMANAS (BENCH-04). Se usa el modo
+ *       PROMPT-FORZADO + zod porque OpenRouter `microsoft/phi-4` NO soporta forced tool_choice
+ *       (devuelve HTTP 404 "no endpoints support tool use"); la compuerta zod es la autoridad;
  *   (d) computa el VEREDICTO DEFINITIVO por tarea con `computarVeredicto(candidato, incumbente)`
  *       contra el incumbente DE LA MISMA CORRIDA e imprime {tarea → approved-model |
  *       incumbent-stays | pending-evidence} (JSON + tabla legible).
@@ -63,6 +65,9 @@ const ENDPOINT_DEEPSEEK = "https://api.deepseek.com";
 const MODELO_GRANITE_WORKERS_AI = "@cf/ibm-granite/granite-4.0-h-micro";
 const MODELO_GRANITE_OPENROUTER = "ibm-granite/granite-4.0-h-micro";
 const MODELO_DEEPSEEK = "deepseek-v4-flash";
+// Juez Phi en OpenRouter. `microsoft/phi-4` NO soporta forced tool_choice (HTTP 404
+// "no endpoints support tool use") → se instancia con structuredMode "prompt".
+const MODELO_PHI_JUEZ = "microsoft/phi-4";
 
 /** Estados válidos del veredicto (para aserción de que fue COMPUTADO, no de que aprobó). */
 const ESTADOS_VALIDOS: readonly EstadoTarea[] = [
@@ -199,6 +204,11 @@ const DEBE_SALTAR = !TIENE_INCUMBENTE || !TIENE_CANDIDATO;
           const fetchFn = instrumentedFetch(fetch, (m) => muestras.push(m));
           const phiJudge = new PhiJudge({
             apiKey: process.env.OPENROUTER_API_KEY!,
+            baseURL: ENDPOINT_OPENROUTER,
+            model: MODELO_PHI_JUEZ,
+            // PROMPT-FORZADO + zod: `microsoft/phi-4` no soporta forced tool_choice en
+            // OpenRouter (HTTP 404 "no endpoints support tool use").
+            structuredMode: "prompt",
             fetchFn,
           });
           metricasJuez = await medirJuezVsHumano(phiJudge);
