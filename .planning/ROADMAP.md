@@ -97,11 +97,28 @@ Notas de secuencia: el inventario 113 es load-bearing — sin él las fases de l
 **Plans**: 6 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 113-01-PLAN.md — (w1) Método + 5 sujetos deterministas por SQL + gates observados + script de checklist
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 113-02-PLAN.md — (w2) Chrome compartido + catálogo de emisores E-NNN
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 113-06-PLAN.md — (w3) Chokepoints (ProvenanceBadge DUAL + safeExternalHref), 4 builders, URL-desde-columna
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 113-03-PLAN.md — (w4) Rutas dinámicas densas: /parlamentario/[id], /proyecto/[boletin], /contraparte/[id]
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 113-04-PLAN.md — (w5) 12 rutas restantes + not-found + Tabla D de cobertura
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 113-05-PLAN.md — (w6) Gate de cierre: checklist estricto + validador Opus independiente (7 criterios, 2 rondas)
 
 ### Phase 114: LINK-INT — Links internos exhaustivos
