@@ -34,6 +34,9 @@ export type { DiputadoBio, MilitanciaBio } from "./parse-diputados";
 // Parser de senadores (BCN SPARQL → militancia, enlace fail-closed por nombre) + fallback ficha.
 export {
   parseBcnSenadores,
+  parseBcnSenadoresConReporte,
+  resolverPartido,
+  PARTIDO_URI_A_LABEL,
   enlazarSenadores,
   enlazarSenadoresPorParlid,
   buildSparqlUrl,
@@ -44,6 +47,7 @@ export {
 } from "./parse-bcn-senadores";
 export type {
   SenadorMilitancia,
+  ParseSenadoresResult,
   EnlaceSenadoresResult,
   SparqlResults,
 } from "./parse-bcn-senadores";
