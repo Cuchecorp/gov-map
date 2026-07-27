@@ -8,7 +8,7 @@
 
 ### Links
 
-- [ ] **LINK-01**: Existe un inventario rector de superficies (toda ruta pública × links que emite, internos y externos) como artefacto del milestone
+- [x] **LINK-01**: Existe un inventario rector de superficies (toda ruta pública × links que emite, internos y externos) como artefacto del milestone
 - [ ] **LINK-02**: Todo link interno del sitio resuelve (cero 404, cero anchors rotos) — verificado exhaustivo sobre el deploy real
 - [ ] **LINK-03**: Todo patrón de link externo a fuente (camara.cl, senado.cl, BCN, leylobby) queda validado por construcción + muestra live estratificada por tipo (rate-limit 2-3s/host), con hallazgos corregidos
 
@@ -58,7 +58,7 @@ Mapeado por el roadmap v12.0 (Phases 113-125). Coverage 13/13 — cero huérfano
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LINK-01 | Phase 113 — INV inventario rector de superficies | Pending |
+| LINK-01 | Phase 113 — INV inventario rector de superficies | Complete |
 | LINK-02 | Phase 114 — LINK-INT links internos exhaustivos | Pending |
 | LINK-03 | Phase 115 — LINK-EXT patrones de link a fuente oficial | Pending |
 | FECHA-01 | Phase 116 — FECHA-AUDIT semántica de cada fecha visible | Pending |

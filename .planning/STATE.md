@@ -4,13 +4,13 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: executing
 stopped_at: Completed 106-03-PLAN.md
-last_updated: "2026-07-27T22:55:54.952Z"
-last_activity: 2026-07-27 -- Phase 113 planning complete
+last_updated: "2026-07-27T23:07:03.354Z"
+last_activity: 2026-07-27
 progress:
   total_phases: 13
   completed_phases: 0
   total_plans: 6
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** v12.0 planificado — 13 fases (113-125) en 4 carriles: inventario+links+fechas (113-117), crons+escalera (118-121), cruces (122), Supabase (123-124), cierre E2E (125). Próximo: `/gsd:plan-phase 113`.
+**Current focus:** Phase 113 — INV — Inventario rector de superficies
 
 ## Current Position
 
-Phase: 113 — INV inventario rector de superficies (not started)
-Plan: —
+Phase: 113 (INV — Inventario rector de superficies) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-07-27 -- Phase 113 planning complete
+Last activity: 2026-07-27
 
 ### Roadmap v12.0 (Phases 113-125)
 
@@ -130,6 +130,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 107 P107-02 | 7min | 3 tasks | 6 files |
 | Phase 107 P107-03 | 9min | 1 tasks | 3 files |
 | Phase 108 P02 | 15 | 2 tasks | 6 files |
+| Phase 113 P01 | 45m | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -220,6 +221,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 107-03: VEREDICTO LIVE runner (candidatos.live.test.ts) env-gated LLM_BENCH_LIVE + it.skipIf(DEEPSEEK incumbent AND candidate WORKERS_AI/OPENROUTER); same-run DeepSeek incumbent (WARNING-1 pinned baseline); PhiJudge-vs-human (OpenRouter); computarVeredicto per-task asserts provenance + verdict COMPUTED NEVER approval. Candidate keys ABSENT -> VEREDICTO=PENDING-EVIDENCE (outcome VALIDO v7/v9/v10); checkpoint operador surfaceado sin provision; agente NO cargo secreto ni corrio red. CI verde 124/3-skip, tsc 0, .env.example intacto. Handoff 107-OPERATOR-HANDOFF.md.
 
 - [Phase 110] PASADA 3 P4a: live read-only PROD check RESOLVIÓ la contradicción de migraciones — 0053/0054 YA aplicadas (v8.1), solo 0052 faltaba. 0052 APLICADA a PROD (psql --single-transaction, 3 pre-checks fail-closed: nombre constraint / lobby_sector_aporte ABSENTE / MONEY OFF) + pgTAP 7/7 ok contra schema aplicado + count(lobby_sector_aporte)=0 honesto (arista empresa→sector ausente + RUT-01/backfill pendientes, NO bug; materializar_cruces NO invocado manual). 0053/0054 verify-only no-op. V7-07 (CF secrets CLOUDFLARE_API_TOKEN/ACCOUNT_ID ausentes en Cuchecorp/gov-map + rotación B26) = DEUDA OPERADOR diferida por decisión del operador (steps en 110-02-OPERATOR-CHECKPOINT.md; agente NUNCA cargó valor ni rotó). schema_migrations en PROD llega a 0072.
+- [Phase ?]: 113-01: deploy auditado anclado por fecha/hora; contraparte NO elegida (contrato/aporte 0 filas + gate MONEY)
 
 ### Pending Todos
 
@@ -280,7 +282,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-27T15:31:46.360Z
+Last session: 2026-07-27T23:06:59.379Z
 Stopped at: Completed 106-03-PLAN.md
 Resume file: None
 

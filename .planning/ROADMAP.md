@@ -99,7 +99,7 @@ Notas de secuencia: el inventario 113 es load-bearing — sin él las fases de l
 Plans:
 **Wave 1**
 
-- [ ] 113-01-PLAN.md — (w1) Método + 5 sujetos deterministas por SQL + gates observados + script de checklist
+- [x] 113-01-PLAN.md — (w1) Método + 5 sujetos deterministas por SQL + gates observados + script de checklist
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -310,7 +310,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 113. INV | 0/? | Not started | - |
+| 113. INV | 1/6 | In Progress|  |
 | 114. LINK-INT | 0/? | Not started | - |
 | 115. LINK-EXT | 0/? | Not started | - |
 | 116. FECHA-AUDIT | 0/? | Not started | - |
