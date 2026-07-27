@@ -580,7 +580,9 @@ Step 2.6: SKIPPED — no external dependencies. Workers AI and OpenRouter keys a
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Ambas resueltas en los planes 108-01/108-02: (1) el juez corre SIEMPRE tras el intento de tier-0 (Pitfall 4 RECOMENDADO — fija en 108-02 Task 1 step 4); (2) el cost-tracking del budget cap se hace vía `costPerToken?: number` en `TierSpec` (interfaces de 108-01; consumido en 108-02 Task 1 step 6).
 
 1. **When does the judge fire — always or only on failure?**
    - What we know: CONTEXT says "escalación disparada por veredicto de juez o fallo zod" — both are triggers.
