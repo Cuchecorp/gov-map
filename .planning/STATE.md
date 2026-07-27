@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: — Capa LLM escalonada + cierre de deuda viva
-status: executing
-stopped_at: Completed Phase 111 (PASADA 3)
+status: verifying
+stopped_at: Completed Phase 112 (PASADA 3) — milestone lifecycle next
 last_updated: "2026-07-27T00:00:00.000Z"
 last_activity: 2026-07-27
 progress:
   total_phases: 8
-  completed_phases: 7
-  total_plans: 20
-  completed_plans: 17
-  percent: 88
+  completed_phases: 8
+  total_plans: 21
+  completed_plans: 21
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** PASADA 3 (V7GATES) — Phase 112 (cold-reads + flip MONEY + audit/complete v7.0 + cierre quick tasks) next; 110+111 CLOSED (agent halves; operator LIVE debt deferred)
+**Current focus:** PASADA 3 CERRADA (110-112 completas). Milestone lifecycle: audit v11.0 → complete v7.0 + v11.0 → cleanup → tag → push.
 
 ## Current Position
 
-Phase: 112 (V7GATES P4c — cold-reads + flip MONEY + audit/complete v7.0 + cierre quick tasks) — NEXT
-Plan: n/a (pending discuss+plan)
-Status: Phase 111 complete (agent prep+verify done; RUT-01+backfills LIVE = deferred operator debt)
+Phase: 112 COMPLETE (última de v11.0). MONEY OFF honesto; 5 quick tasks CERRADAS.
+Plan: n/a
+Status: v11.0 fases 105-112 completas. Deuda operador diferida documentada (secrets/rotación 110; RUT-01+backfills 111; MONEY flip+legal 112).
 Last activity: 2026-07-27
+
+### Quick tasks CERRADAS (QT-01, Phase 112)
+- 260623-rtl (loadEnv CI-safe) · 260702-rbb (B20/B21 NET /red) · 260713-izo (/red layout B) · 260715-bvd (Dependabot ×3) · 260722-eia (deep-links+urgencia). Marcador CLOSED-v11.0.md en cada dir.
 
 ## Performance Metrics
 
