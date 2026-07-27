@@ -1,0 +1,18 @@
+{
+  "hash": "0dc7bd5bec4e79fc333901f6f9ca8573ada6a2b2d854537bf8d24d2674fd9703",
+  "fecha": "2026-07-27",
+  "n_casos": 40,
+  "estratos": [
+    "adversario",
+    "archaic",
+    "bcn",
+    "camara",
+    "long",
+    "modern",
+    "negacion",
+    "scanned-pdf",
+    "senado",
+    "short",
+    "xml-clean"
+  ]
+}

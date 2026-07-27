@@ -1,0 +1,5 @@
+[
+  { "id": "ex01-extraccion", "textoFuente": "El presente proyecto tiene por objeto establecer normas sobre eficiencia energética, modificando la Ley N° 20.571.", "expected": { "idea_matriz_substring": "establecer normas sobre eficiencia energética", "cuerpos": [{ "norma": "Ley N° 20.571", "articulos": [] }] } },
+  { "id": "ex02-extraccion", "textoFuente": "Artículo 1°.- Reemplázase, en el artículo 2, la expresión 'quince días' por 'treinta días'.", "expected": { "idea_matriz_substring": null, "cuerpos": [] } },
+  { "id": "ex03-extraccion-negacion", "textoFuente": "El proyecto tiene por objeto que no serán embargables las herramientas de trabajo del deudor, modificando el Código de Procedimiento Civil.", "expected": { "idea_matriz_substring": "no serán embargables las herramientas de trabajo del deudor", "cuerpos": [{ "norma": "Código de Procedimiento Civil", "articulos": [] }] } }
+]
