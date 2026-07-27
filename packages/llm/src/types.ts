@@ -40,6 +40,15 @@ export interface CompletionRequest {
    */
   temperature?: number;
   /**
+   * Etiqueta OPCIONAL de la tarea lógica (p.ej. "extraccion", "clasificacion",
+   * "routing"). ADITIVO: su AUSENCIA reproduce el comportamiento actual byte-por-byte;
+   * los adapters concretos (DeepSeek/MiniMax/Granite/PhiJudge) lo IGNORAN por completo.
+   * Solo lo consume `TieredProvider` para seleccionar la escalera de tiers correcta
+   * (LadderConfig) cuando existen múltiples escaleras registradas en un `TaskLadder`.
+   * TIER-02, Decision D "task aditivo".
+   */
+  task?: string;
+  /**
    * Observador OPCIONAL del desenlace estructural del repair loop (CR-01). ADITIVO:
    * `undefined` en TODOS los callers de produccion → CERO cambio de comportamiento.
    * Lo usa el harness de benchmark (@obs/llm-bench) para recuperar el outcome REAL
