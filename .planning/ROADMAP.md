@@ -205,7 +205,7 @@ Plans:
 
 - [x] 109-01-PLAN.md — provider-guard + integ-scope-guard (PRIMER COMMIT, lockdown-guard-first) [INTEG-02]
 - [x] 109-02-PLAN.md — swap CLI a TieredProvider (default incumbente) + golden gate CI permanente [INTEG-01, INTEG-03]
-- [ ] 109-03-PLAN.md — shadow-eval + rollback-por-config assert + drift canary (LIVE-gated) [INTEG-01, INTEG-03]
+- [x] 109-03-PLAN.md — shadow-eval + rollback-por-config assert + drift canary (LIVE-gated) [INTEG-01, INTEG-03]
 
 ### Phase 110: V7GATES P4a — Applies delegables 0052-0054 + CI/secrets + rotación B26
 
