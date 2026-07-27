@@ -67,8 +67,9 @@ const TAREAS: readonly TaskId[] = ["routing", "clasificacion", "juez", "extracci
  * tarea aporta su escalar canónico: routing/clasificación cobertura, juez recall-de-rechazo (el
  * eje que expone al sello-de-goma), extracción value.precision (el eje de fabricación). Devuelve
  * `null` cuando la métrica está ausente o el escalar no es un número (sin números vivos).
+ * Exportada para prueba directa del fail-safe de TaskId desconocido (WR-03).
  */
-function escalarDeCalidad(task: TaskId, metrica: unknown): number | null {
+export function escalarDeCalidad(task: TaskId, metrica: unknown): number | null {
   if (metrica == null || typeof metrica !== "object") return null;
   switch (task) {
     case "routing": {
@@ -86,6 +87,15 @@ function escalarDeCalidad(task: TaskId, metrica: unknown): number | null {
     case "extraccion": {
       const v = (metrica as MetricasExtraccion).value?.precision;
       return typeof v === "number" ? v : null;
+    }
+    // WR-03: FAIL-SAFE ante un TaskId futuro/desconocido. La asignación a `never`
+    // rompe la compilación si se agrega una tarea a `TaskId` sin case aquí (aviso
+    // LOUD en build). En runtime devuelve `null` → el llamador lo mapea a
+    // pending-evidence (NUNCA un pase/aprobación silenciosa vía undefined→NaN).
+    default: {
+      const _exhaustive: never = task;
+      void _exhaustive;
+      return null;
     }
   }
 }

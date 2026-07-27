@@ -9,6 +9,7 @@ import { describe, it, expect } from "vitest";
 import {
   computarVeredicto,
   computarVeredictoDeReporte,
+  escalarDeCalidad,
   EPSILON_POR_TAREA,
   type Veredicto,
 } from "./veredicto";
@@ -170,5 +171,16 @@ describe("veredicto — tasa de fallo es gate de primera clase", () => {
     const cand = modelo({ modelo: "zod-peor", zod_terminal: incumbente.zod_fail_rate.terminal + 0.2 });
     const v = computarVeredicto(cand, incumbente);
     expect(v.juez.estado).toBe("incumbent-stays");
+  });
+});
+
+describe("veredicto — escalarDeCalidad fail-safe ante TaskId desconocido (WR-03)", () => {
+  it("un TaskId futuro/desconocido → null (NO undefined) → el llamador lo trata como pending-evidence", () => {
+    // Simula que se agregó una quinta tarea a `TaskId` sin actualizar el switch: el
+    // default DEBE devolver `null`, jamás `undefined` (undefined → NaN → wrong incumbent-stays).
+    const desconocida = "tarea-futura" as unknown as TaskId;
+    const escalar = escalarDeCalidad(desconocida, { cobertura: 0.99 });
+    expect(escalar).toBeNull();
+    expect(escalar).not.toBeUndefined();
   });
 });
