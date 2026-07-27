@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: — Capa LLM escalonada + cierre de deuda viva
-status: verifying
-stopped_at: Completed 106-03-PLAN.md
-last_updated: "2026-07-27T15:31:46.370Z"
+status: executing
+stopped_at: Completed Phase 110 (PASADA 3)
+last_updated: "2026-07-27T00:00:00.000Z"
 last_activity: 2026-07-27
 progress:
   total_phases: 8
-  completed_phases: 2
-  total_plans: 17
-  completed_plans: 14
-  percent: 25
+  completed_phases: 6
+  total_plans: 19
+  completed_plans: 16
+  percent: 75
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 109 — INTEG P3 — Integrar clasificación tras golden gate verde
+**Current focus:** PASADA 3 (V7GATES) — Phase 111 (RUT-01 + backfills LIVE) next; Phase 110 CLOSED (agent half)
 
 ## Current Position
 
-Phase: 109 (INTEG P3 — Integrar clasificación tras golden gate verde) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 111 (V7GATES P4b — RUT-01 + backfills LIVE votos+dinero) — NEXT
+Plan: n/a (pending discuss+plan)
+Status: Phase 110 complete (V7-01 closed; V7-07 = deferred operator debt)
 Last activity: 2026-07-27
 
 ## Performance Metrics
@@ -207,9 +207,13 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 107-02: sub-métrica es-CL negacion{total,correctas,accuracy} ADITIVA al scorer de extracción (casos.json+sha256 INTACTOS); correctas ride la MISMA regla de substring literal de idea_matriz. VEREDICTO puro ε-gated (EPSILON_POR_TAREA explícito, extracción la más estricta 0.01) con VETO DURO es-CL que lee negacion.accuracy INDEPENDIENTE de value.precision y CORTOCIRCUITA antes del gate agregado; fixture load-bearing: mejor precision/recall pero peor negacion.accuracy = VETADO. Ausencia de métrica -> pending-evidence; 'nada aprueba' expresable; fallo=gate primera clase. Puente PhiJudge->JuzgarFn (ok->bool, throw->null WR-04) vs human_label, hooks ejercitados; CI mock, LIVE=Plan 03.
 - [Phase ?]: 107-03: VEREDICTO LIVE runner (candidatos.live.test.ts) env-gated LLM_BENCH_LIVE + it.skipIf(DEEPSEEK incumbent AND candidate WORKERS_AI/OPENROUTER); same-run DeepSeek incumbent (WARNING-1 pinned baseline); PhiJudge-vs-human (OpenRouter); computarVeredicto per-task asserts provenance + verdict COMPUTED NEVER approval. Candidate keys ABSENT -> VEREDICTO=PENDING-EVIDENCE (outcome VALIDO v7/v9/v10); checkpoint operador surfaceado sin provision; agente NO cargo secreto ni corrio red. CI verde 124/3-skip, tsc 0, .env.example intacto. Handoff 107-OPERATOR-HANDOFF.md.
 
+- [Phase 110] PASADA 3 P4a: live read-only PROD check RESOLVIÓ la contradicción de migraciones — 0053/0054 YA aplicadas (v8.1), solo 0052 faltaba. 0052 APLICADA a PROD (psql --single-transaction, 3 pre-checks fail-closed: nombre constraint / lobby_sector_aporte ABSENTE / MONEY OFF) + pgTAP 7/7 ok contra schema aplicado + count(lobby_sector_aporte)=0 honesto (arista empresa→sector ausente + RUT-01/backfill pendientes, NO bug; materializar_cruces NO invocado manual). 0053/0054 verify-only no-op. V7-07 (CF secrets CLOUDFLARE_API_TOKEN/ACCOUNT_ID ausentes en Cuchecorp/gov-map + rotación B26) = DEUDA OPERADOR diferida por decisión del operador (steps en 110-02-OPERATOR-CHECKPOINT.md; agente NUNCA cargó valor ni rotó). schema_migrations en PROD llega a 0072.
+
 ### Pending Todos
 
 Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
+
+- [Phase 110 DEUDA OPERADOR — blocking-human diferido]: (SC2) cargar `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` como GH secrets en Cuchecorp/gov-map (hoy AUSENTES) + verificar billing GH Actions; (SC3) rotar DB password B26 (Supabase Dashboard → Settings → Database → Reset), re-cargar solo `SUPABASE_DB_URL` en `.env` local, confirmar url-vieja-FALLA / url-nueva-devuelve-1 / CI+sitio verdes. Steps zero-credential-value en `110-02-OPERATOR-CHECKPOINT.md`. Resume: "cargado y rotado" con resultados.
 
 ### Blockers/Concerns
 
