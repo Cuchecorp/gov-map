@@ -40,8 +40,25 @@ export interface MockProviderOptions {
   trainsOnInputs?: boolean;
   /** Latencia sintética por llamada en ms (default: 0). */
   latencyMs?: number | ((callCount: number) => number);
-  /** Sink de telemetría al que emitir un TelemetryEvent por llamada (opcional). */
+  /**
+   * Sink de telemetría al que emitir un TelemetryEvent SINTÉTICO por llamada (opcional).
+   *
+   * (WR-06) FOOTGUN: la capa de emisión autoritativa es `TieredProvider`, NO el mock. Si
+   * un test inyectara el MISMO sink en el mock Y en el TieredProvider, el sink recibiría
+   * eventos MEZCLADOS (uno sintético `clean`/`escalated:false` del mock por CADA llamada de
+   * tier, más el evento real de la cascada) y las aserciones "emite exactamente 1
+   * TelemetryEvent" pasarían vacuamente o medirían el evento equivocado. Por eso la emisión
+   * del mock es OPT-IN explícito (`emitTelemetry: true`) y NUNCA debe compartir sink con el
+   * TieredProvider bajo prueba.
+   */
   telemetrySink?: TelemetrySink;
+  /**
+   * (WR-06) Interruptor EXPLÍCITO para que el mock emita su TelemetryEvent sintético al
+   * `telemetrySink`. Default `false`: incluso con un sink inyectado, el mock NO emite salvo
+   * que se pida a propósito — evita que eventos sintéticos enmascaren los reales del
+   * TieredProvider (la autoridad de emisión).
+   */
+  emitTelemetry?: boolean;
   /** Costo por token de output en USD (para costUsd sintético, undefined → null). */
   costPerToken?: number;
   /** Tokens de output sintéticos por llamada (default: 120). */
@@ -83,7 +100,9 @@ export class MockProvider implements LLMProvider {
     const bruto = this.responder(req, schema as ZodType<unknown>);
     const result = schema.parse(bruto);
 
-    if (this.opts.telemetrySink) {
+    // (WR-06) Emisión sintética SOLO si se pide explícitamente (`emitTelemetry: true`).
+    // Sin el opt-in, el mock nunca emite — la autoridad de telemetría es TieredProvider.
+    if (this.opts.telemetrySink && this.opts.emitTelemetry === true) {
       const completionTokens = this.opts.completionTokens ?? 120;
       const costUsd =
         this.opts.costPerToken != null
