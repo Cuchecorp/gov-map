@@ -1,0 +1,5 @@
+[
+  { "id": "jex01", "answer": "sector: salud — fortalece la atención primaria de salud", "human_label": true, "nota": "few-shot: answer correcta, el juez debe decir OK" },
+  { "id": "jex02", "answer": "sector: tecnologia — proyecto que crea un feriado legal irrenunciable", "human_label": false, "nota": "few-shot: answer incorrecta, el juez debe rechazar" },
+  { "id": "jex03", "answer": "idea: será aplicable la exención (negación caída del texto original)", "human_label": false, "nota": "few-shot: negación caída → rechazo" }
+]

@@ -1,0 +1,31 @@
+{
+  "hash": "f7636de2bb4f2f98a75e134a520d88ffcccef6716fce82de3e875b12cd593bf8",
+  "fecha": "2026-07-27",
+  "n_casos": 40,
+  "estratos": [
+    "adversario",
+    "alucinacion",
+    "ambiente",
+    "banca",
+    "calibracion",
+    "clasif",
+    "deshonesta",
+    "educacion",
+    "error",
+    "extraccion",
+    "idea",
+    "mineria",
+    "negacion",
+    "null",
+    "parafrasis",
+    "pareado",
+    "pesca",
+    "salud",
+    "scoring",
+    "seguridad",
+    "sobreextendido",
+    "trabajo",
+    "transporte",
+    "vivienda"
+  ]
+}
