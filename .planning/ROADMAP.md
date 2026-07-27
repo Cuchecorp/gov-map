@@ -181,7 +181,11 @@ Plans:
   3. La telemetría por llamada (modelo, tarea, latencia, costo, veredicto, escalación) NO incluye payload ni PII en logs, y la escalación está ACOTADA (1 hop/tier, presupuesto máximo por ítem, estado terminal de revisión humana — sin loops)
   4. El ruteo ocurre ENTRE pipelines, nunca a mitad de sesión — la economía del prompt-cache DeepSeek en fichas queda intacta (verificable: `prompt_cache_hit_tokens` no regresiona)
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 108-01-PLAN.md — Contratos: CompletionRequest.task aditivo + telemetry.ts payload-free + task-ladder.ts config + MockProvider local + barrel
+- [ ] 108-02-PLAN.md — TieredProvider decorador (cascada acotada respond→validate→escalate, juez ESCALATE-ONLY, RUT-guard, budget) + suite MockProvider + guard estructural TIER-05
 
 ### Phase 109: INTEG P3 — Integrar la tarea de MENOR RIESGO tras golden gate verde
 
