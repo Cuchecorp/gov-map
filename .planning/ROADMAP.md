@@ -119,7 +119,7 @@ Notas de secuencia: los adapters (TIER-01) se construyen como candidatos DURANTE
 Plans:
 
 - [x] 105-01-PLAN.md — Fix fail-closed del parser BCN (URI→label determinista, mapa con evidencia real) + tests
-- [ ] 105-02-PLAN.md — Re-corrida --from-r2 a PROD (cero URI verificado) + decisión partidoLegible() documentada (BCN-02)
+- [x] 105-02-PLAN.md — Re-corrida --from-r2 a PROD (cero URI verificado) + decisión partidoLegible() documentada (BCN-02)
 
 ### Phase 106: BENCH P1a — Harness `llm-bench` + golden sets es-CL POR TAREA (SPIKE, gate duro)
 

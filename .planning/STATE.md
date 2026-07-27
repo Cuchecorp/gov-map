@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: — Capa LLM escalonada + cierre de deuda viva
-status: executing
+status: verifying
 stopped_at: Completed 104-01-PLAN.md
-last_updated: "2026-07-27T00:07:58.304Z"
+last_updated: "2026-07-27T00:22:53.915Z"
 last_activity: 2026-07-27
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 105 (BCN parser senadores en ORIGEN + re-corrida) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-27
 
 ## Performance Metrics
@@ -111,6 +111,7 @@ Last activity: 2026-07-27
 | Phase 103 P103-05 | ~40 min | 3 tasks | 2 files |
 | Phase 104 P104-01 | ~8 min | 2 tasks | 1 files |
 | Phase 104 P104-03 | ~120min | 3 tasks | 7 files |
+| Phase 105 P105-02 | 11 min | 4 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -190,6 +191,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase 104] 104-01: gate pre-deploy verde — suite app 1418 (>1400 base 103) + 21 packages (~1310 tests) + tsc app/root EXIT 0 + 9 guards de régimen v10.0 individualmente verdes (268 tests: anti-insinuación 33, vsim/notif/money-antiflip 20 c/u, lockdown 22, bento 114, bento-coherencia 8, name-match-rut 15, env-example 16). Dossier VSIM firmado signoff:approved transcribiendo la autorización VERBATIM del operador de la corrida de cierre v10.0 ('Sí — firmar y flip ON', 2026-07-26): SOLO front-matter YAML editado (cuerpo del dossier byte-idéntico, 4 líneas cambiadas), .env.example intacto, VSIM anti-flip guard verde POST-firma (el flip VSIM_PUBLIC_ENABLED=true es deploy-time env var Worker Plan 104-02, NUNCA commiteado). El agente DOCUMENTA la autorización; el operador AUTORIZÓ. CERO deviación, cero fix emergente (árbol verde). Commit e0ff591. Gate pre-deploy CERRADO: Plan 02 procede sobre base sólida con flip legítimamente autorizado.
 - [Phase ?]: 104-03: E2E v10.0 verificado sobre el deploy real (v b467d41a). VSIM N/M == coincidencia_votos_par para 3 pares; '(100%)' de 3655/3672 es dossier-compliant (round firmado). 101-HUMAN-UAT cerrado 3/3.
 - [Phase ?]: 104-03: URI-como-partido (S1344, gap parser BCN Phase 90) corregido display-only con partidoLegible() en 3 chokepoints (PartidoChip/MilitanciasDeParlamentario/ParlamentariosFiltro) + 3 redeploys; clave de filtro serializada RAW por diseno; limpieza en origen = mejora datos futura.
+- [Phase ?]: 105-02: re-corrida militancias senadores --from-r2 a PROD (upsert 48 + DELETE acotado 3 filas URI-stale por patron); CERO URI en parlamentario_militancia Y parlamentario post-borrado. GOTCHA: PK id=S1344 pero parlid_senado=1344 numerico (query del plan por parlid_senado=S1344 da 0); testigo por patron URI. Cero omisiones (mapa 105-01 cubre 27 URIs). BCN-02: partidoLegible CONSERVADO defensa-en-profundidad (format.ts sin cambios). Suite bio 70/70 app 1428/1428 tsc 0.
 
 ### Pending Todos
 
@@ -245,7 +247,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-27T00:07:58.280Z
+Last session: 2026-07-27T00:22:32.251Z
 Stopped at: Completed 104-01-PLAN.md
 Resume file: None
 

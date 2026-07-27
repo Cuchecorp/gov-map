@@ -32,8 +32,8 @@
 
 ### BCN — Parser senadores en origen
 
-- [ ] **BCN-01**: El parser de `@obs/bio` resuelve `hasPoliticalParty` URI→label legible en ORIGEN (mapeo determinista, fail-closed ante URI desconocida) y la re-corrida de militancias deja cero URI-como-partido en las filas afectadas de PROD
-- [ ] **BCN-02**: `partidoLegible()` (cinturón display-only de 104-03) queda como defensa en profundidad o se retira, según evidencia post-re-corrida — decisión documentada
+- [x] **BCN-01**: El parser de `@obs/bio` resuelve `hasPoliticalParty` URI→label legible en ORIGEN (mapeo determinista, fail-closed ante URI desconocida) y la re-corrida de militancias deja cero URI-como-partido en las filas afectadas de PROD
+- [x] **BCN-02**: `partidoLegible()` (cinturón display-only de 104-03) queda como defensa en profundidad o se retira, según evidencia post-re-corrida — decisión documentada
 
 ### V7GATES — Pasada de cierre de gates v7.0 (con operador en la corrida)
 
@@ -87,8 +87,8 @@
 | INTEG-01 | Phase 109 | Pending |
 | INTEG-02 | Phase 109 | Pending |
 | INTEG-03 | Phase 109 | Pending |
-| BCN-01 | Phase 105 | Pending |
-| BCN-02 | Phase 105 | Pending |
+| BCN-01 | Phase 105 | Complete |
+| BCN-02 | Phase 105 | Complete |
 | V7-01 | Phase 110 | Pending |
 | V7-07 | Phase 110 | Pending |
 | V7-02 | Phase 111 | Pending |
@@ -100,12 +100,14 @@
 | QT-01 | Phase 112 | Pending |
 
 **Coverage:**
+
 - v11.0 requirements: 24 total
 - Mapped to phases (105-112): 24/24 ✓
 - Unmapped: 0
 - Duplicates: 0
 
 **Phase distribution:**
+
 - Phase 105 (BCN parser en origen): BCN-01, BCN-02
 - Phase 106 (BENCH harness + golden sets): BENCH-01, BENCH-02, BENCH-03
 - Phase 107 (BENCH adapters + juez + veredicto): BENCH-04, BENCH-05, TIER-01
