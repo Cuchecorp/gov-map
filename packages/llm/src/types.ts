@@ -7,6 +7,7 @@
  * estas interfaces; el router selecciona por (criticidad, sensibilidad).
  */
 import type { ZodType } from "zod";
+import type { ValidationOutcome } from "./validate";
 
 /**
  * Criticidad de la tarea. Decide el TIER de provider, no el volumen per se:
@@ -38,6 +39,15 @@ export interface CompletionRequest {
    * Usar baja/0 para adjudicacion determinista (A1, @obs/adjudication).
    */
   temperature?: number;
+  /**
+   * Observador OPCIONAL del desenlace estructural del repair loop (CR-01). ADITIVO:
+   * `undefined` en TODOS los callers de produccion → CERO cambio de comportamiento.
+   * Lo usa el harness de benchmark (@obs/llm-bench) para recuperar el outcome REAL
+   * (clean / zod-repaired / structured-output-fail / zod-terminal) del camino de
+   * produccion en vez de sintetizarlo. Observador puro: no altera nada. Solo lleva
+   * info estructural (nunca prompt/secreto — espeja LLMValidationError).
+   */
+  onValidationOutcome?: (o: ValidationOutcome) => void;
 }
 
 /**

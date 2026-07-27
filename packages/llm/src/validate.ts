@@ -16,6 +16,29 @@
 import type { ZodIssue, ZodType } from "zod";
 
 /**
+ * Desenlace ESTRUCTURAL del repair loop, expuesto ADITIVAMENTE para observadores
+ * externos (p.ej. el harness de benchmark). Espeja el flujo de `parseAndValidate`
+ * SIN alterarlo: es un observador puro, jamas cambia el control de flujo.
+ *
+ * Misma disciplina de privacidad que `LLMValidationError`: solo lleva informacion
+ * ESTRUCTURAL (kind, conteo de intentos, issues zod) — NUNCA el prompt, la respuesta
+ * cruda ni credenciales.
+ *
+ * - `clean`: valido en el intento 0, sin reparacion.
+ * - `zod-repaired`: valido solo tras >= 1 reprompt (`attempts` = # de intentos que
+ *   corrieron, es decir el indice del intento que validó, > 0).
+ * - `structured-output-fail`: se agotaron los intentos y el ULTIMO payload no era
+ *   parseable (JSON.parse -> undefined): el modelo no logro emitir estructura alguna.
+ * - `zod-terminal`: se agotaron los intentos con un payload parseable que fallo el
+ *   schema (issues zod reales).
+ */
+export type ValidationOutcome =
+  | { kind: "clean" }
+  | { kind: "zod-repaired"; attempts: number }
+  | { kind: "structured-output-fail" }
+  | { kind: "zod-terminal"; issues: ZodIssue[] };
+
+/**
  * Error de validacion terminal: la salida del LLM no paso el schema tras agotar
  * los reintentos. El message es GENERICO y el objeto solo lleva los issues zod;
  * jamas incluye el prompt ni credenciales (T-02-03).
@@ -57,6 +80,13 @@ export interface ValidateContext {
   reprompt: (errors: string) => Promise<string | undefined>;
   /** Maximo de reintentos (reprompts) antes de lanzar LLMValidationError. */
   maxAttempts: number;
+  /**
+   * Observador OPCIONAL del desenlace estructural del repair loop. Se invoca EXACTAMENTE
+   * una vez, en el punto terminal (exito o antes de lanzar). ADITIVO: `undefined` en
+   * todos los callers de produccion → CERO cambio de comportamiento. Observador puro:
+   * NO altera el control de flujo. Solo lleva info estructural (nunca prompt/secreto).
+   */
+  onOutcome?: (o: ValidationOutcome) => void;
 }
 
 function safeJsonParse(raw: string | undefined): unknown {
@@ -102,9 +132,23 @@ export async function parseAndValidate<T>(
     const parsed = safeJsonParse(current);
     const result = schema.safeParse(parsed);
     if (result.success) {
+      // Observador ADITIVO (CR-01): distingue clean (intento 0) de zod-repaired
+      // (validó tras >= 1 reprompt). No altera el control de flujo.
+      ctx.onOutcome?.(
+        attempt === 0 ? { kind: "clean" } : { kind: "zod-repaired", attempts: attempt },
+      );
       return result.data;
     }
     if (attempt === maxAttempts) {
+      // Terminal. El observador distingue el fallo de STRUCTURED-OUTPUT (el ultimo
+      // payload no era parseable: JSON.parse/tool-call -> undefined, el modelo no
+      // logro estructurar nada) del fallo ZOD (payload parseable que no paso el
+      // schema, con issues reales). Espeja el mismo criterio que 106/metrics.ts.
+      ctx.onOutcome?.(
+        parsed === undefined
+          ? { kind: "structured-output-fail" }
+          : { kind: "zod-terminal", issues: result.error.issues },
+      );
       throw new LLMValidationError(result.error.issues);
     }
     const errorMsg = formatIssues(result.error.issues);

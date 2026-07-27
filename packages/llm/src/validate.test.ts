@@ -5,6 +5,7 @@ import {
   LLMValidationError,
   MAX_REPAIR_ATTEMPTS_CEILING,
   parseAndValidate,
+  type ValidationOutcome,
 } from "./validate";
 
 const schema = z.object({
@@ -86,6 +87,77 @@ describe("parseAndValidate", () => {
     const data = await parseAndValidate(schema, VALID, { reprompt, maxAttempts: -1 });
     expect(data).toEqual({ decision: "match", confidence: 0.9 });
     expect(reprompt).not.toHaveBeenCalled();
+  });
+});
+
+// CR-01: el observador ADITIVO `onOutcome` recupera el desenlace ESTRUCTURAL real
+// del repair loop (clean / zod-repaired / structured-output-fail / zod-terminal) sin
+// alterar el control de flujo. Es la senal que el harness de benchmark usa para no
+// sintetizar el outcome.
+describe("parseAndValidate — onOutcome (ValidationOutcome, CR-01)", () => {
+  const NO_PAYLOAD = "{no es json"; // JSON.parse -> undefined
+
+  it("valido en el intento 0 -> emite { kind: 'clean' } exactamente una vez", async () => {
+    const outcomes: ValidationOutcome[] = [];
+    await parseAndValidate(schema, VALID, {
+      reprompt: async () => undefined,
+      maxAttempts: 1,
+      onOutcome: (o) => outcomes.push(o),
+    });
+    expect(outcomes).toEqual([{ kind: "clean" }]);
+  });
+
+  it("valido solo tras un reprompt -> { kind: 'zod-repaired', attempts: 1 }", async () => {
+    const outcomes: ValidationOutcome[] = [];
+    await parseAndValidate(schema, MISSING_FIELD, {
+      reprompt: async () => VALID,
+      maxAttempts: 1,
+      onOutcome: (o) => outcomes.push(o),
+    });
+    expect(outcomes).toEqual([{ kind: "zod-repaired", attempts: 1 }]);
+  });
+
+  it("payload parseable que nunca pasa el schema -> { kind: 'zod-terminal', issues }", async () => {
+    const outcomes: ValidationOutcome[] = [];
+    let caught: unknown;
+    try {
+      await parseAndValidate(schema, MISSING_FIELD, {
+        reprompt: async () => MISSING_FIELD, // parseable, pero siempre invalido
+        maxAttempts: 1,
+        onOutcome: (o) => outcomes.push(o),
+      });
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(LLMValidationError);
+    expect(outcomes).toHaveLength(1);
+    expect(outcomes[0]!.kind).toBe("zod-terminal");
+    const o = outcomes[0] as Extract<ValidationOutcome, { kind: "zod-terminal" }>;
+    expect(o.issues.length).toBeGreaterThan(0);
+  });
+
+  it("nunca hay payload parseable -> { kind: 'structured-output-fail' } (NO zod-terminal)", async () => {
+    const outcomes: ValidationOutcome[] = [];
+    let caught: unknown;
+    try {
+      await parseAndValidate(schema, NO_PAYLOAD, {
+        reprompt: async () => NO_PAYLOAD, // el modelo nunca estructura nada
+        maxAttempts: 1,
+        onOutcome: (o) => outcomes.push(o),
+      });
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(LLMValidationError);
+    expect(outcomes).toEqual([{ kind: "structured-output-fail" }]);
+  });
+
+  it("sin onOutcome (produccion) -> comportamiento identico, no lanza", async () => {
+    const data = await parseAndValidate(schema, VALID, {
+      reprompt: async () => undefined,
+      maxAttempts: 1,
+    });
+    expect(data).toEqual({ decision: "match", confidence: 0.9 });
   });
 });
 

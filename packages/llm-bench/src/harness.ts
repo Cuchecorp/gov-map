@@ -107,10 +107,17 @@ function reqPublico(user: string): CompletionRequest {
 }
 
 /**
- * Ejecuta una completion clasificando su OUTCOME para las fail-rates. Devuelve el valor validado
- * o `null` si la completion falló estructuralmente/terminó en error zod. NUNCA inventa calidad:
- * un fallo se contabiliza como outcome y devuelve null para que el scorer lo trate como el modo
- * de fallo nativo de su tarea (abstención/parse-fail), no como un acierto.
+ * Ejecuta una completion clasificando su OUTCOME real para las fail-rates. Devuelve el valor
+ * validado o `null` si la completion falló estructuralmente/terminó en error zod. NUNCA inventa
+ * calidad: un fallo se contabiliza como outcome y devuelve null para que el scorer lo trate como
+ * el modo de fallo nativo de su tarea (abstención/parse-fail), no como un acierto.
+ *
+ * CR-01: el outcome se RECUPERA del camino real del provider vía el observador aditivo
+ * `onValidationOutcome` — NO se sintetiza. Solo así se distingue `clean` de `zod-repaired`
+ * (una reparación es invisible desde fuera del provider) y `structured-output-fail` (el modelo no
+ * logró emitir payload) de `zod-terminal` (payload parseable que falló el schema): ambas colapsan
+ * a `LLMValidationError` en el throw, por lo que `instanceof` NO puede separarlas. Espejar el
+ * repair loop exige observarlo, no reimplementarlo.
  */
 async function completarClasificando<T>(
   provider: LLMProvider,
@@ -118,19 +125,36 @@ async function completarClasificando<T>(
   schema: z.ZodType<T>,
   outcomes: CallOutcome[],
 ): Promise<T | null> {
+  // El provider emite el desenlace estructural exactamente una vez (éxito o antes de lanzar).
+  // El `kind` de ValidationOutcome coincide 1:1 con CallOutcome.
+  let observed: CallOutcome | undefined;
+  const reqObservado: CompletionRequest = {
+    ...req,
+    onValidationOutcome: (o) => {
+      observed = o.kind;
+    },
+  };
   try {
-    const out = await provider.complete<T>(req, schema);
-    outcomes.push("clean");
+    const out = await provider.complete<T>(reqObservado, schema);
+    // Si el provider observó (clean|zod-repaired) lo usamos; si no emitió (provider legado que no
+    // soporta el observador pero devolvió con éxito) caemos a "clean" conservador.
+    outcomes.push(observed ?? "clean");
     return out;
   } catch (err) {
-    // Un LLMValidationError = se agotaron los intentos del repair loop (zod-terminal).
-    // Cualquier otro throw (incl. el mock que simula ausencia de payload) = structured-output-fail.
-    const rec = {
-      payloadUsableAttempt0: false,
-      repaired: false,
-      terminal: err instanceof LLMValidationError,
-    };
-    outcomes.push(clasificarOutcome(rec));
+    if (observed !== undefined) {
+      // El provider ya clasificó el fallo (structured-output-fail vs zod-terminal) — fuente de verdad.
+      outcomes.push(observed);
+    } else {
+      // Fallback para providers/mocks que lanzan SIN emitir outcome. Un LLMValidationError sin
+      // observación = terminal zod; cualquier otro throw (o mock que simula ausencia de payload) =
+      // structured-output-fail.
+      const rec = {
+        payloadUsableAttempt0: false,
+        repaired: false,
+        terminal: err instanceof LLMValidationError,
+      };
+      outcomes.push(clasificarOutcome(rec));
+    }
     return null;
   }
 }

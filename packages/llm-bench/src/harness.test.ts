@@ -8,7 +8,8 @@
  * providers distintos (host-agnóstico). NUNCA toca red.
  */
 import { describe, it, expect } from "vitest";
-import type { CompletionRequest } from "@obs/llm";
+import type { CompletionRequest, LLMProvider } from "@obs/llm";
+import { parseAndValidate } from "@obs/llm";
 import type { ZodType } from "zod";
 
 import { MockProvider } from "./mock-provider";
@@ -252,5 +253,118 @@ describe("harness — 'nada aprueba paridad' es construible + host-agnóstico", 
     );
     // Todas las llamadas de routing fallaron estructura → tasa > 0, VISIBLE en su campo separado.
     expect(m.structured_output_fail_rate).toBeGreaterThan(0);
+  });
+});
+
+// ── CR-01: el driver RECUPERA el outcome real del repair loop (no lo sintetiza) ──
+//
+// Estos tests MUERDEN el bug corregido: el driver colapsaba todo éxito a "clean" (nunca
+// zod-repaired) y todo LLMValidationError a "zod-terminal" (nunca structured-output-fail en el
+// camino terminal). Para ejercitar el camino REAL, el provider de abajo corre el MISMO
+// `parseAndValidate` de @obs/llm que corren DeepSeek/MiniMax — así emite `onValidationOutcome`
+// exactamente como producción; el harness lo OBSERVA en vez de adivinar.
+
+/** Tokens sintéticos por llamada (para que exista `n_muestras` sin red). */
+function sinkSintetico(muestras: CallMetric[]) {
+  return (_req?: unknown) => muestras.push({ latencyMs: 100, promptTokens: 10, completionTokens: 5 });
+}
+
+/**
+ * Provider de test que drive el REPAIR LOOP real de @obs/llm. Para la tarea de routing (schema
+ * `{ label }`) devuelve un GUION de respuestas crudas por intento (undefined = sin payload,
+ * string = JSON crudo); para las otras tres tareas responde oro para que el harness complete.
+ * Emite `onValidationOutcome` porque delega en `parseAndValidate` — igual que el adapter real.
+ */
+class ProviderRepairLoop implements LLMProvider {
+  readonly id = "repair-loop-test";
+  readonly trainsOnInputs = false;
+  private idx = 0;
+  constructor(
+    /** Respuestas crudas por intento para la tarea de routing (undefined = sin payload). */
+    private readonly guionRouting: (string | undefined)[],
+    private readonly sink: () => void,
+  ) {}
+
+  async complete<T>(req: CompletionRequest, schema: ZodType<T>): Promise<T> {
+    const shape = Object.keys((schema as unknown as { shape?: object }).shape ?? {});
+    // Rama routing: corre el repair loop real sobre el guión.
+    if (shape.includes("label")) {
+      let attempt = 0;
+      const next = (): string | undefined => {
+        this.sink();
+        const v = this.guionRouting[Math.min(attempt, this.guionRouting.length - 1)];
+        attempt++;
+        return v;
+      };
+      const first = next();
+      return parseAndValidate(schema, first, {
+        maxAttempts: 2,
+        onOutcome: req.onValidationOutcome,
+        reprompt: async () => next(),
+      });
+    }
+    // Ramas oro (clasif/extracción/juez): validan limpio, sin repair.
+    this.sink();
+    const oro =
+      shape.includes("sector_codigo")
+        ? { sector_codigo: null }
+        : shape.includes("idea_matriz")
+          ? { idea_matriz: null, cuerpos_legales: [] }
+          : { ok: false };
+    const out = schema.parse(oro);
+    req.onValidationOutcome?.({ kind: "clean" });
+    return out;
+  }
+}
+
+describe("harness — CR-01: outcome recuperado del repair loop real", () => {
+  it("routing que FALLA schema en el intento 0 y valida tras reprompt → zod-repaired (> 0)", async () => {
+    // Intento 0: JSON parseable pero inválido (label no está en el enum). Intento 1: válido.
+    const muestras: CallMetric[] = [];
+    const provider = new ProviderRepairLoop(
+      [JSON.stringify({ label: "NO_ES_UNA_ETIQUETA" }), JSON.stringify({ label: null })],
+      sinkSintetico(muestras),
+    );
+    const m = await correrHarness(
+      provider,
+      { modelo: "bench-mock", endpoint: "mock://local" },
+      { drenarMetricas: () => muestras.slice(), limitePorTarea: 1 },
+    );
+    // El bug hard-codeaba "clean" → repaired quedaba en 0. Ahora la reparación es VISIBLE.
+    expect(m.zod_fail_rate.repaired).toBeGreaterThan(0);
+    // Y NO se contabiliza como terminal ni como structured-output-fail.
+    expect(m.zod_fail_rate.terminal).toBe(0);
+  });
+
+  it("routing que NUNCA emite payload usable → structured-output-fail (NO zod-terminal)", async () => {
+    // Todos los intentos devuelven undefined (el modelo no logra estructurar nada).
+    const muestras: CallMetric[] = [];
+    const provider = new ProviderRepairLoop([undefined], sinkSintetico(muestras));
+    const m = await correrHarness(
+      provider,
+      { modelo: "bench-mock", endpoint: "mock://local" },
+      { drenarMetricas: () => muestras.slice(), limitePorTarea: 1 },
+    );
+    // El bug clasificaba esto como zod-terminal (instanceof LLMValidationError). Ahora es
+    // structured-output-fail, su campo SEPARADO — la señal que 107 usa para descartar un modelo
+    // que no sabe emitir estructura.
+    expect(m.structured_output_fail_rate).toBeGreaterThan(0);
+    expect(m.zod_fail_rate.terminal).toBe(0);
+  });
+
+  it("routing con payload parseable que NUNCA pasa el schema → zod-terminal (NO structured-output-fail)", async () => {
+    // Payload siempre parseable pero inválido en todos los intentos → terminal zod real.
+    const muestras: CallMetric[] = [];
+    const provider = new ProviderRepairLoop(
+      [JSON.stringify({ label: "INVALIDO" })],
+      sinkSintetico(muestras),
+    );
+    const m = await correrHarness(
+      provider,
+      { modelo: "bench-mock", endpoint: "mock://local" },
+      { drenarMetricas: () => muestras.slice(), limitePorTarea: 1 },
+    );
+    expect(m.zod_fail_rate.terminal).toBeGreaterThan(0);
+    expect(m.structured_output_fail_rate).toBe(0);
   });
 });

@@ -123,6 +123,8 @@ export class MiniMaxProvider implements LLMProvider {
     return parseAndValidate(schema, first, {
       // WR-01: clamp al rango [0, ceiling] para acotar costo de round-trips.
       maxAttempts: clampRepairAttempts(req.maxRepairAttempts),
+      // CR-01: reenvia el observador ADITIVO (undefined en produccion → sin efecto).
+      onOutcome: req.onValidationOutcome,
       reprompt: async (errors) => {
         messages.push({
           role: "user",
