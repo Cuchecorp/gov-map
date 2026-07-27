@@ -1,0 +1,7 @@
+[
+  { "id": "cx01-salud", "input": "crear un registro nacional de donantes de organos y regular los trasplantes", "sector_codigo": "salud", "estrato": "xml-clean|modern|short|camara" },
+  { "id": "cx02-mineria", "input": "Sociedad Nacional de Mineria", "sector_codigo": "mineria_energia", "estrato": "xml-clean|modern|short|senado" },
+  { "id": "cx03-tecnologia", "input": "regular la firma electronica avanzada y los documentos electronicos del Estado", "sector_codigo": "tecnologia", "estrato": "scanned-pdf|archaic|short|bcn" },
+  { "id": "cx04-agricultura", "input": "Confederacion Nacional de Federaciones de Cooperativas Campesinas", "sector_codigo": "agricultura_pesca", "estrato": "xml-clean|modern|short|camara" },
+  { "id": "cx05-abstencion", "input": "oficio de felicitaciones remitido a un club deportivo por su aniversario", "sector_codigo": null, "estrato": "xml-clean|modern|short|senado|abstencion" }
+]

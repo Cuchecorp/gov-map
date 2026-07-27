@@ -20,8 +20,13 @@
 import { z } from "zod";
 import casosRaw from "./casos.json" with { type: "json" };
 
-/** Umbral de cobertura del gate de routing (espeja cruces COBERTURA_MIN). */
-export const COBERTURA_MIN = 0.7;
+/**
+ * Umbral de cobertura del gate de routing (espeja cruces COBERTURA_MIN).
+ * NOTA: el barrel `src/index.ts` (owner 106-01) hace `export *` de los cuatro scorers en
+ * un namespace PLANO — por eso los símbolos compartidos entre tareas llevan SUFIJO de
+ * tarea (`Routing`/`Clasificacion`), para no colisionar bajo el re-export estrella.
+ */
+export const COBERTURA_MIN_ROUTING = 0.7;
 
 /**
  * Espacio de etiquetas del routing: a qué TAREA pertenece el input, o `null` cuando la
@@ -59,13 +64,15 @@ export type CasoRouting = z.infer<typeof CasoRoutingSchema>;
  * El golden completo, validado al cargar desde `casos.json` (~40 casos). El parse zod es
  * la compuerta: un `label` fuera del espacio o un caso mal formado rompe el build/test.
  */
-export const GOLDEN_SET: CasoRouting[] = z.array(CasoRoutingSchema).parse(casosRaw);
+export const GOLDEN_SET_ROUTING: CasoRouting[] = z.array(CasoRoutingSchema).parse(casosRaw);
 
 /**
  * La MUESTRA del gate: casos `muestra:true` (todos con tarea no-null). El gate se mide
  * sobre esta muestra curada, no sobre los ~40 (que incluyen abstenciones esperadas).
  */
-export const GOLDEN_SET_GATE: CasoRouting[] = GOLDEN_SET.filter((c) => c.muestra === true);
+export const GOLDEN_SET_GATE_ROUTING: CasoRouting[] = GOLDEN_SET_ROUTING.filter(
+  (c) => c.muestra === true,
+);
 
 /**
  * IDs de los casos ADVERSARIOS aislados (meta-test "el gate PUEDE fallar"). Espeja el
@@ -73,15 +80,15 @@ export const GOLDEN_SET_GATE: CasoRouting[] = GOLDEN_SET.filter((c) => c.muestra
  * mock enruta a la tarea equivocada A PROPÓSITO, forzando la rama de misclasificación
  * a ser alcanzable → prueba que la métrica está VIVA, no es una tautología.
  */
-export const IDS_CASOS_ADVERSARIOS = ["r01-clasif-xml-modern-camara"] as const;
+export const IDS_CASOS_ADVERSARIOS_ROUTING = ["r01-clasif-xml-modern-camara"] as const;
 
 /** El sub-set adversario: los casos de la muestra marcados como adversarios aislados. */
-export const GOLDEN_SET_ADVERSARIO: CasoRouting[] = GOLDEN_SET_GATE.filter((c) =>
-  (IDS_CASOS_ADVERSARIOS as readonly string[]).includes(c.id),
+export const GOLDEN_SET_ADVERSARIO_ROUTING: CasoRouting[] = GOLDEN_SET_GATE_ROUTING.filter((c) =>
+  (IDS_CASOS_ADVERSARIOS_ROUTING as readonly string[]).includes(c.id),
 );
 
 /** Resultado del scoring por caso (para reporting). */
-export type ResultadoCaso = "correcto" | "no-cubierto" | "misclasificacion";
+export type ResultadoCasoRouting = "correcto" | "no-cubierto" | "misclasificacion";
 
 /** Métricas de la corrida del golden de routing (single-label top-1 + abstención). */
 export interface MetricasRouting {
@@ -96,7 +103,7 @@ export interface MetricasRouting {
   cobertura: number;
   /** = misclasificaciones (alias semántico para el gate). */
   errores: number;
-  detalle: { id: string; resultado: ResultadoCaso; nota: string }[];
+  detalle: { id: string; resultado: ResultadoCasoRouting; nota: string }[];
 }
 
 /**
@@ -113,13 +120,13 @@ export async function evaluarRouting(
   let correctos = 0;
   let noCubiertos = 0;
   let misclasificaciones = 0;
-  const detalle: { id: string; resultado: ResultadoCaso; nota: string }[] = [];
+  const detalle: { id: string; resultado: ResultadoCasoRouting; nota: string }[] = [];
 
   for (const caso of set) {
     const actual = await ejecutar(caso);
     const expected = caso.label;
 
-    let resultado: ResultadoCaso;
+    let resultado: ResultadoCasoRouting;
     let nota: string;
     if (actual === null) {
       resultado = "no-cubierto";
@@ -153,6 +160,6 @@ export async function evaluarRouting(
  * Decide si el gate PASA: cobertura ≥ COBERTURA_MIN Y cero misclasificaciones. Pura,
  * testeable sin red. La abstención baja cobertura pero jamás falla por la vía de errores.
  */
-export function gatePasa(m: MetricasRouting): boolean {
-  return m.cobertura >= COBERTURA_MIN && m.errores === 0;
+export function gatePasaRouting(m: MetricasRouting): boolean {
+  return m.cobertura >= COBERTURA_MIN_ROUTING && m.errores === 0;
 }

@@ -1,0 +1,20 @@
+{
+  "hash": "b1825391d585c5d4c73f76cce7e613233de5924e5b75061203c41d61ec5a1e57",
+  "fecha": "2026-07-27",
+  "n_casos": 40,
+  "estratos": [
+    "xml-clean|modern|short|camara",
+    "xml-clean|modern|short|senado",
+    "scanned-pdf|modern|long|camara|negacion",
+    "xml-clean|modern|long|senado",
+    "scanned-pdf|archaic|short|camara",
+    "scanned-pdf|modern|short|camara",
+    "scanned-pdf|archaic|short|bcn",
+    "scanned-pdf|archaic|long|bcn|negacion",
+    "scanned-pdf|archaic|long|bcn",
+    "xml-clean|archaic|short|bcn",
+    "scanned-pdf|archaic|short|bcn|abstencion",
+    "xml-clean|modern|short|camara|abstencion",
+    "xml-clean|modern|short|senado|abstencion"
+  ]
+}
