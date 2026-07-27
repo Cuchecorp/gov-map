@@ -842,7 +842,141 @@ Las 4 clases quedan **resueltas con host + conteo**; ninguna requirió la declar
 
 ## 4. Las 15 rutas
 
-_(pendiente — Plan 02/03/04)_
+**Régimen de §4 (LOCKED).** Cada ruta se inventaría con **tres tablas de columnas fijas**:
+**A** = links internos, **B** = links externos, **C** = fechas. Reglas transversales:
+
+- El **chrome NO se repite**: se referencia `→ C-01`..`C-04` (§2). Los componentes no se
+  re-describen: se referencian `→ E-NNN` (§3).
+- **Cero celdas vacías**: `—` cuando no aplica.
+- Bloques con gate OFF se inventarían igual y llevan la cadena literal
+  `no emitido en el deploy auditado` (§5.1).
+- **Regla de badge (LOCKED, §3.1):** `ProvenanceBadge` es chokepoint **DUAL**. Toda instancia
+  aporta **una fila en Tabla C** (fecha `capturedAt`) **y una fila en Tabla B** (link `sourceUrl`
+  vía `safeExternalHref`). Un badge que solo aparezca en Tabla C es un defecto de inventario.
+  Cuando `sourceUrl` es `null` por diseño, la fila B lo declara: el `<a>` **no se emite**.
+- Toda fecha que llegue por prop `capturedAt` se marca `sí` en *¿es fecha_captura?* sin más
+  análisis. Los nombres de origen salen de las listas cerradas de §0.2 + la ampliación de §3.
+
+### 4.1 `/parlamentario/[id]` — ficha 360
+
+**Tipo:** pública, **dinámica** (`app/app/parlamentario/[id]/page.tsx`; `[id]` validado contra
+`PARLAMENTARIO_ID_RE` **antes** de tocar la DB, `page.tsx:215-217`).
+
+**Sujetos usados** (§1, ids verbatim — nunca el `parlid_senado` numérico):
+
+| sujeto | id | URL PROD | qué ejercita |
+|--------|----|----------|--------------|
+| A — diputado | `D1165` | `https://observatorio-congreso.thevalis.workers.dev/parlamentario/D1165` | los 6 bloques con dato: votos, lobby, patrimonio, cruces, comisiones, militancias |
+| B — senador | `S1338` | `https://observatorio-congreso.thevalis.workers.dev/parlamentario/S1338` | la rama de **estados vacíos honestos**: 0 lobby, 0 cruces, 0 comisiones (§1.2) |
+
+**Chrome:** `→ C-01` (footer), `→ C-02` (nav), `→ C-03` (wordmark), `→ C-04` (breadcrumbs,
+montado por `parlamentario-header.tsx:73-79` con `Inicio` → `/` y `Parlamentarios` →
+`/parlamentarios`; el último ítem es `<span aria-current="page">`, no link). **No se repiten aquí.**
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `/comparar?a={id}` | → E-036 `app/app/parlamentario/[id]/page.tsx:305` | — | siempre (navegación pura) | `/comparar` |
+| A2 | `/red?seed={id}` | → E-036 `app/app/parlamentario/[id]/page.tsx:328` | — | **NET** (ON) — nodo AUSENTE del DOM si OFF (`page.tsx:325`) | `/red` |
+| A3 | `#{carril}` (`#votos`, `#lobby`, `#patrimonio`, `#cruces`) | → E-042 `app/components/ficha-rail.tsx:59` | **sí** — coincide con el `id` de cada `<section>` | entradas gate-aware vía `construirChips` (`page.tsx:527`) | misma ruta (scroll) |
+| A4 | `/parlamentario/{p.id}` (filas de los 5 bloques de relaciones) | → E-022 `app/components/cross-links-parlamentario.tsx:112` | — | `RelacionesConDatos` (`page.tsx:382-418`): si los 5 `total_n` son 0 → vacío DECLARADO y cero filas | `/parlamentario/[id]` |
+| A5 | `verTodosHref` | → E-022 `app/components/cross-links-parlamentario.tsx:130` | — | **`null` en los 5 bloques de esta ruta** (`page.tsx:430,446,462,479,505`) ⇒ el `<a>` NO se emite | — |
+| A6 | `/proyecto/{grupo.boletin}` | → E-001 `app/components/votos-por-parlamentario.tsx:483,490` | — | dentro de `DetalleColapsable` (cerrado por defecto, presente en el DOM) | `/proyecto/[boletin]` |
+| A7 | `buildVotosVerHref(id, boletin, abierto)` | → E-001 `app/components/votos-por-parlamentario.tsx:561` | **sí** (`#votos`) | expandir/colapsar grupo de votación | misma ruta |
+| A8 | `/parlamentarios` | → E-001 `app/components/votos-por-parlamentario.tsx:597` | — | siempre | `/parlamentarios` |
+| A9 | `buildHref(id, { materia })` (filtro de materia + limpiar filtro) | → E-001 `app/components/votos-por-parlamentario.tsx:726,739` | **sí** (`#votos`) | solo si hay materias | misma ruta |
+| A10 | `buildHref(id, { votosPage ± 1 })` | → E-001 `app/components/votos-por-parlamentario.tsx:819,835` | **sí** (`#votos`) | paginación server; el botón inexistente no se emite | misma ruta |
+| A11 | `/parlamentario/{id}#lobby` | → E-002 `app/components/lobby-de-parlamentario.tsx:255` | **sí** (`#lobby`) | conmutador de vista | misma ruta |
+| A12 | `/parlamentario/{id}?vista=cronologica#lobby` | → E-002 `app/components/lobby-de-parlamentario.tsx:262` | **sí** (`#lobby`) | conmutador de vista | misma ruta |
+| A13 | `/buscar` | → E-002 `app/components/lobby-de-parlamentario.tsx:352,376` | — | empty-states del carril de lobby (los ejercita el **sujeto B**, 0 audiencias) | `/buscar` |
+| A14 | `buildHref(id, page ± 1, "cronologica")` | → E-002 `app/components/lobby-de-parlamentario.tsx:552,565` | **sí** (`#lobby`) | paginación server | misma ruta |
+| A15 | `/proyecto/{boletin}` (chips de boletines mencionados) | → E-030 `app/components/mencion-boletin-chip.tsx:41`, montado en `lobby-de-parlamentario.tsx:450,529` | — | solo si la audiencia menciona boletines | `/proyecto/[boletin]` |
+| A16 | `buildVerHref(id, version.version_id)` | → E-005 `app/components/patrimonio-de-parlamentario.tsx:502` | **sí** (`#patrimonio`) | abrir el detalle de una declaración | misma ruta |
+| A17 | `buildHistorialHref(id, page ± 1)` | → E-005 `app/components/patrimonio-de-parlamentario.tsx:595,608` | **sí** (`#patrimonio`) | paginación del historial | misma ruta |
+| A18 | `/cuenta?next={encodeURIComponent("/parlamentario/{id}")}` | → E-039 `app/components/seguir-button.tsx:73` (montado en `page.tsx:246-250`) | — | **NOTIF** (OFF) — `no emitido en el deploy auditado` | `/cuenta` |
+| A19 | `buildHref(id, page ± 1)` (paginación de contratos) | → E-015 `app/components/contratos-de-parlamentario.tsx:268,281` | **sí** (`#dinero`) | **MONEY** (OFF) — `no emitido en el deploy auditado` | misma ruta |
+| A20 | `buildHref(id, page ± 1)` (paginación de aportes) | → E-013 `app/components/financiamiento-de-parlamentario.tsx:420,433` | **sí** (`#financiamiento`) | **MONEY** (OFF) — `no emitido en el deploy auditado` | misma ruta |
+
+**Diferencia por sujeto:** con `S1338` (0 lobby / 0 cruces / 0 comisiones) las filas A11-A15 quedan
+reducidas a los empty-states (A13 sí se emite), la `<section id="cruces">` no pinta detalle
+(`conteos.cruces.tipo !== "dato"`, `page.tsx:682`) y por tanto A3 no ofrece la entrada `#cruces`.
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | camara (`opendata.camara.cl`) / senado (`tramitacion.senado.cl`) | `RPC:parlamentario_publico_v2.enlace` ← `tabla.parlamentario.enlace` | `columna` (sin builder), vía `safeExternalHref` | `parlamentario.enlace ?? null` | **badge** → E-059 `app/components/parlamentario-header.tsx:115-118` (§3.1.4 fila 11) | — |
+| B2 | camara (`www.camara.cl`) + **leylobby** (`www.leylobby.gob.cl`) | `RPC:lobby_de_parlamentario` ← `tabla.lobby_audiencia.enlace` con fallback a `.enlace_detalle` (`lobby-de-parlamentario.tsx:601`) | `columna` | `sourceUrl={a.enlace}` | **badge** → E-002 `app/components/lobby-de-parlamentario.tsx:534-537` (§3.1.4 fila 10) | — |
+| B3 | otro (CPLT, `datos.cplt.cl`) | `RPC:declaraciones_de_parlamentario` ← `tabla.declaracion.enlace` | `columna` | `sourceUrl={version.enlace}` | **badge** → E-005 `app/components/patrimonio-de-parlamentario.tsx:443-446` (§3.1.4 fila 12) | — |
+| B4 | otro (CPLT, `datos.cplt.cl`) | `RPC:comparar_declaraciones` ← `tabla.declaracion.enlace` | `columna` | `sourceUrl={c.enlace}` (una por columna comparada) | **badge** → E-005 `app/components/patrimonio-de-parlamentario.tsx:765-769` (§3.1.4 fila 13) | — |
+| B5 | camara (`opendata.camara.cl`) + senado (`tramitacion.senado.cl`) | `RPC:votos_de_parlamentario.enlace` ← `tabla.votacion.enlace` | `columna` | `sourceUrl={e.enlace ?? null}` | **badge** → E-001 `app/components/votos-por-parlamentario.tsx:544-547` (§3.1.4 fila 16) | — |
+| B6 | camara (`www.camara.cl`) + leylobby | `RPC:cruces_de_parlamentario` → `cruce_senal.evidencia` jsonb, clave `enlace_fuente` | `columna` (jsonb) | `sourceUrl={item.enlace_fuente}` | **badge** → E-053 `app/components/cruces-de-parlamentario.tsx:194-197` (§3.1.4 fila 6) | **CRUCES** (ON) |
+| B7 | otro (Creative Commons) | literal `CC_BY_40_URL = "https://creativecommons.org/licenses/by/4.0/"` (`patrimonio-de-parlamentario.tsx:67`) | literal en código (no builder, no columna) | — | → E-005 `app/components/patrimonio-de-parlamentario.tsx:215` | — |
+| B8 | otro (Mercado Público) — **0 filas en PROD** (§3.3) | `RPC:contratos_de_parlamentario` ← `tabla.contrato.enlace` | `columna` | `sourceUrl={c.enlace}` | **badge** → E-015 `app/components/contratos-de-parlamentario.tsx:192-195` (§3.1.4 fila 4) | **MONEY** (OFF) — `no emitido en el deploy auditado` |
+| B9 | otro (Servel) — **0 filas en PROD** (§3.3) | `RPC:aportes_de_parlamentario` ← `tabla.aporte.enlace` | `columna` | `sourceUrl={a.enlace}` | **badge** → E-013 `app/components/financiamiento-de-parlamentario.tsx:231-234` (§3.1.4 fila 9) | **MONEY** (OFF) — `no emitido en el deploy auditado` |
+| B10 | ninguna — **link desactivado a propósito** | `RPC:parlamentario_publico_v2.partido` / `RPC:militancias_de_parlamentario.partido` ← URIs `datos.bcn.cl/.../partido-politico/{slug}` | `partidoLegible` (§3.2 nº 4): **NO construye link**, extrae el slug | — | → E-019 `app/components/partido-chip.tsx`, → E-054 `app/components/militancias-de-parlamentario.tsx` | — (invariante "CERO URI en el DOM") |
+
+**Ningún badge de esta ruta pasa `sourceUrl={null}`**: los 7 badges (B1-B6, B8, B9) llevan columna
+de origen. Los 4 chrome-links externos (CC BY 4.0 y `mailto:` del footer) viven en `C-01`.
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | `Actualizado {hace X}` (cabecera) | `relativeTimeEs` + `esStale` (48 h → amber) | `RPC:parlamentario_publico_v2.fecha_captura` | **sí** | **sí** | — | → E-059 `app/components/parlamentario-header.tsx:37,116` |
+| C2 | `según {fuente} al {fecha}` (tooltip del chip de partido) | `fechaCorta` | `RPC:parlamentario_publico_v2.partido_fecha_captura` | **sí** | **no** — el chip la formatea por su cuenta | — | → E-019 `app/components/partido-chip.tsx:65-70` |
+| C3 | rango de militancia `{desde} – {hasta \| "vigente"}` | `fechaCorta` | `RPC:militancias_de_parlamentario.desde` / `.hasta` | no (hecho declarado) | no | — | → E-054 `app/components/militancias-de-parlamentario.tsx:26,27` |
+| C4 | fecha de la votación | `fechaCortaSegura` | `RPC:votos_de_parlamentario.fecha` | no (el hecho) | no | — | → E-001 `app/components/votos-por-parlamentario.tsx:528` |
+| C5 | mes-año de agrupación de votaciones | `Intl.DateTimeFormat("es-CL")` | `RPC:votos_de_parlamentario.fecha` | no (el hecho) | no | — | → E-001 `app/components/votos-por-parlamentario.tsx:287` |
+| C6 | `Actualizado {hace X}` (por votación) | `relativeTimeEs` | `RPC:votos_de_parlamentario.fecha_captura` | **sí** | **sí** | — | → E-001 `app/components/votos-por-parlamentario.tsx:544-545` |
+| C7 | fecha de la audiencia de lobby | `fechaCorta` | `RPC:lobby_de_parlamentario.fecha` | no (el hecho) | no | — | → E-002 `app/components/lobby-de-parlamentario.tsx:153,478` |
+| C8 | `Actualizado {hace X}` (por audiencia) | `relativeTimeEs` | `RPC:lobby_de_parlamentario.fecha_captura` (`:476`) | **sí** | **sí** | — | → E-002 `app/components/lobby-de-parlamentario.tsx:534-535` |
+| C9 | fecha de presentación de la declaración | `fechaCortaSegura` | `RPC:declaraciones_de_parlamentario.fecha_presentacion` | no (el hecho) | no | — | → E-005 `app/components/patrimonio-de-parlamentario.tsx:418,687,701,728` |
+| C10 | `Actualizado {hace X}` (por declaración) | `relativeTimeEs` | `RPC:declaraciones_de_parlamentario.fecha_captura` (`:414`) | **sí** | **sí** | — | → E-005 `app/components/patrimonio-de-parlamentario.tsx:443-444` |
+| C11 | `Actualizado {hace X}` (por columna comparada) | `relativeTimeEs` | `RPC:comparar_declaraciones.fecha_captura` (`:767`) | **sí** | **sí** | — | → E-005 `app/components/patrimonio-de-parlamentario.tsx:765-767` |
+| C12 | fecha de la señal de cruce | `fechaCorta` | `RPC:cruces_de_parlamentario.fecha` | no (el hecho) | no | **CRUCES** (ON) | → E-053 `app/components/cruces-de-parlamentario.tsx:178` |
+| C13 | `Actualizado {hace X}` (por señal) | `relativeTimeEs` | `RPC:cruces_de_parlamentario.fecha_captura` (`:195`) | **sí** | **sí** | **CRUCES** (ON) | → E-053 `app/components/cruces-de-parlamentario.tsx:194-195` |
+| C14 | fecha de la orden de compra | `fechaCorta` | `RPC:contratos_de_parlamentario.fecha_oc` | no (el hecho) | no | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-015 `app/components/contratos-de-parlamentario.tsx:135` |
+| C15 | fecha de corte del dato | `fechaCorta` | `RPC:contratos_de_parlamentario.fecha_corte` | no (corte de la fuente) | no | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-015 `app/components/contratos-de-parlamentario.tsx:138` |
+| C16 | cobertura de ingesta de contratos | `fechaCorta` | `tabla.contratos_ingesta_estado.ingestado_hasta` (`:354,375`) | no (cobertura de ingesta, **no** captura) | no | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-015 `app/components/contratos-de-parlamentario.tsx:225` |
+| C17 | `Actualizado {hace X}` (por contrato) | `relativeTimeEs` | `RPC:contratos_de_parlamentario.fecha_captura` (`:127`) | **sí** | **sí** | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-015 `app/components/contratos-de-parlamentario.tsx:192-193` |
+| C18 | fecha del aporte | `fechaCorta` | `RPC:aportes_de_parlamentario.fecha_aporte` | no (el hecho) | no | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-013 `app/components/financiamiento-de-parlamentario.tsx:176` |
+| C19 | fecha de corte del dato | `fechaCorta` | `RPC:aportes_de_parlamentario.fecha_corte` | no (corte de la fuente) | no | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-013 `app/components/financiamiento-de-parlamentario.tsx:179` |
+| C20 | cobertura de ingesta de aportes | `fechaCorta` | `tabla.aportes_ingesta_estado.ingestado_hasta` (`:518,538`) | no (cobertura de ingesta, **no** captura) | no | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-013 `app/components/financiamiento-de-parlamentario.tsx:355` |
+| C21 | `Actualizado {hace X}` (por aporte) | `relativeTimeEs` | `RPC:aportes_de_parlamentario.fecha_captura` (`:170`) | **sí** | **sí** | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-013 `app/components/financiamiento-de-parlamentario.tsx:231-232` |
+
+**Correspondencia badge ↔ tablas (verificación de la regla LOCKED):** los 7 badges de la ruta
+—`parlamentario-header:115`, `votos-por-parlamentario:544`, `lobby-de-parlamentario:534`,
+`patrimonio-de-parlamentario:443` y `:765`, `cruces-de-parlamentario:194`,
+`contratos-de-parlamentario:192`, `financiamiento-de-parlamentario:231` (8 instancias, 7 archivos)—
+aportan **B1-B6, B8, B9** en Tabla B y **C1, C6, C8, C10, C11, C13, C17, C21** en Tabla C.
+Cero badges solo-C.
+
+**Notas de esta ruta (hallazgos de instanciación):**
+
+1. **`probidad_ingesta_estado` NO renderiza fecha.** El `select` es
+   `.select("parlamentario_id")` (`patrimonio-de-parlamentario.tsx:989-991`): sirve para
+   distinguir "no ingestado" de "sin declaraciones", no para mostrar frescura. Por eso **no**
+   tiene fila en Tabla C (a diferencia de sus hermanas MONEY, C16 y C20).
+2. **`ParlamentarioResumen` (E-029) no se monta en esta ruta.** `page.tsx` importa sólo
+   `construirChips` (`:7-10`) y las anclas las emite `FichaRail` (A3). El `<a href={ch.href}>` de
+   `parlamentario-resumen.tsx:91` no llega al DOM de `/parlamentario/[id]` en el deploy auditado.
+3. **`VotoRow` (E-026) no se monta en esta ruta.** Su único llamante non-test es
+   `voto-detalle.tsx:51`, montado por `votacion-card.tsx:108` — es decir, `/proyecto/[boletin]`.
+   El catálogo lo listaba en ambas rutas; aquí queda corregido por evidencia de import.
+
+#### 4.1.b `app/app/parlamentario/[id]/not-found.tsx`
+
+Es la **misma ruta en estado 404** (la dispara `HeaderSection` con `notFound()` cuando el RPC
+devuelve 0 filas, `page.tsx:864-866`, y también el guard de `PARLAMENTARIO_ID_RE`, `:215-217`).
+Renderiza el chrome (`C-01`..`C-03`; **sin** breadcrumbs) más un único link.
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `/` | → E-049 `app/app/parlamentario/[id]/not-found.tsx:17` | — | siempre | `/` |
+
+Tabla B: **sin links externos**. Tabla C: **sin fechas** (copy estático).
 
 ## 5. Gates y su estado
 
