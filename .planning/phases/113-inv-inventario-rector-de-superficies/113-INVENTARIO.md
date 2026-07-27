@@ -113,12 +113,73 @@ no por lista adivinada.
 
 ### 0.4 Cobertura método × ruta (Tabla D)
 
-_(pendiente — Plan 04. Se llena con una fila por cada una de las 15 rutas + las 4 sub-superficies
-`not-found.tsx`; sin celdas vacías, cero rutas sin evidencia.)_
+Una fila por cada una de las **15 rutas** del universo LOCKED + una por cada una de las **4
+sub-superficies `not-found.tsx`** = **19 filas de datos**. Cero celdas vacías, cero rutas sin
+evidencia, cero rutas asumidas.
+
+**Vocabulario CERRADO de las columnas *"links enumerados por"* y *"fechas enumeradas por"*** — solo
+estos tres valores son admisibles:
+
+| valor | significado |
+|-------|-------------|
+| `código (grep del árbol de componentes)` | enumeración **exhaustiva** por análisis estático del árbol de componentes de la ruta (`<Link>`, `href=`, `<a>`, formatters de fecha). Es el método por defecto |
+| `código + psql (columnas de URL)` | además del grep, las **familias de host** de los hrefs que vienen de columnas de la DB se enumeraron por `psql` (§3.3). Aplica a toda ruta cuyo Tabla B tenga al menos una fila con *builder o `columna`* = `columna` |
+| `n/a — EXCLUIDA` | la ruta **no se inventaría** por decisión LOCKED del CONTEXT (§4.15) |
+
+**Columna *"sujeto usado"***: cita el **id exacto** de §1 (`D1165`, `S1338`, `14309-04`, `17870-05`)
+o `—` cuando la ruta no depende de ningún sujeto.
+**Columna *"¿exhaustivo o muestra?"***: `exhaustivo (código)` cuando el denominador es el árbol de
+componentes completo; `exhaustivo (código) + muestra (sujeto)` cuando además se instanció con
+sujetos concretos para ejercitar ramas condicionales; `n/a` para la EXCLUIDA.
 
 | ruta | links enumerados por | fechas enumeradas por | sujeto usado | ¿exhaustivo o muestra? | evidencia |
 |------|----------------------|-----------------------|--------------|------------------------|-----------|
-| _(pendiente — Plan 04)_ | _(pendiente — Plan 04)_ | _(pendiente — Plan 04)_ | _(pendiente — Plan 04)_ | _(pendiente — Plan 04)_ | _(pendiente — Plan 04)_ |
+| `/parlamentario/[id]` | `código + psql (columnas de URL)` | `código (grep del árbol de componentes)` | `D1165` (diputado) + `S1338` (senador) | `exhaustivo (código) + muestra (sujeto)` | §4.1 (20 filas A, 10 B, 21 C); `app/app/parlamentario/[id]/page.tsx` + E-001/002/005/013/015/019/022/029/030/039/042/053/059 |
+| `/proyecto/[boletin]` | `código + psql (columnas de URL)` | `código (grep del árbol de componentes)` | `14309-04` (bicameral) + `17870-05` (solo-Senado) | `exhaustivo (código) + muestra (sujeto)` | §4.2; `app/app/proyecto/[boletin]/page.tsx` + E-010/018/020/026/027/032/035/038/041/043/044/045/048/056/058 |
+| `/contraparte/[id]` | `código + psql (columnas de URL)` | `código (grep del árbol de componentes)` | `—` (§1.5: **no elegible**, `contrato` y `aporte` con 0 filas) | `exhaustivo (código)` — **sin muestra**: la ruta 404ea entera (gate MONEY, `page.tsx:50-52`) | §4.3; `app/app/contraparte/[id]/page.tsx` + E-014/016/060; §5 fila MONEY |
+| `/` | `código (grep del árbol de componentes)` | `código (grep del árbol de componentes)` | `—` | `exhaustivo (código)` | §4.4; `app/app/page.tsx:110,146` + `app/components/panel-actualidad.tsx:100-108,227` |
+| `/agenda` | `código + psql (columnas de URL)` | `código (grep del árbol de componentes)` | `—` (la semana viene de `searchParams` o del reloj) | `exhaustivo (código)` | §4.5; `app/app/agenda/page.tsx` + E-007/018/033; hosts de `citacion.enlace` / `sesion_sala.enlace` en §3.3.3 |
+| `/buscar` | `código + psql (columnas de URL)` | `código (grep del árbol de componentes)` | `—` (los resultados dependen de `q`) | `exhaustivo (código)` | §4.6; `app/app/buscar/page.tsx:119,160,263,272` + `buscar-filtros.tsx:481-493` + E-028; hosts de `proyecto.enlace` en §3.3.3 |
+| `/comparar` | `código (grep del árbol de componentes)` | `código (grep del árbol de componentes)` | `D1165` + `S1338` | `exhaustivo (código) + muestra (sujeto)` | §4.7; `app/app/comparar/page.tsx:54,187,318-325,502-533` + `similitud-votacion-comparar.tsx:132-135`; §5 fila VSIM |
+| `/parlamentarios` | `código (grep del árbol de componentes)` | `código (grep del árbol de componentes)` | `—` (lista el universo; `D1165`/`S1338` son destinos) | `exhaustivo (código)` | §4.8; `app/app/parlamentarios/page.tsx:47,69-71,117` + E-012/019 |
+| `/red` | `código + psql (columnas de URL)` | `código (grep del árbol de componentes)` | `D1165` (con vecindario) + `S1338` (grafo vacío honesto) | `exhaustivo (código) + muestra (sujeto)` | §4.9; `app/app/red/page.tsx:52-54,90-129` + `red/red-graph.tsx:159,194,210,436` + `red/arista-hecho.tsx:15-20`; `arista.enlace` en §3.3.3; §5 fila NET |
+| `/metodologia` | `código (grep del árbol de componentes)` | `código (grep del árbol de componentes)` | `—` | `exhaustivo (código)` | §4.10; `app/app/metodologia/page.tsx:93,119,129`; `grep` de `rpc(`/`from(` → sin match |
+| `/sobre` | `código (grep del árbol de componentes)` | `código (grep del árbol de componentes)` | `—` | `exhaustivo (código)` | §4.11; `app/app/sobre/page.tsx:62,70,78,94,107` |
+| `/cuenta` | `código (grep del árbol de componentes)` | `código (grep del árbol de componentes)` | `—` (ruta de sesión, naturaleza **auth OTP**) | `exhaustivo (código)` — **sin muestra**: gate NOTIF OFF, `no emitido en el deploy auditado` | §4.12; `app/app/cuenta/page.tsx:90-96,106-115,210-217,282,310`; §5 fila NOTIF |
+| `/notificaciones/baja` | `código (grep del árbol de componentes)` | `código (grep del árbol de componentes)` | `—` (naturaleza **token-based**; **no se inventó ningún token**) | `exhaustivo (código)` — **sin muestra**: feature inerte con NOTIF OFF | §4.13; `app/app/notificaciones/baja/page.tsx:35-36,71-90,110-116` |
+| `/notificaciones/confirmar` | `código (grep del árbol de componentes)` | `código (grep del árbol de componentes)` | `—` (naturaleza **token-based**; **no se inventó ningún token**) | `exhaustivo (código)` — **sin muestra**: feature inerte con NOTIF OFF | §4.14; `app/app/notificaciones/confirmar/page.tsx:27-28,59-71,88-94`; §5 fila NOTIF (200 sin efecto útil) |
+| `/admin/revisar-entidades` | `n/a — EXCLUIDA` | `n/a — EXCLUIDA` | `—` (no aplica: la ruta no se inventaría) | `n/a` | §4.15; decisión LOCKED del CONTEXT §Alcance de rutas; mitigación T-113-04 |
+| `app/app/parlamentario/[id]/not-found.tsx` | `código (grep del árbol de componentes)` | `código (grep del árbol de componentes)` | `—` (404 de la ruta padre) | `exhaustivo (código)` | §4.1.b; E-049 `app/app/parlamentario/[id]/not-found.tsx:17` |
+| `app/app/proyecto/[boletin]/not-found.tsx` | `código (grep del árbol de componentes)` | `código (grep del árbol de componentes)` | `—` (404 de la ruta padre) | `exhaustivo (código)` | §4.2.b; E-023 `app/app/proyecto/[boletin]/not-found.tsx:18,27,37` |
+| `app/app/contraparte/[id]/not-found.tsx` | `código (grep del árbol de componentes)` | `código (grep del árbol de componentes)` | `—` (404 del gate MONEY **y** de id inexistente) | `exhaustivo (código)` — es **lo único que este deploy sirve** en `/contraparte/[id]` | §4.3.b; E-050 `app/app/contraparte/[id]/not-found.tsx:19` |
+| `app/app/red/not-found.tsx` | `código (grep del árbol de componentes)` | `código (grep del árbol de componentes)` | `—` (404 del gate NET **y** de semilla inválida) | `exhaustivo (código)` | §4.9.b; E-047 `app/app/red/not-found.tsx:19` |
+
+**Cierre del denominador:** 15 rutas + 4 `not-found.tsx` = **19 filas**, exactamente las que
+devuelven `find app/app -name "page.tsx"` (15) y `find app/app -name "not-found.tsx"` (4) en §0.2.
+`check-inventario.sh` verifica esa correspondencia en cada corrida (checks 1 y 2).
+
+### 0.4.1 Los tres LÍMITES declarados del método
+
+**LÍMITE 1 — los links externos desde columnas se enumeran por familia de host, no por plantilla.**
+El grueso de los hrefs externos **no** se construye en TSX: son **valores almacenados en columnas de
+la DB** (§0.3 y §3.3). Por eso la Tabla B lleva la columna *"builder o `columna`"* y las familias se
+descubren por catálogo + `psql` (host + `count(*)`), **nunca** por plantilla en el código. El conteo
+por host es **a la fecha de la corrida (2026-07-27)** y **puede crecer** con cada ingesta: 115 debe
+re-correr las queries de §3.3.2, no confiar en los números congelados aquí. Este documento **no
+registra ninguna URL de fila real** (solo host + conteo).
+
+**LÍMITE 2 — la verificación contra el DOM real NO es parte de esta fase.** Todo §4 se derivó por
+**análisis de código**. Que un `<Link>` exista en el árbol de componentes **no** prueba que llegue
+al DOM del deploy (ver los **emisores huérfanos** de §3.0.1: 13 hrefs que no se renderizan en
+ninguna ruta). La comprobación contra DOM es **114** (links internos) y **125** (E2E). Lo único
+observado contra el deploy vivo en esta fase es el **estado de los 5 gates** (§5), por `curl` + grep.
+
+**LÍMITE 3 — los bloques con gate OFF se inventarían desde el código y NO están en el deploy
+auditado.** `MONEY` y `NOTIF` están **OFF** (§5). Sus bloques figuran igual en §3 y §4 —son parte
+del **denominador**— pero llevan la cadena literal **`no emitido en el deploy auditado`**. Afecta a
+`/contraparte/[id]` (404 entera), a los carriles de financiamiento/contratos de
+`/parlamentario/[id]`, a `/cuenta` y a `/notificaciones/*`. 114/115/125 **no** deben perseguir esos
+links; 116 sí debe saber que existe copy de fecha bajo gate que hoy no se ve.
 
 ### 0.5 Baseline de suite (pre-fase)
 
@@ -1795,3 +1856,9 @@ fail-closed: solo el literal `"true"` enciende (`env.X === "true"`).
 - Consecuencia inmediata para el inventario: `/contraparte/[id]` (MONEY) es hoy una ruta **404** y
   `/admin/revisar-entidades` está **EXCLUIDA** por decisión LOCKED del CONTEXT — ninguna de las dos
   se presenta como superficie pública viva.
+
+---
+
+**Régimen (cierre):** Este documento inventaría; no corrige. Los fixes son 114 (links internos),
+115 (patrones externos) y 117 (fechas). Los cruces son 122 y la verificación E2E contra DOM real es
+125. Cualquier cambio de código motivado por un hallazgo de aquí pertenece a esas fases, no a 113.
