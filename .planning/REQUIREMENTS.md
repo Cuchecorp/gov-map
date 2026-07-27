@@ -20,7 +20,7 @@
 
 - [x] **TIER-01**: Adapters Granite y Phi implementan la interfaz `LLMProvider` existente por el patrón openai@5+baseURL (cero SDK nuevo), con los guards fail-closed por construcción (assertNoRutInLlmInput + sensitivity) idénticos a DeepSeek/MiniMax — tool calling o prompt-forzado + zod por proveedor, jamás asumir `response_format: json_schema`
 - [x] **TIER-02**: Existe un `TieredProvider` (decorador que implementa `LLMProvider`) con config declarativa tarea→escalera; los consumidores no cambian de cuerpo (drop-in en el punto de construcción del CLI)
-- [ ] **TIER-03**: El juez compone como interfaz separada (`JudgeProvider`), es ESCALATE-ONLY (puede escalar/rechazar, jamás aprobar ni suavizar una compuerta), y sus veredictos quedan registrados estructurados para auditabilidad
+- [x] **TIER-03**: El juez compone como interfaz separada (`JudgeProvider`), es ESCALATE-ONLY (puede escalar/rechazar, jamás aprobar ni suavizar una compuerta), y sus veredictos quedan registrados estructurados para auditabilidad
 - [x] **TIER-04**: Telemetría por llamada (modelo, tarea, latencia, costo, veredicto, escalación) sin payload ni PII en logs, alimentando el loop de benchmark; escalación acotada (sin loops, presupuesto máximo por ítem)
 - [x] **TIER-05**: El ruteo ocurre ENTRE pipelines, nunca a mitad de sesión — la economía del prompt-cache DeepSeek en fichas queda intacta (verificable)
 
@@ -81,7 +81,7 @@
 | BENCH-05 | Phase 107 | Complete |
 | TIER-01 | Phase 107 | Complete |
 | TIER-02 | Phase 108 | Complete |
-| TIER-03 | Phase 108 | Pending |
+| TIER-03 | Phase 108 | Complete |
 | TIER-04 | Phase 108 | Complete |
 | TIER-05 | Phase 108 | Complete |
 | INTEG-01 | Phase 109 | Pending |
