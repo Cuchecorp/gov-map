@@ -94,11 +94,14 @@ function safeJsonParse(raw: string | undefined): unknown {
   try {
     return JSON.parse(raw);
   } catch {
-    // Observabilidad: una respuesta no-JSON del LLM (p.ej. un rechazo en prosa) se
-    // trata igual que `undefined` y el repair loop reintenta — pero sin esto el texto
-    // original se perdía en silencio. NO se altera el control de flujo (sigue undefined).
+    // Observabilidad PAYLOAD-FREE (IN-01): una respuesta no-JSON del LLM (p.ej. un
+    // rechazo en prosa que puede citar de vuelta el prompt/PII) se trata igual que
+    // `undefined` y el repair loop reintenta. Se registra SOLO un hecho estructural
+    // (la longitud del payload), NUNCA una porción del contenido crudo — la misma
+    // disciplina payload-free que la capa de telemetría. NO se altera el control de
+    // flujo (sigue undefined).
     console.warn(
-      `[validate] JSON.parse falló; se trata como undefined. raw[0..80]=${raw.slice(0, 80)}`,
+      `[validate] JSON.parse falló; se trata como undefined. raw.length=${raw.length}`,
     );
     return undefined;
   }
