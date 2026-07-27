@@ -11,6 +11,7 @@ import {
   computarVeredictoDeReporte,
   escalarDeCalidad,
   EPSILON_POR_TAREA,
+  PISO_NEGACION_ESCL,
   type Veredicto,
 } from "./veredicto";
 import type { MetricasModelo, Reporte, TaskId } from "./report";
@@ -141,6 +142,50 @@ describe("veredicto — VETO DURO es-CL (via negacion.accuracy, INDEPENDIENTE de
   it("candidato con negacion.accuracy IGUAL o MEJOR NO es vetado (el veto solo dispara por déficit)", () => {
     const inc = modelo({ modelo: "inc", extraccion: metricaExtraccion(0.90, 0.80, 0.9) });
     const cand = modelo({ modelo: "cand", extraccion: metricaExtraccion(0.91, 0.81, 0.95) });
+    const v = computarVeredicto(cand, inc);
+    expect(v.extraccion.razon).not.toContain("es-CL negation veto");
+  });
+});
+
+describe("veredicto — es-CL negation evidence AUSENTE nunca aprueba (WR-02)", () => {
+  /** MetricasExtraccion SIN señal de negación (accuracy NaN → no es un número vivo). */
+  function metricaSinNegacion(precision: number, recall: number): MetricasExtraccion {
+    return {
+      schema_parse_rate: 1,
+      value: { tp: 10, fp: 0, fn: 0, precision, recall },
+      negacion: { total: 0, correctas: 0, accuracy: Number.NaN },
+      detalle: [],
+    };
+  }
+
+  it("negacion del CANDIDATO ausente → pending-evidence (NO cae al gate agregado ni aprueba)", () => {
+    // Incumbente con negación perfecta; candidato con agregado buenísimo pero SIN señal es-CL.
+    const inc = modelo({ modelo: "inc-neg", extraccion: metricaExtraccion(0.90, 0.80, 1.0) });
+    const cand = modelo({ modelo: "cand-sin-neg", extraccion: metricaSinNegacion(0.99, 0.95) });
+    const v = computarVeredicto(cand, inc);
+    // Antes esto podía APROBAR vía value.precision; ahora es pending-evidence, jamás approved.
+    expect(v.extraccion.estado).toBe("pending-evidence");
+    expect(v.extraccion.estado).not.toBe("approved-model");
+    expect(v.extraccion.razon).toContain("negacion.accuracy ausente");
+  });
+
+  it("candidato CON negación pero INCUMBENTE sin ella, candidato BAJO el piso absoluto → VETADO (no se salta)", () => {
+    const inc = modelo({ modelo: "inc-sin-neg", extraccion: metricaSinNegacion(0.90, 0.80) });
+    const cand = modelo({
+      modelo: "cand-neg-baja",
+      extraccion: metricaExtraccion(0.99, 0.95, PISO_NEGACION_ESCL - 0.1),
+    });
+    const v = computarVeredicto(cand, inc);
+    expect(v.extraccion.estado).toBe("incumbent-stays");
+    expect(v.extraccion.razon).toContain("piso absoluto");
+  });
+
+  it("candidato CON negación por ENCIMA del piso e INCUMBENTE sin ella → veto NO dispara (pasa al gate)", () => {
+    const inc = modelo({ modelo: "inc-sin-neg", extraccion: metricaSinNegacion(0.90, 0.80) });
+    const cand = modelo({
+      modelo: "cand-neg-alta",
+      extraccion: metricaExtraccion(0.95, 0.85, PISO_NEGACION_ESCL + 0.05),
+    });
     const v = computarVeredicto(cand, inc);
     expect(v.extraccion.razon).not.toContain("es-CL negation veto");
   });

@@ -44,6 +44,16 @@ export const EPSILON_POR_TAREA: Record<TaskId, number> = {
   extraccion: 0.01,
 } as const;
 
+/**
+ * Piso ABSOLUTO de fidelidad de negación legal es-CL (WR-02). Se usa SOLO cuando hay señal
+ * de negación del candidato pero NO del incumbente (shape parcial/viejo): sin un incumbente
+ * contra quien comparar, el candidato NO puede despachar el veto sin evidencia es-CL propia
+ * suficiente. Declarado EXPLÍCITO y conservador: un candidato con `negacion.accuracy` por
+ * DEBAJO de este piso queda VETADO (incumbent-stays); igual o por encima pasa al gate agregado.
+ * NUNCA se salta el veto en silencio: evidencia es-CL AUSENTE jamás aprueba.
+ */
+export const PISO_NEGACION_ESCL = 0.9;
+
 /** Estado de un resultado por tarea. */
 export type EstadoTarea = "approved-model" | "incumbent-stays" | "pending-evidence";
 
@@ -121,8 +131,10 @@ function fallosNoPeor(cand: MetricasModelo, inc: MetricasModelo): boolean {
  * Por tarea:
  *   1. métrica de calidad ausente/undefined → pending-evidence (NUNCA aprueba en silencio).
  *   2. (solo extracción) VETO DURO es-CL: lee `negacion.accuracy` de PRIMERA CLASE (NO
- *      value.precision) en candidato e incumbente; si el candidato es menor por CUALQUIER margen,
- *      incumbent-stays con razón de veto — CORTOCIRCUITA antes del gate agregado.
+ *      value.precision). Sin señal del candidato → pending-evidence (evidencia es-CL ausente
+ *      NUNCA aprueba). Con señal del candidato pero sin la del incumbente → se exige el piso
+ *      absoluto `PISO_NEGACION_ESCL` (veto si está por debajo). Con ambas señales → veto si el
+ *      candidato es menor por CUALQUIER margen. En todos los casos CORTOCIRCUITA el gate agregado.
  *   3. gate agregado: Δ escalar ≥ −ε[task] Y fallosNoPeor → approved-model; si no, incumbent-stays.
  */
 export function computarVeredicto(candidato: MetricasModelo, incumbente: MetricasModelo): Veredicto {
@@ -142,14 +154,44 @@ export function computarVeredicto(candidato: MetricasModelo, incumbente: Metrica
     }
 
     // (2) VETO DURO es-CL (solo extracción) — CORTOCIRCUITO antes del gate agregado.
+    // WR-02: la EVIDENCIA es-CL AUSENTE jamás aprueba. NUNCA se salta el veto en silencio.
     if (task === "extraccion") {
       const negCand = (metCand as MetricasExtraccion).negacion?.accuracy;
       const negInc =
         metInc === undefined ? undefined : (metInc as MetricasExtraccion).negacion?.accuracy;
-      if (typeof negCand === "number" && typeof negInc === "number" && negCand < negInc) {
+
+      // "Señal viva" = número FINITO (NaN/Infinity cuentan como ausencia de evidencia es-CL).
+      const negCandVivo = typeof negCand === "number" && Number.isFinite(negCand) ? negCand : null;
+      const negIncVivo = typeof negInc === "number" && Number.isFinite(negInc) ? negInc : null;
+
+      // (2a) Sin señal de negación del CANDIDATO → no hay evidencia es-CL con que despachar
+      // el veto → pending-evidence (jamás cae al gate agregado, que aprobaría sin negación).
+      if (negCandVivo === null) {
+        salida[task] = {
+          estado: "pending-evidence",
+          razon:
+            "negacion.accuracy ausente en el candidato → sin evidencia es-CL → pending-evidence (el veto no se puede despachar)",
+        };
+        continue;
+      }
+
+      // (2b) Candidato CON negación pero incumbente SIN ella (shape parcial/viejo): no hay
+      // contra-referencia relativa → se exige el piso ABSOLUTO es-CL declarado. Por debajo,
+      // VETO; igual/encima, pasa al gate agregado. NUNCA se salta el veto por falta de incumbente.
+      if (negIncVivo === null) {
+        if (negCandVivo < PISO_NEGACION_ESCL) {
+          salida[task] = {
+            estado: "incumbent-stays",
+            razon: `es-CL negation veto (piso absoluto): negacion.accuracy ${negCandVivo} < piso ${PISO_NEGACION_ESCL} y el incumbente no aporta señal es-CL — VETADO antes del gate agregado`,
+          };
+          continue;
+        }
+        // negCand ≥ piso → sin veto; sigue al gate agregado.
+      } else if (negCandVivo < negIncVivo) {
+        // (2c) Ambos con señal: veto relativo por CUALQUIER déficit contra el incumbente.
         salida[task] = {
           estado: "incumbent-stays",
-          razon: `es-CL negation veto: negacion.accuracy ${negCand} < ${negInc} (independiente de value.precision) — VETADO antes del gate agregado`,
+          razon: `es-CL negation veto: negacion.accuracy ${negCandVivo} < ${negIncVivo} (independiente de value.precision) — VETADO antes del gate agregado`,
         };
         continue;
       }
