@@ -50,3 +50,16 @@ jobs:
 
       - name: TypeScript (tsc --noEmit)
         run: pnpm --filter ./app exec tsc --noEmit
+
+      # ── Gate de regresión permanente (INTEG-01, Plan 109-02) ──────────────────
+      # Corre OFFLINE (sin secrets): el golden usa MockClasificadorProvider y los
+      # tests LIVE-gated se saltean por ausencia de CRUCES_GOLDEN_LIVE. Un fallo
+      # aquí bloquea merge — protege el golden set de clasificación y los guards
+      # de Wave 1 (provider-guard, integ-scope-guard, tiered-scope-guard).
+      - name: Test @obs/llm (TieredProvider + provider-guard + scope-guards)
+        run: pnpm --filter @obs/llm exec vitest run
+
+      - name: Test @obs/cruces (golden clasificación + wiring)
+        # golden-set.test.ts: gate ≥7/10 offline con MockClasificadorProvider.
+        # clasificar-fichas-cli.test.ts: wiring default-incumbente (INTEG-03).
+        run: pnpm --filter @obs/cruces exec vitest run
