@@ -165,6 +165,11 @@ async function cargarFichas(
   const { data, error } = await client
     .from("proyecto_ficha")
     .select("boletin, idea_matriz, proyecto:proyecto(titulo, materia)")
+    // LOCKED (CLAUDE.md): paginar/limitar con .order() SIEMPRE — PostgREST no garantiza
+    // orden sin ORDER BY, y la muestra del gate CRUCE-02 se toma de las primeras filas.
+    // Sin orden determinista, dos corridas sobre los mismos datos reportarían coberturas
+    // distintas (WR-02). `boletin` da un orden estable y reproducible.
+    .order("boletin", { ascending: true })
     .limit(limite);
   if (error) throw new Error(`cargarFichas falló: ${error.message}`);
   type JoinRow = {
@@ -270,11 +275,29 @@ export async function main(opts: FichasCliOptions = {}): Promise<FichasCliResult
     writer = opts.writer ?? noop;
     if (opts.filas === undefined && serviceKey.length > 0) {
       // Hay key pero el operador pidió --dry-run: igual leemos para reportar cobertura.
-      client = createClient(url, serviceKey, {
-        auth: { persistSession: false, autoRefreshToken: false },
-      });
+      // WR-01: createClient("", key) lanza "supabaseUrl is required" — un dry-run "solo
+      // reportar cobertura" no debe crashear por URL ausente. Degradar limpio: sin URL,
+      // no hay lectura DB (solo filas inyectadas, que aquí no existen → conjunto vacío).
+      if (url.length === 0) {
+        log(
+          "cruces-fichas: SUPABASE_URL ausente → dry-run sin lectura DB " +
+            "(no hay filas que clasificar; solo se reportaría cobertura de filas inyectadas)",
+        );
+      } else {
+        client = createClient(url, serviceKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+      }
     }
   } else {
+    // Rama LIVE: URL ausente es una misconfiguración real → fail-fast explícito antes
+    // de construir un cliente inválido (WR-01, simétrico a la guarda de --service-key).
+    if (url.length === 0) {
+      throw new Error(
+        "cruces-fichas: SUPABASE_URL ausente en corrida LIVE — " +
+          "setear SUPABASE_URL/SUPABASE_API_URL o pasar --url (o usar --dry-run)",
+      );
+    }
     client = createClient(url, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
