@@ -4,13 +4,13 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: executing
 stopped_at: Completed 106-03-PLAN.md
-last_updated: "2026-07-27T23:22:30.601Z"
+last_updated: "2026-07-27T23:33:04.648Z"
 last_activity: 2026-07-27
 progress:
   total_phases: 13
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 113 (INV — Inventario rector de superficies) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-07-27
 
@@ -222,6 +222,8 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 
 - [Phase 110] PASADA 3 P4a: live read-only PROD check RESOLVIÓ la contradicción de migraciones — 0053/0054 YA aplicadas (v8.1), solo 0052 faltaba. 0052 APLICADA a PROD (psql --single-transaction, 3 pre-checks fail-closed: nombre constraint / lobby_sector_aporte ABSENTE / MONEY OFF) + pgTAP 7/7 ok contra schema aplicado + count(lobby_sector_aporte)=0 honesto (arista empresa→sector ausente + RUT-01/backfill pendientes, NO bug; materializar_cruces NO invocado manual). 0053/0054 verify-only no-op. V7-07 (CF secrets CLOUDFLARE_API_TOKEN/ACCOUNT_ID ausentes en Cuchecorp/gov-map + rotación B26) = DEUDA OPERADOR diferida por decisión del operador (steps en 110-02-OPERATOR-CHECKPOINT.md; agente NUNCA cargó valor ni rotó). schema_migrations en PROD llega a 0072.
 - [Phase ?]: 113-01: deploy auditado anclado por fecha/hora; contraparte NO elegida (contrato/aporte 0 filas + gate MONEY)
+- [Phase ?]: 113-03: el link a Senado se registra POST-rewrite de enlaceHumanoProyecto, con la columna cruda en la misma fila
+- [Phase ?]: 113-03: todo ProvenanceBadge aporta fila en Tabla B aunque sourceUrl sea null (se declara que el <a> no se emite)
 
 ### Pending Todos
 
@@ -282,7 +284,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-27T23:22:30.589Z
+Last session: 2026-07-27T23:32:53.298Z
 Stopped at: Completed 106-03-PLAN.md
 Resume file: None
 

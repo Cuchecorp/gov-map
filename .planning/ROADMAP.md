@@ -111,7 +111,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 113-03-PLAN.md — (w4) Rutas dinámicas densas: /parlamentario/[id], /proyecto/[boletin], /contraparte/[id]
+- [x] 113-03-PLAN.md — (w4) Rutas dinámicas densas: /parlamentario/[id], /proyecto/[boletin], /contraparte/[id]
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -310,7 +310,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 113. INV | 3/6 | In Progress|  |
+| 113. INV | 4/6 | In Progress|  |
 | 114. LINK-INT | 0/? | Not started | - |
 | 115. LINK-EXT | 0/? | Not started | - |
 | 116. FECHA-AUDIT | 0/? | Not started | - |
