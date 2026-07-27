@@ -17,7 +17,7 @@
 // corrida LIVE real que puebla sector_id = Plan 04.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { DeepSeekProvider, type LLMProvider } from "@obs/llm";
+import { DeepSeekProvider, GraniteProvider, buildTieredProvider, type LLMProvider } from "@obs/llm";
 import { clasificarFicha, type ClasificarFichaInput } from "./clasificar";
 import { SupabaseCrucesWriter, type CrucesWriter } from "./writer-supabase";
 
@@ -181,6 +181,65 @@ async function cargarFichas(
 }
 
 /**
+ * Resuelve el LLMProvider a usar según opciones e entorno.
+ *
+ * Orden de prioridad:
+ *  1. opts.provider inyectado (tests / integración) — se respeta sin condición.
+ *  2. Sin CLASIFICACION_ESCALERA=1 → DeepSeekProvider directo (DEFAULT INCUMBENTE,
+ *     byte-idéntico al comportamiento anterior, INTEG-03 rollback por config).
+ *  3. Con CLASIFICACION_ESCALERA=1 + WORKERS_AI_API_TOKEN y CLOUDFLARE_ACCOUNT_ID
+ *     no vacíos → TieredProvider Granite→DeepSeek (escalera candidata INTEG-01).
+ *     Si faltan keys → DeepSeekProvider con log de advertencia (Pitfall 2, T-109-05).
+ *
+ * Función pura: recibe `env` como parámetro en vez de leer process.env directamente
+ * para ser testeable sin efectos globales.
+ */
+export function resolverProvider(
+  opts: Pick<FichasCliOptions, "provider">,
+  env: Partial<Record<string, string>>,
+  log: (msg: string) => void,
+): LLMProvider {
+  // Rama 1: inyección explícita (tests / integración) — nunca sobrescribir.
+  if (opts.provider !== undefined) return opts.provider;
+
+  const deepseekKey = env.DEEPSEEK_API_KEY ?? "";
+
+  // Rama 2: default incumbente (sin env var o con cualquier valor ≠ "1").
+  if (env.CLASIFICACION_ESCALERA !== "1") {
+    log("cruces-fichas: provider=deepseek (default incumbente)");
+    return new DeepSeekProvider({ apiKey: deepseekKey });
+  }
+
+  // Rama 3: escalera Granite→DeepSeek (CLASIFICACION_ESCALERA=1).
+  const workerToken = env.WORKERS_AI_API_TOKEN ?? "";
+  const accountId = env.CLOUDFLARE_ACCOUNT_ID ?? "";
+
+  // Pitfall 2 (T-109-05): nunca construir GraniteProvider con key/account vacíos
+  // → caída de vuelta a DeepSeek con advertencia.
+  if (workerToken.length === 0 || accountId.length === 0) {
+    log(
+      "cruces-fichas: CLASIFICACION_ESCALERA=1 pero WORKERS_AI_API_TOKEN o " +
+        "CLOUDFLARE_ACCOUNT_ID ausentes → fallback a DeepSeek (Pitfall 2)",
+    );
+    return new DeepSeekProvider({ apiKey: deepseekKey });
+  }
+
+  // Pitfall 1 (T-109-07): ACCOUNT_ID interpolado en baseURL, nunca hardcodeado.
+  const baseURL = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`;
+  log("cruces-fichas: provider=tiered:granite→deepseek (CLASIFICACION_ESCALERA=1)");
+  return buildTieredProvider({
+    primary: {
+      provider: new GraniteProvider({ apiKey: workerToken, baseURL }),
+      costPerToken: 0.00000000125, // informativo — telemetría
+    },
+    escalation: {
+      provider: new DeepSeekProvider({ apiKey: deepseekKey }),
+      costPerToken: 0.00000014, // informativo — telemetría
+    },
+  });
+}
+
+/**
  * Corre el batch de etiquetado de sector sobre fichas. Lanza CrucesCliArgsError si los flags
  * son inválidos (antes de cualquier red/DB).
  */
@@ -195,9 +254,9 @@ export async function main(opts: FichasCliOptions = {}): Promise<FichasCliResult
     log("cruces-fichas: sin SUPABASE_SECRET_KEY → corrida DRY-RUN (no carga DB)");
   }
 
-  // Provider público (DeepSeek por el router): key de env, nunca hardcodeada ni logueada.
-  const provider =
-    opts.provider ?? new DeepSeekProvider({ apiKey: process.env.DEEPSEEK_API_KEY ?? "" });
+  // Provider: resolverProvider encapsula el env-gate CLASIFICACION_ESCALERA.
+  // Default = DeepSeek incumbente (byte-idéntico sin la env var).
+  const provider = resolverProvider(opts, process.env, log);
 
   // Cliente de lectura + writer: Supabase real (carga DB) o null/noop (dry-run, descarta).
   let client: SupabaseClient | null = null;
