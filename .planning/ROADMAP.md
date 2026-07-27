@@ -134,7 +134,15 @@ Plans:
   3. El benchmark corre contra el endpoint/cuantización EXACTOS que servirían en producción (host+revisión pinned; spike local Ollama para calidad, re-medición de latencia/costo en el host servido) — nunca números de un host distinto al que se integra
   4. La postura de cuantización + DPA/no-train del host servido queda registrada como dato del spike (gate legal fail-closed para `trainsOnInputs`, no un flag de conveniencia); Ollama-local es trivialmente no-training
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+
+- [ ] 106-01-PLAN.md — Scaffold `@obs/llm-bench` + núcleo de medición (percentile, costo, instrumentedFetch, tipo Reporte con métricas SEPARADAS)
+- [ ] 106-02-PLAN.md — Golden sets routing + clasificación (single-label top-1 + abstención) + guards freeze/no-RUT/disjunción
+- [ ] 106-03-PLAN.md — Golden sets juez (pares answer/human_label + hooks de sesgo + split calibración) + extracción (parse-rate SEPARADO de value-accuracy + negación es-CL)
+- [ ] 106-04-PLAN.md — Harness driver → Reporte (MockProvider en CI) + baseline LIVE DeepSeek/MiniMax env-gated (endpoint provenance) + README operador
+
 **Research**: yes (SPIKE load-bearing — flags de capability por proveedor subyacente de OpenRouter, cuantización+DPA del host, metodología de calibración es-CL; pricing MEDIUM y móvil)
 
 ### Phase 107: BENCH P1b — Adapters candidatos + juez vs humanos + VEREDICTO por tarea
