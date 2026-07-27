@@ -44,7 +44,40 @@ provisioning/capability gap BEFORE any integration (exactly its job). Veredicto 
    for a tool-calling host, but they surface a host-without-tools as structured-output failures (which is
    what the void smoke showed). That is the fail-closed behavior we want; the fix is the HOST, not the adapter.
 
+## UPDATE 2 — 2026-07-27: operator provisioned Workers AI token + CLOUDFLARE_ACCOUNT_ID; live probes
+All three keys now present in `.env` (`WORKERS_AI_API_TOKEN` len 40, `CLOUDFLARE_ACCOUNT_ID` len 32, `OPENROUTER_API_KEY`). Direct live probes:
+
+- **Workers AI Granite** (`@cf/ibm-granite/granite-4.0-h-micro`, forced tool) → **HTTP 401**.
+  Isolation probes: `GET /user/tokens/verify` → **200, status active** (token is REAL); but native
+  `POST /accounts/{acct}/ai/run/@cf/...` and `GET /accounts/{acct}/ai/models/search` → **error 10000
+  "Authentication error"** (401/403). ⇒ The token authenticates but **lacks the "Workers AI" permission
+  scope** on this account. **FIX (operator):** CF dashboard → API Tokens → edit token / new token with the
+  "Workers AI" template → add `Account › Workers AI › Read` (+Edit) scoped to this account → paste into `.env`.
+  Once fixed, `candidatos.live.test.ts` runs Granite on Workers AI with NO code change and the
+  routing/clasificación/extracción veredicto gets REAL numbers.
+- **OpenRouter `microsoft/phi-4`** (operator suggestion), forced tool → **HTTP 404 "No endpoints found
+  that support tool use."** Confirms phi-4 on OpenRouter has no tool-calling provider. Our `PhiJudge`
+  forces `tool_choice` → won't work there. (Also note phi-4 is the 14B, not the 3.84B phi-4-mini specced.)
+
+### Judge (Phi) — remaining options (pick one; pasada-2 decision)
+1. **Prompt-forced + zod judge variant** (NO forced `tool_choice`): add a `PhiJudge` mode that requests a
+   JSON verdict via prompt + `parseAndValidate` (the SANCTIONED alternative — "response_format json_schema
+   JAMÁS asumido → tool_choice OR prompt-forzado+zod"). This makes OpenRouter `microsoft/phi-4` usable as
+   the judge TODAY (phi-4 answers, just not via tools). Small, additive code change. RECOMMENDED if a
+   tool-calling Phi host isn't wanted.
+2. **A tool-calling Phi host:** DeepInfra / Azure AI Foundry serve phi-4-mini — verify tool-calling passes,
+   add its baseURL+key. Keeps the judge on forced tool_choice, but needs a new provider/key.
+3. **A different small judge already served with tools** (operator call).
+
+### Net state after UPDATE 2
+- **Granite responder path (routing/clasificación/extracción):** ONE operator action away (fix the Workers
+  AI token permission). No code change.
+- **Phi judge path (BENCH-04):** needs option 1/2/3 above.
+- A partial veredicto (3 responder tasks real, `juez` pending) is possible as soon as the Workers AI token
+  is fixed — enough to gate 109's reversible task (clasificación/routing), which does NOT need the judge.
+
 ## Status
-- Veredicto: **PENDING-EVIDENCE** (unchanged status, sharper reason: candidate hosts not yet viable).
+- Veredicto: **PENDING-EVIDENCE** (sharper reason: Workers AI token needs the Workers AI permission scope;
+  Phi judge needs a tool-calling host OR the prompt-forced+zod variant).
 - No fabricated numbers committed. Smoke output discarded as void.
 - Buildable deliverables (adapters + machine + guards) remain green and correct — see 107-VERIFICATION (8/8).
