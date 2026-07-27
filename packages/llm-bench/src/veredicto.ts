@@ -111,6 +111,27 @@ export function escalarDeCalidad(task: TaskId, metrica: unknown): number | null 
 }
 
 /**
+ * ¿El juez candidato es DEGENERADO — CERO veredictos usables? Gate de PRIMERA CLASE (parejo al veto
+ * es-CL de extracción): un juez que jamás emitió un veredicto (todos `sinVeredicto` → `precision_ok`
+ * null y `recall_rechazo` colapsado a 0 por `rechazoYMala=0/malas`) NO produjo evidencia — su
+ * escalar 0 es un ARTEFACTO del no-veredicto, no una medición de "juzgó mal". Sin este corte, la
+ * máquina leería `recall_rechazo=0` como un número vivo, computaría Δ negativo y despacharía
+ * `incumbent-stays` — una DERROTA que el juez nunca peleó. El caso real: los 32 llamados a Phi
+ * fallaron con HTTP 402 (créditos) → `sinVeredicto=32`, cero veredictos → debe ser pending-evidence.
+ *
+ * DEGENERADO = veredictos emitidos (`n − sinVeredicto`) ≤ 0. Cubre también `n=0` (sin casos). Un
+ * juez con AL MENOS un veredicto usable NO es degenerado: cae al gate agregado normalmente.
+ */
+function juezSinVeredictos(metrica: unknown): boolean {
+  if (metrica == null || typeof metrica !== "object") return false;
+  const m = metrica as MetricasJuez;
+  if (typeof m.n !== "number") return false;
+  const sinVeredicto = m.conteos?.sinVeredicto;
+  if (typeof sinVeredicto !== "number") return false;
+  return m.n - sinVeredicto <= 0;
+}
+
+/**
  * ¿La tasa de fallo del candidato es NO-PEOR que la del incumbente? Es un gate de PRIMERA CLASE
  * (NO se promedia en la calidad): structured_output_fail_rate y ambos zod_fail_rate.repaired/
  * terminal deben ser ≤ los del incumbente (con una tolerancia numérica minúscula para ruido de
@@ -149,6 +170,20 @@ export function computarVeredicto(candidato: MetricasModelo, incumbente: Metrica
       salida[task] = {
         estado: "pending-evidence",
         razon: `sin métrica de ${task} en el candidato (no hay números vivos) → pending-evidence`,
+      };
+      continue;
+    }
+
+    // (1b) JUEZ DEGENERADO — CERO veredictos usables (todos sinVeredicto) → pending-evidence.
+    // CORTOCIRCUITO antes del gate agregado: un juez que no respondió NO "perdió paridad"; su
+    // escalar (recall_rechazo=0) es un artefacto del no-veredicto, no una medición. WR-04 vive en
+    // el scorer (un no-veredicto no cosecha recall); aquí se cierra el eco: sin evidencia del juez,
+    // el veredicto es pending-evidence, JAMÁS incumbent-stays por un 0 fabricado.
+    if (task === "juez" && juezSinVeredictos(metCand)) {
+      salida[task] = {
+        estado: "pending-evidence",
+        razon:
+          "juez sin veredictos usables (todos sinVeredicto → recall_rechazo=0 es artefacto, no medición) → pending-evidence",
       };
       continue;
     }

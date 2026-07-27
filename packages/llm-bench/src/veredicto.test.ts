@@ -191,6 +191,55 @@ describe("veredicto — es-CL negation evidence AUSENTE nunca aprueba (WR-02)", 
   });
 });
 
+describe("veredicto — juez degenerado (cero veredictos usables) → pending-evidence (no incumbent-stays)", () => {
+  /** MetricasJuez donde el juez NUNCA emitió un veredicto (todos sinVeredicto — p.ej. HTTP 402). */
+  function juezSinVeredictos(n: number): unknown {
+    return {
+      n,
+      precision_ok: null, // nunca dijo OK
+      recall_rechazo: n === 0 ? null : 0, // malas>0 sin rechazos → 0 (artefacto), NO evidencia
+      conteos: { okYCorrecta: 0, ok: 0, rechazoYMala: 0, malas: n, sinVeredicto: n },
+      hooks: { porProductor: {}, porLongitud: { corta: { ok: 0, total: 0 }, larga: { ok: 0, total: 0 } } },
+      detalle: [],
+    };
+  }
+
+  it("un juez con TODOS los casos sinVeredicto → pending-evidence, NUNCA incumbent-stays", () => {
+    // El incumbente tiene un juez sano; el candidato colapsó (0 veredictos). Antes la máquina leía
+    // recall_rechazo=0 → Δ negativo → incumbent-stays (una derrota que el juez nunca peleó).
+    const cand = modelo({ modelo: "juez-void" });
+    cand.calidad_por_tarea.juez = juezSinVeredictos(32);
+    const v = computarVeredicto(cand, incumbente);
+    expect(v.juez.estado).toBe("pending-evidence");
+    expect(v.juez.estado).not.toBe("incumbent-stays");
+    expect(v.juez.razon).toContain("sin veredictos usables");
+    // Las otras tareas resuelven normalmente (el corte es específico del juez).
+    expect(v.routing.estado).toBe("approved-model");
+  });
+
+  it("un juez con n=0 (sin casos) también → pending-evidence (sin evidencia)", () => {
+    const cand = modelo({ modelo: "juez-vacio" });
+    cand.calidad_por_tarea.juez = juezSinVeredictos(0);
+    const v = computarVeredicto(cand, incumbente);
+    expect(v.juez.estado).toBe("pending-evidence");
+  });
+
+  it("un juez con AL MENOS un veredicto usable NO es degenerado → cae al gate agregado normal", () => {
+    // sinVeredicto < n → hay señal; con recall en paridad el gate aprueba (no pending por degeneración).
+    const cand = modelo({ modelo: "juez-parcial" });
+    cand.calidad_por_tarea.juez = {
+      n: 10,
+      precision_ok: 0.9,
+      recall_rechazo: 0.8, // paridad con el incumbente
+      conteos: { okYCorrecta: 5, ok: 5, rechazoYMala: 4, malas: 5, sinVeredicto: 3 },
+      hooks: { porProductor: {}, porLongitud: { corta: { ok: 0, total: 0 }, larga: { ok: 0, total: 0 } } },
+      detalle: [],
+    };
+    const v = computarVeredicto(cand, incumbente);
+    expect(v.juez.estado).toBe("approved-model");
+  });
+});
+
 describe("veredicto — pending-evidence (sin números vivos)", () => {
   it("una métrica por tarea ausente → pending-evidence, NUNCA approved", () => {
     const cand = modelo({ modelo: "sin-routing", omitirRouting: true });

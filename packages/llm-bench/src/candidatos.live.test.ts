@@ -117,9 +117,12 @@ const LIMITE_RAW = process.env.LLM_BENCH_LIMIT;
 const LIMITE_POR_TAREA =
   LIMITE_RAW === undefined ? 3 : LIMITE_RAW === "0" ? undefined : Number(LIMITE_RAW);
 
-// Presupuesto generoso: candidato + incumbente + juez, todos secuenciales con latencia real,
-// superan los 2 min por defecto de vitest cuando LLM_BENCH_LIMIT=0.
-const TIMEOUT_MS = 600_000;
+// Presupuesto generoso: candidato + incumbente + juez, todos secuenciales con latencia real.
+// El full-40 (LLM_BENCH_LIMIT=0) = Granite p95 ~5s × 160 llamadas + repairs DeepSeek + 32 llamados
+// Phi excede holgado los 600s previos (por eso el 10-sample TIMED OUT en pasada 1). 30 min cubre el
+// full-40 same-run sin fragmentar la comparación apples-to-apples candidato+incumbente. Sigue
+// LIVE-gated (jamás CI) y con skip limpio sin keys — el timeout solo aplica cuando el test corre.
+const TIMEOUT_MS = 1_800_000;
 
 // El incumbente DEBE estar disponible cuando el candidato corre (WARNING-1: baseline pinneado en
 // la MISMA corrida). Y debe existir AL MENOS una vía de candidato: Workers AI (token + account id)
