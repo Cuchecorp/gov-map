@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: — Capa LLM escalonada + cierre de deuda viva
 status: executing
-stopped_at: Completed Phase 110 (PASADA 3)
+stopped_at: Completed Phase 111 (PASADA 3)
 last_updated: "2026-07-27T00:00:00.000Z"
 last_activity: 2026-07-27
 progress:
   total_phases: 8
-  completed_phases: 6
-  total_plans: 19
-  completed_plans: 16
-  percent: 75
+  completed_phases: 7
+  total_plans: 20
+  completed_plans: 17
+  percent: 88
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** PASADA 3 (V7GATES) — Phase 111 (RUT-01 + backfills LIVE) next; Phase 110 CLOSED (agent half)
+**Current focus:** PASADA 3 (V7GATES) — Phase 112 (cold-reads + flip MONEY + audit/complete v7.0 + cierre quick tasks) next; 110+111 CLOSED (agent halves; operator LIVE debt deferred)
 
 ## Current Position
 
-Phase: 111 (V7GATES P4b — RUT-01 + backfills LIVE votos+dinero) — NEXT
+Phase: 112 (V7GATES P4c — cold-reads + flip MONEY + audit/complete v7.0 + cierre quick tasks) — NEXT
 Plan: n/a (pending discuss+plan)
-Status: Phase 110 complete (V7-01 closed; V7-07 = deferred operator debt)
+Status: Phase 111 complete (agent prep+verify done; RUT-01+backfills LIVE = deferred operator debt)
 Last activity: 2026-07-27
 
 ## Performance Metrics
@@ -214,6 +214,8 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 Backlog v6.x absorbido como DEBT-02..06 en Phases 74-75.
 
 - [Phase 110 DEUDA OPERADOR — blocking-human diferido]: (SC2) cargar `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` como GH secrets en Cuchecorp/gov-map (hoy AUSENTES) + verificar billing GH Actions; (SC3) rotar DB password B26 (Supabase Dashboard → Settings → Database → Reset), re-cargar solo `SUPABASE_DB_URL` en `.env` local, confirmar url-vieja-FALLA / url-nueva-devuelve-1 / CI+sitio verdes. Steps zero-credential-value en `110-02-OPERATOR-CHECKPOINT.md`. Resume: "cargado y rotado" con resultados.
+
+- [Phase 111 DEUDA OPERADOR — blocking-human diferido, LOCAL nunca CI]: orden DURO. (1) RUT-01 (V7-02) — poblar `supabase/seeds/parlamentario-rut.seed.json` con RUTs reales DV-válidos + provenance + correr invocador LOCAL contra REMOTO (GAP: invocador CLI NO construido aún; agente lo materializa on-request; molde backfill-entidad-cli.ts); agente JAMÁS escribe RUT. (2) Votos Cámara (66) + Senado (67), `VOTOS_LIVE=1`, rate-limit 2-3s; invariantes dipids_maestra_no_confirmado=0 + tokens `<SELECCION>`. (3) ChileCompra (70, POST RUT-01, cuota 10k/día, ticket MERCADOPUBLICO_TICKET) + SERVEL (71, .xlsx a R2). Baseline HOY: RUT 0/186, votos 283.550 conf, contrato 0, aporte 0. Maquinaria verde. Steps en `111-OPERATOR-CHECKPOINT.md`. MONEY OFF hasta flip Phase 112.
 
 ### Blockers/Concerns
 
