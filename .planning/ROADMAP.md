@@ -107,7 +107,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 113-06-PLAN.md — (w3) Chokepoints (ProvenanceBadge DUAL + safeExternalHref), 4 builders, URL-desde-columna
+- [x] 113-06-PLAN.md — (w3) Chokepoints (ProvenanceBadge DUAL + safeExternalHref), 4 builders, URL-desde-columna
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -310,7 +310,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 113. INV | 2/6 | In Progress|  |
+| 113. INV | 3/6 | In Progress|  |
 | 114. LINK-INT | 0/? | Not started | - |
 | 115. LINK-EXT | 0/? | Not started | - |
 | 116. FECHA-AUDIT | 0/? | Not started | - |
