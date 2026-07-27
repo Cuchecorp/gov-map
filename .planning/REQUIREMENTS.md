@@ -18,7 +18,7 @@
 
 ### TIER — Plomería del escalonamiento (respond→validate→escalate)
 
-- [ ] **TIER-01**: Adapters Granite y Phi implementan la interfaz `LLMProvider` existente por el patrón openai@5+baseURL (cero SDK nuevo), con los guards fail-closed por construcción (assertNoRutInLlmInput + sensitivity) idénticos a DeepSeek/MiniMax — tool calling o prompt-forzado + zod por proveedor, jamás asumir `response_format: json_schema`
+- [x] **TIER-01**: Adapters Granite y Phi implementan la interfaz `LLMProvider` existente por el patrón openai@5+baseURL (cero SDK nuevo), con los guards fail-closed por construcción (assertNoRutInLlmInput + sensitivity) idénticos a DeepSeek/MiniMax — tool calling o prompt-forzado + zod por proveedor, jamás asumir `response_format: json_schema`
 - [ ] **TIER-02**: Existe un `TieredProvider` (decorador que implementa `LLMProvider`) con config declarativa tarea→escalera; los consumidores no cambian de cuerpo (drop-in en el punto de construcción del CLI)
 - [ ] **TIER-03**: El juez compone como interfaz separada (`JudgeProvider`), es ESCALATE-ONLY (puede escalar/rechazar, jamás aprobar ni suavizar una compuerta), y sus veredictos quedan registrados estructurados para auditabilidad
 - [ ] **TIER-04**: Telemetría por llamada (modelo, tarea, latencia, costo, veredicto, escalación) sin payload ni PII en logs, alimentando el loop de benchmark; escalación acotada (sin loops, presupuesto máximo por ítem)
@@ -79,7 +79,7 @@
 | BENCH-03 | Phase 106 | Complete |
 | BENCH-04 | Phase 107 | Pending |
 | BENCH-05 | Phase 107 | Pending |
-| TIER-01 | Phase 107 | Pending |
+| TIER-01 | Phase 107 | Complete |
 | TIER-02 | Phase 108 | Pending |
 | TIER-03 | Phase 108 | Pending |
 | TIER-04 | Phase 108 | Pending |

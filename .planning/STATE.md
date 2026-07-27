@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: — Capa LLM escalonada + cierre de deuda viva
-status: verifying
+status: executing
 stopped_at: Completed 106-03-PLAN.md
-last_updated: "2026-07-27T01:56:43.969Z"
+last_updated: "2026-07-27T03:07:22.299Z"
 last_activity: 2026-07-27
 progress:
   total_phases: 8
   completed_phases: 0
-  total_plans: 8
-  completed_plans: 6
+  total_plans: 12
+  completed_plans: 7
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 106 — BENCH harness llm-bench + golden sets es-CL
+**Current focus:** Phase 107 — BENCH adapters Granite/Phi + juez + veredicto
 
 ## Current Position
 
-Phase: 106 (BENCH harness llm-bench + golden sets es-CL) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
+Phase: 107 (BENCH adapters Granite/Phi + juez + veredicto) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-07-27
 
 ## Performance Metrics
@@ -114,6 +114,7 @@ Last activity: 2026-07-27
 | Phase 105 P105-02 | 11 min | 4 tasks | 1 files |
 | Phase 106 P106-01 | 6min | 3 tasks | 16 files |
 | Phase 106 P106-02 | 10 min | 3 tasks | 14 files |
+| Phase 107 P107-01 | 6min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -199,6 +200,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 106-02: golden sets routing+clasificación es-CL congelados (sha256), scoring top-1+abstención generalizado de cruces, guards que muerden (∩=∅/no-RUT/frozen-hash); SECTOR_CODIGOS inlineado; símbolos con sufijo por el barrel export* plano
 - [Phase ?]: 106-03: golden de juez = pares (answer, human_label), accuracy condicional vs humano; extracción parse-rate SEPARADO de value-accuracy
 - [Phase ?]: 106-04: harness driver host-agnóstico; baseline LIVE DeepSeek/MiniMax corrido de verdad (provenance real), env-gated NUNCA en CI; el Reporte solo reporta (nada-aprueba-paridad); artefacto commiteado sin secrets
+- [Phase ?]: 107-01: GraniteProvider verbatim MiniMax clone + EXPLICIT max_tokens=2048 (Workers AI 256 truncates); host-agnostic baseURL Workers AI/OpenRouter. JudgeProvider SEPARADO en judge.ts, JudgeRequest LOCKED {answer,system?,sensitivity?,temperature?,context?}. PhiJudge determinista temp0 + match-by-name (Phi alucina nombres) + guards IDENTICOS (RUT answer+system, sensitivity). 3 placeholders .env.example VACIOS, guard verde. CERO SDK nuevo. VEREDICTO LIVE=Plan 03 (provision operador).
 
 ### Pending Todos
 
@@ -254,7 +256,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-27T01:56:29.444Z
+Last session: 2026-07-27T03:06:59.214Z
 Stopped at: Completed 106-03-PLAN.md
 Resume file: None
 

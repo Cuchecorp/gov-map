@@ -162,7 +162,7 @@ Plans:
 
 Plans:
 
-- [ ] 107-01-PLAN.md — Adapters GraniteProvider + JudgeProvider/Verdict + PhiJudge (clon MiniMax, guards idénticos, match-by-name, max_tokens explícito) + placeholders .env.example (TIER-01)
+- [x] 107-01-PLAN.md — Adapters GraniteProvider + JudgeProvider/Verdict + PhiJudge (clon MiniMax, guards idénticos, match-by-name, max_tokens explícito) + placeholders .env.example (TIER-01)
 - [ ] 107-02-PLAN.md — Máquina VEREDICTO por tarea (pura, ε explícito, es-CL veto duro, "nada aprueba") + puente PhiJudge→juez-vs-humano (BENCH-05, BENCH-04)
 - [ ] 107-03-PLAN.md — DIFERIDO (autonomous:false): corrida LIVE candidatos + veredicto definitivo, env-gated, requiere 3 keys operador (BENCH-04, BENCH-05)
 
