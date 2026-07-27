@@ -248,8 +248,11 @@ export async function correrTareas(
       JuezOutSchema,
       outcomes,
     );
-    // Un fallo estructural → rechazo conservador (el juez es escalate-only por diseño).
-    return out?.ok ?? false;
+    // WR-04: un fallo de completion (out === null) es NO-VEREDICTO → devolvemos null, NUNCA
+    // false. Tratarlo como "rechazo" premiaría a un juez roto con recall-de-rechazo = 1.0
+    // (parecería un rechazador perfecto por fallar). El fallo se surface SEPARADO vía las
+    // fail-rates (structured_output_fail_rate / zod_fail_rate) — no contamina la calidad del juez.
+    return out === null ? null : out.ok;
   });
 
   return {

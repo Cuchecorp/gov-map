@@ -23,6 +23,8 @@ import {
 const juzgarOro = (caso: CasoJuez): Promise<boolean> => Promise.resolve(caso.human_label);
 /** Juez sello-de-goma: aprueba TODO (siempre OK). */
 const juzgarSelloDeGoma = (): Promise<boolean> => Promise.resolve(true);
+/** Juez ROTO: nunca emite un veredicto usable (null = fallo/no-respuesta). WR-04. */
+const juzgarRoto = (): Promise<null> => Promise.resolve(null);
 
 describe("juez — estructura del set (pares answer/human_label)", () => {
   it("tiene ≥35 casos, cada uno con answer + human_label booleano", () => {
@@ -80,6 +82,30 @@ describe("juez — accuracy CONDICIONAL (precisión-del-OK + recall-de-rechazo)"
     expect(m).toHaveProperty("precision_ok");
     expect(m).toHaveProperty("recall_rechazo");
     expect(m.precision_ok).not.toBe(m.recall_rechazo);
+  });
+
+  // WR-04: un juez ROTO (nunca emite veredicto) NO debe puntuar recall-de-rechazo = 1.0.
+  it("juez ROTO (siempre null) → recall-de-rechazo = 0, NO 1.0 (WR-04)", async () => {
+    const m = await evaluarJuez(GOLDEN_SET_SCORING_JUEZ, juzgarRoto);
+    // Un no-veredicto NO cuenta como rechazo: no atrapa ninguna answer mala → recall = 0.
+    expect(m.recall_rechazo).toBe(0);
+    // Explícitamente NO es 1 (el bug premiaba al juez roto como rechazador perfecto).
+    expect(m.recall_rechazo).not.toBe(1);
+    // Nunca dijo OK → precisión-del-OK = null (denominador 0).
+    expect(m.precision_ok).toBeNull();
+    // El fallo se surface SEPARADO: todos los casos quedaron sin veredicto.
+    expect(m.conteos.sinVeredicto).toBe(GOLDEN_SET_SCORING_JUEZ.length);
+    // Las answers malas siguen en el denominador (no se atraparon), pero 0 en el numerador.
+    expect(m.conteos.rechazoYMala).toBe(0);
+    expect(m.conteos.malas).toBeGreaterThan(0);
+  });
+
+  it("un no-veredicto (null) sobre una answer mala NO se cuenta como rechazo (WR-04)", async () => {
+    // Sobre el set adversario (todas answers malas): un juez que responde null en todas obtiene
+    // recall = 0 — el rechazo hay que GANARLO con un veredicto explícito, no fallando.
+    const m = await evaluarJuez(GOLDEN_SET_ADVERSARIO_JUEZ, juzgarRoto);
+    expect(m.recall_rechazo).toBe(0);
+    expect(m.conteos.sinVeredicto).toBe(GOLDEN_SET_ADVERSARIO_JUEZ.length);
   });
 
   it("el scoring usa SOLO el split de scoring (no cuenta los de calibración)", async () => {

@@ -108,17 +108,36 @@ export interface MetricasJuez {
   n: number;
   /** P(answer correcta | juez dice OK). null si el juez nunca dijo OK. */
   precision_ok: number | null;
-  /** P(juez rechaza | answer incorrecta). null si no había answers incorrectas. */
+  /**
+   * P(juez rechaza | answer incorrecta). null si no había answers incorrectas.
+   *
+   * WR-04: un NO-VEREDICTO (juez roto / sin respuesta parseable) NO cuenta como rechazo válido
+   * — se EXCLUYE del numerador (pero sigue en el denominador: una answer mala NO atrapada). Un
+   * juez que jamás emite un veredicto obtiene recall = 0, NUNCA 1.0. El rechazo se GANA emitiendo
+   * un veredicto de rechazo, no fallando.
+   */
   recall_rechazo: number | null;
-  /** Conteos crudos para trazabilidad. */
-  conteos: { okYCorrecta: number; ok: number; rechazoYMala: number; malas: number };
+  /** Conteos crudos para trazabilidad. `sinVeredicto` = fallos de juez, surface SEPARADO. */
+  conteos: {
+    okYCorrecta: number;
+    ok: number;
+    rechazoYMala: number;
+    malas: number;
+    /** #casos donde el juez NO emitió veredicto (fallo/no-respuesta) — NO son rechazos (WR-04). */
+    sinVeredicto: number;
+  };
   /** Hooks de sesgo agregados (no interpretados en 106). */
   hooks: HooksSesgoJuez;
-  detalle: { id: string; veredictoJuez: boolean; human_label: boolean; nota: string }[];
+  detalle: { id: string; veredictoJuez: boolean | null; human_label: boolean; nota: string }[];
 }
 
-/** El juez bajo prueba: dado el answer del caso, devuelve OK (`true`) o rechazo (`false`). */
-export type JuzgarFn = (caso: CasoJuez) => Promise<boolean>;
+/**
+ * El juez bajo prueba: dado el answer del caso, devuelve OK (`true`), rechazo (`false`), o
+ * `null` = NO-VEREDICTO (el juez falló / no produjo una salida usable). WR-04: `null` NUNCA se
+ * trata como rechazo — no cuenta en el numerador de recall-de-rechazo y se surface aparte como
+ * fallo de juez. Un juez roto no debe cosechar recall-de-rechazo por fallar.
+ */
+export type JuzgarFn = (caso: CasoJuez) => Promise<boolean | null>;
 
 /** Umbral de tramo de longitud para el hook de verbosity (informativo; 107 puede recalibrar). */
 const UMBRAL_LONGITUD = 160;
@@ -133,6 +152,7 @@ export async function evaluarJuez(set: CasoJuez[], juzgar: JuzgarFn): Promise<Me
   let ok = 0;
   let rechazoYMala = 0;
   let malas = 0;
+  let sinVeredicto = 0;
   const porProductor: Record<string, { ok: number; total: number }> = {};
   const porLongitud = {
     corta: { ok: 0, total: 0 },
@@ -141,36 +161,43 @@ export async function evaluarJuez(set: CasoJuez[], juzgar: JuzgarFn): Promise<Me
   const detalle: MetricasJuez["detalle"] = [];
 
   for (const caso of set) {
-    const veredicto = await juzgar(caso); // true = OK, false = rechazo
+    const veredicto = await juzgar(caso); // true = OK, false = rechazo, null = SIN VEREDICTO (WR-04)
     const correcta = caso.human_label;
+    const emitioVeredicto = veredicto !== null;
 
-    if (veredicto) {
+    if (veredicto === true) {
       ok++;
       if (correcta) okYCorrecta++;
     }
     if (!correcta) {
       malas++;
-      if (!veredicto) rechazoYMala++;
+      // WR-04: SOLO un rechazo EXPLÍCITO (false) cuenta como acierto de rechazo. Un no-veredicto
+      // (null: juez roto / sin respuesta) NO es un rechazo — se excluye del numerador, así un
+      // juez que jamás responde obtiene recall = 0, no 1.0. La answer mala igual entra en `malas`.
+      if (veredicto === false) rechazoYMala++;
     }
+    if (!emitioVeredicto) sinVeredicto++;
 
-    // ── HOOK self-preference (por productor) ──
+    // ── HOOK self-preference (por productor) ── un no-veredicto no es un OK (no incrementa ok).
     porProductor[caso.producer] ??= { ok: 0, total: 0 };
     porProductor[caso.producer]!.total++;
-    if (veredicto) porProductor[caso.producer]!.ok++;
+    if (veredicto === true) porProductor[caso.producer]!.ok++;
 
     // ── HOOK verbosity (por tramo de longitud) ──
     const tramo = caso.answerLen >= UMBRAL_LONGITUD ? porLongitud.larga : porLongitud.corta;
     tramo.total++;
-    if (veredicto) tramo.ok++;
+    if (veredicto === true) tramo.ok++;
 
     detalle.push({
       id: caso.id,
       veredictoJuez: veredicto,
       human_label: correcta,
       nota:
-        veredicto === correcta
-          ? `acuerdo con humano (${veredicto ? "OK" : "rechazo"})`
-          : `DESACUERDO — juez ${veredicto ? "OK" : "rechazó"}, humano ${correcta ? "correcta" : "incorrecta"}`,
+        veredicto === null
+          ? "SIN VEREDICTO — el juez falló/no respondió (NO cuenta como rechazo)"
+          : veredicto === correcta
+            ? `acuerdo con humano (${veredicto ? "OK" : "rechazo"})`
+            : `DESACUERDO — juez ${veredicto ? "OK" : "rechazó"}, humano ${correcta ? "correcta" : "incorrecta"}`,
     });
   }
 
@@ -178,7 +205,7 @@ export async function evaluarJuez(set: CasoJuez[], juzgar: JuzgarFn): Promise<Me
     n: set.length,
     precision_ok: ok === 0 ? null : okYCorrecta / ok,
     recall_rechazo: malas === 0 ? null : rechazoYMala / malas,
-    conteos: { okYCorrecta, ok, rechazoYMala, malas },
+    conteos: { okYCorrecta, ok, rechazoYMala, malas, sinVeredicto },
     hooks: { porProductor, porLongitud },
     detalle,
   };
