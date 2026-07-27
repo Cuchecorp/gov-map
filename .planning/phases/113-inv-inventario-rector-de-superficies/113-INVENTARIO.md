@@ -5,7 +5,8 @@ deploy_auditado: "observado 2026-07-27 23:04 UTC (Cloudflare no expone id de ver
 gates_observados: { NET: ON, CRUCES: ON, VSIM: ON, MONEY: OFF, NOTIF: OFF }
 base_url: https://observatorio-congreso.thevalis.workers.dev
 fecha_corrida: 2026-07-27
-estado: en construcción
+estado: validado
+validacion: "113-VALIDACION-OPUS.md — validador Opus independiente, ronda 1 (2026-07-27): PASS en los 7 criterios; 2 hallazgos no bloqueantes remediados en el Plan 05 Task 3 (§4.8 comando del grep, §4.3.c nota obsoleta). Sin límites pendientes."
 consumido_por: [114, 115, 116, 122, 125]
 ---
 
@@ -257,6 +258,35 @@ separadoras) → **cero matches**, que es lo que la compuerta realmente busca: c
 
 Cero fallos nuevos, cero desviación de conteo. Consistente con el régimen: la fase **no toca código
 de producto** (`git status --porcelain app/ packages/` → vacío).
+
+### 0.8 Veredicto del validador y cierre — ronda 1 + ronda 2 (2026-07-27)
+
+**Ronda 1 — validador Opus independiente** (contexto fresco, read-only, juez separado de quien
+escribió el inventario): **PASS en los 7 criterios**, con verificación empírica. Veredicto completo
+por criterio en **`113-VALIDACION-OPUS.md`** (mismo directorio). El juez no modificó este documento.
+
+Dos hallazgos **no bloqueantes**, ambos **cerrados en el inventario** (Plan 05, Task 3):
+
+| # | Hallazgo | Dónde | Disposición |
+|---|----------|-------|-------------|
+| 1 | §4.8 afirmaba que `grep "ProvenanceBadge"` sobre los 3 archivos de `/parlamentarios` daba "sin match", pero `partido-chip.tsx:27` **sí** matchea (es un **comentario**, no un render) | §4.8 | **cerrado en el inventario** — se corrigió el **comando**, no la conclusión: se declara el 1 match-comentario y se añade la verificación que separa mención de uso (`import.*ProvenanceBadge\|<ProvenanceBadge` → sin match) |
+| 2 | §4.3.c quedó obsoleta tras el cierre de H2: seguía declarando una "excepción" de un id con forma de RUT en §5 y afirmando que era "el único match del patrón" | §4.3.c | **cerrado en el inventario** — la nota se reescribió al estado actual: no hay excepción, el patrón tiene **0 matches** en todo el archivo |
+
+**Ronda 2 — verificación mecánica post-cierre.** Las dos remediaciones son **documentales y en el
+sentido seguro** (precisan un comando y retiran una excepción ya inexistente); no reabren ninguno de
+los 7 criterios. Re-corrida completa tras los cierres:
+
+| Compuerta | Resultado |
+|-----------|-----------|
+| `STRICT=1 bash check-inventario.sh` | **exit 0** — 5/5 OK |
+| `grep -cE '[0-9]{7,8}-[0-9kK]'` (RUT) | **0** |
+| `grep -cE 'postgres(ql)?://'` | **0** |
+| celdas vacías en filas de tabla | **0** |
+| ids `E-NNN` duplicados | **0** |
+| `git status --porcelain app/ packages/` | **vacío** (la fase no tocó código de producto) |
+
+**Estado final: `validado`** (front-matter). Los 7 criterios en PASS, cero hallazgos abiertos, cero
+límites diferidos a otra fase. El inventario queda LOCKED como denominador de 114/115/116/122/125.
 
 ## 1. Sujetos deterministas
 
@@ -1294,12 +1324,15 @@ inventario **no contiene** ningún RUT real, email, nombre de persona natural ni
 queries de §3.3 devuelven sólo `split_part(<col>,'/',3)` (host) + `count(*)`, y §4.1-4.3 registran
 la **expresión** del prop, jamás el valor de una fila.
 
-**Excepción declarada (no es PII):** §5 conserva verbatim el comando de observación del gate MONEY,
-que incluye un id de sonda **sintético** (RUT de empresa con ceros, ver §5 tabla de gates, fila
-MONEY — no se repite aquí). No corresponde a ninguna fila de PROD
-(`contrato` tiene 0 filas) ni a una persona natural; se mantiene textual para que la evidencia del
-gate sea re-ejecutable. Es el único match del patrón de RUT en todo el archivo y **no** pertenece a
-§4.
+**Excepción declarada — CERRADA en el Plan 05 (ronda 1).** Esta nota decía antes que §5 conservaba
+verbatim, como *única* excepción, un id de sonda con forma de RUT (empresa sintética) en el comando
+de observación del gate MONEY, y que ese era el único match del patrón de RUT en todo el archivo.
+**Ya no hay excepción:** el Plan 05 sustituyó ese id por `c:sujeto-inexistente` (§0.7, hallazgo H2),
+sin pérdida de poder probatorio — el gate es la PRIMERA sentencia de
+`app/app/contraparte/[id]/page.tsx:50-52`, así que **cualquier** id 404ea (verificado el 2026-07-27
+con ambos ids contra el deploy vivo: 404 y 404). Hoy
+`grep -cE '[0-9]{7,8}-[0-9kK]' 113-INVENTARIO.md` → **0** en TODO el archivo, sin excepciones que
+declarar.
 
 ### 4.4 /
 
@@ -1571,9 +1604,20 @@ Supabase (contrato FichaRail, `page.tsx:145-146`).
 |---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
 | B1 | ninguna — **link desactivado a propósito** (mismo caso que B10 de §4.1) | `RPC:parlamentarios_publico_v2.partido` ← URIs `datos.bcn.cl/.../partido-politico/{slug}` (48 filas, §3.3.3) | **`partidoLegible`** (§3.2 nº 4): **NO construye link**, extrae el slug en Title Case | — | → E-019 `app/components/partido-chip.tsx:60` (`partidoLegible(partido)`) | — (invariante **"CERO URI en el DOM"**) |
 
-**Cero `ProvenanceBadge` en esta ruta:** `grep -n "ProvenanceBadge" app/app/parlamentarios/page.tsx
-app/components/parlamentario-directory-row.tsx app/components/partido-chip.tsx` → **sin match**. La
-procedencia del chip viaja en `title`/`aria-label` (`partido-chip.tsx:74`), **no** en un badge ⇒
+**Cero `ProvenanceBadge` renderizado en esta ruta.** El comando
+`grep -n "ProvenanceBadge" app/app/parlamentarios/page.tsx
+app/components/parlamentario-directory-row.tsx app/components/partido-chip.tsx` devuelve **un (1)
+match**, y es un **comentario, no un render**: `partido-chip.tsx:27` documenta que el subtexto
+"según {fuente} al {fecha}" vive en un Tooltip Radix *"(idiom ProvenanceBadge)"* — es decir, el chip
+**imita el idiom** sin importar ni montar el componente. Verificación que separa mención de uso:
+`grep -n "import.*ProvenanceBadge\|<ProvenanceBadge" <los 3 archivos>` → **sin match** (cero import,
+cero JSX).
+
+⚠️ Precisión introducida en el Plan 05 (ronda 1 del validador Opus): la redacción anterior decía
+"→ **sin match**" a secas, lo cual era **falso a nivel del comando** aunque la conclusión fuese
+correcta. Se corrige el comando, no la conclusión.
+
+La procedencia del chip viaja en `title`/`aria-label` (`partido-chip.tsx:74`), **no** en un badge ⇒
 cero `sourceUrl` y cero links externos emitidos. Regla de badge DUAL cumplida por vacío.
 
 #### Tabla C — fechas
