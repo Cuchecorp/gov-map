@@ -103,7 +103,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 113-02-PLAN.md — (w2) Chrome compartido + catálogo de emisores E-NNN
+- [x] 113-02-PLAN.md — (w2) Chrome compartido + catálogo de emisores E-NNN
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -310,7 +310,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 113. INV | 1/6 | In Progress|  |
+| 113. INV | 2/6 | In Progress|  |
 | 114. LINK-INT | 0/? | Not started | - |
 | 115. LINK-EXT | 0/? | Not started | - |
 | 116. FECHA-AUDIT | 0/? | Not started | - |
