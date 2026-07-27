@@ -1,15 +1,16 @@
-﻿---
+---
 gsd_state_version: 1.0
 milestone: v11.0
-milestone_name: Capa LLM escalonada + cierre de deuda viva
-status: planning
-last_updated: "2026-07-26T22:10:00.000Z"
-last_activity: 2026-07-26
+milestone_name: — Capa LLM escalonada + cierre de deuda viva
+status: executing
+stopped_at: Completed 104-01-PLAN.md
+last_updated: "2026-07-27T00:07:58.304Z"
+last_activity: 2026-07-27
 progress:
   total_phases: 8
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 1
   percent: 0
 ---
 
@@ -20,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 105 — BCN parser senadores en origen (arranque v11.0; roadmap 105-112 creado)
+**Current focus:** Phase 105 — BCN parser senadores en ORIGEN + re-corrida
 
 ## Current Position
 
-Phase: Not started (roadmap created, awaiting plan-phase)
-Plan: —
-Status: Roadmap created — 8 phases (105-112), 24/24 requirements mapped
-Last activity: 2026-07-26 — v11.0 roadmap created (BCN 105 · BENCH/TIER/INTEG 106-109 · V7GATES 110-112)
+Phase: 105 (BCN parser senadores en ORIGEN + re-corrida) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-07-27
 
 ## Performance Metrics
 
@@ -244,7 +245,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-26T19:54:25.167Z
+Last session: 2026-07-27T00:07:58.280Z
 Stopped at: Completed 104-01-PLAN.md
 Resume file: None
 

@@ -117,9 +117,9 @@ Notas de secuencia: los adapters (TIER-01) se construyen como candidatos DURANTE
 **Plans**: 2 plans
 
 Plans:
-- [ ] 105-01-PLAN.md — Fix fail-closed del parser BCN (URI→label determinista, mapa con evidencia real) + tests
-- [ ] 105-02-PLAN.md — Re-corrida --from-r2 a PROD (cero URI verificado) + decisión partidoLegible() documentada (BCN-02)
 
+- [x] 105-01-PLAN.md — Fix fail-closed del parser BCN (URI→label determinista, mapa con evidencia real) + tests
+- [ ] 105-02-PLAN.md — Re-corrida --from-r2 a PROD (cero URI verificado) + decisión partidoLegible() documentada (BCN-02)
 
 ### Phase 106: BENCH P1a — Harness `llm-bench` + golden sets es-CL POR TAREA (SPIKE, gate duro)
 
@@ -227,7 +227,6 @@ Plans:
   4. Las 5 quick tasks abiertas (260623-rtl, 260702-rbb, 260713-izo, 260715-bvd, 260722-eia) tienen marcador formal de cierre en su directorio y STATE.md las refleja
 
 **Plans**: TBD
-
 
 ## 🔒 v7.0 — Votos, dinero y cierre técnico (Code-complete; gates de operador abiertos)
 
