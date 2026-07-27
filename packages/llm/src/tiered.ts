@@ -8,7 +8,9 @@
  * NO re-rutea mid-sesión (FLAG-1 — anti-pattern "mid-session routing").
  *
  * Restricciones de seguridad:
- * - `assertNoRutInLlmInput` en la ENTRADA del decorador (defensa en profundidad, T-108-03).
+ * - `assertNoRutInLlmInput` en la ENTRADA del decorador (defensa en profundidad, T-108-03)
+ *   Y en el hop AL JUEZ (WR-01): la salida de tier-0 se re-guarda antes de cruzar al juez,
+ *   sin delegar en que cada JudgeProvider re-guarde su `answer`.
  * - Catch NARROWED a `LLMValidationError` (FLAG-2): solo ese fallo dispara escalación;
  *   otros errores se re-lanzan sin escalar.
  * - El juez es ESCALATE-ONLY: `ok:true` nunca relaja compuerta ni swallowea fallo zod.
@@ -121,15 +123,42 @@ export class TieredProvider implements LLMProvider {
     const primaryTier = this.tiers[0]!;
     const escalationTier = this.tiers[1] as LLMProvider | undefined;
 
-    // ── Capturar ValidationOutcome sin perder el callback original (Pitfall 1) ──
-    // El callback onValidationOutcome se dispara ANTES del throw en validate.ts.
-    // Lo envolvemos para capturarlo; el try/catch es el que decide escalación.
+    // ── Contrato: onValidationOutcome del caller se dispara EXACTAMENTE una vez ──
+    // (WR-02) El observador del caller describe el desenlace del tier que produce el
+    // VALOR RETORNADO. `parseAndValidate` (validate.ts) dispara su onOutcome ANTES del
+    // throw terminal; si simplemente reenviáramos `req.onValidationOutcome` en el
+    // wrapper de tier-0 Y volviéramos a pasar `req` a tier-1, el callback del caller se
+    // dispararía DOS veces en una escalación (una por el fallo terminal de tier-0, otra
+    // por el desenlace de tier-1). Eso rompe el "invoked EXACTLY once" del que depende
+    // @obs/llm-bench para recuperar el desenlace real de producción.
+    //
+    // Solución: los wrappers de tier CAPTURAN el outcome pero NO reenvían el callback
+    // del caller. Nosotros disparamos `req.onValidationOutcome` una sola vez, con el
+    // outcome del tier que efectivamente produjo el valor retornado, justo antes de
+    // retornar (o antes de lanzar el terminal).
     let capturedOutcome: ValidationOutcome | null = null;
+    let escalationOutcome: ValidationOutcome | null = null;
+    let callerOutcomeFired = false;
+    const fireCallerOutcome = (o: ValidationOutcome | null): void => {
+      // Idempotente y a lo sumo-una-vez: el callback del caller se invoca una sola vez
+      // por complete(), con el outcome del tier que produjo el valor retornado.
+      if (callerOutcomeFired) return;
+      callerOutcomeFired = true;
+      if (o !== null) req.onValidationOutcome?.(o);
+    };
+
+    // Wrapper de tier-0: captura el outcome, NO reenvía al caller (lo hacemos nosotros).
     const wrappedReq: CompletionRequest = {
       ...req,
       onValidationOutcome: (o: ValidationOutcome) => {
         capturedOutcome = o;
-        req.onValidationOutcome?.(o);
+      },
+    };
+    // Wrapper de tier-1 (escalación): captura su outcome, tampoco reenvía al caller.
+    const escalationReq: CompletionRequest = {
+      ...req,
+      onValidationOutcome: (o: ValidationOutcome) => {
+        escalationOutcome = o;
       },
     };
 
@@ -160,6 +189,12 @@ export class TieredProvider implements LLMProvider {
       // El juez corre tras el tier primario SOLO si no falló (si falló, ya tenemos trigger).
       // Diseño ESCALATE-ONLY: ok:true NUNCA relaja compuerta ni swallowea fallo zod.
       const answer = JSON.stringify(tier0Result);
+      // (WR-01) Defensa en profundidad en el hop AL JUEZ: la salida del tier-0 cruza a
+      // un SEGUNDO LLM (el juez). Si el modelo primario echó un RUT a su salida
+      // estructurada, ese RUT no debe llegar al juez. Guardamos aquí, en la frontera del
+      // propio decorador — NO delegamos en que cada JudgeProvider re-guarde su answer.
+      assertNoRutInLlmInput(answer);
+      if (this.judgeContext) assertNoRutInLlmInput(this.judgeContext);
       const verdict = await this.judge.judge({
         answer,
         system: this.judgeContext,
@@ -176,6 +211,9 @@ export class TieredProvider implements LLMProvider {
 
     // ── Sin trigger: retornar resultado de tier-0 ──────────────────────────────
     if (!needsEscalation) {
+      // El valor retornado proviene de tier-0 → disparar el callback del caller con
+      // el outcome de tier-0 (WR-02: exactamente una vez).
+      fireCallerOutcome(capturedOutcome);
       const latencyMs = Date.now() - t0;
       this._emit({
         providerId: primaryTier.id,
@@ -192,10 +230,33 @@ export class TieredProvider implements LLMProvider {
 
     // ── Con trigger: verificar presupuesto antes de escalar ────────────────────
     // maxBudgetUsd:0 → sin escalación; undefined → sin límite.
-    const budgetExceeded =
-      this.maxBudgetUsd !== undefined && this.maxBudgetUsd <= 0;
+    // (WR-05) Enforcement de presupuesto POSITIVO: se compara el costo YA acumulado
+    // por tier-0 contra `maxBudgetUsd`. Si escalar excedería el budget (o el costo de
+    // tier-0 ya lo consumió), se aborta ANTES del hop de escalación — cumpliendo el
+    // contrato de LadderConfig.maxBudgetUsd ("Si se supera antes de la escalación,
+    // aborta con error"). Antes solo el sentinela `0` disparaba; un budget positivo se
+    // comportaba como `undefined` (unlimited). El costo de escalación se estima con el
+    // costPerToken del tier de escalación; si el acumulado (tier-0 + estimado tier-1)
+    // superaría el budget, no se escala.
+    let budgetExceeded = false;
+    if (this.maxBudgetUsd !== undefined) {
+      if (this.maxBudgetUsd <= 0) {
+        // Sentinela: 0 (o negativo) → escalación deshabilitada.
+        budgetExceeded = true;
+      } else {
+        const primaryCost = this._estimateCost(this.costPerToken) ?? 0;
+        const escalationCost = this._estimateCost(this.escalationCostPerToken) ?? 0;
+        // Aborta si el costo de tier-0 ya agotó el budget, o si sumar la escalación
+        // lo excedería.
+        if (primaryCost >= this.maxBudgetUsd || primaryCost + escalationCost > this.maxBudgetUsd) {
+          budgetExceeded = true;
+        }
+      }
+    }
 
     if (budgetExceeded) {
+      // Terminal sin escalación: el desenlace de producción es el de tier-0 (WR-02).
+      fireCallerOutcome(capturedOutcome);
       const latencyMs = Date.now() - t0;
       this._emit({
         providerId: primaryTier.id,
@@ -212,7 +273,8 @@ export class TieredProvider implements LLMProvider {
 
     // ── Escalación: UN hop a tier-1 ────────────────────────────────────────────
     if (!escalationTier) {
-      // No hay tier de escalación.
+      // No hay tier de escalación. Terminal: el desenlace es el de tier-0 (WR-02).
+      fireCallerOutcome(capturedOutcome);
       const latencyMs = Date.now() - t0;
       this._emit({
         providerId: primaryTier.id,
@@ -228,15 +290,31 @@ export class TieredProvider implements LLMProvider {
     }
 
     // Escalación: llamar tier-1 UN hop (sin volver a tier-0 — T-108-04).
+    //
+    // (WR-03) DECISIÓN DELIBERADA: el juez NO re-evalúa la salida de tier-1. La cascada
+    // es de UN hop acotado (T-108-04): re-juzgar tier-1 abriría la puerta a un loop
+    // re-judge→re-escalate. El resultado de tier-1 se retorna SIN adjudicación de juez
+    // por diseño; la telemetría lo refleja emitiendo `judgeVerdict` (el veredicto de
+    // tier-0 que causó la escalación) mientras el `providerId` apunta a tier-1 — el
+    // consumidor sabe que el valor retornado NO fue juzgado (el verdict pertenece al
+    // tier anterior). Ver test "escalación retorna salida NO juzgada".
     try {
-      const escalationResult = await escalationTier.complete(req, schema);
+      // (WR-02) Usar `escalationReq` (wrapper que captura el outcome de tier-1 sin
+      // reenviar el callback del caller). El valor retornado proviene de tier-1 → el
+      // callback del caller se dispara con el outcome de tier-1 (exactamente una vez).
+      const escalationResult = await escalationTier.complete(escalationReq, schema);
+      fireCallerOutcome(escalationOutcome);
       const latencyMs = Date.now() - t0;
       this._emit({
         providerId: escalationTier.id,
         task: req.task,
         latencyMs,
         costUsd: this._estimateCost(this.escalationCostPerToken),
-        validationOutcome: null, // outcome de escalación no capturado por wrapper
+        // (WR-04) Emitir el outcome TERMINAL de tier-0 capturado por el wrapper: es la
+        // señal causal de POR QUÉ se escaló (zod-terminal / structured-output-fail).
+        // El outcome propio de tier-1 no se refleja aquí (el evento es de la escalación,
+        // no del tier de escalación aislado); el consumidor combina esto con judgeVerdict.
+        validationOutcome: capturedOutcome,
         judgeVerdict,
         escalated: true,
         ts: new Date().toISOString(),
@@ -244,13 +322,19 @@ export class TieredProvider implements LLMProvider {
       return escalationResult;
     } catch {
       // tier-1 también falló → EscalationExhaustedError (sin loop, T-108-04).
+      // (WR-02) Terminal: el desenlace de producción es el del ÚLTIMO tier que produjo
+      // uno (tier-1 si alcanzó a disparar su outcome terminal antes de lanzar; si no,
+      // tier-0). Se dispara el callback del caller exactamente una vez.
+      fireCallerOutcome(escalationOutcome ?? capturedOutcome);
       const latencyMs = Date.now() - t0;
       this._emit({
         providerId: escalationTier.id,
         task: req.task,
         latencyMs,
         costUsd: null,
-        validationOutcome: null,
+        // (WR-04) La señal causal de la escalación sigue siendo el outcome terminal de
+        // tier-0. tier-1 falló pero su outcome no es la causa; se emite el de tier-0.
+        validationOutcome: capturedOutcome,
         judgeVerdict,
         escalated: true,
         ts: new Date().toISOString(),
