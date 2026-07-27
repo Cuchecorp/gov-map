@@ -138,7 +138,7 @@ Plans:
 
 Plans:
 
-- [ ] 106-01-PLAN.md — Scaffold `@obs/llm-bench` + núcleo de medición (percentile, costo, instrumentedFetch, tipo Reporte con métricas SEPARADAS)
+- [x] 106-01-PLAN.md — Scaffold `@obs/llm-bench` + núcleo de medición (percentile, costo, instrumentedFetch, tipo Reporte con métricas SEPARADAS)
 - [ ] 106-02-PLAN.md — Golden sets routing + clasificación (single-label top-1 + abstención) + guards freeze/no-RUT/disjunción
 - [ ] 106-03-PLAN.md — Golden sets juez (pares answer/human_label + hooks de sesgo + split calibración) + extracción (parse-rate SEPARADO de value-accuracy + negación es-CL)
 - [ ] 106-04-PLAN.md — Harness driver → Reporte (MockProvider en CI) + baseline LIVE DeepSeek/MiniMax env-gated (endpoint provenance) + README operador
