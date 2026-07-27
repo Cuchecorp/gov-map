@@ -16,8 +16,9 @@
  * debe ser reproducible.
  *
  * Guards fail-closed IDENTICOS al responder: ningun RUT cruza al prompt (se guarda
- * `req.answer` Y `req.system`), y el gate de sensibilidad corre ANTES de cualquier
- * red (`req.sensitivity ?? "public"`, el golden de juez es NO-PII por construccion).
+ * TODO campo interpolado — `req.answer`, `req.system` Y `req.context`), y el gate de
+ * sensibilidad corre ANTES de cualquier red (`req.sensitivity ?? "public"`, el golden
+ * de juez es NO-PII por construccion).
  *
  * Host: OpenRouter por default (`https://openrouter.ai/api/v1`, modelo
  * `microsoft/phi-4-mini-instruct`); el constructor acepta model/baseURL/apiKey/fetchFn
@@ -78,9 +79,13 @@ export class PhiJudge implements JudgeProvider {
 
   async judge(req: JudgeRequest): Promise<Verdict> {
     // FAIL-CLOSED por construccion (IDENTICO al responder): los gates corren ANTES
-    // de cualquier red. Se guarda answer Y system (guard-on-system).
+    // de cualquier red. Se guarda TODO campo que se interpola al prompt de red:
+    // answer, system Y context (CR-01). `req.context` es un campo LOCKED de
+    // JudgeRequest que se concatena en `userParts` mas abajo — un RUT ahi cruzaria
+    // a la red sin este guard. La invariante es "ningun RUT cruza al prompt".
     assertNoRutInLlmInput(req.answer);
     if (req.system) assertNoRutInLlmInput(req.system);
+    if (req.context) assertNoRutInLlmInput(req.context);
     // Gate de sensibilidad; el golden de juez es NO-PII (default "public").
     assertSensitivityAllowed({ sensitivity: req.sensitivity ?? "public" }, this);
 

@@ -156,6 +156,17 @@ describe("PhiJudge", () => {
     expect(mock.calls).toHaveLength(0);
   });
 
+  it("RUT en req.context -> RutInLlmInputError y CERO fetches (guard-on-context, CR-01)", async () => {
+    // `context` se interpola al prompt de red (userParts) igual que answer/system:
+    // un RUT ahi DEBE ser vetado ANTES de cualquier fetch, misma invariante fail-closed.
+    const mock = makeMockFetch({ [URL]: { status: 200, body: toolResponse(VALID_VERDICT) } });
+    const p = makeJudge(mock.fn);
+    await expect(
+      p.judge({ answer: "ok", context: "el lobista 12.345.678-9 se reunio" }),
+    ).rejects.toBeInstanceOf(RutInLlmInputError);
+    expect(mock.calls).toHaveLength(0);
+  });
+
   it("dato personal a un juez que entrena -> SensitiveRoutingError y CERO fetches", async () => {
     const mock = makeMockFetch({ [URL]: { status: 200, body: toolResponse(VALID_VERDICT) } });
     const p = makeJudge(mock.fn);
