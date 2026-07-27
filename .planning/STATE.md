@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: — Capa LLM escalonada + cierre de deuda viva
-status: executing
+status: verifying
 stopped_at: Completed 106-03-PLAN.md
-last_updated: "2026-07-27T01:34:06.562Z"
+last_updated: "2026-07-27T01:56:43.969Z"
 last_activity: 2026-07-27
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 106 (BENCH harness llm-bench + golden sets es-CL) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-27
 
 ## Performance Metrics
@@ -198,6 +198,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 106-01: las dos tasas de fallo son campos SEPARADOS de primera clase — structured_output_fail_rate FUERA de zod_fail_rate.{repaired,terminal} (Pitfall B, test lo asevera). instrumentedFetch devuelve la Response ORIGINAL (lee un clon), sink solo latencia+tokens NUNCA payload (T-106-02); repair round-trips en el wall clock (Pitfall 7). PRICING dated 2026-07-26 [ASSUMED] MEDIUM solo incumbentes (Granite/Phi+secret=107). 18/18 tests + tsc -b root/pkg exit 0; CERO paquete nuevo; @obs/llm intacto.
 - [Phase ?]: 106-02: golden sets routing+clasificación es-CL congelados (sha256), scoring top-1+abstención generalizado de cruces, guards que muerden (∩=∅/no-RUT/frozen-hash); SECTOR_CODIGOS inlineado; símbolos con sufijo por el barrel export* plano
 - [Phase ?]: 106-03: golden de juez = pares (answer, human_label), accuracy condicional vs humano; extracción parse-rate SEPARADO de value-accuracy
+- [Phase ?]: 106-04: harness driver host-agnóstico; baseline LIVE DeepSeek/MiniMax corrido de verdad (provenance real), env-gated NUNCA en CI; el Reporte solo reporta (nada-aprueba-paridad); artefacto commiteado sin secrets
 
 ### Pending Todos
 
@@ -253,7 +254,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-27T01:34:06.546Z
+Last session: 2026-07-27T01:56:29.444Z
 Stopped at: Completed 106-03-PLAN.md
 Resume file: None
 
