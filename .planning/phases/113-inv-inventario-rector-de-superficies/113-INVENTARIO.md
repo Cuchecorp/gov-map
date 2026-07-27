@@ -1103,6 +1103,92 @@ Tabla B (externos):
 
 Tabla C: **sin fechas** (copy estático).
 
+### 4.3 `/contraparte/[id]`
+
+**Tipo:** ruta pública **dinámica** en el código, **404 entera en el deploy auditado**. El gate
+`MONEY` es la **PRIMERA sentencia** de la page (`app/app/contraparte/[id]/page.tsx:50-52`, ANTES de
+`await params` y de cualquier RPC o heading): con `MONEY_PUBLIC_ENABLED` distinto de `"true"` la
+ruta sirve `not-found.tsx` y **no se filtra ni el `<h1>` ni un heading de carril al HTML**.
+Toda la ruta lleva por tanto la marca literal **`no emitido en el deploy auditado`**.
+
+Se inventaría igual porque **existe en el código** y es parte del denominador: su copy de fecha lo
+audita **116**, y 115/125 necesitan saber que no deben perseguir estos links.
+
+**Sujeto usado** (§1.5 — **degradación honesta**):
+
+| sujeto | id | URL PROD | causa |
+|--------|----|----------|-------|
+| E — contraparte | **no elegido** | `no emitido en el deploy auditado` | `select count(*) from contrato` → **0** y `from aporte` → **0** (§1.5): no existe ninguna contraparte real en PROD que elegir, y la ruta 404ea por gate. **No se inventó ningún id.** La observación de §5 se hizo con un id de sonda sintético, no con un sujeto |
+
+**Chrome:** `→ C-01`, `→ C-02`, `→ C-03` en el 404 servido hoy. Con el gate ON, `→ C-04`
+(breadcrumbs montados por `page.tsx:145`: `Inicio` → `/` y el nombre de la empresa **sin href**;
+crumb 2 OMITIDO porque no existe listado de contrapartes). **No se repiten aquí.**
+
+#### Tabla A — links internos
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `/` (breadcrumb) | → E-034 / `→ C-04` `app/app/contraparte/[id]/page.tsx:145` | — | **MONEY** (OFF) — `no emitido en el deploy auditado` | `/` |
+| A2 | `buildHref(id, page ± 1)` (paginación de contratos) | → E-014 `app/components/contratos-por-contraparte.tsx:238,251` | **sí** (`#contratos`) | **MONEY** (OFF) — `no emitido en el deploy auditado` | misma ruta |
+| A3 | `buildHref(id, page ± 1)` (paginación de aportes) | → E-016 `app/components/aportes-por-contraparte.tsx:290,303` | **sí** (`#aportes`) | **MONEY** (OFF) — `no emitido en el deploy auditado` | misma ruta |
+
+**Ningún link entra a esta ruta desde fuera:** `grep -c 'href="/contraparte/'` en
+`/parlamentario/D1165` y `/proyecto/14309-04` → **0** y **0** (§5). Es una ruta sin inbound.
+
+#### Tabla B — links externos
+
+| # | fuente | plantilla o columna de origen | builder o `columna` | parámetro | emisor (archivo:línea o → E-NNN) | gate |
+|---|--------|-------------------------------|---------------------|-----------|----------------------------------|------|
+| B1 | otro (Mercado Público / ChileCompra) — **columna con 0 filas en PROD** (§3.3) | **columna** `RPC:agregado_por_contraparte` (rama contratos) ← `tabla.contrato.enlace` | `columna` (sin builder), vía `safeExternalHref` | `sourceUrl={c.enlace}` | **badge** → E-014 `app/components/contratos-por-contraparte.tsx:175,178` (§3.1.4 fila 5) | **MONEY** (OFF) — `no emitido en el deploy auditado` |
+| B2 | otro (Servel) — **columna con 0 filas en PROD** (§3.3) | **columna** `RPC:agregado_por_contraparte` (rama aportes) ← `tabla.aporte.enlace` | `columna` (sin builder), vía `safeExternalHref` | `sourceUrl={a.enlace}` | **badge** → E-016 `app/components/aportes-por-contraparte.tsx:196,199` (§3.1.4 fila 2) | **MONEY** (OFF) — `no emitido en el deploy auditado` |
+
+**Doble ausencia (§3.3.6 nº 5):** aunque MONEY se encendiera, `contrato.enlace` y `aporte.enlace`
+tienen **0 filas** en PROD ⇒ el badge no emitiría `<a>`. Cero valor en perseguir B1/B2 desde 115.
+
+#### Tabla C — fechas
+
+| # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
+|---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
+| C1 | fecha de la orden de compra | `fechaCorta` | `RPC:agregado_por_contraparte.fecha_oc` ← `tabla.contrato.fecha_oc` — el hecho | no | no | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-014 `app/components/contratos-por-contraparte.tsx:135-136` |
+| C2 | fecha de corte del dato | `fechaCorta` | `RPC:agregado_por_contraparte.fecha_corte` ← `tabla.contrato.fecha_corte` — corte de la fuente | no | no | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-014 `app/components/contratos-por-contraparte.tsx:138-139` |
+| C3 | `Actualizado {hace X}` (por contrato) | `relativeTimeEs` + `esStale` | `RPC:agregado_por_contraparte.fecha_captura` ← `tabla.contrato.fecha_captura` (`:132`; tipado `fecha_captura: string` en `:80`) | **sí** | **sí** | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-014 `app/components/contratos-por-contraparte.tsx:175-176` |
+| C4 | fecha del aporte | `fechaCorta` | `RPC:agregado_por_contraparte.fecha_aporte` ← `tabla.aporte.fecha_aporte` — el hecho | no | no | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-016 `app/components/aportes-por-contraparte.tsx:148-149` |
+| C5 | fecha de corte del dato | `fechaCorta` | `RPC:agregado_por_contraparte.fecha_corte` ← `tabla.aporte.fecha_corte` — corte de la fuente | no | no | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-016 `app/components/aportes-por-contraparte.tsx:151-152` |
+| C6 | `Actualizado {hace X}` (por aporte) | `relativeTimeEs` + `esStale` | `RPC:agregado_por_contraparte.fecha_captura` ← `tabla.aporte.fecha_captura` (`:147`; tipado `fecha_captura: string` en `:82`) | **sí** | **sí** | **MONEY** (OFF) — `no emitido en el deploy auditado` | → E-016 `app/components/aportes-por-contraparte.tsx:196-197` |
+
+**Correspondencia badge ↔ tablas:** los 2 badges de la ruta —`contratos-por-contraparte:175`,
+`aportes-por-contraparte:196`— aportan **B1, B2** en Tabla B y **C3, C6** en Tabla C.
+Cero badges solo-C. (`E-060` recuerda que el match de `ProvenanceBadge` en
+`app/app/contraparte/[id]/page.tsx:19` es un **comentario**, no un render.)
+
+#### 4.3.b `app/app/contraparte/[id]/not-found.tsx`
+
+Doble función: 404 por id inexistente/no-jurídica **y** 404 del gate OFF. Por diseño **no contiene
+ningún heading MONEY ni dato de contraparte** (`not-found.tsx:4-10`). Es lo único que este deploy
+sirve realmente en esta ruta.
+
+| # | href (plantilla) | emisor (archivo:línea o → E-NNN) | ancla #id? | condicional/gate | ruta destino |
+|---|------------------|----------------------------------|-----------|------------------|--------------|
+| A1 | `/` | → E-050 `app/app/contraparte/[id]/not-found.tsx:19` | — | siempre (es lo que se sirve con **MONEY** OFF) | `/` |
+
+Tabla B: **sin links externos**. Tabla C: **sin fechas** (copy estático).
+
+#### 4.3.c Nota de PII del inventario (T-113-02 / T-113-06)
+
+Este documento cita **nombres de columna** de tablas con PII (`contrato.rut_proveedor`,
+`aporte.donante_nombre`, `pii_contraparte_declaracion.enlace`, `lobby_contraparte.enlace`) porque el
+nombre de la columna es metadato de esquema. **Sus VALORES nunca se citan.** En consecuencia el
+inventario **no contiene** ningún RUT real, email, nombre de persona natural ni monto individual: las
+queries de §3.3 devuelven sólo `split_part(<col>,'/',3)` (host) + `count(*)`, y §4.1-4.3 registran
+la **expresión** del prop, jamás el valor de una fila.
+
+**Excepción declarada (no es PII):** §5 conserva verbatim el comando de observación del gate MONEY,
+que incluye un id de sonda **sintético** (RUT de empresa con ceros, ver §5 tabla de gates, fila
+MONEY — no se repite aquí). No corresponde a ninguna fila de PROD
+(`contrato` tiene 0 filas) ni a una persona natural; se mantiene textual para que la evidencia del
+gate sea re-ejecutable. Es el único match del patrón de RUT en todo el archivo y **no** pertenece a
+§4.
+
 ## 5. Gates y su estado
 
 **Método:** estado **OBSERVADO** contra el deploy vivo el **2026-07-27**, con `curl -s` + grep del
