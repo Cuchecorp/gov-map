@@ -11,12 +11,12 @@
 - ✅ **v5.0 — De datos a comprensión (legibilidad + análisis)** — Phases 44-55 (acordeones/navegación, gráficos descriptivos patrimonio/votos/ausencias, cruces nuevos, rediseño cognitivo 3 capas) — shipped 2026-07-08 (`74e3ad0f`); **F48 (autoría) DIFERIDA a milestone de ingesta** por gap de datos (autores 0/136). Audit `tech_debt`: milestones/v5.0-MILESTONE-AUDIT.md
 - ✅ **v6.0 — Confiabilidad y comprensión** — Phases 56-61 (ingesta E2E confiable, autores F48, ícono, comprensión BrowserOS) — shipped 2026-07-09
 - ✅ **v6.1 — Entendible y completo** — Phases 62-63 (/red ego-network radial + búsqueda corpus completo declarado) — shipped 2026-07-11
-- 🔒 **v7.0 — Votos, dinero y cierre técnico** — Phases 64-75 — CODE-COMPLETE 2026-07-15 (suite 820/820); NO archivado: gates de operador abiertos, checklist en `.planning/HANDOFF-v7.0-operator-gates.md`
+- ✅ **v7.0 — Votos, dinero y cierre técnico** — Phases 64-75 — CODE-COMPLETE 2026-07-15 (suite 820/820); **ARCHIVADO 2026-07-27** en v11.0 pasada 3 (fases → milestones/v7.0-phases/). Gates de operador cerrados como deuda documentada: 0052 aplicada (V7-01); RUT-01+backfills+CF secrets/rotación B26 = deuda operador diferida (110/111 checkpoints); MONEY OFF honesto (V7-06)
 - ✅ **v8.0 — Rediseño Bento** — Phases 76-81 (home bento + primitivas + chrome + coherencia + candados + ship) — shipped 2026-07-15 (`fb88c8a4`); gate lectura fría = handoff (`phases/81-*/81-BROWSEROS-GATE.md`); archivo: milestones/v8.0-ROADMAP.md
 - ✅ **v8.1 — Demo perfecto** — Phases 82-85 — shipped 2026-07-15 (`3563ecc9`); archivo: milestones/v8.1-ROADMAP.md
 - ✅ **v9.0 — Robustez de productos estrella + seguridad final** — Phases 86-96 — shipped 2026-07-23 (deploy `09f1d5c2`, CSP enforced, audit PASSED 29/29); archivo: milestones/v9.0-ROADMAP.md
 - ✅ **v10.0 — Panel de actualidad legislativa + notificaciones + relaciones** — Phases 97-104 — shipped 2026-07-26 (deploy `e89b79af`, audit PASSED 25/25, VSIM ON con dossier firmado, NOTIF inerte tras provisión operador); archivo: milestones/v10.0-ROADMAP.md
-- 🏗 **v11.0 — Capa LLM escalonada + cierre de deuda viva** — Phases 105-112 — EN CURSO (spike benchmark POR TAREA Granite/Phi/DeepSeek → plomíería TieredProvider → integración de menor riesgo · parser BCN senadores en origen · pasada de cierre gates v7.0 con operador · marcadores quick tasks)
+- ✅ **v11.0 — Capa LLM escalonada + cierre de deuda viva** — Phases 105-112 — **SHIPPED 2026-07-27** (audit 20/24 satisfechas, 4 deferred operator-debt V7-02/03/04/07). BCN parser en origen · benchmark POR TAREA Granite/Phi/DeepSeek · TieredProvider + integración clasificación menor-riesgo (default=incumbente) · cierre gates v7.0 (0052 aplicada, MONEY OFF honesto, 5 quick tasks cerradas). Deuda operador diferida documentada. Archivo: milestones/v11.0-ROADMAP.md
 
 <details>
 <summary>✅ v9.0 — Robustez de productos estrella + seguridad final (Phases 86-96) — SHIPPED 2026-07-23</summary>

@@ -180,6 +180,38 @@ Landing convertida en panel de actualidad cuantitativo (señales precomputadas h
 - Sesiones: 1 corrida autónoma (con 1 corte de límite recuperado).
 - Notable: 103 completa (5 planes + 2 review-loops + apply PROD) y 104 (3 planes + 4 deploys + E2E) en un día.
 
+## Milestone: v11.0 — Capa LLM escalonada + cierre de deuda viva
+
+**Shipped:** 2026-07-27
+**Phases:** 8 (105-112) | **Plans:** ~16 | **Requirements:** 20/24 satisfechas, 4 deferred operator-debt
+
+### What Was Built
+- BCN parser senadores en ORIGEN (URI→label fail-closed; cero URI-como-partido en PROD).
+- `@obs/llm-bench` harness + golden sets es-CL POR TAREA congelados + VEREDICTO por-tarea ε-gated (veto es-CL); adapters Granite/PhiJudge; veredicto full-40: solo clasificación APPROVED para Granite.
+- `TieredProvider` decorador (escalada acotada, juez ESCALATE-ONLY, telemetría payload-free) + integración de clasificación **default=incumbente byte-idéntico** (`CLASIFICACION_ESCALERA=1` = acto operador diferido) + provider-guard + golden gate CI.
+- Cierre gates v7.0: 0052 aplicada a PROD (pgTAP 7/7); MONEY OFF declarado honesto; 5 quick tasks cerradas; v7.0 archivada.
+
+### What Worked
+- **Live read-only DB check resolvió la contradicción de STATE** (0053/0054 ya aplicadas; solo 0052 faltaba) ANTES de planificar — evitó re-aplicar migraciones no-idempotentes.
+- Checkpoints blocking-human presentados con baseline + maquinaria verificada verde → el operador decide con datos, no a ciegas.
+- Patrón v7/v9/v10 sostenido: checkpoint diferido = handoff documentado, la corrida CIERRA igual.
+
+### What Was Inefficient
+- Full app suite flake (timeout 5s bajo carga concurrente) dio 3 falsos-fail; re-corrida limpia verde. Conocido, no regresión.
+
+### Key Lessons
+- "complete-milestone vX.Y" vía CLI archiva el ROADMAP/REQUIREMENTS ACTUALES → correcto solo para el milestone en curso; archivar un milestone viejo huérfano (v7.0) = mover sus fases a mano, NO correr el CLI (mislabelaría los archivos actuales).
+- Cuando los backfills se difieren, el flip MONEY es moot por datos vacíos, no solo por sign-off legal — declararlo OFF honesto es la salida correcta.
+
+### Deferred (operator debt, documented handoff)
+- V7-07: CF secrets + rotación B26 (110-02-OPERATOR-CHECKPOINT.md).
+- V7-02/03/04: RUT-01 + backfills votos/dinero (111-OPERATOR-CHECKPOINT.md).
+- MONEY flip: tras sign-off legal 21.719 + backfills.
+
+### Cost Observations
+- Model mix: ~100% opus (orquestador Fable + subagentes planner/checker).
+- Sesiones: pasada 3 en 1 corrida; pasadas 1-2 previas.
+
 ## Cross-Milestone Trends
 
 | Métrica | v1.0 | v5.0 | v6.1 |

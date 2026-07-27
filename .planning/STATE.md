@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: — Capa LLM escalonada + cierre de deuda viva
-status: verifying
-stopped_at: Completed Phase 112 (PASADA 3) — milestone lifecycle next
-last_updated: "2026-07-27T00:00:00.000Z"
-last_activity: 2026-07-27
+status: Awaiting next milestone
+stopped_at: Completed 106-03-PLAN.md
+last_updated: "2026-07-27T19:14:29.062Z"
+last_activity: 2026-07-27 — Milestone v11.0 completed and archived
 progress:
   total_phases: 8
-  completed_phases: 8
-  total_plans: 21
-  completed_plans: 21
-  percent: 100
+  completed_phases: 3
+  total_plans: 19
+  completed_plans: 18
+  percent: 38
 ---
 
 # Project State
@@ -25,12 +25,13 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 ## Current Position
 
-Phase: 112 COMPLETE (última de v11.0). MONEY OFF honesto; 5 quick tasks CERRADAS.
-Plan: n/a
-Status: v11.0 fases 105-112 completas. Deuda operador diferida documentada (secrets/rotación 110; RUT-01+backfills 111; MONEY flip+legal 112).
-Last activity: 2026-07-27
+Phase: Milestone v11.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-27 — Milestone v11.0 completed and archived
 
 ### Quick tasks CERRADAS (QT-01, Phase 112)
+
 - 260623-rtl (loadEnv CI-safe) · 260702-rbb (B20/B21 NET /red) · 260713-izo (/red layout B) · 260715-bvd (Dependabot ×3) · 260722-eia (deep-links+urgencia). Marcador CLOSED-v11.0.md en cada dir.
 
 ## Performance Metrics

@@ -1,5 +1,30 @@
 # Milestones
 
+## v11.0 Capa LLM escalonada + cierre de deuda viva (Shipped: 2026-07-27)
+
+**Phases completed:** 8 phases, 16 plans, 18 tasks
+
+**Key accomplishments:**
+
+- crudo R2 `bio/envelope/2026-07-22/1fab3cb0939333c45cb01b20dcdd9232ca3e584f8d6a78aa2e02589ca4329549.json` (`senadoresSparql` — el MISMO envelope que 105-02 re-parseará).
+- 1. [Rule 3 - Blocking issue] Core placeholders created in Task 1 to keep tsc -b green.
+- 1. [Rule 1 - Bug] Sanity-check de la prueba de negación mal construido.
+- 1. [Rule 3 - Blocking issue] Cap por tarea (`OpcionesCorrida.limitePorTarea` + `LLM_BENCH_LIMIT`) para hacer el baseline LIVE genuinamente corrible.
+- GraniteProvider (MiniMax clone with explicit max_tokens, host-agnostic Workers AI/OpenRouter baseURL) + a SEPARATE JudgeProvider/Verdict contract with PhiJudge (deterministic, match-by-name), both with identical fail-closed RUT+sensitivity guards, all CI-testable with a fake fetch and zero new SDK.
+- A first-class es-CL `negacion.accuracy` sub-metric added ADDITIVELY to the frozen 106 extracción scorer, a PURE ε-gated VEREDICTO machine whose es-CL HARD VETO reads that independent field and short-circuits the aggregate gate, and a PhiJudge→juez bridge measured against HUMAN labels — all fixture-tested, no network, zero new package.
+- A single env-gated LIVE test that (when the operator provisions the three candidate keys) runs the real Granite candidate + a SAME-RUN DeepSeek incumbent through the 106 harness + the real PhiJudge-vs-human measurement and computes the definitive per-task VEREDICTO — skipped in CI, no network; the candidate keys are absent from `.env`, so the phase closes honestly on a documented handoff with the veredicto marked PENDING-EVIDENCE.
+- Contrato telemetría payload-free (TelemetrySink/TelemetryEvent) + config declarativa tarea→escalera (LadderConfig/buildTieredProvider) + MockProvider local para tests offline de la cascada.
+- TieredProvider decorador LLMProvider con escalada acotada (catch-narrowed LLMValidationError, juez ESCALATE-ONLY, tiers inmutables, presupuesto, telemetría payload-free) + suite offline 21 tests + guard estructural TIER-05 + forward ref Plan 01 cerrado (tsc -b 0).
+- Two static vitest source-scan guards — provider-guard enumerates all LLM providers and asserts the zod+PII wrapper; integ-scope-guard asserts TieredProvider is absent from adjudicacion and extraccion construction points — with mutation self-checks proving both guards bite.
+- Env-gate en clasificar-fichas-cli.ts (CLASIFICACION_ESCALERA; default = DeepSeek incumbente byte-idéntico) + golden de clasificación como gate CI permanente offline.
+- Shadow-eval Granite vs DeepSeek LIVE-gated (10 casos, delay 2.5s, skip limpio sin keys) + rollback-by-config assert OFFLINE + drift canary del modelo servido Workers AI con invalidación del veredicto full-40 en mismatch.
+- 2026-07-27
+- 2026-07-27
+- 2026-07-27
+- 2026-07-27
+
+---
+
 ## v10.0 Panel de actualidad legislativa + notificaciones + relaciones (Shipped: 2026-07-26)
 
 **Phases completed:** 8 phases, 26 plans, 48 tasks
