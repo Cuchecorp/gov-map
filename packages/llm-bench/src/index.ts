@@ -11,6 +11,10 @@ export * from "./pricing";
 export * from "./instrument";
 export * from "./report";
 
+// --- Driver del harness + mock (106-04, Wave 3) ---
+export * from "./harness";
+export * from "./mock-provider";
+
 // --- Guards compartidos (106-02 llena los módulos) ---
 export * from "./guards/freeze";
 export * from "./guards/no-rut";
