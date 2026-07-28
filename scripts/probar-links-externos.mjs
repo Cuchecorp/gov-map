@@ -64,7 +64,34 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import os from "node:os";
 
 // ── Constantes de mesura ────────────────────────────────────────────────────────
-const CONTACTO = process.env.INGESTA_CONTACTO || "contacto@observatorio-congreso";
+/**
+ * Contacto del User-Agent identificatorio (CLAUDE.md §Conventions).
+ *
+ * WR-06: el valor de la variable de entorno se interpolaba CRUDO en la cabecera. Un
+ * `INGESTA_CONTACTO` con `\r\n` construye una cabecera adicional en el request de curl
+ * (no hay shell, pero sí hay construcción de cabecera) y un valor con caracteres de
+ * control o no-ASCII rompe la identificación. Se sanea ANTES de interpolar: se descartan
+ * los caracteres fuera del ASCII imprimible (incl. `\r`, `\n`, `\0`) y se acota el largo.
+ *
+ * El defecto es un destino REALMENTE alcanzable: un User-Agent "identificatorio" cuyo
+ * contacto no existe no identifica a nadie, y `contacto@observatorio-congreso` (sin TLD)
+ * no era resoluble. Se usa el issue tracker público del repo, que sí existe hoy; el
+ * operador puede sustituirlo por un buzón propio vía `INGESTA_CONTACTO`.
+ *
+ * OJO trazabilidad: `115-ROBOTS.txt` y `115-MUESTRA.json` registran el User-Agent
+ * VIGENTE EN SU CORRIDA (con el contacto viejo). Son el registro de lo que efectivamente
+ * se envió y no se reescriben.
+ */
+const CONTACTO_DEFECTO = "https://github.com/Cuchecorp/gov-map/issues";
+export function sanearContacto(valor) {
+  const limpio = String(valor ?? "")
+    // eslint-disable-next-line no-control-regex
+    .replace(/[^\x20-\x7E]/g, "")
+    .trim()
+    .slice(0, 120);
+  return limpio || CONTACTO_DEFECTO;
+}
+const CONTACTO = sanearContacto(process.env.INGESTA_CONTACTO);
 export const USER_AGENT = `ObservatorioCongreso360/1.0 (+https://observatorio-congreso.thevalis.workers.dev; contacto: ${CONTACTO})`;
 export const DELAY_MS = 2500;
 const REINTENTO_MS = 5000;
