@@ -17,10 +17,49 @@ findings:
   warning: 6
   info: 6
   total: 13
-status: issues_found
+status: fixed
+fixed_at: 2026-07-28
+fixed:
+  critical: 1
+  warning: 6
+  info: 6
+  total: 13
+skipped: 0
 ---
 
 # Phase 115: Code Review Report
+
+## Estado de los fixes (2026-07-28)
+
+Los 13 hallazgos quedaron **corregidos**; ninguno se saltó. Commit atómico por hallazgo
+(WR-02+WR-03 y WR-04+WR-05 comparten commit por vivir en el mismo archivo y en el mismo
+bloque de código).
+
+| ID | estado | commit | qué se hizo |
+|----|--------|--------|-------------|
+| CR-01 | fixed | `a006167` | leyenda + predicado a `app/lib/recurso-no-humano.ts` (single-source); el timeline la declara UNA vez por contenedor y por fila la lleva en `aria-label`/`title`; 6 tests nuevos |
+| WR-01 | fixed | `c91f018` | `parsearRobots`/`pathProhibido`/`violacionesRobots`: el gate niega por código (fail-closed) antes de emitir request; `probar-links-externos.selfcheck.mjs` nuevo |
+| WR-02 | fixed | `87ede82` | el guard IMPORTA `LEYENDA_RECURSO_NO_HUMANO` real en vez de una copia literal |
+| WR-03 | fixed | `87ede82` | `TERMINOS_LINK_EXT` + tests (1b)/(1c): el vocabulario se verifica por código sobre TODAS las superficies (>20), no por grep sobre 4 |
+| WR-04 | fixed | `c9cc51a` | prop `densidad`; 12 call-sites por-fila migrados a `"lista"` → cero repetición visible de la leyenda |
+| WR-05 | fixed | `c9cc51a` | en `"lista"` no hay envoltorio `flex-col` (caja idéntica a un destino humano); 6 tests de layout |
+| WR-06 | fixed | `6367f5e` | `sanearContacto()` (ASCII imprimible, ≤120) + defecto alcanzable |
+| IN-01 | fixed | `7db7442` | `>= 400` en vez de la condición redundante |
+| IN-02 | fixed | `7db7442` | rama explícita `3xx → REDIR-GENERICA` |
+| IN-03 | fixed | `7db7442` | `CLASES` es el contrato: `clasificar()` valida y lanza |
+| IN-04 | fixed | `7db7442` | `MAX_FILESIZE` 16 KB alineado al `--range`; exit 63 de curl no se reintenta |
+| IN-05 | fixed | `a006167` | `esServicioDeDatos` compara paths por segmento, no por `includes` |
+| IN-06 | fixed | `c9cc51a` | bloque Tooltip extraído a `conTooltip` (estaba duplicado en ambas ramas) |
+
+**Gates:** suite `app` 1467 verde (1453 + 14 nuevos) · `packages` sin delta · `tsc --noEmit`
+0 errores · guards verdes (incl. anti-insinuación extendido y el nuevo self-check del
+runner, 25 comprobaciones) · `git diff` vacío en `.env`, `.env.example`, `package.json`,
+`pnpm-lock.yaml` · cero deploy, cero flags, cero requests a hosts gubernamentales.
+
+Documentos actualizados por el fix: `115-VERIFICACION.md` §2.3 y §"lectura fría" punto 4
+(dónde ve el ciudadano la declaración de A-3 tras CR-01).
+
+---
 
 **Reviewed:** 2026-07-28
 **Depth:** standard

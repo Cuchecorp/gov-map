@@ -51,7 +51,10 @@ no-humano**, que es cosa distinta.
 
 ### 2.3 Recurso no-humano sin URL humana derivable (A-3 / A-4 / A-5) — **declarado en la UI**
 
-Leyenda LOCKED, single-source en `app/components/provenance-badge.tsx`:
+Leyenda LOCKED, single-source en `app/lib/recurso-no-humano.ts` (re-exportada por
+`app/components/provenance-badge.tsx`; se mudó a `lib/` en el fix CR-01 de la review
+porque `timeline-event.tsx` también la consume y el source-scan SC7 le prohíbe importar
+del badge):
 
 > «La fuente oficial publica este dato como servicio de datos, no como página de consulta.»
 
@@ -62,7 +65,7 @@ offenders — por eso NO requiere entrada en `NEGACIONES_LOCKED`.
 
 | acción | destinos que la disparan (`esServicioDeDatos`, host+path) | evidencia (`115-MUESTRA.json`) | dónde lo ve el ciudadano |
 |--------|----------------------------------------------------------|-------------------------------|--------------------------|
-| **A-3** | `opendata.camara.cl` (web services `.asmx`) | `P-03-c02`, `P-18-c01`, `P-23-c01`, `P-25-c01` → HTTP 500, cuerpo `Falta el parámetro: prmBoletin` | bajo el badge de procedencia, junto al enlace, que **se conserva** |
+| **A-3** | `opendata.camara.cl` (web services `.asmx`) | `P-03-c02`, `P-18-c01`, `P-23-c01`, `P-25-c01` → HTTP 500, cuerpo `Falta el parámetro: prmBoletin` | **(corregido por CR-01)** en el **timeline** de la ficha de proyecto —la superficie con la mayor población A-3, 3.797 filas de `tramitacion_evento`— una vez al pie de la lista, más `title`/nombre accesible por fila; y bajo el badge de procedencia donde éste se monta. El enlace **se conserva** siempre |
 | **A-4** | `web-back.senado.cl/api/*` · `tramitacion.senado.cl/wspublico/*` | `P-07-c01` y `P-20-c01` → 200 `application/json`; `P-15-c01` → 200 `text/xml`; `P-16-c01` → 206 `application/xml` | ídem |
 | **A-5** | `datos.cplt.cl/sparql` | `P-11-c01` → HTTP 400, `Virtuoso 37000 Error SP030: SPARQL compiler, line 1: syntax error at 'alessandri' before 'vergara'` | ídem |
 
@@ -191,9 +194,14 @@ final no lo redescubra):
    expandido, `?urgencias=uN`). Casos de referencia: `P-24-c01` (ANTES) → `P-01-c01`/
    `P-03-c01` (DESPUÉS).
 3. **A-2 (guard)** — ningún `<a>` del timeline con esquema no-web en el DOM servido.
-4. **A-3/A-4/A-5** — la leyenda de recurso no-humano es **visible** bajo el badge cuando el
-   destino es `opendata.camara.cl`, `web-back.senado.cl/api/*`, `/wspublico/*` o
-   `datos.cplt.cl/sparql`, y **ausente** cuando el destino es una ficha humana.
+4. **A-3/A-4/A-5** — la leyenda de recurso no-humano es **visible** cuando el destino es
+   `opendata.camara.cl`, `web-back.senado.cl/api/*`, `/wspublico/*` o
+   `datos.cplt.cl/sparql`, y **ausente** cuando el destino es una ficha humana. Tras el fix
+   CR-01 hay que mirar **dos** sitios: (a) al pie del **timeline** de la ficha de proyecto
+   —una sola vez por lista, con `title`/nombre accesible por fila—, y (b) bajo el badge de
+   procedencia en las secciones que lo montan en modo `densidad="bloque"`. En las filas de
+   lista (`densidad="lista"`: votos, patrimonio, lobby, aportes, contratos) la leyenda NO se
+   repite como texto visible: viaja en el `title` del badge y en el tooltip.
 5. **Re-verificación live de la muestra** — diferida por respeto al rate-limit: dentro de
    esta fase no se volvió a consultar a los servidores más allá de los 2 requests de §4.
 6. **D-115-01** (`deferred-items.md`) — deuda de **ingesta** del `enlace` SPARQL de
