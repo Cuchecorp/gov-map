@@ -126,10 +126,26 @@ function ghRunSignal(workflowYml: string): string {
   }
 }
 
+/**
+ * Rótulos de `source_snapshot.source` conocidos. IN-04 (119-REVIEW): la SQL de este módulo es
+ * 100% ESTÁTICA por invariante; interpolar `fuente` -aunque hoy venga del catálogo estático- la
+ * rompía. El valor se busca en esta lista cerrada y lo que no esté en ella NO llega a la SQL.
+ */
+export const SOURCES_SNAPSHOT_CONOCIDOS = [
+  "agenda",
+  "identity",
+  "infoprobidad",
+  "leyes",
+  "lobby-camara",
+  "lobby-leylobby",
+] as const;
+
 function r2SnapshotSignal(dbUrl: string, fuente: string): string {
-  // source_snapshot.source contiene el nombre del conector/fuente.
-  // Probamos con el nombre exacto del catálogo; si no hay filas → "n/d (sin snapshots)".
-  const sql = `SELECT MAX(fetched_at) FROM source_snapshot WHERE source = '${fuente}';`;
+  // WR-05: el rótulo que el CONECTOR escribe puede diferir del nombre de la entrada del catálogo
+  // (p.ej. `probidad` → `infoprobidad`); `sourceSnapshot` lo declara explícitamente.
+  const literal = SOURCES_SNAPSHOT_CONOCIDOS.find((s) => s === fuente);
+  if (!literal) return "n/d (sin snapshots)";
+  const sql = `SELECT MAX(fetched_at) FROM source_snapshot WHERE source = '${literal}';`;
   const result = psql(dbUrl, sql);
   if (!result || result === "" || result.toLowerCase() === "null") {
     return "n/d (sin snapshots)";
@@ -163,7 +179,7 @@ export async function queryFreshness(dbUrl: string): Promise<QueryRow[]> {
         : ghRunSignal(cfg.workflowYml);
 
     // (c) R2 snapshot signal via source_snapshot
-    const r2Snapshot = r2SnapshotSignal(dbUrl, cfg.fuente);
+    const r2Snapshot = r2SnapshotSignal(dbUrl, cfg.sourceSnapshot ?? cfg.fuente);
 
     return { fuente: cfg.fuente, ultimoUpsert, ghRun, r2Snapshot };
   });

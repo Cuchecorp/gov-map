@@ -89,6 +89,19 @@ export interface FuenteConfig {
    * por lo que agregarlo NO regresiona ninguna entrada existente.
    */
   agregado?: "MAX" | "MIN";
+  /**
+   * WR-05 (119-REVIEW) — rótulo con el que ESTE conector escribe `source_snapshot.source`,
+   * cuando NO coincide con `fuente`. `r2SnapshotSignal` consulta por este valor.
+   *
+   * POR QUÉ EXISTE: la señal asumía `source = <fuente del catálogo>`. Para probidad el catálogo
+   * dice `"probidad"` y el conector escribe `"infoprobidad"`, así que la señal reportaba
+   * "n/d (sin snapshots)" HABIENDO crudo (`infoprobidad|3` en PROD). Un instrumento que dice
+   * "sin crudo" cuando hay crudo es peor que no tenerlo.
+   *
+   * Se mapea en vez de renombrar el rótulo del writer porque las filas YA ESCRITAS en PROD dicen
+   * `infoprobidad`: renombrar dejaría huérfano el histórico y volvería a mentir, ahora al revés.
+   */
+  sourceSnapshot?: string;
 }
 
 /**
@@ -398,6 +411,9 @@ export const CATALOG: FuenteConfig[] = [
   },
   {
     fuente: "probidad",
+    // WR-05: el conector escribe `source_snapshot.source = "infoprobidad"` (el nombre del
+    // servicio del CPLT), no "probidad". Verificado contra PROD 2026-07-28: `infoprobidad|3`.
+    sourceSnapshot: "infoprobidad",
     tabla: "declaracion",
     columna: "fecha_captura",
     umbralDias: 30,
