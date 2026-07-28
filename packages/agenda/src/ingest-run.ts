@@ -28,6 +28,8 @@ import { parseSenadoTabla } from "./parse-senado-tabla";
 import { CAMARA_TABLA_PDF_URL } from "./connector-camara";
 import { extraerTextoTablaPdf, parseCamaraTabla } from "./parse-camara-tabla";
 import { sha256Hex } from "@obs/ingest";
+import type { SnapshotWriter } from "@obs/ingest";
+import { makeProvenance } from "@obs/core";
 import type { LLMProvider } from "@obs/llm";
 
 /** Target R2 mínimo (envuelve `R2Store.putImmutable`). Devuelve el r2Path y si ya existía. */
@@ -66,6 +68,15 @@ export interface RunIngestOpts {
   r2?: TablaR2Target;
   /** Habilita la etapa 1 (R2) del PDF de la tabla. Default false (mismo gate que fichas). */
   r2Enabled?: boolean;
+  /**
+   * G5 — writer de `source_snapshot` (provenance del crudo). BEST-EFFORT: un fallo de la
+   * escritura NO aborta la ingesta ni revierte el upsert ya hecho. Solo se escribe tras un
+   * `putImmutable` con `existed:false` (T-119-12: jamás una fila sin objeto R2 recién creado).
+   * `source` es "agenda" — el nombre del CATÁLOGO de freshness (`packages/freshness/src/catalog.ts`
+   * fila `fuente: "agenda"`), NO el "camara" que particiona la key de R2: la señal
+   * `r2SnapshotSignal` consulta `where source = '<fuente del catálogo>'`.
+   */
+  snapshotWriter?: Pick<SnapshotWriter, "write">;
   /**
    * Semana ISO a la que se asocia la tabla de sala de Cámara (`prmId=0` = la vigente). Default:
    * la primera de `semanas`. La `SesionSala` se identifica `camara:sesion:<YYYY-Www>`.
@@ -170,6 +181,34 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
               if (existed) {
                 log(`[skip] sin novedades — camara citaciones-semana ${clave}`);
                 break;
+              }
+              // G5: la fila de `source_snapshot` va DESPUÉS del put con existed:false —
+              // nunca se registra un snapshot cuyo objeto no se acabe de escribir (T-119-12).
+              // `cacheKey`/`dateBucket` reusan la MISMA partición que la key de R2 (`clave`,
+              // la semana ISO, WR-01) para que snapshot y objeto compartan identidad.
+              if (opts.snapshotWriter) {
+                try {
+                  await opts.snapshotWriter.write({
+                    source: "agenda",
+                    resource: "citaciones-semana",
+                    cacheKey: `agenda:citaciones-semana:${clave}`,
+                    r2Path: key,
+                    contentHash: sha,
+                    fingerprint: sha,
+                    dateBucket: clave,
+                    provenance: makeProvenance(
+                      "agenda",
+                      opts.conectorCamara.urlSemana(semana.year, semana.week),
+                    ),
+                  });
+                  log(`ingest: Cámara ${clave} → fila source_snapshot escrita`);
+                } catch (snapErr) {
+                  // BEST-EFFORT: el índice de provenance es deseable, no un gate de la
+                  // ingesta. El crudo ya está en R2 y la Etapa 2 debe proceder igual.
+                  log(
+                    `ingest: Cámara ${clave} → source_snapshot falló (no fatal): ${snapErr instanceof Error ? snapErr.message : String(snapErr)}`,
+                  );
+                }
               }
             } catch (r2Err) {
               // R2 401/red: los bytes ya están en memoria; la Etapa 2 sigue (no aborta).
@@ -313,6 +352,25 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
             if (existed) {
               sinNovedadesTabla = true;
               log(`[skip] sin novedades — camara tabla-sala ${claveTabla}`);
+            } else if (opts.snapshotWriter) {
+              // G5, best-effort (ver nota del bloque de citaciones).
+              try {
+                await opts.snapshotWriter.write({
+                  source: "agenda",
+                  resource: "tabla-sala",
+                  cacheKey: `agenda:tabla-sala:${claveTabla}`,
+                  r2Path: key,
+                  contentHash: sha,
+                  fingerprint: sha,
+                  dateBucket: claveTabla,
+                  provenance: makeProvenance("agenda", CAMARA_TABLA_PDF_URL),
+                });
+                log(`ingest: Cámara tabla → fila source_snapshot escrita`);
+              } catch (snapErr) {
+                log(
+                  `ingest: Cámara tabla → source_snapshot falló (no fatal): ${snapErr instanceof Error ? snapErr.message : String(snapErr)}`,
+                );
+              }
             }
           } catch (err) {
             // R2 401/red: el PDF ya está en memoria; la etapa 2 sigue (no aborta).

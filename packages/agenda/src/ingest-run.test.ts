@@ -43,6 +43,8 @@ function fakeCamara(behavior: {
   return {
     fetchSemanaBytes: async (year: number, week: number) => enc.encode(await semanaFn(year, week)),
     fetchSemana: semanaFn,
+    urlSemana: (year: number, week: number) =>
+      `https://www.camara.cl/legislacion/citaciones_semana.aspx?prmSemana=${year}-${week}`,
     fetchPdfTabla: () => ({ url: CAMARA_TABLA_PDF_URL, content_type: "application/pdf" }),
   } as unknown as CitacionesCamaraConnector;
 }
@@ -452,5 +454,135 @@ describe("runIngest — G6: existed:true ⇒ skip sin novedades", () => {
     });
 
     expect(logs.some((l) => l.includes("no es un PDF (magic bytes)"))).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G5 (119-04): tras un putImmutable con existed:false se registra la provenance en
+// `source_snapshot`. Best-effort: un fallo del writer NO tumba la ingesta.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("runIngest — G5: SnapshotWriter (source_snapshot)", () => {
+  function r2Con(existed: boolean) {
+    return {
+      putImmutable: async (
+        source: string,
+        resource: string,
+        date: string,
+        sha: string,
+        ext: string,
+      ) => ({ r2Path: `${source}/${resource}/${date}/${sha}.${ext}`, existed }),
+    };
+  }
+
+  /** Stub del SnapshotWriter: acumula las escrituras (o lanza si `falla`). */
+  function stubWriter(falla = false) {
+    const escrituras: Record<string, unknown>[] = [];
+    return {
+      escrituras,
+      writer: {
+        write: async (w: Record<string, unknown>) => {
+          escrituras.push(w);
+          if (falla) throw new Error("source_snapshot caído");
+          return { r2Path: String(w.r2Path), contentHash: String(w.contentHash) };
+        },
+      },
+    };
+  }
+
+  it("(1) existed:false ⇒ write una vez por recurso con source/resource/r2Path/contentHash no vacíos", async () => {
+    const { escrituras, writer: snap } = stubWriter();
+    const camara = {
+      ...fakeCamara({}),
+      fetchTablaSalaPdf: async () => new TextEncoder().encode("no-es-un-pdf"),
+    } as unknown as CitacionesCamaraConnector;
+
+    await runIngest({
+      conectorCamara: camara,
+      conectorSenado: fakeSenado(),
+      writer: new InMemoryAgendaWriter(),
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2: r2Con(false),
+      r2Enabled: true,
+      proveedorTablaCamara: {
+        id: "fake",
+        trainsOnInputs: false,
+        complete: async () => ({}) as never,
+      } as never,
+      snapshotWriter: snap as never,
+    });
+
+    // 2 semanas de citaciones + 1 tabla de sala.
+    expect(escrituras).toHaveLength(SEMANAS.length + 1);
+    for (const e of escrituras) {
+      expect(e.source).toBe("agenda");
+      expect(String(e.resource)).not.toBe("");
+      expect(String(e.r2Path)).not.toBe("");
+      expect(String(e.contentHash)).not.toBe("");
+    }
+    expect(escrituras.map((e) => e.resource)).toContain("citaciones-semana");
+    expect(escrituras.map((e) => e.resource)).toContain("tabla-sala");
+    // La partición del snapshot es la MISMA que la key de R2 (semana ISO, WR-01).
+    expect(escrituras[0]!.dateBucket).toBe("2026-W24");
+    expect(escrituras[0]!.cacheKey).toBe("agenda:citaciones-semana:2026-W24");
+  });
+
+  it("(2) existed:true ⇒ CERO escrituras (nunca una fila sin objeto recién creado)", async () => {
+    const { escrituras, writer: snap } = stubWriter();
+    await runIngest({
+      conectorCamara: fakeCamara({}),
+      conectorSenado: fakeSenado(),
+      writer: new InMemoryAgendaWriter(),
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2: r2Con(true),
+      r2Enabled: true,
+      snapshotWriter: snap as never,
+    });
+    expect(escrituras).toHaveLength(0);
+  });
+
+  it("(3) best-effort: si write lanza, la corrida termina OK y conserva los conteos", async () => {
+    const logs: string[] = [];
+    const { writer: snap } = stubWriter(true);
+    const base = await runIngest({
+      conectorCamara: fakeCamara({}),
+      conectorSenado: fakeSenado(),
+      writer: new InMemoryAgendaWriter(),
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2: r2Con(false),
+      r2Enabled: true,
+    });
+    const conFallo = await runIngest({
+      conectorCamara: fakeCamara({}),
+      conectorSenado: fakeSenado(),
+      writer: new InMemoryAgendaWriter(),
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2: r2Con(false),
+      r2Enabled: true,
+      snapshotWriter: snap as never,
+      log: (m) => logs.push(m),
+    });
+
+    expect(conFallo.errores).toHaveLength(0);
+    expect(conFallo.camaraCitaciones).toBe(base.camaraCitaciones);
+    expect(conFallo.senadoCitaciones).toBe(base.senadoCitaciones);
+    expect(logs.some((l) => l.includes("source_snapshot falló (no fatal)"))).toBe(true);
+  });
+
+  it("(4) sin snapshotWriter la corrida es idéntica (opción ausente ⇒ no se registra nada)", async () => {
+    const res = await runIngest({
+      conectorCamara: fakeCamara({}),
+      conectorSenado: fakeSenado(),
+      writer: new InMemoryAgendaWriter(),
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2: r2Con(false),
+      r2Enabled: true,
+    });
+    expect(res.errores).toHaveLength(0);
+    expect(res.camaraCitaciones).toBeGreaterThanOrEqual(1);
   });
 });

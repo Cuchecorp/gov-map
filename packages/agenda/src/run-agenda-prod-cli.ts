@@ -18,7 +18,16 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Fetcher, HostRateLimiter, RobotsGuard, R2Store } from "@obs/ingest";
+import { createClient } from "@supabase/supabase-js";
+import {
+  Fetcher,
+  HostRateLimiter,
+  RobotsGuard,
+  R2Store,
+  SnapshotWriter,
+  SupabaseSnapshotStore,
+  type CreateSupabaseClient,
+} from "@obs/ingest";
 import { DeepSeekProvider, type LLMProvider } from "@obs/llm";
 import { CitacionesCamaraConnector } from "./connector-camara";
 import { SenadoActividadConnector } from "./connector-senado";
@@ -28,6 +37,14 @@ import { InMemoryAgendaWriter, type AgendaWriter } from "./writer";
 import { runIngest, type TablaR2Target } from "./ingest-run";
 import { isoWeekOf, enumerarSemanas, semanaIsoKey, type SemanaIso } from "./semana-iso";
 import { parseSemanaIso } from "./ingest-cli";
+
+/**
+ * Adapta el `createClient` de supabase-js a la factory estructural que `SupabaseSnapshotStore`
+ * espera (espejo exacto de `run-tramitacion-prod-cli.ts:49-50`). @obs/agenda ya declara
+ * `@supabase/supabase-js`.
+ */
+const createSupabaseClient: CreateSupabaseClient = (url, serviceKey) =>
+  createClient(url, serviceKey) as unknown as ReturnType<CreateSupabaseClient>;
 
 /** Backoff base entre reintentos ante 403 de Cámara en la corrida LIVE. */
 const BACKOFF_MS = 2000;
@@ -146,6 +163,20 @@ async function main(): Promise<void> {
     log("[WARN] R2 no configurado — Etapa 1 omitida (sin crudo versionado)");
   }
 
+  // SnapshotWriter (source_snapshot / FND-08 / CRON-02 G5): solo LIVE con creds Supabase.
+  // Plantilla dorada: `run-tramitacion-prod-cli.ts:215-224`. En --dry-run o sin credenciales
+  // queda `undefined` → no se registra provenance (y se dice, no se finge).
+  const snapshotWriter =
+    !dryRun && env.SUPABASE_API_URL && env.SUPABASE_SECRET_KEY
+      ? new SnapshotWriter(
+          new SupabaseSnapshotStore({
+            url: env.SUPABASE_API_URL,
+            serviceKey: env.SUPABASE_SECRET_KEY,
+            createClient: createSupabaseClient,
+          }),
+        )
+      : undefined;
+
   const res = await runIngest({
     conectorCamara,
     conectorSenado,
@@ -157,6 +188,7 @@ async function main(): Promise<void> {
     proveedorTablaCamara,
     r2,
     r2Enabled: Boolean(r2Creds),
+    ...(snapshotWriter ? { snapshotWriter } : {}),
     // `prmId=0` = SIEMPRE la semana vigente → asociar la tabla a la semana ISO ACTUAL
     // (isoWeekOf(now)), JAMÁS a la primera del rango: un backfill con --desde histórico
     // etiquetaría la tabla vigente con una semana pasada (bug reparado 2026-07-22:
