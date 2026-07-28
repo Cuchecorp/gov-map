@@ -6,8 +6,11 @@ import { render, screen, cleanup } from "@testing-library/react";
 import {
   TimelineView,
   esEventoUrgencia,
+  fechaValida,
   paresDeUrgencia,
 } from "./timeline-view";
+import { TimelineEvent } from "./timeline-event";
+import { TramitacionStepper } from "./capa1/tramitacion-stepper";
 import { LEYENDA_RECURSO_NO_HUMANO } from "@/lib/recurso-no-humano";
 import type { TramitacionEventoRow } from "@/lib/types";
 
@@ -473,5 +476,65 @@ describe("TimelineView — declaración de recurso no-humano (LINK-EXT A-3)", ()
     expect(
       screen.queryByText(LEYENDA_RECURSO_NO_HUMANO),
     ).not.toBeInTheDocument();
+  });
+});
+
+// ── F-04 / F-05 / F-07 (117-02, Task 1) ─────────────────────────────────────
+describe("F-04: fechaValida rechaza fechas implausibles", () => {
+  it("el typo de siglo real de PROD (boletín 18232-25, 2626-05-25) ⇒ null", () => {
+    expect(fechaValida("2626-05-25T00:00:00+00:00")).toBeNull();
+  });
+
+  it("una fecha anterior al piso de plausibilidad (1989) ⇒ null", () => {
+    expect(fechaValida("1989-06-01T00:00:00Z")).toBeNull();
+  });
+
+  it("una fecha plausible ⇒ Date válida (comportamiento previo intacto)", () => {
+    const d = fechaValida("2026-07-07T00:00:00Z");
+    expect(d).toBeInstanceOf(Date);
+    expect(d!.toISOString()).toBe("2026-07-07T00:00:00.000Z");
+  });
+
+  it("null / basura ⇒ null (comportamiento previo intacto)", () => {
+    expect(fechaValida(null)).toBeNull();
+    expect(fechaValida("basura")).toBeNull();
+  });
+});
+
+describe("F-04/F-05/F-07 en TimelineEvent", () => {
+  it("un evento del año 2626 NO filtra la fecha implausible al DOM", () => {
+    const { container } = render(
+      <TimelineEvent
+        evento={makeEvento({ fecha: "2626-05-25T00:00:00+00:00" })}
+      />,
+    );
+    expect(container.textContent).not.toContain("2626");
+  });
+
+  it("un hito de las 00:14 UTC se rinde con el día chileno real y rotulado", () => {
+    const { container } = render(
+      <TimelineEvent evento={makeEvento({ fecha: "2023-11-17T00:14:41Z" })} />,
+    );
+    expect(container.textContent).toContain("Hito del 16 nov 2023");
+  });
+});
+
+describe("F-07 en TramitacionStepper", () => {
+  it("rinde `{descripcion} — {fecha}` con guion largo entre ambos", () => {
+    const { container } = render(
+      <TramitacionStepper
+        eventos={[
+          makeEvento({
+            fecha: "2026-05-14T00:00:00Z",
+            descripcion: "Ingreso de proyecto",
+          }),
+        ]}
+        estado={{}}
+        boletin="16284-07"
+      />,
+    );
+    expect(container.textContent).toContain(
+      "Ingreso de proyecto \u2014 14 may 2026",
+    );
   });
 });
