@@ -141,6 +141,10 @@ corrida real gastaría requests contra la fuente sin aportar más que los tests,
 invariante con el store devolviendo `existed:true`. Queda para la verificación E2E de Phase 125,
 donde el cron real produce la segunda corrida consecutiva sin costo adicional.
 
+## Self-Check: PASSED
+
+4/4 archivos declarados existen; 7/7 commits declarados existen en el historial.
+
 ## Threat Flags
 
 Ninguno. El skip se dispara SOLO por el 412 de R2 (hash del contenido), nunca por heurísticas de
