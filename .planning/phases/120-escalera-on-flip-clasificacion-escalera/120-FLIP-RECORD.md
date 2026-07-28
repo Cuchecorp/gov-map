@@ -237,3 +237,57 @@ cruces-fichas DRY-RUN: procesados=3 asignados=2 abstenidos=1 coberturaMuestra=67
   humo de `--limite 3`. No es un hallazgo del flip.
 
 **VEREDICTO: PASS**
+
+---
+
+## Gate 5b — Rollback inverso re-probado
+
+Ciclo **ON → OFF → ON** ejercido en vivo sobre el sistema ya flipeado (SC#3). Las tres corridas
+usan el mismo comando acotado; lo único que cambia entre ellas es una línea de `.env`.
+
+**Cautela de shell aplicada:** antes de cada `source .env` se corrió `unset CLASIFICACION_ESCALERA`.
+Sin ese `unset`, la variable exportada por la corrida anterior sobreviviría en el shell y la prueba
+del rollback sería un **falso negativo** (el CLI vería la var aunque `.env` ya no la tuviera). En la
+corrida OFF se verificó explícitamente que la var quedó vacía en el entorno antes de invocar el CLI.
+
+| # | Estado de `.env` | Hora (UTC) | Comando | Línea de provider observada | Exit |
+|---|------------------|-----------|---------|------------------------------|------|
+| 1 | `CLASIFICACION_ESCALERA=1` presente | 2026-07-28T20:32:07Z | `set -a; source .env; set +a` + `pnpm --filter @obs/cruces exec tsx src/clasificar-fichas-cli.ts --limite 3 --dry-run` | `cruces-fichas: provider=tiered:granite→deepseek (CLASIFICACION_ESCALERA=1)` | 0 |
+| 2 | línea **quitada** (rollback) | 2026-07-28T20:33:14Z | `unset CLASIFICACION_ESCALERA` + `set -a; source .env; set +a` + mismo CLI | `cruces-fichas: provider=deepseek (default incumbente)` | 0 |
+| 3 | línea **restaurada** (estado final) | 2026-07-28T20:33:28Z | `unset CLASIFICACION_ESCALERA` + `set -a; source .env; set +a` + mismo CLI | `cruces-fichas: provider=tiered:granite→deepseek (CLASIFICACION_ESCALERA=1)` | 0 |
+
+**Salida de la corrida 2 (OFF, rollback):**
+
+```
+cruces-fichas: provider=deepseek (default incumbente)
+cruces-fichas: DRY-RUN → 3 procesados / 1 con sector / 2 sin sector (abstención). Cobertura muestra (3): 33% (gate CRUCE-02 ≥70%)
+
+cruces-fichas DRY-RUN: procesados=3 asignados=1 abstenidos=2 coberturaMuestra=33% dbLoaded=false
+```
+
+En la corrida 2 la línea `provider=tiered` está **ausente** — el incumbente DeepSeek volvió sin
+ninguna otra intervención.
+
+**Salida de la corrida 3 (ON restaurado, estado final de la fase):**
+
+```
+cruces-fichas: provider=tiered:granite→deepseek (CLASIFICACION_ESCALERA=1)
+cruces-fichas: DRY-RUN → 3 procesados / 2 con sector / 1 sin sector (abstención). Cobertura muestra (3): 67% (gate CRUCE-02 ≥70%)
+
+cruces-fichas DRY-RUN: procesados=3 asignados=2 abstenidos=1 coberturaMuestra=67% dbLoaded=false
+```
+
+**Naturaleza del rollback (declaración SC#3):** revertir la escalera es **quitar una sola línea de
+`.env`**. SIN migración de base de datos, SIN deploy, SIN redeploy de Cloudflare, SIN cambio de
+código y sin reinicio de servicio — la clasificación corre como CLI local y `resolverProvider`
+resuelve el provider en tiempo de ejecución desde el entorno.
+
+**Nota de lectura (no es un hallazgo del flip):** las corridas ON y OFF difieren en el reparto
+asignados/abstenidos (2/1 vs 1/2) sobre 3 fichas. Es una muestra de tamaño 3 comparando dos
+modelos distintos; el juicio de paridad Granite vs DeepSeek **no** se hace aquí sino en el Gate 3
+(shadow-eval LIVE sobre el `GOLDEN_SET_GATE`, `acuerdo=8/8`) y en el veredicto full-40 (Δ0.0000).
+Este gate prueba únicamente el **mecanismo** de encendido/apagado, no la calidad.
+
+**Estado final:** `grep -c "^CLASIFICACION_ESCALERA=1" .env` == 1 → **escalera ENCENDIDA**.
+
+**VEREDICTO: PASS**
