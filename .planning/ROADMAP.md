@@ -275,7 +275,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 119-01-PLAN.md — (w1) Instrumento de frescura: G10 tsx + G2 workflowYml null + G4 verde prestado (ghRun en el stale)
+- [x] 119-01-PLAN.md — (w1) Instrumento de frescura: G10 tsx + G2 workflowYml null + G4 verde prestado (ghRun en el stale)
 - [ ] 119-03-PLAN.md — (w1) G6 `existed` -> `[skip] sin novedades` en agenda, probidad e identity
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -395,7 +395,7 @@ Plans:
 | 116. FECHA-AUDIT | 4/4 | Complete    | 2026-07-28 |
 | 117. FECHA-FIX | 4/4 | Complete    | 2026-07-28 |
 | 118. CRON-AUDIT | 3/3 | Complete    | 2026-07-28 |
-| 119. CRON-FIX | 0/? | Not started | - |
+| 119. CRON-FIX | 1/7 | In Progress|  |
 | 120. ESCALERA-ON | 0/? | Not started | - |
 | 121. ESCALERA-DOC | 0/? | Not started | - |
 | 122. CRUCE-SQL | 0/? | Not started | - |
