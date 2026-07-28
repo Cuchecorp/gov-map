@@ -1328,3 +1328,450 @@ de auditoría de ingesta programada.)
 gh workflow list --repo Cuchecorp/gov-map          # 15 filas; "CodeQL" al final
 ls .github/workflows/ | grep -i codeql             # sin coincidencias → platform-managed
 ```
+
+---
+
+### Jobs de `pg_cron` — nota de método
+
+Las cinco subsecciones `PG-n` que siguen tienen una anatomía **adaptada**, porque un job de
+`pg_cron` no es un workflow: no tiene YAML, no tiene runner y no tiene `gh run list`. Los
+`118-PATTERNS.md` lo declaran explícitamente bajo *"No Analog Found"* — el audit 56 auditó nueve
+workflows y **ningún** job de `pg_cron`, así que esta anatomía se construye aquí por primera vez.
+Las sustituciones son:
+
+| pata de workflow | equivalente en `pg_cron` | fuente |
+|---|---|---|
+| pata 1 — `gh run list` | `cron.job_run_details` (status + `return_message` + `start_time`) | P6 |
+| pata 2 — tabla destino del CLI | la tabla/vista que **materializa** el `command` | P6, P7 |
+| pata 3 — freshness | **no aplica en los 5** — `packages/freshness/src/catalog.ts` no tiene ninguna entrada de `pg_cron` (P9) | P9 |
+| pata 4 — crudo en R2 | **no aplica en los 5** — ningún job toca una fuente externa; todos operan intra-Postgres | P10 |
+
+Además, el `schedule` que se reporta es siempre **el leído de `cron.job` (DB viva)**, no el de la
+migración: la migración es la *expectativa*, y el delta entre ambas es hallazgo en sí mismo.
+
+#### Delta migración ↔ vivo (Open Question 1, cerrada)
+
+**El delta es CERO, y se declara como resultado negativo fechado (2026-07-28), no se omite.**
+
+- **Jobs esperados por migraciones que NO están vivos:** **ninguno**. Los cinco declarados
+  —`process-ingest-jobs` (`0003_orchestration.sql:214`/`:221`), `cleanup-net-http`
+  (`0003_orchestration.sql:229`), `net-materializar-aristas` (`0030_net.sql:162`),
+  `cruces-materializar` (`0039_cruce_senal.sql:138`) y `actualidad-materializar`
+  (`0065_actualidad_senal.sql:326`)— aparecen en `cron.job` (P6).
+- **Jobs vivos NO declarados en migraciones:** **ninguno**. `cron.job` devuelve exactamente 5
+  filas (P6a: `count(*)` = 5) y las 5 corresponden a las migraciones anteriores, con el **mismo
+  jobname, el mismo schedule y el mismo command**.
+- **Rama activa de `0003_orchestration.sql`:** el `schedule` real de `process-ingest-jobs` es
+  **`30 seconds`**, es decir la rama de **pg_cron ≥ 1.5 (`:214`)**, NO el fallback `* * * * *`
+  de `:221`. Resuelto con dato vivo, no por lectura del DDL.
+- **Las 5 filas con `active = t`.** Ninguna quedó registrada-pero-apagada.
+
+Un job vivo no declarado —o un job declarado y ausente— sería hallazgo P1 como mínimo. Aquí no
+hay ninguno de los dos casos, y **por eso conviene dejarlo escrito**: si un audit futuro
+encuentra delta, sabrá que el 2026-07-28 no lo había.
+
+---
+
+### PG-1: process-ingest-jobs
+
+**Job:** `process-ingest-jobs` · **jobid** 1
+**Schedule real (`cron.job`):** `30 seconds` — **leído de la DB** (P6), no de la migración.
+**Declarado en:** `supabase/migrations/0003_orchestration.sql:214` (rama pg_cron ≥ 1.5). La rama
+alternativa `:221` (`* * * * *`, fallback para pg_cron < 1.5) **no** es la activa.
+**Comando:** `select util.process_ingest_jobs();`
+**active:** `t`
+Veredicto: verde
+**Causa raíz del veredicto:** n/a — verde. 40.238 `succeeded` frente a **1** `failed` en 14 días
+(99,998 %); el fallo es un `job startup timeout` @ 2026-07-27 18:25:29.
+
+#### Evidencia observada
+
+- **Pata 1 sustituida (`cron.job_run_details`) — P6.**
+  ```
+  process-ingest-jobs|succeeded|40238|2026-07-28 16:22:10.267844+00
+  process-ingest-jobs|failed|1|2026-07-27 18:25:29.460307+00
+  ```
+  Último run: **succeeded** @ 2026-07-28 16:22:10, minutos antes del cierre del audit.
+- **Cadencia observada vs teórica.** 40.239 disparos observados contra ~40.320 teóricos
+  (`30 s` × 14 d) = **99,8 %**. La diferencia es indistinguible del jitter de arranque del
+  scheduler.
+- **`return_message` del único fallo (recortado a 180 caracteres, P6):**
+  ```
+  2026-07-27 18:25:29.460307+00|job startup timeout
+  ```
+  Un `job startup timeout` sobre 40.239 disparos = **0,002 %**: ruido de scheduler bajo carga, no
+  avería. No se reintenta manualmente ni se escala.
+- **Pata 2 sustituida (qué materializa) — no hay tabla-destino propia.** El comando drena la
+  **cola de ingesta** del schema `util`; su efecto es procesar trabajos encolados, no llenar una
+  tabla identificable. Se declara así en vez de forzar un `max(fecha_captura)` sobre una tabla
+  que este job no posee.
+- **Pata 3 — no aplica** (ningún job de `pg_cron` está en `catalog.ts`, P9).
+- **Pata 4 — no aplica** (intra-Postgres, sin fuente externa).
+
+#### Cómo re-verificar
+
+```bash
+# set -a; source .env; set +a
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select jobid, jobname, schedule, active, command from cron.job where jobid=1;"
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select d.status, count(*), max(d.start_time) from cron.job_run_details d
+#     where d.jobid=1 and d.start_time > now() - interval '14 days' group by 1 order by 1;"
+sed -n '210,225p' supabase/migrations/0003_orchestration.sql   # las DOS ramas; :214 es la activa
+```
+
+---
+
+### PG-2: cleanup-net-http
+
+**Job:** `cleanup-net-http` · **jobid** 2
+**Schedule real (`cron.job`):** `*/15 * * * *` (P6)
+**Declarado en:** `supabase/migrations/0003_orchestration.sql:229`
+**Comando:** `select util.cleanup_net_http();`
+**active:** `t`
+Veredicto: verde
+**Causa raíz del veredicto:** n/a — verde. **1.344 observadas contra 1.344 teóricas: cadencia
+exacta, cero fallos.**
+
+#### Evidencia observada
+
+- **Pata 1 sustituida — P6.**
+  ```
+  cleanup-net-http|succeeded|1344|2026-07-28 16:15:00.016645+00
+  ```
+  **Ninguna fila con `status = 'failed'`** en la ventana de 14 días.
+- **Cadencia.** `*/15` × 24 h × 14 d = 1.344. Observadas: 1.344. **Coincidencia exacta** — el
+  único job del inventario que no pierde ni un disparo.
+- **Valor probatorio adicional.** Estas 1.344 filas son la **prueba de que
+  `cron.job_run_details` NO se poda** en la ventana de 14 días. Sin ellas, las 8 filas de
+  `actualidad-materializar` (PG-5) podrían leerse como historial truncado; con ellas, la lectura
+  honesta es "job nuevo", no "job con ventanas perdidas". Es un control que sostiene el veredicto
+  de **otra** unidad.
+- **Pata 2 sustituida — limpieza, sin tabla-destino de datos.** Purga las tablas del schema `net`
+  (respuestas HTTP asíncronas de `pg_net`). Su producto es la *ausencia* de filas, no su
+  presencia: verificarlo por `max(fecha)` sería contradictorio.
+- **Pata 3 — no aplica** (fuera de `catalog.ts`, P9). **Pata 4 — no aplica** (intra-Postgres).
+
+#### Cómo re-verificar
+
+```bash
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select d.status, count(*), max(d.start_time) from cron.job_run_details d
+#     where d.jobid=2 and d.start_time > now() - interval '14 days' group by 1;"
+#   # 1344 succeeded / 0 failed = cadencia exacta; sirve además de control anti-poda
+sed -n '226,232p' supabase/migrations/0003_orchestration.sql
+```
+
+---
+
+### PG-3: net-materializar-aristas
+
+**Job:** `net-materializar-aristas` · **jobid** 3
+**Schedule real (`cron.job`):** `17 3 * * *` (P6) — diario 03:17 UTC.
+**Declarado en:** `supabase/migrations/0030_net.sql:162`
+**Comando:** `select grafo.materializar_aristas();`
+**active:** `t`
+Veredicto: verde
+**Causa raíz del veredicto:** n/a — verde. 14 corridas en 14 días, cero fallos.
+
+#### Evidencia observada
+
+- **Pata 1 sustituida — P6.**
+  ```
+  net-materializar-aristas|succeeded|14|2026-07-28 03:17:00.027846+00
+  ```
+  Sin filas `failed`. Último run 2026-07-28 03:17:00, **17 milisegundos** de desviación respecto
+  del minuto programado.
+- **Cadencia.** Diario × 14 d = 14 teóricas; 14 observadas. **Exacto.**
+- **Pata 2 sustituida — materializa `grafo.*`** (aristas del grafo de influencia). Es una
+  materialización interna: su insumo son tablas ya ingeridas por los workflows de W-4/W-5/W-6, y
+  su salida vive en el schema `grafo`. **No se sondeó el conteo de aristas**: el veredicto de
+  *cadencia* se sostiene con `job_run_details`, y añadir un `count(*)` sobre `grafo` sin un
+  baseline con el que comparar no habría probado nada. Se declara la elección en vez de fingir
+  una pata que no discrimina.
+- **Pata 3 — no aplica** (fuera de `catalog.ts`, P9). **Pata 4 — no aplica** (intra-Postgres).
+
+#### Cómo re-verificar
+
+```bash
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select d.status, count(*), max(d.start_time) from cron.job_run_details d
+#     where d.jobid=3 and d.start_time > now() - interval '14 days' group by 1;"
+sed -n '158,166p' supabase/migrations/0030_net.sql
+```
+
+---
+
+### PG-4: cruces-materializar
+
+**Job:** `cruces-materializar` · **jobid** 4
+**Schedule real (`cron.job`):** `23 3 * * *` (P6) — diario 03:23 UTC, seis minutos después de
+PG-3 (orden deliberado: los cruces consumen el grafo).
+**Declarado en:** `supabase/migrations/0039_cruce_senal.sql:138`
+**Comando:** `select cruces.materializar_cruces();`
+**active:** `t`
+Veredicto: verde
+**Causa raíz del veredicto:** n/a — verde. 14 corridas en 14 días, cero fallos.
+
+#### Evidencia observada
+
+- **Pata 1 sustituida — P6.**
+  ```
+  cruces-materializar|succeeded|14|2026-07-28 03:23:00.035462+00
+  ```
+  Sin filas `failed`.
+- **Cadencia.** 14 teóricas / 14 observadas. **Exacto.** Y el orden respecto de PG-3 se cumple
+  todos los días: 03:17 → 03:23.
+- **Pata 2 sustituida — materializa `cruces.*`** (señales de cruce entre lobby, patrimonio,
+  votaciones y proyectos). Misma consideración que PG-3: sin baseline, un conteo no discrimina;
+  la cadencia sí.
+- **Pata 3 — no aplica** (fuera de `catalog.ts`, P9). **Pata 4 — no aplica** (intra-Postgres).
+
+#### Cómo re-verificar
+
+```bash
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select d.status, count(*), max(d.start_time) from cron.job_run_details d
+#     where d.jobid=4 and d.start_time > now() - interval '14 days' group by 1;"
+sed -n '134,142p' supabase/migrations/0039_cruce_senal.sql
+```
+
+---
+
+### PG-5: actualidad-materializar
+
+**Job:** `actualidad-materializar` · **jobid** 5
+**Schedule real (`cron.job`):** `7 11,14,17,20 * * 1-5` (P6) — L–V, cuatro ventanas intradía,
+**7 minutos antes** de cada ventana de `actualidad-refresh` (W-1, `:00`). Los dos escriben
+`actualidad_senal` por vías distintas y disjuntas.
+**Declarado en:** `supabase/migrations/0065_actualidad_senal.sql:326`
+**Comando:** `select actualidad.materializar_senales();`
+**active:** `t`
+Veredicto: verde
+**Causa raíz del veredicto:** n/a — verde. **Job nuevo, no job con ventanas perdidas:** su
+primera corrida registrada es **2026-07-24 17:07** y desde entonces la cadencia es 100 %.
+
+#### Evidencia observada
+
+- **Pata 1 sustituida — P6, y aquí hubo que descartar una lectura falsa.** El agregado de 14 días
+  da **8** corridas contra ~40 teóricas (4/día × 10 días hábiles), lo que *parecería* un job
+  perdiendo el 80 % de sus ventanas. La historia completa lo refuta:
+  ```
+  select min(start_time), count(*) from cron.job_run_details where jobid=5;
+  → 2026-07-24 17:07:00.134404+00|8
+  ```
+  El `count(*)` **sin ventana temporal** también da 8: esas 8 filas **son** el historial completo.
+  El job entró en servicio el 2026-07-24 a media jornada.
+- **Descarte de la hipótesis de poda.** Si `cron.job_run_details` se podara, PG-2 no conservaría
+  sus 1.344 filas del mismo período. Las conserva ⇒ no hay poda ⇒ las 8 filas son reales.
+  **Hipótesis alternativa eliminada con dato, no por conveniencia.**
+- **Cadencia post-arranque, corrida a corrida (P6):**
+
+  | fecha | ventanas esperadas | observadas | lectura |
+  |---|---|---|---|
+  | 2026-07-24 (jue) | 4 | 2 (17:07, 20:07) | arranque a media jornada — 11:07 y 14:07 son anteriores al alta del job |
+  | 2026-07-25 (vie) | 4 | 0 | **discrepancia declarada, ver abajo** |
+  | 2026-07-26 (sáb) | 0 | 0 | fin de semana, correctamente omitido por `* * 1-5` |
+  | 2026-07-27 (lun) | 4 | 4 (11:07, 14:07, 17:07, 20:07) | **4/4** |
+  | 2026-07-28 (mar) | 2 transcurridas al cierre del audit | 2 (11:07, 14:07) | **2/2** |
+
+  *Discrepancia declarada honestamente:* el 2026-07-25 fue **viernes hábil** y no registra
+  corridas, pese a que el job ya estaba activo desde el jueves. Con la evidencia disponible no se
+  puede decidir entre "alta efectiva del job posterior al viernes" y "cuatro ventanas realmente
+  perdidas". **No se resuelve por inferencia**: se registra como observación abierta para 119, y
+  el veredicto sigue siendo verde porque las dos jornadas hábiles completas posteriores (lunes y
+  martes) dan 6/6. Un solo día ambiguo, con el job recién nacido, no alcanza el umbral de `stale`
+  de §0.4 ("N ventanas sin correr" sin causa) cuando la cadencia posterior es perfecta.
+- **Pata 2 sustituida — materializa `actualidad_senal` — P7.** 18 filas,
+  `max(fecha_captura)` = `2026-07-28 16:08:28.275+00`. **Atribución cuidadosa:** esa marca
+  corresponde a la corrida de **W-1** (16:07), no a este job, cuya última ventana fue 14:07. Los
+  dos escriben la misma tabla en `tipo_senal` **disjuntos** (`run-actualidad-prod-cli.ts:10-12`:
+  full-rebuild acotado a `tipo_senal='agrupacion_materia'`, *"disjunto del set temporal del proc
+  SQL 0065; NUNCA delete global"*). Se declara la atribución en vez de contar la fila dos veces.
+- **Pata 3 — no aplica** (fuera de `catalog.ts`, P9). **Pata 4 — no aplica** (intra-Postgres).
+
+#### Cómo re-verificar
+
+```bash
+# Historia COMPLETA (sin ventana) — es lo que distingue "job nuevo" de "ventanas perdidas":
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select min(start_time), count(*) from cron.job_run_details where jobid=5;"
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select d.start_time, d.status from cron.job_run_details d where d.jobid=5
+#     order by d.start_time desc limit 20;"
+# Control anti-poda (debe seguir conservando ~1344):
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -c \
+#   "select count(*) from cron.job_run_details where jobid=2
+#     and start_time > now() - interval '14 days';"
+sed -n '322,330p' supabase/migrations/0065_actualidad_senal.sql
+```
+
+---
+
+## 3. Estado observado (ancla 2026-07-28)
+
+Las cuatro tablas de esta sección son la **fotografía** contra la que se emitieron los veredictos
+de §2. Todas llevan la fecha del probe **en el título** (idiom `56-CRON-AUDIT.md:489`) porque
+caducan: la propia cabecera del documento declara `caducidad: ~14 días`. Leer §3 sin mirar su
+ancla temporal es el modo más fácil de convertir este audit en una afirmación falsa.
+
+### 3.1 Observabilidad — Estado de tablas (probe 2026-07-28)
+
+| Tabla | Definida en | Escrita por (unidad de cron) | Estado actual | Última entrada (probe) |
+|---|---|---|---|---|
+| `proyecto` | `0008_tramitacion.sql:19` | W-4 `leyes-weekly` | poblada — 3.659 filas | `2026-07-27 21:38:06.135+00` (P7) |
+| `tramitacion_evento` | `0008_tramitacion.sql:69` | W-4 `leyes-weekly` | poblada — 48.368 filas | `2026-07-27 21:38:09.718+00` (P7) |
+| `votacion` | `0008_tramitacion.sql:37` | W-4 `leyes-weekly` | poblada — 4.855 filas | `2026-07-27 21:38:09.718+00` (P7) |
+| `citacion` | `0010_agenda.sql:19` | W-2 `agenda-weekly` | poblada — 289 filas | `2026-07-27 13:41:24.416+00` (P7) |
+| `sesion_sala` | `0010_agenda.sql:59` | W-2 `agenda-weekly` | poblada — 18 filas | `2026-07-27 13:41:29.72+00` (P7) |
+| `lobby_audiencia` | `0021_lobby.sql:30` | W-5 `lobby-leylobby-weekly` (**no** W-9) | poblada — 17.762 filas | `2026-07-22 12:44:05.343+00` (P7) |
+| `declaracion` | `0022_probidad.sql:79` | W-6 `probidad-weekly` | poblada — 1.065 filas | `2026-07-23 12:37:05.518+00` (P7) |
+| `actualidad_senal` | `0065_actualidad_senal.sql:50` | W-1 `actualidad-refresh` + PG-5 (`tipo_senal` disjuntos) | poblada — 18 filas | `2026-07-28 16:08:28.275+00` (P7) |
+| `parlamentario` | `0005_parlamentario.sql:17` | **ninguna unidad de GH Actions** — escritura local del operador | poblada — 186 filas | `2026-07-27 00:10:53.196+00` (P7) |
+| `parlamentario_militancia` | `0005_parlamentario.sql` | ídem `parlamentario` | poblada — 363 filas | `2026-07-27 00:10:53.196+00` (P7) |
+| `notificacion_envio` | `0070_notificacion_envio.sql:37` | W-7 `digest-daily` (gated, sin corridas) | **vacía — 0 filas** | — (P7) · estado ESPERADO (§1.5) |
+| `source_snapshot` | `0002_control_tables.sql:22` | W-4 (`leyes`) y W-6 (`infoprobidad`) **solamente** | parcial — 2 fuentes de 8 conectores | `leyes` 4.380 @ `2026-07-27 21:38:22.834+00`; `infoprobidad` 3 @ `2026-07-23 12:37:12.157+00` (P10) |
+
+**Observaciones de observabilidad:**
+
+- **`source_snapshot` es la tabla que peor cumple su propósito.** Es la única traza en DB del PUT
+  a R2 (Etapa-1 de la regla LOCKED de `CLAUDE.md`) y sólo dos conectores la alimentan. Los que
+  hacen `putImmutable` **sin** montar `SnapshotWriter` —agenda (W-2), lobby-leylobby (W-5),
+  identity (W-3/W-8), fichas (W-11)— escriben crudo sin dejar rastro consultable. El fix es
+  mecánico (montar `SnapshotWriter`, como hacen `run-tramitacion-prod-cli.ts:215-218` y
+  `run-probidad-todos-cli.ts:147-150`), pero es de Phase 119.
+- **`lobby_audiencia` tiene dos escritores potenciales y sólo uno real.** La fila la llena W-5;
+  W-9 lleva sin llegar al CLI desde el 2026-07-07. Cualquier lectura de "la tabla está fresca"
+  como salud de W-9 es un error de atribución — y es exactamente el que comete el catálogo de
+  freshness (§3.2).
+- **`parlamentario` no tiene cron que la escriba.** W-3 produce el snapshot git y W-8 está gated;
+  la escritura del 2026-07-27 00:10 vino de fuera de GH Actions. La maestra de identidad depende
+  hoy de una acción de operador.
+
+### 3.2 Frescura baseline (probe 2026-07-28)
+
+Los umbrales **se citan** de `packages/freshness/src/catalog.ts`; este documento **no los
+redefine**. Un umbral duplicado aquí se desincronizaría del código en la primera edición, y
+entonces el audit mentiría con aire de autoridad.
+
+| Fuente / Tabla | Umbral (`catalog.ts`) | Última fecha observada | Veredicto freshness | Probe SQL / origen |
+|---|---|---|---|---|
+| `leyes` / `proyecto` | 7 d (`catalog.ts:224`) | `2026-07-27 21:38:06.135+00` (0 d) | `stale: false` | P9 · `max(fecha_captura) from proyecto` |
+| `leyes-min-edad` / `proyecto` | 45 d (`catalog.ts:248`) | `2026-07-09 04:34:43.901+00` (19 d) | `stale: false` | P9 · `min(fecha_captura) from proyecto` |
+| `agenda` / `citacion` | 7 d (`catalog.ts:257`) | `2026-07-27 13:41:24.416+00` (1 d) | `stale: false` | P9 · `max(fecha_captura) from citacion` |
+| `lobby-camara` / `lobby_audiencia` | 14 d (`catalog.ts:265`) | `2026-07-22 12:44:05.343+00` (6 d) | `stale: false` ⚠️ **verde prestado** | P9 · `max(fecha_captura) from lobby_audiencia` |
+| `lobby-leylobby` / `lobby_ingesta_estado` | 7 d (`catalog.ts:273`) | `2026-06-22` (36 d) | **`stale: true`** | P9 + P8 · `max(ingestado_hasta) from lobby_ingesta_estado` |
+| `probidad` / `declaracion` | 30 d (`catalog.ts:281`) | `2026-07-23 12:37:05.518+00` (5 d) | `stale: false` | P9 · `max(fecha_captura) from declaracion` |
+| `fichas` / `proyecto` | 30 d (`catalog.ts:289`) | `2026-07-27 21:38:06.135+00` (0 d) | `stale: false` ⚠️ **verde prestado** | P9 · `max(fecha_captura) from proyecto` |
+| `chilecompra` / `contratos_ingesta_estado` | 30 d (`catalog.ts:311`) | `null` (tabla vacía) | `stale: true` — **esperado**, MONEY gated (§1.5) | P9 + P8 · tabla con 0 filas |
+| `servel` / `aportes_ingesta_estado` | 365 d (`catalog.ts:335`) | `null` (tabla vacía) | `stale: true` — **esperado**, SERVEL gated (§1.5) | P9 + P8 · tabla con 0 filas |
+
+**Observaciones de frescura:**
+
+- **Sólo una de las tres señales `stale: true` es una avería.** `lobby-leylobby` lo es;
+  `chilecompra` y `servel` son gating legal declarado en las migraciones
+  (`0023_dinero.sql:46`, `0025_agregacion.sql:46`) y están registradas en §1.5 para que 119 no
+  las tome como backlog. **Leer "3 fuentes stale" como "3 problemas" sería el error de lectura
+  más probable de este audit.**
+- **Dos señales dan verde prestado (§1.6 punto 7).** `lobby-camara` mide `lobby_audiencia`, que
+  llena W-5; `fichas` mide `proyecto`, que llena W-4. Ambas reportan `stale: false` **gracias al
+  trabajo de otro cron**, y son por construcción incapaces de detectar la avería del cron que
+  nombran. El propio JSON las delata en un campo que **no** participa del cálculo:
+  `lobby-camara` trae `ghRun: "failure @ 2026-07-07"` y `fichas` trae
+  `ghRun: "n/d (sin corridas)"`. La información existe; el veredicto de `stale` la ignora.
+- **La discrepancia freshness ↔ fila real, buscada explícitamente, aparece una sola vez y con
+  signo favorable.** El CONTEXT (`118-CONTEXT.md:25`) declara que una discrepancia entre lo que
+  reporta `pnpm freshness` y la última fila real es hallazgo en sí mismo. En `lobby-leylobby`
+  **no hay discrepancia**: la señal lee `lobby_ingesta_estado` (la tabla de cursor) y ve 36 días,
+  igual que P8. Acierta precisamente porque es la **única** de las 9 entradas que apunta a una
+  tabla de *cursor* en vez de a una de *datos*. La discrepancia real del audit es de otro tipo:
+  `lobby_audiencia` está fresca (2026-07-22) mientras el cursor de la misma fuente lleva 36 días
+  parado — dato fresco y marcador muerto conviviendo.
+- **Recomendación implícita para 119** (no es fix, es lectura): el patrón que funciona es el de
+  `lobby-leylobby` —medir el **cursor**, no la tabla de datos—, y es el que las dos señales de
+  verde prestado no siguen.
+- **La herramienta misma tiene una avería de invocación.** `pnpm freshness` **no resuelve `tsx`**
+  en el entorno local (P9): `package.json:12` invoca `tsx` y el binario sólo existe en
+  `packages/freshness/node_modules/.bin/tsx`. Variante viva del gotcha v8.1 (`process.cwd` bajo
+  `pnpm --filter exec`). Se documentó y **no se arregló** (régimen read-only); es §1.6 punto 5.
+- **Ocho de las veinte unidades se auditaron sin pata 3.** El catálogo tiene 9 entradas y no
+  cubre W-1 `actualidad-refresh`, W-7 `digest-daily`, W-3 `backup-parlamentario` ni **ninguno**
+  de los 5 jobs de `pg_cron`. Para ésas el veredicto se apoya en patas 1+2, y así se declara en
+  cada sección de §2.
+
+### 3.3 pg_cron vivo × `job_run_details` (probe 2026-07-28)
+
+| jobid | jobname | schedule (vivo) | active | último run | status | `return_message` (recortado) | esperado en migración |
+|---|---|---|---|---|---|---|---|
+| 1 | `process-ingest-jobs` | `30 seconds` | `t` | `2026-07-28 16:22:10.267844+00` | `succeeded` (40.238 en 14 d) | — | sí · `0003_orchestration.sql:214` (rama ≥1.5 **activa**; `:221` no) |
+| 1 | ↳ único fallo del período | — | — | `2026-07-27 18:25:29.460307+00` | `failed` (1 en 14 d) | `job startup timeout` | — |
+| 2 | `cleanup-net-http` | `*/15 * * * *` | `t` | `2026-07-28 16:15:00.016645+00` | `succeeded` (1.344 en 14 d) | — | sí · `0003_orchestration.sql:229` |
+| 3 | `net-materializar-aristas` | `17 3 * * *` | `t` | `2026-07-28 03:17:00.027846+00` | `succeeded` (14 en 14 d) | — | sí · `0030_net.sql:162` |
+| 4 | `cruces-materializar` | `23 3 * * *` | `t` | `2026-07-28 03:23:00.035462+00` | `succeeded` (14 en 14 d) | — | sí · `0039_cruce_senal.sql:138` |
+| 5 | `actualidad-materializar` | `7 11,14,17,20 * * 1-5` | `t` | `2026-07-28 14:07:00.016294+00` | `succeeded` (8 en total; primera 2026-07-24 17:07) | — | sí · `0065_actualidad_senal.sql:326` |
+
+**Delta migración ↔ vivo: CERO** — ningún job esperado falta, ningún job vivo sobra. Detalle y
+nombres en la nota de método de §2 (*"Delta migración ↔ vivo"*).
+
+**Higiene (T-118-05):** el único `return_message` no vacío del período se pegó recortado a 180
+caracteres en origen (`left(d.return_message,180)`, P6) y resultó ser un texto de cuatro
+palabras sin dato sensible. Los demás vienen vacíos por ser corridas exitosas.
+
+### 3.4 Cursores — el discriminante de `stale` (probe 2026-07-28)
+
+Ésta es la tabla que **sostiene o refuta** cada veredicto `stale` (Pitfall 4). El conteo de filas
+de una tabla de datos no distingue "sin novedades honesto" de "cursor detenido"; el marcador de
+avance sí.
+
+| tabla de estado | columna de avance | valor observado | interpretación |
+|---|---|---|---|
+| `lobby_ingesta_estado` (`0021_lobby.sql:133`) | `ingestado_hasta` | **`2026-06-22`** (136 filas; `fecha_captura` `2026-06-22 19:18:08+00`) | **cursor detenido — 36 días.** La corrida del 2026-07-22 fue `success` y `lobby_audiencia` recibió filas ese día: si la fuente no tuviera novedades, el cursor tampoco estaría fresco *y* la tabla de datos tampoco. Que una avance y el otro no descarta "sin novedades". **Sostiene el único `stale` del audit** (W-5). |
+| `leylobby_cursor_estado` (`0053_leylobby_cursor_estado.sql:16`) | `fecha_captura` | `2026-07-22 12:44:06.340612+00` (1 fila) | **avanzando.** Es el cursor que el CLI **sí** actualiza. Su contraste con la fila anterior es la prueba de la desincronización: dos cursores para la misma fuente, uno vivo y otro muerto. |
+| `probidad_ingesta_estado` (`0022_probidad.sql:361`) | `ingestado_hasta` | **`2026-07-23`** (136 filas) | **avanzando correctamente** — coincide con el día de la corrida de W-6. **Contraprueba positiva:** misma familia de tabla que `lobby_ingesta_estado`, mismo día de lectura, comportamiento opuesto. Demuestra que el patrón `*_ingesta_estado` funciona y que lo roto es el conector de lobby, no el diseño. |
+| `leyes_rotacion_estado` (`0054_leyes_rotacion_estado.sql:25`) | `ultimo_boletin` | `16851-14`; `fecha_captura` `2026-07-27 21:09:34.69+00` (1 fila) | **round-robin girando.** El cursor no es una fecha sino la posición del barrido; se movió en la corrida del 2026-07-27. Sostiene el verde de W-4. |
+| `contratos_ingesta_estado` (`0023_dinero.sql:134`) | `ingestado_hasta` | **0 filas** (sin valor) | **nunca se barrió — estado ESPERADO.** `0023_dinero.sql:46` declara que *"el pg_cron del barrido por RUT queda como checkpoint de operador, NO se crea en este DDL"*. Gating legal, no cursor detenido (§1.5). |
+| `aportes_ingesta_estado` (`0024_servel.sql:163`) | `ingestado_hasta` | **0 filas** (sin valor) | **nunca se barrió — estado ESPERADO.** `0025_agregacion.sql:46`: *"NO se crea ningun cron.schedule en este DDL"*. Ídem anterior (§1.5). |
+
+**Cómo leer esta tabla:** una fila con avance congelado sólo es `stale` si **además** hay
+evidencia de corrida exitosa en el período (si no, el problema es la corrida, y el veredicto sería
+`roto`) y **no** hay causa legítima declarada (si la hay, es §1.5). `lobby_ingesta_estado` cumple
+las tres condiciones: corridas verdes, marcador congelado, ninguna decisión declarada que lo
+explique. Es el único caso del inventario.
+
+#### Cómo re-verificar §3 completa
+
+```bash
+# set -a; source .env; set +a
+# --- 3.1 observabilidad
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c "
+# select 'proyecto', count(*)::text, max(fecha_captura)::text from proyecto
+# union all select 'citacion', count(*)::text, max(fecha_captura)::text from citacion
+# union all select 'lobby_audiencia', count(*)::text, max(fecha_captura)::text from lobby_audiencia
+# union all select 'declaracion', count(*)::text, max(fecha_captura)::text from declaracion
+# union all select 'actualidad_senal', count(*)::text, max(fecha_captura)::text from actualidad_senal
+# union all select 'notificacion_envio', count(*)::text, max(created_at)::text from notificacion_envio;"
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select source, count(*), max(fetched_at) from source_snapshot group by 1 order by 1;"
+#
+# --- 3.2 frescura (SIEMPRE desde la raíz del repo; `pnpm freshness` no resuelve tsx, ver P9)
+./packages/freshness/node_modules/.bin/tsx packages/freshness/src/cli.ts --json \
+  > /tmp/fresh.json 2>/tmp/fresh.err; echo "exit=$?"    # exit=1 esperado si hay stale
+grep -n "umbralDias\|workflowYml\|tabla:" packages/freshness/src/catalog.ts   # los umbrales VIVEN aquí
+#
+# --- 3.3 pg_cron vivo
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select jobid, jobname, schedule, active, command from cron.job order by jobid;"
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select j.jobname, d.status, count(*), max(d.start_time)
+#      from cron.job_run_details d left join cron.job j on j.jobid=d.jobid
+#     where d.start_time > now() - interval '14 days' group by 1,2 order by 1,2;"
+#
+# --- 3.4 cursores (el discriminante de stale)
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c "
+# select 'lobby_ingesta_estado', count(*)::text, max(ingestado_hasta)::text from lobby_ingesta_estado
+# union all select 'probidad_ingesta_estado', count(*)::text, max(ingestado_hasta)::text from probidad_ingesta_estado
+# union all select 'contratos_ingesta_estado', count(*)::text, max(ingestado_hasta)::text from contratos_ingesta_estado
+# union all select 'aportes_ingesta_estado', count(*)::text, max(ingestado_hasta)::text from aportes_ingesta_estado
+# union all select 'leylobby_cursor_estado', count(*)::text, max(fecha_captura)::text from leylobby_cursor_estado
+# union all select 'leyes_rotacion_estado', count(*)::text, max(ultimo_boletin)::text from leyes_rotacion_estado;"
+```
