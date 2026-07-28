@@ -733,7 +733,8 @@ describe("F-09: las fechas date-only se rinden con diaCalendarioCitacion", () =>
         }}
       />,
     );
-    expect(container.textContent).toContain("20-jul");
+    // CR-01: con AÑO ("20 jul 2026"), no el badge compacto de /agenda ("20-jul").
+    expect(container.textContent).toContain("20 jul 2026");
     expect(container.textContent).not.toContain("19");
   });
 
@@ -752,7 +753,7 @@ describe("F-09: las fechas date-only se rinden con diaCalendarioCitacion", () =>
       />,
     );
     expect(
-      screen.getByLabelText(/En tabla de sala de la Senado del 20-jul/),
+      screen.getByLabelText(/En tabla de sala de la Senado del 20 jul 2026/),
     ).toBeInTheDocument();
   });
 
@@ -776,10 +777,10 @@ describe("F-09: las fechas date-only se rinden con diaCalendarioCitacion", () =>
       />,
     );
     expect(
-      screen.getByLabelText(/En tabla de sala de la Senado del 20-jul/),
+      screen.getByLabelText(/En tabla de sala de la Senado del 20 jul 2026/),
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText(/En tabla de sala de la Cámara del 15-jul/),
+      screen.getByLabelText(/En tabla de sala de la Cámara del 15 jul 2026/),
     ).toBeInTheDocument();
   });
 
@@ -796,7 +797,7 @@ describe("F-09: las fechas date-only se rinden con diaCalendarioCitacion", () =>
         }}
       />,
     );
-    expect(container.textContent).toContain("31-mar");
+    expect(container.textContent).toContain("31 mar 2026");
   });
 });
 

@@ -1,9 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase";
 import { fechaCorta, fechaHechoCorta, fechaPlausible } from "@/lib/format";
-import {
-  badgeFechaCitacion,
-  diaCalendarioCitacion,
-} from "@/lib/dia-calendario";
+import { diaCalendarioCitacion, fechaCivilCorta } from "@/lib/dia-calendario";
 import { sourceLabel } from "@/lib/types";
 import type { ProyectoRow, TramitacionEventoRow } from "@/lib/types";
 import { isoWeekOf, semanaIsoKey } from "@/lib/week-utils";
@@ -481,19 +478,25 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
           <p>
             {/*
               F-09: `citacion.fecha` es DATE-ONLY a medianoche UTC — su día publicado
-              es la parte fecha UTC. Se rinde con `badgeFechaCitacion`, que delega en
+              es la parte fecha UTC. Se rinde con `fechaCivilCorta`, que delega en
               `diaCalendarioCitacion` (el mismo helper que este archivo YA usa para
               decidir vigencia en `citacionVigente`/`citacionesPasadas`). Es la
               coherencia que el JSDoc de `DIA_CALENDARIO_CHILE_HOY` declaraba y que el
               render no cumplía: `fechaCorta` es para timestamps, y aquí no hay uno.
               `null` (fecha impresentable) ⇒ se omite la fecha, nunca se inventa.
+
+              CR-01: la variante CON AÑO (`fechaCivilCorta`, no `badgeFechaCitacion`)
+              en TODAS las fechas de este bloque — incluida la citación vigente. El
+              badge sin año es de `/agenda`, donde la semana es el contexto; aquí el
+              bloque mezcla vigente e histórico en la misma tarjeta y dos convenciones
+              distintas de fecha se leen como el mismo año.
             */}
             Citado en {citacionVigente.comision}
-            {badgeFechaCitacion(citacionVigente.fecha) && (
+            {fechaCivilCorta(citacionVigente.fecha) && (
               <>
                 {" el "}
                 <span className="font-mono">
-                  {badgeFechaCitacion(citacionVigente.fecha)}
+                  {fechaCivilCorta(citacionVigente.fecha)}
                 </span>
               </>
             )}
@@ -509,9 +512,11 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
         {citacionesPasadas &&
           citacionesPasadas.map((c, i) => (
             <p key={`pasada-${i}`}>
-              {/* F-09: date-only ⇒ `badgeFechaCitacion` (ver comentario de arriba). */}
+              {/* F-09 + CR-01: date-only ⇒ `fechaCivilCorta` (ver comentario de
+                  arriba). Superficie HISTÓRICA: el año es obligatorio — sin él una
+                  sesión de 2021 se lee como del año en curso. */}
               Citado el{" "}
-              <span className="font-mono">{badgeFechaCitacion(c.fecha)}</span> en{" "}
+              <span className="font-mono">{fechaCivilCorta(c.fecha)}</span> en{" "}
               {c.comision}{" "}
               <span className="text-sm text-muted-foreground">
                 (sesión pasada)
@@ -525,19 +530,19 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
         */}
         {enTablaSala && enTablaSala.length === 1 && (
           <p>
-            {/* F-09: `sesion_sala.fecha` es date-only-medianoche-UTC ⇒
-                `badgeFechaCitacion`. El aria-label usa EXACTAMENTE el mismo helper:
-                el nombre accesible es el canal ÚNICO de la fecha para quien usa
-                lector de pantalla, y con `fechaCorta` decía un día distinto del
-                visible. */}
+            {/* F-09 + CR-01: `sesion_sala.fecha` es date-only-medianoche-UTC ⇒
+                `fechaCivilCorta` (CON año: la tabla de sala no tiene cota temporal).
+                El aria-label usa EXACTAMENTE el mismo helper: el nombre accesible es
+                el canal ÚNICO de la fecha para quien usa lector de pantalla, y con
+                `fechaCorta` decía un día distinto del visible. */}
             En tabla de sala de la {camaraNombre(enTablaSala[0].camara)} del{" "}
             <span className="font-mono">
-              {badgeFechaCitacion(enTablaSala[0].fecha)}
+              {fechaCivilCorta(enTablaSala[0].fecha)}
             </span>{" "}
             <a
               href={`/agenda?semana=${enTablaSala[0].semanaIso}`}
               className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label={`En tabla de sala de la ${camaraNombre(enTablaSala[0].camara)} del ${badgeFechaCitacion(enTablaSala[0].fecha)} — ver en la agenda`}
+              aria-label={`En tabla de sala de la ${camaraNombre(enTablaSala[0].camara)} del ${fechaCivilCorta(enTablaSala[0].fecha)} — ver en la agenda`}
             >
               ver en la agenda
             </a>
@@ -552,12 +557,12 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
                 <a
                   href={`/agenda?semana=${s.semanaIso}`}
                   className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={`En tabla de sala de la ${camaraNombre(s.camara)} del ${badgeFechaCitacion(s.fecha)} — ver en la agenda`}
+                  aria-label={`En tabla de sala de la ${camaraNombre(s.camara)} del ${fechaCivilCorta(s.fecha)} — ver en la agenda`}
                 >
-                  {/* F-09: date-only ⇒ `badgeFechaCitacion`, texto y aria-label con
-                      el MISMO día publicado. */}
+                  {/* F-09 + CR-01: date-only ⇒ `fechaCivilCorta` (con año), texto y
+                      aria-label con el MISMO día publicado. */}
                   {camaraNombre(s.camara)},{" "}
-                  <span className="font-mono">{badgeFechaCitacion(s.fecha)}</span>
+                  <span className="font-mono">{fechaCivilCorta(s.fecha)}</span>
                 </a>
               </span>
             ))}

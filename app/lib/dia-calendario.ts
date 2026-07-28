@@ -98,6 +98,30 @@ export function badgeFechaCitacion(
 }
 
 /**
+ * Rótulo civil CON AÑO "20 jul 2021" del día calendario de una citación.
+ *
+ * CR-01 (117-REVIEW): `badgeFechaCitacion` omite el año a propósito — es el badge
+ * COMPACTO de `/agenda`, donde la semana en curso es el contexto y el año es ruido.
+ * En superficies HISTÓRICAS (citaciones pasadas de la ficha, tabla de sala, panel de
+ * actualidad) esa omisión miente por contexto: una sesión de 2021 rendida "20-jul"
+ * junto a texto de ficha actual se lee como del año en curso, y contradice el core
+ * value del proyecto ("qué pasó, CUÁNDO y según qué fuente").
+ *
+ * Misma regla date-only LOCKED que el resto del archivo: se formatea desde el DÍA
+ * CIVIL (parte fecha UTC vía `diaCalendarioCitacion`), CERO conversión de zona —
+ * no se usa `Intl` con `timeZone: America/Santiago`, que fabricaría el día anterior.
+ * Devuelve `null` si la fecha no es parseable (el caller omite la fecha).
+ */
+export function fechaCivilCorta(
+  fechaIso: string | Date | null | undefined,
+): string | null {
+  const dia = diaCalendarioCitacion(fechaIso);
+  if (dia === null) return null;
+  const [y, m, d] = dia.split("-");
+  return `${d} ${MESES_ES_CORTO[Number(m) - 1]} ${y}`;
+}
+
+/**
  * Rótulo largo "Lunes 20 de julio" del día calendario de una citación, capitalizado.
  * Se formatea desde el DÍA CIVIL (parte fecha UTC) usando `Date.UTC` al mediodía —
  * cero conversión de zona — para que el weekday/día/mes correspondan al día

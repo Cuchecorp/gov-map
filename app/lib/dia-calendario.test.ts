@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   diaCalendarioCitacion,
   badgeFechaCitacion,
+  fechaCivilCorta,
   dayLabelCitacion,
 } from "./dia-calendario";
 
@@ -51,6 +52,39 @@ describe("badgeFechaCitacion — 'DD-mmm' del día publicado", () => {
   it("fecha inválida → null (el caller omite el badge)", () => {
     expect(badgeFechaCitacion(null)).toBeNull();
     expect(badgeFechaCitacion("no-es-fecha")).toBeNull();
+  });
+});
+
+/**
+ * CR-01 (117-REVIEW): las superficies HISTÓRICAS (citaciones pasadas, tabla de sala,
+ * panel de actualidad) necesitan el AÑO. `badgeFechaCitacion` lo omite por diseño —
+ * es el badge compacto de /agenda. `fechaCivilCorta` lo trae, con la MISMA regla
+ * date-only (parte fecha UTC = día publicado, cero conversión de zona).
+ */
+describe("fechaCivilCorta — 'DD mmm YYYY' del día publicado (con AÑO)", () => {
+  it("2026-07-20T00:00Z → '20 jul 2026' (NUNCA '19 jul 2026')", () => {
+    expect(fechaCivilCorta("2026-07-20T00:00:00Z")).toBe("20 jul 2026");
+  });
+
+  it("sesión histórica 2021-07-20T00:00Z → '20 jul 2021' (el año NO se pierde)", () => {
+    // El defecto que CR-01 cierra: "20-jul" se leía como el año en curso.
+    expect(fechaCivilCorta("2021-07-20T00:00:00Z")).toBe("20 jul 2021");
+    expect(badgeFechaCitacion("2021-07-20T00:00:00Z")).toBe("20-jul"); // sin año
+  });
+
+  it("2026-01-05T00:00Z → '05 ene 2026'", () => {
+    expect(fechaCivilCorta("2026-01-05T00:00:00Z")).toBe("05 ene 2026");
+  });
+
+  it("23:00Z NO retrocede de día ni de año (cero conversión de zona)", () => {
+    // Ningún huso distinto de UTC deja este par intacto.
+    expect(fechaCivilCorta("2025-12-31T23:00:00Z")).toBe("31 dic 2025");
+  });
+
+  it("fecha inválida → null (el caller omite la fecha)", () => {
+    expect(fechaCivilCorta(null)).toBeNull();
+    expect(fechaCivilCorta(undefined)).toBeNull();
+    expect(fechaCivilCorta("no-es-fecha")).toBeNull();
   });
 });
 
