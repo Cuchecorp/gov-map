@@ -194,9 +194,17 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 116-01-PLAN.md — Base compartida: semántica por formatter + chokepoint ProvenanceBadge
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 116-02-PLAN.md — Veredicto grupo A: carril parlamentario, /comparar, /cuenta, gate MONEY
 - [ ] 116-03-PLAN.md — Veredicto grupo B: /proyecto, /agenda, home, /buscar + auditoría date-only
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 116-04-PLAN.md — Cruce PROD + ensamblado 116-FECHAS-AUDIT.md + hallazgos F-xx + check-fechas.sh
 
 ### Phase 117: FECHA-FIX — Etiquetas de fecha corregidas
