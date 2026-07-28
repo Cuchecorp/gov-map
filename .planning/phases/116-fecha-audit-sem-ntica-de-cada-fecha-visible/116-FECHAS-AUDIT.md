@@ -286,7 +286,7 @@ ascendente, con las 9 columnas conservadas. La columna `¿miente o es ambigua?` 
 | E-027 | `/proyecto/[boletin]` ("Valida este dato en la fuente") | `validacion-fuente.tsx:226` (render `:140`) | `formatFechaCaptura` (`timeZone: America/Santiago`) | `proyecto.fecha_captura` (`timestamptz` real) | captura | `según fuente al {fechaDisplay}` | **no — idiom aprobado**; timestamp real ⇒ convertir a Chile es correcto | — |
 | E-027 | `/proyecto/[boletin]` (bloque "Respaldo R2") | `validacion-fuente.tsx:239` (render `:190`) | `formatFetchedAt` (`timeZone: America/Santiago`) | `source_snapshot.fetched_at` (`timestamptz`) | captura | `Respaldo del {fetched_at} · hash {…}` + `Esto decía la fuente ese día.` | **no — equivalente aprobado del idiom**; declara el scraping como scraping | — |
 | E-028 | `/buscar` | `search-result-card.tsx:66,:71` | `(ninguno — `String(anio)`)` | `props.anio` — JSDoc `:35-38`: "Año derivado del primer evento de tramitación (proxy de ingreso)" | **ambigua** | `{anio != null ? String(anio) : "Sin dato"}` — chip sin rótulo | sí — **F-12**: proxy presentado como año pelado; además **inerte** (ningún call-site de producción pasa `anio=`) | — |
-| E-028 | `/buscar` | `search-result-card.tsx:27` | `relativeTimeEs` vía badge | `RPC:match_proyectos` / `RPC:buscar_proyectos_hibrido` → `proyecto.fecha_captura` | captura | `Actualizado {…}` | sí — F-01 | — |
+| E-028 | `/buscar` | `search-result-card.tsx:28` (render `:93`) | `relativeTimeEs` vía badge | `RPC:match_proyectos` / `RPC:buscar_proyectos_hibrido` → `proyecto.fecha_captura` | captura | `Actualizado {…}` | sí — F-01 | — |
 | E-028 | `/buscar` | `search-result-card.tsx` (archivo completo, 98 líneas) | `(ninguno)` | `—` (sin otra columna de fecha) | hecho | `(sin otra fecha)` — el JSDoc `:17-20` y `:37` prohíben LOCKED mostrar score/cosine/rank | no — declaración de ausencia (grep ⇒ 0) | — |
 | E-032 | `/proyecto/[boletin]` ("¿Dónde está hoy?") | `estado-actual-block.tsx:397` | `fechaCorta` | `tramitacion_evento.fecha` vía `ultimoHito.fecha` | hecho | `Último hito: {descripcion} — {fechaCorta(ultimoHito.fecha)}` | sí — F-05 (día UTC) + **F-04** (aquí se rinde el `2626-05-25` corrupto) | — |
 | E-032 | `/proyecto/[boletin]` | `estado-actual-block.tsx:413` | `fechaCorta` | `tramitacion_evento.fecha` vía `urgenciaEstado.desde` | hecho | `Urgencia {tipo} vigente desde el {fechaCorta(urgenciaEstado.desde)} (…)` | sí — F-05 | — |
@@ -606,7 +606,7 @@ Severidad: `miente` (afirma el hecho siendo captura, o rinde un día que no es e
   del boletín `18232-25`
 - **emisor:** E-038, E-045, E-032 (los tres consumen `tramitacion_evento.fecha` sin filtro temporal)
 - **archivo:línea:** `app/components/timeline-event.tsx:82`,
-  `app/components/tramitacion-stepper.tsx:99`, `app/components/estado-actual-block.tsx:397`
+  `app/components/capa1/tramitacion-stepper.tsx:99`, `app/components/estado-actual-block.tsx:397`
 - **qué dice hoy:** `{fechaCorta(fecha)}` ⇒ `25 may 2626`; en el bloque de estado,
   `Último hito: {descripcion} — 25 may 2626`
 - **por qué está mal:** no viola una de las 3 reglas LOCKED de semántica, pero **rompe la premisa
@@ -933,7 +933,7 @@ Filas de `### 1.4` con `VEREDICTO = captura` y `¿miente?` = `sí`. **25 entrada
 | 13 | E-015 | `app/components/contratos-de-parlamentario.tsx:194` | `/parlamentario/[id]` (MONEY OFF) | `contrato.fecha_captura` |
 | 14 | E-016 | `app/components/aportes-por-contraparte.tsx:198` | `/contraparte/[id]` (MONEY OFF) | `aporte.fecha_captura` |
 | 15 | E-018 | `app/components/sala-table-section.tsx:33` (render `:59`) | `/agenda` | `sesion_sala.fecha_captura` |
-| 16 | E-028 | `app/components/search-result-card.tsx:27` | `/buscar` | `proyecto.fecha_captura` |
+| 16 | E-028 | `app/components/search-result-card.tsx:28` (render `:93`) | `/buscar` | `proyecto.fecha_captura` |
 | 17 | E-033 | `app/components/citacion-card.tsx:45` | `/agenda` | `citacion.fecha_captura` |
 | 18 | E-035 | `app/components/autor-row.tsx:58` | `/proyecto/[boletin]#autores` | `proyecto_autor.fecha_captura` |
 | 19 | E-043 | `app/components/ficha-header.tsx:66` | `/proyecto/[boletin]` (header) | `proyecto.fecha_captura` |
