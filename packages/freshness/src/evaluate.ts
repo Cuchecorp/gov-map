@@ -13,8 +13,38 @@ export interface FuenteResult {
   diasDesdeUpsert: number | null;
   umbralDias: number;
   stale: boolean;
+  /**
+   * POR QUÉ está stale, o null si está fresca. G4 (119-01): sin esto, `stale:true` no
+   * distingue "la tabla no se actualiza" de "el workflow se está cayendo".
+   *   "sin dato"     → no hay último upsert legible (desconocido = stale, fail-closed)
+   *   "dias>umbral"  → hay dato pero es más viejo que el umbral
+   *   "gh-failure"   → la tabla está fresca pero el cron que la llena está averiado
+   */
+  motivoStale: string | null;
   ghRun: string;
   r2Snapshot: string;
+}
+
+/**
+ * ¿La señal de GH Actions denuncia una avería DEL CRON? (función pura, G4 de 118 §4)
+ *
+ * Devuelve true SOLO cuando hay evidencia POSITIVA de que el workflow está fallando:
+ *   - una `conclusion` distinta de success/skipped (failure, cancelled, timed_out, ...)
+ *   - "n/d (sin corridas)" → el workflow EXISTE y nunca corrió (el cron no está disparando)
+ *
+ * Devuelve false para las dos degradaciones que NO son avería del cron:
+ *   - "n/d (sin workflow)" → ausencia DECLARADA de workflow (MONEY/SERVEL gated, G2). Una
+ *     decisión no es una avería; si fuera true, MONEY/SERVEL ganarían un stale nuevo y falso.
+ *   - "n/d" → la llamada a `gh` falló (binario ausente, sin auth, timeout). Es una falla del
+ *     INSTRUMENTO, no del cron: no se puede afirmar avería desde un medidor roto. El
+ *     fail-closed de este módulo aplica sobre el DATO (ultimoUpsert), no sobre el medidor.
+ */
+export function ghRunEsAveria(ghRun: string): boolean {
+  if (ghRun === "n/d (sin corridas)") return true;
+  if (ghRun === "n/d (sin workflow)" || ghRun === "n/d") return false;
+  // Formato "<conclusion> @ YYYY-MM-DD" producido por ghRunSignal.
+  const conclusion = ghRun.split("@")[0]!.trim();
+  return conclusion !== "success" && conclusion !== "skipped";
 }
 
 /**
@@ -59,8 +89,21 @@ export function evaluate(
         : Math.floor((now.getTime() - t) / (1000 * 60 * 60 * 24));
     }
 
-    // Staleness: null (desconocido, incl. fecha ilegible) o días > umbral → stale
-    const stale = diasDesdeUpsert === null || diasDesdeUpsert > umbralDias;
+    // Staleness temporal: null (desconocido, incl. fecha ilegible) o días > umbral → stale
+    const staleTemporal =
+      diasDesdeUpsert === null || diasDesdeUpsert > umbralDias;
+
+    // G4 (119-01): la señal de GH Actions entra al cálculo. ANTES se MOSTRABA y se IGNORABA
+    // → una avería del cron quedaba tapada por la frescura de la tabla ("verde prestado").
+    // Ahora un workflow caído (o que nunca corrió) produce stale POR SÍ SOLO, aunque la tabla
+    // esté al día. Solo puede AÑADIR stale honesto, nunca quitarlo (es un OR).
+    const ghRun = row?.ghRun ?? "n/d";
+    const stale = staleTemporal || ghRunEsAveria(ghRun);
+
+    let motivoStale: string | null = null;
+    if (diasDesdeUpsert === null) motivoStale = "sin dato";
+    else if (diasDesdeUpsert > umbralDias) motivoStale = "dias>umbral";
+    else if (stale) motivoStale = "gh-failure";
 
     return {
       fuente: cfg.fuente,
@@ -69,7 +112,8 @@ export function evaluate(
       diasDesdeUpsert,
       umbralDias,
       stale,
-      ghRun: row?.ghRun ?? "n/d",
+      motivoStale,
+      ghRun,
       r2Snapshot: row?.r2Snapshot ?? "n/d (sin snapshots)",
     };
   });

@@ -7,17 +7,24 @@
  * |------------------|------------------------|------------------|--------|---------------------------------------------|
  * | leyes            | proyecto               | fecha_captura    | 7d     | última vez que tramitación ingestó           |
  * | agenda           | citacion               | fecha_captura    | 7d     | citaciones y sesiones de tabla               |
- * | lobby-camara     | lobby_audiencia        | fecha_captura    | 14d    | WAF bloquea GH Actions → local semanal      |
+ * | lobby-camara     | lobby_contraparte      | fecha_captura    | 14d    | WAF bloquea GH Actions → local semanal      |
  * | lobby-leylobby   | lobby_ingesta_estado   | ingestado_hasta  | 7d     | tabla distinta para distinguir de camara    |
  * | probidad         | declaracion            | fecha_captura    | 30d    | patrimonio/intereses CPLT                   |
- * | fichas           | proyecto               | fecha_captura    | 30d    | mismo proyecto; fichas llena idea_matriz    |
+ * | fichas           | proyecto_ficha         | fecha_captura    | 30d    | tabla propia del pipeline de fichas         |
  * | chilecompra      | contratos_ingesta_estado | ingestado_hasta | 30d  | marcador de barrido (dist. "0 filas" de "no barrido") |
  *
+ * REGLA (G4, 119-01): cada fuente mide una tabla que llena SU PROPIO cron.
+ *   Medir una tabla que llena OTRO cron produce "verde prestado": la avería del cron
+ *   propio queda tapada por la frescura que aporta el ajeno. Dos entradas lo padecían y
+ *   fueron reapuntadas: `lobby-camara` (medía lobby_audiencia, que también llena el
+ *   conector leylobby) y `fichas` (medía proyecto, que llena el cron de tramitación).
+ *
  * NOTA lobby-camara vs lobby-leylobby:
- *   Ambas fuentes escriben en lobby_audiencia (sin columna discriminadora "fuente").
- *   Para distinguirlas, lobby-leylobby usa lobby_ingesta_estado.ingestado_hasta,
- *   que solo escribe el conector leylobby. lobby-camara usa MAX(fecha_captura) de
- *   lobby_audiencia completa (señal conservadora: si cualquier lobby está fresco, ok).
+ *   Ambas fuentes escriben en lobby_audiencia (sin columna discriminadora "fuente"), así
+ *   que NINGUNA de las dos la usa como señal. lobby-leylobby mide
+ *   lobby_ingesta_estado.ingestado_hasta (solo lo escribe el conector leylobby) y
+ *   lobby-camara mide lobby_contraparte.fecha_captura (solo la escribe el conector de
+ *   Cámara, vía `upsertContrapartes`). Cada señal es atribuible a su propio cron.
  *
  * overrideEnv: nombre de variable de entorno para override de umbral por fuente.
  *   Formato: FRESHNESS_UMBRAL_<FUENTE_UPPERCASE_GUIONES_A_UNDERSCORE>
@@ -265,8 +272,14 @@ export const CATALOG: FuenteConfig[] = [
     workflowYml: "agenda-weekly.yml",
   },
   {
+    // G4 (119-01): ANTES medía `lobby_audiencia`, tabla que TAMBIÉN llena el conector
+    // leylobby (W-5) → "verde prestado": una avería de lobby-camara-weekly quedaba tapada
+    // por la frescura que aportaba el OTRO cron. Ahora mide `lobby_contraparte`, tabla
+    // PROPIA del conector de Cámara (la escribe `upsertContrapartes` de writer-supabase.ts).
+    // Columna `fecha_captura` verificada por psql read-only contra el schema de PROD
+    // (lección A2 de 118 §5: las columnas temporales NO son uniformes).
     fuente: "lobby-camara",
-    tabla: "lobby_audiencia",
+    tabla: "lobby_contraparte",
     columna: "fecha_captura",
     umbralDias: 14,
     overrideEnv: "FRESHNESS_UMBRAL_LOBBY_CAMARA",
@@ -289,8 +302,12 @@ export const CATALOG: FuenteConfig[] = [
     workflowYml: "probidad-weekly.yml",
   },
   {
+    // G4 (119-01): ANTES medía `proyecto`, tabla que llena el cron de tramitación (W-4) →
+    // mismo "verde prestado": una avería de fichas-backfill quedaba tapada por la frescura
+    // de leyes-weekly. Ahora mide `proyecto_ficha`, la tabla que llena el propio pipeline
+    // de fichas. Columna `fecha_captura` verificada por psql read-only contra PROD.
     fuente: "fichas",
-    tabla: "proyecto",
+    tabla: "proyecto_ficha",
     columna: "fecha_captura",
     umbralDias: 30,
     overrideEnv: "FRESHNESS_UMBRAL_FICHAS",

@@ -102,7 +102,12 @@ function renderTable(results: FuenteResult[]): string {
 
   const rows = results.map((r) => {
     const diasStr = r.diasDesdeUpsert !== null ? String(r.diasDesdeUpsert) : "?";
-    const estadoStr = r.stale ? "STALE" : "OK";
+    // G4 (119-01): el motivo va PEGADO a "Estado", que es la ÚLTIMA columna y no lleva
+    // `pad` → añadirlo NO corre ninguna columna ni ensancha el layout. Sin el motivo,
+    // "STALE" no distingue "la tabla no se actualiza" de "el cron está caído".
+    const estadoStr = r.stale
+      ? `STALE (${r.motivoStale ?? "?"})`
+      : "OK";
     const row =
       pad(r.fuente, cols.fuente) +
       " | " +
