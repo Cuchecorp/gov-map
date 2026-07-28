@@ -223,7 +223,47 @@ describe("UrgenciasVigentesView", () => {
   });
 });
 
-// ── BLOQUE 3 — "Última actualización de datos" ──────────────────────────────────
+// ── F-05 — la fecha del HECHO se rinde con el día chileno real ─────────────────
+describe("F-05 — fecha del hecho en los bloques 1 y 2", () => {
+  it("votación de 2023-11-17T00:14:41Z → 16 nov 2023 (día chileno real)", () => {
+    const { container } = render(
+      <VotadoEstaSemanaView
+        items={[
+          makeVotado({
+            camara: null,
+            fecha: new Date("2023-11-17T00:14:41Z"),
+          }),
+        ]}
+      />,
+    );
+    expect(container.textContent ?? "").toContain("16 nov 2023");
+  });
+
+  it("date-only disfrazada 2026-07-22T00:00:00Z → 22 jul 2026, sin corrimiento", () => {
+    const { container } = render(
+      <VotadoEstaSemanaView
+        items={[
+          makeVotado({
+            camara: null,
+            fecha: new Date("2026-07-22T00:00:00Z"),
+          }),
+        ]}
+      />,
+    );
+    expect(container.textContent ?? "").toContain("22 jul 2026");
+  });
+
+  it("urgencia date-only 2026-07-22T00:00:00Z → 22 jul 2026, sin corrimiento", () => {
+    const { container } = render(
+      <UrgenciasVigentesView
+        items={[makeUrgencia({ desde: new Date("2026-07-22T00:00:00Z") })]}
+      />,
+    );
+    expect(container.textContent ?? "").toContain("22 jul 2026");
+  });
+});
+
+// ── BLOQUE 3 — strip de transparencia ─────────────────────────────────────────
 describe("UltimaActualizacionView", () => {
   it("con datos: label + dot petróleo + fuente + fecha mono por item", () => {
     const { container } = render(
@@ -234,12 +274,45 @@ describe("UltimaActualizacionView", () => {
         ]}
       />,
     );
-    expect(screen.getByText("Última actualización de datos")).toBeInTheDocument();
+    expect(screen.getByText("Última consulta a las fuentes")).toBeInTheDocument();
     // fuente labels present
     expect(screen.getByText("Votaciones")).toBeInTheDocument();
     expect(screen.getByText("Proyectos de ley")).toBeInTheDocument();
     // 2 font-mono date spans
     expect(container.querySelectorAll("span.font-mono").length).toBe(2);
+  });
+
+  // ── F-06 — el strip mide NUESTRA consulta, no un cambio del dato ──────────
+  it("F-06: el encabezado ya no afirma que el dato se actualizó", () => {
+    const { container } = render(
+      <UltimaActualizacionView items={[makeFrescura()]} />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).not.toContain("Última actualización de datos");
+    expect(texto).toContain("Última consulta a las fuentes");
+  });
+
+  it("F-06: por fuente, el nombre y el idiom LOCKED se asertan por separado", () => {
+    const { container } = render(
+      <UltimaActualizacionView
+        items={[makeFrescura({ fuente: "Votaciones" })]}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    // El `·` del strip es un <span aria-hidden> hermano ⇒ `{fuente} · según fuente
+    // al {fecha}` NO existe como substring contiguo. Se asertan los dos hechos
+    // por separado, jamás el literal concatenado.
+    expect(texto).toContain("Votaciones");
+    expect(texto).toContain("según fuente al 05 jul 2026");
+  });
+
+  it("F-06: el strip NO usa la palabra prohibida pelada en su copy", () => {
+    const { container } = render(
+      <UltimaActualizacionView items={[makeFrescura()]} />,
+    );
+    expect(container.textContent ?? "").not.toMatch(
+      /(^|[^a-záéíóúñ])captura([^a-záéíóúñ]|$)/i,
+    );
   });
 
   it("0 datos → strip no renderiza contenido (null — OMITIR)", () => {
