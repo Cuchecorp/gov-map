@@ -12,6 +12,7 @@
  * | probidad         | declaracion            | fecha_captura    | 30d    | patrimonio/intereses CPLT                   |
  * | fichas           | proyecto_ficha         | fecha_captura    | 30d    | tabla propia del pipeline de fichas         |
  * | chilecompra      | contratos_ingesta_estado | ingestado_hasta | 30d  | marcador de barrido (dist. "0 filas" de "no barrido") |
+ * | actualidad-refresh | actualidad_senal     | fecha_captura    | 2d     | panel de actualidad, cadencia intradía L-V  |
  *
  * REGLA (G4, 119-01): cada fuente mide una tabla que llena SU PROPIO cron.
  *   Medir una tabla que llena OTRO cron produce "verde prestado": la avería del cron
@@ -363,5 +364,24 @@ export const CATALOG: FuenteConfig[] = [
     umbralDias: 365,
     overrideEnv: "FRESHNESS_UMBRAL_SERVEL",
     workflowYml: null,
+  },
+  {
+    // actualidad-refresh (G3, 119-02) — W-1 de 118 §2 era un punto ciego del instrumento:
+    // el cron que rellena el panel de actualidad podía averiarse SIN disparar ninguna señal.
+    //
+    // Tabla `actualidad_senal` (0065_actualidad_senal.sql) y columna `fecha_captura`
+    // VERIFICADAS por psql read-only contra el schema de PROD antes de commitear — la
+    // REFUTACIÓN A2 de 118 §5 es exactamente que la columna temporal NO es uniforme entre
+    // tablas: aquí NO es `creado_en`, es `fecha_captura`.
+    //
+    // umbralDias 2: la cadencia es intradía L-V (`0 11,14,17,20 * * 1-5`, cuatro ventanas
+    // por día hábil). Más de 2 días sin escritura implica un fin de semana largo MÁS al
+    // menos una ventana hábil perdida — es decir, avería, no calendario.
+    fuente: "actualidad-refresh",
+    tabla: "actualidad_senal",
+    columna: "fecha_captura",
+    umbralDias: 2,
+    overrideEnv: "FRESHNESS_UMBRAL_ACTUALIDAD_REFRESH",
+    workflowYml: "actualidad-refresh.yml",
   },
 ];

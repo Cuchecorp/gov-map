@@ -686,3 +686,31 @@ describe("G4 (119-01): tabla PROPIA por cron (fin del verde prestado en el catá
     expect(CATALOG.filter((c) => c.tabla === "lobby_audiencia")).toHaveLength(0);
   });
 });
+
+describe("G3 (119-02): actualidad-refresh deja de ser punto ciego (W-1)", () => {
+  const cfg = () => CATALOG.find((c) => c.fuente === "actualidad-refresh")!;
+
+  it("está en el catálogo midiendo actualidad_senal.fecha_captura", () => {
+    // Columna verificada por psql read-only contra PROD (A2 de 118 §5: NO es `creado_en`).
+    expect(cfg().tabla).toBe("actualidad_senal");
+    expect(cfg().columna).toBe("fecha_captura");
+    expect(cfg().umbralDias).toBe(2);
+    expect(cfg().workflowYml).toBe("actualidad-refresh.yml");
+  });
+
+  it("ultimoUpsert de hace 3 días → stale (cadencia intradía L-V, umbral 2d)", () => {
+    const row = makeRow("actualidad-refresh", 3);
+    row.ghRun = "success @ 2026-07-09";
+    const r = evaluate([row], [cfg()], NOW)[0]!;
+    expect(r.stale).toBe(true);
+    expect(r.motivoStale).toBe("dias>umbral");
+  });
+
+  it("ultimoUpsert de hace 1 día → NO stale", () => {
+    const row = makeRow("actualidad-refresh", 1);
+    row.ghRun = "success @ 2026-07-09";
+    const r = evaluate([row], [cfg()], NOW)[0]!;
+    expect(r.stale).toBe(false);
+    expect(r.motivoStale).toBeNull();
+  });
+});
