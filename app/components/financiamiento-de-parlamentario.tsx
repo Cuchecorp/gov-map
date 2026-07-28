@@ -217,10 +217,12 @@ function AporteFila({ a }: { a: AporteRow }) {
           <dd className="text-base">{a.tipo_aporte ?? "No publicado"}</dd>
         </dl>
 
-        {/* Fecha de corte por fila, distinta de la fecha de captura. NO "por RUT". */}
+        {/* F-08 (117-03): `fecha_corte` = borde de lo que cubre la FUENTE, distinto
+            de `ingestado_hasta` (nuestro) y de `fecha_captura` (el badge). NO "por
+            RUT" (esta superficie enlaza por NOMBRE del candidato). */}
         {fechaCorteTexto && (
           <span className="text-sm text-muted-foreground">
-            Consultado por nombre del candidato, corte al{" "}
+            Consultado por nombre del candidato; la fuente cubre hasta el{" "}
             <span className="font-mono">{fechaCorteTexto}</span>.
           </span>
         )}
@@ -360,7 +362,8 @@ export function FinanciamientoView({ data }: { data: FinanciamientoViewData }) {
         <LeyendaMoney />
         <Intro />
         <p className="text-sm text-muted-foreground">
-          Consultamos SERVEL por este candidato (corte al{" "}
+          {/* F-08: aquí la fecha es `ingestado_hasta` — NUESTRA ingesta. */}
+          Consultamos SERVEL por este candidato (nuestra ingesta llega hasta el{" "}
           <span className="font-mono">{fechaTexto}</span>) y no se registran
           aportes asociados a ese candidato a esa fecha.
         </p>

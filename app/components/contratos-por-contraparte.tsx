@@ -161,10 +161,11 @@ function ContratoFila({ c }: { c: ContratoContraparteRow }) {
           <dd className="text-base font-mono">{c.codigo_orden}</dd>
         </dl>
 
-        {/* Fecha de corte por fila, distinta de la fecha de captura. */}
+        {/* F-08 (117-03): "Consolidado" pelado no decía QUIÉN consolidó, y el rótulo
+            anterior fundía la cobertura de la fuente con nuestra ingesta. Ambos nombrados. */}
         {fechaCorteTexto && (
           <span className="text-sm text-muted-foreground">
-            Consolidado, corte al{" "}
+            Consolidado por el Observatorio; la fuente cubre hasta el{" "}
             <span className="font-mono">{fechaCorteTexto}</span>.
           </span>
         )}

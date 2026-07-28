@@ -178,10 +178,13 @@ function ContratoFila({ c }: { c: ContratoRow }) {
           <dd className="text-base font-mono">{c.codigo_orden}</dd>
         </dl>
 
-        {/* Fecha de corte por fila, distinta de la fecha de captura. */}
+        {/* F-08 (117-03): `fecha_corte` es el borde de lo que cubre la FUENTE —
+            distinto de `ingestado_hasta` (nuestro) y de `fecha_captura` (el badge).
+            Las tres viajaban bajo rótulos indistinguibles; ahora cada una nombra a
+            su dueño. Debía cerrarse ANTES de cualquier flip del gate MONEY. */}
         {fechaCorteTexto && (
           <span className="text-sm text-muted-foreground">
-            Consultado por RUT, corte al{" "}
+            Consultado por RUT; la fuente cubre hasta el{" "}
             <span className="font-mono">{fechaCorteTexto}</span>.
           </span>
         )}
@@ -230,7 +233,11 @@ export function ContratosView({ data }: { data: ContratosViewData }) {
         <LeyendaMoney />
         <Intro />
         <p className="text-sm text-muted-foreground">
-          Consultamos ChileCompra por el RUT de este parlamentario (corte al{" "}
+          {/* F-08: aquí la fecha es `ingestado_hasta` — el borde de NUESTRA
+              ingesta, no el de la fuente. */}
+          Consultamos ChileCompra por el RUT de este parlamentario
+          {" ("}
+          nuestra ingesta llega hasta el{" "}
           <span className="font-mono">{fechaTexto}</span>) y no se registran
           contratos asociados a ese RUT a esa fecha.
         </p>
