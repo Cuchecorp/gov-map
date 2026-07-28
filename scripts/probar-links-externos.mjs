@@ -170,10 +170,16 @@ function snippet(cuerpo) {
   return String(cuerpo || "").replace(/\s+/g, " ").trim().slice(0, 300);
 }
 
-function clasificar(r) {
+export function clasificar(r) {
   if (r.clase_red) return "RED";
   if (r.http_code === 403 || r.http_code === 429) return "WAF-403";
-  if (r.http_code === 0 || r.http_code >= 500 || r.http_code === 404) return "NO-DISPONIBLE";
+  // Cualquier 4xx (no sólo 404) y cualquier 5xx es "no disponible". Sin esta rama, un 400
+  // —p.ej. el `Virtuoso ... syntax error` de `datos.cplt.cl` ante un SPARQL mal formado—
+  // caía al `return "OK"` final y se etiquetaba como éxito. Defecto de la clasificación
+  // PROPUESTA, no de la respuesta: los campos crudos del registro no cambian.
+  if (r.http_code === 0 || r.http_code >= 500 || (r.http_code >= 400 && r.http_code < 500)) {
+    return "NO-DISPONIBLE";
+  }
   const ct = (r.content_type || "").toLowerCase();
   const sn = (r.snippet || "").slice(0, 80).toLowerCase();
   if (ct.includes("xml") || sn.startsWith("<?xml")) return "XML-CRUDO";

@@ -1,0 +1,116 @@
+# probar-links-externos.mjs — modo muestra
+# fecha de la corrida: 2026-07-28T04:07:02.025Z
+# USER_AGENT = "ObservatorioCongreso360/1.0 (+https://observatorio-congreso.thevalis.workers.dev; contacto: contacto@observatorio-congreso)"
+# DELAY_MS = 2500
+# registros: 19
+#
+# La columna `clasificacion` es la clasificacion PROPUESTA por el runner. El veredicto
+# de fase (taxonomia cerrada de 4 etiquetas) lo emite 115-VEREDICTO.md, no este archivo.
+
+P-03-c02   500  NO-DISPONIBLE   opendata.camara.cl       https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin
+P-15-c01   200  XML-CRUDO       opendata.camara.cl       https://opendata.camara.cl/camaradiputados/WServices/WSDiputado.asmx/retornarDiputadosPeriodoActual
+P-18-c01   500  NO-DISPONIBLE   opendata.camara.cl       https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin
+P-23-c01   500  NO-DISPONIBLE   opendata.camara.cl       https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin
+P-25-c01   500  NO-DISPONIBLE   opendata.camara.cl       https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin
+P-01-c01   206  OK              tramitacion.senado.cl    https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=10986-24
+P-03-c01   206  OK              tramitacion.senado.cl    https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=14309-04
+P-16-c01   206  XML-CRUDO       tramitacion.senado.cl    https://tramitacion.senado.cl/wspublico/senadores_vigentes.php
+P-17-c01   206  OK              tramitacion.senado.cl    https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=9301-14
+P-19-c01   206  OK              tramitacion.senado.cl    https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=10986-24
+P-24-c01   206  XML-CRUDO       tramitacion.senado.cl    https://tramitacion.senado.cl/wspublico/votaciones.php
+P-26-c01   206  OK              tramitacion.senado.cl    https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=18384-08
+P-27-c01   206  XML-CRUDO       tramitacion.senado.cl    https://tramitacion.senado.cl/wspublico/tramitacion.php
+P-22-c01   200  REDIR-GENERICA  www.senado.cl            http://www.senado.cl/appsenado/index.php?mo=tramitacion&ac=getDocto&iddocto=11240&tipodoc=ofic
+P-07-c01   200  OK              web-back.senado.cl       https://web-back.senado.cl/api/commissions_citations?limit=100
+P-20-c01   200  OK              web-back.senado.cl       https://web-back.senado.cl/api/weekly_table?limit=100
+P-13-c01   200  OK              www.leylobby.gob.cl      https://www.leylobby.gob.cl/instituciones/AA001/audiencias/2024/663021
+P-14-c01   200  OK              www.leylobby.gob.cl      https://www.leylobby.gob.cl/instituciones/AA001/audiencias/2024/663021/728817
+P-11-c01   400  NO-DISPONIBLE   datos.cplt.cl            https://datos.cplt.cl/sparql?query=alessandri%20vergara
+
+=== EVIDENCIA DE RATE-LIMIT ===
+
+Deltas CALCULADOS desde los campos ts_inicio de 115-MUESTRA.json — no afirmados.
+delta = ts_inicio[i] - ts_inicio[i-1] entre requests CONSECUTIVOS al mismo host.
+DELAY_MS configurado = 2500. Umbral exigido: >=2000ms.
+
+host                      requests  delta_min_ms  veredicto
+------------------------  --------  ------------  ---------------------------
+opendata.camara.cl        5         2589          >=2000ms OK
+tramitacion.senado.cl     8         2823          >=2000ms OK
+www.senado.cl             1         n/a           >=2000ms OK (request unico)
+web-back.senado.cl        2         4624          >=2000ms OK
+www.leylobby.gob.cl       2         3188          >=2000ms OK
+datos.cplt.cl             1         n/a           >=2000ms OK (request unico)
+
+Delta minimo GLOBAL (incluido el salto entre hosts): 2589ms. El delay se aplica
+tambien ENTRE hosts, de modo que no hay rafaga ni siquiera agregada.
+Delta minimo peor-caso intra-host: 2589ms — dentro de la banda 2-3s de CLAUDE.md.
+
+Pasadas sobre la muestra: 1 (una). Ningun host se consulto dos veces el mismo dia
+fuera de esta unica pasada. Reintentos ejecutados: 0.
+El runner solo reintenta ante fallo de RED; un 403/429/5xx se registra y se clasifica,
+jamas se reintenta ni se rodea. Cero cambios de User-Agent, cero proxies, cero headers
+de navegador: el SC#4 exige que una fuente caida se DECLARE, no que se venza.
+
+=== COBERTURA ===
+
+Conteos leidos del MANIFIESTO VIGENTE de 115-PATRONES.md §4 (lineas CASOS_MANIFIESTO:
+y HOSTS_MANIFIESTO:), nunca de constantes escritas a mano en este documento.
+
+CASOS_EJECUTADOS: 19 / CASOS_MANIFIESTO: 19
+HOSTS_CUBIERTOS: 6 / HOSTS_MANIFIESTO: 6
+PATRONES_CUBIERTOS: 18 / PATRONES_PROBABLES: 18
+
+PATRONES_PROBABLES = los 27 patrones P-NN de §1 menos los 9 declarados sin-probe:
+  P-04 — `partidoLegible` no emite href: no hay recurso que pedir.
+  P-02, P-05, P-06, P-08, P-09, P-10, P-12, P-21 — retirados por `Disallow: /` de www.camara.cl.
+
+Patrones cubiertos por la muestra: P-03, P-15, P-18, P-23, P-25, P-01, P-16, P-17, P-19, P-24, P-26, P-27, P-22, P-07, P-20, P-13, P-14, P-11
+
+Casos del manifiesto de §4 NO ejecutados — lista NOMINAL con causa. Cero casos asumidos:
+  P-02-c01 — NO ejecutado. Causa: retirado por la directiva `Disallow: /` del grupo
+               `User-agent: *` final de www.camara.cl/robots.txt (115-ROBOTS.txt §1).
+  P-05-c01 — NO ejecutado. Causa: retirado por la directiva `Disallow: /` del grupo
+               `User-agent: *` final de www.camara.cl/robots.txt (115-ROBOTS.txt §1).
+  P-06-c01 — NO ejecutado. Causa: retirado por la directiva `Disallow: /` del grupo
+               `User-agent: *` final de www.camara.cl/robots.txt (115-ROBOTS.txt §1).
+  P-08-c01 — NO ejecutado. Causa: retirado por la directiva `Disallow: /` del grupo
+               `User-agent: *` final de www.camara.cl/robots.txt (115-ROBOTS.txt §1).
+  P-09-c01 — NO ejecutado. Causa: retirado por la directiva `Disallow: /` del grupo
+               `User-agent: *` final de www.camara.cl/robots.txt (115-ROBOTS.txt §1).
+  P-10-c01 — NO ejecutado. Causa: retirado por la directiva `Disallow: /` del grupo
+               `User-agent: *` final de www.camara.cl/robots.txt (115-ROBOTS.txt §1).
+  P-12-c01 — NO ejecutado. Causa: retirado por la directiva `Disallow: /` del grupo
+               `User-agent: *` final de www.camara.cl/robots.txt (115-ROBOTS.txt §1).
+  P-21-c01 — NO ejecutado. Causa: retirado por la directiva `Disallow: /` del grupo
+               `User-agent: *` final de www.camara.cl/robots.txt (115-ROBOTS.txt §1).
+
+Un caso retirado por `Disallow:` no es una fuente caida ni un hueco de cobertura:
+es respeto al protocolo de exclusion. Sus patrones se validan solo por construccion.
+
+Casos del manifiesto VIGENTE sin ejecutar: ninguno — los 19 vigentes se ejecutaron.
+Ids ejecutados ausentes del manifiesto: ninguno.
+Interseccion {ids ejecutados} n {bloque RETIRADOS: de 115-ROBOTS.txt}: VACIA.
+
+=== REDACCION DE SNIPPETS ===
+
+Dominio de declaraciones (datos.cplt.cl): 1 caso — P-11-c01.
+Su respuesta es un error del compilador SPARQL (Virtuoso 37000 SP030) y NO contiene dato
+personal alguno de una declaracion: el servidor jamas llego a ejecutar la consulta. Por eso
+el snippet se conserva verbatim y no hubo redaccion que aplicar.
+
+Redacciones aplicadas: 0. De haber traido datos personales, el snippet se habria sustituido
+por [snippet redactado — dominio de declaraciones] conservando http_code y content_type.
+La prueba del patron es el http_code y la url_effective, jamas el cuerpo de la respuesta.
+
+Los snippets de todos los registros van con espacios en blanco colapsados y truncados a
+300 caracteres por el runner. Cero credenciales: SUPABASE_DB_URL no aparece en la corrida.
+
+=== NOTA SOBRE LA CLASIFICACION PROPUESTA ===
+
+La funcion clasificar() del runner no tenia rama para 4xx distintos de 403/404, de modo
+que el 400 de P-11-c01 caia al return OK final. Se corrigio la funcion y la columna
+clasificacion se RE-DERIVO de los MISMOS registros crudos ya almacenados:
+P-11-c01 pasa de OK a NO-DISPONIBLE. Cero requests adicionales — ningun servidor fue
+consultado de nuevo. Los campos http_code, url_effective, content_type, snippet y los
+timestamps son los de la unica pasada y no se tocaron.
