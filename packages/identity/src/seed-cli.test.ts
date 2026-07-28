@@ -194,6 +194,43 @@ describe("main — G6: existed:true ⇒ skip de la carga, no del snapshot", () =
     expect(d.logs.some((l) => l.includes("[skip] sin novedades"))).toBe(false);
   });
 
+  // WR-04 (119-REVIEW): `!sinNovedades` envolvía la carga a DB **y** el bloque `--promote`. El
+  // caso NORMAL del operador (`--r2 --promote` con el roster sin cambios) devolvía
+  // `promoted: null` y un log de skip: la compuerta humana no se aplicaba y nada lo denunciaba.
+  it("(WR-04) existed:true + --promote ⇒ la promoción SÍ se aplica (acto del operador)", async () => {
+    const d = deps(true);
+    let promoteLlamado = 0;
+    (d.opts.dbWriter as { promoteToConfirmado: () => Promise<{ promovidos: number }> })
+      .promoteToConfirmado = async () => {
+      promoteLlamado += 1;
+      return { promovidos: 1 };
+    };
+
+    const res = await main({ ...d.opts, promote: true } as never);
+
+    // El ahorro que el skip debe dar SIGUE dándose: la maestra no se re-upsertea…
+    expect(d.upserts).toHaveLength(0);
+    expect(res.dbLoaded).toBe(false);
+    // …pero la orden humana no se traga.
+    expect(promoteLlamado).toBe(1);
+    expect(res.promoted).toEqual({ promovidos: 1 });
+  });
+
+  it("(WR-04) existed:true SIN --promote ⇒ nada se promueve (el skip sigue siendo skip)", async () => {
+    const d = deps(true);
+    let promoteLlamado = 0;
+    (d.opts.dbWriter as { promoteToConfirmado: () => Promise<{ promovidos: number }> })
+      .promoteToConfirmado = async () => {
+      promoteLlamado += 1;
+      return { promovidos: 1 };
+    };
+
+    const res = await main(d.opts as never);
+
+    expect(promoteLlamado).toBe(0);
+    expect(res.promoted).toBeNull();
+  });
+
   it("(4) sin credenciales R2 (target null) ⇒ NO hay skip: todo procede (no-op explícito)", async () => {
     const d = deps(null);
     const res = await main(d.opts as never);

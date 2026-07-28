@@ -365,12 +365,27 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
   //    se omite la DB (pero el snapshot git, autoritativo, SIEMPRE se escribe).
   let dbLoaded = false;
   let promoted: { promovidos: number } | null = null;
-  if (serviceKey.length > 0 && !sinNovedades) {
+  // WR-04 (119-REVIEW): `!sinNovedades` envolvía la carga a DB **y** el bloque `--promote`. Un
+  // operador que corre `--r2 --promote` tras su visto bueno humano, con el catálogo sin cambios
+  // (el caso NORMAL: el roster no se mueve entre corridas), obtenía `promoted: null` y un log de
+  // skip — la compuerta humana no se aplicaba y NADA lo denunciaba como fallo.
+  //
+  // La promoción es un ACTO EXPLÍCITO DEL OPERADOR, no trabajo derivado del crudo: que el crudo
+  // no haya cambiado es exactamente irrelevante para ella. El skip sigue ahorrando lo que debe
+  // ahorrar (el upsert de la maestra), pero ya no se traga la orden humana.
+  if (serviceKey.length > 0 && (!sinNovedades || opts.promote === true)) {
     const writer =
       opts.dbWriter ?? new SupabaseMaestraWriter({ url: localUrl, serviceKey });
-    await upsertMaestra(maestra, writer);
-    dbLoaded = true;
-    log(`seed: maestra cargada en Supabase LOCAL (${localUrl}) — upsert idempotente`);
+    if (!sinNovedades) {
+      await upsertMaestra(maestra, writer);
+      dbLoaded = true;
+      log(`seed: maestra cargada en Supabase LOCAL (${localUrl}) — upsert idempotente`);
+    } else {
+      log(
+        "seed: [skip] sin novedades → carga a DB omitida, pero --promote SÍ se aplica " +
+          "(es un acto del operador, no trabajo derivado del crudo)",
+      );
+    }
 
     // Compuerta humana (ID-01) + CR-01: la promoción es PRINCIPIADA, jamás un blanket-confirm.
     // Dos fuentes legítimas de confirmación, ambas explícitas:
