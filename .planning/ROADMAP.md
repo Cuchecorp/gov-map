@@ -310,7 +310,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 113. INV | 6/6 | Complete   | 2026-07-27 |
+| 113. INV | 6/6 | Complete    | 2026-07-28 |
 | 114. LINK-INT | 0/? | Not started | - |
 | 115. LINK-EXT | 0/? | Not started | - |
 | 116. FECHA-AUDIT | 0/? | Not started | - |
