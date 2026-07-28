@@ -285,7 +285,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 119-05-PLAN.md — (w3) G7 `--from-r2` en agenda y probidad + W-9 lobby-camara re-procesable desde R2
+- [x] 119-05-PLAN.md — (w3) G7 `--from-r2` en agenda y probidad + W-9 lobby-camara re-procesable desde R2
 - [ ] 119-06-PLAN.md — (w3) G1 cursor `lobby_ingesta_estado` + G9 parte YAML (remapeo SUPABASE_URL)
 
 **Wave 4** *(blocked on Wave 3 completion)*
@@ -395,7 +395,7 @@ Plans:
 | 116. FECHA-AUDIT | 4/4 | Complete    | 2026-07-28 |
 | 117. FECHA-FIX | 4/4 | Complete    | 2026-07-28 |
 | 118. CRON-AUDIT | 3/3 | Complete    | 2026-07-28 |
-| 119. CRON-FIX | 4/7 | In Progress|  |
+| 119. CRON-FIX | 5/7 | In Progress|  |
 | 120. ESCALERA-ON | 0/? | Not started | - |
 | 121. ESCALERA-DOC | 0/? | Not started | - |
 | 122. CRUCE-SQL | 0/? | Not started | - |
