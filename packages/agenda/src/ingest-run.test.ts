@@ -287,3 +287,170 @@ describe("runIngest — tolerante + degradación honesta", () => {
     expect(degR2?.semanasOmitidas).toHaveLength(SEMANAS.length);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G6 (119-03): `existed` (412 de If-None-Match) ⇒ `[skip] sin novedades`.
+// Regla LOCKED 2 de CLAUDE.md: hash-check ANTES de gastar trabajo. Si el crudo ya
+// estaba en R2, la Etapa 2 (parse/LLM/upsert) NO se ejecuta para ese recurso.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("runIngest — G6: existed:true ⇒ skip sin novedades", () => {
+  /** Store fake que devuelve siempre el mismo `existed`. */
+  function r2Con(existed: boolean) {
+    const llamadas: string[] = [];
+    return {
+      llamadas,
+      store: {
+        putImmutable: async (
+          source: string,
+          resource: string,
+          date: string,
+          sha: string,
+          ext: string,
+        ) => {
+          llamadas.push(`${source}/${resource}/${date}`);
+          return { r2Path: `${source}/${resource}/${date}/${sha}.${ext}`, existed };
+        },
+      },
+    };
+  }
+
+  it("(1) existed:true ⇒ el parser de citaciones NO se invoca y no hay upserts de esa semana", async () => {
+    const writer = new InMemoryAgendaWriter();
+    // Si el parser se invocara, este HTML lanzaría o produciría filas; con el skip,
+    // ni siquiera se decodifica: la mejor aserción disponible es que NO hubo escritura
+    // de citaciones de Cámara y que el conteo quedó en 0.
+    const { store } = r2Con(true);
+    const res = await runIngest({
+      conectorCamara: fakeCamara({}),
+      conectorSenado: fakeSenado(),
+      writer,
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2: store,
+      r2Enabled: true,
+    });
+
+    expect(res.camaraCitaciones).toBe(0);
+    expect(res.errores).toHaveLength(0);
+  });
+
+  it("(2) existed:false ⇒ la ruta feliz se conserva (parser invocado, upsert hecho)", async () => {
+    const writer = new InMemoryAgendaWriter();
+    const { store } = r2Con(false);
+    const res = await runIngest({
+      conectorCamara: fakeCamara({}),
+      conectorSenado: fakeSenado(),
+      writer,
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2: store,
+      r2Enabled: true,
+    });
+
+    expect(res.camaraCitaciones).toBeGreaterThanOrEqual(1);
+  });
+
+  it("(3) el log lleva el prefijo `[skip] sin novedades` con fuente y recurso", async () => {
+    const writer = new InMemoryAgendaWriter();
+    const logs: string[] = [];
+    const { store } = r2Con(true);
+    await runIngest({
+      conectorCamara: fakeCamara({}),
+      conectorSenado: fakeSenado(),
+      writer,
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2: store,
+      r2Enabled: true,
+      log: (m) => logs.push(m),
+    });
+
+    const skips = logs.filter((l) => l.startsWith("[skip] sin novedades"));
+    expect(skips).toHaveLength(SEMANAS.length);
+    expect(skips[0]).toContain("camara citaciones-semana");
+    expect(skips[0]).toContain("2026-W24");
+  });
+
+  it("(4) sin r2Enabled NO hay skip: todo se parsea (degradar sin R2 es procesar, no saltar)", async () => {
+    const writer = new InMemoryAgendaWriter();
+    const logs: string[] = [];
+    const { store } = r2Con(true); // el store diría existed:true, pero el gate está cerrado
+    const res = await runIngest({
+      conectorCamara: fakeCamara({}),
+      conectorSenado: fakeSenado(),
+      writer,
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2: store,
+      r2Enabled: false,
+      log: (m) => logs.push(m),
+    });
+
+    expect(res.camaraCitaciones).toBeGreaterThanOrEqual(1);
+    expect(logs.some((l) => l.startsWith("[skip] sin novedades"))).toBe(false);
+  });
+
+  it("(5) tabla de sala: existed:true ⇒ NO se invoca el proveedor LLM (ni la extracción de texto)", async () => {
+    const writer = new InMemoryAgendaWriter();
+    const logs: string[] = [];
+    let proveedorTocado = false;
+    const proveedor = {
+      id: "fake",
+      trainsOnInputs: false,
+      complete: async () => {
+        proveedorTocado = true;
+        return {} as never;
+      },
+    };
+    const camara = {
+      ...fakeCamara({}),
+      fetchTablaSalaPdf: async () => new TextEncoder().encode("no-es-un-pdf"),
+    } as unknown as CitacionesCamaraConnector;
+
+    const { store } = r2Con(true);
+    await runIngest({
+      conectorCamara: camara,
+      conectorSenado: fakeSenado(),
+      writer,
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2: store,
+      r2Enabled: true,
+      proveedorTablaCamara: proveedor as never,
+      log: (m) => logs.push(m),
+    });
+
+    expect(proveedorTocado).toBe(false);
+    // La extracción de texto (unpdf) tampoco se alcanzó: su log de degradación no aparece.
+    expect(logs.some((l) => l.includes("no es un PDF (magic bytes)"))).toBe(false);
+    expect(logs.some((l) => l.includes("[skip] sin novedades — camara tabla-sala"))).toBe(true);
+  });
+
+  it("(5b) control: con existed:false la extracción de la tabla SÍ se alcanza", async () => {
+    const writer = new InMemoryAgendaWriter();
+    const logs: string[] = [];
+    const camara = {
+      ...fakeCamara({}),
+      fetchTablaSalaPdf: async () => new TextEncoder().encode("no-es-un-pdf"),
+    } as unknown as CitacionesCamaraConnector;
+
+    const { store } = r2Con(false);
+    await runIngest({
+      conectorCamara: camara,
+      conectorSenado: fakeSenado(),
+      writer,
+      semanas: SEMANAS,
+      backoffMs: 0,
+      r2: store,
+      r2Enabled: true,
+      proveedorTablaCamara: {
+        id: "fake",
+        trainsOnInputs: false,
+        complete: async () => ({}) as never,
+      } as never,
+      log: (m) => logs.push(m),
+    });
+
+    expect(logs.some((l) => l.includes("no es un PDF (magic bytes)"))).toBe(true);
+  });
+});
