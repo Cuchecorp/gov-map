@@ -270,7 +270,27 @@ Plans:
   3. Las dos etapas LOCKED (fuente→R2 crudo content-addressed, R2→Supabase) y el hash-check-antes-de-descargar siguen respetados en cada conector tocado; rate-limit 2-3s intacto
   4. `pnpm freshness` refleja el estado real por fuente tras los fixes
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 119-01-PLAN.md — (w1) Instrumento de frescura: G10 tsx + G2 workflowYml null + G4 verde prestado (ghRun en el stale)
+- [ ] 119-03-PLAN.md — (w1) G6 `existed` -> `[skip] sin novedades` en agenda, probidad e identity
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 119-02-PLAN.md — (w2) G3 cobertura de frescura: actualidad-refresh + senal pg_cron + huecos declarados
+- [ ] 119-04-PLAN.md — (w2) G5 SnapshotWriter en agenda, identity y lobby-leylobby (source_snapshot 2 -> 5 fuentes)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 119-05-PLAN.md — (w3) G7 `--from-r2` en agenda y probidad + W-9 lobby-camara re-procesable desde R2
+- [ ] 119-06-PLAN.md — (w3) G1 cursor `lobby_ingesta_estado` + G9 parte YAML (remapeo SUPABASE_URL)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 119-07-PLAN.md — (w4) Re-verificacion G8/G9-gemini/G11 + bateria de regimen + `119-GAP-CLOSURES.md`
 
 ### Phase 120: ESCALERA-ON — Flip `CLASIFICACION_ESCALERA=1`
 
