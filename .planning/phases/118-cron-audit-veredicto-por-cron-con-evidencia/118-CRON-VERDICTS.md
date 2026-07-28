@@ -312,3 +312,1019 @@ Se enuncian aquí sin priorizar (la gap-list numerada y priorizada la construye 
 - **¿Dependabot/CodeQL al inventario?** Sí, filas #14 y #15.
 - **¿110-02 abierta?** Sí (P3.b, P4).
 - **¿El catálogo apuntando a YAML inexistentes es gap?** Sí, §1.6 punto 2.
+
+---
+
+## 2. Unidades de cron
+
+Una subsección por unidad, en el mismo orden de la tabla maestra de §1.3: `W-1`…`W-13` para los
+13 workflows versionados, `PM-1`/`PM-2` para los platform-managed, `PG-1`…`PG-5` para los jobs de
+`pg_cron` vivos. **Fila a fila, sin huecos.**
+
+Convenciones de esta sección:
+
+- La anatomía es la del audit 56 (`56-CRON-AUDIT.md:34-76`) **más un bloque nuevo**,
+  `#### Evidencia observada`, que 118 exige: ninguna afirmación sin comando o id de probe.
+- Cuando una pata **no aplica**, se declara por qué. Nunca se omite (regla de validación de 118).
+- `#### DOS ETAPAS compliance` sólo aparece en las unidades de ingesta (las que tocan una fuente
+  externa o escriben crudo). En CI, deploy y platform-managed se declara su no-aplicabilidad en
+  una línea, en vez de fabricar un bloque vacío.
+- Las líneas `psql` de los bloques `#### Cómo re-verificar` van **comentadas con `#`** (idiom 56):
+  requieren `set -a; source .env; set +a` y nadie debe pegarlas a ciegas.
+
+---
+
+### W-1: actualidad-refresh
+
+**YAML:** `.github/workflows/actualidad-refresh.yml`
+**Schedule:** `0 11,14,17,20 * * 1-5` (`actualidad-refresh.yml:17`) — L–V, cuatro ventanas
+intradía. Activo.
+**Entrypoint invocado:** `actualidad-refresh.yml:64` →
+`pnpm --filter @obs/actualidad exec tsx src/run-actualidad-prod-cli.ts` →
+`packages/actualidad/src/run-actualidad-prod-cli.ts`. El paquete no tiene CLI hermano de
+ingesta; el entrypoint es único.
+Veredicto: verde
+**Causa raíz del veredicto:** n/a — verde. (Ancla: corrida `success` 2026-07-28T16:07:47Z y
+escritura en `actualidad_senal` 2026-07-28 16:08:28, misma ventana.)
+
+#### Evidencia observada
+
+- **Pata 1 (corrida) — P2.** `gh run list --workflow actualidad-refresh.yml`:
+  `success @ 2026-07-28T16:07:47Z`, `event: schedule`; las 5 corridas más recientes son las
+  cinco `success` por `schedule`. Cero fallos en la ventana observada.
+- **Pata 2 (escritura) — P7.** `actualidad_senal`: 18 filas, `max(fecha_captura)` =
+  `2026-07-28 16:08:28.275+00` — **41 segundos después** del arranque de la corrida.
+- **Pata 3 (freshness) — no aplica.** La fuente no está en `packages/freshness/src/catalog.ts`:
+  el catálogo tiene 9 entradas y ninguna apunta a `actualidad_senal` (P9, hueco de cobertura
+  confirmado en ejecución). El veredicto se apoya en patas 1+2, que son concordantes y
+  contemporáneas.
+- **Pata 4 (crudo R2) — no aplica.** El job no toca ninguna fuente gubernamental (ver DOS ETAPAS
+  abajo), luego no hay crudo que persistir. `source_snapshot` no registra `actualidad` (P10) y
+  eso es lo ESPERADO, no un gap.
+
+#### Cadena de ingesta
+
+| Etapa | Implementada | Estado | Archivo:Línea |
+|-------|-------------|--------|---------------|
+| Etapa-1 fuente→R2 | No aplica | No hay fuente externa: lee `proyecto_embedding` de Supabase | `packages/actualidad/src/run-actualidad-prod-cli.ts:15` |
+| Etapa-2 desde R2 | No aplica | El insumo ya vive en Supabase (derivado de derivado) | `run-actualidad-prod-cli.ts:9-13` |
+| Hash-check pre-descarga | No aplica | Sin descarga: cero requests HTTP a terceros | `run-actualidad-prod-cli.ts:15` |
+
+#### DOS ETAPAS compliance
+
+- **Etapa-1 (fuente→R2):** **no aplica, declarado en código.**
+  `packages/actualidad/src/run-actualidad-prod-cli.ts:15` dice literalmente: *"NO toca fuentes
+  gubernamentales → sin R2, sin rate-limit, sin robots.txt. Solo Supabase."* Es una capa de
+  agrupación por materia (k-means determinista) sobre embeddings ya ingeridos.
+- **Etapa-2 (R2→Supabase):** no aplica por lo mismo — su insumo es `proyecto_embedding`, que ya
+  es producto de la cadena de `leyes-weekly` + `fichas`.
+- **Hash-check:** no aplica (sin descarga).
+- **Rate-limit 2-3s:** no aplica — cero requests a hosts externos.
+- **UA identificatorio:** no aplica — cero requests a hosts externos.
+- **robots.txt:** no aplica — cero requests a hosts externos.
+
+> Esta unidad es el ejemplo canónico de "pata no aplicable **declarada**": las seis viñetas
+> podrían haberse omitido, y entonces el lector no sabría si el conector incumple la regla LOCKED
+> de `CLAUDE.md` o si la regla no le concierne. Concierne a quien toca fuentes; éste no.
+
+#### Gaps de esta unidad
+
+Ninguno propio. Contribuye a **G-cobertura-freshness** (§1.6 punto 3): el catálogo no la cubre,
+así que una avería silenciosa de este cron no dispararía ninguna señal. Se consolida en 118-03.
+
+#### Cómo re-verificar
+
+```bash
+gh run list --repo Cuchecorp/gov-map --workflow actualidad-refresh.yml --limit 5 \
+  --json databaseId,conclusion,status,event,createdAt
+# set -a; source .env; set +a
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -c \
+#   "select count(*), max(fecha_captura) from actualidad_senal;"
+grep -n "NO toca fuentes gubernamentales" packages/actualidad/src/run-actualidad-prod-cli.ts
+```
+
+---
+
+### W-2: agenda-weekly
+
+**YAML:** `.github/workflows/agenda-weekly.yml`
+**Schedule:** `0 11 * * 1` (`agenda-weekly.yml:15`) — lunes 11:00 UTC. Activo.
+**Entrypoint invocado:** `agenda-weekly.yml:71` → `src/run-agenda-prod-cli.ts` →
+`packages/agenda/src/run-agenda-prod-cli.ts`. **CLI hermano NO ejecutado:** el paquete expone
+también `packages/agenda/src/ingest-run.ts` como módulo de orquestación (`runIngest`), que el
+CLI de producción importa (`run-agenda-prod-cli.ts:28`) pero que **no es** el entrypoint del
+YAML. El veredicto se emite sobre el CLI, no sobre el módulo (gotcha 57-05).
+Veredicto: verde
+**Causa raíz del veredicto:** n/a — verde. Las tres patas concuerdan.
+
+#### Evidencia observada
+
+- **Pata 1 — P2.** `success @ 2026-07-27T13:40:16Z`, `event: schedule`. Las **5** corridas más
+  recientes son `success` y caen en lunes consecutivos: 07-27, 07-20, 07-13, 07-06, 06-29.
+  Cadencia semanal sin hueco.
+- **Pata 2 — P7.** `citacion`: 289 filas, `max(fecha_captura)` = `2026-07-27 13:41:24.416+00`
+  (68 s tras el arranque). `sesion_sala`: 18 filas, `2026-07-27 13:41:29.72+00`.
+  *Nota de método:* la tabla que el RESEARCH proponía (`sesion_tabla_item`) **no tiene**
+  `fecha_captura` — error literal `column "fecha_captura" does not exist` registrado en P7 — y
+  se sustituyó por `sesion_sala`, que sí la tiene y también es escrita por este cron.
+- **Pata 3 — P9.** Entrada `agenda` del catálogo (`catalog.ts:255-259`, tabla `citacion`,
+  `umbralDias: 7`): `diasDesdeUpsert: 1`, `stale: false`, `ghRun: "success @ 2026-07-27"`.
+- **Pata 4 — P10.** `source_snapshot` **no** registra `agenda`. La Etapa-1 corre (ver abajo) pero
+  no deja traza en DB: es el hallazgo §1.6 punto 4, no un fallo de este veredicto.
+
+#### Cadena de ingesta
+
+| Etapa | Implementada | Estado | Archivo:Línea |
+|-------|-------------|--------|---------------|
+| Etapa-1 fuente→R2 | Sí | Operativa — los 4 `R2_*` están presentes desde 2026-07-09 (P4) | `packages/agenda/src/ingest-run.ts:155`, `:291` (`putImmutable`) |
+| Etapa-2 desde R2 | No | El parseo lee el resultado en memoria del fetch; no hay ruta `--from-r2` | `packages/agenda/src/run-agenda-prod-cli.ts` (sin flag de replay) |
+| Hash-check pre-descarga | Parcial | `putImmutable` devuelve `existed`, pero el llamador **lo descarta** (`const { r2Path: key } = …`) → no hay short-circuit "sin novedades" | `packages/agenda/src/ingest-run.ts:155`, `:291` |
+
+#### DOS ETAPAS compliance
+
+- **Etapa-1 (fuente→R2):** **cumple** — `packages/agenda/src/ingest-run.ts:155` y `:291` llaman a
+  `putImmutable` sobre el `TablaR2Target`, y el `R2Store` se construye con credenciales reales en
+  `run-agenda-prod-cli.ts:137-138`. **Cambio respecto del audit 56**, que la marcó "no-op por
+  secrets ausentes": los 4 `R2_*` **existen hoy** (P4, creados 2026-07-09). Esa causa está muerta.
+- **Etapa-2 (R2→Supabase, re-ingest sin tocar fuente):** **no cumple** — no existe modo de replay.
+  Re-ingestar exigiría volver a la fuente, que es exactamente lo que la regla LOCKED de
+  `CLAUDE.md` prohíbe. Compárese con `tramitacion` (`ingest-cli.ts:200`) y `lobby`
+  (`ingest-cli.ts:161`), que sí exponen `--from-r2`.
+- **Hash-check:** **parcial** — la infraestructura está (`R2Store.putImmutable` usa
+  `If-None-Match: *` y devuelve `existed=true` en 412, `packages/ingest/src/r2-store.ts:71`,
+  `:79`), pero el conector de agenda **descarta el `existed`** y sigue parseando igual. El
+  comentario de `ingest-run.ts:152` reconoce el asunto. No hay "salir temprano cuando no hay
+  novedades" (`CLAUDE.md`, regla 2).
+- **Rate-limit 2-3s:** **cumple** — `new HostRateLimiter()` en
+  `packages/agenda/src/run-agenda-prod-cli.ts:99`, inyectado al `Fetcher` (`:104`) y al conector
+  (`:109`). El default de la clase es `minDelayMs: 2000` + jitter, dentro de la banda 2-3 s
+  (`packages/ingest/src/rate-limiter.test.ts:50`, "LOCKED 2-3s").
+- **UA identificatorio:** **cumple** — `Bot-Ciudadano/1.0 (consulta ciudadana Chile;
+  contacto@dominio.cl)` (`packages/ingest/src/robots.ts:13`, referenciado desde
+  `packages/ingest/src/fetcher.ts:5`).
+- **robots.txt:** **cumple** — `new RobotsGuard({ allowlist: {} })` en
+  `run-agenda-prod-cli.ts:100`.
+
+#### Gaps de esta unidad
+
+**G-etapa2-agenda** (sin ruta `--from-r2`), **G-hashcheck-agenda** (`existed` descartado),
+**G-snapshot-agenda** (§1.6 punto 4: sin fila en `source_snapshot`). Numeración definitiva en
+118-03.
+
+#### Cómo re-verificar
+
+```bash
+gh run list --repo Cuchecorp/gov-map --workflow agenda-weekly.yml --limit 5 \
+  --json conclusion,event,createdAt
+grep -n "putImmutable" packages/agenda/src/ingest-run.ts        # 155, 291 — ver si `existed` se usa
+grep -n "HostRateLimiter\|RobotsGuard\|R2Store" packages/agenda/src/run-agenda-prod-cli.ts
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select 'citacion', count(*), max(fecha_captura) from citacion
+#     union all select 'sesion_sala', count(*), max(fecha_captura) from sesion_sala;"
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -c \
+#   "select source, count(*) from source_snapshot where source='agenda' group by 1;"   # hoy: vacío
+```
+
+---
+
+### W-3: backup-parlamentario
+
+**YAML:** `.github/workflows/backup-parlamentario.yml`
+**Schedule:** `0 6 * * 1` (`backup-parlamentario.yml:21`) — lunes 06:00 UTC. Activo.
+**Entrypoint invocado:** `backup-parlamentario.yml:63` →
+`@obs/identity run seed:live -- --preserve-estado` → `packages/identity/src/seed-cli.ts`;
+paso de respaldo a R2 en `backup-parlamentario.yml:86`. **Mismo entrypoint que `roster-weekly`
+(W-8)** — dos workflows distintos sobre el mismo CLI, distinguidos por su destino y su gating.
+Veredicto: verde
+**Causa raíz del veredicto:** n/a — verde. El artefacto se produce 1 minuto después de cada
+corrida, tres lunes seguidos (P7: commits `5782d8c` 2026-07-27 10:05, `0377ca8` 07-20 09:30,
+`40eaf18` 07-13 09:42).
+
+#### Evidencia observada
+
+- **Pata 1 — P2.** `success @ 2026-07-27T10:04:05Z` (`schedule`), precedido de `success` 07-20 y
+  07-13, ambos `schedule`. El único `failure` del histórico visible (2026-07-08T22:37:30Z) fue
+  disparado por `push`, no por reloj.
+- **Pata 2 — SUSTITUIDA, y la sustitución es el hallazgo.** Este workflow **no escribe Supabase**.
+  Su bloque `env:` mapea únicamente los 4 `R2_*` (`backup-parlamentario.yml:38-42`, confirmado en
+  P4: los `secrets.*` requeridos son sólo `R2_*`) y el propio YAML declara: *"SIN service key
+  local en CI → la carga a DB se omite; el snapshot git es autoritativo"*. La pata 2 se corrió
+  entonces contra el **destino real** (`backup-parlamentario.yml:60`):
+  ```
+  5782d8c|2026-07-27 10:05:12 +0000|github-actions[bot]|chore(backup): refrescar snapshot parlamentario (ID-09 cadencia)
+  0377ca8|2026-07-20 09:30:11 +0000|github-actions[bot]|…
+  40eaf18|2026-07-13 09:42:10 +0000|github-actions[bot]|…
+  ```
+  Corrida → commit: 10:04→10:05, 09:29→09:30, 09:41→09:42.
+  **Control negativo:** la fila `parlamentario` de la DB (`2026-07-27 00:10:53`, P7) **no** es
+  atribuible a este cron — su corrida fue a las 10:04, diez horas después. Eso confirma por
+  observación que el job no escribe la DB, en vez de asumirlo.
+- **Pata 3 — no aplica.** `backup-parlamentario` no está en `packages/freshness/src/catalog.ts`
+  (P9: el catálogo cubre 9 fuentes y ninguna es ésta).
+- **Pata 4 — parcial.** El paso `:86` sube el seed a R2 (`seed-cli.ts:195` construye el `R2Store`,
+  `:201` hace `putImmutable("identity", "parlamentario-seed", date, sha, "json", body)`), pero
+  `source_snapshot` no registra fuente `identity` (P10): sin `SnapshotWriter`, el PUT no deja
+  traza en DB. La verificación directa del bucket exigiría credenciales R2, fuera del régimen
+  de este audit.
+
+#### Cadena de ingesta
+
+| Etapa | Implementada | Estado | Archivo:Línea |
+|-------|-------------|--------|---------------|
+| Etapa-1 fuente→R2 | Sí | Operativa — `sha256Hex` + `putImmutable` content-addressed | `packages/identity/src/seed-cli.ts:195`, `:201` |
+| Etapa-2 desde R2 | No aplica | El destino autoritativo es el snapshot git, no Supabase | `backup-parlamentario.yml:60` |
+| Hash-check pre-descarga | Parcial | `existed` (412) se descarta en el destructuring `const { r2Path } = …` | `packages/identity/src/seed-cli.ts:201` |
+
+#### DOS ETAPAS compliance
+
+- **Etapa-1 (fuente→R2):** **cumple** — `seed-cli.ts:201`, clave
+  `identity/parlamentario-seed/<date>/<sha256>.json`, exactamente el formato
+  `fuente/recurso/fecha/sha256.ext` que manda `CLAUDE.md`.
+- **Etapa-2 (R2→Supabase):** **no aplica declarado** — el YAML afirma que el snapshot git es
+  autoritativo (`:60`) y que la carga a DB se omite por ausencia de service key. Es una decisión
+  declarada, no un gap.
+- **Hash-check:** **parcial** — el `existed` de `putImmutable` se descarta; no hay short-circuit.
+  Inocuo aquí (el seed se regenera igual), pero es la misma omisión que en agenda y probidad.
+- **Rate-limit 2-3s:** **cumple** — `HostRateLimiter` inyectado (`seed-cli.ts:5-6`, cabecera:
+  *"colaboradores REALES de `@obs/ingest` (Fetcher + HostRateLimiter + RobotsGuard) — política de
+  fetch respetuosa (rate-limit 2-3s + UA identificado…)"*).
+- **UA identificatorio:** **cumple** — `Bot-Ciudadano/1.0` (`packages/ingest/src/robots.ts:13`).
+- **robots.txt:** **cumple** — `RobotsGuard` inyectado (`seed-cli.ts:28`).
+
+#### Gaps de esta unidad
+
+**G-snapshot-identity** (PUT a R2 sin traza en `source_snapshot`),
+**G-cobertura-freshness** (no cubierto por el catálogo). Consolidación en 118-03.
+
+#### Cómo re-verificar
+
+```bash
+gh run list --repo Cuchecorp/gov-map --workflow backup-parlamentario.yml --limit 5 \
+  --json conclusion,event,createdAt
+git log -3 --format='%h|%ad|%an|%s' --date=iso -- supabase/seeds/parlamentario.seed.json
+grep -n "putImmutable\|sha256Hex" packages/identity/src/seed-cli.ts
+grep -n "service key local\|snapshot git" .github/workflows/backup-parlamentario.yml
+```
+
+---
+
+### W-4: leyes-weekly
+
+**YAML:** `.github/workflows/leyes-weekly.yml`
+**Schedule:** `0 20 * * 1-5` (`leyes-weekly.yml:19`) — L–V 20:00 UTC. Activo.
+**Entrypoint invocado:** `leyes-weekly.yml:75` →
+`pnpm --filter @obs/tramitacion exec tsx src/run-tramitacion-prod-cli.ts` →
+`packages/tramitacion/src/run-tramitacion-prod-cli.ts`. **CLI hermano NO ejecutado:**
+`packages/tramitacion/src/ingest-cli.ts` — es el gotcha 57-05 en su forma original. El audit 56
+emitió su veredicto citando `ingest-cli.ts:16` ("R2/remoto diferidos"), que **no es lo que el
+cron corre**; este audit lo emite sobre `run-tramitacion-prod-cli.ts`, y el resultado cambia.
+Veredicto: verde
+**Causa raíz del veredicto:** n/a — verde. Cinco patas concordantes, incluida la única cadena
+dos-etapas completa del proyecto.
+
+#### Evidencia observada
+
+- **Pata 1 — P2.** `success @ 2026-07-27T21:09:03Z` (`schedule`); las 5 más recientes son todas
+  `success` por `schedule` en días hábiles consecutivos (07-27, 07-24, 07-23, 07-22, 07-21).
+  **Es la unidad con más corridas verdes seguidas del inventario.**
+- **Pata 2 — P7.** `proyecto`: 3.659 filas, `max(fecha_captura)` = `2026-07-27 21:38:06.135+00`.
+  `tramitacion_evento`: 48.368 filas y `votacion`: 4.855 filas, ambas
+  `2026-07-27 21:38:09.718+00`. Escritura ~29 min después del arranque (round-robin acotado).
+- **Pata 2b (cursor) — P8.** `leyes_rotacion_estado` singleton con `ultimo_boletin = 16851-14`,
+  `fecha_captura` `2026-07-27 21:09:34.69+00` — el cursor de round-robin **gira**. Éste es el
+  contraste que hace defendible el veredicto verde frente al `stale` de W-5.
+- **Pata 3 — P9.** Dos entradas del catálogo: `leyes` (`catalog.ts:222-226`, tabla `proyecto`,
+  `umbralDias: 7`) → `diasDesdeUpsert: 0`, `stale: false`; y `leyes-min-edad`
+  (`catalog.ts:246-250`, `umbralDias: 45`) → `19 d`, `stale: false`. Ambas verdes.
+- **Pata 4 — P10.** `source_snapshot` source `leyes`: **4.380 filas**, `max(fetched_at)` =
+  `2026-07-27 21:38:22.834+00` — 16 segundos después de la última escritura a `tramitacion_evento`.
+  Es la **única fuente del proyecto con traza de crudo abundante y al día**.
+
+#### Cadena de ingesta
+
+| Etapa | Implementada | Estado | Archivo:Línea |
+|-------|-------------|--------|---------------|
+| Etapa-1 fuente→R2 | Sí | Operativa y trazada — `putImmutable` + `SnapshotWriter` | `packages/tramitacion/src/ingest-run.ts:309`; writer en `run-tramitacion-prod-cli.ts:215-218` |
+| Etapa-2 desde R2 | Sí | Modo replay `--from-r2` disponible | `packages/tramitacion/src/ingest-cli.ts:200` |
+| Hash-check pre-descarga | Sí | `existed=true` (412) → `[skip] sin novedades` y **salto de Etapa 2** | `packages/tramitacion/src/ingest-run.ts:294`, `:330` (contrato en `:90-91`) |
+
+#### DOS ETAPAS compliance
+
+- **Etapa-1 (fuente→R2):** **cumple** — `ingest-run.ts:309` persiste el crudo content-addressed
+  **antes** de parsear, y `run-tramitacion-prod-cli.ts:213-218` monta el `SnapshotWriter` sobre
+  `SupabaseSnapshotStore` para dejar la traza en `source_snapshot` (comentario del propio archivo:
+  *"SnapshotWriter (source_snapshot / FND-08 / CRON-02): solo LIVE con creds Supabase"*).
+  Verificado en dato vivo: 4.380 filas (P10).
+- **Etapa-2 (R2→Supabase, re-ingest sin tocar fuente):** **cumple** — `ingest-cli.ts:200` documenta
+  el `R2Store` como "(Etapa 1, hash-check, `--from-r2`)". Re-ingestar no requiere volver a la
+  fuente. **Es la única unidad del inventario que satisface esta regla de punta a punta.**
+- **Hash-check:** **cumple** — `ingest-run.ts:294` comenta *"Si existed=true → el contenido no
+  cambió → skip Etapa 2 para este…"* y `:330` ejecuta el `if (existed)`. El log emitido es
+  `[skip] sin novedades — tramitacion <boletin>` (`:91`). Esto es literalmente el "skip legítimo
+  con hash-check" que la taxonomía de §0.4 acepta como **verde**.
+- **Rate-limit 2-3s:** **cumple** — `HostRateLimiter` ensamblado en el CLI de producción.
+- **UA identificatorio:** **cumple** — `Bot-Ciudadano/1.0` (`packages/ingest/src/robots.ts:13`).
+- **robots.txt:** **cumple** — `RobotsGuard` inyectado.
+
+#### Gaps de esta unidad
+
+**Ninguno.** Es la unidad de referencia: cualquier fix de dos-etapas que 119 aplique a las demás
+debería converger a esta forma (`putImmutable` con `existed` usado + `SnapshotWriter` +
+`--from-r2`).
+
+#### Cómo re-verificar
+
+```bash
+gh run list --repo Cuchecorp/gov-map --workflow leyes-weekly.yml --limit 5 \
+  --json conclusion,event,createdAt
+grep -n "existed" packages/tramitacion/src/ingest-run.ts          # 294, 307, 309, 330
+grep -n "from-r2" packages/tramitacion/src/ingest-cli.ts          # 200
+grep -n "SnapshotWriter" packages/tramitacion/src/run-tramitacion-prod-cli.ts
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select 'proyecto', count(*), max(fecha_captura) from proyecto
+#     union all select 'tramitacion_evento', count(*), max(fecha_captura) from tramitacion_evento;"
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select source, count(*), max(fetched_at) from source_snapshot where source='leyes' group by 1;"
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -c \
+#   "select ultimo_boletin, fecha_captura from leyes_rotacion_estado;"
+```
+
+---
+
+### W-5: lobby-leylobby-weekly
+
+**YAML:** `.github/workflows/lobby-leylobby-weekly.yml`
+**Schedule:** `0 11 * * 3` (`lobby-leylobby-weekly.yml:16`) — miércoles 11:00 UTC. Activo.
+**Entrypoint invocado:** `lobby-leylobby-weekly.yml:70` → `src/ingest-cli.ts` →
+`packages/lobby/src/ingest-cli.ts`. **CLI hermano NO ejecutado:**
+`packages/lobby/src/run-camara-lobby-cli.ts` — el mismo paquete `@obs/lobby` sirve a **dos**
+workflows (éste y W-9) con **entrypoints distintos**. Confundirlos invertiría los dos veredictos.
+El YAML además **remapea env** (`:57`): `secrets.SUPABASE_API_URL` → `SUPABASE_URL` (Pitfall 5).
+Veredicto: **stale**
+**Causa raíz del veredicto:** **cursor detenido, no fuente sin novedades.**
+`lobby_ingesta_estado.ingestado_hasta` = **2026-06-22** (36 días al 2026-07-28, P8) pese a que la
+corrida del **2026-07-22** fue `success` (P2) y `lobby_audiencia` recibió filas ese mismo día
+(`2026-07-22 12:44:05.343+00`, P7). El cursor que **sí** avanzó es
+`leylobby_cursor_estado` (`fecha_captura` `2026-07-22 12:44:06.340612+00`, P8): dos cursores para
+la misma fuente, desincronizados. El código explica por qué son dos y no uno —
+`packages/lobby/src/cursor-leylobby.ts:3` y `:8`: *"Cursor y hash-check son complementarios"*—
+pero nada mantiene `lobby_ingesta_estado` al día.
+
+#### Evidencia observada
+
+- **Pata 1 — P2.** `success @ 2026-07-22T12:43:27Z` (`schedule`). Las 4 corridas del histórico son
+  **todas** `success`, en miércoles consecutivos: 07-22, 07-15, 07-08, 07-01. **La corrida no es
+  el problema.** (Al 2026-07-28, martes, el miércoles siguiente —07-29— aún no llegaba: no hay
+  ventana perdida.)
+- **Pata 2 — P7 + P8, y aquí es donde se rompe.** `lobby_audiencia`: 17.762 filas,
+  `max(fecha_captura)` = `2026-07-22 12:44:05.343+00` → **hay escritura fresca**. Pero
+  `lobby_ingesta_estado`: 136 filas, `max(ingestado_hasta)` = `2026-06-22`, `max(fecha_captura)` =
+  `2026-06-22 19:18:08.428172+00` → **el marcador lleva 36 días congelado**.
+- **Discriminante Pitfall 4 aplicado.** El contraste que resuelve "skip legítimo vs cursor
+  detenido" es interno a la propia fuente: `leylobby_cursor_estado` avanzó el 07-22 y
+  `lobby_ingesta_estado` no. Si la fuente no hubiera tenido novedades, **ninguno** de los dos
+  habría avanzado. Que uno avance y el otro no descarta "sin novedades honesto".
+  Contraprueba positiva en W-6: `probidad_ingesta_estado.ingestado_hasta` = 2026-07-23, el día de
+  su corrida — el mismo tipo de tabla, actualizada correctamente por otro conector.
+- **Pata 3 — P9.** Entrada `lobby-leylobby` (`catalog.ts:271-275`, tabla **`lobby_ingesta_estado`**,
+  `umbralDias: 7`): `ultimoUpsert: "2026-06-22"`, `diasDesdeUpsert: 36`, **`stale: true`**,
+  `ghRun: "success @ 2026-07-22"`. **Sin discrepancia freshness↔fila real**: la señal lee
+  exactamente la tabla congelada, y por eso acierta. Es la única de las 9 entradas del catálogo
+  que apunta a una tabla de *cursor* en vez de a una tabla de *datos* — y es la única que detecta
+  una avería real. Contrástese con `lobby-camara` (W-9) y `fichas` (W-11), que miran tablas de
+  datos llenadas por otro cron y por eso reportan verde en falso.
+- **Pata 4 — P10.** `source_snapshot` **no** registra `lobby-leylobby`, pese a que el conector sí
+  hace `putImmutable` (ver abajo). PUT sin traza: §1.6 punto 4.
+
+#### Cadena de ingesta
+
+| Etapa | Implementada | Estado | Archivo:Línea |
+|-------|-------------|--------|---------------|
+| Etapa-1 fuente→R2 | Sí | Operativa (sin `SnapshotWriter` → sin traza en DB) | `packages/lobby/src/ingest-run.ts:138`; store en `ingest-cli.ts:161-174` |
+| Etapa-2 desde R2 | Sí | Modo `--from-r2` disponible | `packages/lobby/src/ingest-cli.ts:161` |
+| Hash-check pre-descarga | Sí | `existed=true` → `[skip] sin novedades — leylobby <clave>` + salto de Etapa 2 | `packages/lobby/src/ingest-run.ts:132`, `:146-147` (contrato en `:65`) |
+
+#### DOS ETAPAS compliance
+
+- **Etapa-1 (fuente→R2):** **cumple** — `ingest-run.ts:138` (`putImmutable`), con `R2Store`
+  construido desde env en `ingest-cli.ts:161-174` y **guard fail-closed** en `:174`
+  (`if (!r2Store && !dryRun)`), que impide correr en vivo sin crudo. Buen patrón.
+- **Etapa-2 (R2→Supabase):** **cumple** — `ingest-cli.ts:161` documenta `--from-r2`; el replay
+  existe.
+- **Hash-check:** **cumple** — `ingest-run.ts:132` (*"Si existed=true → el contenido no cambió →
+  skip Etapa 2 para esta tarea"*), `:146-147` emite `[skip] sin novedades`.
+- **Rate-limit 2-3s:** **cumple** — `new HostRateLimiter()` en `ingest-cli.ts:183`.
+- **UA identificatorio:** **cumple** — `Bot-Ciudadano/1.0` (`packages/ingest/src/robots.ts:13`).
+- **robots.txt:** **cumple** — `new RobotsGuard({ allowlist: {} })` en `ingest-cli.ts:184`.
+
+> **Lectura importante:** el compliance dos-etapas de esta unidad es de los mejores del inventario
+> y aun así su veredicto es `stale`. Cumplir la regla LOCKED no garantiza que el cron esté sano:
+> son ejes independientes, y por eso el documento los reporta por separado.
+
+#### Gaps de esta unidad
+
+**G-cursor-lobby (candidato P1, el hallazgo central del audit)** — `lobby_ingesta_estado` sin
+avanzar desde 2026-06-22; **G-snapshot-leylobby** — Etapa-1 sin `SnapshotWriter`. Priorización
+en 118-03.
+
+#### Cómo re-verificar
+
+```bash
+gh run list --repo Cuchecorp/gov-map --workflow lobby-leylobby-weekly.yml --limit 5 \
+  --json conclusion,event,createdAt
+# El corazón del veredicto: los DOS cursores, lado a lado.
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select 'lobby_ingesta_estado', count(*)::text, max(ingestado_hasta)::text, max(fecha_captura)::text
+#      from lobby_ingesta_estado
+#     union all select 'leylobby_cursor_estado', count(*)::text, null, max(fecha_captura)::text
+#      from leylobby_cursor_estado
+#     union all select 'lobby_audiencia', count(*)::text, null, max(fecha_captura)::text
+#      from lobby_audiencia;"
+grep -n "existed\|skip. sin novedades" packages/lobby/src/ingest-run.ts
+grep -n "cursor" packages/lobby/src/cursor-leylobby.ts | head
+```
+
+---
+
+### W-6: probidad-weekly
+
+**YAML:** `.github/workflows/probidad-weekly.yml`
+**Schedule:** `0 11 * * 4` (`probidad-weekly.yml:16`) — jueves 11:00 UTC. Activo.
+**Entrypoint invocado:** `probidad-weekly.yml:74` → `src/run-probidad-todos-cli.ts` →
+`packages/probidad/src/run-probidad-todos-cli.ts` (que orquesta
+`packages/probidad/src/run-probidad-todos.ts`). El paquete no expone CLI hermano de ingesta.
+Veredicto: verde
+**Causa raíz del veredicto:** n/a — verde. Cursor **avanzando**, que es justo lo que le falta a W-5.
+
+#### Evidencia observada
+
+- **Pata 1 — P2.** `success @ 2026-07-23T12:26:11Z` (`schedule`), precedido de `success` 07-16
+  (`schedule`) y 07-15 (`workflow_dispatch`). Hay **dos `failure` más antiguos** (2026-07-09 y
+  2026-07-02, ambos `schedule`) que la corrida verde posterior deja superados: el histórico
+  muestra recuperación, no avería vigente.
+  *Ventana:* su día es jueves; al 2026-07-28 (martes) el jueves siguiente —07-30— aún no llegaba.
+  Cero ventanas perdidas.
+- **Pata 2 — P7.** `declaracion`: 1.065 filas, `max(fecha_captura)` = `2026-07-23 12:37:05.518+00`
+  (11 min tras el arranque).
+- **Pata 2b (cursor) — P8.** `probidad_ingesta_estado`: 136 filas,
+  `max(ingestado_hasta)` = **`2026-07-23`**, coincidente con el día de la corrida. **El marcador
+  avanza.** Es la contraprueba directa del `stale` de W-5: misma familia de tabla
+  (`*_ingesta_estado`), mismo día de lectura, comportamiento opuesto.
+  *(Nota de lectura: el `max(fecha_captura)` de esa tabla marca 2026-06-22 19:42 — es la fecha de
+  poblado inicial de las 136 filas; la columna que registra el avance del barrido es
+  `ingestado_hasta`, y es la que el catálogo y este veredicto usan.)*
+- **Pata 3 — P9.** Entrada `probidad` (`catalog.ts:279-283`, tabla `declaracion`,
+  `umbralDias: 30`): `diasDesdeUpsert: 5`, `stale: false`, `ghRun: "success @ 2026-07-23"`.
+- **Pata 4 — P10.** `source_snapshot` source `infoprobidad`: **3 filas**, `max(fetched_at)` =
+  `2026-07-23 12:37:12.157+00` — 7 segundos después de la escritura a `declaracion`. Es la
+  **segunda y última** fuente con traza de crudo en DB.
+
+#### Cadena de ingesta
+
+| Etapa | Implementada | Estado | Archivo:Línea |
+|-------|-------------|--------|---------------|
+| Etapa-1 fuente→R2 | Sí | Operativa y **trazada** (`SnapshotWriter` montado) | `packages/probidad/src/run-probidad-todos.ts:149`; writer en `run-probidad-todos-cli.ts:147-150` |
+| Etapa-2 desde R2 | No | Sin ruta de replay `--from-r2` | `packages/probidad/src/run-probidad-todos-cli.ts` (sin flag) |
+| Hash-check pre-descarga | Parcial | `existed` descartado: `({ r2Path } = await opts.r2Store.putImmutable(…))` | `packages/probidad/src/run-probidad-todos.ts:149` |
+
+#### DOS ETAPAS compliance
+
+- **Etapa-1 (fuente→R2):** **cumple** — `run-probidad-todos.ts:145` (`if (opts.r2Store)`) y `:149`
+  (`putImmutable`); `R2Store` construido en `run-probidad-todos-cli.ts:135-143` y
+  `SnapshotWriter`/`SupabaseSnapshotStore` en `:147-150`, con el comentario *"Provenance run-level
+  (source_snapshot) — solo LIVE y con creds Supabase"*. **Confirmado en dato vivo** (3 filas, P10).
+- **Etapa-2 (R2→Supabase):** **no cumple** — no hay `--from-r2`. Re-ingestar exigiría volver a
+  infoprobidad. Mismo gap que agenda (W-2).
+- **Hash-check:** **parcial** — el `existed` de `putImmutable` se descarta en el destructuring
+  (`run-probidad-todos.ts:149`); no hay `[skip] sin novedades`. Compárese con `tramitacion`
+  (`ingest-run.ts:330`) y `lobby` (`ingest-run.ts:146`), que sí lo usan.
+- **Rate-limit 2-3s:** **cumple** — `new HostRateLimiter()` en `run-probidad-todos-cli.ts:114`.
+- **UA identificatorio:** **cumple** — `Bot-Ciudadano/1.0` (`packages/ingest/src/robots.ts:13`).
+- **robots.txt:** **cumple** — `new RobotsGuard({ allowlist: {} })` en `run-probidad-todos-cli.ts:115`.
+
+#### Gaps de esta unidad
+
+**G-etapa2-probidad** (sin `--from-r2`), **G-hashcheck-probidad** (`existed` descartado).
+Ninguno afecta el veredicto verde: son deuda de arquitectura de ingesta, no de salud del cron.
+
+#### Cómo re-verificar
+
+```bash
+gh run list --repo Cuchecorp/gov-map --workflow probidad-weekly.yml --limit 5 \
+  --json conclusion,event,createdAt
+grep -n "putImmutable\|r2Store" packages/probidad/src/run-probidad-todos.ts
+grep -n "SnapshotWriter\|HostRateLimiter\|RobotsGuard" packages/probidad/src/run-probidad-todos-cli.ts
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select count(*), max(fecha_captura) from declaracion;"
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -c \
+#   "select max(ingestado_hasta) from probidad_ingesta_estado;"   # debe seguir a la última corrida
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select source, count(*), max(fetched_at) from source_snapshot where source='infoprobidad' group by 1;"
+```
+
+---
+
+### W-7: digest-daily
+
+**YAML:** `.github/workflows/digest-daily.yml`
+**Schedule:** **sin schedule activo — bloque COMENTADO** en `digest-daily.yml:24-25`
+(`# schedule:` / `#   - cron: "0 12 * * 1-5"  # L-V 12:00 UTC — descomentar SOLO tras corrida
+manual VERDE`). Trigger real: `workflow_dispatch: {}` (`:23`).
+**Entrypoint invocado:** dos pasos encadenados — `digest-daily.yml:69` →
+`src/run-confirmaciones-prod-cli.ts`, y `digest-daily.yml:85` → `src/run-digest-prod-cli.ts`
+(ambos en `packages/notificaciones/src/`).
+Veredicto: no-cron
+**Causa raíz del veredicto:** **estreno gated por diseño**, declarado en
+`digest-daily.yml:17`: *"ESTRENO GATED (mirror roster-weekly): se estrena con workflow_dispatch
+SOLO (schedule…)"*. Refuerzo independiente: los 4 secrets `NOTIF_*`/`RESEND_API_KEY` **no están
+cargados** en el repo (P4) — el workflow no podría correr aunque se descomentara.
+
+#### Evidencia observada
+
+- **Pata 1 — P2.** `gh run list --workflow digest-daily.yml` devuelve **`[]`**: cero corridas
+  registradas. Es dato observado, no fallo del probe (`backfill.yml` y `fichas-backfill.yml`
+  devuelven lo mismo).
+- **Pata 2 — P7.** `notificacion_envio`: **0 filas**, `max(created_at)` vacío. Coherente con el
+  gating: nunca se envió un digest.
+  *Nota de columna:* el RESEARCH asumía `creado_en`; la columna real es `created_at`
+  (`information_schema` en P7). Se corrigió antes de correr el lote.
+- **Pata 3 — no aplica.** `digest-daily` no está en `packages/freshness/src/catalog.ts` (P9). Aquí
+  la ausencia es coherente: no hay ingesta que vigilar.
+- **Pata 4 — no aplica.** No toca fuentes externas: lee Supabase y envía correo vía Resend.
+- **Secrets — P4.** Requeridos: `NOTIF_BASE_URL`, `NOTIF_FROM`, `NOTIF_TOKEN_SECRET`,
+  `RESEND_API_KEY`, `SUPABASE_API_URL`, `SUPABASE_SECRET_KEY`. **Ausentes los cuatro primeros.**
+  Estado esperado (NOTIF parked, flag OFF), registrado en §1.5.
+
+#### DOS ETAPAS compliance
+
+**No aplica** — `digest-daily` no es un conector de ingesta: no descarga de ninguna fuente
+gubernamental ni persiste crudo. Consume datos ya ingeridos y produce correo. Las seis viñetas
+(Etapa-1 / Etapa-2 / hash-check / rate-limit / UA / robots.txt) carecen de objeto, y se declara
+así en vez de omitir el bloque.
+
+#### Gaps de esta unidad
+
+Ninguno **como cron**. Su pendiente (`NOTIF_*` + descomentar el schedule) es del milestone de
+notificaciones, no de 119. Registrado en §1.5 como estado esperado precisamente para que 119 no
+lo tome como backlog.
+
+#### Cómo re-verificar
+
+```bash
+gh run list --repo Cuchecorp/gov-map --workflow digest-daily.yml --limit 5 --json conclusion,createdAt
+sed -n '17,26p' .github/workflows/digest-daily.yml      # el schedule comentado, verbatim
+gh secret list --repo Cuchecorp/gov-map                  # NOMBRES; los NOTIF_* deben seguir ausentes
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -c \
+#   "select count(*), max(created_at) from notificacion_envio;"   # hoy: 0 |
+```
+
+---
+
+### W-8: roster-weekly
+
+**YAML:** `.github/workflows/roster-weekly.yml`
+**Schedule:** **sin schedule activo — bloque COMENTADO** en `roster-weekly.yml:29-30`
+(`# schedule:` / `#   - cron: "0 10 * * 1"  # lunes 10:00 UTC — añadir SOLO tras corrida manual
+VERDE`). Trigger real: `workflow_dispatch: {}` (`:28`).
+**Entrypoint invocado:** `roster-weekly.yml:71` → `@obs/identity run seed:live --
+--preserve-estado` → `packages/identity/src/seed-cli.ts`. **Mismo CLI que W-3**, distinguido por
+el remapeo de env (`secrets.SUPABASE_API_URL` → `SUPABASE_LOCAL_URL`, P4) y por el destino.
+Veredicto: no-cron
+**Causa raíz del veredicto:** **estreno gated por diseño**, declarado en `roster-weekly.yml:16`:
+*"ESTRENO GATED: workflow_dispatch SOLO (sin schedule). Validar con corrida manual VERDE."*
+
+#### Evidencia observada
+
+- **Pata 1 — P2.** Dos corridas en todo el histórico, ambas `workflow_dispatch`:
+  `success @ 2026-07-15T21:47:55Z` y, dos minutos antes, `failure @ 2026-07-15T21:45:40Z`
+  (el patrón típico de un estreno: falla, se corrige, verde). **Ninguna corrida `schedule`.**
+- **Pata 2 — P7, con control negativo explícito.** `parlamentario`: 186 filas,
+  `max(fecha_captura)` = `2026-07-27 00:10:53.196+00`; `parlamentario_militancia`: 363 filas,
+  misma marca. **Esa escritura NO es atribuible a este workflow**: su última corrida fue el
+  2026-07-15, doce días antes. Proviene de una ejecución fuera de GH Actions (operador local).
+  Se declara el no-atribuible en vez de contar la fila como evidencia a favor — es justo el error
+  que la regla "veredicto sólo con evidencia observada" busca evitar.
+- **Pata 3 — no aplica.** No está en `packages/freshness/src/catalog.ts` (P9).
+- **Pata 4 — parcial.** Comparte con W-3 la Etapa-1 de `seed-cli.ts:195`/`:201`; sin
+  `SnapshotWriter`, sin traza en `source_snapshot` (P10).
+- **Secrets — P4.** `SUPABASE_API_URL` y `SUPABASE_SECRET_KEY`, **ambos presentes**, remapeados a
+  `SUPABASE_LOCAL_URL`/`SUPABASE_LOCAL_SERVICE_KEY` en el bloque `env:`. Comparar por el nombre de
+  la variable de entorno (y no por el lado `secrets.*`) habría producido un falso "secret ausente"
+  — Pitfall 5 evitado.
+
+#### DOS ETAPAS compliance
+
+Hereda íntegramente el análisis de **W-3** (mismo `seed-cli.ts`): Etapa-1 **cumple**
+(`seed-cli.ts:201`), Etapa-2 **no aplica** (snapshot git autoritativo), hash-check **parcial**
+(`existed` descartado), rate-limit / UA / robots.txt **cumplen** (`seed-cli.ts:5-6`, `:27-29`).
+No se repite el detalle para no duplicar la fuente de verdad.
+
+#### Gaps de esta unidad
+
+Ninguno **como cron** (gating declarado). Contribuye a **G-snapshot-identity**, compartido con W-3.
+
+#### Cómo re-verificar
+
+```bash
+gh run list --repo Cuchecorp/gov-map --workflow roster-weekly.yml --limit 5 \
+  --json conclusion,event,createdAt
+sed -n '16,31p' .github/workflows/roster-weekly.yml     # el gating y el schedule comentado
+grep -n "secrets\." .github/workflows/roster-weekly.yml # el remapeo de env (Pitfall 5)
+# PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -F'|' -c \
+#   "select 'parlamentario', count(*), max(fecha_captura) from parlamentario;"
+#   # si la marca NO coincide con una corrida de gh, la escritura viene de fuera de Actions
+```
+
+---
+
+### W-9: lobby-camara-weekly
+
+**YAML:** `.github/workflows/lobby-camara-weekly.yml`
+**Schedule:** **sin `schedule:` — deshabilitado a propósito**, causa declarada en
+`lobby-camara-weekly.yml:14-17`. Trigger real: `workflow_dispatch:` (`:19`). El nombre dice
+"weekly" y el archivo no tiene reloj: el CONTEXT (`118-CONTEXT.md:71`) lo marcó como candidato a
+gap y **la observación lo resuelve como decisión declarada**.
+**Entrypoint invocado:** `lobby-camara-weekly.yml:67` →
+`src/run-camara-lobby-cli.ts --html-file /tmp/lobby.html`, precedido de un paso `curl`
+(`:52`). **CLI hermano NO ejecutado:** `packages/lobby/src/ingest-cli.ts` (el de W-5). Mismo
+paquete, entrypoint distinto.
+Veredicto: no-cron
+**Causa raíz del veredicto:** **decisión declarada, NO gap.** `lobby-camara-weekly.yml:14-17`
+documenta el WAF de camara.cl como razón para retirar el `schedule:`; el fallback operativo vive
+en `docs/runbooks/cron-local-fallback.md`. Es el gap G7 del audit 56, ya convertido en decisión.
+
+#### Evidencia observada
+
+- **Pata 1 — P2 + P3.a.** Sólo **dos** corridas en el histórico, ambas `failure` y ambas
+  `schedule`: 2026-07-07T13:17:09Z y 2026-06-30T13:08:36Z. **Desde entonces, cero corridas** —
+  consistente con la deshabilitación del `schedule:` tras el segundo fallo.
+  Log del fallo (P3.a, recortado a las líneas de error):
+  ```
+  lobby-camara  … echo "lobby.html = $SIZE bytes"
+  lobby-camara  … if [ "$SIZE" -lt 10240 ]; then echo "WAF/respuesta < 10KB"; exit 1; fi
+  lobby-camara  … lobby.html = 5463 bytes
+  lobby-camara  … WAF/respuesta < 10KB
+  lobby-camara  … ##[error]Process completed with exit code 1.
+  ```
+  El guard del propio YAML detectó el intercept del WAF (5.463 bytes ≠ página real) y abortó
+  **antes** del CLI. La causa observada coincide exactamente con la causa declarada en `:14-17`.
+- **Pata 2 — P7, y aquí está el hallazgo estructural.** `lobby_audiencia`:
+  `max(fecha_captura)` = `2026-07-22 12:44:05.343+00` — **fresca, pero escrita por W-5**, no por
+  esta unidad, cuya última (fallida) corrida fue el 2026-07-07 y ni siquiera llegó al CLI.
+- **Pata 3 — P9, señal engañosa.** Entrada `lobby-camara` (`catalog.ts:263-267`, tabla
+  **`lobby_audiencia`**, `umbralDias: 14`): `diasDesdeUpsert: 6`, **`stale: false`** — pero el
+  mismo objeto JSON trae `ghRun: "failure @ 2026-07-07"`. La señal reporta verde **gracias al
+  trabajo de otro cron**: mide una tabla que llena `lobby-leylobby`. Es estructuralmente incapaz
+  de detectar la avería del cron que dice vigilar (§1.6 punto 7). Sólo el campo `ghRun` delata el
+  problema, y no participa del cálculo de `stale`.
+- **Pata 4 — P10.** `source_snapshot` no registra `lobby-camara` (nunca llegó a descargar nada).
+- **Secrets — P4.** Requeridos: 4 `R2_*` + `SUPABASE_API_URL` + `SUPABASE_SECRET_KEY`.
+  **Todos presentes.** El bloqueo es de red (WAF), no de credencial: se descarta esa hipótesis
+  con dato, no por descarte lógico.
+
+#### Cadena de ingesta
+
+| Etapa | Implementada | Estado | Archivo:Línea |
+|-------|-------------|--------|---------------|
+| Etapa-1 fuente→R2 | Parcial | Código presente; inalcanzable en CI porque el WAF corta antes del CLI | `packages/lobby/src/run-camara-lobby.ts:102`; store en `run-camara-lobby-cli.ts:112-114` |
+| Etapa-2 desde R2 | No | El CLI lee `--html-file /tmp/lobby.html`, no R2 | `.github/workflows/lobby-camara-weekly.yml:67` |
+| Hash-check pre-descarga | Parcial | El `curl` del YAML no manda `If-None-Match`/`If-Modified-Since`; el `[skip]` existe pero río abajo | `lobby-camara-weekly.yml:52`; skip en `run-camara-lobby.ts:102` |
+
+#### DOS ETAPAS compliance
+
+- **Etapa-1 (fuente→R2):** **parcial** — `R2Store` se construye en `run-camara-lobby-cli.ts:112-114`
+  y se inyecta en `:138`; el `[skip] sin novedades — camara-lobby listadodeaudiencias` de
+  `run-camara-lobby.ts:102` prueba que la ruta de crudo existe. Pero en CI nunca se ejecuta: el
+  paso `curl` falla primero.
+- **Etapa-2 (R2→Supabase):** **no cumple** — el flujo entra por `--html-file` (archivo local
+  producido por `curl`), no por R2. Re-ingestar exigiría volver a camara.cl… que es precisamente
+  lo bloqueado. **Aquí la regla LOCKED de `CLAUDE.md` habría pagado sola su costo:** con una
+  Etapa-2 desde R2, el crudo de las corridas exitosas anteriores sería re-procesable sin tocar la
+  fuente.
+- **Hash-check:** **parcial** — el `curl` de `:52` descarga incondicionalmente; el hash-check vive
+  después, en el CLI.
+- **Rate-limit 2-3s:** **cumple** — `new HostRateLimiter()` en `run-camara-lobby-cli.ts:103`
+  (cabecera `:4-5`: *"colaboradores REALES … en el ORDEN LOCKED"*); el `curl` es un request único
+  por corrida.
+- **UA identificatorio:** **cumple** — `curl -sS -A 'Bot-Ciudadano/1.0'`
+  (`lobby-camara-weekly.yml:52`, documentado en `:8`).
+- **robots.txt:** **cumple** — `new RobotsGuard({ allowlist: {} })` en `run-camara-lobby-cli.ts:104`.
+
+#### Gaps de esta unidad
+
+**G-freshness-enganosa-camara** (§1.6 punto 7: la señal mide `lobby_audiencia`, llenada por W-5)
+y **G-etapa2-camara** (entrada por `--html-file` en vez de R2, que dejaría el fallback local
+re-procesable). El WAF en sí **no** es gap: es decisión declarada (§1.5).
+
+#### Cómo re-verificar
+
+```bash
+gh run list --repo Cuchecorp/gov-map --workflow lobby-camara-weekly.yml --limit 5 \
+  --json conclusion,event,createdAt                      # 2 filas, ambas failure, ninguna nueva
+gh run view 28869169412 --repo Cuchecorp/gov-map --log-failed | \
+  grep -iE "##\[error\]|bytes|WAF" | head -12
+sed -n '14,17p' .github/workflows/lobby-camara-weekly.yml   # la causa declarada
+sed -n '52,54p' .github/workflows/lobby-camara-weekly.yml   # el guard de 10240 bytes
+grep -n "workflowYml\|tabla" packages/freshness/src/catalog.ts | sed -n '/26[0-9]/p'  # ~263-267
+```
+
+---
+
+### W-10: backfill
+
+**YAML:** `.github/workflows/backfill.yml`
+**Schedule:** sin `schedule:` — `on: workflow_dispatch:` (`backfill.yml:11-12`).
+**Entrypoint invocado:** `backfill.yml:50-54` → `deno run … ingest-worker/backfill.ts`. Es la
+**única unidad que corre Deno** en vez de tsx/pnpm.
+Veredicto: no-cron
+**Causa raíz del veredicto:** **dispatch manual por diseño**, declarado en `backfill.yml:7`:
+*"snapshot inicial. Disparo manual (workflow_dispatch) — NO programado."* Refuerzo normativo:
+`CLAUDE.md` §Ingesta y Cron regla 4 manda **"Backfill masivo = LOCAL (operador), NO GitHub
+Actions (minimizar minutos)"**. Este workflow no sólo no está programado: no *debe* estarlo.
+
+#### Evidencia observada
+
+- **Pata 1 — P2.** `gh run list --workflow backfill.yml` → **`[]`**. Cero corridas en todo el
+  histórico. Consistente con la regla 4 de `CLAUDE.md`: el backfill se hace localmente.
+- **Pata 2 — no aplica.** Sin corridas no hay escritura que atribuir. Las tablas que tocaría
+  (`proyecto` et al.) están pobladas por `leyes-weekly` (W-4) y por backfills locales del
+  operador; ninguna fila es atribuible a esta unidad.
+- **Pata 3 — no aplica.** No está en `packages/freshness/src/catalog.ts` (P9).
+- **Pata 4 — no aplica.** Sin corridas, sin crudo producido por esta vía.
+- **Secrets — P4.** Requeridos: 4 `R2_*` + `SUPABASE_API_URL` + `SUPABASE_SECRET_KEY`.
+  **Todos presentes** — está listo para dispararse si el operador lo decidiera; no corre por
+  política, no por falta de credencial.
+
+#### DOS ETAPAS compliance
+
+**Declarado por su naturaleza:** el worker de backfill sí es un conector de ingesta (Deno,
+`ingest-worker/backfill.ts`), pero **no se ha ejecutado nunca desde CI** y `CLAUDE.md` lo destina
+a corrida local. Auditar su compliance dos-etapas por lectura de código sería emitir juicio sin
+evidencia observada — exactamente lo que el criterio de éxito de 118 prohíbe. Se declara
+**fuera de alcance de este audit** y se deja como nota para 119, que puede auditarlo bajo régimen
+de corrida local.
+
+#### Gaps de esta unidad
+
+Ninguno. La ausencia de schedule es cumplimiento de `CLAUDE.md`, no omisión.
+
+#### Cómo re-verificar
+
+```bash
+gh run list --repo Cuchecorp/gov-map --workflow backfill.yml --limit 5 --json conclusion,createdAt  # []
+sed -n '5,13p' .github/workflows/backfill.yml     # "Disparo manual … NO programado"
+grep -n "Backfill masivo = LOCAL" CLAUDE.md
+```
+
+---
+
+### W-11: fichas-backfill
+
+**YAML:** `.github/workflows/fichas-backfill.yml`
+**Schedule:** sin `schedule:` — `on: workflow_dispatch:` (`fichas-backfill.yml:10-11`).
+**Entrypoint invocado:** `fichas-backfill.yml:81` → `src/pipeline-cli.ts` →
+`packages/fichas/src/pipeline-cli.ts`.
+Veredicto: no-cron
+**Causa raíz del veredicto:** **backfill manual por diseño**, declarado en
+`fichas-backfill.yml:8`: *"(workflow_dispatch) — NO programado. Todos los secrets vía
+`${{ secrets.* }}`, jamás en claro."*
+
+#### Evidencia observada
+
+- **Pata 1 — P2.** `gh run list --workflow fichas-backfill.yml` → **`[]`**. Cero corridas.
+- **Pata 2 — P7, no atribuible.** Las tablas del pipeline (`proyecto_ficha`,
+  `proyecto_embedding`) tienen datos —P9 reporta cobertura de fichas 3.657/3.659, idea matriz
+  1.504/3.659 (41 %), embeddings 3.100/3.659 (85 %)— pero **ninguna fila procede de este
+  workflow**, que nunca corrió. Provienen de corridas locales del operador (memoria de proyecto:
+  pipeline por `--boletines` explícito).
+- **Pata 3 — P9, señal engañosa (segundo caso).** Entrada `fichas` (`catalog.ts:287-291`, tabla
+  **`proyecto`**, `umbralDias: 30`, `workflowYml: "fichas-backfill.yml"`): `diasDesdeUpsert: 0`,
+  **`stale: false`**, y sin embargo `ghRun: "n/d (sin corridas)"`. Mide `proyecto`, que llena
+  `leyes-weekly` (W-4). Verde prestado (§1.6 punto 7).
+- **Pata 4 — P10.** `source_snapshot` no registra `fichas`.
+- **Secrets — P4.** Requeridos: `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, 4 `R2_*`,
+  `SUPABASE_API_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_URL`.
+  **Ausentes: `GEMINI_API_KEY` y `SUPABASE_URL`.** Irrelevante mientras no corra, pero significa
+  que **un dispatch hoy fallaría**: dato útil para 119, registrado sin inflarlo a veredicto
+  `roto` (un workflow que nunca se dispara no puede estar roto en el sentido de la taxonomía).
+
+#### Cadena de ingesta
+
+| Etapa | Implementada | Estado | Archivo:Línea |
+|-------|-------------|--------|---------------|
+| Etapa-1 fuente→R2 | Sí (código) | Nunca ejercitada desde CI | `packages/fichas/src/pipeline-cli.ts:181` (`new R2Store`); target en `packages/fichas/src/texto-fuente.ts:45` |
+| Etapa-2 desde R2 | No | Sin ruta `--from-r2` | `packages/fichas/src/pipeline-cli.ts` (sin flag) |
+| Hash-check pre-descarga | Parcial | El target expone `existed`, sin short-circuit observado | `packages/fichas/src/texto-fuente.ts:45` |
+
+#### DOS ETAPAS compliance
+
+- **Etapa-1 (fuente→R2):** **cumple en código, no ejercitada** — `pipeline-cli.ts:181` construye
+  el `R2Store` y `texto-fuente.ts:45` declara el contrato
+  `Promise<{ r2Path: string; existed: boolean }>`. Sin corridas en CI, no hay evidencia observada
+  de que funcione en ese entorno; el juicio se limita a lo verificable.
+- **Etapa-2 (R2→Supabase):** **no cumple** — sin modo replay.
+- **Hash-check:** **parcial** — `existed` disponible en el contrato, sin uso observado.
+- **Rate-limit 2-3s:** **cumple** — `new HostRateLimiter()` en `pipeline-cli.ts:161`, inyectado al
+  `SenadoConnector` (`:168`) y al resto (`:220`).
+- **UA identificatorio:** **cumple** — `Bot-Ciudadano/1.0` (`packages/ingest/src/robots.ts:13`).
+- **robots.txt:** **cumple** — `new RobotsGuard({ allowlist: {} })` en `pipeline-cli.ts:162`.
+
+#### Gaps de esta unidad
+
+**G-freshness-enganosa-fichas** (§1.6 punto 7) y **G-secrets-fichas** (`GEMINI_API_KEY` /
+`SUPABASE_URL` ausentes ⇒ un dispatch fallaría). Consolidación en 118-03.
+
+#### Cómo re-verificar
+
+```bash
+gh run list --repo Cuchecorp/gov-map --workflow fichas-backfill.yml --limit 5 --json conclusion  # []
+gh secret list --repo Cuchecorp/gov-map | grep -E "GEMINI|SUPABASE_URL"   # hoy: sin coincidencias
+grep -n "R2Store\|HostRateLimiter\|RobotsGuard" packages/fichas/src/pipeline-cli.ts
+sed -n '285,292p' packages/freshness/src/catalog.ts     # la entrada `fichas` → tabla `proyecto`
+```
+
+---
+
+### W-12: ci
+
+**YAML:** `.github/workflows/ci.yml`
+**Schedule:** ninguno — `on: push:` (`ci.yml:11-12`) + `pull_request:` (`:14`). **Disparo por
+eventos de repositorio, no por reloj.**
+**Entrypoint invocado:** `ci.yml:49` (`pnpm --filter ./app test`), `:52` (`tsc --noEmit`),
+`:60` (vitest `@obs/llm`), `:65` (vitest `@obs/cruces`). No hay entrypoint de ingesta.
+Veredicto: no-cron
+**Causa raíz del veredicto:** no es ingesta programada — su bloque `on:` (`ci.yml:11-14`) no
+contiene `schedule:`. Se dispara por `push`/`pull_request`.
+
+#### Evidencia observada
+
+- **Pata 1 — P2.** `success @ 2026-07-27T19:20:26Z`, `event: pull_request`
+  (`displayTitle: "chore(deps): bump actions/checkout from 4.3.1 to 7.0.1"` — un PR de Dependabot,
+  es decir de PM-1). Las 5 más recientes son `success`, mezcla de `pull_request` y `push`.
+  **Doble utilidad:** además de clasificar esta unidad, estas corridas son parte de la evidencia
+  de que el billing de GH Actions **no** está bloqueado (P5).
+- **Pata 2 — no aplica.** CI no escribe datos: corre tests y typecheck. No hay tabla destino.
+- **Pata 3 — no aplica.** No está ni debe estar en `packages/freshness/src/catalog.ts`.
+- **Pata 4 — no aplica.** No descarga nada de ninguna fuente.
+- **Secrets — P4.** **Ninguno requerido** (`grep -oE 'secrets\.[A-Z0-9_]+' ci.yml` → vacío):
+  la suite corre sin credenciales, que es lo correcto para CI de un repo público.
+
+#### DOS ETAPAS compliance
+
+**No aplica** — no es un conector. Las seis viñetas carecen de objeto.
+
+#### Gaps de esta unidad
+
+Ninguno en el alcance de este audit (la salud de la suite de tests no es materia de CRON-01).
+
+#### Cómo re-verificar
+
+```bash
+gh run list --repo Cuchecorp/gov-map --workflow ci.yml --limit 5 \
+  --json conclusion,event,createdAt,displayTitle
+sed -n '11,15p' .github/workflows/ci.yml           # `on:` sin schedule
+grep -oE 'secrets\.[A-Z0-9_]+' .github/workflows/ci.yml | sort -u   # vacío
+```
+
+---
+
+### W-13: deploy-cloudflare
+
+**YAML:** `.github/workflows/deploy-cloudflare.yml`
+**Schedule:** sin `schedule:` — `on: workflow_dispatch:` (`deploy-cloudflare.yml:19-20`).
+**Entrypoint invocado:** `deploy-cloudflare.yml:61` → `pnpm run deploy` (wrangler). No es
+ingesta.
+Veredicto: no-cron
+**Causa raíz del veredicto:** **deploy manual por diseño**, declarado en
+`deploy-cloudflare.yml:6`: *"reproducibles. Disparo MANUAL (workflow_dispatch), deliberado…"*.
+
+> **Distinción que importa:** esta unidad tiene la corrida más reciente en `failure`, y aun así
+> **no** es `roto`. `roto` es un juicio sobre *ingesta programada*; ésta no es ninguna de las dos
+> cosas. Su fallo es **deuda de operador (110-02)**, y así se clasifica — evitando inflar la
+> cuenta de crons rotos con un problema que no lo es.
+
+#### Evidencia observada
+
+- **Pata 1 — P2 + P3.b.** Una sola corrida en el histórico:
+  **`failure` @ 2026-07-09T14:59:38Z**, `event: workflow_dispatch`.
+  Log (P3.b, recortado):
+  ```
+  deploy  …   CLOUDFLARE_API_TOKEN:
+  deploy  …   CLOUDFLARE_ACCOUNT_ID:
+  deploy  … ✘ [ERROR] In a non-interactive environment, it's necessary to set a
+          CLOUDFLARE_API_TOKEN environment variable for wrangler to work.
+  deploy  … ERROR Wrangler deploy command failed:
+  deploy  … ##[error]Process completed with exit code 1.
+  ```
+  Las dos primeras líneas muestran el **nombre seguido de nada**: las variables se expanden
+  vacías. No hay valor que redactar porque no existe.
+- **Pata 2 — no aplica.** Un deploy no escribe tablas de datos.
+- **Pata 3 — no aplica.** No está en el catálogo de freshness (ni corresponde).
+- **Pata 4 — no aplica.** No descarga de fuentes.
+- **Secrets — P4.** Requeridos: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`.
+  **Ambos ausentes.** Esto **cierra la Open Question 3 del RESEARCH con dato fechado: la deuda
+  de operador 110-02 sigue ABIERTA al 2026-07-28.**
+- **Contexto que evita el falso alarmismo:** el deploy real de producción se hace **localmente**
+  con wrangler vía OAuth (memoria de proyecto: "creds CF NO en .env"). El sitio no está caído por
+  esto; lo que falta es la vía automatizada.
+
+#### DOS ETAPAS compliance
+
+**No aplica** — no es un conector de ingesta.
+
+#### Gaps de esta unidad
+
+**G-deuda-110-02** — clasificación **P2 (deuda de operador)**, no P0/P1: no bloquea ninguna
+ingesta y tiene vía alternativa funcionando. Es el insumo del checkpoint de operador de 118-03,
+que ya tiene su evidencia fechada lista (P3.b + P4).
+
+#### Cómo re-verificar
+
+```bash
+gh run list --repo Cuchecorp/gov-map --workflow deploy-cloudflare.yml --limit 5 \
+  --json conclusion,event,createdAt
+gh run view 29027652583 --repo Cuchecorp/gov-map --log-failed | tail -18
+gh secret list --repo Cuchecorp/gov-map | grep -i cloudflare   # hoy: sin coincidencias
+sed -n '5,8p' .github/workflows/deploy-cloudflare.yml          # "Disparo MANUAL … deliberado"
+```
+
+---
+
+### PM-1: Dependabot Updates (id 314034212)
+
+**YAML:** **ninguno** — no versionado en `.github/workflows/`. Gestionado por la plataforma
+GitHub a partir de la configuración de Dependabot del repositorio.
+**Schedule:** gestionado por GitHub; no expresable como `cron:` en un archivo del repo.
+**Entrypoint invocado:** n/a — no hay entrypoint versionado que auditar.
+Veredicto: no-cron
+**Causa raíz del veredicto:** **platform-managed, no-ingesta.** Aparece en `gh workflow list`
+(P1, id 314034212) y **no existe como archivo** en `.github/workflows/` (P0 lista los 13 y no lo
+incluye). No descarga datos de fuentes gubernamentales ni escribe ninguna tabla.
+
+#### Evidencia observada
+
+- **Pata 1 — parcial, y se declara por qué.** `gh workflow list --repo Cuchecorp/gov-map` lo
+  reporta `active` (P1). No se enumeraron sus corridas porque `gh run list --workflow` toma el
+  **nombre de archivo `.yml`**, que aquí no existe; el probe P2 iteró sobre
+  `.github/workflows/*.yml` y por construcción no podía cubrirlo. La evidencia **indirecta** de
+  que opera está en P2: la corrida de `ci.yml` del 2026-07-27T19:20:26Z lleva
+  `displayTitle: "chore(deps): bump actions/checkout from 4.3.1 to 7.0.1"`, es decir **un PR
+  abierto por Dependabot ese mismo día**.
+- **Pata 2 — no aplica.** No escribe tablas: abre pull requests.
+- **Pata 3 — no aplica.** Fuera del catálogo de freshness por definición.
+- **Pata 4 — no aplica.** No toca fuentes ni R2.
+
+#### DOS ETAPAS compliance
+
+**No aplica** — no es un conector de ingesta y no hay código versionado que auditar.
+
+#### Gaps de esta unidad
+
+Ninguno. Se inventaría para cerrar el universo (sin PM-1/PM-2 el inventario sería defendible sólo
+contra el filesystem local, no contra el repo remoto).
+
+#### Cómo re-verificar
+
+```bash
+gh workflow list --repo Cuchecorp/gov-map          # 15 filas; "Dependabot Updates" al final
+ls .github/workflows/ | grep -i dependabot         # sin coincidencias → platform-managed
+ls .github/dependabot.yml 2>/dev/null              # la config, si existe, no es un workflow
+```
+
+---
+
+### PM-2: CodeQL (id 301076402)
+
+**YAML:** **ninguno** — no versionado en `.github/workflows/`. Análisis de seguridad gestionado
+por la plataforma (default setup).
+**Schedule:** gestionado por GitHub.
+**Entrypoint invocado:** n/a — no hay entrypoint versionado que auditar.
+Veredicto: no-cron
+**Causa raíz del veredicto:** **platform-managed, no-ingesta.** Presente en `gh workflow list`
+(P1, id 301076402) y ausente del filesystem (P0). Es análisis estático de seguridad; no ingiere
+ni escribe datos del Congreso.
+
+#### Evidencia observada
+
+- **Pata 1 — parcial, declarado.** `active` en P1. Igual que PM-1, no expone corridas indexables
+  por archivo `.yml`, así que P2 no podía alcanzarlo. Se registra la limitación del probe en vez
+  de presentarlo como "sin corridas".
+- **Pata 2 — no aplica.** No escribe tablas.
+- **Pata 3 — no aplica.** Fuera del catálogo de freshness.
+- **Pata 4 — no aplica.** No toca fuentes ni R2.
+
+#### DOS ETAPAS compliance
+
+**No aplica** — no es un conector de ingesta.
+
+#### Gaps de esta unidad
+
+Ninguno dentro de CRON-01. (La cobertura de CodeQL sobre el código es materia de seguridad, no
+de auditoría de ingesta programada.)
+
+#### Cómo re-verificar
+
+```bash
+gh workflow list --repo Cuchecorp/gov-map          # 15 filas; "CodeQL" al final
+ls .github/workflows/ | grep -i codeql             # sin coincidencias → platform-managed
+```
