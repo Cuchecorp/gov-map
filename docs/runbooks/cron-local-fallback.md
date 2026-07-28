@@ -59,7 +59,41 @@ En Windows/PowerShell, reemplazar `stat -c%s` por `(Get-Item /tmp/lobby.html).Le
 ```bash
 # Buscar en el output: audiencias=[1-9]
 # Si la corrida fue exitosa, el CLI imprime algo como:
-#   audiencias=42 confirmados=38
+#   audiencias=42 confirmados=38 r2Path=camara-lobby/listadodeaudiencias/2026-07-28/<sha>.html
+```
+
+### 2.1. Re-procesar desde R2 (`--from-r2`) — sin volver a chocar con el WAF
+
+Desde 119-05, el crudo que baja `curl` PASA POR R2 (Etapa 1, content-addressed) **antes** de
+parsearse: la corrida imprime su `r2Path`. Regla LOCKED 2 de `CLAUDE.md` — re-ingestar a Supabase
+(cambio de schema, error de carga, re-adjudicación) se hace **siempre desde ese crudo**, nunca
+volviendo a `camara.cl`:
+
+```bash
+# Etapa 2 aislada: lee el crudo YA versionado y re-corre parse → reconcile → upsert.
+pnpm --filter @obs/lobby exec tsx src/run-camara-lobby-cli.ts \
+  --from-r2 camara-lobby/listadodeaudiencias/<YYYY-MM-DD>/<sha256>.html
+```
+
+Notas:
+
+- El replay es idempotente (upsert por clave natural): correrlo dos veces deja los mismos conteos.
+- Falla LOUD si la key no existe o si el sha del contenido no coincide con el de la key
+  (crudo alterado). NUNCA degrada a un re-fetch de la fuente.
+- Credenciales: se leen de `.env` (`R2_ENDPOINT_URL`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+  `R2_BUCKET`). Jamás se pasan por argv.
+
+Los otros dos conectores tienen la misma puerta de Etapa 2:
+
+```bash
+# Agenda (citaciones de Cámara / tabla de sala)
+pnpm --filter @obs/agenda exec tsx src/run-agenda-prod-cli.ts \
+  --from-r2 camara/citaciones-semana/<YYYY-Www>/<sha256>.html
+
+# Probidad (crudo SPARQL agregado por corrida).
+# El `ingestado_hasta` sale de la FECHA DE LA KEY: un replay del pasado NO finge frescura.
+pnpm --filter @obs/probidad exec tsx src/run-probidad-todos-cli.ts \
+  --from-r2 infoprobidad/declaraciones/<YYYY-MM-DD>/<sha256>.json
 ```
 
 ---

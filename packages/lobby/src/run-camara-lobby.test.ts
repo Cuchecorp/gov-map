@@ -9,7 +9,7 @@
 //  - las filas sin match en la maestra quedan no_confirmado y NUNCA fabrican un FK.
 //  - sin r2Store, no hay r2Path (Etapa 1 omitida — no fatal).
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Parlamentario } from "@obs/core";
@@ -138,5 +138,100 @@ describe("runCamaraLobby — ingesta de la Cámara con adjudicación", () => {
     });
     expect(res.contrapartes).toBeGreaterThan(0);
     expect([...writer.contrapartes.values()].every((c) => c.contraparte_id === null)).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G7 / W-9 (119-05): el crudo del curl (`--html-file`) entra a R2 ANTES de parsear y
+// el parseo re-procesable sale de R2. Regla LOCKED 1-2 de CLAUDE.md.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("runCamaraLobby — W-9: Etapa 1 del crudo local + replay idempotente", () => {
+  it("con r2Store: putImmutable se invoca UNA vez y ANTES de escribir el derivado", async () => {
+    const writer = new InMemoryLobbyWriter();
+    const orden: string[] = [];
+    const putImmutable = vi.fn(async () => {
+      orden.push("put");
+      return { r2Path: "camara-lobby/listadodeaudiencias/2026-06-22/abc.html", existed: false };
+    });
+    const upsert = vi.spyOn(writer, "upsertAudiencias").mockImplementation(async () => {
+      orden.push("upsert");
+    });
+
+    const res = await runCamaraLobby({
+      conector: mockConector(FIXTURE),
+      writer,
+      maestra: [DIP_MELLA],
+      fechaCaptura: "2026-06-22T00:00:00Z",
+      r2Store: { putImmutable } as never,
+    });
+
+    expect(putImmutable).toHaveBeenCalledTimes(1);
+    expect(orden).toEqual(["put", "upsert"]);
+    expect(upsert).toHaveBeenCalledTimes(1);
+    expect(res.r2Path).toBe("camara-lobby/listadodeaudiencias/2026-06-22/abc.html");
+    // El put lleva el source/resource/ext de la partición content-addressed del conector.
+    const args = putImmutable.mock.calls[0] as unknown as string[];
+    expect(args[0]).toBe("camara-lobby");
+    expect(args[1]).toBe("listadodeaudiencias");
+    expect(args[4]).toBe("html");
+  });
+
+  it("sin r2Store: parsea igual y loguea el [WARN] de Etapa 1 omitida (degradación honesta)", async () => {
+    const writer = new InMemoryLobbyWriter();
+    const logs: string[] = [];
+    const res = await runCamaraLobby({
+      conector: mockConector(FIXTURE),
+      writer,
+      maestra: [DIP_MELLA],
+      fechaCaptura: "2026-06-22T00:00:00Z",
+      log: (m) => logs.push(m),
+    });
+
+    expect(res.audiencias).toBe(6);
+    expect(res.r2Path).toBeNull();
+    expect(logs.some((l) => l.includes("[WARN] R2 no configurado — Etapa 1 omitida"))).toBe(true);
+  });
+
+  it("replay: `omitirEtapa1` (crudo ya en R2) NO loguea el [WARN] y parsea igual", async () => {
+    const writer = new InMemoryLobbyWriter();
+    const logs: string[] = [];
+    const res = await runCamaraLobby({
+      conector: mockConector(FIXTURE),
+      writer,
+      maestra: [DIP_MELLA],
+      fechaCaptura: "2026-06-22T00:00:00Z",
+      omitirEtapa1: true,
+      log: (m) => logs.push(m),
+    });
+
+    expect(res.audiencias).toBe(6);
+    expect(logs.some((l) => l.includes("[WARN] R2 no configurado"))).toBe(false);
+    expect(logs.some((l) => l.includes("Etapa 1 ya cumplida"))).toBe(true);
+  });
+
+  it("idempotencia: parsear DOS veces el MISMO crudo deja los mismos conteos (clave natural)", async () => {
+    const writer = new InMemoryLobbyWriter();
+    const a = await runCamaraLobby({
+      conector: mockConector(FIXTURE),
+      writer,
+      maestra: [DIP_MELLA],
+      fechaCaptura: "2026-06-22T00:00:00Z",
+      omitirEtapa1: true,
+    });
+    const nAud = writer.audiencias.size;
+    const nContra = writer.contrapartes.size;
+
+    const b = await runCamaraLobby({
+      conector: mockConector(FIXTURE),
+      writer,
+      maestra: [DIP_MELLA],
+      fechaCaptura: "2026-06-22T00:00:00Z",
+      omitirEtapa1: true,
+    });
+
+    expect(b.audiencias).toBe(a.audiencias);
+    expect(b.contrapartes).toBe(a.contrapartes);
+    expect(writer.audiencias.size).toBe(nAud);
+    expect(writer.contrapartes.size).toBe(nContra);
   });
 });

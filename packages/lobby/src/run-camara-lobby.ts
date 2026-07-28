@@ -49,6 +49,12 @@ export interface RunCamaraLobbyOpts {
   camara?: string;
   /** Provider LLM; no se invoca para los sujetos pasivos que resuelven determinísticamente. */
   provider?: LLMProvider;
+  /**
+   * true = el crudo YA está versionado en R2 y esta corrida es un REPLAY (`--from-r2`): la
+   * Etapa 1 se omite A PROPÓSITO, así que NO se emite el `[WARN]` de "sin crudo versionado"
+   * (sería una alarma falsa). Sin este flag, la ausencia de `r2Store` SÍ es una degradación.
+   */
+  omitirEtapa1?: boolean;
   /** Sink de logs (inyectable en tests). Default: noop. */
   log?: (m: string) => void;
 }
@@ -107,6 +113,14 @@ export async function runCamaraLobby(opts: RunCamaraLobbyOpts): Promise<RunCamar
       r2Path = null;
       log(`camara-lobby: Etapa 1 R2 falló (no fatal): ${(err as Error).message}`);
     }
+  } else if (opts.omitirEtapa1) {
+    // Replay (`--from-r2`): el crudo ya está content-addressed en R2 — re-escribirlo daría
+    // 412 y saltaría la Etapa 2 entera, que es justo lo que el operador quiere correr.
+    log("camara-lobby: replay desde R2 — Etapa 1 ya cumplida (el crudo ya está versionado)");
+  } else {
+    // IN-02/W-9: sin store, el dos-etapas LOCKED degrada a una-etapa. Se DICE (no se finge):
+    // el derivado se carga igual, pero esta corrida NO dejó crudo re-procesable.
+    log("[WARN] R2 no configurado — Etapa 1 omitida (sin crudo versionado)");
   }
 
   // Parser cheerio → LobbyAudiencia[].

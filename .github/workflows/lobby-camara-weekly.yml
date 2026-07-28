@@ -63,7 +63,13 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        # W-9/G7: `--html-file` persiste el crudo del curl en R2 (Etapa 1, content-addressed)
+        # ANTES de parsear. La key resultante se emite abajo para que el operador pueda
+        # RE-PROCESAR ese mismo crudo con `--from-r2 <r2Path>` sin volver a chocar con el WAF.
         run: |
           OUT=$(pnpm --filter @obs/lobby exec tsx src/run-camara-lobby-cli.ts --html-file /tmp/lobby.html)
           echo "$OUT"
+          R2PATH=$(echo "$OUT" | grep -oE 'r2Path=[^ ]+' | tail -1 | cut -d= -f2-)
+          echo "crudo re-procesable en R2 → r2Path=${R2PATH:-none}"
+          echo "replay: pnpm --filter @obs/lobby exec tsx src/run-camara-lobby-cli.ts --from-r2 ${R2PATH:-<r2Path>}"
           echo "$OUT" | grep -qE 'audiencias=[1-9][0-9]*' || { echo "audiencias=0"; exit 1; }
