@@ -137,12 +137,20 @@ describe("LobbyMencionesView — sección de menciones explícitas", () => {
 
 // ── F-07 (117-03): rótulo del hecho en las menciones de lobby ───────────────────
 describe("LobbyMencionesView — F-07: rótulo de la fecha de la reunión", () => {
-  it("rotula 'Reunión del' y coexiste con el idiom de captura", () => {
+  it("rotula 'Reunión del' con el día de la audiencia", () => {
     const { container } = render(
       <LobbyMencionesView rows={[makeMencion({ fecha: "2026-05-14T13:00:00Z" })]} />,
     );
-    const texto = container.textContent ?? "";
-    expect(texto).toContain("Reunión del 14 may 2026");
-    expect(texto).toContain("según fuente al");
+    expect(container.textContent ?? "").toContain("Reunión del 14 may 2026");
+  });
+
+  // Esta superficie NO monta ProvenanceBadge (a diferencia de las otras tres del
+  // carril): no hay una segunda fecha en la fila, así que el assert de coexistencia
+  // no aplica. Se ancla el hecho para que un badge futuro no entre sin rótulo.
+  it("no hay idiom de captura porque esta superficie no lleva badge", () => {
+    const { container } = render(
+      <LobbyMencionesView rows={[makeMencion({ fecha: "2026-05-14T13:00:00Z" })]} />,
+    );
+    expect(container.textContent ?? "").not.toContain("según fuente al");
   });
 });

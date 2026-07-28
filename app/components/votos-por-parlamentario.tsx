@@ -6,7 +6,7 @@ import { ProvenanceBadge } from "@/components/provenance-badge";
 import { VotosChart } from "@/components/votos-chart";
 import { SELECCION_STYLE } from "@/components/voto-row";
 import { cn } from "@/lib/utils";
-import { fechaCortaSegura, extractoIdea, conteoVotacion } from "@/lib/format";
+import { fechaHechoCortaSegura, extractoIdea, conteoVotacion } from "@/lib/format";
 import { sourceLabel } from "@/lib/types";
 import {
   VOTO_PRESENTACION,
@@ -524,8 +524,16 @@ function ProyectoGrupo({
                 {e.etapa && (
                   <span className="text-muted-foreground">{e.etapa}</span>
                 )}
-                <span className="font-mono text-muted-foreground">
-                  {fechaCortaSegura(e.fecha)}
+                {/* F-07/F-05 (117-03): la fecha del HECHO va rotulada — vive en la
+                    MISMA fila que el badge de procedencia, y sin sustantivo las dos
+                    fechas eran indistinguibles. `votacion.fecha` es timestamptz con
+                    hora real ⇒ fechaHechoCortaSegura (calendario chileno); el
+                    font-mono queda SOLO sobre la fecha, no sobre el rótulo. */}
+                <span className="text-muted-foreground">
+                  Votada el{" "}
+                  <span className="font-mono">
+                    {fechaHechoCortaSegura(e.fecha)}
+                  </span>
                 </span>
                 {e.resultado && (
                   <span className="text-muted-foreground">

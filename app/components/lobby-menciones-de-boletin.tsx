@@ -125,8 +125,11 @@ function FilaMencion({ row }: { row: LobbyMencionRow }) {
       <div className="flex flex-col gap-1 min-w-0 flex-1">
         <p className="text-base leading-relaxed">
           {fecha && (
-            <span className="font-mono text-sm text-muted-foreground">
-              {fechaCorta(fecha)} ·{" "}
+            /* F-07 (117-03): la fecha del HECHO lleva sustantivo — convive con el
+               badge de procedencia y sin rótulo eran indistinguibles. */
+            <span className="text-sm text-muted-foreground">
+              Reunión del{" "}
+              <span className="font-mono">{fechaCorta(fecha)}</span> ·{" "}
             </span>
           )}
           {/* Parlamentario ENLAZADO (DEPARTURE del 0048, LOB-03): navegación

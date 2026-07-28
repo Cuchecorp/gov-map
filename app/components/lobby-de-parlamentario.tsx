@@ -149,8 +149,16 @@ export function agruparPorContraparte(
   const orden: string[] = [];
 
   for (const a of audiencias) {
+    // F-07 (117-03): el rótulo del hecho se compone DENTRO del ternario, sólo en la
+    // rama con fecha real. `fechaTexto` transporta o una fecha formateada o un
+    // fallback textual; anteponer el rótulo en el JSX del render lo pegaría también
+    // al honest-state, produciendo una frase absurda — peor que el defecto que F-07
+    // cierra. El fallback (el fecha_raw crudo, o el honest-state) va SIN prefijo,
+    // verbatim. Los tests lo fijan con asserts NEGATIVOS en ambas vistas.
+    // La fecha sigue con fechaCorta: PROD REFUTÓ el drift de zona (0/17.762 —
+    // lobby_audiencia.fecha está 100 % a las 04:00 UTC = 00:00 Chile). No "arreglar".
     const fechaTexto = a.fecha
-      ? fechaCorta(new Date(a.fecha))
+      ? `Reunión del ${fechaCorta(new Date(a.fecha))}`
       : a.fecha_raw ?? "Fecha no publicada";
     const reunion: GrupoReunion = {
       fechaTexto,
@@ -474,8 +482,11 @@ function VistaCronologica({
       <ul className="space-y-4">
         {audiencias.map((a) => {
           const captured = a.fecha_captura ? new Date(a.fecha_captura) : null;
+          // F-07 (117-03): rótulo CONDICIONAL, compuesto en el ternario — espejo de
+          // agruparPorContraparte. Ver la nota extensa allí (fallback sin prefijo;
+          // fechaCorta se conserva porque PROD refutó el drift de zona).
           const fechaTexto = a.fecha
-            ? fechaCorta(new Date(a.fecha))
+            ? `Reunión del ${fechaCorta(new Date(a.fecha))}`
             : a.fecha_raw ?? "Fecha no publicada";
           return (
             <li

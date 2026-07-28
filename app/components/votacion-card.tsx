@@ -9,7 +9,7 @@ import { ProvenanceBadge } from "@/components/provenance-badge";
 import { VotacionBar } from "@/components/votacion-bar";
 import { VotoDetalle } from "@/components/voto-detalle";
 import { enlaceHumanoProyecto } from "@/components/validacion-fuente";
-import { fechaCorta, conteoVotacion } from "@/lib/format";
+import { fechaHechoCorta, conteoVotacion } from "@/lib/format";
 import type { VotacionRow } from "@/lib/types";
 import { sourceLabel } from "@/lib/types";
 
@@ -34,9 +34,14 @@ export function VotacionCard({ votacion }: { votacion: VotacionRow }) {
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
           <CamaraChip camara={votacion.camara} />
+          {/* F-07/F-05 (117-03): rótulo del HECHO + fechaHechoCorta. `votacion.fecha`
+              es timestamptz, pero buena parte de las filas son date-only disfrazadas
+              (00:00:00.000Z): fechaHechoCorta ramifica por presencia de hora y evita
+              correr el día hacia atrás en esas. */}
           {fecha && (
-            <span className="font-mono text-sm text-muted-foreground leading-none">
-              {fechaCorta(fecha)}
+            <span className="text-sm text-muted-foreground leading-none">
+              Votada el{" "}
+              <span className="font-mono">{fechaHechoCorta(fecha)}</span>
             </span>
           )}
         </div>
