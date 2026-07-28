@@ -69,7 +69,7 @@ Notas de secuencia: el inventario 113 es load-bearing — sin él las fases de l
 - [x] **Phase 114: LINK-INT — Links internos exhaustivos** — cero 404 y cero anclas rotas verificados sobre el deploy real, con corrida reproducible (completed 2026-07-28)
 - [x] **Phase 115: LINK-EXT — Patrones de link a fuente oficial** — validación por construcción + muestra live estratificada por tipo/host con rate-limit 2-3s; patrón malo se arregla, fuente caída se declara (completed 2026-07-28)
 - [x] **Phase 116: FECHA-AUDIT — Semántica de cada fecha visible** — veredicto hecho/captura/ambigua por fecha, cruzado contra dato real de PROD (completed 2026-07-28)
-- [ ] **Phase 117: FECHA-FIX — Etiquetas de fecha corregidas** — "según fuente al…" donde corresponda; `fecha_captura` nunca como el hecho; guards y suite verdes
+- [x] **Phase 117: FECHA-FIX — Etiquetas de fecha corregidas** — "según fuente al…" donde corresponda; `fecha_captura` nunca como el hecho; guards y suite verdes (completed 2026-07-28)
 - [ ] **Phase 118: CRON-AUDIT — Veredicto por cron con evidencia** — GH Actions + pg_cron enumerados y clasificados verde/stale/roto con causa
 - [ ] **Phase 119: CRON-FIX — Robustez de ingesta** — reintentos/backoff, cursores, hash-check, señales freshness; degrade honesto, jamás fabricación
 - [ ] **Phase 120: ESCALERA-ON — Flip `CLASIFICACION_ESCALERA=1`** — shadow-eval verde + drift canary + rollback-by-config probado + checkpoint de provisión de keys Workers AI con el operador
@@ -225,7 +225,7 @@ Plans:
 - [x] 117-01-PLAN.md — Capa: linter-first + formatters (F-10, helpers F-05/F-04) + chokepoint ProvenanceBadge (F-01, F-11)
 - [x] 117-02-PLAN.md — Carril proyecto: F-03, F-04, F-05, F-07, F-09, F-13
 - [x] 117-03-PLAN.md — Carril parlamentario/lobby/cruces/MONEY: F-02, F-05, F-07, F-08
-- [ ] 117-04-PLAN.md — Home (F-06, F-14) + /buscar (F-12) + F-11 documental + 117-DISPOSICION.md + verificacion global
+- [x] 117-04-PLAN.md — Home (F-06, F-14) + /buscar (F-12) + F-11 documental + 117-DISPOSICION.md + verificacion global
 
 **UI hint**: yes
 
@@ -360,7 +360,7 @@ Plans:
 | 114. LINK-INT | 3/3 | Complete    | 2026-07-28 |
 | 115. LINK-EXT | 3/3 | Complete    | 2026-07-28 |
 | 116. FECHA-AUDIT | 4/4 | Complete    | 2026-07-28 |
-| 117. FECHA-FIX | 3/4 | In Progress|  |
+| 117. FECHA-FIX | 4/4 | Complete   | 2026-07-28 |
 | 118. CRON-AUDIT | 0/? | Not started | - |
 | 119. CRON-FIX | 0/? | Not started | - |
 | 120. ESCALERA-ON | 0/? | Not started | - |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
-status: executing
+status: verifying
 stopped_at: Completed 115-01-PLAN.md
-last_updated: "2026-07-28T14:52:39.142Z"
+last_updated: "2026-07-28T15:07:56.637Z"
 last_activity: 2026-07-28
 progress:
   total_phases: 13
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 20
-  completed_plans: 19
-  percent: 31
+  completed_plans: 20
+  percent: 38
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 117 (FECHA-FIX — Etiquetas de fecha corregidas) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-28
 
 ### Roadmap v12.0 (Phases 113-125)
@@ -142,6 +142,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 116 P116-01 | 35m | 2 tasks | 1 files |
 | Phase 116 P04 | 2h | 3 tasks | 2 files |
 | Phase 117 P03 | 35m | 3 tasks | 20 files |
+| Phase 117 P04 | 35m | 4 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -251,6 +252,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 116-04: el hallazgo de DIA de lobby_audiencia queda REFUTADO por PROD (drift 0/17.762)
 - [Phase ?]: 117-03: el rótulo de lobby se compone DENTRO del ternario de fechaTexto, nunca como prefijo en el JSX (el fallback textual viaja verbatim)
 - [Phase ?]: 117-03: lobby conserva fechaCorta (no fechaHechoCorta) — PROD refutó el drift de zona en lobby_audiencia.fecha (0/17.762)
+- [Phase ?]: 117-04: F-12 se cierra rotulando (primer trámite {año}), no borrando — el grep vivo refutó la premisa 'chip inerte' del audit
 
 ### Pending Todos
 
@@ -311,7 +313,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-28T14:52:23.446Z
+Last session: 2026-07-28T15:07:51.837Z
 Stopped at: Completed 115-01-PLAN.md
 Resume file: None
 
