@@ -7,7 +7,9 @@ import {
   readEstadoSnapshot,
   firmaIdentidad,
   buildR2Target,
+  main,
 } from "./seed-cli";
+import type { Parlamentario } from "@obs/core";
 
 describe("findWorkspaceRoot (IN-02)", () => {
   it("LANZA si no halla pnpm-workspace.yaml (no devuelve un path plausible pero equivocado)", () => {
@@ -109,5 +111,91 @@ describe("buildR2Target (WR-02: gateado por credenciales)", () => {
     const target = buildR2Target();
     expect(target).not.toBeNull();
     expect(typeof target!.put).toBe("function");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G6 (119-03): `existed` (412) ⇒ skip de la CARGA a DB, jamás del snapshot git.
+// El snapshot committeado es el artefacto AUTORITATIVO (ID-09 / backup-parlamentario.yml:60):
+// un skip de R2 NO puede dejarlo sin actualizar.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("main — G6: existed:true ⇒ skip de la carga, no del snapshot", () => {
+  const MAESTRA = [
+    {
+      id: "S1",
+      camara: "senado",
+      periodo: "senado-vigente-2026",
+      nombre_normalizado: "araya pedro",
+      estado: "no_confirmado",
+    },
+  ] as unknown as Parlamentario[];
+
+  /** Deps de test: seeder fake, writer de DB espía, writer de archivo espía. */
+  function deps(existed: boolean | null) {
+    const escrituras: { path: string; content: string }[] = [];
+    const upserts: Parlamentario[][] = [];
+    const logs: string[] = [];
+    return {
+      escrituras,
+      upserts,
+      logs,
+      opts: {
+        cwd: tmpdir(),
+        serviceKey: "fake-service-key", // habilita la rama de carga a DB
+        log: (m: string) => logs.push(m),
+        seeder: async () => MAESTRA.map((r) => ({ ...r })),
+        dbWriter: {
+          upsert: async (rows: Parlamentario[]) => {
+            upserts.push(rows);
+          },
+          promoteToConfirmado: async () => ({ promovidos: 0 }),
+        },
+        fileWriter: {
+          write: async (path: string, content: string) => {
+            escrituras.push({ path, content });
+          },
+        },
+        r2Target:
+          existed == null
+            ? null
+            : { put: async () => ({ r2Path: "identity/parlamentario-seed/x/y.json", existed }) },
+      },
+    };
+  }
+
+  it("(1) existed:true ⇒ la carga a DB NO se invoca y el log dice `[skip] sin novedades`", async () => {
+    const d = deps(true);
+    const res = await main(d.opts as never);
+    expect(d.upserts).toHaveLength(0);
+    expect(res.dbLoaded).toBe(false);
+    expect(
+      d.logs.some((l) => l.includes("[skip] sin novedades — identity parlamentario-seed")),
+    ).toBe(true);
+  });
+
+  it("(2) existed:true ⇒ el snapshot al filesystem SÍ se escribe (el commit del bot es autoritativo)", async () => {
+    const d = deps(true);
+    const res = await main(d.opts as never);
+    expect(d.escrituras).toHaveLength(1);
+    expect(d.escrituras[0]!.path).toContain("parlamentario.seed.json");
+    expect(res.snapshotBytes).toBeGreaterThan(0);
+  });
+
+  it("(3) existed:false ⇒ comportamiento actual intacto (carga a DB + snapshot)", async () => {
+    const d = deps(false);
+    const res = await main(d.opts as never);
+    expect(d.upserts).toHaveLength(1);
+    expect(res.dbLoaded).toBe(true);
+    expect(d.escrituras).toHaveLength(1);
+    expect(d.logs.some((l) => l.includes("[skip] sin novedades"))).toBe(false);
+  });
+
+  it("(4) sin credenciales R2 (target null) ⇒ NO hay skip: todo procede (no-op explícito)", async () => {
+    const d = deps(null);
+    const res = await main(d.opts as never);
+    expect(d.upserts).toHaveLength(1);
+    expect(res.dbLoaded).toBe(true);
+    expect(res.r2Ok).toBe(false);
+    expect(d.logs.some((l) => l.includes("[skip] sin novedades"))).toBe(false);
   });
 });
