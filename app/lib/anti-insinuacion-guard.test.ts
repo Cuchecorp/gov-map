@@ -458,6 +458,60 @@ const SUPERFICIES_LINK_EXT: string[] = [
 ];
 
 /**
+ * Superficies FECHA (117-01, FECHA-02) — semántica de la fecha visible. La Phase 116
+ * auditó cada fecha renderizada y encontró que el copy CONFUNDE dos hechos distintos:
+ * la fecha del HECHO (cuándo se votó / se citó / se tramitó) y la fecha de nuestra
+ * consulta a la fuente (`fecha_captura`).
+ *
+ * El riesgo específico de este carril NO es el vocabulario de bancada sino afirmar que
+ * el DATO cambió cuando lo que cambió es NUESTRO scraping: decir "Actualizado hace 2
+ * horas" sobre un proyecto sin movimiento desde 2023 insinúa actividad legislativa que
+ * no ocurrió. La fecha de captura JAMÁS es el hecho; el idiom LOCKED de la fase es
+ * "según fuente al {fecha}" (y "recalculado por el Observatorio al {fecha}" cuando el
+ * reloj es un recálculo interno nuestro).
+ *
+ * TRIPWIRE ANTES DEL COPY (Wave-0 LOCKED, orden 68-01 / 100-01 / 101-02 / 103-03):
+ * estas superficies se declaran ANTES de que aterrice una sola línea del copy nuevo de
+ * la fase. El loader del bucle TOLERA archivos faltantes (try/catch continue).
+ *
+ * DEDUPE (Pitfall 4, precedente `SUPERFICIES_LINK_EXT`): varias de estas rutas ya viven
+ * en otros carriles (`provenance-badge.tsx` en DEEPLINK/LINK-EXT, `panel-actualidad.tsx`
+ * en PANEL, `search-result-card.tsx`, `timeline-event.tsx` en LINK-EXT…). Se listan
+ * IGUALMENTE aquí porque este array debe ser el registro COMPLETO del alcance del carril
+ * FECHA; la duplicación se disuelve en el `Set` de `TODAS_LAS_SUPERFICIES`.
+ *
+ * NOTA NEGACIONES_LOCKED: el copy nuevo de 117 NO niega ningún término prohibido — el
+ * idiom "según fuente al…" y sus hermanos son afirmaciones factuales de procedencia y
+ * fecha. Por eso NO se agregan entradas a `NEGACIONES_LOCKED` ni términos nuevos a
+ * `TERMINOS_PROHIBIDOS` (117 no introduce vocabulario insinuante). Lo que sí se agrega
+ * es el test `(1d)`, que VERIFICA (no asume) que los idioms elegidos están limpios.
+ *
+ * Rutas relativas a app/, mismo formato que los otros arrays.
+ */
+const SUPERFICIES_FECHA: string[] = [
+  "components/provenance-badge.tsx",
+  "components/cruces-de-parlamentario.tsx",
+  "components/cruces-de-proyecto.tsx",
+  "app/proyecto/[boletin]/page.tsx",
+  "components/timeline-event.tsx",
+  "components/capa1/tramitacion-stepper.tsx",
+  "components/estado-actual-block.tsx",
+  "components/votacion-card.tsx",
+  "components/votos-por-parlamentario.tsx",
+  "components/lobby-de-parlamentario.tsx",
+  "components/lobby-menciones-de-boletin.tsx",
+  "components/panel-actualidad.tsx",
+  "components/actualidad-module.tsx",
+  "components/search-result-card.tsx",
+  "components/contratos-de-parlamentario.tsx",
+  "components/financiamiento-de-parlamentario.tsx",
+  "components/contratos-por-contraparte.tsx",
+  "components/aportes-por-contraparte.tsx",
+  "lib/format.ts",
+  "lib/dia-calendario.ts",
+];
+
+/**
  * Leyenda de RECURSO NO-HUMANO (115-03, A-3/A-4/A-5). El Test (3) prueba que está
  * limpia; si alguien la edita hacia la insinuación ("la fuente no quiere publicarlo",
  * "lo esconde"), el detector la caza.
@@ -676,6 +730,24 @@ const NEGACIONES_LOCKED: string[] = [
   // renderiza la leyenda (Pitfall 3, lección BLOCKER 91: registrar la negación ANTES de
   // añadir la superficie al scan). Importada verbatim.
   LEYENDA_SIMILITUD_VOTO,
+  // FECHA-117-OFFENDER-01 (117-01, decisión A del orquestador). Al sumar
+  // SUPERFICIES_FECHA entraron al scan `cruces-de-parlamentario.tsx` y
+  // `cruces-de-proyecto.tsx`, cuyo bloque "Cómo leer esto" (copy PREEXISTENTE, idéntico
+  // en ambos) usa la palabra "señal" —prohibida desde el carril VSIM (102-01)— en un
+  // contexto que la DEFINE como un conteo de hechos, es decir que NIEGA precisamente la
+  // lectura metafórica de "señal" que el término existe para bloquear ("la cifra es una
+  // señal de bancada"). Mismo tratamiento que LEYENDA_SIMILITUD_VOTO / LEYENDA_CROSS_LINK:
+  // se resta ANTES de matchear en vez de relajar el linter o reescribir copy ciudadano
+  // ya publicado.
+  //
+  // Se registra como literal (precedente: la leyenda VOTO de la primera entrada) porque
+  // el copy vive inline en el JSX de ambos componentes, no en una constante exportada.
+  // Esa es justamente la propiedad AUTO-CORRECTIVA de la resta: si alguien edita la
+  // frase —hacia la insinuación o hacia cualquier otra cosa— el literal deja de calzar
+  // y el guard vuelve a morder sobre esas superficies, forzando una decisión explícita.
+  // El detector normaliza whitespace antes de restar, así que el JSX line-wrapped de
+  // ambos archivos calza con este string de espacios simples.
+  "Cada señal es un conteo de hechos públicos fechados: reuniones de lobby registradas bajo la Ley 20.730, agrupadas por sector de la contraparte.",
 ];
 
 /**
@@ -730,6 +802,7 @@ const TODAS_LAS_SUPERFICIES: string[] = [
     ...SUPERFICIES_VSIM,
     ...SUPERFICIES_NOTIF,
     ...SUPERFICIES_LINK_EXT,
+    ...SUPERFICIES_FECHA,
   ]),
 ];
 
@@ -850,12 +923,63 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
       SUPERFICIES_VOTO, SUPERFICIES_MONEY, SUPERFICIES_HOME, SUPERFICIES_BUSQUEDA,
       SUPERFICIES_PERSONAS, SUPERFICIES_LOBBY, SUPERFICIES_AGENDA, SUPERFICIES_DEEPLINK,
       SUPERFICIES_PANEL, SUPERFICIES_RELACIONES, SUPERFICIES_VSIM, SUPERFICIES_NOTIF,
-      SUPERFICIES_LINK_EXT,
+      SUPERFICIES_LINK_EXT, SUPERFICIES_FECHA,
     ]) {
       for (const rel of carril) expect(TODAS_LAS_SUPERFICIES).toContain(rel);
     }
     // Muy por encima de las 4 superficies contra las que se declaró el grep original.
     expect(TODAS_LAS_SUPERFICIES.length).toBeGreaterThan(20);
+  });
+
+  /**
+   * (1d) FECHA-02 (117-01) — los idioms de fecha de la fase están limpios.
+   *
+   * POR QUÉ EXISTE: la palabra "captura" (pelada) está en `TERMINOS_PROHIBIDOS`
+   * (carril MONEY). La Phase 117 reescribe TODO el copy de fecha del sitio, y el
+   * término natural para nombrar lo que hacemos —"capturado el…"— es justamente el
+   * prohibido. Este test es la PRUEBA de que el idiom elegido para 117 ("según fuente
+   * al…", "recalculado por el Observatorio al…", "la fuente cubre hasta el…") no
+   * re-introduce el término prohibido ni ningún otro, y se corre ANTES de que el copy
+   * aterrice en las superficies (Wave-0 LOCKED).
+   *
+   * El fixture es EN MEMORIA (no un archivo del repo): son los strings VERBATIM que la
+   * fase va a renderizar. La cuenta está ANCLADA (`toHaveLength(10)`): si un plan de la
+   * fase añade un idiom de fecha sin registrarlo aquí, el test muerde.
+   */
+  it("(1d) FECHA-02: los idioms de fecha de 117 están limpios", () => {
+    const IDIOMS_FECHA_117: string[] = [
+      "según fuente al 14 may 2026",
+      "recalculado por el Observatorio al 28 jul 2026",
+      "la fuente cubre hasta el 31 dic 2025",
+      "nuestra ingesta llega hasta el 31 dic 2025",
+      "Hito del 7 jul 2026",
+      "Votada el 16 nov 2023",
+      "Reunión del 12 jun 2026",
+      "Consolidado por el Observatorio",
+      "primer trámite 2021",
+      "Última consulta a las fuentes",
+    ];
+    expect(
+      IDIOMS_FECHA_117,
+      "La lista de idioms de fecha de 117 cambió de tamaño: registra el idiom nuevo " +
+        "aquí (y actualiza la cuenta) para que el linter lo verifique ANTES de renderizarlo.",
+    ).toHaveLength(10);
+
+    const offenders: string[] = [];
+    for (const idiom of IDIOMS_FECHA_117) {
+      // Se monta como copy renderizado (JSX) para pasar por el MISMO detector real.
+      const fixture = `export const F = <span>${idiom}</span>;`;
+      for (const term of detectarInsinuaciones(fixture)) {
+        offenders.push(`"${idiom}" → "${term}"`);
+      }
+    }
+    expect(
+      offenders,
+      `Un idiom de fecha de la Phase 117 contiene vocabulario prohibido: ` +
+        `[${offenders.join("; ")}]. NO relajes el linter: cambia el idiom. ` +
+        `Recordatorio: "captura" (pelada) está prohibida — el idiom LOCKED es ` +
+        `"según fuente al {fecha}".`,
+    ).toHaveLength(0);
   });
 });
 
