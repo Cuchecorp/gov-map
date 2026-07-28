@@ -186,6 +186,16 @@ async function main(): Promise<void> {
 
   let writer: LobbyWriter;
   if (dryRun || !env.SUPABASE_API_URL || !env.SUPABASE_SECRET_KEY) {
+    // WR-08 (119-REVIEW): fail-closed en CI, espejo de `ingest-cli.ts:221-225`. Este es el CLI
+    // que corre en `lobby-camara-weekly.yml`: sin esta guarda, un secret perdido producía
+    // `InMemoryLobbyWriter` + "DRY-RUN" en el log + exit 0 — un workflow verde que no escribió
+    // NADA. El guard de `audiencias` lo tapaba parcialmente por accidente, no por diseño.
+    if (!dryRun && process.env.GITHUB_ACTIONS === "true") {
+      throw new Error(
+        "camara-lobby: GITHUB_ACTIONS=true pero faltan credenciales Supabase " +
+          "(SUPABASE_API_URL / SUPABASE_SECRET_KEY). Verifica los secrets del workflow.",
+      );
+    }
     writer = new InMemoryLobbyWriter();
     log("camara-lobby: DRY-RUN (in-memory, no escribe DB/R2)");
   } else {
