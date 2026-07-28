@@ -1320,4 +1320,26 @@ describe("VotosView — F-07/F-05: rótulo del hecho en la fecha de la votación
     expect(texto).toContain("Votada el");
     expect(texto).toContain("según fuente al");
   });
+
+  // WR-01 (117-REVIEW): assert NEGATIVO — el rótulo NO puede pegarse al
+  // honest-state. Mismo contrato que fijan lobby-de-parlamentario y
+  // search-result-card: se compone dentro de la rama con dato.
+  it("sin fecha presentable: se OMITE el rótulo, jamás 'Votada el fecha no informada'", () => {
+    for (const fechaMala of [null, "", "basura"]) {
+      const { container, unmount } = render(
+        <VotosView
+          id="P00001"
+          data={makeViewData({
+            votos: [makeVoto({ fecha: fechaMala as unknown as string })],
+            votosVer: "16284-07",
+          })}
+        />,
+      );
+      const texto = container.textContent ?? "";
+      expect(texto).not.toContain("Votada el fecha no informada");
+      expect(texto).not.toContain("Votada el ");
+      expect(texto).not.toContain("Invalid Date");
+      unmount();
+    }
+  });
 });

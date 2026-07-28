@@ -507,6 +507,9 @@ function ProyectoGrupo({
         <ul className="mt-2 space-y-1">
           {grupo.etapas.map((e) => {
             const hayConteo = e.total_si != null && e.total_no != null;
+            // WR-01: fallback VACÍO ⇒ el rótulo sólo existe si hay fecha
+            // presentable. `e.fecha` truthy pero malformada también cae aquí.
+            const fechaVotacion = fechaHechoCortaSegura(e.fecha, "");
             return (
               <li
                 key={e.votacion_id}
@@ -528,13 +531,19 @@ function ProyectoGrupo({
                     MISMA fila que el badge de procedencia, y sin sustantivo las dos
                     fechas eran indistinguibles. `votacion.fecha` es timestamptz con
                     hora real ⇒ fechaHechoCortaSegura (calendario chileno); el
-                    font-mono queda SOLO sobre la fecha, no sobre el rótulo. */}
-                <span className="text-muted-foreground">
-                  Votada el{" "}
-                  <span className="font-mono">
-                    {fechaHechoCortaSegura(e.fecha)}
+                    font-mono queda SOLO sobre la fecha, no sobre el rótulo.
+
+                    WR-01 (117-REVIEW): el rótulo se compone DENTRO del ternario, sólo
+                    en la rama con dato — mismo patrón que `lobby-de-parlamentario` y
+                    `search-result-card`. Anteponerlo en el JSX lo pegaba también al
+                    honest-state y rendía "Votada el fecha no informada", justo la
+                    frase absurda que esos dos archivos documentan haber evitado. Sin
+                    fecha presentable ⇒ el `<span>` se OMITE entero. */}
+                {fechaVotacion && (
+                  <span className="text-muted-foreground">
+                    Votada el <span className="font-mono">{fechaVotacion}</span>
                   </span>
-                </span>
+                )}
                 {e.resultado && (
                   <span className="text-muted-foreground">
                     · el proyecto fue {e.resultado}
