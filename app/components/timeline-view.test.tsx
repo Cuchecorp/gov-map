@@ -5,6 +5,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 
 import {
   TimelineView,
+  construirItems,
   esEventoUrgencia,
   fechaValida,
   paresDeUrgencia,
@@ -498,6 +499,67 @@ describe("F-04: fechaValida rechaza fechas implausibles", () => {
   it("null / basura ⇒ null (comportamiento previo intacto)", () => {
     expect(fechaValida(null)).toBeNull();
     expect(fechaValida("basura")).toBeNull();
+  });
+});
+
+/**
+ * WR-02 (117-REVIEW): el evento sin fecha plausible sigue VISIBLE (no se filtra) pero
+ * NO puede ocupar una posición cronológica fabricada. Con el `?? 0` previo valía epoch
+ * 0 y encabezaba el timeline como "el evento más antiguo de la tramitación".
+ */
+describe("construirItems — orden: las fechas implausibles van al FINAL, no al tope", () => {
+  const corrupto = makeEvento({
+    fecha: "2626-05-25T00:00:00+00:00", // typo real de PROD (boletín 18232-25)
+    descripcion: "Evento con fecha imposible",
+  });
+  const antiguo = makeEvento({
+    fecha: "2020-01-15T00:00:00Z",
+    descripcion: "Ingreso de proyecto",
+  });
+  const reciente = makeEvento({
+    fecha: "2026-05-14T00:00:00Z",
+    descripcion: "Informe de comisión",
+  });
+
+  function descripciones(items: ReturnType<typeof construirItems>): string[] {
+    return items.map((it) =>
+      it.kind === "evento" ? (it.evento.descripcion ?? "") : `periodo:${it.periodo.tipo}`,
+    );
+  }
+
+  it("el corrupto NO encabeza: queda después de todos los de fecha plausible", () => {
+    const orden = descripciones(construirItems([corrupto, reciente, antiguo]));
+    expect(orden).toEqual([
+      "Ingreso de proyecto",
+      "Informe de comisión",
+      "Evento con fecha imposible",
+    ]);
+  });
+
+  it("el hecho sigue presente (omisión de la FECHA, nunca del evento)", () => {
+    const items = construirItems([corrupto, antiguo]);
+    expect(items).toHaveLength(2);
+    expect(descripciones(items)).toContain("Evento con fecha imposible");
+  });
+
+  it("varios implausibles conservan el orden de entrada (sort estable)", () => {
+    const a = makeEvento({ fecha: "2626-01-01T00:00:00Z", descripcion: "corrupto A" });
+    const b = makeEvento({ fecha: null, descripcion: "corrupto B" });
+    const orden = descripciones(construirItems([a, b, reciente]));
+    expect(orden).toEqual(["Informe de comisión", "corrupto A", "corrupto B"]);
+  });
+
+  it("un run de urgencia contiguo no se parte por la fila corrupta", () => {
+    const u1 = makeEvento({
+      fecha: "2026-02-01T00:00:00Z",
+      descripcion: "hace presente la urgencia Suma",
+    });
+    const u2 = makeEvento({
+      fecha: "2026-03-01T00:00:00Z",
+      descripcion: "hace presente la urgencia Suma",
+    });
+    const items = construirItems([u1, corrupto, u2]);
+    expect(items.filter((it) => it.kind === "periodo")).toHaveLength(1);
   });
 });
 

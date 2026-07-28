@@ -146,9 +146,20 @@ export type TimelineItem =
  * es idéntica a la de la vista completa (una sola fuente de verdad).
  */
 export function construirItems(eventos: TramitacionEventoRow[]): TimelineItem[] {
+  // WR-02 (117-REVIEW): un evento SIN fecha plausible no puede ordenarse como epoch 0.
+  // Con `?? 0` la fila corrupta de PROD (el typo `2626-05-25`, que F-04 declara
+  // impresentable) pasaba de estar al final a valer 1970 y aparecía PRIMERA, presentada
+  // como el evento más antiguo de la tramitación: una posición cronológica FABRICADA,
+  // el mismo defecto que F-04 quería cerrar. El hecho sigue visible —no se filtra—,
+  // pero se manda al FINAL y en orden estable entre sí (`Array.prototype.sort` es
+  // estable desde ES2019), sin inventarle lugar en la cronología. De paso deja de
+  // partir/unir runs contiguos de urgencia.
   const ordenados = [...eventos].sort((a, b) => {
-    const da = fechaValida(a.fecha)?.getTime() ?? 0;
-    const db = fechaValida(b.fecha)?.getTime() ?? 0;
+    const da = fechaValida(a.fecha)?.getTime();
+    const db = fechaValida(b.fecha)?.getTime();
+    if (da === undefined && db === undefined) return 0; // orden de entrada (estable)
+    if (da === undefined) return 1; // sin fecha plausible → al final
+    if (db === undefined) return -1;
     return da - db;
   });
 
@@ -178,9 +189,9 @@ export function construirItems(eventos: TramitacionEventoRow[]): TimelineItem[] 
     const run = ordenados.slice(i, j);
     if (run.length >= 2) {
       periodoIdx += 1;
-      // Rango SOLO de fechas válidas del run (el sort manda las inválidas al inicio
-      // con time 0 — usarlas fabricaría "ene 1970"). Sin fecha válida → null (la
-      // línea colapsada omite el rango, nunca epoch).
+      // Rango SOLO de fechas válidas del run (WR-02: el sort manda las inválidas al
+      // FINAL, sin posición cronológica fabricada; usarlas aquí daría "ene 1970").
+      // Sin fecha válida → null (la línea colapsada omite el rango, nunca epoch).
       const fechasValidas = run
         .map((e) => fechaValida(e.fecha))
         .filter((d): d is Date => d !== null);
