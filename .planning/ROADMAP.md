@@ -251,7 +251,7 @@ Plans:
 
 **Wave 2**
 
-- [ ] 118-02-PLAN.md — (w2) Sección por unidad de cron (13 workflows + 2 platform-managed + N jobs pg_cron) + tablas de estado observado
+- [x] 118-02-PLAN.md — (w2) Sección por unidad de cron (13 workflows + 2 platform-managed + N jobs pg_cron) + tablas de estado observado
 
 **Wave 3**
 
@@ -374,7 +374,7 @@ Plans:
 | 115. LINK-EXT | 3/3 | Complete    | 2026-07-28 |
 | 116. FECHA-AUDIT | 4/4 | Complete    | 2026-07-28 |
 | 117. FECHA-FIX | 4/4 | Complete    | 2026-07-28 |
-| 118. CRON-AUDIT | 1/3 | In Progress|  |
+| 118. CRON-AUDIT | 2/3 | In Progress|  |
 | 119. CRON-FIX | 0/? | Not started | - |
 | 120. ESCALERA-ON | 0/? | Not started | - |
 | 121. ESCALERA-DOC | 0/? | Not started | - |
