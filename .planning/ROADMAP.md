@@ -242,7 +242,20 @@ Plans:
   3. Cada veredicto no-verde tiene causa identificada (secret ausente, cursor detenido, fuente WAF, entrypoint equivocado) apuntando a archivo o a dato — precedente gap 57-05 (el cron usaba otro entrypoint sin R2)
   4. Los gaps quedan priorizados como entrada ejecutable para la fase de fixes
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 118-01-PLAN.md — (w1) Probes de las 4 patas (gh / psql / freshness / source_snapshot) + esqueleto: método, inventario cerrado y tabla maestra con veredicto
+
+**Wave 2**
+
+- [ ] 118-02-PLAN.md — (w2) Sección por unidad de cron (13 workflows + 2 platform-managed + N jobs pg_cron) + tablas de estado observado
+
+**Wave 3**
+
+- [ ] 118-03-PLAN.md — (w3) Gap-list P0/P1/P2 para Phase 119 + assumptions resueltas + límites + checkpoint operador + check-crons.sh
 
 ### Phase 119: CRON-FIX — Robustez de ingesta
 
