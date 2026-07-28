@@ -20,7 +20,7 @@
 ### Crons
 
 - [x] **CRON-01**: Auditoría E2E de TODOS los workflows (GH Actions + pg_cron) con veredicto por cron (verde/stale/roto) y evidencia
-- [x] **CRON-02**: Robustez cerrada donde falte: reintentos/backoff, cursores, hash-check, señales freshness — cada cron degrada honesto, jamás fabrica
+- [ ] **CRON-02**: Robustez cerrada donde falte: reintentos/backoff, cursores, hash-check, señales freshness — cada cron degrada honesto, jamás fabrica
 - [ ] **CRON-03**: Escalera LLM encendida en clasificación (`CLASIFICACION_ESCALERA=1`) tras shadow-eval verde + drift canary + rollback-by-config — flip AUTORIZADO por el operador 2026-07-27; checkpoint de provisión keys Workers AI con operador
 - [ ] **CRON-04**: Extensión de la escalera a otras tareas SOLO con benchmark nuevo de paridad; sin evidencia = no se extiende (documentado por tarea)
 
@@ -64,7 +64,7 @@ Mapeado por el roadmap v12.0 (Phases 113-125). Coverage 13/13 — cero huérfano
 | FECHA-01 | Phase 116 — FECHA-AUDIT semántica de cada fecha visible | Complete |
 | FECHA-02 | Phase 117 — FECHA-FIX etiquetas de fecha corregidas | Complete |
 | CRON-01 | Phase 118 — CRON-AUDIT veredicto por cron con evidencia | Complete |
-| CRON-02 | Phase 119 — CRON-FIX robustez de ingesta | Complete |
+| CRON-02 | Phase 119 — CRON-FIX robustez de ingesta | Pending |
 | CRON-03 | Phase 120 — ESCALERA-ON flip `CLASIFICACION_ESCALERA=1` | Pending |
 | CRON-04 | Phase 121 — ESCALERA-DOC extensión solo con benchmark | Pending |
 | CRUCE-01 | Phase 122 — CRUCE-SQL cruces visibles × SQL de PROD | Pending |
