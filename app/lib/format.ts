@@ -9,10 +9,38 @@
 // en ámbar permanente para datos con ingesta semanal (falso positivo de frescura).
 const STALE_THRESHOLD_MS = 14 * 24 * 60 * 60 * 1000; // 14 días (cadence de ingesta)
 
+/**
+ * F-10 (116-FECHAS-AUDIT §3, fix sugerido): `timeZone` EXPLÍCITA.
+ *
+ * Sin esta opción, `Intl` usa la zona del RUNTIME — el día renderizado dependía de
+ * dónde corriera el proceso, no del dato. Era correcto por accidente (el Worker corre
+ * en UTC) y se rompía en cualquier entorno con otra zona (el runtime de desarrollo en
+ * Chile ya rendía el día ANTERIOR). Fijarla convierte ese acierto en CONTRATO DEL CÓDIGO.
+ *
+ * UTC —y NO la zona de Chile— porque preserva el comportamiento actual correcto:
+ * convertir a Chile fabricaría el día anterior en las ~45.618 filas `timestamptz` que
+ * son date-only DISFRAZADAS (medianoche UTC), exactamente el corrimiento que
+ * `lib/dia-calendario.ts` existe para evitar. Las fechas del hecho CON hora real se
+ * atienden aparte, en `fechaHechoCorta`.
+ */
 const fechaCortaFormatter = new Intl.DateTimeFormat("es-CL", {
   day: "2-digit",
   month: "short",
   year: "numeric",
+  timeZone: "UTC",
+});
+
+/**
+ * Formatter de la rama HORA-REAL de `fechaHechoCorta` (F-05). ÚNICO lugar del archivo
+ * donde se usa la zona horaria de Chile: aquí sí hay una hora de reloj real que convertir al
+ * calendario del ciudadano. Constante de módulo (no se construye por llamada: `Intl`
+ * es caro).
+ */
+const fechaHechoRealFormatter = new Intl.DateTimeFormat("es-CL", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "America/Santiago",
 });
 
 /**
@@ -20,6 +48,85 @@ const fechaCortaFormatter = new Intl.DateTimeFormat("es-CL", {
  */
 export function fechaCorta(d: Date): string {
   return fechaCortaFormatter.format(d);
+}
+
+/**
+ * Fecha del HECHO (cuándo ocurrió lo que se cuenta: la votación, la citación, el
+ * trámite) — F-05 de `116-FECHAS-AUDIT.md`.
+ *
+ * PROBLEMA QUE MITIGA: la columna `timestamptz` guarda DOS semánticas mezcladas.
+ * Unas filas traen la hora REAL del hecho (una votación a las 00:14 UTC = 21:14 del
+ * día ANTERIOR en Chile) y otras son fechas date-only DISFRAZADAS de medianoche UTC
+ * (donde la parte fecha UTC YA ES el día publicado, contrato de `dia-calendario.ts`).
+ * Una sola regla de zona horaria se equivoca en la mitad de los casos:
+ *  - formatear todo en UTC ⇒ la votación nocturna se rinde un día DESPUÉS;
+ *  - formatear todo en Chile ⇒ la date-only disfrazada se corre un día ANTES.
+ *
+ * REGLA: si el instante cae exactamente en 00:00:00.000 UTC ⇒ es date-only disfrazada
+ * ⇒ se formatea con el formatter UTC (sin convertir de zona). Si hay hora real ⇒ se
+ * convierte a la zona de Chile, que es el calendario del ciudadano.
+ *
+ * LÍMITE HONESTO (audit §6, límite 6): esto MITIGA EN EL RENDER, no corrige el fondo.
+ * La corrección real —separar las dos semánticas en la ingesta, con una columna que
+ * declare si la fila tiene hora— es de datos y queda DECLARADA, no resuelta aquí. La
+ * heurística tiene un falso positivo estructural: un hecho que ocurrió realmente a las
+ * 00:00:00.000 UTC (21:00 del día anterior en Chile) se tratará como date-only. Es un
+ * caso raro y el error resultante es el statu quo actual, no una regresión.
+ */
+export function fechaHechoCorta(d: Date): string {
+  const sinHora =
+    d.getUTCHours() === 0 &&
+    d.getUTCMinutes() === 0 &&
+    d.getUTCSeconds() === 0 &&
+    d.getUTCMilliseconds() === 0;
+  return sinHora ? fechaCorta(d) : fechaHechoRealFormatter.format(d);
+}
+
+/**
+ * Versión segura de `fechaHechoCorta` para valores CRUDOS de la RPC — degrada a copy
+ * honesto cuando el dato es null/vacío/no-ISO, NUNCA renderiza "Invalid Date".
+ *
+ * Espeja el guard anti-500 de `fechaCortaSegura` pero SIN su `slice(0, 10)`: ese corte
+ * es DESTRUCTIVO para una fecha del hecho, porque tira justamente la hora que decide
+ * en qué día chileno ocurrió ("2023-11-17T00:14:41+00:00" truncado a "2023-11-17"
+ * rendiría el 17 en vez del 16). Aquí el raw se valida y se parsea COMPLETO.
+ *
+ * Un raw date-only puro ("2026-03-31") sigue dando el día correcto: `new Date("YYYY-MM-DD")`
+ * es medianoche UTC ⇒ cae en la rama date-only de `fechaHechoCorta`.
+ */
+export function fechaHechoCortaSegura(
+  raw: string | null | undefined,
+  fallback = "fecha no informada",
+): string {
+  const s = (raw ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(s)) return fallback;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? fallback : fechaHechoCorta(d);
+}
+
+/**
+ * ¿La fecha es PLAUSIBLE para un hecho del Congreso? — F-04 de `116-FECHAS-AUDIT.md`.
+ *
+ * La fuente publica fechas imposibles (typos reales en PROD: `2626-05-25`). Renderizar
+ * "año 2626" en la ficha no es un dato, es basura con apariencia de dato.
+ *
+ * Rango del fix sugerido: `[1990-01-01T00:00:00Z, now + 5 años]`. El techo NO es "hoy":
+ * `/agenda` muestra futuro LEGÍTIMO (citaciones futuras verificadas en PROD) y las
+ * urgencias vencen en el futuro; 5 años deja pasar todo lo legítimo y ataja el typo de
+ * siglo. Una fecha inválida (`NaN`) no es plausible y no lanza.
+ *
+ * ES UN PREDICADO, NO UN FILTRO: el llamante decide qué hacer (omitir la fecha
+ * honestamente, declarar el dato ilegible). PROHIBIDO convertirlo en un
+ * `where fecha <= current_date` global — ese fue exactamente el defecto que mató filas
+ * legítimas y quedó LOCKED como corrección en 99-01.
+ */
+export function fechaPlausible(d: Date, now: Date = new Date()): boolean {
+  const t = d.getTime();
+  if (Number.isNaN(t)) return false;
+  const piso = Date.UTC(1990, 0, 1);
+  const techo = new Date(now.getTime());
+  techo.setUTCFullYear(techo.getUTCFullYear() + 5);
+  return t >= piso && t <= techo.getTime();
 }
 
 /**
