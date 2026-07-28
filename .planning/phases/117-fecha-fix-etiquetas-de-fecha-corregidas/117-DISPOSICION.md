@@ -29,12 +29,12 @@ Los verbatim salen de `117-01-SUMMARY.md`, `117-02-SUMMARY.md`, `117-03-SUMMARY.
 | F-06 | miente | **corregido** (copy) · **declarado** (huérfano no se elimina) | `app/components/actualidad-module.tsx:441` (encabezado) y `:450-451` (por fuente) | `<span …>Última actualización de datos</span>` … `<span className="font-mono …">{fechaCorta(it.fecha)}</span>` | `<span …>Última consulta a las fuentes</span>` … `<span …>según fuente al <span className="font-mono">{fechaCorta(it.fecha)}</span></span>` + línea aclaratoria: `Esta fecha indica cuándo consultamos cada fuente, no cuándo la fuente publicó o modificó el dato.` | `ff59771` (RED `649fde3`) |
 | F-07 | ambigua | **corregido** (dos variantes, ver §2) | `capa1/tramitacion-stepper.tsx` · `timeline-event.tsx` · `votos-por-parlamentario.tsx:527-538` · `votacion-card.tsx:37-45` · `lobby-de-parlamentario.tsx:161,489` · `lobby-menciones-de-boletin.tsx:127-133` | `{evento.descripcion}{d && <span className="ml-2 font-mono …">{fechaCorta(d)}</span>}` · `<span className="font-mono text-muted-foreground">{fechaCortaSegura(e.fecha)}</span>` · `const fechaTexto = a.fecha ? fechaCorta(new Date(a.fecha)) : a.fecha_raw ?? "Fecha no publicada";` | `{descripcion}{" — "}<span …>{fecha}</span>` · `Hito del <span className="font-mono">{fechaHechoCorta(fecha)}</span>` · `Votada el <span className="font-mono">{fechaHechoCortaSegura(e.fecha)}</span>` · `const fechaTexto = a.fecha ? \`Reunión del ${fechaCorta(new Date(a.fecha))}\` : a.fecha_raw ?? "Fecha no publicada";` | `bc63488` · `94975e3` (RED `a31e1fb`) |
 | F-08 | ambigua | **corregido** (copy, gate OFF) · **declarado** (verificación contra dato real) | `contratos-de-parlamentario.tsx:188,238-240` · `financiamiento-de-parlamentario.tsx:225,364` · `contratos-por-contraparte.tsx:168` · `aportes-por-contraparte.tsx:189` | `Consultado por RUT, corte al {fechaCorteTexto}.` · `Consultamos ChileCompra … (corte al {fechaTexto}) …` · `Consolidado, corte al {fechaCorteTexto}.` | `Consultado por RUT; la fuente cubre hasta el {fechaCorteTexto}.` · `… (nuestra ingesta llega hasta el {fechaTexto}) …` · `Consolidado por el Observatorio; la fuente cubre hasta el {fechaCorteTexto}.` | `a966979` (RED `014ed90`) |
-| F-09 | ambigua | **corregido** | `app/components/estado-actual-block.tsx:445` y 5 renders más (2 de ellos `aria-label`) | `fechaCorta(…)` en las 6 ocurrencias date-only ⇒ `2026-07-20T00:00:00Z` rendía `19` | `badgeFechaCitacion(…)` en las 6 ⇒ rinde `20-jul`; los 2 `aria-label` usan EXACTAMENTE el mismo helper que el texto visible (paridad por construcción) | `97aaf7d` |
+| F-09 | ambigua | **corregido** | `app/components/estado-actual-block.tsx:445` y 5 renders más (2 de ellos `aria-label`) | `fechaCorta(…)` en las 6 ocurrencias date-only ⇒ `2026-07-20T00:00:00Z` rendía `19` `fechaCivilCorta(…)` en las 6 ⇒ rinde `20 jul 2026` (CON año, ver §2(i): CR-01 revirtió `badgeFechaCitacion`, que borraba el año en superficies históricas); los 2 `aria-label` usan EXACTAMENTE el mismo helper que el texto visible (paridad por construcción) | `97aaf7d` → `9e25a8e` |
 | F-10 | ambigua | **corregido** | `app/lib/format.ts:12-16` → `:26-31` · `timeline-view.tsx:29-41` | `new Intl.DateTimeFormat("es-CL", { day: "2-digit", month: "short", year: "numeric" })` — sin `timeZone` | el mismo formatter con `timeZone: "UTC"`; ídem `mesAnioFormatter` de `timeline-view.tsx` | `34fac5c` (RED `77443e2`) · `bc63488` |
 | F-11 | ambigua | **corregido** (documental) · **declarado** (el umbral no se cambia) | `provenance-badge.tsx:17-21` · `113-INVENTARIO.md:663` y `:1069` | `Cada dato mostrado lleva "Actualizado hace X · {fuente} — fuente oficial ↗". Si el dato tiene más de 48h se marca en amber` · `esStale(capturedAt)` (`:33`, umbral 48 h → amber) | JSDoc que describe el copy REAL y *"más de 14 días (umbral por cadence de ingesta, `STALE_THRESHOLD_MS` en `lib/format.ts`)"* · `esStale(capturedAt)` (`:33`, umbral **14 días** → amber) con cita a `app/lib/format.ts:10` | `767d39a` · `fe286cf` · `be66bb9` |
 | F-12 | ambigua | **corregido** (premisa del audit corregida — ver §2) | `app/components/search-result-card.tsx:71` · call-site vivo en `buscar-filtros.tsx:495` · faceta `:392-397` | `{anio != null ? String(anio) : "Sin dato"}` · `<legend className="net-filtros__legend">Año</legend>` | `{anio != null ? \`primer trámite ${anio}\` : "Sin dato"}` · `<legend className="net-filtros__legend">Año del primer trámite</legend>` | `828e87f` (RED `b9ce5dc`) |
 | F-13 | ambigua | **corregido** | `app/components/estado-actual-block.tsx:417` | `Urgencia {urgenciaEstado.tipo} vigente desde el <span className="font-mono">{fechaCorta(urgenciaEstado.desde)}</span> (<span className="font-mono">{relativeTimeEs(urgenciaEstado.desde)}</span>).` | el paréntesis y su `<span>` eliminados; queda la fecha absoluta por `fechaHechoCorta`. `grep -c "relativeTimeEs"` en el archivo = **0** | `97aaf7d` |
-| F-14 | ambigua | **corregido** | `app/components/panel-actualidad.tsx:104` | `return diaCalendarioCitacion(iso);` ⇒ el tile rendía `datos al 2026-08-10` (ISO crudo) | `return badgeFechaCitacion(iso);` ⇒ rinde `datos al 10-ago`; ruteo por tipo y omisión honesta ante `fecha_max` NULL intactos | `1a9200b` (RED `1047bfa`) |
+| F-14 | ambigua | **corregido** | `app/components/panel-actualidad.tsx:104` | `return diaCalendarioCitacion(iso);` ⇒ el tile rendía `datos al 2026-08-10` (ISO crudo) | `return fechaCivilCorta(iso);` ⇒ rinde `datos al 10 ago 2026` (CON año, ver §2(i): WR-05 unificó el formato de las dos ramas del panel); ruteo por tipo y omisión honesta ante `fecha_max` NULL intactos | `1a9200b` (RED `1047bfa`) → `b420263` |
 
 **Auto-check:** `grep -oE "F-(0[1-9]|1[0-4])" 117-DISPOSICION.md | sort -u | wc -l` ⇒ **14**. Ninguna
 celda de §1 quedó vacía.
@@ -146,6 +146,30 @@ decisión explícita.
 
 Lo que NO se hizo: no se relajó el linter (ninguna superficie excluida), no se tocó copy ciudadano
 publicado, no se agregaron términos a `TERMINOS_PROHIBIDOS`.
+
+### (i) F-09 / F-14 — la disposición CAMBIÓ en el code-review: `badgeFechaCitacion` → `fechaCivilCorta`
+
+`117-REVIEW.md` levantó CR-01 (crítico) y WR-05 sobre la forma en que F-09 y F-14 quedaron cerrados.
+El helper elegido, `badgeFechaCitacion`, emite **"DD-mmm" sin año** — correcto para el badge compacto
+de `/agenda` (su caso de origen, donde la semana en curso es el contexto), pero se aplicó también a
+superficies **históricas**: `citacionesPasadas` (sesiones viejas, para prensa que revisa un proyecto
+antiguo), `enTablaSala` (sin cota temporal alguna) y el panel de actualidad. Una citación de 2021 se
+rendía "20-jul" junto a texto de ficha actual: el lector la leía como del año en curso. El mismo
+string sin año viajaba a los `aria-label`, así que quien usa lector de pantalla tampoco tenía el año
+en ningún canal. Y en el panel convivían DOS convenciones (`10-ago` sin año junto a `10 ago 2026`).
+
+**Disposición nueva:** se agrega `fechaCivilCorta` a `app/lib/dia-calendario.ts` — variante **con
+año** ("20 jul 2021") del MISMO helper date-only — y se usa en todas las superficies de
+`estado-actual-block.tsx` (texto visible y `aria-label` pareados) y en la rama `agenda_*` de
+`rotuloFecha` en `panel-actualidad.tsx`. `badgeFechaCitacion` queda **reservado a `citacion-card.tsx`
+(/agenda)**.
+
+**Lo que NO cambió (regla LOCKED intacta):** `fechaCivilCorta` delega en `diaCalendarioCitacion`, o
+sea sigue leyendo la **parte fecha UTC** como día publicado, con **cero conversión de zona**. No se
+introduce `America/Santiago` en ninguna superficie date-only; ese huso sigue viviendo solo en la rama
+hora-real de `format.ts`. Lo único que cambia es el FORMATO de salida (se suma el año).
+
+**Commits:** `9e25a8e` (CR-01, F-09) · `b420263` (WR-05, F-14).
 
 ---
 
