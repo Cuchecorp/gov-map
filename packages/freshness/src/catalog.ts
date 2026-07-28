@@ -502,7 +502,7 @@ export const CATALOG: FuenteConfig[] = [
     // REFUTACIÓN A2 de 118 §5 es exactamente que la columna temporal NO es uniforme entre
     // tablas: aquí NO es `creado_en`, es `fecha_captura`.
     //
-    // umbralDias 2: la cadencia es intradía L-V (`0 11,14,17,20 * * 1-5`, cuatro ventanas
+    // umbralDias 2: la cadencia es intradía L-V (`7 11,14,17,20 * * 1-5`, cuatro ventanas
     // por día hábil). Más de 2 días sin escritura implica un fin de semana largo MÁS al
     // menos una ventana hábil perdida — es decir, avería, no calendario.
     fuente: "actualidad-refresh",

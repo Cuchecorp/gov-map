@@ -338,7 +338,6 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
                 "html",
                 bytes,
               );
-              log(`ingest: Cámara ${clave} → HTML crudo en R2 (${key})`);
               // G6 (regla LOCKED 2 de CLAUDE.md — "salir temprano cuando no hay novedades"):
               // existed = 412 de `If-None-Match: *` = el crudo YA estaba en R2 con el MISMO
               // sha ⇒ el HTML no cambió ⇒ se omite la Etapa 2 (parse+upsert) de esta semana.
@@ -349,6 +348,10 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
                 log(`[skip] sin novedades — camara citaciones-semana ${clave}`);
                 break;
               }
+              // IN-03: el log de "crudo escrito" va DESPUÉS de comprobar `existed` — antes se
+              // emitía también en el caso 412 (nada escrito) y sólo después aparecía el `[skip]`,
+              // que se leía como una contradicción.
+              log(`ingest: Cámara ${clave} → HTML crudo en R2 (${key})`);
               // G5: la fila de `source_snapshot` va DESPUÉS del put con existed:false —
               // nunca se registra un snapshot cuyo objeto no se acabe de escribir (T-119-12).
               // `cacheKey`/`dateBucket` reusan la MISMA partición que la key de R2 (`clave`,
