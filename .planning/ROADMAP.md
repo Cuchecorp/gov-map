@@ -163,7 +163,20 @@ Plans:
   3. Todo patrón roto, o que apunta a una página genérica en vez del recurso específico, quedó corregido — o su limitación quedó declarada honestamente en la UI
   4. El resultado distingue "patrón malo" (defecto nuestro, se arregla) de "fuente caída / WAF" (se declara, jamás se evade)
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 115-01-PLAN.md — (w1) Universo cerrado de patrones + exclusiones con razón + runner curl-first rate-limited + robots.txt por host
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 115-02-PLAN.md — (w2) Muestra live estratificada con evidencia de rate-limit + veredicto trinario por patrón (candidatos #1 y #2 resueltos)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 115-03-PLAN.md — (w3) Linter extendido ANTES del copy + fixes con tests + re-probe acotado + veredicto de los 4 SC (deploy diferido a 125)
 
 ### Phase 116: FECHA-AUDIT — Semántica de cada fecha visible
 
