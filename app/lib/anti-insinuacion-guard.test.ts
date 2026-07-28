@@ -943,8 +943,19 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
    * aterrice en las superficies (Wave-0 LOCKED).
    *
    * El fixture es EN MEMORIA (no un archivo del repo): son los strings VERBATIM que la
-   * fase va a renderizar. La cuenta está ANCLADA (`toHaveLength(10)`): si un plan de la
-   * fase añade un idiom de fecha sin registrarlo aquí, el test muerde.
+   * fase renderiza, y CADA UNO pasa por `detectarInsinuaciones` — el detector real, el
+   * mismo que corre sobre los archivos en (1).
+   *
+   * ALCANCE HONESTO (WR-06 de `117-REVIEW.md` — corrige una afirmación falsa del JSDoc
+   * anterior): este test NO tiene propiedad de detección sobre el repo. Es un FIXTURE
+   * MANUAL: agregar copy nuevo a un componente no toca esta lista, así que el
+   * `toHaveLength` NO "muerde" solo — es un ancla de MANTENCIÓN (obliga a tocar la
+   * cuenta, y con ella a leer este comentario), no un guard automático. Quien cubre el
+   * copy REALMENTE renderizado es el test (1), que escanea los archivos de
+   * `SUPERFICIES_FECHA` con el mismo detector. Este (1d) aporta otra cosa: verifica los
+   * idioms ANTES de que aterricen (Wave-0 LOCKED) y los deja escritos en un solo lugar
+   * legible. La lista se completó con los 6 idioms que la fase introdujo y que nunca
+   * habían pasado por el detector.
    */
   it("(1d) FECHA-02: los idioms de fecha de 117 están limpios", () => {
     const IDIOMS_FECHA_117: string[] = [
@@ -958,21 +969,38 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
       "Consolidado por el Observatorio",
       "primer trámite 2021",
       "Última consulta a las fuentes",
+      // WR-06: los 6 que la fase introdujo y faltaban en el fixture.
+      "Citado el 20 jul 2026",
+      "Urgencia Suma vigente desde el 10 mar 2026",
+      "En tabla de sala de la Cámara del 15 jul 2026",
+      "Consultado por nombre del candidato; la fuente cubre hasta el 31 dic 2025",
+      "Año del primer trámite",
+      "desde 12 jun 2026",
     ];
     expect(
       IDIOMS_FECHA_117,
       "La lista de idioms de fecha de 117 cambió de tamaño: registra el idiom nuevo " +
-        "aquí (y actualiza la cuenta) para que el linter lo verifique ANTES de renderizarlo.",
-    ).toHaveLength(10);
+        "aquí (y actualiza la cuenta) para que el linter lo verifique ANTES de renderizarlo. " +
+        "Ancla de MANTENCIÓN, no guard automático — la cobertura real del copy renderizado " +
+        "la da el test (1) sobre SUPERFICIES_FECHA.",
+    ).toHaveLength(16);
 
     const offenders: string[] = [];
+    const verificados: string[] = [];
     for (const idiom of IDIOMS_FECHA_117) {
       // Se monta como copy renderizado (JSX) para pasar por el MISMO detector real.
       const fixture = `export const F = <span>${idiom}</span>;`;
       for (const term of detectarInsinuaciones(fixture)) {
         offenders.push(`"${idiom}" → "${term}"`);
       }
+      verificados.push(idiom);
     }
+    // WR-06: el valor del test está en que TODOS pasen por `detectarInsinuaciones`,
+    // no en la cuenta de la lista. Este assert fija esa propiedad explícitamente.
+    expect(
+      verificados,
+      "Algún idiom no llegó al detector (¿un `continue`/filtro colado en el bucle?).",
+    ).toEqual(IDIOMS_FECHA_117);
     expect(
       offenders,
       `Un idiom de fecha de la Phase 117 contiene vocabulario prohibido: ` +
