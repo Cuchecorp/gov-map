@@ -93,6 +93,7 @@ export function VotacionCard({ votacion }: { votacion: VotacionRow }) {
 
         <div className="mt-4">
           <ProvenanceBadge
+            densidad="lista"
             capturedAt={capturedAt}
             sourceName={sourceLabel(votacion.origen)}
             // El `votacion.enlace` de PROD suele ser el WS XML (wspublico), roto

@@ -174,6 +174,7 @@ function GrupoParlamentario({ row }: { row: CruceProyectoRow }) {
                 (frescura del rebuild del cruce, nivel señal — WR-02/F41), NO item.fecha. */}
             <span className="ml-auto">
               <ProvenanceBadge
+                densidad="lista"
                 capturedAt={new Date(row.fecha_captura)}
                 sourceName={sourceLabel("lobby")}
                 sourceUrl={item.enlace_fuente}

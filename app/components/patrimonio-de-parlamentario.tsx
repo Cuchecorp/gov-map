@@ -441,6 +441,7 @@ function VersionRow({
         {/* ProvenanceBadge por versión (obligatorio); ámbar = frescura. */}
         <span className="ml-auto">
           <ProvenanceBadge
+            densidad="lista"
             capturedAt={captured}
             sourceName={sourceLabel(version.origen)}
             sourceUrl={version.enlace}
@@ -763,6 +764,7 @@ export function DeclaracionComparacion({
       <div className="flex flex-wrap gap-3 mt-3">
         {columnas.map((c, i) => (
           <ProvenanceBadge
+            densidad="lista"
             key={`prov-${i}`}
             capturedAt={c.fecha_captura ? new Date(c.fecha_captura) : null}
             sourceName={sourceLabel(c.origen)}

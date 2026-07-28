@@ -229,6 +229,7 @@ function AporteFila({ a }: { a: AporteRow }) {
       {/* ProvenanceBadge por fila, obligatorio; ámbar = frescura, nunca juicio. */}
       <span className="ml-auto">
         <ProvenanceBadge
+          densidad="lista"
           capturedAt={captured}
           sourceName={sourceLabel(a.origen)}
           sourceUrl={a.enlace}

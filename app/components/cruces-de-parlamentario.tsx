@@ -192,6 +192,7 @@ export function CrucesView({ data }: { data: CrucesViewData }) {
                 */}
                 <span className="ml-auto">
                   <ProvenanceBadge
+                    densidad="lista"
                     capturedAt={new Date(s.fecha_captura)}
                     sourceName={sourceLabel("lobby")}
                     sourceUrl={item.enlace_fuente}

@@ -532,6 +532,7 @@ function VistaCronologica({
               {/* ProvenanceBadge por fila, obligatorio (§3.2). */}
               <span className="ml-auto">
                 <ProvenanceBadge
+                  densidad="lista"
                   capturedAt={captured}
                   sourceName={sourceLabel(a.origen)}
                   sourceUrl={a.enlace}

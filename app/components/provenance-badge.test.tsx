@@ -128,6 +128,111 @@ describe("ProvenanceBadge — limitación declarada de recurso no-humano (LINK-E
     expect(screen.queryByText(LEYENDA_RECURSO_NO_HUMANO)).not.toBeInTheDocument();
   });
 
+  // ── WR-04/WR-05: densidad de la superficie que monta el badge ─────────────────
+  //
+  // El badge se usa POR FILA en listas largas (votos, patrimonio, lobby, aportes,
+  // contratos). Con la leyenda visible, la misma cadena de 90 caracteres se renderizaba
+  // N veces —el defecto que motivó retirar el badge por evento en SC7— y el envoltorio
+  // `inline-flex flex-col` cambiaba la CAJA del badge, desalineando filas que lo colocan
+  // en celdas horizontales. `densidad="lista"` corrige ambos: cero repetición visible y
+  // cero cambio de estructura del DOM.
+
+  const URL_DATOS =
+    "https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin";
+
+  it("WR-05 (bloque): con leyenda el badge se envuelve en `inline-flex flex-col`", () => {
+    const { container } = render(
+      <ProvenanceBadge capturedAt={fresco()} sourceName="Cámara" sourceUrl={URL_DATOS} />,
+    );
+    const wrapper = container.firstElementChild as HTMLElement;
+    expect(wrapper.tagName).toBe("SPAN");
+    expect(wrapper.className).toContain("inline-flex");
+    expect(wrapper.className).toContain("flex-col");
+    // La leyenda es el segundo hijo del envoltorio (bajo el badge).
+    expect(wrapper.textContent).toContain(LEYENDA_RECURSO_NO_HUMANO);
+  });
+
+  it("WR-05 (lista): NO se envuelve — la caja del badge queda idéntica a la de un destino humano", () => {
+    const humano =
+      "https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=14309-04";
+    const { container: conDatos } = render(
+      <ProvenanceBadge
+        capturedAt={fresco()}
+        sourceName="Cámara"
+        sourceUrl={URL_DATOS}
+        densidad="lista"
+      />,
+    );
+    const cajaDatos = (conDatos.firstElementChild as HTMLElement).className;
+    cleanup();
+    const { container: conHumano } = render(
+      <ProvenanceBadge
+        capturedAt={fresco()}
+        sourceName="Senado"
+        sourceUrl={humano}
+        densidad="lista"
+      />,
+    );
+    const cajaHumana = (conHumano.firstElementChild as HTMLElement).className;
+    // MISMA caja: sin `flex-col`, sin envoltorio extra → las filas no se desalinean.
+    expect(cajaDatos).toBe(cajaHumana);
+    expect(cajaDatos).not.toContain("flex-col");
+  });
+
+  it("WR-04 (lista): la leyenda NO se repite como texto visible por fila", () => {
+    render(
+      <ul>
+        {[1, 2, 3].map((i) => (
+          <li key={i}>
+            <ProvenanceBadge
+              capturedAt={fresco()}
+              sourceName="Cámara"
+              sourceUrl={URL_DATOS}
+              densidad="lista"
+            />
+          </li>
+        ))}
+      </ul>,
+    );
+    expect(screen.queryByText(LEYENDA_RECURSO_NO_HUMANO)).not.toBeInTheDocument();
+  });
+
+  it("WR-04 (lista): la limitación sigue siendo legible — viaja en el `title` del badge", () => {
+    render(
+      <ProvenanceBadge
+        capturedAt={fresco()}
+        sourceName="Cámara"
+        sourceUrl={URL_DATOS}
+        densidad="lista"
+      />,
+    );
+    // El enlace NUNCA se quita: se declara la limitación, no se esconde el destino.
+    expect(screen.getByRole("link")).toHaveAttribute("href", URL_DATOS);
+    const badge = screen.getByText(/Actualizado/).closest("span[title]");
+    expect(badge).toHaveAttribute("title", LEYENDA_RECURSO_NO_HUMANO);
+  });
+
+  it("un destino humano NO lleva `title` en ninguna densidad (nada que declarar)", () => {
+    const humano =
+      "https://www.leylobby.gob.cl/instituciones/AA001/audiencias/2024/663021";
+    const { container } = render(
+      <ProvenanceBadge
+        capturedAt={fresco()}
+        sourceName="Lobby"
+        sourceUrl={humano}
+        densidad="lista"
+      />,
+    );
+    expect(container.querySelector("span[title]")).toBeNull();
+  });
+
+  it("el defecto de `densidad` es `bloque` (ningún call-site existente cambia de comportamiento)", () => {
+    const { container } = render(
+      <ProvenanceBadge capturedAt={fresco()} sourceName="Cámara" sourceUrl={URL_DATOS} />,
+    );
+    expect(container.textContent).toContain(LEYENDA_RECURSO_NO_HUMANO);
+  });
+
   it("`esServicioDeDatos` decide por host+path, jamás por substring suelto", () => {
     // El literal "wspublico" en el QUERY de otro host NO debe gatillar la leyenda.
     expect(

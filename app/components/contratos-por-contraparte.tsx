@@ -173,6 +173,7 @@ function ContratoFila({ c }: { c: ContratoContraparteRow }) {
       {/* ProvenanceBadge por fila, obligatorio; ámbar = frescura, nunca juicio. */}
       <span className="ml-auto">
         <ProvenanceBadge
+          densidad="lista"
           capturedAt={captured}
           sourceName={sourceLabel(c.origen)}
           sourceUrl={c.enlace}

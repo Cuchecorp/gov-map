@@ -131,6 +131,7 @@ export function VotoFichaRow({ voto }: { voto: VotoFichaRowData }) {
       )}
       <span className="ml-auto">
         <ProvenanceBadge
+          densidad="lista"
           capturedAt={voto.fecha_captura ? new Date(voto.fecha_captura) : null}
           sourceName={sourceLabel(voto.origen)}
           sourceUrl={voto.enlace ?? null}
@@ -215,6 +216,7 @@ export function VotoFichaMencionRow({ voto }: { voto: VotoFichaMencion }) {
       </span>
       <span className="ml-auto">
         <ProvenanceBadge
+          densidad="lista"
           capturedAt={voto.fecha_captura ? new Date(voto.fecha_captura) : null}
           sourceName={sourceLabel(voto.origen)}
           sourceUrl={voto.enlace ?? null}

@@ -54,6 +54,7 @@ export function AutorRow({ autor }: { autor: ProyectoAutorRow }) {
         )}
       </span>
       <ProvenanceBadge
+        densidad="lista"
         capturedAt={
           autor.fecha_captura ? new Date(autor.fecha_captura) : null
         }

@@ -542,6 +542,7 @@ function ProyectoGrupo({
                 )}
                 <span className="ml-auto">
                   <ProvenanceBadge
+                    densidad="lista"
                     capturedAt={e.fecha_captura ? new Date(e.fecha_captura) : null}
                     sourceName={sourceLabel(e.origen)}
                     sourceUrl={e.enlace ?? null}
