@@ -45,6 +45,8 @@
  *  · CR-02: `status` con `origen` real + `href` comprueba además que el origen EMITA
  *    ese href (integridad del link), no sólo que el destino responda.
  *  · WR-02: `no-404` pasó a exigir 200 (un 301/302 o un 500 ya no cuenta como sano).
+ *  · WR-03: los patrones de `ausencia` dejan de ser substring pelado sobre el HTML
+ *    completo y pasan por la maquinaria endurecida (`contienePatron`).
  * ⇒ un veredicto de esta versión puede diferir del de los `.json` guardados: es el
  * runner el que se endureció, no el sitio el que cambió.
  *
@@ -127,6 +129,39 @@ export function tieneHref(html, href) {
     if (normalizarHref(m[1]) === objetivo) return true;
   }
   return false;
+}
+
+/** ¿Algún `href` de un elemento real EMPIEZA por este prefijo? (familias `/contraparte/…`). */
+export function tieneHrefConPrefijo(html, prefijo) {
+  const objetivo = normalizarHref(prefijo);
+  for (const m of sinRuido(html).matchAll(/\shref=["']([^"']*)["']/gi)) {
+    if (normalizarHref(m[1]).startsWith(objetivo)) return true;
+  }
+  return false;
+}
+
+/**
+ * Evalúa el patrón `espera` de una entrada `tipo: "ausencia"` con la MISMA maquinaria
+ * endurecida que las anclas (WR-03 del review 114). Antes se hacía `html.includes(espera)`
+ * sobre el HTML COMPLETO — con `<script>` incluidos —, lo que producía las dos fallas
+ * simétricas que este archivo argumenta en detalle para las anclas: falso FAIL si
+ * `id="dinero"` aparecía sólo en el payload RSC serializado, y falso PASS si el markup
+ * emitía `id='dinero'` (comillas simples) o el href con otra forma.
+ *
+ * Formas soportadas del patrón, en orden:
+ *  · `id="x"`     → `tieneId` (atributo id de un elemento real).
+ *  · `href="/x/`  → prefijo de href de un elemento real.
+ *  · `/x?y=`      → prefijo de href (familia de rutas, p. ej. `/cuenta?next=`).
+ *  · cualquier otro → substring sobre el HTML sin bloques `<script>`.
+ */
+export function contienePatron(html, espera) {
+  const p = String(espera);
+  const mId = p.match(/^id=["'](.+)["']$/);
+  if (mId) return tieneId(html, mId[1]);
+  const mHref = p.match(/^href=["'](.+)$/);
+  if (mHref) return tieneHrefConPrefijo(html, mHref[1]);
+  if (p.startsWith("/")) return tieneHrefConPrefijo(html, p);
+  return sinRuido(html).includes(p);
 }
 
 function padRight(s, n) {
@@ -272,7 +307,7 @@ async function main() {
         causa = `origen HTTP ${r.status}: no se puede afirmar ausencia sin HTML servido`;
       } else if (r.html.length === 0) {
         causa = "origen HTTP 200 con cuerpo vacío: no se puede afirmar ausencia";
-      } else if (!r.html.includes(entrada.espera)) {
+      } else if (!contienePatron(r.html, entrada.espera)) {
         resultado = "PASS";
       } else {
         causa = `patrón presente aunque el inventario lo declara ausente (gate ${entrada.gate}): ${entrada.espera}`;

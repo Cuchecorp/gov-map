@@ -17,7 +17,7 @@
  * subcadena pelada (`html.includes(id)`) debe hacer FALLAR este script.
  */
 
-import { tieneId } from "./verificar-links-internos.mjs";
+import { tieneId, contienePatron } from "./verificar-links-internos.mjs";
 
 /** @type {{nombre:string, html:string, ancla:string, espera:boolean}[]} */
 const FIXTURES = [
@@ -86,6 +86,65 @@ const FIXTURES = [
   },
 ];
 
+/**
+ * Fixtures de `contienePatron` — la aserción de las entradas `tipo: "ausencia"`, que
+ * respaldan los gates MONEY y NOTIF (WR-03 del review 114). Un substring pelado sobre el
+ * HTML completo daba falso FAIL cuando `id="dinero"` aparecía sólo en el payload RSC, y
+ * falso PASS cuando el markup emitía `id='dinero'` con comillas simples.
+ *
+ * @type {{nombre:string, html:string, patron:string, espera:boolean}[]}
+ */
+const FIXTURES_PATRON = [
+  {
+    nombre: 'id="dinero" dentro de <script> NO cuenta como presencia (falso FAIL del gate MONEY)',
+    html: '<script>self.__next_f.push([1,"<section id=\\"dinero\\">"])</script>',
+    patron: 'id="dinero"',
+    espera: false,
+  },
+  {
+    nombre: "id='dinero' con comillas simples SÍ cuenta (el substring pelado lo perdía)",
+    html: "<section id='dinero'>",
+    patron: 'id="dinero"',
+    espera: true,
+  },
+  {
+    nombre: 'id="dinero" real de elemento',
+    html: '<section id="dinero" class="mt-8">',
+    patron: 'id="dinero"',
+    espera: true,
+  },
+  {
+    nombre: "id ausente (el caso PASS del gate MONEY OFF)",
+    html: '<section id="financiamiento-pendiente">',
+    patron: 'id="dinero"',
+    espera: false,
+  },
+  {
+    nombre: 'href="/contraparte/ presente como link real',
+    html: '<a href="/contraparte/c:x">x</a>',
+    patron: 'href="/contraparte/',
+    espera: true,
+  },
+  {
+    nombre: 'href="/contraparte/ sólo como texto en <script> NO cuenta',
+    html: '<script>{"url":"/contraparte/c:x"}</script>',
+    patron: 'href="/contraparte/',
+    espera: false,
+  },
+  {
+    nombre: "/cuenta?next= como prefijo de href (gate NOTIF)",
+    html: '<a href="/cuenta?next=%2Fparlamentario%2FD1165">Seguir</a>',
+    patron: "/cuenta?next=",
+    espera: true,
+  },
+  {
+    nombre: "/cuenta?next= ausente (el caso PASS del gate NOTIF OFF)",
+    html: '<a href="/cuenta">Mi cuenta</a>',
+    patron: "/cuenta?next=",
+    espera: false,
+  },
+];
+
 let fallos = 0;
 console.log("=== self-check de la aserción de ancla (tieneId) ===");
 for (const f of FIXTURES) {
@@ -96,9 +155,24 @@ for (const f of FIXTURES) {
     `  ${ok ? "OK  " : "FAIL"}  ${f.nombre} — ancla="${f.ancla}" espera=${f.espera} obtenido=${obtenido}`,
   );
 }
-console.log(`\nTotal: ${FIXTURES.length} fixtures | fallos ${fallos}`);
+
+console.log("\n=== self-check de la aserción de ausencia (contienePatron) ===");
+for (const f of FIXTURES_PATRON) {
+  const obtenido = contienePatron(f.html, f.patron);
+  const ok = obtenido === f.espera;
+  if (!ok) fallos++;
+  console.log(
+    `  ${ok ? "OK  " : "FAIL"}  ${f.nombre} — patrón=${JSON.stringify(f.patron)} espera=${f.espera} obtenido=${obtenido}`,
+  );
+}
+
+console.log(
+  `\nTotal: ${FIXTURES.length + FIXTURES_PATRON.length} fixtures | fallos ${fallos}`,
+);
 if (fallos > 0) {
-  console.error("La aserción de ancla NO muerde: no se puede confiar en ningún veredicto de ancla.");
+  console.error(
+    "Alguna aserción NO muerde: no se puede confiar en el veredicto de anclas ni en el de ausencia.",
+  );
   process.exit(1);
 }
 process.exit(0);
