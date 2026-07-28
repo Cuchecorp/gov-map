@@ -220,7 +220,11 @@ Plans:
   3. Los guards de régimen (anti-insinuación, linter de copy, negaciones LOCKED) siguen verdes tras los cambios de texto
   4. Suite de app + packages y typecheck quedan verdes con los cambios incluidos
 
-**Plans**: TBD
+**Plans**: 4 plans (3 waves)
+- [ ] 117-01-PLAN.md — Capa: linter-first + formatters (F-10, helpers F-05/F-04) + chokepoint ProvenanceBadge (F-01, F-11)
+- [ ] 117-02-PLAN.md — Carril proyecto: F-03, F-04, F-05, F-07, F-09, F-13
+- [ ] 117-03-PLAN.md — Carril parlamentario/lobby/cruces/MONEY/buscar: F-02, F-05, F-07, F-08, F-12
+- [ ] 117-04-PLAN.md — Home (F-06, F-14) + F-11 documental + 117-DISPOSICION.md + verificacion global
 **UI hint**: yes
 
 ### Phase 118: CRON-AUDIT — Veredicto por cron con evidencia
