@@ -4,6 +4,7 @@ import {
   TimelineEvent,
   hrefFuenteDeEvento,
 } from "@/components/timeline-event";
+import { fechaPlausible } from "@/lib/format";
 import {
   LEYENDA_RECURSO_NO_HUMANO,
   esServicioDeDatos,
@@ -26,23 +27,45 @@ import type { TramitacionEventoRow } from "@/lib/types";
  * `urgenciaVigente` en estado-actual-block.tsx, que también distingue retira).
  */
 
+/**
+ * F-10 residual (116-FECHAS-AUDIT §3, fix sugerido): `timeZone` EXPLÍCITA — **UTC**,
+ * NO `America/Santiago`. Sin la opción, `Intl` usaba la zona del RUNTIME y el mes/año
+ * del rótulo de período dependía de dónde corriera el proceso. UTC preserva el
+ * comportamiento correcto: las fechas de `tramitacion_evento` que son date-only
+ * DISFRAZADAS (medianoche UTC) ya traen su día publicado en la parte UTC, y convertir
+ * a Chile las correría un día (y, en un 1 de mes, un MES entero en este rótulo).
+ */
 const mesAnioFormatter = new Intl.DateTimeFormat("es-CL", {
   month: "short",
   year: "numeric",
+  timeZone: "UTC",
 });
 function mesAnio(d: Date): string {
   return mesAnioFormatter.format(d);
 }
 
 /**
- * Fecha ISO parseable → Date válida, o null. Exportada (55-04): el
+ * Fecha ISO parseable **y PLAUSIBLE** → Date, o null. Exportada (55-04): el
  * `TramitacionStepper` (capa-1) reusa ESTE helper para la omisión honesta de
- * fechas (T-55-11), sin re-derivar la heurística.
+ * fechas (T-55-11), sin re-derivar la heurística — así el guard de plausibilidad
+ * se propaga solo a capa-1 con un único cambio.
+ *
+ * F-04 (116-FECHAS-AUDIT §3): la fuente publica typos de siglo. Caso REAL de PROD:
+ * el boletín `18232-25` trae un evento fechado `2626-05-25`. Renderizar "25 may 2626"
+ * en la ficha no es un dato, es basura con apariencia de dato — y el ordenamiento por
+ * fecha lo empuja al tope como "último hito". Fuera del rango plausible ⇒ `null` ⇒
+ * OMISIÓN HONESTA, exactamente el patrón que estos componentes ya aplican a una fecha
+ * inválida (nunca un placeholder inventado, nunca "ene 1970").
+ *
+ * LÍMITE DECLARADO (audit §6, límite 7): esto filtra el RENDER, no corrige el dato.
+ * Las 2 filas corruptas de `tramitacion_evento` se reportan a la fase de ingesta;
+ * 117 no toca la base.
  */
 export function fechaValida(raw: string | null | undefined): Date | null {
   if (!raw) return null;
   const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? null : d;
+  if (Number.isNaN(d.getTime())) return null;
+  return fechaPlausible(d) ? d : null;
 }
 
 /**

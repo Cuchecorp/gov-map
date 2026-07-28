@@ -1,7 +1,7 @@
 import { CamaraChip, camaraDotColor } from "@/components/camara-chip";
 import { enlaceHumanoProyecto } from "@/components/validacion-fuente";
 import { cn, safeExternalHref } from "@/lib/utils";
-import { fechaCorta } from "@/lib/format";
+import { fechaHechoCorta, fechaPlausible } from "@/lib/format";
 import {
   LEYENDA_RECURSO_NO_HUMANO,
   esServicioDeDatos,
@@ -77,9 +77,29 @@ export function TimelineEvent({ evento }: { evento: TramitacionEventoRow }) {
 
       <div className="flex flex-wrap items-center gap-2">
         <CamaraChip camara={evento.camara} />
-        {fecha && (
-          <span className="font-mono text-sm text-muted-foreground leading-none">
-            {fechaCorta(fecha)}
+        {/*
+          F-04: blindaje LOCAL. `fecha` la construye el LLAMANTE; si no pasó por
+          `fechaValida` (timeline-view), el typo de siglo real de PROD
+          (boletín 18232-25, `2626-05-25`) llegaría al DOM. Fuera del rango plausible
+          se OMITE el `<span>` completo — jamás un placeholder inventado; el hecho
+          (tipo + descripción + fuente) sigue visible, sólo se pierde la fecha basura.
+
+          F-05: `fechaHechoCorta`, NO `fechaCorta`. La columna `tramitacion_evento.fecha`
+          mezcla DOS semánticas: filas con hora REAL del hecho (una votación a las
+          00:14 UTC ocurrió el día ANTERIOR en Chile — drift real en 27 filas) y filas
+          date-only DISFRAZADAS de medianoche UTC (44.569, donde la parte fecha UTC YA
+          ES el día publicado). Convertir todo a la zona de Chile a ciegas rompería
+          estas últimas; `fechaHechoCorta` ramifica por presencia de hora.
+
+          F-07: rótulo del hito. Aquí la fecha NO es adyacente a la descripción (vive
+          en el header junto al CamaraChip; `{evento.descripcion}` está en un `<p>`
+          aparte, más abajo), así que un separador no diría de qué es la fecha. El
+          rótulo usado abajo es el idiom ya registrado en el fixture del linter
+          anti-insinuación (Plan 01, Task 1) — no se inventa uno distinto.
+        */}
+        {fecha && fechaPlausible(fecha) && (
+          <span className="text-sm text-muted-foreground leading-none">
+            Hito del <span className="font-mono">{fechaHechoCorta(fecha)}</span>
           </span>
         )}
       </div>

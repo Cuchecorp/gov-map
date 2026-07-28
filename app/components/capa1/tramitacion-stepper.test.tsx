@@ -98,12 +98,15 @@ describe("TramitacionStepper — stepper capa-1 (hitos clave + urgencia agrupada
         boletin="16284-07"
       />,
     );
+    // F-07 (117-02): el hito rinde `{descripcion} — {fecha}` dentro del MISMO `<p>`,
+    // así que el texto DIRECTO del nodo ya no es la descripción pelada. Se asserta
+    // por coincidencia parcial: lo que importa es que el hito clave esté visible.
     expect(
-      screen.getByText("Informe de comisión de Hacienda"),
+      screen.getByText(/Informe de comisión de Hacienda/),
     ).toBeInTheDocument();
-    expect(screen.getByText("Votación en general")).toBeInTheDocument();
+    expect(screen.getByText(/Votación en general/)).toBeInTheDocument();
     expect(
-      screen.getByText("Pasa a comisión de Constitución"),
+      screen.getByText(/Pasa a comisión de Constitución/),
     ).toBeInTheDocument();
   });
 

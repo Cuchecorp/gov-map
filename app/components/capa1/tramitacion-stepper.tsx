@@ -1,4 +1,4 @@
-import { fechaCorta } from "@/lib/format";
+import { fechaHechoCorta } from "@/lib/format";
 import {
   construirItems,
   fechaValida,
@@ -93,11 +93,27 @@ function PasoEvento({
         }
       >
         {evento.descripcion}
-        {/* Omisión honesta: fecha sólo si es válida (nunca epoch/"ene 1970"). */}
+        {/*
+          Omisión honesta: fecha sólo si es válida y PLAUSIBLE — `fechaValida`
+          (timeline-view) ya incorpora el guard F-04, así que el typo de siglo real de
+          PROD (2626) no llega aquí (nunca epoch/"ene 1970", nunca año 2626).
+
+          F-07: separador `—` (U+2014). La fecha YA vive dentro del MISMO `<p>` que
+          `{evento.descripcion}`, inmediatamente después: la descripción ES el
+          sustantivo del hecho, así que el guion la rotula sin agregar copy nuevo
+          (`{descripcion} — {fecha}`).
+
+          F-05: `fechaHechoCorta`, NO `fechaCorta` — `tramitacion_evento.fecha` mezcla
+          hora real del hecho (27 filas con drift) con date-only disfrazada (44.569);
+          convertir a ciegas rompería estas últimas.
+        */}
         {d && (
-          <span className="ml-2 font-mono text-xs text-muted-foreground">
-            {fechaCorta(d)}
-          </span>
+          <>
+            {" — "}
+            <span className="font-mono text-xs text-muted-foreground">
+              {fechaHechoCorta(d)}
+            </span>
+          </>
         )}
       </p>
     </li>
@@ -190,8 +206,9 @@ export function TramitacionStepper({
           {estado.urgenciaVigente && (
             <p className="text-sm text-muted-foreground">
               Urgencia {estado.urgenciaVigente.tipo} vigente desde el{" "}
+              {/* F-05: fecha del HECHO (evento de urgencia) ⇒ `fechaHechoCorta`. */}
               <span className="font-mono">
-                {fechaCorta(estado.urgenciaVigente.desde)}
+                {fechaHechoCorta(estado.urgenciaVigente.desde)}
               </span>
               .
             </p>
