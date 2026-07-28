@@ -441,21 +441,33 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
   for (const d of res.degradaciones) log(`ingest-lobby: DEGRADA [${d.fuente}]: ${d.motivo}`);
 
   // Avance del cursor (DEBT-02, Pitfall 4 / T-74-02): SOLO en modo cursor (no override, no dry-run)
-  // y DESPUÉS de una corrida exitosa. `huboDatos = res.audiencias > 0` → una corrida que degrada
-  // (403/503 → degradaciones, audiencias===0) NO avanza el cursor (avanzarCursorPuro devuelve el
-  // mismo cursor cuando huboDatos=false, así que no se persiste un avance falso).
+  // y DESPUÉS de una corrida EXITOSA.
+  //
+  // WR-06 (119-REVIEW) — el criterio era `res.audiencias > 0`, que confundía "bloqueado" con
+  // "vacío". Una página legítimamente vacía (una institución con 3 páginas y PAGINA_MAX_DEFAULT=10)
+  // devuelve 0 audiencias ⇒ el cursor no avanzaba ⇒ la corrida semanal siguiente pedía LA MISMA
+  // página vacía, indefinidamente: el barrido histórico nunca llegaba a `anio-1`. El mismo bloqueo
+  // ocurría tras un `[skip]` del hash-check (audiencias 0 porque el crudo NO cambió — la corrida
+  // más sana posible). El propio código de agenda ya hace esta distinción (`semanasBloqueadas` vs
+  // vacío).
+  //
+  // T-74-02 se PRESERVA en su forma correcta: lo que frena el cursor es la DEGRADACIÓN REAL
+  // (403/503 → `degradaciones`, o un error de la tarea), no la ausencia de filas.
   if (usaCursor && cursorPrevio) {
-    const huboDatos = res.audiencias > 0;
-    const siguiente = avanzarCursorPuro(cursorPrevio, { huboDatos });
-    if (huboDatos) {
+    const huboDegradacion = res.degradaciones.length > 0 || res.errores.length > 0;
+    const corridaExitosa = !huboDegradacion;
+    const siguiente = avanzarCursorPuro(cursorPrevio, { corridaExitosa });
+    if (corridaExitosa) {
       await writer.avanzarCursor(siguiente);
       log(
-        `ingest-lobby: cursor avanzado → año ${siguiente.anio} pág ${siguiente.pagina}`,
+        `ingest-lobby: cursor avanzado → año ${siguiente.anio} pág ${siguiente.pagina}` +
+          (res.audiencias === 0 ? " (página sin filas — vacía ≠ bloqueada)" : ""),
       );
     } else {
       log(
-        `ingest-lobby: cursor NO avanza (sin datos: ${res.degradaciones.length} degradaciones) — ` +
-          `permanece en año ${cursorPrevio.anio} pág ${cursorPrevio.pagina}`,
+        `ingest-lobby: cursor NO avanza (degradación real: ${res.degradaciones.length} ` +
+          `degradaciones / ${res.errores.length} errores) — permanece en año ` +
+          `${cursorPrevio.anio} pág ${cursorPrevio.pagina}`,
       );
     }
   }

@@ -10,7 +10,7 @@
 // TODO aquí es PURO (sin red ni DB) para ser testeable en unidad. Regla de diseño clave
 // (Pitfall 4 / T-74-02): el avance persiste DESPUÉS de una corrida EXITOSA, y una corrida que
 // degrada (leylobby bloqueada 403/503 → `degradaciones` sin audiencias) NO avanza el cursor —
-// `avanzarCursor(..., { huboDatos: false })` devuelve el MISMO cursor sin modificar. Esto evita
+// `avanzarCursor(..., { corridaExitosa: false })` devuelve el MISMO cursor sin modificar. Esto evita
 // (a) saltarse páginas marcando cobertura falsa y (b) loops infinitos, y respeta la degradación
 // honesta de `ingest-run.ts`.
 
@@ -68,10 +68,15 @@ export const PAGINA_MAX_DEFAULT = 10;
 
 export interface AvanzarOpts {
   /**
-   * true si la corrida obtuvo datos para el recurso apuntado por el cursor. Cuando false
-   * (degradación 403/503 o histórico agotado), el cursor NO avanza (Pitfall 4 / T-74-02).
+   * true si la corrida fue EXITOSA para el recurso apuntado por el cursor — es decir, sin
+   * degradaciones (403/503) ni errores. Cuando false, el cursor NO avanza (Pitfall 4 / T-74-02).
+   *
+   * WR-06 (119-REVIEW): "exitosa" NO es lo mismo que "trajo filas". Una página legítimamente
+   * vacía, o un `[skip]` del hash-check (el crudo no cambió), son corridas exitosas y DEBEN
+   * avanzar el cursor; si no, el barrido se atasca para siempre en la primera página vacía.
+   * Lo que frena el cursor es la degradación real, no la ausencia de datos.
    */
-  huboDatos: boolean;
+  corridaExitosa: boolean;
   /** Tope de páginas por año antes de retroceder a anio-1 (default PAGINA_MAX_DEFAULT). */
   paginaMax?: number;
   /** Año mínimo del histórico; no se retrocede por debajo (default ANIO_MIN_LEYLOBBY). */
@@ -80,7 +85,7 @@ export interface AvanzarOpts {
 
 /**
  * Avanza el cursor de forma determinista e idempotente:
- *   - `huboDatos===false` → devuelve el MISMO cursor sin modificar (degradación/agotado NO avanza).
+ *   - `corridaExitosa===false` → devuelve el MISMO cursor sin modificar (degradación/agotado NO avanza).
  *   - dentro de un año, mientras `pagina < paginaMax` → `pagina+1`.
  *   - al alcanzar `paginaMax` → retrocede a `anio-1, pagina=1` (histórico hacia atrás).
  *   - al agotar el histórico (`anio<=anioMin` y `pagina>=paginaMax`) → se queda quieto (no baja de
@@ -89,7 +94,7 @@ export interface AvanzarOpts {
  * Devuelve SIEMPRE un objeto nuevo; nunca muta el cursor de entrada.
  */
 export function avanzarCursor(cursor: CursorLeylobby, opts: AvanzarOpts): CursorLeylobby {
-  if (!opts.huboDatos) {
+  if (!opts.corridaExitosa) {
     // Degradación honesta o histórico agotado: NO avanza (devuelve una copia byte-idéntica).
     return { ...cursor };
   }

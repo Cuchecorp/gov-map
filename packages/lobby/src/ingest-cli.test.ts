@@ -469,3 +469,110 @@ describe("CR-01 — main() con --from-r2 corre la Etapa 2 DESDE R2, cero fetch a
     expect(tareaDesdeR2Path("leylobby/AA001/2024/abc.json")).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// WR-06 (119-REVIEW) — el cursor exigía `audiencias > 0` para avanzar, confundiendo "bloqueado"
+// con "vacío": una página legítimamente vacía (o un `[skip]` del hash-check) dejaba la corrida
+// semanal pidiendo LA MISMA página, indefinidamente, y el barrido histórico nunca llegaba a
+// `anio-1`. Lo que debe frenar el cursor es la degradación REAL, no la ausencia de filas.
+// ---------------------------------------------------------------------------------------------
+describe("WR-06 — el cursor avanza ante ÉXITO, no ante 'trajo filas'", () => {
+  /** Conector que responde 200 con una página SIN audiencias (vacía legítima, no bloqueada). */
+  function conectorVacio(): LeylobbyConnector {
+    return {
+      async fetchAudiencias() {
+        return "<html><body><table></table></body></html>";
+      },
+      async fetchDetalle() {
+        return "<html></html>";
+      },
+      urlAudiencias: () => "https://leylobby.gob.cl/x",
+      urlDetalle: () => "https://leylobby.gob.cl/x",
+    } as unknown as LeylobbyConnector;
+  }
+
+  it("página vacía (200, 0 filas, 0 degradaciones) ⇒ el cursor AVANZA", async () => {
+    const writer = new InMemoryLobbyWriter();
+    writer.cursorEstado.set("AA001", { institucionCodigo: "AA001", anio: 2024, pagina: 3 });
+
+    const res = await main({
+      dryRun: false,
+      serviceKey: "fake-key",
+      url: "http://fake-url",
+      r2Store: null,
+      conector: conectorVacio(),
+      writer,
+      maestra: [],
+    });
+
+    expect(res.audiencias).toBe(0);
+    expect(res.degradaciones).toEqual([]);
+    expect(writer.cursorEstado.get("AA001")).toEqual({
+      institucionCodigo: "AA001",
+      anio: 2024,
+      pagina: 4,
+    });
+  });
+
+  it("dos corridas seguidas sobre páginas vacías NO se atascan (3 → 4 → 5)", async () => {
+    const writer = new InMemoryLobbyWriter();
+    writer.cursorEstado.set("AA001", { institucionCodigo: "AA001", anio: 2024, pagina: 3 });
+    const comun = {
+      dryRun: false,
+      serviceKey: "fake-key",
+      url: "http://fake-url",
+      r2Store: null,
+      conector: conectorVacio(),
+      writer,
+      maestra: [],
+    };
+
+    await main(comun);
+    expect(writer.cursorEstado.get("AA001")!.pagina).toBe(4);
+    await main(comun);
+    expect(writer.cursorEstado.get("AA001")!.pagina).toBe(5);
+  });
+
+  it("[skip] del hash-check (crudo sin cambios) ⇒ el cursor AVANZA (es la corrida más sana)", async () => {
+    const writer = new InMemoryLobbyWriter();
+    writer.cursorEstado.set("AA001", { institucionCodigo: "AA001", anio: 2024, pagina: 2 });
+
+    await main({
+      dryRun: false,
+      serviceKey: "fake-key",
+      url: "http://fake-url",
+      r2Store: {
+        async putImmutable() {
+          return { r2Path: "leylobby/AA001/2024/p2/2026-07-28/x.html", existed: true };
+        },
+      } as never,
+      conector: conectorConAudiencias(),
+      writer,
+      maestra: [],
+    });
+
+    expect(writer.cursorEstado.get("AA001")!.pagina).toBe(3);
+  });
+
+  it("degradación REAL (403) ⇒ el cursor NO avanza (T-74-02 preservada)", async () => {
+    const writer = new InMemoryLobbyWriter();
+    writer.cursorEstado.set("AA001", { institucionCodigo: "AA001", anio: 2024, pagina: 3 });
+
+    const res = await main({
+      dryRun: false,
+      serviceKey: "fake-key",
+      url: "http://fake-url",
+      r2Store: null,
+      conector: conectorBloqueado(),
+      writer,
+      maestra: [],
+    });
+
+    expect(res.degradaciones.length).toBeGreaterThan(0);
+    expect(writer.cursorEstado.get("AA001")).toEqual({
+      institucionCodigo: "AA001",
+      anio: 2024,
+      pagina: 3,
+    });
+  });
+});
