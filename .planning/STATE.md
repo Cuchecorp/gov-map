@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
-status: executing
-stopped_at: Completed 106-03-PLAN.md
-last_updated: "2026-07-28T01:16:59.719Z"
+status: verifying
+stopped_at: Completed 114-03-PLAN.md
+last_updated: "2026-07-28T01:28:49.232Z"
 last_activity: 2026-07-28
 progress:
   total_phases: 13
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 9
-  completed_plans: 8
-  percent: 8
+  completed_plans: 9
+  percent: 15
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 114 (LINK-INT — Links internos exhaustivos) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-28
 
 ### Roadmap v12.0 (Phases 113-125)
@@ -138,6 +138,9 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 ## Accumulated Context
 
 ### Decisions
+
+- 114-03: el status HTTP se decide ANTES de abrir cualquier `<Suspense>` — un `notFound()` bajo un boundary de streaming pinta la UI de not-found pero deja el status en 200 (las cabeceras ya salieron). Aplicado a `/proyecto/[boletin]`; patrón a revisar en cualquier ruta con guard de existencia bajo Suspense.
+- 114-03: SC#3 de la Phase 114 cierra como **PASS con limitación declarada** — el fix está en código con evidencia antes/después y test de respaldo, pero su observación contra el deploy real ocurre en la Phase 125 (deploy diferido, decisión LOCKED v12.0). Nunca se declara verificado sobre el deploy lo que no lo está.
 
 Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 
@@ -289,8 +292,8 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-28T01:16:59.711Z
-Stopped at: Completed 106-03-PLAN.md
+Last session: 2026-07-28T01:28:49.225Z
+Stopped at: Completed 114-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
