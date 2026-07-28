@@ -261,7 +261,12 @@ describe("/proyecto/[boletin] — ProyectoRail (7 entradas + caveat 1× + conteo
     const html = renderToStaticMarkup(await ProyectoRail({ boletin: "16284-07" }));
     expect(html).toContain("Proyecto de prueba de ley");
     expect(html).toContain("Boletín N°16284-07");
-    expect(html).toContain("3"); // conteo de votaciones
+    // WR-06 (review 114): `toContain("3")` no podía fallar — el "3" aparece en
+    // cualquier clase de Tailwind del markup (`text-xs`, `md:grid-cols-[13rem_1fr]`).
+    // La aserción se ancla al marcado REAL del contador del rail
+    // (`app/components/ficha-rail.tsx:77-81`: <span class="ml-auto …">{count}</span>),
+    // de modo que muere si el conteo desaparece o cambia de valor.
+    expect(html).toMatch(/<span class="ml-auto[^"]*">3<\/span>/);
   });
 });
 
