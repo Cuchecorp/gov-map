@@ -411,7 +411,7 @@ Plans:
 | 118. CRON-AUDIT | 3/3 | Complete    | 2026-07-28 |
 | 119. CRON-FIX | 7/7 | Complete    | 2026-07-28 |
 | 120. ESCALERA-ON | 2/2 | Complete    | 2026-07-28 |
-| 121. ESCALERA-DOC | 1/1 | Complete   | 2026-07-28 |
+| 121. ESCALERA-DOC | 1/1 | Complete    | 2026-07-28 |
 | 122. CRUCE-SQL | 0/? | Not started | - |
 | 123. SUPA-AUDIT | 0/? | Not started | - |
 | 124. SUPA-FIX | 0/? | Not started | - |
