@@ -90,6 +90,11 @@ Los otros dos conectores tienen la misma puerta de Etapa 2:
 pnpm --filter @obs/agenda exec tsx src/run-agenda-prod-cli.ts \
   --from-r2 camara/citaciones-semana/<YYYY-Www>/<sha256>.html
 
+# Crudos LEGACY de agenda (key particionada por FECHA de corrida, previos a WR-01): la fecha
+# de la key NO determina la semana del contenido, así que hay que DECLARARLA (no se deduce).
+pnpm --filter @obs/agenda exec tsx src/run-agenda-prod-cli.ts \
+  --from-r2 camara/citaciones-semana/2026-07-22/<sha256>.html --semana 2026-W30
+
 # Probidad (crudo SPARQL agregado por corrida).
 # El `ingestado_hasta` sale de la FECHA DE LA KEY: un replay del pasado NO finge frescura.
 pnpm --filter @obs/probidad exec tsx src/run-probidad-todos-cli.ts \

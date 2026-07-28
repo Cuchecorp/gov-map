@@ -138,6 +138,13 @@ export interface ReplayDesdeR2Opts {
   writer: AgendaWriter;
   /** Provider LLM: OBLIGATORIO para el replay de `camara/tabla-sala` (PDF→ítems). */
   proveedorTablaCamara?: LLMProvider;
+  /**
+   * Semana ISO (`YYYY-Www`) del contenido. OBLIGATORIA cuando la key está particionada por
+   * FECHA (crudos anteriores a WR-01, `camara/citaciones-semana/2026-07-22/<sha>.html`): esa
+   * fecha es la de la CORRIDA, no la semana del contenido, y deducirla sería FABRICAR el
+   * vínculo. Con keys particionadas por semana es opcional (y debe coincidir).
+   */
+  semana?: string;
   log?: (msg: string) => void;
 }
 
@@ -156,7 +163,10 @@ export interface ReplayDesdeR2Result {
  * construcción de URL arbitraria. Un prefijo desconocido FALLA (no se adivina el parser).
  */
 const REPLAY_KEY_RE =
-  /^camara\/(citaciones-semana|tabla-sala)\/(\d{4}-W\d{2})\/([0-9a-f]{64})\.(html|pdf)$/;
+  /^camara\/(citaciones-semana|tabla-sala)\/(\d{4}-W\d{2}|\d{4}-\d{2}-\d{2})\/([0-9a-f]{64})\.(html|pdf)$/;
+
+/** Partición por SEMANA ISO (WR-01, keys nuevas) vs por FECHA de corrida (keys legacy). */
+const PARTICION_SEMANA_RE = /^\d{4}-W\d{2}$/;
 
 /** Extensión esperada por recurso (el HTML es de citaciones; el PDF, de la tabla de sala). */
 const EXT_POR_RECURSO = { "citaciones-semana": "html", "tabla-sala": "pdf" } as const;
@@ -188,12 +198,35 @@ export async function runReplayDesdeR2(opts: ReplayDesdeR2Opts): Promise<ReplayD
     );
   }
   const recurso = m[1] as "citaciones-semana" | "tabla-sala";
-  const clave = m[2]!;
+  const particion = m[2]!;
   const shaKey = m[3]!;
   const ext = m[4]!;
   if (EXT_POR_RECURSO[recurso] !== ext) {
     throw new ReplayR2Error(
       `--from-r2: extensión .${ext} incoherente con el recurso ${recurso} (esperada .${EXT_POR_RECURSO[recurso]})`,
+    );
+  }
+  if (opts.semana != null && !PARTICION_SEMANA_RE.test(opts.semana)) {
+    throw new ReplayR2Error(`--semana inválida: ${opts.semana} (esperado YYYY-Www)`);
+  }
+  // La semana ISO del contenido: la de la key si está particionada por semana (WR-01), o la
+  // DECLARADA por el operador si la key es legacy (particionada por fecha de corrida). Nunca
+  // se deduce una de la otra: la fecha de corrida NO determina la semana del contenido.
+  let clave: string;
+  if (PARTICION_SEMANA_RE.test(particion)) {
+    if (opts.semana != null && opts.semana !== particion) {
+      throw new ReplayR2Error(
+        `--semana ${opts.semana} contradice la partición de la key (${particion})`,
+      );
+    }
+    clave = particion;
+  } else if (opts.semana != null) {
+    clave = opts.semana;
+  } else {
+    throw new ReplayR2Error(
+      `--from-r2: la key ${opts.r2Path} está particionada por FECHA de corrida (${particion}), ` +
+        `no por semana ISO: declare la semana del contenido con --semana YYYY-Www ` +
+        `(deducirla de la fecha sería fabricar el vínculo)`,
     );
   }
 

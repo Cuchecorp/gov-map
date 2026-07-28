@@ -17,11 +17,14 @@
 // Etapa 2 aislada (G7, regla LOCKED 2 de CLAUDE.md — re-ingesta SIN volver a la fuente):
 //   tsx packages/agenda/src/run-agenda-prod-cli.ts --from-r2 camara/citaciones-semana/2026-W24/<sha>.html
 //   tsx packages/agenda/src/run-agenda-prod-cli.ts --from-r2 camara/tabla-sala/2026-W24/<sha>.pdf
+// Crudos LEGACY (key particionada por fecha de corrida, previos a WR-01) exigen declarar la
+// semana del contenido — la fecha de la key NO la determina:
+//   ... --from-r2 camara/citaciones-semana/2026-07-22/<sha>.html --semana 2026-W30
 //
 // Default de rango: --desde = semana ISO actual, --hasta = actual + 2 semanas (3 semanas).
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, existsSync } from "node:fs";
+import { join, resolve, dirname } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import {
   Fetcher,
@@ -99,8 +102,28 @@ function loadEnv(root: string): Record<string, string> {
   return out;
 }
 
+/**
+ * Resuelve la RAÍZ del workspace subiendo desde `start` hasta hallar `pnpm-workspace.yaml`.
+ * `pnpm --filter <pkg> exec` pone el cwd en el directorio del PAQUETE, así que `loadEnv(cwd)`
+ * no encontraba el `.env` de la raíz (gotcha v8.1) y la corrida degradaba a "sin credenciales".
+ * Mismo patrón que run-camara-lobby-cli.ts / run-probidad-todos-cli.ts.
+ */
+function findWorkspaceRoot(start: string): string {
+  let dir = resolve(start);
+  for (;;) {
+    if (existsSync(resolve(dir, "pnpm-workspace.yaml"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) {
+      throw new Error(
+        `findWorkspaceRoot: no se encontró pnpm-workspace.yaml subiendo desde ${start}`,
+      );
+    }
+    dir = parent;
+  }
+}
+
 async function main(): Promise<void> {
-  const root = process.cwd();
+  const root = findWorkspaceRoot(process.cwd());
   const dryRun = process.argv.includes("--dry-run");
   const soloSenado = process.argv.includes("--solo-senado");
   const env = loadEnv(root);
@@ -143,6 +166,9 @@ async function main(): Promise<void> {
       r2: r2Replay,
       r2Path: fromR2,
       writer: writerReplay,
+      // Keys legacy (particionadas por fecha de corrida) exigen que el operador DECLARE la
+      // semana del contenido: deducirla de la fecha sería fabricar el vínculo.
+      ...(flagValue("--semana") ? { semana: flagValue("--semana")! } : {}),
       // La tabla de sala (PDF) exige provider; sin key el replay de ese recurso falla LOUD.
       ...(env.DEEPSEEK_API_KEY
         ? { proveedorTablaCamara: new DeepSeekProvider({ apiKey: env.DEEPSEEK_API_KEY }) }

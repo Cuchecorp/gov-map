@@ -736,6 +736,40 @@ describe("runReplayDesdeR2 — Etapa 2 desde el crudo (G7)", () => {
     expect(writer.citaciones.size).toBe(0);
   });
 
+  it("(4d) key legacy particionada por FECHA: exige --semana, NUNCA la deduce", async () => {
+    const bytes = new TextEncoder().encode(camaraHtml);
+    const sha = await sha256Hex(bytes);
+    const keyLegacy = `camara/citaciones-semana/2026-07-22/${sha}.html`;
+    const writer = new InMemoryAgendaWriter();
+    const { source } = r2Fake(bytes);
+
+    // Sin --semana: falla LOUD explicando que la fecha es la de la CORRIDA.
+    await expect(
+      runReplayDesdeR2({ r2: source, r2Path: keyLegacy, writer }),
+    ).rejects.toBeInstanceOf(ReplayR2Error);
+    expect(writer.citaciones.size).toBe(0);
+
+    // Con la semana DECLARADA por el operador: procede y usa esa semana.
+    const res = await runReplayDesdeR2({
+      r2: source,
+      r2Path: keyLegacy,
+      writer,
+      semana: "2026-W30",
+    });
+    expect(res.clave).toBe("2026-W30");
+    expect(res.camaraCitaciones).toBeGreaterThanOrEqual(1);
+
+    // Una --semana que contradice una key particionada por semana ⇒ error (no se elige a dedo).
+    await expect(
+      runReplayDesdeR2({
+        r2: source,
+        r2Path: `camara/citaciones-semana/2026-W24/${sha}.html`,
+        writer,
+        semana: "2026-W30",
+      }),
+    ).rejects.toBeInstanceOf(ReplayR2Error);
+  });
+
   it("(5) `--from-r2` sin valor ⇒ error de flags antes de cualquier red/DB", () => {
     expect(() => parseFromR2Arg(["node", "cli", "--from-r2"])).toThrow(ReplayR2Error);
     expect(parseFromR2Arg(["node", "cli"])).toBeNull();
