@@ -1,6 +1,9 @@
 import { createServerSupabase } from "@/lib/supabase";
-import { fechaCorta, relativeTimeEs } from "@/lib/format";
-import { diaCalendarioCitacion } from "@/lib/dia-calendario";
+import { fechaCorta, fechaHechoCorta, fechaPlausible } from "@/lib/format";
+import {
+  badgeFechaCitacion,
+  diaCalendarioCitacion,
+} from "@/lib/dia-calendario";
 import { sourceLabel } from "@/lib/types";
 import type { ProyectoRow, TramitacionEventoRow } from "@/lib/types";
 import { isoWeekOf, semanaIsoKey } from "@/lib/week-utils";
@@ -84,11 +87,21 @@ export interface TablaSalaCruda {
   fecha: string | null;
 }
 
-/** Fecha ISO parseable → Date válida, o null (nunca "Invalid Date"). */
+/**
+ * Fecha ISO parseable **y PLAUSIBLE** → Date, o null (nunca "Invalid Date").
+ *
+ * F-04 (116-FECHAS-AUDIT §3): la fuente publica typos de siglo — el boletín
+ * `18232-25` trae un evento fechado `2626-05-25`. Como el "Último hito" se elige por
+ * fecha MÁXIMA, esa fila corrupta se apropiaba de la línea y la ficha afirmaba un
+ * hito del año 2626. Fuera del rango plausible ⇒ `null` ⇒ la fila se descarta y el
+ * bloque cae al hito plausible más reciente (o se omite): la misma omisión honesta
+ * que este archivo ya aplica a la fecha inválida, sin ningún filtro global de datos.
+ */
 function fechaValida(raw: string | null | undefined): Date | null {
   if (!raw) return null;
   const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? null : d;
+  if (Number.isNaN(d.getTime())) return null;
+  return fechaPlausible(d) ? d : null;
 }
 
 /**
@@ -393,8 +406,14 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
         {etapaLinea && <p>{etapaLinea}</p>}
         {ultimoHito && (
           <p>
+            {/* F-05: fecha del HECHO (`tramitacion_evento.fecha`) ⇒ `fechaHechoCorta`,
+                que ramifica por presencia de hora real. `fechaCorta` rendía un día
+                después las filas con hora (una votación de las 00:14 UTC ocurrió el
+                día ANTERIOR en Chile). */}
             Último hito: {ultimoHito.descripcion} —{" "}
-            <span className="font-mono">{fechaCorta(ultimoHito.fecha)}</span>
+            <span className="font-mono">
+              {fechaHechoCorta(ultimoHito.fecha)}
+            </span>
           </p>
         )}
         {/*
@@ -408,15 +427,22 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
           <p>
             {urgenciaEstado.kind === "vigente" ? (
               <>
+                {/*
+                  F-05: fecha del HECHO (evento de urgencia) ⇒ `fechaHechoCorta`.
+
+                  F-13: se ELIMINÓ el paréntesis con el tiempo relativo. Ese helper
+                  existe para el reloj de SCRAPING (su parámetro se llama
+                  `capturedAt`) y a ≥7 días degrada a la fecha absoluta: el
+                  bloque terminaba mostrando DOS VECES la misma fecha ("vigente desde
+                  el 22 jul 2026 (22 jul 2026)"), que es el caso normal de una
+                  urgencia. Aplicado a una fecha del hecho, además, insinuaba recencia
+                  de dato donde sólo hay antigüedad del hecho.
+                */}
                 Urgencia {urgenciaEstado.tipo} vigente desde el{" "}
                 <span className="font-mono">
-                  {fechaCorta(urgenciaEstado.desde)}
-                </span>{" "}
-                (
-                <span className="font-mono">
-                  {relativeTimeEs(urgenciaEstado.desde)}
+                  {fechaHechoCorta(urgenciaEstado.desde)}
                 </span>
-                ).
+                .
               </>
             ) : (
               <>Sin urgencia vigente.</>
@@ -424,11 +450,24 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
             {urgenciaFuente && (
               <span className="text-sm text-muted-foreground">
                 {" "}
+                {/*
+                  F-03 (matiz): el idiom `según {fuente} al {fecha}` es el
+                  CONTRAEJEMPLO LIMPIO del audit y NO se toca. `fechaCorta` es aquí lo
+                  CORRECTO y debe sobrevivir a cualquier diff: `fecha_captura` es el
+                  reloj de nuestro scraping y `fechaCorta` quedó con `timeZone:"UTC"`
+                  tras el Plan 01. JAMÁS `fechaHechoCorta` (su rama de hora real
+                  formatea en la zona de Chile y correría el día en silencio).
+
+                  Lo ÚNICO que se suma es el calificador de agregación: el valor viene
+                  de un `max(fecha_captura)` sobre TODOS los eventos, así que un solo
+                  evento re-scrapeado hoy hacía que la línea afirmara frescura del set
+                  completo.
+                */}
                 según {sourceLabel(urgenciaFuente.origen)} al{" "}
                 <span className="font-mono">
                   {fechaCorta(urgenciaFuente.fechaCaptura)}
-                </span>
-                .
+                </span>{" "}
+                (evento más reciente).
               </span>
             )}
           </p>
@@ -440,10 +479,24 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
         */}
         {citacionVigente && (
           <p>
-            Citado en {citacionVigente.comision} el{" "}
-            <span className="font-mono">
-              {fechaCorta(citacionVigente.fecha)}
-            </span>
+            {/*
+              F-09: `citacion.fecha` es DATE-ONLY a medianoche UTC — su día publicado
+              es la parte fecha UTC. Se rinde con `badgeFechaCitacion`, que delega en
+              `diaCalendarioCitacion` (el mismo helper que este archivo YA usa para
+              decidir vigencia en `citacionVigente`/`citacionesPasadas`). Es la
+              coherencia que el JSDoc de `DIA_CALENDARIO_CHILE_HOY` declaraba y que el
+              render no cumplía: `fechaCorta` es para timestamps, y aquí no hay uno.
+              `null` (fecha impresentable) ⇒ se omite la fecha, nunca se inventa.
+            */}
+            Citado en {citacionVigente.comision}
+            {badgeFechaCitacion(citacionVigente.fecha) && (
+              <>
+                {" el "}
+                <span className="font-mono">
+                  {badgeFechaCitacion(citacionVigente.fecha)}
+                </span>
+              </>
+            )}
             .
           </p>
         )}
@@ -456,8 +509,9 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
         {citacionesPasadas &&
           citacionesPasadas.map((c, i) => (
             <p key={`pasada-${i}`}>
+              {/* F-09: date-only ⇒ `badgeFechaCitacion` (ver comentario de arriba). */}
               Citado el{" "}
-              <span className="font-mono">{fechaCorta(c.fecha)}</span> en{" "}
+              <span className="font-mono">{badgeFechaCitacion(c.fecha)}</span> en{" "}
               {c.comision}{" "}
               <span className="text-sm text-muted-foreground">
                 (sesión pasada)
@@ -471,12 +525,19 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
         */}
         {enTablaSala && enTablaSala.length === 1 && (
           <p>
+            {/* F-09: `sesion_sala.fecha` es date-only-medianoche-UTC ⇒
+                `badgeFechaCitacion`. El aria-label usa EXACTAMENTE el mismo helper:
+                el nombre accesible es el canal ÚNICO de la fecha para quien usa
+                lector de pantalla, y con `fechaCorta` decía un día distinto del
+                visible. */}
             En tabla de sala de la {camaraNombre(enTablaSala[0].camara)} del{" "}
-            <span className="font-mono">{fechaCorta(enTablaSala[0].fecha)}</span>{" "}
+            <span className="font-mono">
+              {badgeFechaCitacion(enTablaSala[0].fecha)}
+            </span>{" "}
             <a
               href={`/agenda?semana=${enTablaSala[0].semanaIso}`}
               className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label={`En tabla de sala de la ${camaraNombre(enTablaSala[0].camara)} del ${fechaCorta(enTablaSala[0].fecha)} — ver en la agenda`}
+              aria-label={`En tabla de sala de la ${camaraNombre(enTablaSala[0].camara)} del ${badgeFechaCitacion(enTablaSala[0].fecha)} — ver en la agenda`}
             >
               ver en la agenda
             </a>
@@ -491,10 +552,12 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
                 <a
                   href={`/agenda?semana=${s.semanaIso}`}
                   className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={`En tabla de sala de la ${camaraNombre(s.camara)} del ${fechaCorta(s.fecha)} — ver en la agenda`}
+                  aria-label={`En tabla de sala de la ${camaraNombre(s.camara)} del ${badgeFechaCitacion(s.fecha)} — ver en la agenda`}
                 >
+                  {/* F-09: date-only ⇒ `badgeFechaCitacion`, texto y aria-label con
+                      el MISMO día publicado. */}
                   {camaraNombre(s.camara)},{" "}
-                  <span className="font-mono">{fechaCorta(s.fecha)}</span>
+                  <span className="font-mono">{badgeFechaCitacion(s.fecha)}</span>
                 </a>
               </span>
             ))}
