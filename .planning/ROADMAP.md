@@ -281,7 +281,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 119-02-PLAN.md — (w2) G3 cobertura de frescura: actualidad-refresh + senal pg_cron + huecos declarados
-- [ ] 119-04-PLAN.md — (w2) G5 SnapshotWriter en agenda, identity y lobby-leylobby (source_snapshot 2 -> 5 fuentes)
+- [x] 119-04-PLAN.md — (w2) G5 SnapshotWriter en agenda, identity y lobby-leylobby (source_snapshot 2 -> 5 fuentes)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -395,7 +395,7 @@ Plans:
 | 116. FECHA-AUDIT | 4/4 | Complete    | 2026-07-28 |
 | 117. FECHA-FIX | 4/4 | Complete    | 2026-07-28 |
 | 118. CRON-AUDIT | 3/3 | Complete    | 2026-07-28 |
-| 119. CRON-FIX | 3/7 | In Progress|  |
+| 119. CRON-FIX | 4/7 | In Progress|  |
 | 120. ESCALERA-ON | 0/? | Not started | - |
 | 121. ESCALERA-DOC | 0/? | Not started | - |
 | 122. CRUCE-SQL | 0/? | Not started | - |
