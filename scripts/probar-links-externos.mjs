@@ -88,15 +88,12 @@ export const ROBOTS_ARTEFACTO = join(
  * (o viceversa) es un DEFECTO. Orden: agrupado por host, estable.
  */
 export const CASOS = [
-  // ── www.camara.cl ──────────────────────────────────────────────────────────────
-  { id: "P-02-c01", patron: "P-02 buildCamaraUrl", host: "www.camara.cl", url: "https://www.camara.cl/legislacion/ProyectosDeLey/tramitacion.aspx?prmID=11502&prmBOLETIN=10986-24", espera: "ficha humana de tramitacion del boletin 10986-24" },
-  { id: "P-05-c01", patron: "P-05 arista.enlace", host: "www.camara.cl", url: "https://www.camara.cl/transparencia/listadodeaudiencias.aspx", espera: "listado de audiencias (endpoint generico)" },
-  { id: "P-06-c01", patron: "P-06 citacion.enlace", host: "www.camara.cl", url: "https://www.camara.cl/legislacion/comisiones/citaciones_semana.aspx", espera: "citaciones de la semana vigente" },
-  { id: "P-08-c01", patron: "P-08 comision.enlace", host: "www.camara.cl", url: "https://www.camara.cl/legislacion/comisiones/comisiones_permanentes.aspx", espera: "listado de comisiones permanentes" },
-  { id: "P-09-c01", patron: "P-09 comision_membresia.enlace", host: "www.camara.cl", url: "https://www.camara.cl/legislacion/comisiones/comisiones_permanentes.aspx", espera: "mismo endpoint que P-08 (comparten valor almacenado)" },
-  { id: "P-10-c01", patron: "P-10 cruce_senal.enlace", host: "www.camara.cl", url: "https://www.camara.cl/transparencia/listadodeaudiencias.aspx", espera: "mismo endpoint que P-05 (gate CRUCES)" },
-  { id: "P-12-c01", patron: "P-12 lobby_audiencia.enlace", host: "www.camara.cl", url: "https://www.camara.cl/transparencia/listadodeaudiencias.aspx", espera: "mismo endpoint que P-05" },
-  { id: "P-21-c01", patron: "P-21 sesion_sala.enlace", host: "www.camara.cl", url: "https://www.camara.cl/verDoc.aspx?prmId=0&prmTipo=TABLASEMANAL", espera: "PDF de la tabla de sala de la semana vigente" },
+  // ── www.camara.cl — RETIRADO por robots ────────────────────────────────────────
+  // `www.camara.cl/robots.txt` cierra con un grupo `User-agent: *` cuya unica directiva es
+  // `Disallow: /` (evidencia verbatim en 115-ROBOTS.txt §1). Los 8 casos de este host quedan
+  // RETIRADOS del manifiesto: P-02-c01, P-05-c01, P-06-c01, P-08-c01, P-09-c01, P-10-c01,
+  // P-12-c01, P-21-c01. Sus patrones se validan SOLO por construccion, sin probe. No es
+  // "fuente caida": es respeto al protocolo de exclusion.
   // ── opendata.camara.cl ─────────────────────────────────────────────────────────
   { id: "P-03-c02", patron: "P-03 enlaceHumanoProyecto rama-verbatim", host: "opendata.camara.cl", url: "https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin", espera: "web service XML sin parametro (no es pagina humana)" },
   { id: "P-15-c01", patron: "P-15 parlamentario.enlace", host: "opendata.camara.cl", url: "https://opendata.camara.cl/camaradiputados/WServices/WSDiputado.asmx/retornarDiputadosPeriodoActual", espera: "web service XML del padron de diputados" },

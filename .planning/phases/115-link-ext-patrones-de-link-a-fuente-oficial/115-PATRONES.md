@@ -300,37 +300,44 @@ recorre. Ids en esquema LOCKED `P-NN-cNN`.
 
 | id | host | url del caso | patrón | qué se espera del recurso | robots |
 |----|------|--------------|--------|---------------------------|--------|
-| P-02-c01 | www.camara.cl | `https://www.camara.cl/legislacion/ProyectosDeLey/tramitacion.aspx?prmID=11502&prmBOLETIN=10986-24` | P-02 builder Cámara | ficha humana de tramitación del boletín 10986-24 | pendiente-Task-3 |
-| P-05-c01 | www.camara.cl | `https://www.camara.cl/transparencia/listadodeaudiencias.aspx` | P-05 `arista.enlace` | listado de audiencias (endpoint genérico, no deep-link) | pendiente-Task-3 |
-| P-06-c01 | www.camara.cl | `https://www.camara.cl/legislacion/comisiones/citaciones_semana.aspx` | P-06 `citacion.enlace` | citaciones de la semana vigente | pendiente-Task-3 |
-| P-08-c01 | www.camara.cl | `https://www.camara.cl/legislacion/comisiones/comisiones_permanentes.aspx` | P-08 `comision.enlace` | listado de comisiones permanentes | pendiente-Task-3 |
-| P-09-c01 | www.camara.cl | `https://www.camara.cl/legislacion/comisiones/comisiones_permanentes.aspx` | P-09 `comision_membresia.enlace` | mismo endpoint que P-08 (comparten valor almacenado) | pendiente-Task-3 |
-| P-10-c01 | www.camara.cl | `https://www.camara.cl/transparencia/listadodeaudiencias.aspx` | P-10 `cruce_senal.enlace` | mismo endpoint que P-05 (gate CRUCES) | pendiente-Task-3 |
-| P-12-c01 | www.camara.cl | `https://www.camara.cl/transparencia/listadodeaudiencias.aspx` | P-12 `lobby_audiencia.enlace` | mismo endpoint que P-05 | pendiente-Task-3 |
-| P-21-c01 | www.camara.cl | `https://www.camara.cl/verDoc.aspx?prmId=0&prmTipo=TABLASEMANAL` | P-21 `sesion_sala.enlace` | PDF de la tabla de sala de la semana vigente | pendiente-Task-3 |
-| P-03-c02 | opendata.camara.cl | `https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin` | P-03 rama-verbatim | web service SOAP/XML sin parámetro (no es página humana) | pendiente-Task-3 |
-| P-15-c01 | opendata.camara.cl | `https://opendata.camara.cl/camaradiputados/WServices/WSDiputado.asmx/retornarDiputadosPeriodoActual` | P-15 `parlamentario.enlace` | web service XML del padrón de diputados | pendiente-Task-3 |
-| P-18-c01 | opendata.camara.cl | `https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin` | P-18 `proyecto.enlace` verbatim | mismo web service que P-03-c02 | pendiente-Task-3 |
-| P-23-c01 | opendata.camara.cl | `https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin` | P-23 `tramitacion_evento.enlace` | mismo web service | pendiente-Task-3 |
-| P-25-c01 | opendata.camara.cl | `https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin` | P-25 `votacion.enlace` verbatim | mismo web service | pendiente-Task-3 |
-| P-01-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=10986-24` | P-01 builder Senado | ficha humana de tramitación del boletín | pendiente-Task-3 |
-| P-03-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=14309-04` | P-03 rama-rewrite | ficha humana del Sujeto C | pendiente-Task-3 |
-| P-16-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/wspublico/senadores_vigentes.php` | P-16 `parlamentario.enlace` | XML crudo del padrón de senadores (no página humana) | pendiente-Task-3 |
-| P-17-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=9301-14` | P-17 `proyecto.enlace` post-rewrite | ficha humana del boletín 9301-14 | pendiente-Task-3 |
-| P-19-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=10986-24` | P-19 `proyecto_autor.enlace` post-rewrite | mismo destino que P-01-c01 (el rewrite converge) | pendiente-Task-3 |
-| P-24-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/wspublico/votaciones.php` | P-24 `tramitacion_evento.enlace` sin rewrite | XML crudo de votaciones (candidato de §3.3.6 punto 4) | pendiente-Task-3 |
-| P-26-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=18384-08` | P-26 `votacion.enlace` post-rewrite | ficha humana del boletín 18384-08 | pendiente-Task-3 |
-| P-27-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/wspublico/tramitacion.php` | P-27 `proyecto.enlace` CRUDO en `/buscar` | XML crudo sin parámetro — **candidato #1** de la fase | pendiente-Task-3 |
-| P-22-c01 | www.senado.cl | `http://www.senado.cl/appsenado/index.php?mo=tramitacion&ac=getDocto&iddocto=11240&tipodoc=ofic` | P-22 `tramitacion_evento.enlace` | documento de tramitación (oficio); esquema `http:` | pendiente-Task-3 |
-| P-07-c01 | web-back.senado.cl | `https://web-back.senado.cl/api/commissions_citations?limit=100` | P-07 `citacion.enlace` | API JSON de citaciones (no página humana) | pendiente-Task-3 |
-| P-20-c01 | web-back.senado.cl | `https://web-back.senado.cl/api/weekly_table?limit=100` | P-20 `sesion_sala.enlace` | API JSON de la tabla semanal | pendiente-Task-3 |
-| P-13-c01 | www.leylobby.gob.cl | `https://www.leylobby.gob.cl/instituciones/AA001/audiencias/2024/663021` | P-13 `lobby_audiencia.enlace` | ficha humana de la audiencia (deep-link real) | pendiente-Task-3 |
-| P-14-c01 | www.leylobby.gob.cl | `https://www.leylobby.gob.cl/instituciones/AA001/audiencias/2024/663021/728817` | P-14 `lobby_audiencia.enlace_detalle` | detalle humano de la audiencia (deep-link real) | pendiente-Task-3 |
-| P-11-c01 | datos.cplt.cl | `https://datos.cplt.cl/sparql?query=alessandri%20vergara` | P-11 `declaracion*.enlace` (7 tablas) | endpoint SPARQL con query — no página humana de declaración | pendiente-Task-3 |
+| P-02-c01 | www.camara.cl | `https://www.camara.cl/legislacion/ProyectosDeLey/tramitacion.aspx?prmID=11502&prmBOLETIN=10986-24` | P-02 builder Cámara | ficha humana de tramitación del boletín 10986-24 | retirado por Disallow: / |
+| P-05-c01 | www.camara.cl | `https://www.camara.cl/transparencia/listadodeaudiencias.aspx` | P-05 `arista.enlace` | listado de audiencias (endpoint genérico, no deep-link) | retirado por Disallow: / |
+| P-06-c01 | www.camara.cl | `https://www.camara.cl/legislacion/comisiones/citaciones_semana.aspx` | P-06 `citacion.enlace` | citaciones de la semana vigente | retirado por Disallow: / |
+| P-08-c01 | www.camara.cl | `https://www.camara.cl/legislacion/comisiones/comisiones_permanentes.aspx` | P-08 `comision.enlace` | listado de comisiones permanentes | retirado por Disallow: / |
+| P-09-c01 | www.camara.cl | `https://www.camara.cl/legislacion/comisiones/comisiones_permanentes.aspx` | P-09 `comision_membresia.enlace` | mismo endpoint que P-08 (comparten valor almacenado) | retirado por Disallow: / |
+| P-10-c01 | www.camara.cl | `https://www.camara.cl/transparencia/listadodeaudiencias.aspx` | P-10 `cruce_senal.enlace` | mismo endpoint que P-05 (gate CRUCES) | retirado por Disallow: / |
+| P-12-c01 | www.camara.cl | `https://www.camara.cl/transparencia/listadodeaudiencias.aspx` | P-12 `lobby_audiencia.enlace` | mismo endpoint que P-05 | retirado por Disallow: / |
+| P-21-c01 | www.camara.cl | `https://www.camara.cl/verDoc.aspx?prmId=0&prmTipo=TABLASEMANAL` | P-21 `sesion_sala.enlace` | PDF de la tabla de sala de la semana vigente | retirado por Disallow: / |
+| P-03-c02 | opendata.camara.cl | `https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin` | P-03 rama-verbatim | web service SOAP/XML sin parámetro (no es página humana) | permitido |
+| P-15-c01 | opendata.camara.cl | `https://opendata.camara.cl/camaradiputados/WServices/WSDiputado.asmx/retornarDiputadosPeriodoActual` | P-15 `parlamentario.enlace` | web service XML del padrón de diputados | permitido |
+| P-18-c01 | opendata.camara.cl | `https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin` | P-18 `proyecto.enlace` verbatim | mismo web service que P-03-c02 | permitido |
+| P-23-c01 | opendata.camara.cl | `https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin` | P-23 `tramitacion_evento.enlace` | mismo web service | permitido |
+| P-25-c01 | opendata.camara.cl | `https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin` | P-25 `votacion.enlace` verbatim | mismo web service | permitido |
+| P-01-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=10986-24` | P-01 builder Senado | ficha humana de tramitación del boletín | permitido |
+| P-03-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=14309-04` | P-03 rama-rewrite | ficha humana del Sujeto C | permitido |
+| P-16-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/wspublico/senadores_vigentes.php` | P-16 `parlamentario.enlace` | XML crudo del padrón de senadores (no página humana) | permitido |
+| P-17-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=9301-14` | P-17 `proyecto.enlace` post-rewrite | ficha humana del boletín 9301-14 | permitido |
+| P-19-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=10986-24` | P-19 `proyecto_autor.enlace` post-rewrite | mismo destino que P-01-c01 (el rewrite converge) | permitido |
+| P-24-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/wspublico/votaciones.php` | P-24 `tramitacion_evento.enlace` sin rewrite | XML crudo de votaciones (candidato de §3.3.6 punto 4) | permitido |
+| P-26-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=18384-08` | P-26 `votacion.enlace` post-rewrite | ficha humana del boletín 18384-08 | permitido |
+| P-27-c01 | tramitacion.senado.cl | `https://tramitacion.senado.cl/wspublico/tramitacion.php` | P-27 `proyecto.enlace` CRUDO en `/buscar` | XML crudo sin parámetro — **candidato #1** de la fase | permitido |
+| P-22-c01 | www.senado.cl | `http://www.senado.cl/appsenado/index.php?mo=tramitacion&ac=getDocto&iddocto=11240&tipodoc=ofic` | P-22 `tramitacion_evento.enlace` | documento de tramitación (oficio); esquema `http:` | permitido |
+| P-07-c01 | web-back.senado.cl | `https://web-back.senado.cl/api/commissions_citations?limit=100` | P-07 `citacion.enlace` | API JSON de citaciones (no página humana) | permitido |
+| P-20-c01 | web-back.senado.cl | `https://web-back.senado.cl/api/weekly_table?limit=100` | P-20 `sesion_sala.enlace` | API JSON de la tabla semanal | permitido |
+| P-13-c01 | www.leylobby.gob.cl | `https://www.leylobby.gob.cl/instituciones/AA001/audiencias/2024/663021` | P-13 `lobby_audiencia.enlace` | ficha humana de la audiencia (deep-link real) | permitido |
+| P-14-c01 | www.leylobby.gob.cl | `https://www.leylobby.gob.cl/instituciones/AA001/audiencias/2024/663021/728817` | P-14 `lobby_audiencia.enlace_detalle` | detalle humano de la audiencia (deep-link real) | permitido |
+| P-11-c01 | datos.cplt.cl | `https://datos.cplt.cl/sparql?query=alessandri%20vergara` | P-11 `declaracion*.enlace` (7 tablas) | endpoint SPARQL con query — no página humana de declaración | permitido |
+
+**Retiro por robots (Task 3, evidencia en `115-ROBOTS.txt`).** `www.camara.cl/robots.txt` cierra con
+un grupo `User-agent: *` cuya única directiva es `Disallow: /`. Los **8** casos de ese host quedan
+**retirados** del manifiesto (`P-02-c01`, `P-05-c01`, `P-06-c01`, `P-08-c01`, `P-09-c01`, `P-10-c01`,
+`P-12-c01`, `P-21-c01`) y sus patrones se validan **sólo por construcción**, sin probe. No es "fuente
+caída": es respeto. Con ello el manifiesto vigente queda en **19 casos sobre 6 hosts** — `www.camara.cl`
+sale de la muestra live sin salir del universo de §1.
 
 **P-04 no tiene caso** en este manifiesto y su ausencia **no es una omisión**: `partidoLegible` no
 emite href, luego no hay recurso que pedir. Se valida sólo por construcción (invariante "CERO URI en
 el DOM"), sin probe.
 
-CASOS_MANIFIESTO: 27
-HOSTS_MANIFIESTO: 7
+CASOS_MANIFIESTO: 19
+HOSTS_MANIFIESTO: 6

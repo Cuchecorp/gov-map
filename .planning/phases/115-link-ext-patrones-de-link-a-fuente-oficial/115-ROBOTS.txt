@@ -1,0 +1,348 @@
+================================================================================
+115-ROBOTS.txt — protocolo de exclusion de cada host emitido por el sitio
+Phase 115 (LINK-03) · Plan 01 · Task 3
+================================================================================
+
+Corrida: 2026-07-28T04:00:09Z  (modo --robots del runner de la fase)
+USER_AGENT = "ObservatorioCongreso360/1.0 (+https://observatorio-congreso.thevalis.workers.dev; contacto: contacto@observatorio-congreso)"
+DELAY_MS   = 2500 (secuencial, un request por host, sin rafagas)
+
+Comando de la corrida (7 hosts distintos del manifiesto de 115-PATRONES.md §4):
+
+    node scripts/probar-links-externos.mjs --robots --out "$(node -p 'require("os").tmpdir()')/115-robots-run"
+
+Este artefacto se produjo ANTES de pedir cualquier URL de caso. Ningun recurso de la
+muestra fue solicitado hasta que este archivo existio (el runner lo impone por codigo:
+el modo por defecto falla con exit 1 si 115-ROBOTS.txt no existe).
+
+`datos.bcn.cl` NO aparece aqui y su ausencia es deliberada: es el octavo host de
+§3.3.2 del inventario, pero el sitio NO lo emite (P-04 `partidoLegible` desactiva los
+URIs BCN, invariante "CERO URI en el DOM"). No hay recurso que pedir, luego no hay
+robots que consultar.
+
+Los cuerpos completos de los dos robots.txt con directivas reales (www.camara.cl y
+web-back.senado.cl) se recuperaron con el mismo User-Agent, uno por vez y espaciados
+3 s, porque el runner trunca el cuerpo a 8 KiB / 300 caracteres de snippet:
+
+    curl --silent --show-error --location --max-time 20 --max-filesize 200000 \
+         --user-agent "$UA" https://www.camara.cl/robots.txt
+    curl --silent --show-error --location --max-time 20 --max-filesize 200000 \
+         --user-agent "$UA" https://web-back.senado.cl/robots.txt
+
+================================================================================
+1. www.camara.cl
+================================================================================
+
+comando   : GET https://www.camara.cl/robots.txt (curl, UA de la fase)
+http_code : 200
+url_effect: https://www.camara.cl/robots.txt
+content   : text/plain; charset=utf-8
+
+cuerpo (verbatim):
+--------------------------------------------------------------------------------
+# As a condition of accessing this website, you agree to abide by the following
+# content signals:
+
+# (a)  If a Content-Signal = yes, you may collect content for the corresponding
+#      use.
+# (b)  If a Content-Signal = no, you may not collect content for the
+#      corresponding use.
+# (c)  If the website operator does not include a Content-Signal for a
+#      corresponding use, the website operator neither grants nor restricts
+#      permission via Content-Signal with respect to the corresponding use.
+
+# The content signals and their meanings are:
+
+# search:   building a search index and providing search results (e.g., returning
+#           hyperlinks and short excerpts from your website's contents). Search does not
+#           include providing AI-generated search summaries.
+# ai-input: inputting content into one or more AI models (e.g., retrieval
+#           augmented generation, grounding, or other real-time taking of content for
+#           generative AI search answers).
+# ai-train: training or fine-tuning AI models.
+# use:      how AI systems may consume the content (immediate, reference, or full).
+
+# ANY RESTRICTIONS EXPRESSED VIA CONTENT SIGNALS ARE EXPRESS RESERVATIONS OF
+# RIGHTS UNDER ARTICLE 4 OF THE EUROPEAN UNION DIRECTIVE 2019/790 ON COPYRIGHT
+# AND RELATED RIGHTS IN THE DIGITAL SINGLE MARKET.
+
+# BEGIN Cloudflare Managed content
+
+User-agent: *
+Content-Signal: search=yes,ai-train=no,use=reference
+Allow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: CloudflareBrowserRenderingCrawler
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: meta-externalagent
+Disallow: /
+
+# END Cloudflare Managed Content
+
+User-agent: *
+Disallow: /
+--------------------------------------------------------------------------------
+
+lectura: el archivo trae DOS grupos `User-agent: *`. El primero, gestionado por
+Cloudflare, dice `Allow: /`. El ultimo, del operador del sitio, dice `Disallow: /`.
+
+  · Lectura A (RFC 9309 §2.2.2, la que usan los crawlers comerciales): los grupos del
+    mismo product token se fusionan y, ante patrones equivalentes, la regla menos
+    restrictiva gana ⇒ acceso permitido.
+  · Lectura B (literal, la que este proyecto adopta): el operador del sitio escribio
+    `Disallow: /` para `*`. Es la ultima voluntad expresada en el archivo y cubre
+    TODOS los paths de nuestros casos de este host.
+
+Se adopta la Lectura B. La regla de la fase es la del plan, sin excepciones de
+interpretacion: "si alguna directiva Disallow cubre el path de alguno de nuestros
+casos, ese caso se RETIRA del manifiesto". Prohibido cambiar el User-Agent, usar
+proxies o headers de navegador para caer bajo otra lectura.
+
+VEREDICTO www.camara.cl: acceso NO permitido para nuestro agente. Los 8 casos de este
+host se retiran del manifiesto y sus patrones se validan SOLO por construccion.
+
+================================================================================
+2. opendata.camara.cl
+================================================================================
+
+comando   : GET https://opendata.camara.cl/robots.txt (curl, UA de la fase)
+http_code : 200
+url_effect: https://opendata.camara.cl/robots.txt
+content   : text/html
+
+cuerpo (primeros 300 caracteres, colapsados):
+--------------------------------------------------------------------------------
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"> <html xmlns="http://www.w3.org/1999/xhtml" lang="es" xml:lang="es"> <head> <meta http-equiv="Content-Type" content="text/html;charset=utf-8" /> <title>Cámara de Diputados</title> <link rel="
+--------------------------------------------------------------------------------
+
+lectura: responde 200 pero con `text/html` — es la pagina del portal, no un archivo
+de exclusion. Equivale a "sin robots.txt publicado": cero directivas, cero Disallow.
+Es un host DISTINTO de `www.camara.cl`; el robots del punto 1 no lo cubre (el protocolo
+de exclusion es por host, no por organizacion).
+
+VEREDICTO opendata.camara.cl: sin robots.txt publicado (200 con HTML del portal) — sin
+directivas que respetar; los 5 casos de este host se mantienen.
+
+================================================================================
+3. tramitacion.senado.cl
+================================================================================
+
+comando   : GET https://tramitacion.senado.cl/robots.txt (curl, UA de la fase)
+http_code : 206
+num_redir : 1
+url_effect: https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php
+content   : text/html; charset=UTF-8
+
+cuerpo (primeros 300 caracteres, colapsados):
+--------------------------------------------------------------------------------
+<!DOCTYPE HTML> <input name="boletin_ini" id="boletin_ini" type="hidden" value=""> <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"> <html> <head> <!--<meta http-equiv="content
+--------------------------------------------------------------------------------
+
+lectura: la peticion de `/robots.txt` REDIRIGE (1 salto) a la ficha de tramitacion y
+devuelve HTML. No existe archivo de exclusion en este host — el servidor manda todo
+path desconocido a su pagina principal. Respuesta valida, no una evasion.
+
+VEREDICTO tramitacion.senado.cl: sin robots.txt publicado (redirige a index.php,
+HTML) — sin directivas que respetar; los 8 casos de este host se mantienen.
+
+================================================================================
+4. www.senado.cl
+================================================================================
+
+comando   : GET https://www.senado.cl/robots.txt (curl, UA de la fase)
+http_code : 206
+url_effect: https://www.senado.cl/robots.txt
+content   : text/plain; charset=UTF-8
+
+cuerpo (verbatim):
+--------------------------------------------------------------------------------
+User-agent: *
+Allow: /
+Disallow: /proyecto-365
+--------------------------------------------------------------------------------
+
+lectura: unica directiva restrictiva = `/proyecto-365`. Nuestro unico caso de este
+host es `P-22-c01`, path `/appsenado/index.php` — fuera de esa ruta.
+
+VEREDICTO www.senado.cl: acceso permitido para nuestro caso; `/proyecto-365` no se
+toca ni se tocara.
+
+================================================================================
+5. web-back.senado.cl
+================================================================================
+
+comando   : GET https://web-back.senado.cl/robots.txt (curl, UA de la fase)
+http_code : 206
+url_effect: https://web-back.senado.cl/robots.txt
+content   : text/plain; charset=utf-8
+
+cuerpo (verbatim):
+--------------------------------------------------------------------------------
+#
+# robots.txt
+#
+# This file is to prevent the crawling and indexing of certain parts
+# of your site by web crawlers and spiders run by sites like Yahoo!
+# and Google. By telling these "robots" where not to go on your site,
+# you save bandwidth and server resources.
+#
+# This file will be ignored unless it is at the root of your host:
+# Used:    http://example.com/robots.txt
+# Ignored: http://example.com/site/robots.txt
+#
+# For more information about the robots.txt standard, see:
+# http://www.robotstxt.org/robotstxt.html
+
+User-agent: *
+# CSS, JS, Images
+Allow: /core/*.css$
+Allow: /core/*.css?
+Allow: /core/*.js$
+Allow: /core/*.js?
+Allow: /core/*.gif
+Allow: /core/*.jpg
+Allow: /core/*.jpeg
+Allow: /core/*.png
+Allow: /core/*.svg
+Allow: /profiles/*.css$
+Allow: /profiles/*.css?
+Allow: /profiles/*.js$
+Allow: /profiles/*.js?
+Allow: /profiles/*.gif
+Allow: /profiles/*.jpg
+Allow: /profiles/*.jpeg
+Allow: /profiles/*.png
+Allow: /profiles/*.svg
+# Directories
+Disallow: /core/
+Disallow: /profiles/
+# Files
+Disallow: /README.txt
+Disallow: /web.config
+# Paths (clean URLs)
+Disallow: /admin/
+Disallow: /comment/reply/
+Disallow: /filter/tips
+Disallow: /node/add/
+Disallow: /search/
+Disallow: /user/register
+Disallow: /user/password
+Disallow: /user/login
+Disallow: /user/logout
+Disallow: /media/oembed
+Disallow: /*/media/oembed
+# Paths (no clean URLs)
+Disallow: /index.php/admin/
+Disallow: /index.php/comment/reply/
+Disallow: /index.php/filter/tips
+Disallow: /index.php/node/add/
+Disallow: /index.php/search/
+Disallow: /index.php/user/password
+Disallow: /index.php/user/register
+Disallow: /index.php/user/login
+Disallow: /index.php/user/logout
+Disallow: /index.php/media/oembed
+Disallow: /index.php/*/media/oembed
+--------------------------------------------------------------------------------
+
+lectura: robots.txt estandar de Drupal. Ninguna directiva cubre `/api/`. Nuestros dos
+casos son `/api/commissions_citations` (P-07-c01) y `/api/weekly_table` (P-20-c01).
+
+VEREDICTO web-back.senado.cl: acceso permitido para ambos casos; las rutas
+administrativas y de usuario listadas no se tocan.
+
+================================================================================
+6. www.leylobby.gob.cl
+================================================================================
+
+comando   : GET https://www.leylobby.gob.cl/robots.txt (curl, UA de la fase)
+http_code : 403
+url_effect: https://www.leylobby.gob.cl/robots.txt
+content   : text/html; charset=iso-8859-1
+
+cuerpo (primeros 300 caracteres, colapsados):
+--------------------------------------------------------------------------------
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <title>403 Forbidden</title> </head><body> <h1>Forbidden</h1> <p>You don't have permission to access this resource.</p> <hr> <address>Apache/2.4.67 (Debian) Server at www.leylobby.gob.cl Port 80</
+--------------------------------------------------------------------------------
+
+lectura: WAF-en-robots. El servidor niega el propio archivo de exclusion, luego no hay
+directiva publicada que respetar ni evadir. Conforme al plan, la muestra de este host
+se intenta igual, con el MISMO User-Agent y el MISMO delay; el resultado lo clasifica
+el Plan 02. Prohibido cambiar UA, usar proxies o headers de navegador.
+
+VEREDICTO www.leylobby.gob.cl: WAF-en-robots (403) — sin directivas publicadas; los 2
+casos de este host se mantienen y se intentaran con la misma identidad y mesura.
+
+================================================================================
+7. datos.cplt.cl
+================================================================================
+
+comando   : GET https://datos.cplt.cl/robots.txt (curl, UA de la fase)
+http_code : 403
+url_effect: https://datos.cplt.cl/robots.txt
+content   : text/html
+
+cuerpo (verbatim, colapsado):
+--------------------------------------------------------------------------------
+<html> <head><title>403 Forbidden</title></head> <body> <center><h1>403 Forbidden</h1></center> <hr><center>Microsoft-Azure-Application-Gateway/v2</center> </body> </html>
+--------------------------------------------------------------------------------
+
+lectura: WAF-en-robots (Azure Application Gateway). Mismo criterio que el punto 6.
+
+VEREDICTO datos.cplt.cl: WAF-en-robots (403) — sin directivas publicadas; el caso de
+este host se mantiene y se intentara con la misma identidad y mesura.
+
+================================================================================
+RESUMEN
+================================================================================
+
+host                    robots            veredicto
+----------------------  ----------------  --------------------------------------
+www.camara.cl           200 text/plain    NO permitido (grupo `*` final restrictivo)
+opendata.camara.cl      200 text/html     sin robots.txt publicado — permitido
+tramitacion.senado.cl   206 redirect      sin robots.txt publicado — permitido
+www.senado.cl           206 text/plain    permitido (solo /proyecto-365 restringido)
+web-back.senado.cl      206 text/plain    permitido (/api/ no restringido)
+www.leylobby.gob.cl     403               WAF-en-robots — sin directivas
+datos.cplt.cl           403               WAF-en-robots — sin directivas
+
+Conteos VIGENTES del manifiesto tras esta corrida (espejados en 115-PATRONES.md §4):
+CASOS_MANIFIESTO: 19
+HOSTS_MANIFIESTO: 6
+
+RETIRADOS: 8 ids, todos del host www.camara.cl por la directiva `Disallow: /`
+P-02-c01 — retirado por `Disallow: /` (grupo `User-agent: *` final de www.camara.cl/robots.txt)
+P-05-c01 — retirado por `Disallow: /` (grupo `User-agent: *` final de www.camara.cl/robots.txt)
+P-06-c01 — retirado por `Disallow: /` (grupo `User-agent: *` final de www.camara.cl/robots.txt)
+P-08-c01 — retirado por `Disallow: /` (grupo `User-agent: *` final de www.camara.cl/robots.txt)
+P-09-c01 — retirado por `Disallow: /` (grupo `User-agent: *` final de www.camara.cl/robots.txt)
+P-10-c01 — retirado por `Disallow: /` (grupo `User-agent: *` final de www.camara.cl/robots.txt)
+P-12-c01 — retirado por `Disallow: /` (grupo `User-agent: *` final de www.camara.cl/robots.txt)
+P-21-c01 — retirado por `Disallow: /` (grupo `User-agent: *` final de www.camara.cl/robots.txt)
+
+Un caso retirado por `Disallow:` NO es "fuente caida": es respeto. Los patrones P-02, P-05,
+P-06, P-08, P-09, P-10, P-12 y P-21 quedan validados SOLO por construccion (plantilla +
+parametro, §1 de 115-PATRONES.md), sin probe live, y asi debe declararlo el veredicto de
+la fase. `www.camara.cl` deja de ser un host de la muestra: 6 hosts vigentes, no 7.
