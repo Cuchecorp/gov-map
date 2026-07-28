@@ -373,4 +373,50 @@ describe("G1 — lobby_ingesta_estado avanza con datos y SÓLO con datos", () =>
 
     expect(writer.ingestaEstado.get("P00777")?.ingestado_hasta).toBe("2026-06-22");
   });
+
+  // CR-02 (119-REVIEW) — el fallback al reloj era la puerta trasera por la que se fabricaba
+  // cobertura: una audiencia con `fecha` no parseable (la fuente entrega fechas sucias — por eso
+  // existe `fechaRaw`) marcaba `ingestado_hasta = HOY` sin un solo dato de esa fecha.
+  // OJO: la cadena aparece también en el comentario de cabecera del fixture ⇒ `replaceAll`
+  // (un `replace` simple sólo tocaba el comentario y dejaba la celda intacta: test vacuo).
+  const FIXTURE_FECHA_SUCIA = FIXTURE_HTML.replaceAll(
+    "2024-06-24 12:30:00-04",
+    "sin fecha informada",
+  );
+
+  it("Test 6 (CR-02): audiencia SIN fecha parseable ⇒ NO se marca cobertura (jamás el reloj)", async () => {
+    // Control: el reemplazo del fixture efectivamente ocurrió (si no, el test sería vacuo).
+    expect(FIXTURE_FECHA_SUCIA).not.toBe(FIXTURE_HTML);
+
+    const writer = new InMemoryLobbyWriter();
+    const res = await runIngestLobby({
+      conector: fakeConector({ html: FIXTURE_FECHA_SUCIA }),
+      writer,
+      maestra: [maestroVictor()],
+      tareas: TAREA_G1,
+      ingestadoHasta: "2026-07-28",
+    });
+
+    // La audiencia SÍ se ingiere (el dato existe, sólo su fecha es ilegible)…
+    expect(res.audiencias).toBeGreaterThan(0);
+    // …pero el marcador de cobertura NO se mueve: no hay fecha del dato que lo respalde.
+    expect(res.parlamentariosMarcados).toBe(0);
+    expect(res.marcadoHasta).toEqual({});
+    expect(writer.ingestaEstado.size).toBe(0);
+  });
+
+  it("Test 7 (CR-02): un confirmado sin ninguna fila fechada NO cae al corte de la corrida", async () => {
+    const writer = new InMemoryLobbyWriter();
+    await runIngestLobby({
+      conector: fakeConector({ html: FIXTURE_FECHA_SUCIA }),
+      writer,
+      maestra: [maestroVictor()],
+      tareas: TAREA_G1,
+      ingestadoHasta: "2026-07-28",
+    });
+
+    // El bucle de relleno `for (const id of confirmados) marcados.set(id, hasta)` ya no existe:
+    // ninguna fila lleva la marca al día de la corrida.
+    expect(writer.ingestaEstado.get("P00777")).toBeUndefined();
+  });
 });

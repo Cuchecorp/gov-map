@@ -118,10 +118,10 @@ export async function runIngestLobby(opts: RunIngestLobbyOpts): Promise<RunInges
 
   const errores: RunIngestLobbyResult["errores"] = [];
   const degradaciones: DegradacionLobby[] = [];
-  // G1 — `parlamentarioId → ingestado_hasta`. El valor sale de la FECHA DE LA AUDIENCIA ingerida
-  // (máximo por parlamentario), NUNCA del reloj: un lote histórico jamás puede fingir que la
-  // cobertura llega hasta hoy (T-119-17). `opts.ingestadoHasta` es sólo el fallback para una
-  // audiencia sin fecha parseable.
+  // G1 / CR-02 — `parlamentarioId → ingestado_hasta`. El valor sale SIEMPRE de la FECHA DE LA
+  // AUDIENCIA ingerida (máximo por parlamentario), NUNCA del reloj: un lote histórico jamás puede
+  // fingir que la cobertura llega hasta hoy (T-119-17). `hasta` NO participa de este marcador —
+  // sólo particiona la key de R2 de la Etapa 1.
   const marcados = new Map<string, string>();
   let audiencias = 0;
   let contrapartes = 0;
@@ -295,18 +295,25 @@ export async function runIngestLobby(opts: RunIngestLobbyOpts): Promise<RunInges
         await opts.writer.upsertAudiencias(filas);
         audiencias += filas.length;
         contrapartes += filas.reduce((n, f) => n + f.contrapartes.length, 0);
-        // G1: la cobertura de CADA parlamentario confirmado es la fecha MÁXIMA de sus audiencias
-        // ingeridas en esta corrida — dato, no reloj. Los `parlamentariosConfirmados` que no
-        // aparecen en ninguna fila (imposible hoy, pero defensivo) caen al corte de la corrida.
+        // G1 / CR-02 (119-REVIEW): la cobertura de CADA parlamentario confirmado es la fecha
+        // MÁXIMA de sus audiencias ingeridas en esta corrida — DATO, NUNCA reloj.
+        //
+        // NO HAY FALLBACK AL RELOJ. Antes existían dos escapes (`?? hasta` por fila y un bucle de
+        // relleno para los confirmados sin fila) que marcaban `ingestado_hasta = HOY` sin un solo
+        // dato de esa fecha. La fuente entrega fechas sucias —por eso existe `fechaRaw`—, así que
+        // ese fallback NO era teórico: una audiencia con `fecha` no parseable fabricaba cobertura
+        // hasta hoy. Hoy, una fila sin fecha del dato simplemente NO empuja el cursor; si NINGUNA
+        // fila del parlamentario trae fecha, ese parlamentario NO se marca (degradación honesta:
+        // la marca se queda donde estaba, que es la verdad conocida).
         const confirmados = new Set(parlamentariosConfirmados);
         for (const f of filas) {
           const id = f.enlace?.parlamentarioId;
           if (id == null || !confirmados.has(id)) continue;
-          const fechaDato = f.fecha != null ? f.fecha.slice(0, 10) : hasta;
+          if (f.fecha == null) continue; // sin dato de fecha ⇒ no se marca cobertura
+          const fechaDato = f.fecha.slice(0, 10);
           const prev = marcados.get(id);
           if (prev === undefined || fechaDato > prev) marcados.set(id, fechaDato);
         }
-        for (const id of confirmados) if (!marcados.has(id)) marcados.set(id, hasta);
         log(`ingest-lobby: ${clave} → ${filas.length} audiencias`);
       } catch (err) {
         errores.push({
