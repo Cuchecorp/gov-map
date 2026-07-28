@@ -152,7 +152,7 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
               // de crear un duplicado bajo un `<date>/` distinto. El hash-check pre-descarga
               // del masivo (§5) tiene así un prefijo ACOTADO (`camara/citaciones-semana/<clave>/`)
               // que probar, no un set ilimitado de fechas.
-              const { r2Path: key } = await opts.r2.putImmutable(
+              const { r2Path: key, existed } = await opts.r2.putImmutable(
                 "camara",
                 "citaciones-semana",
                 clave,
@@ -161,6 +161,16 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
                 bytes,
               );
               log(`ingest: Cámara ${clave} → HTML crudo en R2 (${key})`);
+              // G6 (regla LOCKED 2 de CLAUDE.md — "salir temprano cuando no hay novedades"):
+              // existed = 412 de `If-None-Match: *` = el crudo YA estaba en R2 con el MISMO
+              // sha ⇒ el HTML no cambió ⇒ se omite la Etapa 2 (parse+upsert) de esta semana.
+              // `break` (no `continue`): estamos dentro del loop de REINTENTOS 403; salir de él
+              // deja `html == null`, que el guard de abajo traduce en "pasar a la próxima
+              // semana" sin contarla como bloqueada ni como error.
+              if (existed) {
+                log(`[skip] sin novedades — camara citaciones-semana ${clave}`);
+                break;
+              }
             } catch (r2Err) {
               // R2 401/red: los bytes ya están en memoria; la Etapa 2 sigue (no aborta).
               // IN-02: se registra la semana para exponer la degradación en el reporte.
@@ -280,6 +290,9 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
         const pdfBytes = await opts.conectorCamara.fetchTablaSalaPdf();
 
         // Etapa 1: persistir el crudo content-addressed en R2 (gateado; best-effort).
+        // G6: si el PDF ya estaba en R2 (412 ⇒ existed), se omite TODA la Etapa 2 de la tabla
+        // — incluida la extracción LLM (DeepSeek), que es el gasto más caro de esta corrida.
+        let sinNovedadesTabla = false;
         if (opts.r2Enabled && opts.r2) {
           try {
             const sha = await sha256Hex(pdfBytes);
@@ -288,7 +301,7 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
             // colisiona por sha bajo el mismo prefijo `camara/tabla-sala/<clave>/` (412
             // idempotente) en vez de duplicarse bajo `<date>/` distintos.
             const claveTabla = semanaIsoKey(semanaTabla.year, semanaTabla.week);
-            const { r2Path: key } = await opts.r2.putImmutable(
+            const { r2Path: key, existed } = await opts.r2.putImmutable(
               "camara",
               "tabla-sala",
               claveTabla,
@@ -297,6 +310,10 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
               pdfBytes,
             );
             log(`ingest: Cámara tabla → PDF crudo en R2 (${key})`);
+            if (existed) {
+              sinNovedadesTabla = true;
+              log(`[skip] sin novedades — camara tabla-sala ${claveTabla}`);
+            }
           } catch (err) {
             // R2 401/red: el PDF ya está en memoria; la etapa 2 sigue (no aborta).
             log(
@@ -306,7 +323,8 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
         }
 
         // Etapa 2a: capa de texto (unpdf). PDF escaneado/no-PDF → null → degrada honesto.
-        const texto = await extraerTextoTablaPdf(pdfBytes, log);
+        // Se omite entera si el crudo no traía novedades (G6).
+        const texto = sinNovedadesTabla ? null : await extraerTextoTablaPdf(pdfBytes, log);
         if (texto != null) {
           // Etapa 2b: extracción estructurada (DeepSeek json_object + zod).
           const sesiones = await parseCamaraTabla(texto, semanaTabla, {
