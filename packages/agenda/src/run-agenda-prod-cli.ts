@@ -14,6 +14,10 @@
 //   tsx packages/agenda/src/run-agenda-prod-cli.ts [--dry-run] [--solo-senado]
 //                                                  [--desde YYYY-Www] [--hasta YYYY-Www]
 //
+// Etapa 2 aislada (G7, regla LOCKED 2 de CLAUDE.md — re-ingesta SIN volver a la fuente):
+//   tsx packages/agenda/src/run-agenda-prod-cli.ts --from-r2 camara/citaciones-semana/2026-W24/<sha>.html
+//   tsx packages/agenda/src/run-agenda-prod-cli.ts --from-r2 camara/tabla-sala/2026-W24/<sha>.pdf
+//
 // Default de rango: --desde = semana ISO actual, --hasta = actual + 2 semanas (3 semanas).
 
 import { readFileSync } from "node:fs";
@@ -34,7 +38,13 @@ import { SenadoActividadConnector } from "./connector-senado";
 import { createCurlTransport } from "./transport-curl";
 import { SupabaseAgendaWriter } from "./writer-supabase";
 import { InMemoryAgendaWriter, type AgendaWriter } from "./writer";
-import { runIngest, type TablaR2Target } from "./ingest-run";
+import {
+  runIngest,
+  runReplayDesdeR2,
+  parseFromR2Arg,
+  ReplayR2Error,
+  type TablaR2Target,
+} from "./ingest-run";
 import { isoWeekOf, enumerarSemanas, semanaIsoKey, type SemanaIso } from "./semana-iso";
 import { parseSemanaIso } from "./ingest-cli";
 
@@ -104,6 +114,48 @@ async function main(): Promise<void> {
   const hasta: SemanaIso = hastaRaw
     ? parseSemanaIso(hastaRaw, "--hasta")
     : isoWeekOf(new Date(now.getTime() + DIAS_FORWARD * 86_400_000));
+  // ── G7: Etapa 2 DESDE R2 (`--from-r2 <r2Path>`) ────────────────────────────────────
+  // Regla LOCKED 2 (CLAUDE.md): re-ingestar a Supabase se hace SIEMPRE desde el crudo,
+  // NUNCA volviendo a la fuente. Este bloque va ANTES de instanciar conectores/rate-limiter:
+  // en modo replay no existen — es estructuralmente imposible tocar camara.cl/senado.cl.
+  // Los flags se validan antes de cualquier red/DB (`parseFromR2Arg` lanza si viene vacío).
+  const fromR2 = parseFromR2Arg(process.argv);
+  if (fromR2) {
+    if (!env.R2_ENDPOINT_URL || !env.R2_ACCESS_KEY_ID || !env.R2_SECRET_ACCESS_KEY) {
+      throw new ReplayR2Error(
+        "--from-r2 requiere R2 configurado (R2_ENDPOINT_URL + R2_ACCESS_KEY_ID + R2_SECRET_ACCESS_KEY)",
+      );
+    }
+    const r2Replay = new R2Store({
+      endpoint: env.R2_ENDPOINT_URL,
+      accessKeyId: env.R2_ACCESS_KEY_ID,
+      secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+      bucket: env.R2_BUCKET ?? "observatorio",
+    });
+    const writerReplay: AgendaWriter =
+      dryRun || !env.SUPABASE_API_URL || !env.SUPABASE_SECRET_KEY
+        ? new InMemoryAgendaWriter()
+        : new SupabaseAgendaWriter({
+            url: env.SUPABASE_API_URL,
+            serviceKey: env.SUPABASE_SECRET_KEY,
+          });
+    const rep = await runReplayDesdeR2({
+      r2: r2Replay,
+      r2Path: fromR2,
+      writer: writerReplay,
+      // La tabla de sala (PDF) exige provider; sin key el replay de ese recurso falla LOUD.
+      ...(env.DEEPSEEK_API_KEY
+        ? { proveedorTablaCamara: new DeepSeekProvider({ apiKey: env.DEEPSEEK_API_KEY }) }
+        : {}),
+      log,
+    });
+    console.log(
+      `\nagenda REPLAY ${dryRun ? "DRY-RUN" : "LIVE"} (${rep.recurso} ${rep.clave}): ` +
+        `citaciones=${rep.camaraCitaciones} itemsTabla=${rep.camaraSesiones} — sin tocar la fuente`,
+    );
+    process.exit(0);
+  }
+
   const semanas = enumerarSemanas(desde, hasta);
   log(
     `agenda: semanas ISO ${semanaIsoKey(desde.year, desde.week)}..${semanaIsoKey(hasta.year, hasta.week)} ` +

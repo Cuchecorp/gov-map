@@ -82,8 +82,16 @@ export { SupabaseAgendaWriter } from "./writer-supabase";
 export type { SupabaseAgendaWriterOptions } from "./writer-supabase";
 
 // Orquestación de la ingesta (tolerante a fuentes vacías + degradación honesta).
-export { runIngest } from "./ingest-run";
-export type { RunIngestOpts, RunIngestResult, Degradacion, TablaR2Target } from "./ingest-run";
+export { runIngest, runReplayDesdeR2, parseFromR2Arg, ReplayR2Error } from "./ingest-run";
+export type {
+  RunIngestOpts,
+  RunIngestResult,
+  Degradacion,
+  TablaR2Target,
+  R2ReplaySource,
+  ReplayDesdeR2Opts,
+  ReplayDesdeR2Result,
+} from "./ingest-run";
 
 // CLI de ingesta (flags validados antes de red/DB; backfill por rango de semanas).
 export {

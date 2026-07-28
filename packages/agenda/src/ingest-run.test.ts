@@ -7,11 +7,11 @@
 //   (c) Camino feliz: enumera semanas de Cámara + ingesta Senado forward-only + tabla Senado.
 //   (d) Idempotencia: re-correr no duplica (el writer upserta por clave natural).
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { runIngest } from "./ingest-run";
+import { runIngest, runReplayDesdeR2, parseFromR2Arg, ReplayR2Error } from "./ingest-run";
 import { sha256Hex } from "@obs/ingest";
 import { CamaraBloqueadaError, CAMARA_TABLA_PDF_URL } from "./connector-camara";
 import { InMemoryAgendaWriter } from "./writer";
@@ -589,5 +589,158 @@ describe("runIngest — G5: SnapshotWriter (source_snapshot)", () => {
     });
     expect(res.errores).toHaveLength(0);
     expect(res.camaraCitaciones).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G7 (119-05): Etapa 2 desde R2 (`--from-r2`). Replay del crudo YA versionado, sin
+// tocar camara.cl/senado.cl (regla LOCKED 1-2 de CLAUDE.md).
+// ─────────────────────────────────────────────────────────────────────────────
+describe("runReplayDesdeR2 — Etapa 2 desde el crudo (G7)", () => {
+  const SHA_FALSO = "a".repeat(64);
+
+  /** Fuente R2 fake: devuelve los bytes dados y cuenta las lecturas. */
+  function r2Fake(bytes: Uint8Array) {
+    const leidos: string[] = [];
+    return {
+      leidos,
+      source: {
+        getObject: async (p: string) => {
+          leidos.push(p);
+          return bytes;
+        },
+      },
+    };
+  }
+
+  /** Key content-addressed real del HTML del fixture para la semana 2026-W24. */
+  async function keyCitaciones(html: string): Promise<{ key: string; bytes: Uint8Array }> {
+    const bytes = new TextEncoder().encode(html);
+    const sha = await sha256Hex(bytes);
+    return { key: `camara/citaciones-semana/2026-W24/${sha}.html`, bytes };
+  }
+
+  it("(1) NO toca la fuente: cero fetch, el parseo corre sobre los bytes de R2", async () => {
+    const { key, bytes } = await keyCitaciones(camaraHtml);
+    const fetchOriginal = globalThis.fetch;
+    const fetchSpy = vi.fn(async () => {
+      throw new Error("replay NO debe tocar la red");
+    });
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    try {
+      const writer = new InMemoryAgendaWriter();
+      const { source, leidos } = r2Fake(bytes);
+      const res = await runReplayDesdeR2({ r2: source, r2Path: key, writer });
+
+      expect(leidos).toEqual([key]);
+      expect(res.recurso).toBe("citaciones-semana");
+      expect(res.clave).toBe("2026-W24");
+      expect(res.camaraCitaciones).toBeGreaterThanOrEqual(1);
+      expect(writer.citaciones.size).toBeGreaterThanOrEqual(1);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = fetchOriginal;
+    }
+  });
+
+  it("(2) el upsert es idéntico al de la ingesta normal con los MISMOS bytes", async () => {
+    const { key, bytes } = await keyCitaciones(camaraHtml);
+
+    const wNormal = new InMemoryAgendaWriter();
+    await runIngest({
+      conectorCamara: fakeCamara({}),
+      conectorSenado: fakeSenado({
+        citaciones: async () => "{}",
+        tabla: async () => "{}",
+      }),
+      writer: wNormal,
+      semanas: [{ year: 2026, week: 24 }],
+      backoffMs: 0,
+    });
+
+    const wReplay = new InMemoryAgendaWriter();
+    const { source } = r2Fake(bytes);
+    await runReplayDesdeR2({ r2: source, r2Path: key, writer: wReplay });
+
+    expect([...wReplay.citaciones.keys()].sort()).toEqual([...wNormal.citaciones.keys()].sort());
+    expect(wReplay.puntos.size).toBe(wNormal.puntos.size);
+  });
+
+  it("(3) doble replay del mismo objeto es idempotente (mismos conteos, sin duplicar)", async () => {
+    const { key, bytes } = await keyCitaciones(camaraHtml);
+    const writer = new InMemoryAgendaWriter();
+    const { source } = r2Fake(bytes);
+
+    const a = await runReplayDesdeR2({ r2: source, r2Path: key, writer });
+    const nCitaciones = writer.citaciones.size;
+    const nPuntos = writer.puntos.size;
+    const b = await runReplayDesdeR2({ r2: source, r2Path: key, writer });
+
+    expect(b.camaraCitaciones).toBe(a.camaraCitaciones);
+    expect(writer.citaciones.size).toBe(nCitaciones);
+    expect(writer.puntos.size).toBe(nPuntos);
+  });
+
+  it("(4) path inexistente: falla LOUD con status y path, sin degradar a re-fetch", async () => {
+    const fetchOriginal = globalThis.fetch;
+    const fetchSpy = vi.fn(async () => {
+      throw new Error("replay NO debe tocar la red");
+    });
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    try {
+      const writer = new InMemoryAgendaWriter();
+      const source = {
+        getObject: async (p: string) => {
+          throw new Error(`R2 GET 404 para ${p}`);
+        },
+      };
+      const key = `camara/citaciones-semana/2026-W24/${SHA_FALSO}.html`;
+      await expect(runReplayDesdeR2({ r2: source, r2Path: key, writer })).rejects.toThrow(
+        /404.*camara\/citaciones-semana/s,
+      );
+      expect(writer.citaciones.size).toBe(0);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = fetchOriginal;
+    }
+  });
+
+  it("(4b) prefijo desconocido / traversal ⇒ error de path ANTES de leer R2", async () => {
+    const writer = new InMemoryAgendaWriter();
+    let leido = false;
+    const source = {
+      getObject: async () => {
+        leido = true;
+        return new Uint8Array();
+      },
+    };
+    for (const malo of [
+      "senado/otra-cosa/2026-W24/x.html",
+      `../camara/citaciones-semana/2026-W24/${SHA_FALSO}.html`,
+      `/camara/citaciones-semana/2026-W24/${SHA_FALSO}.html`,
+      `camara/citaciones-semana/2026-W24/${SHA_FALSO}.pdf`,
+    ]) {
+      await expect(runReplayDesdeR2({ r2: source, r2Path: malo, writer })).rejects.toBeInstanceOf(
+        ReplayR2Error,
+      );
+    }
+    expect(leido).toBe(false);
+    expect(writer.citaciones.size).toBe(0);
+  });
+
+  it("(4c) sha del contenido ≠ sha de la key ⇒ falla LOUD (crudo alterado, T-119-14)", async () => {
+    const writer = new InMemoryAgendaWriter();
+    const { source } = r2Fake(new TextEncoder().encode(camaraHtml));
+    const key = `camara/citaciones-semana/2026-W24/${SHA_FALSO}.html`;
+    await expect(runReplayDesdeR2({ r2: source, r2Path: key, writer })).rejects.toThrow(/sha/i);
+    expect(writer.citaciones.size).toBe(0);
+  });
+
+  it("(5) `--from-r2` sin valor ⇒ error de flags antes de cualquier red/DB", () => {
+    expect(() => parseFromR2Arg(["node", "cli", "--from-r2"])).toThrow(ReplayR2Error);
+    expect(parseFromR2Arg(["node", "cli"])).toBeNull();
+    expect(parseFromR2Arg(["node", "cli", "--from-r2", "camara/x/y/z.html"])).toBe(
+      "camara/x/y/z.html",
+    );
   });
 });

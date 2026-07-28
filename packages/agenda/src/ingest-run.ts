@@ -111,6 +111,140 @@ export interface RunIngestResult {
 
 const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+// ─────────────────────────────────────────────────────────────────────────────
+// G7 — Etapa 2 DESDE R2 (`--from-r2`). Regla LOCKED 2 de CLAUDE.md: re-ingestar a
+// Supabase se hace SIEMPRE desde el crudo versionado, NUNCA volviendo a la fuente.
+// La firma del flag calca la plantilla dorada `tramitacion/src/ingest-cli.ts:130`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Error de argumentos/validación del replay: se lanza ANTES de cualquier red o DB. */
+export class ReplayR2Error extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ReplayR2Error";
+  }
+}
+
+/** Fuente de lectura del crudo (subconjunto de `R2Store` — inyectable en tests). */
+export interface R2ReplaySource {
+  getObject(r2Path: string): Promise<Uint8Array>;
+}
+
+export interface ReplayDesdeR2Opts {
+  /** Store R2 (o cualquier fuente con `getObject`). */
+  r2: R2ReplaySource;
+  /** Key content-addressed del crudo a re-procesar. */
+  r2Path: string;
+  writer: AgendaWriter;
+  /** Provider LLM: OBLIGATORIO para el replay de `camara/tabla-sala` (PDF→ítems). */
+  proveedorTablaCamara?: LLMProvider;
+  log?: (msg: string) => void;
+}
+
+export interface ReplayDesdeR2Result {
+  recurso: "citaciones-semana" | "tabla-sala";
+  /** Semana ISO que particiona la key (WR-01), p.ej. "2026-W24". */
+  clave: string;
+  camaraCitaciones: number;
+  camaraSesiones: number;
+}
+
+/**
+ * Keys ACEPTADAS por el replay (T-119-13): prefijo conocido + semana ISO + sha256 hex +
+ * extensión coherente con el recurso. El `r2Path` es input del operador y se usa como key
+ * de `getObject`: la regex lo ancla de punta a punta ⇒ ni `..`, ni rutas absolutas, ni
+ * construcción de URL arbitraria. Un prefijo desconocido FALLA (no se adivina el parser).
+ */
+const REPLAY_KEY_RE =
+  /^camara\/(citaciones-semana|tabla-sala)\/(\d{4}-W\d{2})\/([0-9a-f]{64})\.(html|pdf)$/;
+
+/** Extensión esperada por recurso (el HTML es de citaciones; el PDF, de la tabla de sala). */
+const EXT_POR_RECURSO = { "citaciones-semana": "html", "tabla-sala": "pdf" } as const;
+
+/** Lee `--from-r2 <r2Path>` de argv. Devuelve null si el flag no está; lanza si viene vacío. */
+export function parseFromR2Arg(argv: string[]): string | null {
+  const i = argv.indexOf("--from-r2");
+  if (i < 0) return null;
+  const path = argv[i + 1];
+  if (!path || path.startsWith("--")) throw new ReplayR2Error("--from-r2 requiere un r2Path");
+  return path;
+}
+
+/**
+ * Re-procesa a Supabase un crudo YA versionado en R2 (Etapa 2 aislada). NO instancia conector
+ * ni rate-limiter: la firma no admite conectores, así que es IMPOSIBLE tocar la fuente desde
+ * aquí. Idempotente (el writer upserta por clave natural: re-correr no duplica).
+ *
+ * Fail-loud: key inválida, sha del contenido ≠ sha de la key (T-119-14) o error de R2
+ * (status + path, sin credenciales — T-119-16) LANZAN. Nunca hay degradación a re-fetch.
+ */
+export async function runReplayDesdeR2(opts: ReplayDesdeR2Opts): Promise<ReplayDesdeR2Result> {
+  const log = opts.log ?? (() => {});
+  const m = REPLAY_KEY_RE.exec(opts.r2Path);
+  if (!m) {
+    throw new ReplayR2Error(
+      `--from-r2: r2Path no reconocido (${opts.r2Path}); se espera ` +
+        `camara/citaciones-semana/<YYYY-Www>/<sha256>.html o camara/tabla-sala/<YYYY-Www>/<sha256>.pdf`,
+    );
+  }
+  const recurso = m[1] as "citaciones-semana" | "tabla-sala";
+  const clave = m[2]!;
+  const shaKey = m[3]!;
+  const ext = m[4]!;
+  if (EXT_POR_RECURSO[recurso] !== ext) {
+    throw new ReplayR2Error(
+      `--from-r2: extensión .${ext} incoherente con el recurso ${recurso} (esperada .${EXT_POR_RECURSO[recurso]})`,
+    );
+  }
+
+  log(`replay: leyendo crudo desde R2 (${opts.r2Path}) — CERO fetch a la fuente`);
+  const bytes = await opts.r2.getObject(opts.r2Path);
+
+  // T-119-14: la key ES el sha256 del contenido → se re-calcula y se compara. Un mismatch
+  // significa crudo alterado (o key mal escrita) ⇒ se aborta ANTES de escribir nada.
+  const shaReal = await sha256Hex(bytes);
+  if (shaReal !== shaKey) {
+    throw new ReplayR2Error(
+      `--from-r2: sha del contenido (${shaReal}) ≠ sha de la key (${shaKey}) en ${opts.r2Path}`,
+    );
+  }
+
+  let camaraCitaciones = 0;
+  let camaraSesiones = 0;
+
+  if (recurso === "citaciones-semana") {
+    const citaciones = parseCamaraCitaciones(new TextDecoder().decode(bytes), clave);
+    await opts.writer.upsertCitaciones(citaciones);
+    camaraCitaciones = citaciones.length;
+    log(`replay: Cámara ${clave} → ${citaciones.length} citaciones (desde R2)`);
+  } else {
+    if (!opts.proveedorTablaCamara) {
+      throw new ReplayR2Error(
+        "--from-r2 de camara/tabla-sala requiere un provider LLM (DEEPSEEK_API_KEY): " +
+          "el PDF no es dato estructurado y NO se fabrican filas",
+      );
+    }
+    const semana: SemanaIso = { year: Number(clave.slice(0, 4)), week: Number(clave.slice(6)) };
+    // Degradación honesta idéntica a la ingesta normal: PDF sin capa de texto → sin filas.
+    const texto = await extraerTextoTablaPdf(bytes, log);
+    if (texto == null) {
+      log(`replay: tabla-sala ${clave} → PDF sin capa de texto → degrada honesto (sin filas)`);
+    } else {
+      const sesiones = await parseCamaraTabla(texto, semana, {
+        provider: opts.proveedorTablaCamara,
+        log,
+      });
+      if (sesiones.length > 0) {
+        await opts.writer.upsertSesiones(sesiones);
+        camaraSesiones = sesiones.reduce((n, s) => n + s.items.length, 0);
+      }
+      log(`replay: tabla-sala ${clave} → ${sesiones.length} sesión(es), ${camaraSesiones} ítem(s)`);
+    }
+  }
+
+  return { recurso, clave, camaraCitaciones, camaraSesiones };
+}
+
 /**
  * Corre la ingesta de agenda. Idempotente (el writer upserta por clave natural). Tolerante:
  * un 403 persistente de Cámara degrada esa fuente sin abortar el Senado; la tabla de Cámara se
