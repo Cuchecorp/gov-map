@@ -4,13 +4,13 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: executing
 stopped_at: Completed 106-03-PLAN.md
-last_updated: "2026-07-28T00:57:47.266Z"
-last_activity: 2026-07-28 -- Phase 114 planning complete
+last_updated: "2026-07-28T01:08:35.865Z"
+last_activity: 2026-07-28
 progress:
   total_phases: 13
   completed_phases: 1
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
   percent: 8
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 113 — INV — Inventario rector de superficies
+**Current focus:** Phase 114 — LINK-INT — Links internos exhaustivos
 
 ## Current Position
 
-Phase: 114
-Plan: Not started
+Phase: 114 (LINK-INT — Links internos exhaustivos) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-28 -- Phase 114 planning complete
+Last activity: 2026-07-28
 
 ### Roadmap v12.0 (Phases 113-125)
 
@@ -289,7 +289,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-27T23:57:18.550Z
+Last session: 2026-07-28T01:08:35.857Z
 Stopped at: Completed 106-03-PLAN.md
 Resume file: None
 

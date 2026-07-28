@@ -140,7 +140,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 114-01-PLAN.md — (w1) Manifiesto del universo de links + runner reproducible + corrida PRE-FIX
+- [x] 114-01-PLAN.md — (w1) Manifiesto del universo de links + runner reproducible + corrida PRE-FIX
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -324,7 +324,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 113. INV | 6/6 | Complete    | 2026-07-28 |
-| 114. LINK-INT | 0/? | Not started | - |
+| 114. LINK-INT | 1/3 | In Progress|  |
 | 115. LINK-EXT | 0/? | Not started | - |
 | 116. FECHA-AUDIT | 0/? | Not started | - |
 | 117. FECHA-FIX | 0/? | Not started | - |
