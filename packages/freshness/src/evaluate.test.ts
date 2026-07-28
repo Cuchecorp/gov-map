@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { evaluate, evaluateCobertura } from "./evaluate.js";
+import { evaluate, evaluateCobertura, ghRunEsAveria } from "./evaluate.js";
 import {
   CATALOG,
   COBERTURA_SENALES,
@@ -583,5 +583,106 @@ describe("G2 (119-01): workflowYml null = ausencia DECLARADA de workflow", () =>
   it("exactamente 2 fuentes con workflowYml null; el resto declara su .yml", () => {
     const nulls = CATALOG.filter((c) => c.workflowYml === null).map((c) => c.fuente);
     expect(nulls.sort()).toEqual(["chilecompra", "servel"]);
+  });
+});
+
+describe("G4 (119-01): ghRun entra al cálculo de stale (matar el verde prestado)", () => {
+  // 118 §4 G4: la tabla mostraba `ghRun: "failure @ 2026-07-07"` y "n/d (sin corridas)" y los
+  // IGNORABA al calcular stale → una avería del cron quedaba tapada por la frescura de la tabla.
+  // Regla: la avería del CRON produce stale por sí sola; la avería del INSTRUMENTO (`gh` falló)
+  // NO — fail-closed sobre el DATO, no sobre el medidor.
+  const lobbyCamara = () => CATALOG.filter((c) => c.fuente === "lobby-camara");
+
+  function conGhRun(ghRun: string): QueryRow[] {
+    // Tabla FRESCA: upsert de hoy (0 días) — cualquier stale que salga viene del ghRun.
+    return [
+      {
+        fuente: "lobby-camara",
+        ultimoUpsert: NOW.toISOString(),
+        ghRun,
+        r2Snapshot: "n/d (sin snapshots)",
+      },
+    ];
+  }
+
+  it("Test 1: tabla FRESCA + ghRun failure → stale:true (el verde prestado ya no encubre)", () => {
+    const r = evaluate(conGhRun("failure @ 2026-07-07"), lobbyCamara(), NOW)[0]!;
+    expect(r.diasDesdeUpsert).toBe(0); // la tabla está fresca: el stale NO viene de ahí
+    expect(r.stale).toBe(true);
+    expect(r.motivoStale).toBe("gh-failure");
+  });
+
+  it("Test 2: tabla fresca + ghRun success → stale:false (sin stale espurio)", () => {
+    const r = evaluate(conGhRun(`success @ ${NOW.toISOString().slice(0, 10)}`), lobbyCamara(), NOW)[0]!;
+    expect(r.stale).toBe(false);
+    expect(r.motivoStale).toBeNull();
+  });
+
+  it("Test 3: tabla fresca + 'n/d (sin corridas)' → stale:true (workflow existe y nunca corrió)", () => {
+    const r = evaluate(conGhRun("n/d (sin corridas)"), lobbyCamara(), NOW)[0]!;
+    expect(r.stale).toBe(true);
+    expect(r.motivoStale).toBe("gh-failure");
+  });
+
+  it("Test 4: tabla fresca + 'n/d (sin workflow)' → stale:false (ausencia DECLARADA no es avería)", () => {
+    // MONEY/SERVEL no ganan un stale NUEVO por esta vía: su stale sigue viniendo del dato.
+    const r = evaluate(conGhRun("n/d (sin workflow)"), lobbyCamara(), NOW)[0]!;
+    expect(r.stale).toBe(false);
+    expect(r.motivoStale).toBeNull();
+  });
+
+  it("Test 5: tabla fresca + 'n/d' (falló `gh`) → stale:false — no se afirma avería desde el medidor", () => {
+    const r = evaluate(conGhRun("n/d"), lobbyCamara(), NOW)[0]!;
+    expect(r.stale).toBe(false);
+    expect(r.motivoStale).toBeNull();
+    expect(r.ghRun).toBe("n/d"); // el motivo queda VISIBLE en la fila
+  });
+
+  it("ghRunEsAveria: skipped y success NO son avería; cualquier otra conclusion sí", () => {
+    expect(ghRunEsAveria("success @ 2026-07-07")).toBe(false);
+    expect(ghRunEsAveria("skipped @ 2026-07-07")).toBe(false);
+    expect(ghRunEsAveria("failure @ 2026-07-07")).toBe(true);
+    expect(ghRunEsAveria("cancelled @ 2026-07-07")).toBe(true);
+    expect(ghRunEsAveria("timed_out @ 2026-07-07")).toBe(true);
+    expect(ghRunEsAveria("n/d (sin corridas)")).toBe(true);
+    expect(ghRunEsAveria("n/d (sin workflow)")).toBe(false);
+    expect(ghRunEsAveria("n/d")).toBe(false);
+  });
+
+  it("motivoStale distingue 'sin dato' de 'dias>umbral'", () => {
+    const sinDato = evaluate(
+      [{ fuente: "lobby-camara", ultimoUpsert: null, ghRun: "n/d", r2Snapshot: "n/d" }],
+      lobbyCamara(),
+      NOW,
+    )[0]!;
+    expect(sinDato.motivoStale).toBe("sin dato");
+
+    const viejo = evaluate(
+      [{ fuente: "lobby-camara", ultimoUpsert: new Date(NOW.getTime() - 30 * 86400000).toISOString(), ghRun: "n/d", r2Snapshot: "n/d" }],
+      lobbyCamara(),
+      NOW,
+    )[0]!;
+    expect(viejo.motivoStale).toBe("dias>umbral"); // umbral 14
+  });
+});
+
+describe("G4 (119-01): tabla PROPIA por cron (fin del verde prestado en el catálogo)", () => {
+  // lobby-camara medía `lobby_audiencia`, que TAMBIÉN llena el conector leylobby (W-5) →
+  // una avería de lobby-camara-weekly quedaba tapada. `fichas` medía `proyecto`, que llena
+  // el cron de tramitación (W-4) → misma patología. Cada uno pasa a su tabla propia.
+  it("lobby-camara mide lobby_contraparte (tabla propia del conector de Cámara)", () => {
+    const cfg = CATALOG.find((c) => c.fuente === "lobby-camara")!;
+    expect(cfg.tabla).toBe("lobby_contraparte");
+    expect(cfg.columna).toBe("fecha_captura");
+  });
+
+  it("fichas mide proyecto_ficha (tabla que llena el propio pipeline de fichas)", () => {
+    const cfg = CATALOG.find((c) => c.fuente === "fichas")!;
+    expect(cfg.tabla).toBe("proyecto_ficha");
+    expect(cfg.columna).toBe("fecha_captura");
+  });
+
+  it("ninguna entrada del catálogo mide ya lobby_audiencia", () => {
+    expect(CATALOG.filter((c) => c.tabla === "lobby_audiencia")).toHaveLength(0);
   });
 });
