@@ -309,7 +309,12 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 120-01-PLAN.md — Gates 2-4 en orden DURO (drift canary, shadow-eval LIVE, rollback probado) + apertura de 120-FLIP-RECORD.md
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 120-02-PLAN.md — Flip `CLASIFICACION_ESCALERA=1`, humo acotado, rollback inverso re-probado, guards + suite + cierre del registro
 
 ### Phase 121: ESCALERA-DOC — Extensión solo con benchmark
