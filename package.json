@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Observatorio del Congreso 360 — monorepo (app + packages compartidos)",
+  "//tsx-raiz": "G10 (119-01): `tsx` está en devDependencies de la RAÍZ para que el script `freshness` resuelva el binario desde aquí. Vía (a) del plan; la vía (b) (`pnpm --filter @obs/freshness exec tsx src/cli.ts`) quedó DESCARTADA empíricamente: `pnpm --filter exec` mueve el cwd a packages/freshness y cli.ts:296 (`loadEnv(process.cwd())`) dejaría de encontrar el .env de la raíz (gotcha v8.1). Versión ^4.22.4 = la misma que ya resuelve packages/freshness y que ya está en pnpm-lock.yaml — NO es un paquete nuevo (T-119-SC).",
   "type": "module",
   "packageManager": "pnpm@11.3.0",
   "scripts": {
@@ -12,6 +13,7 @@
     "freshness": "tsx packages/freshness/src/cli.ts"
   },
   "devDependencies": {
+    "tsx": "^4.22.4",
     "typescript": "^5.8.3",
     "vitest": "^3.0.0"
   },
