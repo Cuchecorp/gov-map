@@ -172,7 +172,8 @@ function GrupoParlamentario({ row }: { row: CruceProyectoRow }) {
 
             {/* ProvenanceBadge por evidencia (FND-08). capturedAt = row.fecha_captura
                 (frescura del rebuild del cruce, nivel señal — WR-02/F41), NO item.fecha.
-                F-02 (117-03): origenFecha="recalculo" — fecha_captura es el now() del FULL
+                F-02 (117-03): el origen de fecha declarado abajo lo rinde como recálculo
+                del Observatorio — fecha_captura es el now() del FULL
                 REBUILD diario (cron '23 3 * * *'), no una observación de la fuente. Evidencia
                 de PROD (audit 116 §3 F-02): las 11 señales de D1165 comparten fecha_captura
                 al microsegundo (2026-07-28 03:23:00.035505+00) sobre una reunión del

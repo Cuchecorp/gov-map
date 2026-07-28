@@ -190,8 +190,8 @@ export function CrucesView({ data }: { data: CrucesViewData }) {
                   no la frescura de la fuente/reunión. Si el cron se pausa, todos los badges
                   envejecen a amber juntos — señal honesta.
 
-                  F-02 (117-03): esa distinción ya no vive sólo en este comentario.
-                  origenFecha="recalculo" hace que el badge diga "recalculado por el
+                  F-02 (117-03): esa distinción ya no vive sólo en este comentario. El
+                  origen de fecha declarado abajo hace que el badge diga "recalculado por el
                   Observatorio al {fecha}" en vez de "según fuente al {fecha}" — atribuir
                   el reloj del rebuild a la fuente era una afirmación falsa sobre la fuente.
                   Evidencia de PROD (audit 116, §3 F-02): las 11 señales de D1165 comparten
