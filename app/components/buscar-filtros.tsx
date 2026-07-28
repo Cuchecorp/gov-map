@@ -392,7 +392,12 @@ export function BuscarFiltros({ slice }: BuscarFiltrosProps) {
           {/* Faceta: Año */}
           {todosLosAnios.length > 0 && (
             <fieldset className="net-filtros__tipos">
-              <legend className="net-filtros__legend">Año</legend>
+              {/* F-12: el legend rotula los chips de esta faceta. "Año" pelado
+                  se leía como "el año del proyecto"; la columna es el año del
+                  primer evento de tramitación, igual que el chip del card. */}
+              <legend className="net-filtros__legend">
+                Año del primer trámite
+              </legend>
               <div className="flex flex-wrap gap-2">
                 {todosLosAnios.map((anio) => {
                   const label = anio === ANIO_SIN_DATO ? "Sin dato" : anio;

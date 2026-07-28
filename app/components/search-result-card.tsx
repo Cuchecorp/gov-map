@@ -35,6 +35,11 @@ export interface SearchResultCardProps {
    * Año derivado del primer evento de tramitación (proxy de ingreso). Opcional.
    * `null` u omitido → chip "Sin dato" visible (Advisory #4, coherente con faceta año).
    * NUNCA score/cosine/rank/número de similitud — JSDoc §5 LOCKED.
+   *
+   * F-12: el chip se renderiza ROTULADO por lo que el dato ES — el año del primer
+   * evento de tramitación — y no como "el año del proyecto". El rótulo se compone
+   * SOLO en la rama no-nula del ternario: el estado vacío viaja verbatim, sin
+   * prefijo, porque prefijarlo produciría una frase absurda sobre la ausencia.
    */
   anio?: number | null;
 }
@@ -68,7 +73,7 @@ export function SearchResultCard({
               variant="outline"
               className="border-transparent bg-muted text-muted-foreground"
             >
-              {anio != null ? String(anio) : "Sin dato"}
+              {anio != null ? `primer trámite ${anio}` : "Sin dato"}
             </Badge>
           )}
           <span className="font-mono text-sm text-muted-foreground">
