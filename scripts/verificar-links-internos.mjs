@@ -195,8 +195,15 @@ async function main() {
         causa = `id="${entrada.espera}" ausente del HTML SSR — candidato a fallback BrowserOS (Plan 02)`;
       }
     } else if (entrada.tipo === "ausencia") {
-      if (r.status !== 200 && r.status !== 404) {
-        causa = `origen HTTP ${r.status}`;
+      // CR-01 (review 114): afirmar ausencia EXIGE haber leído el HTML servido. Antes
+      // se aceptaba `status === 404` como origen válido y, como `pedir()` deja `html=""`
+      // fuera del 200, `!"".includes(espera)` daba PASS SIEMPRE: las 7 entradas que
+      // respaldan los gates MONEY/NOTIF se volvían vacuas justo cuando el sitio estaba
+      // roto. Sin 200 con cuerpo no vacío no hay evidencia ⇒ FAIL, nunca PASS.
+      if (r.status !== 200) {
+        causa = `origen HTTP ${r.status}: no se puede afirmar ausencia sin HTML servido`;
+      } else if (r.html.length === 0) {
+        causa = "origen HTTP 200 con cuerpo vacío: no se puede afirmar ausencia";
       } else if (!r.html.includes(entrada.espera)) {
         resultado = "PASS";
       } else {
