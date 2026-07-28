@@ -330,7 +330,12 @@ Plans:
   3. La adjudicación de identidad queda marcada INTOCABLE por decisión explícita, no por omisión
   4. El documento dice qué evidencia concreta haría falta para extender cada tarea pendiente
 
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+**Wave 1**
+
+- [ ] 121-01-PLAN.md — (w1) Estado por tarea LLM con evidencia citada del veredicto full-40 + guards + vigencia por drift canary + verificación por grep
 
 ### Phase 122: CRUCE-SQL — Cruces visibles × SQL de PROD
 
