@@ -1,6 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase";
 import { fechaCorta } from "@/lib/format";
-import { diaCalendarioCitacion } from "@/lib/dia-calendario";
+import { badgeFechaCitacion } from "@/lib/dia-calendario";
 import { BentoTile } from "@/components/bento/bento-tile";
 
 /**
@@ -93,15 +93,26 @@ function fechaValida(raw: string | null | undefined): Date | null {
 
 /**
  * Rótulo de fecha para una señal, respetando el contrato por tipo:
- *   - agenda_* → date-only-midnight-UTC → `diaCalendarioCitacion` (sin tz shift).
- *   - resto    → timestamp real → `fechaCorta` (es-CL, tz Chile).
+ *   - agenda_* → date-only-midnight-UTC → `badgeFechaCitacion` (sin tz shift).
+ *   - resto    → timestamp real → `fechaCorta` (es-CL).
  * Devuelve null si la fecha no es parseable (el caller omite el rótulo).
+ *
+ * F-14: la rama agenda_* devolvía el DÍA CIVIL en formato ISO (`2026-08-10`) y lo
+ * rendía tal cual a público general y prensa. `badgeFechaCitacion` toma ese mismo
+ * día civil y lo rinde en es-CL (`10-ago`) sin tocar el ruteo por tipo.
+ *
+ * Matiz que PROD aportó (audit §1.3, última fila): TODAS las señales llegan con
+ * `fecha_max` a medianoche UTC, no sólo las agenda_* — así que la rama `fechaCorta`
+ * también está formateando date-only de facto. Lo que la mantiene correcta es el
+ * `timeZone: "UTC"` explícito que 117-01 fijó en `format.ts`, NO el huso del
+ * entorno donde corra el proceso. Convertir esa rama a la zona de Chile correría
+ * el día hacia atrás.
  */
 export function rotuloFecha(tipo: string, iso: string | null): string | null {
   if (!iso) return null;
   if (TIPOS_AGENDA.has(tipo)) {
     // Día publicado por la fuente (parte fecha UTC), sin conversión de zona.
-    return diaCalendarioCitacion(iso);
+    return badgeFechaCitacion(iso);
   }
   const d = fechaValida(iso);
   return d ? fechaCorta(d) : null;
