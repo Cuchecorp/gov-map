@@ -330,3 +330,31 @@ describe("ContratosView — provenance por fila + cero cómputo", () => {
     expect(screen.getByText(/\(persona natural\)/)).toBeInTheDocument();
   });
 });
+
+// ── F-08 (117-03): `fecha_corte` (la FUENTE) vs `ingestado_hasta` (NOSOTROS) ────
+//    Ambas columnas viajaban bajo el mismo rótulo "corte al", fundiendo dos bordes
+//    de naturaleza distinta. MONEY sigue gated: sólo cambia el copy.
+describe("ContratosView — F-08: fuente vs ingesta con rótulos separados", () => {
+  it("fecha_corte se rotula como cobertura de la FUENTE", () => {
+    const { container } = render(<ContratosView data={makeViewData()} />);
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("la fuente cubre hasta el");
+    expect(texto).not.toContain("corte al");
+  });
+
+  it("ingestado_hasta se rotula como borde de NUESTRA ingesta", () => {
+    const { container } = render(
+      <ContratosView
+        data={makeViewData({
+          estado: "consultado_sin_contratos",
+          contratos: [],
+          totalContratos: 0,
+          fechaCorte: "2026-06-15T00:00:00Z",
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("nuestra ingesta llega hasta el");
+    expect(texto).not.toContain("corte al");
+  });
+});

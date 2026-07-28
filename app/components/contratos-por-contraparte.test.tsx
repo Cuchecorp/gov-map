@@ -210,3 +210,16 @@ describe("ContratosPorContraparteView — atribución del dataset", () => {
     expect(texto).not.toMatch(/CC BY 4\.0/i);
   });
 });
+
+// ── F-08 (117-03): "Consolidado" pelado no dice QUIÉN consolidó ────────────────
+describe("ContratosPorContraparteView — F-08: sujeto de la consolidación", () => {
+  it("nombra el sujeto y rotula la cobertura de la fuente", () => {
+    const { container } = render(
+      <ContratosPorContraparteView data={makeViewData()} />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("Consolidado por el Observatorio");
+    expect(texto).toContain("la fuente cubre hasta el");
+    expect(texto).not.toContain("corte al");
+  });
+});
