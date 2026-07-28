@@ -153,3 +153,76 @@ describe("runProbidadTodos — Etapa 1 R2 + SnapshotWriter (INGEST-04)", () => {
     expect(res.parlamentariosConsultados).toBe(2);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G6 (119-03): `existed` (412 de If-None-Match) consumido y VISIBLE.
+// Divergencia declarada: la Etapa 1 de este conector corre DESPUÉS de la carga a
+// Supabase, así que el skip NO ahorra parseo — evita re-registrar provenance y deja
+// constancia de que el crudo de esta corrida es idéntico al de la anterior.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("runProbidadTodos — G6: existed:true ⇒ sin novedades visible", () => {
+  it("(1) existed:true ⇒ marca sinNovedades y log `[skip] sin novedades — infoprobidad declaraciones`", async () => {
+    const writer = new InMemoryProbidadWriter();
+    const logs: string[] = [];
+    const putImmutable = vi.fn(async () => ({
+      r2Path: "infoprobidad/declaraciones/2026-06-24/abc123.json",
+      existed: true,
+    }));
+    const res = await runProbidadTodos({
+      conector: mockConector(),
+      writer,
+      maestra,
+      r2Store: { putImmutable } as unknown as R2Store,
+      snapshotWriter: { write: vi.fn() } as unknown as SnapshotWriter,
+      ingestadoHasta: "2026-06-24",
+      log: (m) => logs.push(m),
+    });
+
+    expect(res.sinNovedades).toBe(true);
+    expect(
+      logs.some((l) => l.includes("[skip] sin novedades — infoprobidad declaraciones")),
+    ).toBe(true);
+  });
+
+  it("(2) existed:false ⇒ comportamiento actual intacto (r2Path seteado, snapshot escrito)", async () => {
+    const writer = new InMemoryProbidadWriter();
+    const write = vi.fn(async () => ({ snapshotId: 1, r2Path: "x", contentHash: "y" }));
+    const putImmutable = vi.fn(async () => ({
+      r2Path: "infoprobidad/declaraciones/2026-06-24/abc123.json",
+      existed: false,
+    }));
+    const res = await runProbidadTodos({
+      conector: mockConector(),
+      writer,
+      maestra,
+      r2Store: { putImmutable } as unknown as R2Store,
+      snapshotWriter: { write } as unknown as SnapshotWriter,
+      ingestadoHasta: "2026-06-24",
+    });
+
+    expect(res.sinNovedades).toBe(false);
+    expect(res.r2Path).toBe("infoprobidad/declaraciones/2026-06-24/abc123.json");
+    expect(write).toHaveBeenCalledTimes(1);
+  });
+
+  it("(3) existed:true ⇒ NO se re-registra la provenance (snapshotWriter.write no se invoca)", async () => {
+    const writer = new InMemoryProbidadWriter();
+    const write = vi.fn();
+    const putImmutable = vi.fn(async () => ({
+      r2Path: "infoprobidad/declaraciones/2026-06-24/abc123.json",
+      existed: true,
+    }));
+    const res = await runProbidadTodos({
+      conector: mockConector(),
+      writer,
+      maestra,
+      r2Store: { putImmutable } as unknown as R2Store,
+      snapshotWriter: { write } as unknown as SnapshotWriter,
+      ingestadoHasta: "2026-06-24",
+    });
+
+    expect(write).not.toHaveBeenCalled();
+    // El r2Path sigue expuesto: el objeto EXISTE en R2 (412 = éxito idempotente), no es un fallo.
+    expect(res.r2Path).toBe("infoprobidad/declaraciones/2026-06-24/abc123.json");
+  });
+});
