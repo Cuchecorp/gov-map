@@ -37,6 +37,16 @@
  * temporales usar SIEMPRE `os.tmpdir()` desde Node — jamás esa variable de entorno, que aquí es
  * `undefined` y haría escribir en la raíz del repo.
  *
+ * ── Endurecimiento post code-review (Phase 114 · REVIEW.md) ─────────────────────
+ * El runner de la corrida guardada (114-CORRIDA-PRE/POST) era MÁS LAXO que éste. Los
+ * artefactos históricos NO se re-escriben: la re-corrida real ocurre en la Phase 125.
+ *  · CR-01: `ausencia` exige 200 con cuerpo no vacío (antes, un origen 404 dejaba
+ *    `html=""` y la aserción pasaba SIEMPRE ⇒ gates MONEY/NOTIF vacuos).
+ *  · CR-02: `status` con `origen` real + `href` comprueba además que el origen EMITA
+ *    ese href (integridad del link), no sólo que el destino responda.
+ * ⇒ un veredicto de esta versión puede diferir del de los `.json` guardados: es el
+ * runner el que se endureció, no el sitio el que cambió.
+ *
  * Exit code: 0 sin FAIL · 1 con al menos un FAIL · 2 error de uso.
  * Los MISSING-SSR no fallan la corrida (candidatos al fallback BrowserOS del Plan 02).
  */
@@ -81,10 +91,41 @@ function usage(msg) {
  * Exportada con nombre para poder ejercerla desde el self-check: una aserción sin prueba de
  * que muerde no cuenta como aserción (patrón mutation self-check: 68-01, 100-01, 103-01).
  */
+export function sinRuido(html) {
+  return String(html).replace(/<script\b[\s\S]*?<\/script\s*>/gi, " ");
+}
+
 export function tieneId(html, id) {
   const esc = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const sinScripts = String(html).replace(/<script\b[\s\S]*?<\/script\s*>/gi, " ");
-  return new RegExp(`\\sid=["']${esc}["']`).test(sinScripts);
+  return new RegExp(`\\sid=["']${esc}["']`).test(sinRuido(html));
+}
+
+/**
+ * Normaliza un valor de href para poder compararlo con el que EMITE el HTML servido:
+ * el serializador escapa `&` como `&amp;` (y las comillas como `&#x27;`), así que un
+ * `?a=1&b=2` del manifiesto jamás casaría contra el markup sin des-escapar antes.
+ */
+function normalizarHref(v) {
+  return String(v)
+    .replace(/&amp;/gi, "&")
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&quot;|&#34;/g, '"')
+    .trim();
+}
+
+/**
+ * ¿La página de ORIGEN emite realmente un `href` con este valor? (CR-02 del review 114)
+ *
+ * Sólo cuenta como emisión el valor COMPLETO de un atributo `href` de un elemento real
+ * (bloques `<script>` removidos: el payload RSC es texto, no DOM). Un substring pelado
+ * daría PASS con `/proyecto/14309-04` cuando lo emitido es `/proyecto/14309-041`.
+ */
+export function tieneHref(html, href) {
+  const objetivo = normalizarHref(href);
+  for (const m of sinRuido(html).matchAll(/\shref=["']([^"']*)["']/gi)) {
+    if (normalizarHref(m[1]) === objetivo) return true;
+  }
+  return false;
 }
 
 function padRight(s, n) {
@@ -154,7 +195,10 @@ async function main() {
         headers: { "user-agent": UA },
         redirect: "manual",
       });
-      const html = res.status === 200 ? await res.text() : "";
+      // CR-02: el cuerpo se lee SIEMPRE, también con status != 200 — las páginas
+      // not-found se sirven con 404 y su único link (`/`) sólo se puede comprobar
+      // leyendo ese cuerpo. Quien exija 200 lo hace explícitamente (rama `ausencia`).
+      const html = await res.text();
       out = { status: res.status, html };
     } catch (err) {
       out = { status: -1, html: "", error: err.message };
@@ -184,6 +228,25 @@ async function main() {
       } else {
         resultado = r.status !== 404 ? "PASS" : "FAIL";
         if (resultado === "FAIL") causa = "HTTP 404";
+      }
+      // CR-02 (review 114) — INTEGRIDAD DEL LINK, no sólo alcanzabilidad del destino.
+      // Hasta aquí sólo se probó que `destino` responde; un href borrado, mal escrito o
+      // condicionado a datos que ya no existen seguía dando PASS mientras la ruta destino
+      // viviera. Cuando la entrada declara un `origen` real (una ruta, no "chrome"/"—") y
+      // un `href`, se exige además que ESA página emita ESE href.
+      if (resultado === "PASS" && entrada.href && entrada.origen?.startsWith("/")) {
+        const o = await pedir(entrada.origen);
+        if (o.error) {
+          resultado = "FAIL";
+          causa = `origen ${entrada.origen}: error de red: ${o.error}`;
+        } else if (o.status !== 200 && o.status !== 404) {
+          // 404 es un origen legítimo: las páginas not-found se sirven con ese status.
+          resultado = "FAIL";
+          causa = `origen ${entrada.origen} HTTP ${o.status}: no se puede comprobar emisión`;
+        } else if (!tieneHref(o.html, entrada.href)) {
+          resultado = "FAIL";
+          causa = `href="${entrada.href}" NO emitido por ${entrada.origen} (destino alcanzable)`;
+        }
       }
     } else if (entrada.tipo === "ancla") {
       if (r.status !== 200) {
