@@ -168,6 +168,33 @@ describe("fechaHechoCortaSegura (guard anti-500 sin slice destructivo)", () => {
   it("date-only puro ('YYYY-MM-DD') → día publicado, sin corrimiento", () => {
     expect(fechaHechoCortaSegura("2026-03-31")).toBe("31 mar 2026");
   });
+
+  // WR-04: no ser MÁS estricta que `fechaCortaSegura`. El formato con ESPACIO es el
+  // que devuelven Postgres/`to_char` y varias RPC; exigir `T` degradaba un dato real.
+  it("separador ESPACIO (formato Postgres) → misma fecha que con 'T'", () => {
+    expect(fechaHechoCortaSegura("2026-07-07 00:00:00+00")).toBe("07 jul 2026");
+    expect(fechaHechoCortaSegura("2026-07-07 00:00:00+00")).toBe(
+      fechaHechoCortaSegura("2026-07-07T00:00:00+00"),
+    );
+  });
+
+  it("espacio CON hora real → el día chileno, sin truncar la hora", () => {
+    // Mismo caso que el ISO con 'T': 00:14 UTC del 17 = 21:14 del 16 en Chile.
+    expect(fechaHechoCortaSegura("2023-11-17 00:14:41+00")).toBe("16 nov 2023");
+  });
+
+  it("la normalización del offset NO toca el día de un date-only puro", () => {
+    // Regresión: un `/([+-]\d{2})$/` sin anclar mordía el "-31" de "2026-03-31".
+    expect(fechaHechoCortaSegura("2026-03-31")).toBe("31 mar 2026");
+    expect(fechaHechoCortaSegura("2026-12-25")).toBe("25 dic 2026");
+  });
+
+  it("sigue rechazando lo que no empieza por YYYY-MM-DD", () => {
+    expect(fechaHechoCortaSegura("07-07-2026 00:00:00")).toBe(
+      "fecha no informada",
+    );
+    expect(fechaHechoCortaSegura("2026-07 07")).toBe("fecha no informada");
+  });
 });
 
 /**

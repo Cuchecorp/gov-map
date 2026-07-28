@@ -108,8 +108,25 @@ export function fechaHechoCortaSegura(
   fallback = "fecha no informada",
 ): string {
   const s = (raw ?? "").trim();
-  if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(s)) return fallback;
-  const d = new Date(s);
+  // WR-04: aceptar TAMBIÉN el espacio como separador fecha/hora. Exigir `T` hacía a
+  // esta helper MÁS estricta que su hermana `fechaCortaSegura` (que con `slice(0,10)`
+  // toleraba cualquier sufijo): el formato con espacio que Postgres/`to_char` y varias
+  // RPC devuelven ("2026-07-07 00:00:00+00") caía al fallback y rendía "fecha no
+  // informada" sobre un dato que SÍ existe — degradación honesta, pero pérdida de
+  // información y silenciosa (no falla ruidosamente). El parseo sigue siendo COMPLETO:
+  // se normaliza a `T` para `new Date`, sin cortar la hora que decide el día chileno.
+  //
+  // El offset de Postgres viene en forma corta ("+00", "-04"), que NO es ISO 8601 —
+  // `new Date` lo rechaza. Se expande a "+00:00" SIN alterar el instante: es
+  // normalización de formato, no aritmética de zona. Cualquier cosa que aun así no
+  // parsee cae al fallback (el `Number.isNaN` de abajo), nunca a "Invalid Date".
+  if (!/^\d{4}-\d{2}-\d{2}([T ].*)?$/.test(s)) return fallback;
+  // El `\d{2}:\d{2}` obligatorio ancla la expansión a un offset REAL: sin él,
+  // `/([+-]\d{2})$/` mordía el DÍA de un date-only puro ("2026-03-31" → "2026-03-31:00").
+  const iso = s
+    .replace(" ", "T")
+    .replace(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}[\d:.]*)([+-]\d{2})$/, "$1$2:00");
+  const d = new Date(iso);
   // El `fallback` se propaga al helper: un único copy de degradación por call-site.
   return Number.isNaN(d.getTime()) ? fallback : fechaHechoCorta(d, fallback);
 }
