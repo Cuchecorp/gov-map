@@ -19,8 +19,15 @@ import { LeylobbyBloqueadaError } from "./connector-leylobby";
 import type { LobbyWriter } from "./writer";
 import { parseLobbyAudiencias, parseListadoRowIds } from "./parse-leylobby";
 import { reconciliarSujeto, type ReconciliarSujetoOpts } from "./reconciliar-sujeto";
-import { fingerprint, structuralPaths, sha256Hex, type DriftStore, type R2Store } from "@obs/ingest";
-import type { Parlamentario } from "@obs/core";
+import {
+  fingerprint,
+  structuralPaths,
+  sha256Hex,
+  type DriftStore,
+  type R2Store,
+  type SnapshotWriter,
+} from "@obs/ingest";
+import { makeProvenance, type Parlamentario } from "@obs/core";
 
 /** Una tarea acotada: una institución + un año + un rango de páginas (1-based, inclusive). */
 export interface TareaInstitucion {
@@ -66,6 +73,13 @@ export interface RunIngestLobbyOpts {
    * salta Etapa 2 (Supabase) para esa tarea.
    */
   r2Store?: R2Store;
+  /**
+   * G5 — writer de `source_snapshot` (provenance del crudo). BEST-EFFORT: un fallo NO aborta
+   * la ingesta. Se escribe SOLO tras un `putImmutable` con `existed:false` (T-119-12).
+   * `source` es "lobby-leylobby" — el nombre del CATÁLOGO de freshness
+   * (`packages/freshness/src/catalog.ts`), que es contra lo que `r2SnapshotSignal` consulta.
+   */
+  snapshotWriter?: Pick<SnapshotWriter, "write">;
   log?: (msg: string) => void;
 }
 
@@ -148,6 +162,32 @@ export async function runIngestLobby(opts: RunIngestLobbyOpts): Promise<RunInges
             continue;
           }
           log(`leylobby: crudo en R2 → ${r2Path}`);
+          // G5: la fila de provenance va DESPUÉS del put con existed:false — jamás se
+          // registra un snapshot cuyo objeto no se acabe de escribir (T-119-12).
+          // BEST-EFFORT: su fallo no aborta la Etapa 2 (parse + upsert) de esta tarea.
+          if (opts.snapshotWriter) {
+            try {
+              await opts.snapshotWriter.write({
+                source: "lobby-leylobby",
+                resource: clave,
+                cacheKey: `lobby-leylobby:${clave}:${date}`,
+                r2Path,
+                contentHash: sha,
+                fingerprint: sha,
+                dateBucket: date,
+                provenance: makeProvenance(
+                  "lobby-leylobby",
+                  opts.conector.urlAudiencias(tarea.institucionCodigo, tarea.year, page),
+                ),
+              });
+              log(`leylobby: fila source_snapshot escrita (${clave})`);
+            } catch (snapErr) {
+              log(
+                `leylobby: source_snapshot falló (no fatal): ` +
+                  `${snapErr instanceof Error ? snapErr.message : String(snapErr)}`,
+              );
+            }
+          }
         } catch (err) {
           log(`leylobby: Etapa 1 R2 falló (no fatal): ${(err as Error).message}`);
         }

@@ -15,7 +15,16 @@
 // no_confirmado sin fabricar). NOTA CONGRESO (Open Question 2): la Cámara/Senado NO están en
 // leylobby; la corrida LIVE de congreso usa el portal propio de la Cámara (verificación de operador).
 
-import { Fetcher, HostRateLimiter, RobotsGuard, R2Store } from "@obs/ingest";
+import { createClient } from "@supabase/supabase-js";
+import {
+  Fetcher,
+  HostRateLimiter,
+  RobotsGuard,
+  R2Store,
+  SnapshotWriter,
+  SupabaseSnapshotStore,
+  type CreateSupabaseClient,
+} from "@obs/ingest";
 import type { Parlamentario } from "@obs/core";
 import { LeylobbyConnector } from "./connector-leylobby";
 import { SupabaseLobbyWriter } from "./writer-supabase";
@@ -35,6 +44,13 @@ import {
 } from "./cursor-leylobby";
 
 const DEFAULT_INSTITUCION = "AA001";
+
+/**
+ * Adapta el `createClient` de supabase-js a la factory estructural de `SupabaseSnapshotStore`
+ * (espejo de `run-tramitacion-prod-cli.ts:49-50`). @obs/lobby ya declara `@supabase/supabase-js`.
+ */
+const createSupabaseClient: CreateSupabaseClient = (url, serviceKey) =>
+  createClient(url, serviceKey) as unknown as ReturnType<CreateSupabaseClient>;
 
 export interface LobbyCliOptions {
   institucion?: string;
@@ -62,6 +78,11 @@ export interface LobbyCliOptions {
   r2Store?: R2Store | null;
   /** Writer inyectable para tests sin DB. */
   writer?: LobbyWriter;
+  /**
+   * Writer de `source_snapshot` inyectable (tests). Si se omite, se construye desde las mismas
+   * credenciales Supabase ya resueltas; `null` lo apaga explícitamente.
+   */
+  snapshotWriter?: Pick<SnapshotWriter, "write"> | null;
 }
 
 export interface LobbyCliResult extends RunIngestLobbyResult {
@@ -217,6 +238,19 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
     tareas = [{ institucionCodigo: institucion, year: anio, pages }];
   }
 
+  // SnapshotWriter (source_snapshot / FND-08 / CRON-02 G5): plantilla dorada
+  // `run-tramitacion-prod-cli.ts:215-224`, gateado por `!dryRun && url && serviceKey` — las
+  // MISMAS variables ya resueltas arriba (incluidos los fallbacks SUPABASE_URL/SUPABASE_API_URL
+  // que inyectan los workflows). En dry-run o sin credenciales queda `undefined`.
+  const snapshotWriter =
+    opts.snapshotWriter !== undefined
+      ? (opts.snapshotWriter ?? undefined)
+      : !dryRun && url && serviceKey
+        ? new SnapshotWriter(
+            new SupabaseSnapshotStore({ url, serviceKey, createClient: createSupabaseClient }),
+          )
+        : undefined;
+
   const res = await runIngestLobby({
     conector,
     writer,
@@ -225,6 +259,7 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
     ...(opts.reconciliar !== undefined ? { reconciliar: opts.reconciliar } : {}),
     ...(opts.driftStore !== undefined ? { driftStore: opts.driftStore } : {}),
     ...(r2Store ? { r2Store } : {}),
+    ...(snapshotWriter ? { snapshotWriter } : {}),
     log,
   });
 
