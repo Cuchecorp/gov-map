@@ -668,3 +668,74 @@ describe("LobbyView (sección lobby) — GATE §9.1 (release gate: sin causal/af
     expect(texto).toContain("Ley del Lobby");
   });
 });
+
+// ── F-07 + F-05 (117-03): rótulo del hecho en lobby ────────────────────────────
+//    El rótulo es CONDICIONAL. `fechaTexto` transporta o una fecha formateada o un
+//    fallback textual; un prefijo ciego produciría "Reunión del Fecha no publicada",
+//    peor que el defecto que F-07 cierra. Los asserts negativos son OBLIGATORIOS.
+describe("LobbyView — F-07: rótulo condicional de la fecha de la reunión", () => {
+  it("vista agrupada: con fecha real rotula 'Reunión del'", () => {
+    const { container } = render(
+      <LobbyView data={makeViewData({ vista: "agrupada" })} />,
+    );
+    expect(container.textContent ?? "").toContain("Reunión del 14 may 2026");
+  });
+
+  it("vista cronológica: con fecha real rotula 'Reunión del'", () => {
+    const { container } = render(
+      <LobbyView data={makeViewData({ vista: "cronologica" })} />,
+    );
+    expect(container.textContent ?? "").toContain("Reunión del 14 may 2026");
+  });
+
+  it("agrupada: fecha y fecha_raw null → 'Fecha no publicada' SIN prefijo", () => {
+    const { container } = render(
+      <LobbyView
+        data={makeViewData({
+          vista: "agrupada",
+          audiencias: [makeAudiencia({ fecha: null, fecha_raw: null })],
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("Fecha no publicada");
+    expect(texto).not.toContain("Reunión del Fecha no publicada");
+  });
+
+  it("cronológica: fecha y fecha_raw null → 'Fecha no publicada' SIN prefijo", () => {
+    const { container } = render(
+      <LobbyView
+        data={makeViewData({
+          vista: "cronologica",
+          audiencias: [makeAudiencia({ fecha: null, fecha_raw: null })],
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("Fecha no publicada");
+    expect(texto).not.toContain("Reunión del Fecha no publicada");
+  });
+
+  it("fecha null con fecha_raw textual → el crudo viaja verbatim, sin prefijo", () => {
+    const { container } = render(
+      <LobbyView
+        data={makeViewData({
+          vista: "cronologica",
+          audiencias: [makeAudiencia({ fecha: null, fecha_raw: "junio 2026" })],
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("junio 2026");
+    expect(texto).not.toContain("Reunión del junio 2026");
+  });
+
+  it("el rótulo del hecho y el idiom de captura coexisten y son distinguibles", () => {
+    const { container } = render(
+      <LobbyView data={makeViewData({ vista: "cronologica" })} />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("Reunión del");
+    expect(texto).toContain("según fuente al");
+  });
+});

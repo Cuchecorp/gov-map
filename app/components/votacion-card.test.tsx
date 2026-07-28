@@ -146,3 +146,23 @@ describe("VotacionCard — desenlace factual (Phase 22, §3.3/§9)", () => {
     expect(texto).not.toMatch(PROHIBIDO);
   });
 });
+
+// ── F-07 + F-05 (117-03): rótulo del hecho en la tarjeta de votación ────────────
+describe("VotacionCard — F-07/F-05: rótulo de la fecha de la votación", () => {
+  it("rotula 'Votada el' y NO corre el día en una date-only disfrazada", () => {
+    const { container } = render(
+      <VotacionCard votacion={makeVotacion({ fecha: "2026-07-22T00:00:00Z" })} />,
+    );
+    // 00:00:00.000Z = date-only disfrazada ⇒ se rinde el 22, jamás el 21.
+    expect(container.textContent ?? "").toContain("Votada el 22 jul 2026");
+  });
+
+  it("el rótulo del hecho y el idiom de captura coexisten", () => {
+    const { container } = render(
+      <VotacionCard votacion={makeVotacion({ fecha: "2026-07-22T00:00:00Z" })} />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("Votada el");
+    expect(texto).toContain("según fuente al");
+  });
+});

@@ -134,3 +134,15 @@ describe("LobbyMencionesView — sección de menciones explícitas", () => {
     expect(EMPTY_MENCIONES_LOBBY).toMatch(/no describe la actividad de lobby/);
   });
 });
+
+// ── F-07 (117-03): rótulo del hecho en las menciones de lobby ───────────────────
+describe("LobbyMencionesView — F-07: rótulo de la fecha de la reunión", () => {
+  it("rotula 'Reunión del' y coexiste con el idiom de captura", () => {
+    const { container } = render(
+      <LobbyMencionesView rows={[makeMencion({ fecha: "2026-05-14T13:00:00Z" })]} />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("Reunión del 14 may 2026");
+    expect(texto).toContain("según fuente al");
+  });
+});

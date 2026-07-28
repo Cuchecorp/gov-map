@@ -1287,3 +1287,37 @@ describe('VotosView — sub-bloque "Cuándo votó" (chart/empty/orden, VIZ-02)',
     expect(texto.indexOf("¿Cuándo votó?")).toBeLessThan(texto.indexOf("Cómo votó"));
   });
 });
+
+// ── F-07 + F-05 (117-03): la fecha del hecho lleva rótulo, y el día es el chileno ──
+//    La fila del detalle pone la fecha de la VOTACIÓN a centímetros del badge de
+//    procedencia: sin sustantivo, el ciudadano no sabe cuál fecha es cuál.
+describe("VotosView — F-07/F-05: rótulo del hecho en la fecha de la votación", () => {
+  it("rotula 'Votada el' y usa el día chileno real (timestamptz con hora)", () => {
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: [makeVoto({ fecha: "2023-11-17T00:14:41+00:00" })],
+          votosVer: "16284-07",
+        })}
+      />,
+    );
+    // 00:14 UTC del 17 = 21:14 del 16 en Chile → el día del hecho es el 16.
+    expect(container.textContent ?? "").toContain("Votada el 16 nov 2023");
+  });
+
+  it("el rótulo del hecho y el idiom de captura coexisten y son distinguibles", () => {
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          votos: [makeVoto({ fecha: "2023-11-17T00:14:41+00:00" })],
+          votosVer: "16284-07",
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("Votada el");
+    expect(texto).toContain("según fuente al");
+  });
+});
