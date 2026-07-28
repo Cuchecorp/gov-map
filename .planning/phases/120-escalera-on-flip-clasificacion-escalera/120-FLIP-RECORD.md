@@ -74,7 +74,52 @@ veredicto full-40 (2026-07-27). El veredicto full-40 sigue siendo válido.
 
 ## Gate 3 — Shadow-eval LIVE (Granite vs DeepSeek)
 
-_(pendiente de ejecución en esta corrida)_
+**Precondición:** Gate 2 = `VEREDICTO: PASS` — cumplida.
+
+**Comando:**
+
+```
+set -a; source .env; set +a
+CLASIFICACION_SHADOW_LIVE=1 pnpm --filter @obs/cruces exec vitest run src/shadow-eval.test.ts
+```
+
+**Hora:** 2026-07-28 16:27–16:28 (America/Santiago) — 2026-07-28T20:27:47Z → T20:28:56Z
+**Exit code:** 0 · **Duración:** 67.09s (66.09s en el bloque LIVE)
+
+**Nota de ejecución (desviación de harness, no de resultado):** la primera invocación con el
+comando tal cual falló por el `testTimeout` default de vitest (5000 ms) mientras el bloque LIVE
+necesita ~66 s (8 casos × 2 llamadas × delay 2.5 s LOCKED). Se re-invocó el MISMO comando
+añadiendo `--testTimeout=600000` — sin tocar código, sin reducir el delay, sin paralelizar y sin
+reintentos en ráfaga (el plan pide explícitamente "dar timeout holgado a la invocación"). El
+comando efectivo fue:
+
+```
+CLASIFICACION_SHADOW_LIVE=1 pnpm --filter @obs/cruces exec vitest run src/shadow-eval.test.ts --testTimeout=600000
+```
+
+**Salida relevante (recortada; sin secretos):**
+
+```
+stdout | src/shadow-eval.test.ts > shadow-eval Granite vs DeepSeek LIVE — observación pura, NO promueve (CLASIFICACION_SHADOW_LIVE=1)
+[shadow-eval] acuerdo=8/8 (100%)
+[shadow-eval] cero desacuerdos — paridad perfecta sobre la muestra.
+
+ ✓ src/shadow-eval.test.ts (5 tests) 66091ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+```
+
+**Conteo de vitest:** `5 passed` (4 del bloque OFFLINE + 1 del bloque LIVE), `skipped` = 0. El
+bloque LIVE fue efectivamente ejercido (66 s de llamadas reales a Workers AI y DeepSeek).
+
+**Acuerdo sobre `GOLDEN_SET_GATE`:** `acuerdo=8/8 (100%)`, cero desacuerdos de `sector_codigo`
+Granite vs DeepSeek. El `GOLDEN_SET_GATE` tiene 10 casos; el shadow-eval compara únicamente la
+ruta pública `clasificarFicha`, por lo que los casos de tipo contraparte (que usan MiniMax) se
+saltan por diseño del test — los 8 casos de tipo `ficha` son el universo comparable y todos
+acordaron. Esto es consistente con el Δ0.0000 del veredicto full-40.
+
+**VEREDICTO: PASS**
 
 ---
 
