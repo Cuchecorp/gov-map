@@ -155,6 +155,13 @@ export function fechaHechoCortaSegura(
  * un evento anterior quedaría silenciosamente sin fecha en timeline, stepper y
  * "último hito".
  *
+ * BORDE DECLARADO DEL TECHO (IN-05 de `117-REVIEW.md`): `setUTCFullYear(y+5)` sobre un
+ * 29 de febrero cae en el 1 de marzo — el techo real es un día MENOR que "now + 5 años"
+ * exactos, una vez cada cuatro años. Es irrelevante para el propósito (atajar typos de
+ * siglo, con 5 años de margen) y NO se "corrige" con aritmética extra: cualquier clamp
+ * añadiría una rama sin ganancia. Queda documentado para que el JSDoc no prometa un
+ * rango exacto que el código no cumple.
+ *
  * ES UN PREDICADO, NO UN FILTRO: el llamante decide qué hacer (omitir la fecha
  * honestamente, declarar el dato ilegible). PROHIBIDO convertirlo en un
  * `where fecha <= current_date` global — ese fue exactamente el defecto que mató filas
