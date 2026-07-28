@@ -291,3 +291,72 @@ Este gate prueba únicamente el **mecanismo** de encendido/apagado, no la calida
 **Estado final:** `grep -c "^CLASIFICACION_ESCALERA=1" .env` == 1 → **escalera ENCENDIDA**.
 
 **VEREDICTO: PASS**
+
+---
+
+## Gate 6 — Guards y suite
+
+CERO cambio de código en esta fase. Los guards se corrieron **después** del flip, con la escalera
+encendida, precisamente para probar que encenderla no alcanza a las tareas intocables.
+
+**Guards de régimen (offline, sin env-gates LIVE):**
+
+| # | Comando | Resultado | Exit |
+|---|---------|-----------|------|
+| 1 | `pnpm --filter @obs/llm exec vitest run src/integ-scope-guard.test.ts src/provider-guard.test.ts src/tiered-scope-guard.test.ts` | `3 passed (3)` archivos · `7 passed (7)` tests | 0 |
+| 2 | `pnpm --filter app exec vitest run lib/env-example-guard.test.ts` | `1 passed (1)` archivo · `16 passed (16)` tests | 0 |
+
+Los tres guards de alcance viven en `@obs/llm` (no en `@obs/cruces`) y congelan que la escalera
+NO alcanza adjudicación de identidad ni extracción strict-schema. Ninguno mordió → sin regresión.
+
+**Cierre general:**
+
+| # | Comando | Resultado | Exit |
+|---|---------|-----------|------|
+| 3 | `pnpm --filter @obs/cruces exec vitest run` | `7 passed \| 1 skipped (8)` archivos · `42 passed \| 3 skipped (45)` tests | 0 |
+| 4 | `pnpm --filter @obs/llm exec vitest run` | `17 passed \| 1 skipped (18)` archivos · `158 passed \| 3 skipped (161)` tests | 0 |
+| 5 | `npx tsc -b` | sin salida (typecheck limpio de paquetes y raíz) | 0 |
+
+Los `skipped` son los bloques env-gated LIVE (shadow-eval LIVE, drift canary, smoke de `@obs/llm`),
+correctos y esperados en modo offline — ya fueron ejercidos y aprobados en los Gates 2 y 3.
+
+**Hora:** 2026-07-28 16:34 (America/Santiago) — 2026-07-28T20:34Z
+
+**VEREDICTO: PASS**
+
+---
+
+## Estado final CRON-03
+
+**ESCALERA ENCENDIDA EN CLASIFICACIÓN**
+
+- `.env` del operador contiene `CLASIFICACION_ESCALERA=1` (exactamente una línea).
+- La escalera activa es `tiered:granite→deepseek`: Granite `@cf/ibm-granite/granite-4.0-h-micro`
+  como primario, DeepSeek como escalación — probado en vivo en el Gate 5 y restaurado en el 5b.
+- El encendido cubre **únicamente la clasificación de fichas** (`clasificarFicha` vía
+  `clasificar-fichas-cli`), la única tarea APPROVED por el veredicto full-40 (be0b1b9, 2026-07-27).
+
+**Tareas INTOCADAS (constancia explícita, SC#5):** la **adjudicación de identidad** y la
+**extracción strict-schema** NO fueron tocadas por esta fase — ni su código, ni su provider, ni su
+configuración. La escalera no las alcanza, y eso queda congelado por `integ-scope-guard`,
+`provider-guard` y `tiered-scope-guard`, los tres verdes al cierre (Gate 6) con la escalera ya
+encendida.
+
+**Nota para Phase 121 (ESCALERA-DOC) y Phase 125 (E2E de flags):**
+`CLASIFICACION_ESCALERA` **NO pertenece a la familia `*_PUBLIC_ENABLED`**. No es un flag de
+exposición pública: es un selector de provider LLM interno. Su encendido está **autorizado por el
+operador** (2026-07-27) con precondiciones cumplidas y documentadas en este mismo archivo (Gates
+1–6). El E2E de 125 no debe tratarlo como "flag no autorizado que debe estar OFF"; el estado
+esperado es **ON**, con este registro como su justificante.
+
+**Nota de alcance operativo:** la clasificación **no corre en ningún cron de CI** (los workflows
+solo ejecutan tests). El flip vive en el `.env` **local del operador**. Esta fase NO creó cron nuevo
+ni GH secret; si algún día la clasificación se agenda en CI, ahí sí habrá que provisionar
+`WORKERS_AI_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID` como secrets de repositorio.
+
+**Rollback disponible en todo momento:** quitar la línea `CLASIFICACION_ESCALERA=1` de `.env`
+devuelve el incumbente DeepSeek byte-idéntico. Sin migración, sin deploy, sin cambio de código
+(probado en vivo, Gate 5b).
+
+**Secretos:** cero valores de secreto en este documento. Solo nombres de variables; el
+`CLOUDFLARE_ACCOUNT_ID` aparece redactado (`***`) en toda salida transcrita.
