@@ -196,7 +196,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 116-01-PLAN.md — Base compartida: semántica por formatter + chokepoint ProvenanceBadge
+- [x] 116-01-PLAN.md — Base compartida: semántica por formatter + chokepoint ProvenanceBadge
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -353,7 +353,7 @@ Plans:
 | 113. INV | 6/6 | Complete    | 2026-07-28 |
 | 114. LINK-INT | 3/3 | Complete    | 2026-07-28 |
 | 115. LINK-EXT | 3/3 | Complete    | 2026-07-28 |
-| 116. FECHA-AUDIT | 0/? | Not started | - |
+| 116. FECHA-AUDIT | 1/4 | In Progress|  |
 | 117. FECHA-FIX | 0/? | Not started | - |
 | 118. CRON-AUDIT | 0/? | Not started | - |
 | 119. CRON-FIX | 0/? | Not started | - |

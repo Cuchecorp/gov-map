@@ -4,13 +4,13 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: executing
 stopped_at: Completed 115-01-PLAN.md
-last_updated: "2026-07-28T12:43:06.878Z"
-last_activity: 2026-07-28 -- Phase 116 planning complete
+last_updated: "2026-07-28T12:51:22.837Z"
+last_activity: 2026-07-28
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 16
-  completed_plans: 12
+  completed_plans: 13
   percent: 23
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 115 — LINK-EXT — Patrones de link a fuente oficial
+**Current focus:** Phase 116 — FECHA-AUDIT — Semántica de cada fecha visible
 
 ## Current Position
 
-Phase: 116
-Plan: Not started
+Phase: 116 (FECHA-AUDIT — Semántica de cada fecha visible) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-28 -- Phase 116 planning complete
+Last activity: 2026-07-28
 
 ### Roadmap v12.0 (Phases 113-125)
 
@@ -138,6 +138,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 115 P01 | ~30 min | 3 tasks | 3 files |
 | Phase 115 P02 | 25m | 2 tasks | 4 files |
 | Phase 115 P03 | 35m | 3 tasks | 9 files |
+| Phase 116 P116-01 | 35m | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -303,7 +304,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-28T04:31:53.243Z
+Last session: 2026-07-28T12:51:13.971Z
 Stopped at: Completed 115-01-PLAN.md
 Resume file: None
 
