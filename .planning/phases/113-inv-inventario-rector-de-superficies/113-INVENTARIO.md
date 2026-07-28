@@ -660,7 +660,7 @@ near-clone vivo que reemplazó a `actualidad-module.tsx` en `/`.
 | propiedad | valor |
 |-----------|-------|
 | prop | `capturedAt: Date \| null` (`provenance-badge.tsx:21`) |
-| formatter | `relativeTimeEs(capturedAt)` (`:52`) + `esStale(capturedAt)` (`:33`, umbral **14 días** → amber) — corregido en Phase 117 (F-11): el valor real es `STALE_THRESHOLD_MS = 14 * 24 * 60 * 60 * 1000` en `app/lib/format.ts:10`, elegido por la cadence de ingesta semanal. El inventario decía 48 h por propagación del JSDoc erróneo del badge; el comportamiento nunca cambió. |
+| formatter | `relativeTimeEs(capturedAt)` (`:52`) + `esStale(capturedAt)` (`:33`, umbral **14 días** → amber) — corregido en Phase 117 (F-11): el valor real es `STALE_THRESHOLD_MS = 14 * 24 * 60 * 60 * 1000` en `app/lib/format.ts:10`, elegido por la cadence de ingesta semanal. El inventario declaraba un umbral de dos días por propagación del JSDoc erróneo del badge; el comportamiento nunca cambió. |
 | `null` | renderiza **"Sin fecha de actualización"** (`:54`) y `sourceName` se degrada a `"fuente desconocida"` (`:34`) — el badge **nunca** se omite (UI-SPEC §6.3) |
 | tooltip | `capturedAt.toISOString()` (`:86`) — el instante crudo de *scraping* |
 
