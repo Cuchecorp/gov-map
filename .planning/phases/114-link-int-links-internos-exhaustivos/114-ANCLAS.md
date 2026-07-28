@@ -87,3 +87,15 @@ queda tapada por el header sticky** y no se abre hallazgo por este motivo.
 **ninguna — todas las anclas resolvieron por SSR.**
 `fallback BrowserOS no requerido — 0 anclas ausentes en SSR` (MISSING-SSR = 0 tanto en la corrida
 PRE de 114-01 como en esta re-corrida con la aserción endurecida). Cero screenshots, cero PII (T-114-04).
+
+### Registro del fallback (Task 2)
+
+`fallback BrowserOS no requerido — 0 anclas ausentes en SSR`.
+
+**BrowserOS NO se abrió**, y esta es la rama válida del plan, no una omisión: el fallback existe para
+distinguir un ancla de DOM cliente de un ancla rota, y no hubo ninguna candidata. Esto también evita
+gratuitamente el riesgo T-114-05 (ráfagas sobre el MCP) y T-114-04 (evidencia con PII arrastrada del
+DOM de una ficha). La única comprobación que el plan pedía anotar "por cada ancla que sí existe" —el
+`scroll-margin` de la lección v8.0— se resolvió con evidencia **más fuerte** que una observación de
+`getComputedStyle`: la regla `:where([id]){scroll-margin-top:5rem}` leída del **bundle CSS que sirve
+el deploy**, que cubre por construcción los 20 destinos (todos son `[id]`).
