@@ -148,8 +148,8 @@ describe("CitacionCard — datos + procedencia", () => {
 
   it("renderiza el ProvenanceBadge (frescura + fuente)", () => {
     render(<CitacionCard {...makeProps()} />);
-    // ProvenanceBadge muestra "Actualizado ..." y el nombre de la fuente.
-    expect(screen.getByText(/Actualizado/)).toBeInTheDocument();
+    // ProvenanceBadge muestra el idiom LOCKED de fecha (117-01, F-01) y la fuente.
+    expect(screen.getByText(/según fuente al/)).toBeInTheDocument();
     expect(screen.getAllByText(/Cámara/).length).toBeGreaterThan(0);
   });
 

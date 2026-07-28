@@ -40,7 +40,7 @@ describe("SearchResultCard — trazabilidad y enlace a la ficha", () => {
     // CamaraChip (Senado) + ProvenanceBadge presentes. "Senado" aparece dos
     // veces (chip de cámara + nombre de fuente) — getAllByText como en CitacionCard.
     expect(screen.getAllByText("Senado").length).toBeGreaterThan(0);
-    expect(screen.getByText(/Actualizado/)).toBeInTheDocument();
+    expect(screen.getByText(/según fuente al/)).toBeInTheDocument();
   });
 
   it("renderiza la materia (line-clamp) y no rompe sin materia", () => {

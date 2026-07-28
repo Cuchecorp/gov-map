@@ -22,7 +22,7 @@ describe("ProvenanceBadge — frescura + fuente (TRAM-09, UI-SPEC §4)", () => {
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
 
     // El span del badge NO debe llevar las clases amber de staleness.
-    const badge = screen.getByText(/Actualizado/).closest("span");
+    const badge = screen.getByText(/según fuente al/).closest("span");
     expect(badge?.className).not.toMatch(/amber/);
   });
 
@@ -63,6 +63,138 @@ describe("ProvenanceBadge — frescura + fuente (TRAM-09, UI-SPEC §4)", () => {
     // El dato sigue mostrándose, pero degradado a "sin enlace" (no inyecta script).
     expect(screen.getByText(/Cámara/)).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F-01 / F-02 / F-03 / F-11 (117-01, FECHA-02) — el IDIOM del chokepoint.
+//
+// El badge decía "Actualizado hace 3 h". Eso afirma que el DATO cambió hace 3 horas
+// cuando lo único que pasó hace 3 horas fue NUESTRA consulta a la fuente: sobre un
+// proyecto sin movimiento desde 2023, insinúa actividad legislativa inexistente. El
+// idiom LOCKED de la fase separa los dos hechos: la fecha que se rotula es la de la
+// FUENTE ("según fuente al …"), y cuando el reloj es un recálculo interno nuestro se
+// dice así explícitamente ("recalculado por el Observatorio al …"). La señal de
+// recencia no se pierde: baja al tooltip.
+// ---------------------------------------------------------------------------
+
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+describe("ProvenanceBadge — idiom LOCKED de fecha (F-01/F-02/F-03)", () => {
+  const CAPTURA = new Date("2026-05-14T10:00:00Z");
+
+  it("F-01: dice 'según fuente al {fecha}' y JAMÁS 'Actualizado'", () => {
+    const { container } = render(
+      <ProvenanceBadge
+        capturedAt={CAPTURA}
+        sourceName="Cámara"
+        sourceUrl="https://www.camara.cl/fuente"
+      />,
+    );
+    expect(container.textContent).toContain("según fuente al 14 may 2026");
+    expect(container.textContent).not.toMatch(/Actualizado/);
+  });
+
+  it("F-02: `origenFecha='recalculo'` dice 'recalculado por el Observatorio al {fecha}'", () => {
+    // `cruce_senal.fecha_captura` es el `now()` del FULL REBUILD diario: no es una
+    // observación de la fuente, así que decir "según fuente" sería tan impreciso
+    // como decir "Actualizado".
+    const { container } = render(
+      <ProvenanceBadge
+        capturedAt={CAPTURA}
+        sourceName="Observatorio"
+        sourceUrl={null}
+        origenFecha="recalculo"
+      />,
+    );
+    expect(container.textContent).toContain(
+      "recalculado por el Observatorio al 14 may 2026",
+    );
+    expect(container.textContent).not.toMatch(/según fuente al/);
+  });
+
+  it("F-02: el defecto de `origenFecha` es 'fuente' (ningún call-site existente cambia)", () => {
+    const { container } = render(
+      <ProvenanceBadge
+        capturedAt={CAPTURA}
+        sourceName="Senado"
+        sourceUrl={null}
+        origenFecha="fuente"
+      />,
+    );
+    expect(container.textContent).toContain("según fuente al 14 may 2026");
+  });
+
+  it("F-03: `notaAgregacion` califica la agregación entre paréntesis", () => {
+    // Un badge de SECCIÓN declara la frescura de un MAX sobre N filas — hay que decir
+    // de qué fila habla la fecha.
+    const { container } = render(
+      <ProvenanceBadge
+        capturedAt={CAPTURA}
+        sourceName="Cámara"
+        sourceUrl={null}
+        notaAgregacion="evento más reciente"
+      />,
+    );
+    expect(container.textContent).toContain(
+      "según fuente al 14 may 2026 (evento más reciente)",
+    );
+  });
+
+  it("la rama sin fecha queda INTACTA: 'Sin fecha de actualización' + 'fuente desconocida'", () => {
+    render(
+      <ProvenanceBadge capturedAt={null} sourceName="Cámara" sourceUrl={null} />,
+    );
+    expect(screen.getByText("Sin fecha de actualización")).toBeInTheDocument();
+    expect(screen.getByText("fuente desconocida")).toBeInTheDocument();
+  });
+
+  it("la recencia deja de ser el rótulo: 'hace X' NO es texto visible del badge", () => {
+    const { container } = render(
+      <ProvenanceBadge
+        capturedAt={new Date(Date.now() - 3 * 60 * 60 * 1000)}
+        sourceName="Cámara"
+        sourceUrl={null}
+      />,
+    );
+    expect(container.textContent).not.toMatch(/hace \d/);
+  });
+
+  it("esStale a 15 días sigue pintando amber (cero cambio de comportamiento)", () => {
+    render(
+      <ProvenanceBadge
+        capturedAt={new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)}
+        sourceName="Senado"
+        sourceUrl="https://www.senado.cl/fuente"
+      />,
+    );
+    const outer = screen.getByText("Senado").parentElement;
+    expect(outer?.className).toContain("text-amber-700");
+  });
+
+  /**
+   * El tooltip de Radix sólo monta su contenido al abrirse (hover/focus), y jsdom no
+   * dispara ese ciclo de forma fiable — por eso la señal de recencia y el ISO se
+   * verifican por SOURCE-SCAN del chokepoint, precedente del source-scan SC7 de 115.
+   * Lo que se prueba: la recencia NO se perdió, sólo dejó de ser el rótulo principal.
+   */
+  it("la señal de recencia sobrevive en el tooltip (source-scan del chokepoint)", () => {
+    const src = readFileSync(
+      path.join(import.meta.dirname, "provenance-badge.tsx"),
+      "utf-8",
+    );
+    expect(src).toContain("capturedAt.toISOString()");
+    expect(src).toContain("consultado {relativeTimeEs(capturedAt)}");
+  });
+
+  it("F-11: el JSDoc del chokepoint ya no miente (ni copy viejo ni umbral de 48h)", () => {
+    const src = readFileSync(
+      path.join(import.meta.dirname, "provenance-badge.tsx"),
+      "utf-8",
+    );
+    expect(src).not.toContain("Actualizado hace X");
+    expect(src).not.toContain("más de 48h");
   });
 });
 
@@ -208,7 +340,7 @@ describe("ProvenanceBadge — limitación declarada de recurso no-humano (LINK-E
     );
     // El enlace NUNCA se quita: se declara la limitación, no se esconde el destino.
     expect(screen.getByRole("link")).toHaveAttribute("href", URL_DATOS);
-    const badge = screen.getByText(/Actualizado/).closest("span[title]");
+    const badge = screen.getByText(/según fuente al/).closest("span[title]");
     expect(badge).toHaveAttribute("title", LEYENDA_RECURSO_NO_HUMANO);
   });
 

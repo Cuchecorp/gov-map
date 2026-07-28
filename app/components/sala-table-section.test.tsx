@@ -57,7 +57,7 @@ describe("SalaTableSection — modo available (tabla del Senado)", () => {
 
   it("renderiza el ProvenanceBadge en modo available", () => {
     render(<SalaTableSection {...availableProps} />);
-    expect(screen.getByText(/Actualizado/)).toBeInTheDocument();
+    expect(screen.getByText(/según fuente al/)).toBeInTheDocument();
   });
 
   it("no muestra el copy de degradación de Cámara cuando hay datos del Senado", () => {

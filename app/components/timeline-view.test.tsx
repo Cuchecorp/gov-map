@@ -210,7 +210,7 @@ describe("TimelineView — hitos visibles + colapso de urgencias (SC2)", () => {
       <TimelineView eventos={fixtureMixto()} boletin="16284-07" />,
     );
     // El badge por evento se retiró → no hay texto de ProvenanceBadge en la vista.
-    expect(container.textContent).not.toMatch(/Actualizado/);
+    expect(container.textContent).not.toMatch(/según fuente al/);
     // Colapsado: 2 hitos estructurales con enlace → 2 links "Ver fuente oficial ↗".
     expect(screen.getAllByText(/Ver fuente oficial/).length).toBe(2);
   });

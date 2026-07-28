@@ -322,7 +322,7 @@ describe("CrucesView — frescura honesta (CRUCEN-01 / WR-02)", () => {
     for (const b of badges) expect(b.className).not.toContain("text-amber-700");
   });
 
-  it("muestra 'Actualizado' y NO 'Sin fecha de actualización'", () => {
+  it("muestra el idiom de fecha y NO 'Sin fecha de actualización'", () => {
     render(
       <CrucesView
         data={makeViewData({
@@ -333,7 +333,10 @@ describe("CrucesView — frescura honesta (CRUCEN-01 / WR-02)", () => {
     expect(
       screen.queryByText(/Sin fecha de actualización/i),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/Actualizado/i)).toBeInTheDocument();
+    // 117-01: idiom LOCKED. El Plan 03 lo mueve a /recalculado por el Observatorio al/
+    // cuando esta superficie pase origenFecha="recalculo" (F-02: el cruce es un rebuild
+    // NUESTRO, no una observación de la fuente).
+    expect(screen.getByText(/según fuente al/i)).toBeInTheDocument();
   });
 
   it("texto factual de reunión: presente cuando item.fecha set, ausente cuando null", () => {
