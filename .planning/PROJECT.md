@@ -47,7 +47,9 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 **Método (LOCKED por el operador):** TODO con base empírica — spikes, iteraciones BrowserOS, revisión, diseño, crítica, loop. Primero QUÉ (señales con evidencia), después CÓMO (frontend). Corrida en contexto limpio con prompt listo (`.planning/PROMPT-v10.0-build-autonomo.md`).
 
-## Current State: v12.0 en curso — Phase 113 completa (2026-07-28)
+## Current State: v12.0 en curso — Phases 113-114 completas (2026-07-28)
+
+**Phase 114 completa (2026-07-28):** links internos verificados exhaustivos sobre el deploy real — cobertura 77/77 refs del inventario, 95 entradas: 94 PASS + 1 FAIL único (H-01: `/proyecto/<inexistente>` daba 200 por notFound() dentro del boundary de streaming) FIXEADO en código (404 antes del primer Suspense, 3 tests con mordida probada); 20/20 anclas existen por SSR. Runner reproducible `scripts/verificar-links-internos.mjs` endurecido por review (9 findings fixed: integridad de emisión CR-02, WARN-STREAM para secciones bajo Suspense, timeout+retry, selfcheck 28 fixtures). Verification passed 4/4; re-verify en 125: 404 real post-deploy + WARN-STREAM por DOM (expectativa anclada: "cero FAIL", no "95/95 PASS").
 
 **Phase 113 completa (2026-07-28):** inventario rector `113-INVENTARIO.md` `estado: validado` (validador Opus independiente PASS 7/7; verificación 21/21): 15 rutas + 4 not-found, 60 emisores E-NNN, chokepoint DUAL ProvenanceBadge (16 call-sites `sourceUrl` trazados), 4 builders verbatim, 34 columnas URL/8 hosts vía information_schema, 5 sujetos SQL deterministas, gates observados en vivo (NET/CRUCES/VSIM ON, MONEY/NOTIF OFF). Alimenta 114/115/116/122/125. Candidatos ya detectados: `/buscar` pasa `proyecto.enlace` crudo a wspublico XML (115), `estado-actual-block.tsx:429` y `partido-chip.tsx:65-70` muestran `fecha_captura` (116).
 
