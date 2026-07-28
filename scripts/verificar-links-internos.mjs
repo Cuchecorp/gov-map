@@ -44,6 +44,7 @@
 import { parseArgs } from "node:util";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { BASE_URL, MANIFIESTO } from "./links-internos-manifiesto.mjs";
 
@@ -66,10 +67,24 @@ function usage(msg) {
   process.exit(2);
 }
 
-/** ¿Aparece `id` como atributo id de algún elemento del HTML? */
-function tieneId(html, id) {
+/**
+ * ¿Aparece `id` como atributo `id` de un ELEMENTO real del HTML servido?
+ *
+ * Contrato (probado por `scripts/verificar-links-internos.selfcheck.mjs`, T-114-12):
+ *  - `aria-controls="votos"` / `data-id="votos"` / `aria-labelledby="votos"` → false
+ *    (el atributo debe ser exactamente `id`, precedido de whitespace: `\s` + `id=`).
+ *  - un `{"id":"votos"}` dentro de un bloque `<script>` → false (los bloques script se
+ *    remueven del HTML ANTES de buscar: el payload RSC de Next.js es texto, no DOM).
+ *  - `<section id="votos">` / `<section id='votos'>` → true.
+ *  - `<section id="votos-extra">` con ancla `votos` → false (la comilla de cierre ancla el final).
+ *
+ * Exportada con nombre para poder ejercerla desde el self-check: una aserción sin prueba de
+ * que muerde no cuenta como aserción (patrón mutation self-check: 68-01, 100-01, 103-01).
+ */
+export function tieneId(html, id) {
   const esc = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`\\sid=["']${esc}["']`).test(html);
+  const sinScripts = String(html).replace(/<script\b[\s\S]*?<\/script\s*>/gi, " ");
+  return new RegExp(`\\sid=["']${esc}["']`).test(sinScripts);
 }
 
 function padRight(s, n) {
@@ -236,7 +251,11 @@ async function main() {
   process.exit(nFail > 0 ? 1 : 0);
 }
 
-main().catch((err) => {
-  console.error("Error inesperado:", err);
-  process.exit(1);
-});
+// Solo corre cuando el módulo se invoca como script. Importarlo (p. ej. desde el self-check)
+// NO debe disparar la corrida ni el `usage()` por falta de --out.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error("Error inesperado:", err);
+    process.exit(1);
+  });
+}

@@ -1,0 +1,320 @@
+{
+  "meta": {
+    "base_url": "https://observatorio-congreso.thevalis.workers.dev",
+    "iso_timestamp": "2026-07-28T01:10:59.607Z",
+    "total": 20,
+    "pass": 20,
+    "fail": 0,
+    "missing_ssr": 0,
+    "filtros": {
+      "route": null,
+      "tipo": "ancla"
+    },
+    "cheerio_probe": "CHEERIO_NO (cheerio no resuelve desde la raíz; verificación por búsqueda sobre el HTML servido)",
+    "delay_ms": 400,
+    "user_agent": "ObservatorioCongreso360/1.0 (+https://observatorio-congreso.thevalis.workers.dev; contacto: sanchez.rossi@gmail.com)"
+  },
+  "resultados": [
+    {
+      "id": "4.1-A3-votos",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "#votos",
+      "espera": "votos",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A3-lobby",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "#lobby",
+      "espera": "lobby",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A3-patrimonio",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "#patrimonio",
+      "espera": "patrimonio",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A3-cruces",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "CRUCES",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "#cruces",
+      "espera": "cruces",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A3-S-votos",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/parlamentario/S1338",
+      "destino": "/parlamentario/S1338",
+      "href": "#votos",
+      "espera": "votos",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A3-S-patrimonio",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/parlamentario/S1338",
+      "destino": "/parlamentario/S1338",
+      "href": "#patrimonio",
+      "espera": "patrimonio",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A3-S-cruces",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "CRUCES",
+      "origen": "/parlamentario/S1338",
+      "destino": "/parlamentario/S1338",
+      "href": "#cruces",
+      "espera": "cruces",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A20-pendiente",
+      "inventarioRef": [
+        "4.1-A20"
+      ],
+      "tipo": "ancla",
+      "gate": "MONEY",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "#financiamiento-pendiente",
+      "espera": "financiamiento-pendiente",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-estado",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#estado",
+      "espera": "estado",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-timeline",
+      "inventarioRef": [
+        "4.2-A1",
+        "4.2-A5"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#timeline",
+      "espera": "timeline",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-votaciones",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#votaciones",
+      "espera": "votaciones",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-autores",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#autores",
+      "espera": "autores",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-lobby-tramitacion",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#lobby-tramitacion",
+      "espera": "lobby-tramitacion",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-lobby-menciones",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#lobby-menciones",
+      "espera": "lobby-menciones",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-cruces",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "CRUCES",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#cruces",
+      "espera": "cruces",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-idea-matriz",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#idea-matriz",
+      "espera": "idea-matriz",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-cuerpos-legales",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#cuerpos-legales",
+      "espera": "cuerpos-legales",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-similares",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#similares",
+      "espera": "similares",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-validacion-fuente",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#validacion-fuente",
+      "espera": "validacion-fuente",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A2",
+      "inventarioRef": [
+        "4.2-A2"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#idea-matriz",
+      "espera": "idea-matriz",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    }
+  ]
+}
