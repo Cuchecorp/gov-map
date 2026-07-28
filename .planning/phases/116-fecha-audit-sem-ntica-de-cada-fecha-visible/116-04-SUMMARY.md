@@ -42,7 +42,7 @@ metrics:
 
 # Phase 116 Plan 04: Cierre de la auditoría semántica de fechas — Summary
 
-Artefacto rector `116-FECHAS-AUDIT.md` (1.068 líneas) que fusiona los tres parciales, los cruza
+Artefacto rector `116-FECHAS-AUDIT.md` (1.099 líneas) que fusiona los tres parciales, los cruza
 contra PROD con un sujeto determinista por superficie, y emite 14 hallazgos numerados accionables
 por Phase 117; su completitud (38/38 ids) la prueba `check-fechas.sh`, que muerde.
 

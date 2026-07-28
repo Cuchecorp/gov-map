@@ -68,7 +68,7 @@ Notas de secuencia: el inventario 113 es load-bearing — sin él las fases de l
 - [x] **Phase 113: INV — Inventario rector de superficies** — toda ruta pública × links que emite (internos/externos por tipo) × fechas que muestra (con su columna de origen); artefacto rector del milestone (completed 2026-07-27)
 - [x] **Phase 114: LINK-INT — Links internos exhaustivos** — cero 404 y cero anclas rotas verificados sobre el deploy real, con corrida reproducible (completed 2026-07-28)
 - [x] **Phase 115: LINK-EXT — Patrones de link a fuente oficial** — validación por construcción + muestra live estratificada por tipo/host con rate-limit 2-3s; patrón malo se arregla, fuente caída se declara (completed 2026-07-28)
-- [ ] **Phase 116: FECHA-AUDIT — Semántica de cada fecha visible** — veredicto hecho/captura/ambigua por fecha, cruzado contra dato real de PROD
+- [x] **Phase 116: FECHA-AUDIT — Semántica de cada fecha visible** — veredicto hecho/captura/ambigua por fecha, cruzado contra dato real de PROD (completed 2026-07-28)
 - [ ] **Phase 117: FECHA-FIX — Etiquetas de fecha corregidas** — "según fuente al…" donde corresponda; `fecha_captura` nunca como el hecho; guards y suite verdes
 - [ ] **Phase 118: CRON-AUDIT — Veredicto por cron con evidencia** — GH Actions + pg_cron enumerados y clasificados verde/stale/roto con causa
 - [ ] **Phase 119: CRON-FIX — Robustez de ingesta** — reintentos/backoff, cursores, hash-check, señales freshness; degrade honesto, jamás fabricación
@@ -205,7 +205,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 116-04-PLAN.md — Cruce PROD + ensamblado 116-FECHAS-AUDIT.md + hallazgos F-xx + check-fechas.sh
+- [x] 116-04-PLAN.md — Cruce PROD + ensamblado 116-FECHAS-AUDIT.md + hallazgos F-xx + check-fechas.sh
 
 ### Phase 117: FECHA-FIX — Etiquetas de fecha corregidas
 
@@ -353,7 +353,7 @@ Plans:
 | 113. INV | 6/6 | Complete    | 2026-07-28 |
 | 114. LINK-INT | 3/3 | Complete    | 2026-07-28 |
 | 115. LINK-EXT | 3/3 | Complete    | 2026-07-28 |
-| 116. FECHA-AUDIT | 3/4 | In Progress|  |
+| 116. FECHA-AUDIT | 4/4 | Complete   | 2026-07-28 |
 | 117. FECHA-FIX | 0/? | Not started | - |
 | 118. CRON-AUDIT | 0/? | Not started | - |
 | 119. CRON-FIX | 0/? | Not started | - |

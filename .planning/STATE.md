@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
-status: executing
+status: verifying
 stopped_at: Completed 115-01-PLAN.md
-last_updated: "2026-07-28T13:13:33.370Z"
+last_updated: "2026-07-28T13:38:14.444Z"
 last_activity: 2026-07-28
 progress:
   total_phases: 13
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 16
-  completed_plans: 15
-  percent: 23
+  completed_plans: 16
+  percent: 31
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 116 (FECHA-AUDIT — Semántica de cada fecha visible) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-28
 
 ### Roadmap v12.0 (Phases 113-125)
@@ -139,6 +139,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 115 P02 | 25m | 2 tasks | 4 files |
 | Phase 115 P03 | 35m | 3 tasks | 9 files |
 | Phase 116 P116-01 | 35m | 2 tasks | 1 files |
+| Phase 116 P04 | 2h | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -244,6 +245,8 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 115-02: el fix del timeline no requiere threadear el boletin (TramitacionEventoRow.boletin no-nulable, 0 nulos en PROD); timeline-view.tsx:243,252 son revision obligada por ser los dos call-sites
 - [Phase ?]: 115-03: el boletin del timeline NO se threadea (viaja en la fila, types.ts:32-33); el gate de paridad se re-expresa con typecheck + test por call-site + mutacion de :252
 - [Phase ?]: 115-03: los fixes de link externo NO se despliegan; viajan con la Phase 125 (SC3 cierra PASS con limitacion declarada)
+- [Phase ?]: 116-04: el fix de F-05 NO es aplicar timeZone America/Santiago — 45.618 filas de PROD son date-only disfrazadas de timestamptz
+- [Phase ?]: 116-04: el hallazgo de DIA de lobby_audiencia queda REFUTADO por PROD (drift 0/17.762)
 
 ### Pending Todos
 
@@ -304,7 +307,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-28T13:13:33.360Z
+Last session: 2026-07-28T13:38:09.617Z
 Stopped at: Completed 115-01-PLAN.md
 Resume file: None
 
