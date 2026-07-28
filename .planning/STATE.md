@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
-status: executing
+status: verifying
 stopped_at: Completed 115-01-PLAN.md
-last_updated: "2026-07-28T20:48:38.571Z"
-last_activity: 2026-07-28 -- Phase 121 planning complete
+last_updated: "2026-07-28T20:56:01.253Z"
+last_activity: 2026-07-28
 progress:
   total_phases: 13
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 33
-  completed_plans: 32
-  percent: 62
+  completed_plans: 33
+  percent: 69
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 120 — ESCALERA-ON — Flip CLASIFICACION_ESCALERA=1
+**Current focus:** Phase 121 — ESCALERA-DOC — Extensión solo con benchmark
 
 ## Current Position
 
-Phase: 121
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-28 -- Phase 121 planning complete
+Phase: 121 (ESCALERA-DOC — Extensión solo con benchmark) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-07-28
 
 ### Roadmap v12.0 (Phases 113-125)
 
@@ -271,6 +271,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 119-02: señal de pg_cron en PGCRON_JOBS SEPARADO de CATALOG; umbral DERIVADO del schedule (hueco más largo + el más corto como gracia, piso 0.25h): el hueco largo evita el falso STALE de cada lunes en crons L-V y el margen aditivo impide que 3 días de silencio en un job intradía pasen por sanos. Drift/inactivo/ilegible/sin-corridas = stale fail-closed; los jobs entran al exit code. Solo se proyectan jobid/jobname/schedule/active/max(start_time) — nunca command ni return_message (URLs/keys de pg_net). W-3 backup-parlamentario y W-7 digest-daily DECLARADOS fuera en el JSDoc de catalog.ts (no escribe Supabase / NOTIF parked), no rellenados.
 - [Phase ?]: 119-05: replay de agenda sobre crudos legacy exige --semana explicita; la fecha de corrida no determina la semana del contenido
 - [Phase ?]: Flip CLASIFICACION_ESCALERA=1 tras gates verdes; rollback ON-OFF-ON probado en vivo
+- [Phase ?]: 121-01: INTOCABLE reservado a lo NO candidato a benchmark (solo adjudicacion, SEED-001); extraccion = NO EXTENDIDA porque SI es candidata. EXTENDIDA de clasificacion es CONDICIONAL al drift canary (mismatch invalida el veredicto; rollback = quitar CLASIFICACION_ESCALERA=1 de .env). GOTCHA: bracket-expression con vocal acentuada no casa bajo LC_ALL=C -> falso FAIL; usar 'qu.{1,2} evidencia'.
 
 ### Pending Todos
 
@@ -331,7 +332,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-28T20:36:06.895Z
+Last session: 2026-07-28T20:55:44.086Z
 Stopped at: Completed 115-01-PLAN.md
 Resume file: None
 

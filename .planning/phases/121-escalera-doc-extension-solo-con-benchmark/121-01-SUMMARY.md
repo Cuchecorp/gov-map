@@ -130,3 +130,9 @@ la §Condición de vigencia.
 ## Known Stubs
 
 Ninguno.
+
+## Self-Check: PASSED
+
+Los 3 archivos declarados existen en disco (`121-ESCALERA-ESTADO.md`, `check-escalera-doc.sh`,
+`121-VERIFICATION.md`) y los 4 commits del plan existen en el historial
+(`dd62e7b`, `8d3a541`, `69abf1b`, `9bfb41f`).
