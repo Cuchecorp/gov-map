@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import type { DriftStore } from "@obs/ingest";
+import type { Parlamentario } from "@obs/core";
 import { fingerprint } from "@obs/ingest";
 import { runIngestLobby } from "./ingest-run";
 import { LeylobbyConnector, LeylobbyBloqueadaError } from "./connector-leylobby";
@@ -241,5 +242,135 @@ describe("runIngestLobby — G5: SnapshotWriter (source_snapshot)", () => {
     expect(conFallo.errores).toHaveLength(0);
     expect(conFallo.audiencias).toBe(base.audiencias);
     expect(logs.some((l) => l.includes("source_snapshot falló (no fatal)"))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// G1 (119-06) — avance del MARCADOR DE COBERTURA `lobby_ingesta_estado.ingestado_hasta`.
+//
+// Diagnóstico (Task 1, causa (a)): la corrida semanal trae audiencias pero CERO parlamentarios
+// confirmados ⇒ `marcados` queda vacío ⇒ `marcarIngestado` nunca corre. El fix NO es marcar de
+// todos modos (eso fabricaría cobertura): es (1) derivar `hasta` de los DATOS y no del reloj,
+// (2) no retroceder nunca, y (3) dejar ASEVERADO que sin confirmados no se marca.
+// ---------------------------------------------------------------------------------------------
+
+/** Maestra mínima que hace determinista al sujeto pasivo "Víctor Gutiérrez" del fixture. */
+function maestroVictor(): Parlamentario {
+  return {
+    id: "P00777",
+    nombre_normalizado: "gutierrez victor",
+    nombres: "Víctor",
+    apellido_paterno: "Gutiérrez",
+    apellido_materno: "",
+    camara: "senado",
+    // Debe coincidir con el `PERIODO_LOBBY_DEFAULT` de reconciliar-sujeto.ts (no exportado).
+    periodo: "senado-vigente-2026",
+    region: null,
+    distrito: null,
+    circunscripcion: null,
+    partido: null,
+    rut: null,
+    parlid_senado: null,
+    id_diputado_camara: null,
+    estado: "confirmado",
+    email: null,
+    origen: "senado",
+    fecha_captura: "2026-01-01T00:00:00Z",
+    enlace: "https://example.cl",
+  };
+}
+
+const TAREA_G1 = [{ institucionCodigo: "AA001", year: 2024, pages: [1] }];
+
+describe("G1 — lobby_ingesta_estado avanza con datos y SÓLO con datos", () => {
+  it("Test 1: ≥1 parlamentario confirmado ⇒ marcarIngestado con la fecha MÁXIMA INGERIDA (no el reloj)", async () => {
+    const writer = new InMemoryLobbyWriter();
+    const res = await runIngestLobby({
+      conector: fakeConector({ html: FIXTURE_HTML }),
+      writer,
+      maestra: [maestroVictor()],
+      tareas: TAREA_G1,
+      // Corte del reloj deliberadamente MUY posterior al lote: si el fix usara el reloj, el
+      // assert de abajo fallaría.
+      ingestadoHasta: "2026-07-28",
+    });
+
+    expect(res.parlamentariosMarcados).toBe(1);
+    const fila = writer.ingestaEstado.get("P00777");
+    expect(fila).toBeDefined();
+    // La audiencia del fixture es del 2024-06-24 → ÉSA es la cobertura real, no "hoy".
+    expect(fila?.ingestado_hasta).toBe("2024-06-24");
+    expect(fila?.ingestado_hasta).not.toBe("2026-07-28");
+  });
+
+  it("Test 2: corrida degradada (503) ⇒ NINGÚN cursor avanza (T-74-02 preservada)", async () => {
+    const writer = new InMemoryLobbyWriter();
+    // Marca previa: una corrida degradada no puede tocarla ni crear filas nuevas.
+    await writer.marcarIngestado(["P00777"], "2024-06-24");
+    const res = await runIngestLobby({
+      conector: fakeConector({ bloquea: true }),
+      writer,
+      maestra: [maestroVictor()],
+      tareas: TAREA_G1,
+      ingestadoHasta: "2026-07-28",
+    });
+
+    expect(res.audiencias).toBe(0);
+    expect(res.degradaciones.length).toBeGreaterThan(0);
+    expect(res.parlamentariosMarcados).toBe(0);
+    // lobby_ingesta_estado intacto…
+    expect(writer.ingestaEstado.get("P00777")?.ingestado_hasta).toBe("2024-06-24");
+    expect(writer.ingestaEstado.size).toBe(1);
+    // …y leylobby_cursor_estado jamás tocado por esta corrida.
+    expect(writer.cursorEstado.size).toBe(0);
+  });
+
+  it("Test 3: audiencias pero CERO confirmados ⇒ NO se marca nada (marcar sería fabricar cobertura)", async () => {
+    const writer = new InMemoryLobbyWriter();
+    const res = await runIngestLobby({
+      conector: fakeConector({ html: FIXTURE_HTML }),
+      writer,
+      maestra: [], // maestra vacía = el escenario REAL del cron (causa (a) del diagnóstico)
+      tareas: TAREA_G1,
+      ingestadoHasta: "2026-07-28",
+    });
+
+    expect(res.audiencias).toBeGreaterThan(0);
+    expect(res.parlamentariosMarcados).toBe(0);
+    // DECISIÓN EXPLÍCITA: un barrido que no confirmó a NADIE no es "ingestado" para nadie.
+    expect(writer.ingestaEstado.size).toBe(0);
+  });
+
+  it("Test 4: doble corrida sobre el mismo lote es idempotente (upsert, sin duplicar ni mover)", async () => {
+    const writer = new InMemoryLobbyWriter();
+    const comun = {
+      conector: fakeConector({ html: FIXTURE_HTML }),
+      writer,
+      maestra: [maestroVictor()],
+      tareas: TAREA_G1,
+      ingestadoHasta: "2026-07-28",
+    };
+    await runIngestLobby(comun);
+    const antes = writer.ingestaEstado.get("P00777")?.ingestado_hasta;
+    await runIngestLobby(comun);
+
+    expect(writer.ingestaEstado.size).toBe(1);
+    expect(writer.ingestaEstado.get("P00777")?.ingestado_hasta).toBe(antes);
+    expect(antes).toBe("2024-06-24");
+  });
+
+  it("Test 5: `ingestado_hasta` NUNCA retrocede — un lote histórico posterior no baja la marca", async () => {
+    const writer = new InMemoryLobbyWriter();
+    // Marca ya adelantada (p.ej. por el conector de la Cámara o una corrida anterior).
+    await writer.marcarIngestado(["P00777"], "2026-06-22");
+    await runIngestLobby({
+      conector: fakeConector({ html: FIXTURE_HTML }),
+      writer,
+      maestra: [maestroVictor()],
+      tareas: TAREA_G1, // lote de 2024 — MÁS VIEJO que la marca existente
+      ingestadoHasta: "2026-07-28",
+    });
+
+    expect(writer.ingestaEstado.get("P00777")?.ingestado_hasta).toBe("2026-06-22");
   });
 });
