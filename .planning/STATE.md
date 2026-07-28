@@ -4,13 +4,13 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: executing
 stopped_at: Completed 115-01-PLAN.md
-last_updated: "2026-07-28T17:48:32.302Z"
+last_updated: "2026-07-28T18:02:02.010Z"
 last_activity: 2026-07-28
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 30
-  completed_plans: 25
+  completed_plans: 26
   percent: 46
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 119
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-07-28
 
@@ -147,6 +147,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 117 P04 | 35m | 4 tasks | 9 files |
 | Phase 118 P01 | ~50 min | 3 tasks | 2 files |
 | Phase 118 P02 | ~40 min | 2 tasks | 1 files |
+| Phase 119 P02 | ~25min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -262,6 +263,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 118-01: el unico stale es CURSOR DETENIDO no fuente-sin-novedades (Pitfall 4 operado contra *_ingesta_estado, no contra count de filas): lobby-leylobby corre verde y escribe lobby_audiencia 2026-07-22 pero lobby_ingesta_estado.ingestado_hasta sigue en 2026-06-22 mientras leylobby_cursor_estado si avanzo. A2 REFUTADA (creado_en no existe: fecha_captura/created_at/fetched_at+source); A4 resuelta (backup-parlamentario NO escribe Supabase; su destino es el seed committeado por el bot). CRON-01 sigue Pending: cierra en 118-03.
 - [Phase ?]: 118-02: compliance DOS ETAPAS y salud del cron son ejes INDEPENDIENTES — lobby-leylobby tiene de los mejores compliance del inventario y aun asi es el unico stale
 - [Phase ?]: 118-02: gotcha 57-05 con consecuencia material — auditado el entrypoint REAL, leyes-weekly resulta la UNICA cadena dos-etapas completa del proyecto (56 la juzgo contra el CLI hermano)
+- [Phase ?]: 119-02: señal de pg_cron en PGCRON_JOBS SEPARADO de CATALOG; umbral DERIVADO del schedule (hueco más largo + el más corto como gracia, piso 0.25h): el hueco largo evita el falso STALE de cada lunes en crons L-V y el margen aditivo impide que 3 días de silencio en un job intradía pasen por sanos. Drift/inactivo/ilegible/sin-corridas = stale fail-closed; los jobs entran al exit code. Solo se proyectan jobid/jobname/schedule/active/max(start_time) — nunca command ni return_message (URLs/keys de pg_net). W-3 backup-parlamentario y W-7 digest-daily DECLARADOS fuera en el JSDoc de catalog.ts (no escribe Supabase / NOTIF parked), no rellenados.
 
 ### Pending Todos
 
@@ -322,7 +324,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-28T17:48:32.294Z
+Last session: 2026-07-28T18:01:46.129Z
 Stopped at: Completed 115-01-PLAN.md
 Resume file: None
 
