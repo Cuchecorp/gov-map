@@ -306,7 +306,11 @@ Plans:
   4. `CLASIFICACION_ESCALERA=1` queda activo solo DESPUÉS del checkpoint de provisión de keys con el operador — el agente jamás carga la key ni firma el flip
   5. La adjudicación de identidad y la extracción strict-schema permanecen intocadas (integ-scope-guard + provider-guard verdes)
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 120-01-PLAN.md — Gates 2-4 en orden DURO (drift canary, shadow-eval LIVE, rollback probado) + apertura de 120-FLIP-RECORD.md
+- [ ] 120-02-PLAN.md — Flip `CLASIFICACION_ESCALERA=1`, humo acotado, rollback inverso re-probado, guards + suite + cierre del registro
 
 ### Phase 121: ESCALERA-DOC — Extensión solo con benchmark
 
