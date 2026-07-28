@@ -60,7 +60,11 @@ jobs:
       - name: Run fichas backfill (mismo código del CLI)
         env:
           # Secrets vía repo secrets — NUNCA en claro en el workflow.
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          # G9 (119-06): aquí se mapeaba una variable SUPABASE_URL desde un secret homónimo que NO
+          # existe en el repo (`gh secret list` da 7, entre ellos SUPABASE_API_URL pero no ése) →
+          # se expandía a cadena vacía. `pipeline-cli.ts:150` ya cae a SUPABASE_API_URL, así que la
+          # línea se ELIMINA en vez de remapearse (cf. lobby-leylobby-weekly.yml:57, que sí debe
+          # remapear porque su CLI no tiene ese fallback): menos superficie que más mapeo.
           SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
