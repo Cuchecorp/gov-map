@@ -5,21 +5,29 @@
 // `run-agenda-prod-cli.ts` de @obs/agenda: carga `.env` (BOM-safe), apunta al Supabase REMOTO
 // (SUPABASE_API_URL + SUPABASE_SECRET_KEY) y reusa el `main()` de @obs/tramitacion.
 //
-// COBERTURA SEMANAL INCREMENTAL (sweet spot): el descubrimiento del WS de Cámara por sesiones
-// devuelve [] (el WS no enumera por año), así que en vez de "descubrir" se REFRESCAN los
-// boletines que la plataforma YA referencia — la unión de:
+// COBERTURA SEMANAL INCREMENTAL (sweet spot): se REFRESCAN los boletines que la plataforma YA
+// referencia — la unión de:
 //   * proyecto.boletin            (lo ya ingerido → mantener tramitación/votos al día)
 //   * citacion_punto.boletin      (agenda de comisiones → proyectos en actividad reciente)
 //   * sesion_tabla_item.boletin   (tabla de sala → proyectos en tabla esta semana)
 // Re-ingerir es idempotente (upsert por clave natural): captura cambios de etapa + votos nuevos
 // de la semana. Los boletines de agenda que aún no tienen ficha entran así por primera vez.
 //
+// DESCUBRIMIENTO (NLB): la nota histórica "el WS no enumera por año" quedó OBSOLETA —
+// `CamaraConnector.enumerarProyectosXAnno` SÍ enumera y ahora alimenta el set. Antes de la
+// rotación se agregan hasta `CAP_DESCUBRIMIENTO` boletines del año en curso que aún NO existen en
+// `proyecto` (un proyecto nuevo que nunca pasó por una citación capturada no entraba de otro
+// modo). Cuesta a lo más 2 requests extra por corrida y degrada honesto si el WS falla.
+// `--sin-descubrimiento` apaga el paso (CERO llamadas al WS).
+//
 // Sin `--boletines` explícito → usa ese conjunto de la DB. Con `--boletines a,b` → lo overridea
-// (bootstrap / corridas dirigidas). Credenciales SOLO de `.env`/secrets (NUNCA por argv).
+// (bootstrap / corridas dirigidas; el descubrimiento NO corre: override es override puro).
+// Credenciales SOLO de `.env`/secrets (NUNCA por argv).
 //
 // Uso:
 //   tsx packages/tramitacion/src/run-tramitacion-prod-cli.ts [--dry-run] [--limite N]
 //                                                            [--anno YYYY] [--boletines a,b,c]
+//                                                            [--sin-descubrimiento]
 //
 // Provider LLM (MiniMax) OPCIONAL y NO inyectado aquí: las menciones ambiguas del Senado
 // degradan fail-closed a `no_confirmado` (los votos deterministas vinculan igual). Minimalista
@@ -39,6 +47,13 @@ import {
   seleccionarRotado,
   type ClienteCorpus,
 } from "./rotacion-leyes";
+import {
+  CAP_DESCUBRIMIENTO,
+  crearConectorDescubrimiento,
+  descubrirNuevosDelAnno,
+  intercalarDescubrimiento,
+  type ConectorDescubrimiento,
+} from "./descubrimiento-boletines";
 
 /**
  * Adapta el `createClient` de supabase-js a la factory estructural que `SupabaseSnapshotStore`
@@ -106,6 +121,8 @@ async function boletinesARefrescar(
   serviceKey: string,
   limite: number,
   log: (m: string) => void,
+  descubrir: boolean,
+  crearConector: () => ConectorDescubrimiento = crearConectorDescubrimiento,
 ): Promise<string[]> {
   const sb = createClient(url, serviceKey, { auth: { persistSession: false } });
 
@@ -145,15 +162,37 @@ async function boletinesARefrescar(
   const offset =
     typeof estadoRow?.offset_rotacion === "number" ? estadoRow.offset_rotacion : 0;
 
-  // 4. Selección round-robin pura: agenda + ventana rotada de la cola desde el offset.
-  const { seleccion, nuevoOffset } = seleccionarRotado({
+  // 4. DESCUBRIMIENTO (NLB) — ANTES de la rotación, y esto es LOAD-BEARING: descubrir DESPUÉS
+  //    haría que el recorte final a `limite` expulse ítems que `seleccionarRotado` ya dio por
+  //    cubiertos y cuyo `nuevoOffset` se persiste como "vistos" → saltados en silencio hasta el
+  //    próximo wrap-around. Pidiendo la ventana rotada con `limite - nuevos.length` el presupuesto
+  //    queda repartido de antemano y ningún boletín contabilizado por la rotación se pierde.
+  const anno = new Date().getUTCFullYear();
+  const nuevos = descubrir
+    ? await descubrirNuevosDelAnno({
+        conector: crearConector(),
+        anno,
+        corpus,
+        cap: CAP_DESCUBRIMIENTO,
+        log,
+      })
+    : [];
+
+  // 5. Selección round-robin pura con el presupuesto ya descontado.
+  const { seleccion: rotada, nuevoOffset } = seleccionarRotado({
     agenda,
     corpus,
     offset,
+    limite: Math.max(0, limite - nuevos.length),
+  });
+  const seleccion = intercalarDescubrimiento({
+    seleccion: rotada,
+    agenda,
+    nuevos,
     limite,
   });
 
-  // 5. Persistir el nuevo offset (upsert singleton id=1) → la próxima corrida rota la ventana.
+  // 6. Persistir el nuevo offset (upsert singleton id=1) → la próxima corrida rota la ventana.
   const ultimoBoletin = seleccion.length > 0 ? seleccion[seleccion.length - 1]! : null;
   const { error: upsertErr } = await sb.from("leyes_rotacion_estado").upsert(
     {
@@ -171,7 +210,11 @@ async function boletinesARefrescar(
   log(
     `tramitacion-prod: ${seleccion.length} boletines candidatos ` +
       `(agenda ${agenda.length} refs + corpus ${corpus.length} paginado; ` +
-      `offset ${offset}→${nuevoOffset} round-robin)`,
+      `offset ${offset}→${nuevoOffset} round-robin; ` +
+      (descubrir
+        ? `+${nuevos.length} nuevos descubiertos año ${anno}`
+        : "descubrimiento OFF (--sin-descubrimiento)") +
+      `)`,
   );
   return seleccion;
 }
@@ -190,6 +233,9 @@ async function run(): Promise<void> {
   const annoRaw = flagValue("--anno");
   const anno = annoRaw != null ? Number(annoRaw) : new Date().getUTCFullYear();
   const boletinesRaw = flagValue("--boletines");
+  // Kill-switch del descubrimiento: con este flag NO se toca el WS de Cámara y la selección es
+  // byte-equivalente a la anterior a NLB.
+  const descubrir = !process.argv.includes("--sin-descubrimiento");
 
   const url = env.SUPABASE_API_URL || env.SUPABASE_URL || "";
   const serviceKey = env.SUPABASE_SECRET_KEY || "";
@@ -231,7 +277,7 @@ async function run(): Promise<void> {
     boletines = boletinesRaw.split(",").map((s) => s.trim()).filter(Boolean);
     log(`tramitacion-prod: ${boletines.length} boletines explícitos (override)`);
   } else if (url && serviceKey) {
-    boletines = await boletinesARefrescar(url, serviceKey, limite, log);
+    boletines = await boletinesARefrescar(url, serviceKey, limite, log, descubrir);
     if (boletines.length === 0) {
       log(
         "tramitacion-prod: la DB no referencia ningún boletín todavía → nada que refrescar " +
