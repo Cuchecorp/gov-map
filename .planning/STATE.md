@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
-status: verifying
+status: executing
 stopped_at: Completed 115-01-PLAN.md
-last_updated: "2026-07-28T20:39:30.295Z"
-last_activity: 2026-07-28
+last_updated: "2026-07-28T20:48:38.571Z"
+last_activity: 2026-07-28 -- Phase 121 planning complete
 progress:
   total_phases: 13
   completed_phases: 8
-  total_plans: 32
+  total_plans: 33
   completed_plans: 32
   percent: 62
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 121
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-28
+Status: Ready to execute
+Last activity: 2026-07-28 -- Phase 121 planning complete
 
 ### Roadmap v12.0 (Phases 113-125)
 
