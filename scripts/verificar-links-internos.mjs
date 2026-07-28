@@ -44,6 +44,7 @@
  *    `html=""` y la aserción pasaba SIEMPRE ⇒ gates MONEY/NOTIF vacuos).
  *  · CR-02: `status` con `origen` real + `href` comprueba además que el origen EMITA
  *    ese href (integridad del link), no sólo que el destino responda.
+ *  · WR-02: `no-404` pasó a exigir 200 (un 301/302 o un 500 ya no cuenta como sano).
  * ⇒ un veredicto de esta versión puede diferir del de los `.json` guardados: es el
  * runner el que se endureció, no el sitio el que cambió.
  *
@@ -226,8 +227,12 @@ async function main() {
         resultado = r.status === 404 ? "PASS" : "FAIL";
         if (resultado === "FAIL") causa = `esperaba 404, observado ${r.status}`;
       } else {
-        resultado = r.status !== 404 ? "PASS" : "FAIL";
-        if (resultado === "FAIL") causa = "HTTP 404";
+        // WR-02 (review 114): "no-404" aceptaba como sano un 301/302/307/308 —incluido
+        // un redirect HACIA una página que 404ea, porque `redirect: "manual"` no lo
+        // sigue— y también un 500/502/503. Toda la clase `status` (el grueso de SC#1)
+        // quedaba sin poder distinguir "vivo" de "roto de otra forma". Se exige 200.
+        resultado = r.status === 200 ? "PASS" : "FAIL";
+        if (resultado === "FAIL") causa = `esperaba 200, observado ${r.status}`;
       }
       // CR-02 (review 114) — INTEGRIDAD DEL LINK, no sólo alcanzabilidad del destino.
       // Hasta aquí sólo se probó que `destino` responde; un href borrado, mal escrito o
