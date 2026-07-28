@@ -71,7 +71,7 @@ Notas de secuencia: el inventario 113 es load-bearing — sin él las fases de l
 - [x] **Phase 116: FECHA-AUDIT — Semántica de cada fecha visible** — veredicto hecho/captura/ambigua por fecha, cruzado contra dato real de PROD (completed 2026-07-28)
 - [x] **Phase 117: FECHA-FIX — Etiquetas de fecha corregidas** — "según fuente al…" donde corresponda; `fecha_captura` nunca como el hecho; guards y suite verdes (completed 2026-07-28)
 - [x] **Phase 118: CRON-AUDIT — Veredicto por cron con evidencia** — GH Actions + pg_cron enumerados y clasificados verde/stale/roto con causa (completed 2026-07-28)
-- [ ] **Phase 119: CRON-FIX — Robustez de ingesta** — reintentos/backoff, cursores, hash-check, señales freshness; degrade honesto, jamás fabricación
+- [x] **Phase 119: CRON-FIX — Robustez de ingesta** — reintentos/backoff, cursores, hash-check, señales freshness; degrade honesto, jamás fabricación (completed 2026-07-28)
 - [ ] **Phase 120: ESCALERA-ON — Flip `CLASIFICACION_ESCALERA=1`** — shadow-eval verde + drift canary + rollback-by-config probado + checkpoint de provisión de keys Workers AI con el operador
 - [ ] **Phase 121: ESCALERA-DOC — Extensión solo con benchmark** — estado por tarea (extendida/no) con su evidencia; adjudicación INTOCABLE por decisión
 - [ ] **Phase 122: CRUCE-SQL — Cruces visibles × SQL de PROD** — conteos, denominadores honestos y cobertura declarada cuadran; discrepancias corregidas o declaradas
@@ -290,7 +290,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 119-07-PLAN.md — (w4) Re-verificacion G8/G9-gemini/G11 + bateria de regimen + `119-GAP-CLOSURES.md`
+- [x] 119-07-PLAN.md — (w4) Re-verificacion G8/G9-gemini/G11 + bateria de regimen + `119-GAP-CLOSURES.md`
 
 ### Phase 120: ESCALERA-ON — Flip `CLASIFICACION_ESCALERA=1`
 
@@ -395,7 +395,7 @@ Plans:
 | 116. FECHA-AUDIT | 4/4 | Complete    | 2026-07-28 |
 | 117. FECHA-FIX | 4/4 | Complete    | 2026-07-28 |
 | 118. CRON-AUDIT | 3/3 | Complete    | 2026-07-28 |
-| 119. CRON-FIX | 6/7 | In Progress|  |
+| 119. CRON-FIX | 7/7 | Complete   | 2026-07-28 |
 | 120. ESCALERA-ON | 0/? | Not started | - |
 | 121. ESCALERA-DOC | 0/? | Not started | - |
 | 122. CRUCE-SQL | 0/? | Not started | - |
