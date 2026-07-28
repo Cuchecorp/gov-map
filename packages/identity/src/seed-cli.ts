@@ -40,6 +40,7 @@ import {
   serializeMaestra,
   SEED_PATH,
   type R2BackupTarget,
+  type SeedFileWriter,
 } from "./backup";
 import { SupabaseMaestraWriter } from "./writer-supabase";
 import { FsSeedFileWriter } from "./writer-fs";
@@ -163,6 +164,18 @@ export interface SeedCliOptions {
   cwd?: string;
   /** Sink de logs (inyectable para tests). Default console.log. */
   log?: (msg: string) => void;
+  // ── Seams de inyección (SOLO tests; en producción quedan undefined) ──────────────
+  /** Reemplaza la corrida LIVE de los catálogos (`runSeeder`). */
+  seeder?: () => Promise<Parlamentario[]>;
+  /** Reemplaza el `SupabaseMaestraWriter` real (carga a DB + promoción). */
+  dbWriter?: {
+    upsert(rows: Parlamentario[]): Promise<void>;
+    promoteToConfirmado(ids: string[]): Promise<{ promovidos: number }>;
+  };
+  /** Reemplaza el `FsSeedFileWriter` real (escritura del snapshot autoritativo). */
+  fileWriter?: SeedFileWriter;
+  /** Reemplaza `buildR2Target()` (null = sin credenciales R2 ⇒ no-op explícito). */
+  r2Target?: R2BackupTarget | null;
 }
 
 export interface SeedCliResult {
@@ -194,12 +207,12 @@ export function buildR2Target(): R2BackupTarget | null {
 
   const store = new R2Store({ endpoint, accessKeyId, secretAccessKey, bucket });
   return {
-    async put(content: string): Promise<string> {
+    async put(content: string): Promise<{ r2Path: string; existed: boolean }> {
       const body = new TextEncoder().encode(content);
       const sha = await sha256Hex(body);
       const date = new Date().toISOString().slice(0, 10);
-      const { r2Path } = await store.putImmutable("identity", "parlamentario-seed", date, sha, "json", body);
-      return r2Path;
+      // G6: `existed` (412) se PROPAGA al caller — es la señal de "sin novedades".
+      return store.putImmutable("identity", "parlamentario-seed", date, sha, "json", body);
     },
   };
 }
@@ -224,7 +237,7 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
 
   // 2. Corrida LIVE: fetch ambos catálogos → parse → match (sin auto-confirmar).
   log("seed: fetching catálogos LIVE (Senado + Cámara, rate-limit 2-3s)…");
-  const maestra: Parlamentario[] = await runSeeder(deps);
+  const maestra: Parlamentario[] = await (opts.seeder ? opts.seeder() : runSeeder(deps));
   const senadores = maestra.filter((p) => p.camara === "senado").length;
   const diputados = maestra.filter((p) => p.camara === "diputados").length;
   log(
@@ -236,12 +249,48 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
   //     del catálogo de vigentes). Pura: no muta `estado`.
   const audit = reconciliarMaestra(maestra);
 
+  // 2c. ETAPA 1 (R2, LOCKED "crudo PRIMERO"): el crudo de esta corrida es la maestra tal como
+  //     la devolvieron los catálogos oficiales, ANTES de cualquier derivación (preserve-estado
+  //     mergea desde el snapshot local; --promote muta desde la DB). Se persiste
+  //     content-addressed y su `existed` (412 de `If-None-Match: *`) es la señal de "sin
+  //     novedades": los catálogos devolvieron byte-a-byte lo mismo que la corrida anterior.
+  //     G6 exige que ese skip salte la CARGA (Etapa 2), NUNCA el snapshot git: el YAML
+  //     `backup-parlamentario.yml:60` declara que "SIN service key local en CI → la carga a DB
+  //     se omite; el snapshot git es autoritativo" — un skip de R2 no puede dejar sin
+  //     actualizar el artefacto que el bot commitea.
+  //     Best-effort: un fallo de R2 (401/red) NO aborta ni hace skip (degradar sin R2 es
+  //     procesar, no saltar).
+  const r2Target = opts.r2Target !== undefined ? opts.r2Target : opts.r2 ? buildR2Target() : null;
+  if (opts.r2 && r2Target == null) {
+    log("seed: --r2 pedido pero sin credenciales R2 completas -> R2 OMITIDO (no-op, WR-02)");
+  }
+  let r2Ok = false;
+  let sinNovedades = false;
+  if (r2Target != null) {
+    try {
+      const { r2Path, existed } = await r2Target.put(serializeMaestra(maestra));
+      r2Ok = true; // 412 = éxito idempotente: el objeto ESTÁ en R2.
+      if (existed) {
+        sinNovedades = true;
+        log(`[skip] sin novedades — identity parlamentario-seed (${r2Path})`);
+      } else {
+        log(`seed: crudo de la maestra en R2 -> ${r2Path}`);
+      }
+    } catch (err) {
+      log(
+        `seed: Etapa 1 R2 falló (best-effort, sigue la carga): ` +
+          `${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
   // 3. Carga al Supabase LOCAL (idempotente por clave natural). Si no hay service key,
   //    se omite la DB (pero el snapshot git, autoritativo, SIEMPRE se escribe).
   let dbLoaded = false;
   let promoted: { promovidos: number } | null = null;
-  if (serviceKey.length > 0) {
-    const writer = new SupabaseMaestraWriter({ url: localUrl, serviceKey });
+  if (serviceKey.length > 0 && !sinNovedades) {
+    const writer =
+      opts.dbWriter ?? new SupabaseMaestraWriter({ url: localUrl, serviceKey });
     await upsertMaestra(maestra, writer);
     dbLoaded = true;
     log(`seed: maestra cargada en Supabase LOCAL (${localUrl}) — upsert idempotente`);
@@ -274,7 +323,7 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
           `[catálogo-vigentes=${idsVigentes.size}, match-confirmado=${idsConfirmadosPorMatch.size}]`,
       );
     }
-  } else {
+  } else if (serviceKey.length === 0) {
     log(
       "seed: sin SUPABASE_LOCAL_SERVICE_KEY -> carga a DB OMITIDA (snapshot git sigue siendo autoritativo, ID-09)",
     );
@@ -319,21 +368,16 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
     log(`seed: estado preservado del snapshot previo -> ${preservados} filas`);
   }
 
-  // 4. Snapshot autoritativo en git (ID-09). R2 gateado por flag --r2 Y presencia de credencial
-  //    (WR-02): sin credenciales, R2 es un no-op explícito (no un leg inerte enmascarado).
-  const r2Target = opts.r2 ? buildR2Target() : null;
-  if (opts.r2 && r2Target == null) {
-    log("seed: --r2 pedido pero sin credenciales R2 completas -> R2 OMITIDO (no-op, WR-02)");
-  }
-  const fsWriter = new FsSeedFileWriter({ cwd: root });
-  const res = await exportMaestra(maestra, {
-    writer: fsWriter,
-    r2Enabled: r2Target != null,
-    ...(r2Target != null ? { r2: r2Target } : {}),
-  });
+  // 4. Snapshot autoritativo en git (ID-09). FUERA del skip de G6: aunque R2 no traiga
+  //    novedades, el archivo que el bot commitea SIEMPRE se reescribe (idempotente: si nada
+  //    cambió, el `git status --porcelain` del YAML no ve diff y no hay commit). El respaldo a
+  //    R2 ya ocurrió en el paso 2c (Etapa 1), así que acá el leg R2 va deshabilitado — no se
+  //    sube dos veces el mismo objeto.
+  const fsWriter = opts.fileWriter ?? new FsSeedFileWriter({ cwd: root });
+  const res = await exportMaestra(maestra, { writer: fsWriter, r2Enabled: false });
   log(
     `seed: snapshot escrito -> ${res.path} (${res.bytes} bytes)` +
-      (r2Target != null ? ` | R2 ${res.r2Ok ? "OK" : "FALLÓ (best-effort)"}` : ""),
+      (r2Target != null ? ` | R2 ${r2Ok ? "OK" : "FALLÓ (best-effort)"}` : ""),
   );
 
   return {
@@ -342,7 +386,7 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
     senadores,
     dbLoaded,
     promoted,
-    r2Ok: res.r2Ok,
+    r2Ok,
     snapshotPath: res.path,
     snapshotBytes: res.bytes,
   };

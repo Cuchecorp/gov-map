@@ -26,10 +26,13 @@ export interface SeedFileWriter {
 
 /**
  * Target de respaldo a R2 (envuelve `R2Store.putImmutable`). Diferido por credencial 401;
- * gateado por `r2Enabled`. Devuelve la key escrita.
+ * gateado por `r2Enabled`. Devuelve la key escrita y si el objeto YA existía.
+ *
+ * G6 (119-03): `existed` (412 de `If-None-Match: *` = éxito idempotente) se PROPAGA en vez de
+ * descartarse, para que el caller pueda saltarse la Etapa 2 cuando el crudo no cambió.
  */
 export interface R2BackupTarget {
-  put(content: string): Promise<string>;
+  put(content: string): Promise<{ r2Path: string; existed: boolean }>;
 }
 
 export interface ExportOptions {
@@ -96,7 +99,7 @@ export async function exportMaestra(
   let r2Key: string | undefined;
   if (opts.r2Enabled && opts.r2) {
     try {
-      r2Key = await opts.r2.put(content);
+      ({ r2Path: r2Key } = await opts.r2.put(content));
       r2Ok = true;
     } catch {
       // Credencial 401 / fallo de red: el export a git ya ocurrió; R2 se omite.
