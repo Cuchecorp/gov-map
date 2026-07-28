@@ -70,7 +70,7 @@ Notas de secuencia: el inventario 113 es load-bearing — sin él las fases de l
 - [x] **Phase 115: LINK-EXT — Patrones de link a fuente oficial** — validación por construcción + muestra live estratificada por tipo/host con rate-limit 2-3s; patrón malo se arregla, fuente caída se declara (completed 2026-07-28)
 - [x] **Phase 116: FECHA-AUDIT — Semántica de cada fecha visible** — veredicto hecho/captura/ambigua por fecha, cruzado contra dato real de PROD (completed 2026-07-28)
 - [x] **Phase 117: FECHA-FIX — Etiquetas de fecha corregidas** — "según fuente al…" donde corresponda; `fecha_captura` nunca como el hecho; guards y suite verdes (completed 2026-07-28)
-- [ ] **Phase 118: CRON-AUDIT — Veredicto por cron con evidencia** — GH Actions + pg_cron enumerados y clasificados verde/stale/roto con causa
+- [x] **Phase 118: CRON-AUDIT — Veredicto por cron con evidencia** — GH Actions + pg_cron enumerados y clasificados verde/stale/roto con causa (completed 2026-07-28)
 - [ ] **Phase 119: CRON-FIX — Robustez de ingesta** — reintentos/backoff, cursores, hash-check, señales freshness; degrade honesto, jamás fabricación
 - [ ] **Phase 120: ESCALERA-ON — Flip `CLASIFICACION_ESCALERA=1`** — shadow-eval verde + drift canary + rollback-by-config probado + checkpoint de provisión de keys Workers AI con el operador
 - [ ] **Phase 121: ESCALERA-DOC — Extensión solo con benchmark** — estado por tarea (extendida/no) con su evidencia; adjudicación INTOCABLE por decisión
@@ -255,7 +255,7 @@ Plans:
 
 **Wave 3**
 
-- [ ] 118-03-PLAN.md — (w3) Gap-list P0/P1/P2 para Phase 119 + assumptions resueltas + límites + checkpoint operador + check-crons.sh
+- [x] 118-03-PLAN.md — (w3) Gap-list P0/P1/P2 para Phase 119 + assumptions resueltas + límites + checkpoint operador + check-crons.sh
 
 ### Phase 119: CRON-FIX — Robustez de ingesta
 
@@ -374,7 +374,7 @@ Plans:
 | 115. LINK-EXT | 3/3 | Complete    | 2026-07-28 |
 | 116. FECHA-AUDIT | 4/4 | Complete    | 2026-07-28 |
 | 117. FECHA-FIX | 4/4 | Complete    | 2026-07-28 |
-| 118. CRON-AUDIT | 2/3 | In Progress|  |
+| 118. CRON-AUDIT | 3/3 | Complete   | 2026-07-28 |
 | 119. CRON-FIX | 0/? | Not started | - |
 | 120. ESCALERA-ON | 0/? | Not started | - |
 | 121. ESCALERA-DOC | 0/? | Not started | - |
