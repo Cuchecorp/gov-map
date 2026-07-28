@@ -47,7 +47,11 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 **Método (LOCKED por el operador):** TODO con base empírica — spikes, iteraciones BrowserOS, revisión, diseño, crítica, loop. Primero QUÉ (señales con evidencia), después CÓMO (frontend). Corrida en contexto limpio con prompt listo (`.planning/PROMPT-v10.0-build-autonomo.md`).
 
-## Current State: v10.0 shipped (2026-07-26)
+## Current State: v12.0 en curso — Phase 113 completa (2026-07-28)
+
+**Phase 113 completa (2026-07-28):** inventario rector `113-INVENTARIO.md` `estado: validado` (validador Opus independiente PASS 7/7; verificación 21/21): 15 rutas + 4 not-found, 60 emisores E-NNN, chokepoint DUAL ProvenanceBadge (16 call-sites `sourceUrl` trazados), 4 builders verbatim, 34 columnas URL/8 hosts vía information_schema, 5 sujetos SQL deterministas, gates observados en vivo (NET/CRUCES/VSIM ON, MONEY/NOTIF OFF). Alimenta 114/115/116/122/125. Candidatos ya detectados: `/buscar` pasa `proyecto.enlace` crudo a wspublico XML (115), `estado-actual-block.tsx:429` y `partido-chip.tsx:65-70` muestran `fecha_captura` (116).
+
+## Current State (history): v10.0 shipped (2026-07-26)
 
 **Phase 104 completa (2026-07-26):** verificación E2E "todo funciona" + deploy final. Cadena de deploys: `027efdf6` → `3cd2511d` (fix /cuenta gate-primero, era 500) → `b467d41a` (3 fixes URI-como-partido en render: PartidoChip, Militancias, faceta) → **`e89b79af` FINAL** (fixes review WR-01/02/04). **VSIM ON en PROD** (dossier 102 firmado con autorización operador verbatim "Sí — firmar y flip ON" 2026-07-26; flip por wrangler secret; `.env.example` intacto): eje "Coinciden en N de M" vivo en /comparar con caveat base-alta, cuadrado contra SQL para 3 pares. Inventario E2E: panel 6 señales vivas × SQL, relaciones conteos == total_n + truncamiento >20 + alfabético, flags OFF DOM-ausentes (NOTIF `/cuenta` gated 200, MONEY), empty states honestos, cero URI-como-partido visible, 101-HUMAN-UAT cerrada 3/3. Verificación: passed 4/4 criterios. Suite 1428 app + guards verdes.
 
