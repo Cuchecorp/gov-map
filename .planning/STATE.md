@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: executing
-stopped_at: Completed 114-03-PLAN.md
-last_updated: "2026-07-28T03:51:10.437Z"
-last_activity: 2026-07-28 -- Phase 115 planning complete
+stopped_at: Completed 115-01-PLAN.md
+last_updated: "2026-07-28T04:04:47.865Z"
+last_activity: 2026-07-28
 progress:
   total_phases: 13
   completed_phases: 2
   total_plans: 12
-  completed_plans: 9
+  completed_plans: 10
   percent: 15
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 114 — LINK-INT — Links internos exhaustivos
+**Current focus:** Phase 115 — LINK-EXT — Patrones de link a fuente oficial
 
 ## Current Position
 
-Phase: 115
-Plan: Not started
+Phase: 115 (LINK-EXT — Patrones de link a fuente oficial) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-28 -- Phase 115 planning complete
+Last activity: 2026-07-28
 
 ### Roadmap v12.0 (Phases 113-125)
 
@@ -134,6 +134,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 113 P01 | 45m | 3 tasks | 2 files |
 | Phase 113 P04 | 1 sesión | 3 tasks | 1 files |
 | Phase 113 P05 | 1 sesion | 3 tasks | 2 files |
+| Phase 115 P01 | ~30 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -232,6 +233,9 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 113-03: todo ProvenanceBadge aporta fila en Tabla B aunque sourceUrl sea null (se declara que el <a> no se emite)
 - [Phase ?]: 113-04: header de la raíz como '### 4.4 /' sin comillas para que check-inventario.sh lo matchee; /admin/revisar-entidades EXCLUIDA sin tablas A/B/C
 - [Phase ?]: 113-05: inventario rector queda 'estado: validado' — validador Opus independiente PASS 7/7. El id de sonda con forma de RUT del gate MONEY se sustituyo por placeholder no-RUT sin perder poder probatorio (el gate es la PRIMERA sentencia: cualquier id 404ea, verificado con ambos ids). Los 2 falsos positivos del guard de celdas se mantienen (codigo citado verbatim, fuera de tablas) con el limite declarado.
+- [Phase ?]: 115-01: se adopta la lectura LITERAL del robots.txt de www.camara.cl (grupo 'User-agent: *' final con 'Disallow: /') por sobre la lectura RFC-9309; 8 casos RETIRADOS de la muestra live, sus patrones se validan solo por construccion. Manifiesto vigente 19 casos / 6 hosts (CASOS_MANIFIESTO/HOSTS_MANIFIESTO son la fuente unica de verdad de los gates del Plan 02, NO las constantes 20/7 del success_criteria).
+- [Phase ?]: 115-01: cruce_senal.evidencia NO tiene la clave enlace_fuente (0 filas; claves reales conteo/items); el origen del href de cruces es la columna cruce_senal.enlace (781). Corrige 113-INVENTARIO §3.1.4 filas 6-7.
+- [Phase ?]: 115-01: el universo de links externos usa el grep AMPLIADO de sourceUrl (prop JSX + propiedad de objeto); suma 5 call-sites ausentes de §3.1.4, incluido buscar-filtros.tsx:493 (proyecto.enlace CRUDO sin enlaceHumanoProyecto = candidato #1).
 
 ### Pending Todos
 
@@ -292,8 +296,8 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-28T01:28:49.225Z
-Stopped at: Completed 114-03-PLAN.md
+Last session: 2026-07-28T04:04:47.849Z
+Stopped at: Completed 115-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
