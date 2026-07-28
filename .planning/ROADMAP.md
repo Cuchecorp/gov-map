@@ -144,7 +144,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 114-02-PLAN.md — (w2) Veredicto de anclas (SSR + fallback BrowserOS) + lista cerrada de hallazgos
+- [x] 114-02-PLAN.md — (w2) Veredicto de anclas (SSR + fallback BrowserOS) + lista cerrada de hallazgos
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -324,7 +324,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 113. INV | 6/6 | Complete    | 2026-07-28 |
-| 114. LINK-INT | 1/3 | In Progress|  |
+| 114. LINK-INT | 2/3 | In Progress|  |
 | 115. LINK-EXT | 0/? | Not started | - |
 | 116. FECHA-AUDIT | 0/? | Not started | - |
 | 117. FECHA-FIX | 0/? | Not started | - |
