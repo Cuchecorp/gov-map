@@ -24,6 +24,7 @@ import { ETIQUETA_BUCKET, type EstadoBucket } from "@/lib/estado-bucket";
 import type { BuscarSliceRow } from "@/lib/types";
 import { sourceLabel } from "@/lib/types";
 import { SearchResultCard } from "@/components/search-result-card";
+import { enlaceHumanoProyecto } from "@/components/validacion-fuente";
 
 // ---------------------------------------------------------------------------
 // Constantes de copy LOCKED (UI-SPEC §Copywriting)
@@ -490,7 +491,16 @@ export function BuscarFiltros({ slice }: BuscarFiltrosProps) {
               provenance={{
                 capturedAt: row.fecha_captura ? new Date(row.fecha_captura) : null,
                 sourceName: sourceLabel(row.origen ?? null),
-                sourceUrl: row.enlace ?? null,
+                // LINK-EXT (115-03, A-1): el `enlace` crudo de PROD apunta al
+                // endpoint XML `/wspublico/` en 3.658 de 3.659 filas (115-VEREDICTO
+                // §3) — XML vacío para quien hace clic. Se aplica el MISMO rewrite
+                // que los otros cuatro call-sites hermanos (ficha-header:70,
+                // autor-row:64, votacion-card:101, proyectos-similares:109);
+                // `/buscar` era la única excepción, y es la entrada más transitada.
+                // `row.boletin` ya está en este `.map` → cero threading nuevo.
+                sourceUrl: row.enlace
+                  ? enlaceHumanoProyecto(row.enlace, row.boletin)
+                  : null,
               }}
             />
           ))}
