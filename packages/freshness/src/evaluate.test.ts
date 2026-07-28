@@ -856,3 +856,22 @@ describe("evaluatePgCron (G3, 119-02): los 5 jobs dejan de ser invisibles", () =
     );
   });
 });
+
+describe("G3 (119-02): los huecos de cobertura son DECISIÓN, no relleno", () => {
+  it("ninguna entrada del catálogo cubre backup-parlamentario ni digest-daily", () => {
+    // W-3 no escribe Supabase (su autoridad es el commit del bot); W-7 está parked.
+    // Cubrirlos produciría verde prestado / stale permanente respectivamente.
+    expect(
+      CATALOG.filter((c) =>
+        ["backup-parlamentario", "digest-daily"].includes(c.fuente),
+      ),
+    ).toHaveLength(0);
+    expect(
+      CATALOG.filter((c) =>
+        ["backup-parlamentario.yml", "digest-daily.yml"].includes(
+          c.workflowYml ?? "",
+        ),
+      ),
+    ).toHaveLength(0);
+  });
+});

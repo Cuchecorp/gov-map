@@ -27,6 +27,24 @@
  *   lobby-camara mide lobby_contraparte.fecha_captura (solo la escribe el conector de
  *   Cámara, vía `upsertContrapartes`). Cada señal es atribuible a su propio cron.
  *
+ * HUECOS DECLARADOS DE COBERTURA (G3, 119-02)
+ *
+ * Estas unidades de cron del inventario de 118 NO tienen entrada en `CATALOG`, y su ausencia
+ * es una DECISIÓN, no un olvido. Un hueco no declarado en el instrumento es indistinguible
+ * de un cron sano; declararlo lo convierte en información.
+ *
+ *   W-3 `backup-parlamentario` — QUEDA FUERA porque NO escribe en Supabase. El workflow
+ *     regenera el snapshot y lo commitea al repo (`backup-parlamentario.yml:60-62`,
+ *     `supabase/seeds/parlamentario.seed.json`); la carga a DB se omite por diseño (no hay
+ *     service key en CI, `:58-59`). Cualquier señal de frescura sobre una tabla mediría el
+ *     trabajo de OTRO cron: es el verde prestado que G4 acaba de erradicar. Su señal
+ *     autoritativa es la fecha del commit del bot sobre ese seed, no una tabla.
+ *
+ *   W-7 `digest-daily` — QUEDA FUERA porque NOTIF está parked: el `schedule` está comentado
+ *     (`digest-daily.yml:24-25`, estreno gated declarado en `:17`) y `notificacion_envio`
+ *     tiene 0 filas. Una entrada aquí produciría un STALE permanente que no denuncia una
+ *     avería sino un gating deliberado — ruido que enseña al operador a ignorar el rojo.
+ *
  * overrideEnv: nombre de variable de entorno para override de umbral por fuente.
  *   Formato: FRESHNESS_UMBRAL_<FUENTE_UPPERCASE_GUIONES_A_UNDERSCORE>
  *
