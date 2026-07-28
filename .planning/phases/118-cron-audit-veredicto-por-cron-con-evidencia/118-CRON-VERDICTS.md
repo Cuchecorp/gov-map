@@ -389,8 +389,11 @@ escritura en `actualidad_senal` 2026-07-28 16:08:28, misma ventana.)
 
 #### Gaps de esta unidad
 
-Ninguno propio. Contribuye a **G-cobertura-freshness** (§1.6 punto 3): el catálogo no la cubre,
-así que una avería silenciosa de este cron no dispararía ninguna señal. Se consolida en 118-03.
+Ninguno propio. Contribuye a **G3** (`G-cobertura-freshness`, §1.6 punto 3): el catálogo no la
+cubre, así que una avería silenciosa de este cron no dispararía ninguna señal. Comparte además el
+*instrumento* averiado con **G2** (catálogo apuntando a YAML inexistentes, §1.6 punto 2) y **G10**
+(`pnpm freshness` no resuelve `tsx`, §1.6 punto 5): las tres son fallas del medidor, no del medido.
+Numeración consolidada en §4.
 
 #### Cómo re-verificar
 
@@ -467,9 +470,9 @@ Veredicto: verde
 
 #### Gaps de esta unidad
 
-**G-etapa2-agenda** (sin ruta `--from-r2`), **G-hashcheck-agenda** (`existed` descartado),
-**G-snapshot-agenda** (§1.6 punto 4: sin fila en `source_snapshot`). Numeración definitiva en
-118-03.
+**G7** (`G-etapa2-agenda`, sin ruta `--from-r2`), **G6** (`G-hashcheck-agenda`, `existed`
+descartado), **G5** (`G-snapshot-agenda`, §1.6 punto 4: sin fila en `source_snapshot`).
+Numeración consolidada en §4.
 
 #### Cómo re-verificar
 
@@ -553,8 +556,8 @@ corrida, tres lunes seguidos (P7: commits `5782d8c` 2026-07-27 10:05, `0377ca8` 
 
 #### Gaps de esta unidad
 
-**G-snapshot-identity** (PUT a R2 sin traza en `source_snapshot`),
-**G-cobertura-freshness** (no cubierto por el catálogo). Consolidación en 118-03.
+**G5** (`G-snapshot-identity`, PUT a R2 sin traza en `source_snapshot`),
+**G3** (`G-cobertura-freshness`, no cubierto por el catálogo). Consolidación en §4.
 
 #### Cómo re-verificar
 
@@ -723,9 +726,9 @@ pero nada mantiene `lobby_ingesta_estado` al día.
 
 #### Gaps de esta unidad
 
-**G-cursor-lobby (candidato P1, el hallazgo central del audit)** — `lobby_ingesta_estado` sin
-avanzar desde 2026-06-22; **G-snapshot-leylobby** — Etapa-1 sin `SnapshotWriter`. Priorización
-en 118-03.
+**G1** (`G-cursor-lobby`, **P1**, el hallazgo central del audit) — `lobby_ingesta_estado` sin
+avanzar desde 2026-06-22; **G5** (`G-snapshot-leylobby`) — Etapa-1 sin `SnapshotWriter`.
+Priorización en §4.
 
 #### Cómo re-verificar
 
@@ -804,7 +807,7 @@ Veredicto: verde
 
 #### Gaps de esta unidad
 
-**G-etapa2-probidad** (sin `--from-r2`), **G-hashcheck-probidad** (`existed` descartado).
+**G7** (`G-etapa2-probidad`, sin `--from-r2`), **G6** (`G-hashcheck-probidad`, `existed` descartado).
 Ninguno afecta el veredicto verde: son deuda de arquitectura de ingesta, no de salud del cron.
 
 #### Cómo re-verificar
@@ -921,7 +924,8 @@ No se repite el detalle para no duplicar la fuente de verdad.
 
 #### Gaps de esta unidad
 
-Ninguno **como cron** (gating declarado). Contribuye a **G-snapshot-identity**, compartido con W-3.
+Ninguno **como cron** (gating declarado). Contribuye a **G5** (`G-snapshot-identity`), compartido
+con W-3.
 
 #### Cómo re-verificar
 
@@ -1012,9 +1016,9 @@ en `docs/runbooks/cron-local-fallback.md`. Es el gap G7 del audit 56, ya convert
 
 #### Gaps de esta unidad
 
-**G-freshness-enganosa-camara** (§1.6 punto 7: la señal mide `lobby_audiencia`, llenada por W-5)
-y **G-etapa2-camara** (entrada por `--html-file` en vez de R2, que dejaría el fallback local
-re-procesable). El WAF en sí **no** es gap: es decisión declarada (§1.5).
+**G4** (`G-freshness-enganosa-camara`, §1.6 punto 7: la señal mide `lobby_audiencia`, llenada por
+W-5) y **G7** (`G-etapa2-camara`, entrada por `--html-file` en vez de R2, que dejaría el fallback
+local re-procesable). El WAF en sí **no** es gap: es decisión declarada (§1.5).
 
 #### Cómo re-verificar
 
@@ -1131,8 +1135,8 @@ Veredicto: no-cron
 
 #### Gaps de esta unidad
 
-**G-freshness-enganosa-fichas** (§1.6 punto 7) y **G-secrets-fichas** (`GEMINI_API_KEY` /
-`SUPABASE_URL` ausentes ⇒ un dispatch fallaría). Consolidación en 118-03.
+**G4** (`G-freshness-enganosa-fichas`, §1.6 punto 7) y **G9** (`G-secrets-fichas`,
+`GEMINI_API_KEY` / `SUPABASE_URL` ausentes ⇒ un dispatch fallaría). Consolidación en §4.
 
 #### Cómo re-verificar
 
@@ -1234,7 +1238,7 @@ Veredicto: no-cron
 
 #### Gaps de esta unidad
 
-**G-deuda-110-02** — clasificación **P2 (deuda de operador)**, no P0/P1: no bloquea ninguna
+**G8** (`G-deuda-110-02`) — clasificación **P2 (deuda de operador)**, no P0/P1: no bloquea ninguna
 ingesta y tiene vía alternativa funcionando. Es el insumo del checkpoint de operador de 118-03,
 que ya tiene su evidencia fechada lista (P3.b + P4).
 
@@ -1578,7 +1582,8 @@ primera corrida registrada es **2026-07-24 17:07** y desde entonces la cadencia 
   *Discrepancia declarada honestamente:* el 2026-07-25 fue **viernes hábil** y no registra
   corridas, pese a que el job ya estaba activo desde el jueves. Con la evidencia disponible no se
   puede decidir entre "alta efectiva del job posterior al viernes" y "cuatro ventanas realmente
-  perdidas". **No se resuelve por inferencia**: se registra como observación abierta para 119, y
+  perdidas". **No se resuelve por inferencia**: se registra como observación abierta para 119
+  (**G11**, §4), y
   el veredicto sigue siendo verde porque las dos jornadas hábiles completas posteriores (lunes y
   martes) dan 6/6. Un solo día ambiguo, con el job recién nacido, no alcanza el umbral de `stale`
   de §0.4 ("N ventanas sin correr" sin causa) cuando la cadencia posterior es perfecta.
@@ -1775,3 +1780,148 @@ grep -n "umbralDias\|workflowYml\|tabla:" packages/freshness/src/catalog.ts   # 
 # union all select 'leylobby_cursor_estado', count(*)::text, max(fecha_captura)::text from leylobby_cursor_estado
 # union all select 'leyes_rotacion_estado', count(*)::text, max(ultimo_boletin)::text from leyes_rotacion_estado;"
 ```
+
+---
+
+## 4. Gaps priorizados (backlog de Phase 119)
+
+Escala **LOCKED** (`118-CONTEXT.md:40`): **P0** = roto accionable · **P1** = stale accionable ·
+**P2** = deuda (de operador o de instrumentación). Los ids `G<n>` son estables y están citados
+desde las secciones de §2; el mnemónico entre paréntesis es el nombre con que §2 los nombró
+antes de la consolidación.
+
+### Índice compacto
+
+| Gn | prio | unidad de cron | pata que lo detectó | archivo principal |
+|---|---|---|---|---|
+| G1 | P1 | W-5 `lobby-leylobby-weekly` | pata 2 (cursor, P8) + pata 3 (P9) | `packages/lobby/src/ingest-cli.ts` |
+| G2 | P2 | *sistémico* — instrumento de frescura | pata 3 (404 en vivo, P9) | `packages/freshness/src/catalog.ts` |
+| G3 | P2 | *sistémico* — 8 unidades sin pata 3 | pata 3 (cobertura del catálogo, P9) | `packages/freshness/src/catalog.ts` |
+| G4 | P1 | W-9 `lobby-camara-weekly` + W-11 `fichas-backfill` | pata 3 contrastada con pata 1 (P9 vs P2) | `packages/freshness/src/catalog.ts` |
+| G5 | P1 | *sistémico* — W-2, W-3/W-8, W-5, W-11 | pata 4 (`source_snapshot`, P10) | `packages/tramitacion/src/run-tramitacion-prod-cli.ts` (referencia) |
+| G6 | P1 | *sistémico* — W-2, W-6, W-3/W-8 | lectura de código anclada a pata 4 | `packages/ingest/src/r2-store.ts` |
+| G7 | P1 | *sistémico* — W-2, W-6, W-9 | compliance dos-etapas (`CLAUDE.md`) | `packages/tramitacion/src/ingest-cli.ts` (referencia) |
+| G8 | P2 | W-13 `deploy-cloudflare` | pata 1 (log, P3.b) + `gh secret list` (P4) | `.github/workflows/deploy-cloudflare.yml` |
+| G9 | P2 | W-11 `fichas-backfill` | `gh secret list` (P4) | `.github/workflows/fichas-backfill.yml` |
+| G10 | P2 | *sistémico* — herramienta de auditoría | pata 3 (fallo de invocación, P9) | `package.json` |
+| G11 | P2 | PG-5 `actualidad-materializar` | pata 1 sustituida (`job_run_details`, P6) | `supabase/migrations/0065_actualidad_senal.sql` |
+
+**11 gaps: 0 P0, 5 P1, 6 P2.**
+
+**Ningún gap es P0** — y eso es un resultado, no un hueco del audit: de los 6 workflows con
+`schedule:` activo, 5 están verdes y 1 stale, y ninguno falla su corrida (§1.3). Los dos
+`failure` del inventario (`lobby-camara-weekly`, `deploy-cloudflare`) son unidades `no-cron`:
+uno por decisión declarada (WAF), otro por deuda de operador con vía alternativa viva.
+
+### Detalle — ordenado por prioridad
+
+| # | Gap | Prioridad | Unidad | Archivo:Línea o dato | Fix propuesto (Phase 119) |
+|---|---|---|---|---|---|
+| G1 | Cursor `lobby_ingesta_estado` detenido en 2026-06-22 pese a corridas `success` semanales: el CLI actualiza `leylobby_cursor_estado` pero no el `*_ingesta_estado` de la misma fuente (dos cursores desincronizados) | **P1** | W-5 `lobby-leylobby-weekly` | `packages/lobby/src/ingest-cli.ts:161` (entrypoint real del YAML, `lobby-leylobby-weekly.yml:70`); cursores en `packages/lobby/src/cursor-leylobby.ts:3`, `:8`; dato: `lobby_ingesta_estado.ingestado_hasta = 2026-06-22` vs `leylobby_cursor_estado.fecha_captura = 2026-07-22 12:44:06` (P8) | 1) En `ingest-cli.ts`, tras cada lote confirmado, hacer `upsert` de `lobby_ingesta_estado.ingestado_hasta` con la fecha máxima ingerida — el conector de probidad ya lo hace (`packages/probidad/src/run-probidad-todos.ts`, cursor al día en P8: úsese como plantilla). 2) Decidir explícitamente si los dos cursores conviven o si uno se deriva del otro, y **documentar la decisión en el propio archivo** — hoy nada explica por qué son dos. 3) Test de regresión: tras una corrida simulada, `max(ingestado_hasta)` debe avanzar. 4) Verificación de cierre: `pnpm freshness` debe pasar `lobby-leylobby` a `stale:false` (hoy 36 d / umbral 7, `catalog.ts:273`) |
+| G4 | Señales de freshness con **verde prestado**: dos entradas miden una tabla que llena OTRO cron, luego son estructuralmente incapaces de detectar la avería del cron que nombran | **P1** | W-9 `lobby-camara-weekly`, W-11 `fichas-backfill` | `packages/freshness/src/catalog.ts:265` (`lobby-camara` → `lobby_audiencia`, que llena W-5) y `catalog.ts:289` (`fichas` → `proyecto`, que llena W-4). Dato delator ya presente y NO usado en el cálculo: `ghRun: "failure @ 2026-07-07"` y `ghRun: "n/d (sin corridas)"` (P9) | 1) Reapuntar cada entrada a una tabla **propia** del cron que nombra: `lobby-camara` → `lobby_contraparte` (o un `*_ingesta_estado` propio si se crea); `fichas` → `proyecto_ficha` / `proyecto_embedding`, no `proyecto`. 2) Incorporar `ghRun` al cálculo de `stale` (hoy se muestra y se ignora): una `conclusion: failure` o `sin corridas` debe poder producir `stale:true` por sí sola. 3) Test: con `lobby_audiencia` fresca y W-9 en `failure`, la señal `lobby-camara` debe dar `stale:true` |
+| G5 | Etapa-1 `putImmutable` **sin `SnapshotWriter`**: cuatro conectores escriben crudo a R2 sin dejar traza consultable en `source_snapshot` (2 fuentes registradas de 8 conectores) | **P1** | W-2 `agenda-weekly`, W-3/W-8 `identity`, W-5 `lobby-leylobby`, W-11 `fichas` | Falta el writer en `packages/agenda/src/run-agenda-prod-cli.ts:137-138`, `packages/identity/src/seed-cli.ts:195`, `packages/lobby/src/ingest-cli.ts:161`. Referencias que SÍ lo montan: `packages/tramitacion/src/run-tramitacion-prod-cli.ts:215-218` y `packages/probidad/src/run-probidad-todos.ts:147-150`. Dato: `source_snapshot` sólo tiene `leyes` (4.380) e `infoprobidad` (3) (P10) | 1) Montar `SnapshotWriter` sobre `SupabaseSnapshotStore` en cada uno de los tres CLIs, copiando literalmente el ensamblado de `run-tramitacion-prod-cli.ts:215-218`. 2) Confirmar que la fila incluye `source`, `resource`, `r2_path`, `content_hash`, `fetched_at` (columnas reales verificadas en P10). 3) Verificación de cierre: tras la primera corrida de cada cron, `select source, count(*) from source_snapshot group by 1` debe pasar de 2 a 5 fuentes |
+| G6 | `putImmutable` devuelve `existed` (412 de `If-None-Match: *`) y **tres llamadores lo descartan** en el destructuring ⇒ no hay short-circuit "sin novedades" y se re-parsea siempre (viola `CLAUDE.md` regla 2, "salir temprano cuando no hay novedades") | **P1** | W-2 `agenda-weekly`, W-6 `probidad-weekly`, W-3/W-8 `identity` | Contrato en `packages/ingest/src/r2-store.ts:71`, `:79`. Descartes: `packages/agenda/src/ingest-run.ts:155` y `:291`, `packages/probidad/src/run-probidad-todos.ts:149`, `packages/identity/src/seed-cli.ts:201`. Referencia correcta: `packages/tramitacion/src/ingest-run.ts:294`, `:330` (`if (existed)` → `[skip] sin novedades`) | 1) Cambiar los tres destructurings a `const { r2Path, existed } = await …`. 2) Añadir el guard `if (existed) { log("[skip] sin novedades — <fuente> <recurso>"); continue; }` inmediatamente después, calcado de `tramitacion/src/ingest-run.ts:330`. 3) Test unitario por conector: con el store devolviendo `existed:true`, el parser NO debe invocarse. 4) Ojo con el caso de `identity` (el seed se regenera igual): el skip debe saltar la carga, no el commit del snapshot git |
+| G7 | Sin ruta de **Etapa-2 (`--from-r2`)**: re-ingestar exige volver a la fuente, exactamente lo que la regla LOCKED de `CLAUDE.md` prohíbe | **P1** | W-2 `agenda-weekly`, W-6 `probidad-weekly`, W-9 `lobby-camara-weekly` | Ausente en `packages/agenda/src/run-agenda-prod-cli.ts` (sin flag de replay) y en el CLI de probidad; W-9 entra por `--html-file` (`lobby-camara-weekly.yml:67`) en vez de por R2. Referencias que sí lo exponen: `packages/tramitacion/src/ingest-cli.ts:200` y `packages/lobby/src/ingest-cli.ts:161` | 1) Añadir flag `--from-r2 <fecha|sha>` a los tres CLIs, con la misma firma que `tramitacion/src/ingest-cli.ts:200`. 2) En W-9, sustituir `--html-file /tmp/lobby.html` por un `putImmutable` del HTML del `curl` + parseo desde R2: eso hace el **fallback local** (`docs/runbooks/cron-local-fallback.md`) re-procesable sin volver a chocar con el WAF. 3) Test: correr el parseo dos veces desde el mismo objeto R2 debe ser idempotente |
+| G2 | El catálogo de frescura declara dos `workflowYml` **inexistentes** ⇒ dos HTTP 404 en cada corrida de `freshness`. Distinto de "MONEY/SERVEL gated" (§4.1): lo gated es el *dato*; esto es el *catálogo* apuntando a un archivo que no existe | **P2** (instrumentación) | *sistémico* — `chilecompra`, `servel` | `packages/freshness/src/catalog.ts:313` (`chilecompra-weekly.yml`) y `catalog.ts:337` (`servel-weekly.yml`); el propio `catalog.ts:304` ya comenta que aún no existen. 404 capturados en vivo en P9 | Elegir UNA de las dos, no ambas: (a) poner `workflowYml: null` en esas dos entradas y que el cliente omita la llamada a la API de Actions cuando sea `null`; o (b) crear los dos YAML **gated** (sin `schedule:`, sólo `workflow_dispatch`) como hacen `digest-daily`/`roster-weekly`. Recomendación: (a) — crear YAML vacíos para callar un 404 es fabricar cobertura. Verificación: `freshness` sin líneas `HTTP 404` en stderr |
+| G3 | **Hueco de cobertura de freshness:** el catálogo tiene 9 entradas y no cubre 8 de las 20 unidades ⇒ una avería silenciosa de esas 8 no dispara ninguna señal | **P2** (instrumentación) | *sistémico* — W-1, W-3, W-7 y los 5 jobs de `pg_cron` | Sin entrada en `packages/freshness/src/catalog.ts` para `actualidad_senal` (W-1), snapshot git/R2 (W-3), `notificacion_envio` (W-7) ni ninguno de `0003_orchestration.sql:214`, `0003_orchestration.sql:229`, `0030_net.sql:162`, `0039_cruce_senal.sql:138`, `0065_actualidad_senal.sql:326`. Confirmado en ejecución (P9) | 1) Añadir entrada para `actualidad-refresh` (tabla `actualidad_senal`, umbral 2 d por su cadencia intradía). 2) Añadir una comprobación de `pg_cron` distinta de las de tabla: `max(start_time)` por `jobid` desde `cron.job_run_details`, con umbral derivado del `schedule` — un job diario stale a 3 días es señal, uno de `30 seconds` stale a 1 hora también. 3) W-3 y W-7 pueden quedar deliberadamente fuera: si se decide así, **declararlo en el propio `catalog.ts`** con comentario, para que el hueco sea decisión y no olvido |
+| G8 | `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID` ausentes en el repo remoto ⇒ el workflow de deploy falla al expandirlos vacíos. **No bloquea ninguna ingesta** (el deploy real de PROD se hace localmente con wrangler OAuth) | **P2** (deuda de operador) | W-13 `deploy-cloudflare` | `.github/workflows/deploy-cloudflare.yml:61` (`pnpm run deploy`); log de la corrida 29027652583: `✘ [ERROR] … it's necessary to set a CLOUDFLARE_API_TOKEN` (P3.b); ausencia confirmada en `gh secret list` (P4) | **Acto de operador, no de agente.** Pasos exactos y permiso mínimo en [`118-OPERATOR-CHECKPOINT.md`](./118-OPERATOR-CHECKPOINT.md). 119 no puede cerrarlo por sí misma: sólo puede re-verificar con `gh secret list --repo Cuchecorp/gov-map` y re-disparar el workflow. Es la deuda 110-02, confirmada abierta al 2026-07-28 |
+| G9 | `GEMINI_API_KEY` y `SUPABASE_URL` ausentes ⇒ un `workflow_dispatch` de `fichas-backfill` fallaría. Hoy inocuo: el workflow no tiene ninguna corrida registrada | **P2** (deuda de operador) | W-11 `fichas-backfill` | `.github/workflows/fichas-backfill.yml:81` (entrypoint `src/pipeline-cli.ts`); faltantes confirmados en P4. Nótese que `SUPABASE_URL` ya existe como `SUPABASE_API_URL`: puede ser un **remapeo faltante**, no un secret faltante | 1) Verificar primero si `SUPABASE_URL` se resuelve remapeando `secrets.SUPABASE_API_URL` en el bloque `env:`, como hace `lobby-leylobby-weekly.yml:57` — si es así, es un fix de YAML de una línea y **no** deuda de operador. 2) `GEMINI_API_KEY` sí es acto de operador: ver `118-OPERATOR-CHECKPOINT.md`. 3) Cerrar con un dispatch de prueba acotado |
+| G10 | `pnpm freshness` **no resuelve `tsx`** en el entorno local: el script raíz lo invoca pero el binario sólo existe en el `node_modules` del paquete. Variante viva del gotcha v8.1 (`process.cwd` bajo `pnpm --filter exec`) | **P2** (instrumentación) | *sistémico* — herramienta de auditoría | `package.json:12` (`tsx packages/freshness/src/cli.ts`); binario efectivo en `packages/freshness/node_modules/.bin/tsx`; `.env` se resuelve desde el cwd en `packages/freshness/src/cli.ts:296`. Error literal en P9 | 1) Añadir `tsx` como `devDependency` de la raíz **o** cambiar el script a `pnpm --filter @obs/freshness exec tsx src/cli.ts` cuidando que el cwd siga siendo la raíz (si no, `cli.ts:296` no encuentra `.env` — ése es exactamente el gotcha v8.1). 2) Verificación de cierre: `pnpm freshness --json` desde la raíz debe emitir el JSON, con `exit=1` sólo por fuentes stale, nunca por binario ausente |
+| G11 | PG-5 `actualidad-materializar` no registra corridas el **viernes 2026-07-25**, día hábil, con el job ya activo desde el jueves. Con la evidencia disponible no se distingue "alta efectiva posterior" de "cuatro ventanas perdidas" | **P2** (observación abierta) | PG-5 `actualidad-materializar` | `supabase/migrations/0065_actualidad_senal.sql:326` (`7 11,14,17,20 * * 1-5`); historial completo = 8 filas desde `2026-07-24 17:07` (P6). Control anti-poda: PG-2 conserva 1.344 filas del mismo período | **No se cierra por inferencia, se cierra por observación nueva.** 119 debe volver a mirar `cron.job_run_details` para `jobid=5` con ≥2 semanas de cadencia acumulada: si desde el 2026-07-28 no hay más huecos en días hábiles, se declara "arranque" y se cierra el gap; si aparece otro viernes vacío, hay patrón y pasa a P1 con investigación de `job startup timeout` (el único fallo observado en PG-1 fue de ese tipo) |
+
+### 4.1 Estados esperados — NO son gaps
+
+Registrados con su cita para que Phase 119 no los tome como backlog. La diferencia entre un gap y
+un estado esperado es que el segundo tiene **una decisión declarada en el código o en el YAML**:
+
+- **MONEY / SERVEL sin scheduler.** `supabase/migrations/0023_dinero.sql:46` (*"el pg_cron del
+  barrido por RUT queda como checkpoint de operador, NO se crea en este DDL"*) y
+  `supabase/migrations/0025_agregacion.sql:46` (*"NO se crea ningun cron.schedule en este DDL"*).
+  Sus tablas de cursor tienen 0 filas (P8) y `freshness` las marca `stale:true` (P9): **esas dos
+  señales stale no son averías.** Gating legal.
+- **`lobby-camara-weekly` sin `schedule:`.** `.github/workflows/lobby-camara-weekly.yml:14-17` —
+  WAF de camara.cl. El fallo observado (5.463 bytes < guard de 10.240, P3.a) es el guard
+  funcionando, no el cron rompiéndose. El fallback local está en
+  `docs/runbooks/cron-local-fallback.md`.
+- **`digest-daily` con `schedule:` comentado.** `.github/workflows/digest-daily.yml:17` y
+  `:24-25` — estreno gated. Sus 4 secrets `NOTIF_*`/`RESEND_*` ausentes (P4) y
+  `notificacion_envio` con 0 filas (P7) son coherentes con NOTIF parked.
+- **`roster-weekly` con `schedule:` comentado.** `.github/workflows/roster-weekly.yml:16` y
+  `:29-30` — estreno gated, `workflow_dispatch` SOLO.
+- **`backfill` y `fichas-backfill` sin `schedule:`.** `.github/workflows/backfill.yml:7` y
+  `.github/workflows/fichas-backfill.yml:8`. `CLAUDE.md` manda backfill masivo **LOCAL**: la
+  ausencia de schedule es cumplimiento, no omisión.
+- **`ci` y `deploy-cloudflare` no son ingesta.** `.github/workflows/ci.yml:11-14` (eventos de
+  repositorio) y `.github/workflows/deploy-cloudflare.yml:6` (disparo manual deliberado).
+- **`Dependabot Updates` y `CodeQL` platform-managed.** Sin archivo en `.github/workflows/`;
+  se inventarían para cerrar el universo, no para auditarlos como ingesta.
+
+---
+
+## 5. Assumptions y preguntas abiertas — resolución
+
+Las cinco asunciones (`118-RESEARCH.md` §Assumptions Log) y las cuatro preguntas abiertas
+(§Open Questions) del RESEARCH, cerradas contra observación. Cuando el dato no alcanza se dice
+**parcialmente resuelto** con la razón: sobre-afirmar aquí contaminaría el backlog de 119.
+
+| ID | Claim original | Resultado | Evidencia (probe / archivo:línea) |
+|---|---|---|---|
+| A1 | `psql` está instalado y en PATH | **CONFIRMADA.** Todas las probes de pata 2 y 4 corrieron con `psql` real; no hizo falta el fallback por `freshness` | P6a (`select count(*) from cron.job` → `5`), P7, P8, P10 |
+| A2 | La columna temporal de `actualidad_senal`/`notificacion_envio` es `creado_en` | **REFUTADA en los tres casos.** `actualidad_senal` usa `fecha_captura`, `notificacion_envio` usa `created_at`, `source_snapshot` usa `fetched_at`. El lote del RESEARCH habría fallado; se corrigió ANTES de correrlo. Bonus: `sesion_tabla_item` no tiene `fecha_captura` (error literal observado) → se sustituyó por `sesion_sala` | P7 (query a `information_schema.columns`), P10 (columnas de `source_snapshot`); nota de columnas en §0.5 |
+| A3 | Los 5 jobs de migración están efectivamente activos en PROD | **CONFIRMADA con delta CERO.** Los 5 vivos, los 5 con `active = t`, mismo nombre, mismo schedule y mismo comando que las migraciones. Ninguno sobra, ninguno falta | P6 y P6a; `0003_orchestration.sql:214`, `:229`, `0030_net.sql:162`, `0039_cruce_senal.sql:138`, `0065_actualidad_senal.sql:326`; tabla §3.3 |
+| A4 | `backup-parlamentario`/`roster-weekly` escriben la maestra de identidad vía capa propia | **REFUTADA, y la refutación es hallazgo.** `backup-parlamentario` **no escribe Supabase**: su `env:` sólo mapea los 4 `R2_*` y el YAML declara *"SIN service key local en CI → la carga a DB se omite; el snapshot git es autoritativo"*. La pata 2 se sustituyó por el commit del bot. **Control negativo:** la fila `parlamentario` (2026-07-27 00:10:53) es 10 h anterior a la corrida (10:04) ⇒ no atribuible al cron | P7 (`git log … supabase/seeds/parlamentario.seed.json`); `backup-parlamentario.yml:38-42`, `:60`; `packages/identity/src/seed-cli.ts:195`, `:201` |
+| A5 | Los secrets presentes siguen siendo sólo `SUPABASE_API_URL` + `SUPABASE_SECRET_KEY` (estado v6.0) | **REFUTADA — el estado MEJORÓ.** Hay **7** secrets: los 2 de Supabase (2026-06-23) más `DEEPSEEK_API_KEY` y los 4 `R2_*` (2026-07-09). Consecuencia de primera clase: la causa *"Etapa-1 no-op por secrets R2 ausentes"* que el audit 56 usó para `agenda` **está muerta** | P4 (`gh secret list`, NOMBRES y fechas); §1.4; W-2 §DOS ETAPAS |
+| OQ1 | ¿Cuántos jobs `pg_cron` activos hay realmente en PROD, y qué rama de `0003` quedó viva? | **RESUELTA.** 5 jobs, los 5 activos. La rama viva es **pg_cron ≥ 1.5** (`schedule = 30 seconds`, `0003_orchestration.sql:214`), NO el fallback `* * * * *` de `:221`. Pre-check de permisos PASÓ ⇒ cifras vivas, no heredadas (`cifras_heredadas.heredada: false` en el front-matter) | P6a, P6; §1.7; §3.3 |
+| OQ2 | ¿Dependabot/CodeQL entran al inventario? | **RESUELTA: sí.** Enumerados como PM-1 (id 314034212) y PM-2 (id 301076402), veredicto `no-cron`, causa "platform-managed, no versionado en `.github/workflows/`". Entran al denominador vía `conteo_platform_managed: 2` | P1 (`gh workflow list` → 15 remotos vs 13 locales); §1.1; §2 PM-1/PM-2 |
+| OQ3 | ¿La deuda 110-02 sigue abierta? | **RESUELTA: sí, abierta al 2026-07-28.** `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID` ausentes del repo y expandidos **vacíos** en el runner. Registrada como **G8 (P2)** y emitida al operador una sola vez. **Parcialmente resuelto lo secundario:** la *rotación B26* mencionada en la deuda original NO es verificable desde `gh secret list`, que sólo expone nombre y fecha de creación — las fechas más antiguas son 2026-06-23, dato que **no** basta para afirmar si hubo rotación | P3.b (log literal del run 29027652583), P4; [`118-OPERATOR-CHECKPOINT.md`](./118-OPERATOR-CHECKPOINT.md) |
+| OQ4 | ¿Es gap que `freshness` apunte a `chilecompra-weekly.yml`/`servel-weekly.yml` inexistentes? | **RESUELTA: sí, gap de instrumentación** — **G2 (P2)**, con los dos HTTP 404 capturados en vivo. Explícitamente **distinto** de "MONEY/SERVEL gated", que es estado esperado y vive en §4.1 | P9 (stderr con los dos 404); `packages/freshness/src/catalog.ts:304`, `:313`, `:337` |
+
+---
+
+## 6. Límites
+
+Un límite declarado es un resultado válido; uno silenciado, no. Lo que sigue acota exactamente
+hasta dónde llega la autoridad de este documento.
+
+1. **El checkpoint de operador se emite, no se responde.** G8 y G9 requieren un acto humano
+   (cargar secrets en el dashboard de GitHub). El agente no los carga ni los ve: pide una vez,
+   zero-credential-value, en [`118-OPERATOR-CHECKPOINT.md`](./118-OPERATOR-CHECKPOINT.md), y la
+   fase **cierra igual** (`118-CONTEXT.md:37`, LOCKED). Al momento de este cierre la petición
+   está **sin responder**, y por tanto la deuda 110-02 sigue abierta.
+2. **Ocho de las veinte unidades se auditaron sin pata 3.** W-1, W-3, W-7 y los 5 jobs de
+   `pg_cron` no están en `packages/freshness/src/catalog.ts` (G3). Sus veredictos se apoyan en
+   patas 1+2, que en todos los casos fueron concordantes y contemporáneas — pero **dos patas no
+   son tres**, y así se declara en cada sección de §2 en vez de presentarlas como cobertura
+   completa.
+3. **Los logs de `gh run view` no son recuperables indefinidamente.** GitHub retiene los logs de
+   corridas por tiempo limitado. Los dos logs de fallo citados (P3.a run 28869169412 del
+   2026-07-07; P3.b run 29027652583 del 2026-07-09) se transcribieron **literalmente** a
+   `118-PROBES-RAW.md` precisamente porque el enlace no sobrevive: quien re-verifique dentro de
+   meses tendrá la transcripción, no el log vivo.
+4. **R2 se verificó sólo por proxy.** La pata 4 lee `source_snapshot` en Postgres, que es la
+   *traza en DB* del PUT, no el bucket. **No se hizo ninguna llamada SigV4 a R2**: exigiría
+   credenciales, y el régimen de la fase lo prohíbe. Consecuencia honesta: cuando §2 dice "sin
+   traza en `source_snapshot`" (G5) **no** está probando que el objeto no exista en R2 — está
+   probando que no es consultable desde la DB. Son cosas distintas y el gap está redactado sobre
+   la segunda.
+5. **Los veredictos caducan a ~14 días** (`caducidad` del front-matter). Todo §3 lleva la fecha
+   del probe en el título por esta razón. `actualidad-refresh` corre 4 veces al día y
+   `leyes-weekly` 5 veces por semana: un veredicto verde del 2026-07-28 no dice nada sobre el
+   2026-08-15. Re-correr `check-crons.sh` **no** refresca los datos — sólo comprueba la
+   integridad del documento; refrescar exige re-correr las probes de §0.5.
+6. **No se encendió ningún flag ni se corrió ninguna ingesta para cerrar un límite.** Habría
+   sido trivial disparar `fichas-backfill` para saber si falla por `GEMINI_API_KEY`, o descomentar
+   un `schedule:` para observar una corrida. **Hacerlo habría violado el régimen read-only de la
+   fase** (§0.3) y habría convertido una auditoría en una intervención. Cada vez que la evidencia
+   se acabó, el documento lo dice en vez de fabricarla.
+7. **Un día ambiguo queda ambiguo.** El viernes 2026-07-25 sin corridas de PG-5 (G11) no se
+   resolvió: la evidencia disponible admite dos lecturas y **no se eligió la conveniente**. Se
+   registró como observación abierta con el criterio exacto que la cerrará en 119.
+8. **La rotación de credenciales no es observable con las herramientas de esta fase.**
+   `gh secret list` expone nombre y fecha de creación, nunca el valor ni el historial. Cualquier
+   afirmación sobre si un secret fue rotado sería inferencia sobre una fecha — ver OQ3, declarada
+   *parcialmente resuelta* por esto mismo.
+9. **El inventario es del repo `Cuchecorp/gov-map` y del filesystem local en el commit auditado.**
+   Un workflow añadido después del 2026-07-28, o un job de `pg_cron` creado por migración
+   posterior, no está aquí. El denominador se deriva en cada corrida de `check-crons.sh`
+   precisamente para que esa deriva se detecte como diff, en vez de pasar inadvertida.
