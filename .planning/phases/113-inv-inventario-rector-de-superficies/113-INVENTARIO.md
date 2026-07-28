@@ -660,7 +660,7 @@ near-clone vivo que reemplazó a `actualidad-module.tsx` en `/`.
 | propiedad | valor |
 |-----------|-------|
 | prop | `capturedAt: Date \| null` (`provenance-badge.tsx:21`) |
-| formatter | `relativeTimeEs(capturedAt)` (`:52`) + `esStale(capturedAt)` (`:33`, umbral 48 h → amber) |
+| formatter | `relativeTimeEs(capturedAt)` (`:52`) + `esStale(capturedAt)` (`:33`, umbral **14 días** → amber) — corregido en Phase 117 (F-11): el valor real es `STALE_THRESHOLD_MS = 14 * 24 * 60 * 60 * 1000` en `app/lib/format.ts:10`, elegido por la cadence de ingesta semanal. El inventario decía 48 h por propagación del JSDoc erróneo del badge; el comportamiento nunca cambió. |
 | `null` | renderiza **"Sin fecha de actualización"** (`:54`) y `sourceName` se degrada a `"fuente desconocida"` (`:34`) — el badge **nunca** se omite (UI-SPEC §6.3) |
 | tooltip | `capturedAt.toISOString()` (`:86`) — el instante crudo de *scraping* |
 
@@ -1066,7 +1066,7 @@ de origen. Los 4 chrome-links externos (CC BY 4.0 y `mailto:` del footer) viven 
 
 | # | etiqueta visible | formatter | origen (RPC.campo / tabla.columna) | ¿es fecha_captura? | ¿vía ProvenanceBadge? | gate | emisor |
 |---|------------------|-----------|------------------------------------|--------------------|-----------------------|------|--------|
-| C1 | `Actualizado {hace X}` (cabecera) | `relativeTimeEs` + `esStale` (48 h → amber) | `RPC:parlamentario_publico_v2.fecha_captura` | **sí** | **sí** | — | → E-059 `app/components/parlamentario-header.tsx:37,116` |
+| C1 | `Actualizado {hace X}` (cabecera) | `relativeTimeEs` + `esStale` (**14 días** → amber; `STALE_THRESHOLD_MS`, `app/lib/format.ts:10` — corregido en 117/F-11) | `RPC:parlamentario_publico_v2.fecha_captura` | **sí** | **sí** | — | → E-059 `app/components/parlamentario-header.tsx:37,116` |
 | C2 | `según {fuente} al {fecha}` (tooltip del chip de partido) | `fechaCorta` | `RPC:parlamentario_publico_v2.partido_fecha_captura` | **sí** | **no** — el chip la formatea por su cuenta | — | → E-019 `app/components/partido-chip.tsx:65-70` |
 | C3 | rango de militancia `{desde} – {hasta \| "vigente"}` | `fechaCorta` | `RPC:militancias_de_parlamentario.desde` / `.hasta` | no (hecho declarado) | no | — | → E-054 `app/components/militancias-de-parlamentario.tsx:26,27` |
 | C4 | fecha de la votación | `fechaCortaSegura` | `RPC:votos_de_parlamentario.fecha` | no (el hecho) | no | — | → E-001 `app/components/votos-por-parlamentario.tsx:528` |
