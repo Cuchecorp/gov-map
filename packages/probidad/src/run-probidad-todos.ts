@@ -65,6 +65,11 @@ export interface RunProbidadTodosResult {
   errores: { id: string; mensaje: string }[];
   /** Key del crudo agregado en R2, o null (Etapa 1 omitida o fallida — no fatal). */
   r2Path: string | null;
+  /**
+   * true si el crudo agregado de esta corrida YA existía en R2 con el mismo sha (412 de
+   * `If-None-Match: *`) ⇒ la fuente no trajo novedades respecto de la corrida anterior (G6).
+   */
+  sinNovedades: boolean;
 }
 
 /** Cuenta los bienes de una versión sumando las 6 sub-clases (espeja ingest-run.contarBienes). */
@@ -142,11 +147,13 @@ export async function runProbidadTodos(opts: RunProbidadTodosOpts): Promise<RunP
   // fila source_snapshot run-level. NO fatal — la carga a Supabase YA ocurrió arriba; un fallo de
   // R2/snapshot deja r2Path null y no aborta (espejo de run-camara-lobby.ts L85–105).
   let r2Path: string | null = null;
+  let sinNovedades = false;
   if (opts.r2Store) {
     try {
       const bytes = new TextEncoder().encode(JSON.stringify(crudos));
       const sha = await sha256Hex(bytes);
-      ({ r2Path } = await opts.r2Store.putImmutable(
+      let existed = false;
+      ({ r2Path, existed } = await opts.r2Store.putImmutable(
         "infoprobidad",
         "declaraciones",
         hasta,
@@ -155,7 +162,20 @@ export async function runProbidadTodos(opts: RunProbidadTodosOpts): Promise<RunP
         bytes,
       ));
       log(`probidad-todos: crudo agregado en R2 → ${r2Path}`);
-      if (opts.snapshotWriter) {
+      // G6 — DIVERGENCIA DELIBERADA respecto de la plantilla dorada
+      // (`packages/tramitacion/src/ingest-run.ts:330`), no un descuido: allá la Etapa 1 corre
+      // ANTES de la carga y el `existed` permite saltarse la Etapa 2 entera; ACÁ la carga a
+      // Supabase (`marcarIngestado` + los upserts del loop) YA ocurrió más arriba, así que el
+      // 412 no puede ahorrar trabajo. Lo que sí hace: (a) queda CONSUMIDO y VISIBLE en el log
+      // —un skip silencioso es indistinguible de una corrida rota (T-119-08)— y (b) evita
+      // re-registrar una fila source_snapshot para un objeto ya registrado. Reordenar las
+      // etapas para que el skip ahorre trabajo de verdad queda registrado como hallazgo del
+      // plan 119-03; este plan NO reordena etapas.
+      if (existed) {
+        sinNovedades = true;
+        log(`[skip] sin novedades — infoprobidad declaraciones ${hasta}`);
+      }
+      if (opts.snapshotWriter && !sinNovedades) {
         await opts.snapshotWriter.write({
           source: "infoprobidad",
           resource: "declaraciones",
@@ -182,5 +202,6 @@ export async function runProbidadTodos(opts: RunProbidadTodosOpts): Promise<RunP
     confirmados: confirmados.size,
     errores,
     r2Path,
+    sinNovedades,
   };
 }
