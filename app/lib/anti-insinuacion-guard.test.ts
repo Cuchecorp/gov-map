@@ -407,6 +407,59 @@ const SUPERFICIES_NOTIF: string[] = [
 ];
 
 /**
+ * Superficies LINK-EXT (115-03, LINK-03) — patrones de link a fuente oficial. La fase
+ * 115 corrige los enlaces externos que apuntaban a un recurso NO humano (XML crudo /
+ * API JSON / servicio de datos) y DECLARA la limitación allí donde no existe una URL
+ * humana derivable (`115-VEREDICTO.md` §4, acciones A-3/A-4/A-5).
+ *
+ * El riesgo específico de una fase de LINKS no es el vocabulario de bancada sino
+ * insinuar que la fuente OCULTA, ESCONDE, CENSURA o SE NIEGA A publicar el dato. Que
+ * un organismo publique un web service en vez de una página de consulta es un HECHO
+ * de formato, jamás una intención. Por eso este carril suma su propio vocabulario
+ * (abajo, bloque LINK-EXT de TERMINOS_PROHIBIDOS) ANTES de que exista una sola línea
+ * del copy nuevo (orden LOCKED 68-01 / 100-01 / 101-02 / 103-03).
+ *
+ * Las 4 superficies que la fase toca o que emiten copy sobre el origen del enlace:
+ *  - `components/timeline-event.tsx`  — el `<a>` "Ver fuente oficial ↗" por evento (A-2).
+ *  - `components/timeline-view.tsx`   — el intermediario con los DOS call-sites del evento.
+ *  - `components/buscar-filtros.tsx`  — el badge de cada resultado de /buscar (A-1).
+ *  - `components/provenance-badge.tsx`— donde vive la leyenda de recurso no-humano (A-3/4/5).
+ *
+ * DEDUPE (Pitfall 4, precedente `app/comparar/page.tsx` en VSIM): `buscar-filtros.tsx`
+ * ya vive en `SUPERFICIES_BUSQUEDA` y `provenance-badge.tsx` en `SUPERFICIES_DEEPLINK`.
+ * Se listan IGUALMENTE aquí porque §4 los nombra y este array debe ser el registro
+ * completo del alcance de la fase; la duplicación se disuelve en el propio bucle de
+ * escaneo con un `Set` (ver Test (1)), de modo que ningún archivo se escanea dos veces
+ * ni un offender se reporta duplicado. Los arrays previos NO se tocan.
+ *
+ * NOTA NEGACIONES_LOCKED: la leyenda de recurso no-humano propuesta por §4 —«La fuente
+ * oficial publica este dato como servicio de datos, no como página de consulta.»— NO
+ * contiene ningún término prohibido, ni siquiera para negarlo, de modo que NO requiere
+ * registro (mismo caso que las leyendas de AGENDA "completo"/"confirma" y las de NOTIF).
+ * Eso se VERIFICA aquí, no se asume: el Test (3) monta la leyenda verbatim y exige `[]`.
+ * Si un copy futuro de este carril negara un término PROHIBIDO, debe registrarse
+ * verbatim en NEGACIONES_LOCKED ANTES de escribirse (Pitfall 3).
+ *
+ * Rutas relativas a app/, mismo formato que los otros arrays. Si una ruta no existe,
+ * se salta sin fallar (tolerancia try/catch del bucle).
+ */
+const SUPERFICIES_LINK_EXT: string[] = [
+  "components/timeline-event.tsx",
+  "components/timeline-view.tsx",
+  "components/buscar-filtros.tsx",
+  "components/provenance-badge.tsx",
+];
+
+/**
+ * Leyenda de RECURSO NO-HUMANO (115-03, A-3/A-4/A-5). Se declara aquí como fixture del
+ * guard ANTES de que el copy exista en `provenance-badge.tsx` (Wave 0). El Test (3)
+ * prueba que está limpia; si alguien la edita hacia la insinuación ("la fuente no
+ * quiere publicarlo", "lo esconde"), el detector la caza.
+ */
+const LEYENDA_RECURSO_NO_HUMANO_FIXTURE =
+  "La fuente oficial publica este dato como servicio de datos, no como página de consulta.";
+
+/**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
  * texto RENDERIZADO (post-strip de comentarios), con límite de palabra en español
  * para no cazar identificadores snake_case: `rebeldias_de_parlamentario` (nombre de
@@ -540,6 +593,26 @@ const TERMINOS_PROHIBIDOS: string[] = [
   "aliada",
   "tasa de coincidencia",
   "señal",
+  // --- Carril LINK-EXT (115-03, LINK-03) — insinuación de INTENCIÓN DE LA FUENTE. Que
+  //     un enlace oficial lleve a un XML crudo, a una API o a un endpoint sin parámetro
+  //     es un HECHO de formato (y, en los casos A-1/A-2, un defecto NUESTRO), jamás una
+  //     voluntad del organismo de ocultar. TILDES EXACTAS (buildTermRegex NO es
+  //     accent-insensitive) y CERO tokens genéricos que colisionen con identificadores
+  //     (lección del `top` pelado rechazado en 100-01): el escaneo corre sobre el texto
+  //     RENDERIZADO tras stripTsComments, pero un token demasiado corto igual cazaría
+  //     nombres de variables. Verificado por grep sobre las 4 superficies: el único
+  //     "oculta"/"esconde" del árbol vive en COMENTARIOS (timeline-view.tsx:16,
+  //     provenance-badge.tsx:14) → strippeados. "oculta"/"esconde" NO cazan
+  //     "Ocultar urgencias" ni "esconderse" por el límite de palabra.
+  //     DEDUPE: "influencia"/"captura" ya están arriba (carril MONEY) → NO se re-agregan.
+  "oculta",
+  "ocultan",
+  "esconde",
+  "esconden",
+  "no quiere",
+  "se niega a",
+  "bloquea a propósito",
+  "censura",
 ];
 
 /**
@@ -649,7 +722,11 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
 
   it("ningún término prohibido aparece en el texto renderizado (post-strip de comentarios)", () => {
     const offenders: string[] = [];
-    for (const rel of [...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA, ...SUPERFICIES_DEEPLINK, ...SUPERFICIES_PANEL, ...SUPERFICIES_RELACIONES, ...SUPERFICIES_VSIM, ...SUPERFICIES_NOTIF]) {
+    // `Set` = DEDUPE de rutas repetidas entre carriles (115-03: SUPERFICIES_LINK_EXT
+    // re-lista buscar-filtros.tsx y provenance-badge.tsx, que ya viven en BUSQUEDA y
+    // DEEPLINK). Sin él, un offender se reportaría dos veces y el archivo se leería
+    // dos veces. El orden de escaneo se conserva (Set preserva orden de inserción).
+    for (const rel of new Set([...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA, ...SUPERFICIES_DEEPLINK, ...SUPERFICIES_PANEL, ...SUPERFICIES_RELACIONES, ...SUPERFICIES_VSIM, ...SUPERFICIES_NOTIF, ...SUPERFICIES_LINK_EXT])) {
       const full = path.join(APP_ROOT, rel);
       let raw: string;
       try {
@@ -951,6 +1028,40 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
       "El detector NO cazó vocabulario de afinidad/ranking inyectado → el guard NOTIF sería un no-op",
     ).toEqual(expect.arrayContaining(["afín", "aliado", "ranking"]));
   });
+
+  it("LINK-EXT (115-03): caza insinuación de INTENCIÓN DE LA FUENTE inyectada (oculta / esconde / se niega a / censura) sobre lo NUEVO", () => {
+    // Fixture EN MEMORIA que simula el copy de una superficie de SUPERFICIES_LINK_EXT
+    // (el badge de procedencia o el link del timeline) declarando la limitación de un
+    // recurso no-humano CON insinuación de voluntad. Que la fuente publique un servicio
+    // de datos es un HECHO de formato; afirmar que "oculta" o "se niega a" publicar el
+    // dato le atribuye INTENCIÓN, que es lo que el régimen prohíbe. Cero disco.
+    const fixtureMutado = `
+      export function BadgeMalo() {
+        return (
+          <span>
+            <p>La fuente oculta este dato y se niega a publicarlo como página.</p>
+            <p>El organismo lo esconde: censura la consulta ciudadana.</p>
+          </span>
+        );
+      }
+    `;
+    const hits = detectarInsinuaciones(fixtureMutado);
+    expect(
+      hits,
+      "El detector NO cazó insinuación de intención de la fuente inyectada → el guard LINK-EXT sería un no-op",
+    ).toEqual(
+      expect.arrayContaining(["oculta", "se niega a", "esconde", "censura"]),
+    );
+  });
+
+  it("LINK-EXT (115-03): caza 'no quiere' / 'bloquea a propósito' inyectados (voluntad atribuida al organismo)", () => {
+    const hits = detectarInsinuaciones(
+      `<p>El servicio no quiere entregar la ficha y bloquea a propósito el acceso.</p>`,
+    );
+    expect(hits).toEqual(
+      expect.arrayContaining(["no quiere", "bloquea a propósito"]),
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1066,5 +1177,25 @@ describe("(3) Sin falsos positivos — strip de comentarios, límites de palabra
       export const V = <p>{LEYENDA}</p>;
     `;
     expect(detectarInsinuaciones(conLeyenda)).toEqual([]);
+  });
+
+  it("LINK-EXT (115-03): la leyenda de recurso no-humano NO es offender y NO requiere NEGACIONES_LOCKED", () => {
+    // Se VERIFICA (no se asume) que la leyenda de A-3/A-4/A-5 está limpia: describe el
+    // FORMATO en que la fuente publica el dato, sin atribuir intención. Como no contiene
+    // ningún término prohibido, no necesita restarse en NEGACIONES_LOCKED (mismo caso
+    // que las leyendas de AGENDA y NOTIF). Este test es el que sostiene esa afirmación.
+    const conLeyenda = `
+      export const LEYENDA_RECURSO_NO_HUMANO = ${JSON.stringify(LEYENDA_RECURSO_NO_HUMANO_FIXTURE)};
+      export const P = <p>{LEYENDA_RECURSO_NO_HUMANO}</p>;
+    `;
+    expect(detectarInsinuaciones(conLeyenda)).toEqual([]);
+  });
+
+  it("LINK-EXT (115-03): `Ocultar urgencias` (copy real del timeline) NO dispara `oculta` (límite de palabra)", () => {
+    // El término nuevo "oculta" NO puede cazar el label factual de plegado del timeline
+    // (`timeline-view.tsx`), ni el verbo "esconderse". Si lo hiciera, el guard sería un
+    // falso-positivo que bloquearía la fase (lección BLOCKER 91).
+    expect(detectarInsinuaciones(`<Link>Ocultar urgencias</Link>`)).toEqual([]);
+    expect(detectarInsinuaciones(`<p>Ver fuente oficial ↗</p>`)).toEqual([]);
   });
 });
