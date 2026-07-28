@@ -17,12 +17,15 @@ import {
   queryCoberturaVoto,
   queryCoberturaRut,
   queryFreshness,
+  queryPgCron,
 } from "./query-runner.js";
 import {
   evaluate,
   evaluateCobertura,
+  evaluatePgCron,
   type CoberturaResult,
   type FuenteResult,
+  type PgCronResult,
 } from "./evaluate.js";
 import {
   CATALOG,
@@ -30,6 +33,7 @@ import {
   COBERTURA_VOTO_SENALES,
   COBERTURA_RUT_PARLAMENTARIO_SENALES,
   COBERTURA_RUT_ENTIDAD_SENALES,
+  PGCRON_JOBS,
 } from "./catalog.js";
 
 // ─── loadEnv (BOM-safe, process.env tiene precedencia sobre .env) ─────────────
@@ -264,6 +268,59 @@ function renderCoberturaRut(
   ].join("\n");
 }
 
+// ─── Salud de los jobs de pg_cron (G3, 119-02) ────────────────────────────────
+
+/**
+ * Tabla de los jobs de `pg_cron`. Bloque APPEND (espejo exacto de `renderCoberturaVoto`):
+ * NO toca la tabla de fuentes, que mide otra cosa (staleness de tablas ingeridas).
+ * Un job sin corridas sale `n/d` + STALE — jamás `0` ni una fecha inventada.
+ */
+function renderPgCron(results: PgCronResult[]): string {
+  const cols = { jobname: 26, schedule: 24, ultima: 17, horas: 7, umbral: 8 };
+  const header =
+    pad("Job (pg_cron)", cols.jobname) +
+    " | " +
+    pad("Schedule", cols.schedule) +
+    " | " +
+    pad("Última corrida", cols.ultima) +
+    " | " +
+    pad("Horas", cols.horas) +
+    " | " +
+    pad("Umbral h", cols.umbral) +
+    " | " +
+    "Estado";
+  const sep = "-".repeat(header.length);
+  const rows = results.map((r) => {
+    const horasStr =
+      r.horasDesde !== null ? r.horasDesde.toFixed(1) : "?";
+    const umbralStr = r.umbralHoras !== null ? String(r.umbralHoras) : "n/d";
+    const ultimaStr = r.maxStartTime ? formatDate(r.maxStartTime) : "n/d";
+    // El motivo va pegado a "Estado" (última columna, sin pad): no ensancha el layout.
+    const estadoStr = r.stale ? `STALE (${r.motivoStale ?? "?"})` : "OK";
+    const row =
+      pad(r.jobname, cols.jobname) +
+      " | " +
+      pad(r.scheduleVivo ?? r.scheduleEsperado, cols.schedule) +
+      " | " +
+      pad(ultimaStr, cols.ultima) +
+      " | " +
+      pad(horasStr, cols.horas) +
+      " | " +
+      pad(umbralStr, cols.umbral) +
+      " | " +
+      estadoStr;
+    return r.stale ? `${RED}${row}${RESET}` : row;
+  });
+  return [
+    "Jobs de pg_cron (G3 — umbral DERIVADO del schedule, no de un umbral en días):",
+    "  (schedule mostrado = el VIVO; un drift contra el esperado del catálogo es señal)",
+    "",
+    header,
+    sep,
+    ...rows,
+  ].join("\n");
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
@@ -279,6 +336,8 @@ Uso:
 
 Variables de entorno:
   SUPABASE_DB_URL             Requerida. URL de conexión psql a Supabase.
+  FRESHNESS_UMBRAL_PGCRON_<JOB>  Opcional. Override EN HORAS del umbral de un job de pg_cron
+                              (por defecto se DERIVA del schedule del job).
   FRESHNESS_UMBRAL_<FUENTE>   Opcional. Override de umbral en días para una fuente.
                               Fuentes: LEYES, AGENDA, LOBBY_CAMARA, LOBBY_LEYLOBBY,
                                        PROBIDAD, FICHAS
@@ -349,6 +408,11 @@ async function main(): Promise<void> {
     COBERTURA_RUT_ENTIDAD_SENALES,
   );
 
+  // Salud de los jobs de pg_cron (G3, 119-02): señal SEPARADA (umbral DERIVADO del schedule),
+  // APPEND — no toca la tabla de fuentes. Un job sin corridas sale n/d + STALE, nunca 0.
+  const pgCronRows = queryPgCron(env["SUPABASE_DB_URL"]!);
+  const pgCron = evaluatePgCron(pgCronRows, PGCRON_JOBS, new Date(), envOverrides);
+
   const table = renderTable(results);
   const coberturaTable = renderCobertura(cobertura);
   const coberturaVotoTable = renderCoberturaVoto(coberturaVoto);
@@ -356,7 +420,10 @@ async function main(): Promise<void> {
     coberturaRutParlamentario,
     coberturaRutEntidad,
   );
-  const anyStale = results.some((r) => r.stale);
+  const pgCronTable = renderPgCron(pgCron);
+  // Los jobs de pg_cron entran al exit code IGUAL que las fuentes: un instrumento que los
+  // muestra pero no los cuenta seguiría saliendo con exit 0 ante una avería (verde mentiroso).
+  const anyStale = results.some((r) => r.stale) || pgCron.some((r) => r.stale);
 
   const coberturaRut = {
     parlamentario: coberturaRutParlamentario,
@@ -372,11 +439,13 @@ async function main(): Promise<void> {
         coberturaVotoTable +
         "\n\n" +
         coberturaRutTable +
+        "\n\n" +
+        pgCronTable +
         "\n",
     );
     process.stdout.write(
       JSON.stringify(
-        { frescura: results, cobertura, coberturaVoto, coberturaRut },
+        { frescura: results, cobertura, coberturaVoto, coberturaRut, pgcron: pgCron },
         null,
         2,
       ) + "\n",
@@ -390,6 +459,8 @@ async function main(): Promise<void> {
         coberturaVotoTable +
         "\n\n" +
         coberturaRutTable +
+        "\n\n" +
+        pgCronTable +
         "\n",
     );
   }

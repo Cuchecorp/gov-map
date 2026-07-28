@@ -230,6 +230,73 @@ export const COBERTURA_RUT_ENTIDAD_SENALES: CoberturaSenalConfig[] = [
   },
 ];
 
+/**
+ * Jobs de `pg_cron` monitoreados (G3, 119-02) — array SEPARADO de `CATALOG` a propósito.
+ *
+ * POR QUÉ SEPARADO: un job de pg_cron no tiene tabla/columna que medir ni workflow de GH
+ * Actions; su señal es `max(start_time)` de `cron.job_run_details` y su umbral se DERIVA del
+ * schedule, no de un umbral en días fijado a mano. Mezclarlo en `CATALOG` obligaría a
+ * inventar campos vacíos y a que `evaluate()` tuviera dos semánticas. Mismo criterio con que
+ * `COBERTURA_VOTO_SENALES` vive fuera de `CATALOG`.
+ *
+ * El `schedule` de cada entrada es el ESPERADO, copiado de la migración citada. Se asevera
+ * contra el schedule VIVO: un drift es señal por sí mismo (T-119-06) — jamás se adopta el
+ * valor vivo en silencio. `active=false` también es señal (un job desprogramado no está sano).
+ *
+ * MINIMIZACIÓN (T-119-05): la lectura proyecta SOLO `jobid`, `jobname`, `schedule`, `active`
+ * y `max(start_time)`. NUNCA `command` ni `return_message`, que pueden embeber URLs/keys de
+ * las llamadas `pg_net`. El instrumento OBSERVA el scheduler; nunca lo altera (T-119-04:
+ * cero `cron.schedule`/`cron.unschedule`).
+ */
+export interface PgCronJobConfig {
+  /** nombre del job en `cron.job`. */
+  jobname: string;
+  /** jobid en `cron.job` (clave de join con `cron.job_run_details`). */
+  jobid: number;
+  /** schedule ESPERADO, copiado de la migración que lo crea. */
+  schedule: string;
+  /** override del umbral EN HORAS por variable de entorno. */
+  overrideEnv: string;
+}
+
+export const PGCRON_JOBS: PgCronJobConfig[] = [
+  {
+    // 0003_orchestration.sql:214 — worker de la cola de ingesta.
+    jobname: "process-ingest-jobs",
+    jobid: 1,
+    schedule: "30 seconds",
+    overrideEnv: "FRESHNESS_UMBRAL_PGCRON_PROCESS_INGEST_JOBS",
+  },
+  {
+    // 0003_orchestration.sql:229 — poda de la tabla de respuestas de pg_net.
+    jobname: "cleanup-net-http",
+    jobid: 2,
+    schedule: "*/15 * * * *",
+    overrideEnv: "FRESHNESS_UMBRAL_PGCRON_CLEANUP_NET_HTTP",
+  },
+  {
+    // 0030_net.sql:162 — materialización de aristas del grafo.
+    jobname: "net-materializar-aristas",
+    jobid: 3,
+    schedule: "17 3 * * *",
+    overrideEnv: "FRESHNESS_UMBRAL_PGCRON_NET_MATERIALIZAR_ARISTAS",
+  },
+  {
+    // 0039_cruce_senal.sql:138 — materialización de señales de cruce.
+    jobname: "cruces-materializar",
+    jobid: 4,
+    schedule: "23 3 * * *",
+    overrideEnv: "FRESHNESS_UMBRAL_PGCRON_CRUCES_MATERIALIZAR",
+  },
+  {
+    // 0065_actualidad_senal.sql:326 — rebuild intradía L-V del panel de actualidad.
+    jobname: "actualidad-materializar",
+    jobid: 5,
+    schedule: "7 11,14,17,20 * * 1-5",
+    overrideEnv: "FRESHNESS_UMBRAL_PGCRON_ACTUALIDAD_MATERIALIZAR",
+  },
+];
+
 export const CATALOG: FuenteConfig[] = [
   {
     fuente: "leyes",

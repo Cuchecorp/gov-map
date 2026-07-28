@@ -43,6 +43,16 @@ export interface QueryRow {
   r2Snapshot: string;
 }
 
+/** Fila de estado de un job de `pg_cron` (G3, 119-02). Solo campos NO sensibles. */
+export interface PgCronRow {
+  jobid: number;
+  jobname: string;
+  schedule: string;
+  active: boolean;
+  /** `max(start_time)` de `cron.job_run_details`; null si no hay corridas o falló la lectura. */
+  maxStartTime: string | null;
+}
+
 export interface CoberturaCount {
   senal: string;
   /** count leído; null si la query degradó (psql falló / valor no numérico). */
@@ -227,4 +237,58 @@ export function queryCoberturaRut(dbUrl: string): {
     ),
     entidad: runCoberturaSenales(dbUrl, COBERTURA_RUT_ENTIDAD_SENALES),
   };
+}
+
+/**
+ * Lee el estado de los jobs de `pg_cron` (G3, 119-02) — SOLO lectura.
+ *
+ * Dos consultas por el MISMO helper `psql` read-only (T-119-04: el instrumento observa el
+ * scheduler, jamás lo altera — cero `cron.schedule`/`cron.unschedule`):
+ *   select jobid, jobname, schedule, active from cron.job;
+ *   select jobid, max(start_time) from cron.job_run_details group by jobid;
+ *
+ * MINIMIZACIÓN (T-119-05): se proyectan SOLO esas columnas. `command` y `return_message`
+ * quedan FUERA a propósito: pueden embeber URLs y keys de las llamadas `pg_net`.
+ *
+ * DEGRADACIÓN HONESTA: si la lectura falla o el job no tiene corridas, `maxStartTime` es
+ * `null` — NUNCA `0`, NUNCA una fecha inventada. Quien lo evalúa trata null como stale.
+ * Si `cron.job` no se puede leer (extensión ausente, permisos), se devuelve array vacío y
+ * cada job del catálogo sale como "job ausente" (stale), no como sano.
+ */
+export function queryPgCron(dbUrl: string): PgCronRow[] {
+  const jobsRaw = psql(
+    dbUrl,
+    "select jobid, jobname, schedule, active from cron.job order by jobid;",
+  );
+  if (!jobsRaw) return [];
+
+  const runsRaw = psql(
+    dbUrl,
+    "select jobid, max(start_time) from cron.job_run_details group by jobid;",
+  );
+  const ultimaCorrida = new Map<number, string | null>();
+  for (const linea of runsRaw.split("\n")) {
+    if (!linea.trim()) continue;
+    const [idRaw, maxRaw] = linea.split("|");
+    const id = Number.parseInt(idRaw ?? "", 10);
+    if (Number.isNaN(id)) continue;
+    const valor = (maxRaw ?? "").trim();
+    ultimaCorrida.set(id, valor === "" ? null : valor);
+  }
+
+  const out: PgCronRow[] = [];
+  for (const linea of jobsRaw.split("\n")) {
+    if (!linea.trim()) continue;
+    const [idRaw, jobname, schedule, activeRaw] = linea.split("|");
+    const jobid = Number.parseInt(idRaw ?? "", 10);
+    if (Number.isNaN(jobid)) continue;
+    out.push({
+      jobid,
+      jobname: (jobname ?? "").trim(),
+      schedule: (schedule ?? "").trim(),
+      active: (activeRaw ?? "").trim() === "t",
+      maxStartTime: ultimaCorrida.get(jobid) ?? null,
+    });
+  }
+  return out;
 }
