@@ -8,6 +8,9 @@ import {
   fechaCortaSegura,
   formatNombre,
   partidoLegible,
+  fechaHechoCorta,
+  fechaHechoCortaSegura,
+  fechaPlausible,
 } from "./format";
 
 const NOW = new Date("2026-05-20T12:00:00Z");
@@ -59,6 +62,132 @@ describe("fechaCorta", () => {
     expect(out).toMatch(/2026/);
     // mes abreviado en español (may)
     expect(out.toLowerCase()).toMatch(/may/);
+  });
+});
+
+/**
+ * F-10 (116-FECHAS-AUDIT §3): la zona horaria de `fechaCortaFormatter` era un
+ * ACCIDENTE DEL ENTORNO — sin `timeZone` explícita, `Intl` usa la del runtime, así que
+ * el día renderizado dependía de dónde corriera el build (Cloudflare = UTC hoy, pero
+ * nada lo garantizaba). Estos tests convierten UTC en CONTRATO DEL CÓDIGO.
+ *
+ * UTC —y NO America/Santiago— porque preserva el comportamiento correcto de hoy: hay
+ * ~45.618 filas `timestamptz` que son date-only DISFRAZADAS (medianoche UTC), y leerlas
+ * en Chile fabricaría el día ANTERIOR (mismo razonamiento de `dia-calendario.ts`).
+ */
+describe("fechaCorta — timeZone UTC explícita (F-10, contrato no accidente)", () => {
+  it("el formatter declara timeZone UTC (no la del runtime)", () => {
+    // Sonda directa del contrato: si alguien quita la opción, `resolvedOptions`
+    // devolvería la zona del entorno y este assert muerde.
+    const probe = new Intl.DateTimeFormat("es-CL", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+    expect(probe.resolvedOptions().timeZone).toBe("UTC");
+    // Y el helper real rinde exactamente lo mismo que el formatter UTC de referencia.
+    const d = new Date("2026-07-20T00:00:00Z");
+    expect(fechaCorta(d)).toBe(probe.format(d));
+  });
+
+  it("medianoche UTC rinde el MISMO día en cualquier huso del runtime", () => {
+    // En America/Santiago (−04) este instante es el 19 a las 20:00 → un formatter
+    // local diría "19 jul 2026". El contrato exige el día publicado: 20.
+    expect(fechaCorta(new Date("2026-07-20T00:00:00Z"))).toBe("20 jul 2026");
+  });
+
+  it("un instante que cruzaría el día en husos extremos NO se corre", () => {
+    // 23:00Z del 19: en Kiritimati (+14) ya es el 20 → un formatter local diría
+    // "20 jul 2026". Junto con el test anterior, ningún huso ≠ UTC satisface ambos.
+    expect(fechaCorta(new Date("2026-07-19T23:00:00Z"))).toBe("19 jul 2026");
+  });
+});
+
+/**
+ * F-05 (116-FECHAS-AUDIT §3 + §6 límite 6): la columna `timestamptz` guarda DOS
+ * semánticas mezcladas — fechas del hecho con hora REAL y fechas date-only DISFRAZADAS
+ * de medianoche UTC. `fechaHechoCorta` ramifica por presencia de hora para no corregir
+ * la que no lo necesita ni dejar sin corregir la que sí.
+ */
+describe("fechaHechoCorta (F-05, ramifica por presencia de hora)", () => {
+  it("date-only disfrazada (00:00:00.000Z) → día UTC, SIN convertir de zona", () => {
+    expect(fechaHechoCorta(new Date("2026-07-20T00:00:00.000Z"))).toBe(
+      "20 jul 2026",
+    );
+  });
+
+  it("hora REAL de madrugada UTC → día chileno (el hecho ocurrió el 16)", () => {
+    // 17-nov-2023 00:14 UTC = 16-nov-2023 21:14 en Chile. El hecho (una votación de
+    // sesión nocturna) ocurrió el 16 en el calendario del ciudadano.
+    expect(fechaHechoCorta(new Date("2023-11-17T00:14:41Z"))).toBe("16 nov 2023");
+  });
+
+  it("hora REAL de tarde → mismo día en Chile y en UTC", () => {
+    expect(fechaHechoCorta(new Date("2026-07-20T15:00:00Z"))).toBe("20 jul 2026");
+  });
+});
+
+describe("fechaHechoCortaSegura (guard anti-500 sin slice destructivo)", () => {
+  it("null → fallback honesto", () => {
+    expect(fechaHechoCortaSegura(null)).toBe("fecha no informada");
+  });
+
+  it("undefined y vacío → fallback honesto", () => {
+    expect(fechaHechoCortaSegura(undefined)).toBe("fecha no informada");
+    expect(fechaHechoCortaSegura("")).toBe("fecha no informada");
+  });
+
+  it("basura no-ISO → fallback (nunca 'Invalid Date')", () => {
+    expect(fechaHechoCortaSegura("basura")).toBe("fecha no informada");
+  });
+
+  it("fallback personalizable", () => {
+    expect(fechaHechoCortaSegura(null, "sin fecha")).toBe("sin fecha");
+  });
+
+  it("ISO con hora real y offset → día chileno (NO se trunca la hora)", () => {
+    // El `slice(0,10)` de `fechaCortaSegura` DESTRUIRÍA la hora aquí y daría "17 nov".
+    expect(fechaHechoCortaSegura("2023-11-17T00:14:41+00:00")).toBe(
+      "16 nov 2023",
+    );
+  });
+
+  it("date-only puro ('YYYY-MM-DD') → día publicado, sin corrimiento", () => {
+    expect(fechaHechoCortaSegura("2026-03-31")).toBe("31 mar 2026");
+  });
+});
+
+/**
+ * F-04 (116-FECHAS-AUDIT §3): hay fechas imposibles en la fuente (p.ej. 2626-05-25).
+ * `fechaPlausible` es un PREDICADO — el llamante decide la omisión honesta; jamás un
+ * filtro global (`/agenda` muestra futuro legítimo).
+ */
+describe("fechaPlausible (F-04, predicado — no filtro)", () => {
+  const AHORA = new Date("2026-07-28T00:00:00Z");
+
+  it("año 2626 (typo de la fuente) → no plausible", () => {
+    expect(fechaPlausible(new Date("2626-05-25T00:00:00Z"), AHORA)).toBe(false);
+  });
+
+  it("anterior a 1990 → no plausible", () => {
+    expect(fechaPlausible(new Date("1989-12-31T00:00:00Z"), AHORA)).toBe(false);
+  });
+
+  it("hoy → plausible", () => {
+    expect(fechaPlausible(new Date("2026-07-28T00:00:00Z"), AHORA)).toBe(true);
+  });
+
+  it("futuro dentro de 5 años → plausible (urgencias y agenda futura legítimas)", () => {
+    expect(fechaPlausible(new Date("2030-01-01T00:00:00Z"), AHORA)).toBe(true);
+  });
+
+  it("futuro más allá de 5 años → no plausible", () => {
+    expect(fechaPlausible(new Date("2032-01-01T00:00:00Z"), AHORA)).toBe(false);
+  });
+
+  it("fecha inválida → no plausible (nunca lanza)", () => {
+    expect(fechaPlausible(new Date("basura"), AHORA)).toBe(false);
   });
 });
 
