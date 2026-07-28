@@ -17,7 +17,11 @@
  * subcadena pelada (`html.includes(id)`) debe hacer FALLAR este script.
  */
 
-import { tieneId, contienePatron } from "./verificar-links-internos.mjs";
+import {
+  tieneId,
+  contienePatron,
+  veredictoDeEmision,
+} from "./verificar-links-internos.mjs";
 
 /** @type {{nombre:string, html:string, ancla:string, espera:boolean}[]} */
 const FIXTURES = [
@@ -170,6 +174,58 @@ const FIXTURES_PATRON = [
   },
 ];
 
+/**
+ * Fixtures de `veredictoDeEmision` — los TRES estados del assert de emisión (W-01).
+ *
+ * El defecto que cierran: con sólo PASS/FAIL, una sección emisora bajo `<Suspense>`
+ * (`/agenda` sirve el shell de streaming: los hrefs llegan en el payload RSC dentro de
+ * `<script>`, que `sinRuido()` remueve) producía FAIL falsos — 10 en el subset `/proyecto`
+ * cuando el defecto real era 1. WARN-STREAM separa "emisión diferida" de "link ausente".
+ *
+ * @type {{nombre:string, html:string, href:string, espera:"PASS"|"WARN-STREAM"|"FAIL"}[]}
+ */
+const FIXTURES_EMISION = [
+  {
+    nombre: "(c) href en HTML plano → PASS",
+    html: '<a href="/proyecto/14309-04">Boletín</a>',
+    href: "/proyecto/14309-04",
+    espera: "PASS",
+  },
+  {
+    nombre: "(a) href sólo en el payload RSC dentro de <script> + fallback de Suspense → WARN-STREAM",
+    html:
+      '<div class="animate-pulse h-11"></div>' +
+      '<script>self.__next_f.push([1,"<a href=\\"/proyecto/14309-04\\">Boletín</a>"])</script>',
+    href: "/proyecto/14309-04",
+    espera: "WARN-STREAM",
+  },
+  {
+    nombre: "(b) href ausente del crudo Y del sin-ruido, en página YA resuelta (sin shell) → FAIL",
+    html: '<main><a href="/agenda">Agenda</a></main>',
+    href: "/proyecto/14309-04",
+    espera: "FAIL",
+  },
+  {
+    nombre:
+      "shell de streaming sin el href ni en el crudo → WARN-STREAM (el caso REAL de /agenda: 54 fallbacks, 0 ocurrencias del boletín)",
+    html: '<div class="animate-pulse h-11"></div><a href="/agenda">Agenda</a>',
+    href: "/proyecto/14309-04",
+    espera: "WARN-STREAM",
+  },
+  {
+    nombre: "un href AJENO en el payload RSC no salva a otro (comparación por valor completo)",
+    html: '<script>self.__next_f.push([1,"<a href=\\"/proyecto/14309-041\\">x</a>"])</script>',
+    href: "/proyecto/14309-04",
+    espera: "FAIL",
+  },
+  {
+    nombre: "sin fallbacks, el href en el stream sigue siendo WARN-STREAM (no FAIL)",
+    html: '<script>self.__next_f.push([1,"<a href=\\"/parlamentarios\\">x</a>"])</script>',
+    href: "/parlamentarios",
+    espera: "WARN-STREAM",
+  },
+];
+
 let fallos = 0;
 console.log("=== self-check de la aserción de ancla (tieneId) ===");
 for (const f of FIXTURES) {
@@ -191,8 +247,18 @@ for (const f of FIXTURES_PATRON) {
   );
 }
 
+console.log("\n=== self-check del assert de emisión, 3 estados (veredictoDeEmision) ===");
+for (const f of FIXTURES_EMISION) {
+  const obtenido = veredictoDeEmision(f.html, f.href).estado;
+  const ok = obtenido === f.espera;
+  if (!ok) fallos++;
+  console.log(
+    `  ${ok ? "OK  " : "FAIL"}  ${f.nombre} — href="${f.href}" espera=${f.espera} obtenido=${obtenido}`,
+  );
+}
+
 console.log(
-  `\nTotal: ${FIXTURES.length + FIXTURES_PATRON.length} fixtures | fallos ${fallos}`,
+  `\nTotal: ${FIXTURES.length + FIXTURES_PATRON.length + FIXTURES_EMISION.length} fixtures | fallos ${fallos}`,
 );
 if (fallos > 0) {
   console.error(
