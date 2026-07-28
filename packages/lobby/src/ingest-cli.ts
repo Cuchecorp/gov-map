@@ -15,6 +15,8 @@
 // no_confirmado sin fabricar). NOTA CONGRESO (Open Question 2): la Cámara/Senado NO están en
 // leylobby; la corrida LIVE de congreso usa el portal propio de la Cámara (verificación de operador).
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import {
   Fetcher,
@@ -44,6 +46,49 @@ import {
 } from "./cursor-leylobby";
 
 const DEFAULT_INSTITUCION = "AA001";
+
+/**
+ * G1 (119-06) — Carga la maestra del seed autoritativo (`supabase/seeds/parlamentario.seed.json`,
+ * la MISMA fuente que usa `run-camara-lobby-cli.ts:98`) cuando el caller no inyectó una.
+ *
+ * POR QUÉ EXISTE: hasta 119-06 esta CLI corría SIEMPRE con `maestra: []`, así que
+ * `reconciliarSujeto` no podía confirmar a NADIE — la reconciliación era código muerto en el cron
+ * y `lobby_ingesta_estado` no tenía forma de avanzar por esta vía ni siquiera en principio. Con la
+ * maestra cargada, la corrida marca cobertura si (y sólo si) un sujeto pasivo resulta ser un
+ * parlamentario. Nótese que el alcance LOCKED del cron son instituciones del EJECUTIVO, así que lo
+ * ESPERADO sigue siendo cero confirmados: esto no fabrica cobertura, sólo deja de ser ciego.
+ *
+ * Best-effort: si el seed no está donde se espera (empaquetado distinto), devuelve `[]` con un log
+ * — degradar a "no confirma a nadie" es exactamente el comportamiento previo, nunca un enlace falso.
+ */
+export function cargarMaestraSeed(log: (m: string) => void): Parlamentario[] {
+  // `import.meta.dirname` y NO `new URL(import.meta.url)`: el segundo se rompe bajo jsdom y en
+  // `tsx -e` (gotcha registrado en Phase 46). `process.cwd()` cubre el caso `pnpm --filter exec`,
+  // cuyo cwd es el paquete (gotcha v8.1).
+  const arranques = [import.meta.dirname, process.cwd()].filter(
+    (d): d is string => typeof d === "string" && d.length > 0,
+  );
+  for (const arranque of arranques) {
+    let dir = arranque;
+    for (let i = 0; i < 8; i++) {
+      try {
+        const raw = readFileSync(join(dir, "supabase", "seeds", "parlamentario.seed.json"), "utf8");
+        const maestra = JSON.parse(raw) as Parlamentario[];
+        log(`ingest-lobby: maestra cargada del seed (${maestra.length} parlamentarios)`);
+        return maestra;
+      } catch {
+        const parent = dirname(dir);
+        if (parent === dir) break;
+        dir = parent;
+      }
+    }
+  }
+  log(
+    "ingest-lobby: seed de la maestra NO encontrado → la corrida NO podrá confirmar a ningún " +
+      "sujeto pasivo (degradación honesta: nunca se fabrica un enlace)",
+  );
+  return [];
+}
 
 /**
  * Adapta el `createClient` de supabase-js a la factory estructural de `SupabaseSnapshotStore`
@@ -151,9 +196,12 @@ export function parseArgs(argv: string[]): LobbyCliOptions {
  */
 export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> {
   const log = opts.log ?? ((m: string) => console.log(m));
+  // RULE-1 (119-06): `SUPABASE_DB_URL` estaba PRIMERO en esta cadena, pero es la cadena de
+  // conexión `postgres://` de psql — NO una URL REST. Con `.env` completo (corrida LOCAL del
+  // operador) `createClient` moría con "Invalid supabaseUrl". En CI la variable no existe, así que
+  // el defecto quedaba invisible. Sólo se aceptan las dos URLs REST.
   const url =
     opts.url ??
-    process.env.SUPABASE_DB_URL ??
     process.env.SUPABASE_URL ??
     process.env.SUPABASE_API_URL ?? // fallback: nombre inyectado por los workflows de CI
     "";
@@ -254,7 +302,9 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
   const res = await runIngestLobby({
     conector,
     writer,
-    maestra: opts.maestra ?? [],
+    // G1: sin maestra inyectada, se carga el seed autoritativo (antes quedaba `[]` → cero
+    // confirmados estructurales). En dry-run también, para que el ensayo refleje la corrida real.
+    maestra: opts.maestra ?? cargarMaestraSeed(log),
     tareas,
     ...(opts.reconciliar !== undefined ? { reconciliar: opts.reconciliar } : {}),
     ...(opts.driftStore !== undefined ? { driftStore: opts.driftStore } : {}),

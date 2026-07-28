@@ -90,6 +90,12 @@ export interface RunIngestLobbyResult {
   contrapartes: number;
   /** Parlamentarios marcados como ingestados (confirmados en esta corrida). */
   parlamentariosMarcados: number;
+  /**
+   * G1 — cobertura DERIVADA DE LOS DATOS que esta corrida marcó, por parlamentario confirmado
+   * (`parlamentarioId → ingestado_hasta` en formato date `YYYY-MM-DD`). Vacío cuando la corrida
+   * no confirmó a nadie (degradación honesta): NO se marca cobertura que no se ingirió.
+   */
+  marcadoHasta: Record<string, string>;
   /** Errores por (institución/año/página) — tolerados, no abortan la corrida. */
   errores: { fuente: string; clave: string; mensaje: string }[];
   /** Degradaciones honestas (institución bloqueada y/o cuarentena por drift). */
@@ -112,7 +118,11 @@ export async function runIngestLobby(opts: RunIngestLobbyOpts): Promise<RunInges
 
   const errores: RunIngestLobbyResult["errores"] = [];
   const degradaciones: DegradacionLobby[] = [];
-  const marcados = new Set<string>();
+  // G1 — `parlamentarioId → ingestado_hasta`. El valor sale de la FECHA DE LA AUDIENCIA ingerida
+  // (máximo por parlamentario), NUNCA del reloj: un lote histórico jamás puede fingir que la
+  // cobertura llega hasta hoy (T-119-17). `opts.ingestadoHasta` es sólo el fallback para una
+  // audiencia sin fecha parseable.
+  const marcados = new Map<string, string>();
   let audiencias = 0;
   let contrapartes = 0;
   let driftQuarantine = false;
@@ -285,7 +295,18 @@ export async function runIngestLobby(opts: RunIngestLobbyOpts): Promise<RunInges
         await opts.writer.upsertAudiencias(filas);
         audiencias += filas.length;
         contrapartes += filas.reduce((n, f) => n + f.contrapartes.length, 0);
-        for (const id of parlamentariosConfirmados) marcados.add(id);
+        // G1: la cobertura de CADA parlamentario confirmado es la fecha MÁXIMA de sus audiencias
+        // ingeridas en esta corrida — dato, no reloj. Los `parlamentariosConfirmados` que no
+        // aparecen en ninguna fila (imposible hoy, pero defensivo) caen al corte de la corrida.
+        const confirmados = new Set(parlamentariosConfirmados);
+        for (const f of filas) {
+          const id = f.enlace?.parlamentarioId;
+          if (id == null || !confirmados.has(id)) continue;
+          const fechaDato = f.fecha != null ? f.fecha.slice(0, 10) : hasta;
+          const prev = marcados.get(id);
+          if (prev === undefined || fechaDato > prev) marcados.set(id, fechaDato);
+        }
+        for (const id of confirmados) if (!marcados.has(id)) marcados.set(id, hasta);
         log(`ingest-lobby: ${clave} → ${filas.length} audiencias`);
       } catch (err) {
         errores.push({
@@ -297,15 +318,26 @@ export async function runIngestLobby(opts: RunIngestLobbyOpts): Promise<RunInges
     }
   }
 
-  // Marca a los parlamentarios tocados (un row por id) para el marcador de "no ingestado".
-  if (marcados.size > 0) {
-    await opts.writer.marcarIngestado([...marcados], hasta);
+  // G1 — Marca a los parlamentarios CONFIRMADOS en esta corrida (un row por id) en el marcador de
+  // cobertura `lobby_ingesta_estado`. Se agrupa por `ingestado_hasta` porque distintos
+  // parlamentarios pueden tener distinta fecha máxima ingerida, y `marcarIngestado` toma un solo
+  // `hasta` por lote. `marcados` vacío ⇒ CERO escrituras: un barrido que no confirmó a nadie NO
+  // es "ingestado" para nadie (ver `POR QUÉ DOS CURSORES` en cursor-leylobby.ts).
+  const porHasta = new Map<string, string[]>();
+  for (const [id, h] of marcados) {
+    const lote = porHasta.get(h);
+    if (lote) lote.push(id);
+    else porHasta.set(h, [id]);
+  }
+  for (const [h, ids] of porHasta) {
+    await opts.writer.marcarIngestado(ids, h);
   }
 
   return {
     audiencias,
     contrapartes,
     parlamentariosMarcados: marcados.size,
+    marcadoHasta: Object.fromEntries(marcados),
     errores,
     degradaciones,
     driftQuarantine,

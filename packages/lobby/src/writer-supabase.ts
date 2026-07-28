@@ -114,7 +114,32 @@ export class SupabaseLobbyWriter implements LobbyWriter {
   async marcarIngestado(parlamentarioIds: string[], hasta: string): Promise<void> {
     if (parlamentarioIds.length === 0) return;
     const ids = [...new Set(parlamentarioIds)];
-    const filas = ids.map((id) => ({ parlamentario_id: id, ingestado_hasta: hasta }));
+
+    // MONOTÓNICO (G1 / T-119-17): lee la cobertura vigente y descarta los ids que ya están en
+    // `hasta` o más adelante. Sin este filtro, el upsert ciego permitiría que un re-proceso de un
+    // lote de 2024 RETROCEDIERA una marca de 2026 — frescura mentida hacia atrás.
+    // Un fallo de lectura NO se enmascara: propaga (nunca se escribe "por si acaso").
+    const vigentes = new Map<string, string>();
+    for (const lote of chunk(ids, CHUNK)) {
+      const { data, error } = await this.client
+        .from("lobby_ingesta_estado")
+        .select("parlamentario_id, ingestado_hasta")
+        .in("parlamentario_id", lote);
+      if (error) throw new Error(`leer lobby_ingesta_estado falló: ${error.message}`);
+      for (const row of (data ?? []) as {
+        parlamentario_id: string;
+        ingestado_hasta: string | null;
+      }[]) {
+        if (row.ingestado_hasta != null) vigentes.set(row.parlamentario_id, row.ingestado_hasta);
+      }
+    }
+    const aAvanzar = ids.filter((id) => {
+      const prev = vigentes.get(id);
+      return prev === undefined || prev < hasta;
+    });
+    if (aAvanzar.length === 0) return;
+
+    const filas = aAvanzar.map((id) => ({ parlamentario_id: id, ingestado_hasta: hasta }));
     for (const lote of chunk(filas, CHUNK)) {
       const { error } = await this.client
         .from("lobby_ingesta_estado")

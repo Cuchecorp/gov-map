@@ -208,6 +208,35 @@ describe("main() — cursor incremental (DEBT-02): leer antes / avanzar después
     });
   });
 
+  it("G1 — corrida degradada: NINGUNO de los DOS cursores avanza (posición NI cobertura)", async () => {
+    const writer = new InMemoryLobbyWriter();
+    writer.cursorEstado.set("AA001", { institucionCodigo: "AA001", anio: 2024, pagina: 1 });
+    // Cobertura previa de un parlamentario: una corrida degradada no puede moverla ni borrarla.
+    await writer.marcarIngestado(["P00777"], "2026-06-22");
+
+    const res = await main({
+      dryRun: false,
+      serviceKey: "fake-key",
+      url: "http://fake-url",
+      r2Store: null,
+      conector: conectorBloqueado(),
+      writer,
+    });
+
+    expect(res.degradaciones.length).toBeGreaterThan(0);
+    // (1) leylobby_cursor_estado — POSICIÓN del barrido: quieta.
+    expect(writer.cursorEstado.get("AA001")).toEqual({
+      institucionCodigo: "AA001",
+      anio: 2024,
+      pagina: 1,
+    });
+    // (2) lobby_ingesta_estado — COBERTURA por parlamentario: intacta, sin filas nuevas.
+    expect(res.parlamentariosMarcados).toBe(0);
+    expect(res.marcadoHasta).toEqual({});
+    expect(writer.ingestaEstado.size).toBe(1);
+    expect(writer.ingestaEstado.get("P00777")?.ingestado_hasta).toBe("2026-06-22");
+  });
+
   it("con --anio/--paginas explícitos → NO consulta el cursor (override); leerCursor no se invoca", async () => {
     const writer = new InMemoryLobbyWriter();
     writer.cursorEstado.set("AA001", { institucionCodigo: "AA001", anio: 2024, pagina: 7 });

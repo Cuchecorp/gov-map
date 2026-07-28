@@ -14,6 +14,37 @@
 // (a) saltarse páginas marcando cobertura falsa y (b) loops infinitos, y respeta la degradación
 // honesta de `ingest-run.ts`.
 
+// =================================================================================================
+// POR QUÉ DOS CURSORES (G1 / 119-06) — `leylobby_cursor_estado` vs `lobby_ingesta_estado`
+// =================================================================================================
+//
+// Conviven, y DEBEN convivir, porque miden cosas distintas y tienen claves distintas. Ninguno se
+// deriva del otro:
+//
+//   * `leylobby_cursor_estado` (0053) — POSICIÓN DEL BARRIDO. Clave: `institucion_codigo`.
+//     Responde "¿qué recurso pido la próxima corrida?" → (año, página). Lo escribe SÓLO esta CLI,
+//     y sólo cuando la corrida trajo audiencias (`avanzarCursor`, regla LOCKED T-74-02). Es
+//     operativo: no dice nada sobre a quién cubren esos datos.
+//
+//   * `lobby_ingesta_estado` (0021) — MARCADOR DE COBERTURA. Clave: `parlamentario_id`.
+//     Responde "¿hasta cuándo hay datos de lobby PARA ESTE PARLAMENTARIO?" → `ingestado_hasta`.
+//     Es lo que permite distinguir en la ficha "no ingestado" de "ingestado, cero audiencias", y
+//     es la señal que lee `pnpm freshness`. Sólo puede avanzar por un parlamentario CONFIRMADO.
+//
+// No se derivan uno del otro porque sus dominios no se corresponden: una institución del ejecutivo
+// puede barrerse entera (cursor avanza 10 páginas) sin que ningún sujeto pasivo sea parlamentario
+// (cobertura no avanza para nadie); y a la inversa, un parlamentario puede quedar cubierto por el
+// conector de la Cámara (`run-camara-lobby.ts`) sin que el cursor de leylobby se mueva un ápice.
+//
+// CONSECUENCIA MEDIDA (diagnóstico G1, 119-06): el alcance LOCKED del cron de leylobby son las
+// instituciones del EJECUTIVO — la Cámara y el Senado NO publican en leylobby.gob.cl. Por eso las
+// corridas semanales traen audiencias (25 el 2026-07-22) con CERO parlamentarios confirmados, y
+// `lobby_ingesta_estado` no avanza. Eso NO es una avería que haya que "arreglar" marcando: marcar
+// `ingestado_hasta = hoy` sin datos de un parlamentario sería fabricar cobertura. La corrida marca
+// cuando confirma, y sólo entonces, con la fecha de los DATOS (ver `runIngestLobby`).
+//
+// =================================================================================================
+
 import type { TareaInstitucion } from "./ingest-run";
 
 /** Estado del cursor: hasta qué (año, página) llegó una institución. */

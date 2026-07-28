@@ -72,8 +72,12 @@ describe("InMemoryLobbyWriter — idempotente por clave natural", () => {
   });
 });
 
-/** Mock mínimo del cliente Supabase: registra los upsert por tabla (tabla → filas, onConflict). */
-function makeFakeClient() {
+/**
+ * Mock mínimo del cliente Supabase: registra los upsert por tabla (tabla → filas, onConflict) y
+ * sirve las filas VIGENTES de `lobby_ingesta_estado` al `select().in()` que la guarda monotónica
+ * de `marcarIngestado` hace antes de escribir (G1 / T-119-17).
+ */
+function makeFakeClient(vigentes: Record<string, string> = {}) {
   const upserts: Array<{ tabla: string; rows: unknown[]; onConflict?: string }> = [];
   const client = {
     from(tabla: string) {
@@ -81,6 +85,16 @@ function makeFakeClient() {
         upsert(rows: unknown[], opts?: { onConflict?: string }) {
           upserts.push({ tabla, rows: Array.isArray(rows) ? rows : [rows], onConflict: opts?.onConflict });
           return Promise.resolve({ error: null });
+        },
+        select(_cols: string) {
+          return {
+            in(_col: string, ids: string[]) {
+              const data = ids
+                .filter((id) => vigentes[id] !== undefined)
+                .map((id) => ({ parlamentario_id: id, ingestado_hasta: vigentes[id] }));
+              return Promise.resolve({ data, error: null });
+            },
+          };
         },
       };
     },
@@ -113,6 +127,26 @@ describe("SupabaseLobbyWriter — upsert idempotente por onConflict (clave natur
     await w.marcarIngestado(["P1"], "2024-12-31");
     const porTabla = Object.fromEntries(upserts.map((u) => [u.tabla, u]));
     expect(porTabla["lobby_ingesta_estado"]?.onConflict).toBe("parlamentario_id");
+  });
+
+  it("marcarIngestado es MONOTÓNICO: no escribe un `hasta` anterior al vigente (G1)", async () => {
+    // P1 ya cubierto hasta 2026-06-22; P2 sin fila previa.
+    const { client, upserts } = makeFakeClient({ P1: "2026-06-22" });
+    const w = new SupabaseLobbyWriter({ url: "x", serviceKey: "k", client: client as never });
+
+    // Un lote HISTÓRICO (2024) no puede retroceder a P1, pero sí estrena a P2.
+    await w.marcarIngestado(["P1", "P2"], "2024-12-31");
+    const filas = upserts.find((u) => u.tabla === "lobby_ingesta_estado")!.rows as Record<
+      string,
+      unknown
+    >[];
+    expect(filas.map((f) => f.parlamentario_id)).toEqual(["P2"]);
+
+    // Y si NINGUNO avanza, no se emite upsert alguno.
+    const { client: c2, upserts: u2 } = makeFakeClient({ P1: "2026-06-22" });
+    const w2 = new SupabaseLobbyWriter({ url: "x", serviceKey: "k", client: c2 as never });
+    await w2.marcarIngestado(["P1"], "2024-12-31");
+    expect(u2.filter((u) => u.tabla === "lobby_ingesta_estado")).toHaveLength(0);
   });
 
   it("propaga el error de PostgREST SIN interpolar la service key", async () => {
