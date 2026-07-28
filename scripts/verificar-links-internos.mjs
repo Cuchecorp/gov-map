@@ -63,8 +63,11 @@ import { pathToFileURL } from "node:url";
 
 import { BASE_URL, MANIFIESTO } from "./links-internos-manifiesto.mjs";
 
-const UA =
-  "ObservatorioCongreso360/1.0 (+https://observatorio-congreso.thevalis.workers.dev; contacto: sanchez.rossi@gmail.com)";
+// User-Agent identificatorio (requisito de ingesta respetuosa, CLAUDE.md). El contacto
+// sale de `INGESTA_CONTACTO` (IN-01 del review 114): antes era una dirección personal
+// hardcodeada que además se propagaba a `meta.user_agent` de cada `.json` commiteado.
+const CONTACTO = process.env.INGESTA_CONTACTO || "contacto@observatorio-congreso";
+const UA = `ObservatorioCongreso360/1.0 (+https://observatorio-congreso.thevalis.workers.dev; contacto: ${CONTACTO})`;
 
 const DELAY_MS = 400; // rango 300-500ms del CONTEXT
 const TIMEOUT_MS = 15_000; // WR-05: cota por request; sin ella una ruta colgada cuelga la corrida
