@@ -336,8 +336,21 @@ export async function runIngestLobby(opts: RunIngestLobbyOpts): Promise<RunInges
     if (lote) lote.push(id);
     else porHasta.set(h, [id]);
   }
+  // WR-09 (119-REVIEW): cada upsert del loop principal vive dentro de un `try` que anota en
+  // `errores` y continúa; este cierre NO lo tenía. Un error de PostgREST aquí lanzaba y
+  // `runIngestLobby` no devolvía NADA: se perdían `errores`, `degradaciones` y los conteos de las
+  // audiencias YA ESCRITAS, y el CLI reportaba un fallo genérico en vez del reporte honesto que la
+  // fase promete. El marcador es el ÚLTIMO paso: su fallo no invalida lo ya ingerido.
   for (const [h, ids] of porHasta) {
-    await opts.writer.marcarIngestado(ids, h);
+    try {
+      await opts.writer.marcarIngestado(ids, h);
+    } catch (err) {
+      errores.push({
+        fuente: "lobby_ingesta_estado",
+        clave: h,
+        mensaje: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   return {

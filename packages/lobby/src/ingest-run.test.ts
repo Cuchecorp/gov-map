@@ -420,3 +420,34 @@ describe("G1 — lobby_ingesta_estado avanza con datos y SÓLO con datos", () =>
     expect(writer.ingestaEstado.get("P00777")).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// WR-09 (119-REVIEW) — el `marcarIngestado` de cierre estaba FUERA de todo manejo de error: un
+// fallo de PostgREST allí tiraba la corrida completa y se perdía el reporte de lo ya ingerido.
+// ---------------------------------------------------------------------------------------------
+describe("WR-09 — un fallo del marcador de cobertura no tira la corrida entera", () => {
+  it("marcarIngestado que lanza ⇒ error registrado + conteos de lo ya escrito conservados", async () => {
+    const writer = new InMemoryLobbyWriter();
+    writer.marcarIngestado = async () => {
+      throw new Error("PostgREST 503 en lobby_ingesta_estado");
+    };
+
+    const res = await runIngestLobby({
+      conector: fakeConector({ html: FIXTURE_HTML }),
+      writer,
+      maestra: [maestroVictor()],
+      tareas: TAREA_G1,
+      ingestadoHasta: "2026-07-28",
+    });
+
+    // La corrida DEVUELVE (no lanza) y conserva el reporte honesto…
+    expect(res.audiencias).toBeGreaterThan(0);
+    expect(res.contrapartes).toBeGreaterThanOrEqual(0);
+    // …con el fallo del marcador declarado como error de SU fuente, no de la ingesta.
+    expect(res.errores.length).toBe(1);
+    expect(res.errores[0]!.fuente).toBe("lobby_ingesta_estado");
+    expect(res.errores[0]!.mensaje).toMatch(/PostgREST 503/);
+    // Las audiencias ya escritas siguen ahí.
+    expect(writer.audiencias.size).toBeGreaterThan(0);
+  });
+});
