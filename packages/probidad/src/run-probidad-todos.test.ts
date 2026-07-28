@@ -11,7 +11,8 @@
 // desacoplado del parser/reconciliador. Un objetivo sin apellidos NO se consulta (no aporta al crudo).
 
 import { describe, it, expect, vi } from "vitest";
-import { runProbidadTodos } from "./run-probidad-todos";
+import { sha256Hex } from "@obs/ingest";
+import { runProbidadTodos, runProbidadReplay, ReplayR2Error } from "./run-probidad-todos";
 import { InMemoryProbidadWriter } from "./writer";
 import type { InfoProbidadConnector } from "./connector-infoprobidad";
 import type { Parlamentario } from "@obs/core";
@@ -224,5 +225,131 @@ describe("runProbidadTodos — G6: existed:true ⇒ sin novedades visible", () =
     expect(write).not.toHaveBeenCalled();
     // El r2Path sigue expuesto: el objeto EXISTE en R2 (412 = éxito idempotente), no es un fallo.
     expect(res.r2Path).toBe("infoprobidad/declaraciones/2026-06-24/abc123.json");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G7 (119-05): Etapa 2 DESDE R2 (`--from-r2`). Re-ingesta del crudo agregado ya
+// versionado, sin volver al CPLT (regla LOCKED 2 de CLAUDE.md) y sin poder fingir
+// frescura (la fecha del cursor sale del crudo, jamás del reloj).
+// ─────────────────────────────────────────────────────────────────────────────
+describe("runProbidadReplay — Etapa 2 desde el crudo (G7)", () => {
+  /** Un binding SPARQL mínimo válido: URI de nodo + fecha + label del declarante. */
+  function binding(decl: string, declaranteLabel: string, fecha = "2026-03-30") {
+    return {
+      decl: { type: "uri", value: decl },
+      fecha: { type: "literal", value: fecha },
+      declaranteLabel: { type: "literal", value: declaranteLabel },
+    };
+  }
+
+  /** Crudo AGREGADO por run: array de responses SPARQL (misma forma que escribe la Etapa 1). */
+  const CRUDO = [
+    { head: { vars: [] }, results: { bindings: [binding("https://datos.cplt.cl/D1", "JUAN PEREZ SOTO")] } },
+    { head: { vars: [] }, results: { bindings: [binding("https://datos.cplt.cl/D2", "ANA ROJAS LILLO")] } },
+  ];
+
+  /** Construye la key content-addressed real + su fuente R2 fake. */
+  async function fuenteR2(obj: unknown, hasta = "2026-06-24") {
+    const bytes = new TextEncoder().encode(JSON.stringify(obj));
+    const sha = await sha256Hex(bytes);
+    const r2Path = `infoprobidad/declaraciones/${hasta}/${sha}.json`;
+    const leidos: string[] = [];
+    return {
+      r2Path,
+      leidos,
+      r2: {
+        getObject: async (p: string) => {
+          leidos.push(p);
+          return bytes;
+        },
+      },
+    };
+  }
+
+  it("(1) el conector InfoProbidad NO se invoca: las declaraciones salen del JSON agregado", async () => {
+    const writer = new InMemoryProbidadWriter();
+    const { r2, r2Path, leidos } = await fuenteR2(CRUDO);
+    const fetchOriginal = globalThis.fetch;
+    const fetchSpy = vi.fn(async () => {
+      throw new Error("replay NO debe tocar la red");
+    });
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    try {
+      const res = await runProbidadReplay({ r2, r2Path, writer, maestra });
+      expect(leidos).toEqual([r2Path]);
+      expect(res.declaraciones).toBe(2);
+      expect(res.confirmados).toBe(2);
+      expect(writer.declaraciones.size).toBe(2);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = fetchOriginal;
+    }
+  });
+
+  it("(2) doble replay del mismo objeto es idempotente (mismos conteos, sin duplicar)", async () => {
+    const writer = new InMemoryProbidadWriter();
+    const { r2, r2Path } = await fuenteR2(CRUDO);
+    const a = await runProbidadReplay({ r2, r2Path, writer, maestra });
+    const n = writer.declaraciones.size;
+    const b = await runProbidadReplay({ r2, r2Path, writer, maestra });
+    expect(b.declaraciones).toBe(a.declaraciones);
+    expect(writer.declaraciones.size).toBe(n);
+  });
+
+  it("(3) JSON malformado/forma inesperada ⇒ error LOUD con el path y CERO filas escritas", async () => {
+    for (const malo of ["{no-es-json", JSON.stringify({ results: {} })]) {
+      const writer = new InMemoryProbidadWriter();
+      const upsert = vi.spyOn(writer, "upsertDeclaraciones");
+      const marcar = vi.spyOn(writer, "marcarIngestado");
+      const bytes = new TextEncoder().encode(malo);
+      const sha = await sha256Hex(bytes);
+      const r2Path = `infoprobidad/declaraciones/2026-06-24/${sha}.json`;
+      await expect(
+        runProbidadReplay({
+          r2: { getObject: async () => bytes },
+          r2Path,
+          writer,
+          maestra,
+        }),
+      ).rejects.toThrow(/infoprobidad\/declaraciones\/2026-06-24/);
+      expect(upsert).not.toHaveBeenCalled();
+      expect(marcar).not.toHaveBeenCalled();
+      expect(writer.declaraciones.size).toBe(0);
+    }
+  });
+
+  it("(4) la fecha de ingestado_hasta sale del CRUDO, NUNCA del reloj (no finge frescura)", async () => {
+    const writer = new InMemoryProbidadWriter();
+    const { r2, r2Path } = await fuenteR2(CRUDO, "2026-01-15");
+    const res = await runProbidadReplay({ r2, r2Path, writer, maestra });
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    expect(res.ingestadoHasta).toBe("2026-01-15");
+    expect(res.ingestadoHasta).not.toBe(hoy);
+    for (const est of writer.ingestaEstado.values()) {
+      expect(est.ingestado_hasta).toBe("2026-01-15");
+    }
+  });
+
+  it("(4b) key con prefijo desconocido o traversal ⇒ ReplayR2Error antes de leer R2", async () => {
+    const writer = new InMemoryProbidadWriter();
+    let leido = false;
+    const r2 = {
+      getObject: async () => {
+        leido = true;
+        return new Uint8Array();
+      },
+    };
+    for (const malo of [
+      "otra-fuente/declaraciones/2026-06-24/" + "a".repeat(64) + ".json",
+      "../infoprobidad/declaraciones/2026-06-24/" + "a".repeat(64) + ".json",
+      "infoprobidad/declaraciones/2026-06-24/" + "a".repeat(64) + ".html",
+    ]) {
+      await expect(
+        runProbidadReplay({ r2, r2Path: malo, writer, maestra }),
+      ).rejects.toBeInstanceOf(ReplayR2Error);
+    }
+    expect(leido).toBe(false);
   });
 });

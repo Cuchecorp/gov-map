@@ -105,8 +105,19 @@ export type {
 } from "./ingest-run";
 
 // Orquestación LIVE para TODOS los parlamentarios (query dirigida por objetivo — Phase 26).
-export { runProbidadTodos } from "./run-probidad-todos";
-export type { RunProbidadTodosOpts, RunProbidadTodosResult } from "./run-probidad-todos";
+export {
+  runProbidadTodos,
+  runProbidadReplay,
+  parseFromR2Arg as parseProbidadFromR2Arg,
+  ReplayR2Error as ProbidadReplayR2Error,
+} from "./run-probidad-todos";
+export type {
+  RunProbidadTodosOpts,
+  RunProbidadTodosResult,
+  RunProbidadReplayOpts,
+  RunProbidadReplayResult,
+  R2ReplaySource as ProbidadR2ReplaySource,
+} from "./run-probidad-todos";
 
 // CLI de ingesta (corrida LIVE acotada / degrada a dry-run sin key/alcance).
 export {

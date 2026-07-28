@@ -12,6 +12,11 @@
 // InfoProbidad SPARQL responde por fetch de Node (sin WAF) → no se requiere `--html-file`.
 //
 // Uso: tsx packages/probidad/src/run-probidad-todos-cli.ts [--dry-run] [--limit N]
+//
+// Etapa 2 aislada (G7, regla LOCKED 2 de CLAUDE.md — re-ingesta SIN volver al CPLT):
+//   tsx packages/probidad/src/run-probidad-todos-cli.ts --from-r2 infoprobidad/declaraciones/<YYYY-MM-DD>/<sha>.json
+// El `ingestado_hasta` del replay sale de la FECHA DEL CRUDO (nunca del reloj): un replay del
+// pasado NO puede fingir frescura.
 
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
@@ -39,7 +44,12 @@ const createSupabaseClient: CreateSupabaseClient = (url, serviceKey) =>
 import { InfoProbidadConnector } from "./connector-infoprobidad";
 import { SupabaseProbidadWriter } from "./writer-supabase";
 import { InMemoryProbidadWriter, type ProbidadWriter } from "./writer";
-import { runProbidadTodos } from "./run-probidad-todos";
+import {
+  runProbidadTodos,
+  runProbidadReplay,
+  parseFromR2Arg,
+  ReplayR2Error,
+} from "./run-probidad-todos";
 
 /** Lee el valor de un flag `--x <valor>` de argv, o null. */
 function flagValue(name: string): string | null {
@@ -108,6 +118,45 @@ async function main(): Promise<void> {
   const limite = limitRaw != null ? Number.parseInt(limitRaw, 10) : undefined;
   const env = loadEnv(root);
   const log = (m: string) => console.log(m);
+
+  // ── G7: Etapa 2 DESDE R2 (`--from-r2 <r2Path>`) ────────────────────────────────────
+  // Va ANTES de instanciar el conector/rate-limiter: en modo replay no existen, así que
+  // es estructuralmente imposible volver a consultar datos.cplt.cl. Flags validados antes
+  // de cualquier red/DB (`parseFromR2Arg` lanza si el flag viene vacío).
+  const fromR2 = parseFromR2Arg(process.argv);
+  if (fromR2) {
+    if (!env.R2_ENDPOINT_URL || !env.R2_ACCESS_KEY_ID || !env.R2_SECRET_ACCESS_KEY) {
+      throw new ReplayR2Error(
+        "--from-r2 requiere R2 configurado (R2_ENDPOINT_URL + R2_ACCESS_KEY_ID + R2_SECRET_ACCESS_KEY)",
+      );
+    }
+    const maestraReplay = cargarMaestra(root);
+    const writerReplay: ProbidadWriter =
+      dryRun || !env.SUPABASE_API_URL || !env.SUPABASE_SECRET_KEY
+        ? new InMemoryProbidadWriter()
+        : new SupabaseProbidadWriter({
+            url: env.SUPABASE_API_URL,
+            serviceKey: env.SUPABASE_SECRET_KEY,
+          });
+    const rep = await runProbidadReplay({
+      r2: new R2Store({
+        accessKeyId: env.R2_ACCESS_KEY_ID,
+        secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+        endpoint: env.R2_ENDPOINT_URL,
+        bucket: env.R2_BUCKET ?? "observatorio",
+      }),
+      r2Path: fromR2,
+      writer: writerReplay,
+      maestra: maestraReplay,
+      log,
+    });
+    console.log(
+      `\nprobidad-todos REPLAY ${dryRun ? "DRY-RUN" : "LIVE"}: declaraciones=${rep.declaraciones} ` +
+        `bienes=${rep.bienes} familiares=${rep.familiares} confirmados=${rep.confirmados} ` +
+        `ingestado_hasta=${rep.ingestadoHasta} (del crudo) r2Path=${rep.r2Path}`,
+    );
+    return;
+  }
 
   const conector = new InfoProbidadConnector({
     fetcher: new Fetcher({ allowlist: {} }),

@@ -91,6 +91,163 @@ function contarBienes(b: {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// G7 — Etapa 2 DESDE R2 (`--from-r2`). Regla LOCKED 2 de CLAUDE.md: re-ingestar a
+// Supabase se hace SIEMPRE desde el crudo versionado, NUNCA volviendo al CPLT.
+// Firma del flag = plantilla dorada `tramitacion/src/ingest-cli.ts:130`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Error de argumentos/validación del replay: se lanza ANTES de cualquier red o DB. */
+export class ReplayR2Error extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ReplayR2Error";
+  }
+}
+
+/** Fuente de lectura del crudo (subconjunto de `R2Store` — inyectable en tests). */
+export interface R2ReplaySource {
+  getObject(r2Path: string): Promise<Uint8Array>;
+}
+
+/**
+ * Keys ACEPTADAS por el replay (T-119-13): el `r2Path` es input del operador y se usa como key
+ * de `getObject`; la regex lo ancla de punta a punta ⇒ ni `..`, ni rutas absolutas, ni prefijos
+ * ajenos. El segmento de fecha ES la fecha de corte del crudo (ver `ingestadoHasta`).
+ */
+const REPLAY_KEY_RE = /^infoprobidad\/declaraciones\/(\d{4}-\d{2}-\d{2})\/([0-9a-f]{64})\.json$/;
+
+export interface RunProbidadReplayOpts {
+  r2: R2ReplaySource;
+  /** Key content-addressed del crudo AGREGADO a re-procesar. */
+  r2Path: string;
+  writer: ProbidadWriter;
+  /** Maestra: el cruce sigue siendo el test de superconjunto determinista (nunca fabrica FK). */
+  maestra: Parlamentario[];
+  log?: (m: string) => void;
+}
+
+export interface RunProbidadReplayResult {
+  declaraciones: number;
+  bienes: number;
+  familiares: number;
+  confirmados: number;
+  /** Fecha de corte usada para `ingestado_hasta` — SIEMPRE la del crudo, jamás `new Date()`. */
+  ingestadoHasta: string;
+  r2Path: string;
+}
+
+/** Lee `--from-r2 <r2Path>` de argv. Devuelve null si el flag no está; lanza si viene vacío. */
+export function parseFromR2Arg(argv: string[]): string | null {
+  const i = argv.indexOf("--from-r2");
+  if (i < 0) return null;
+  const path = argv[i + 1];
+  if (!path || path.startsWith("--")) throw new ReplayR2Error("--from-r2 requiere un r2Path");
+  return path;
+}
+
+/**
+ * Re-procesa a Supabase el crudo agregado YA versionado en R2 (Etapa 2 aislada). NO instancia el
+ * conector InfoProbidad: la firma no lo admite ⇒ es imposible volver al CPLT desde aquí.
+ *
+ * HONESTIDAD DE FRESCURA (T-119-15): `ingestado_hasta` sale del segmento de fecha de la key —
+ * un replay del pasado NO puede fingir que la fuente se consultó hoy.
+ *
+ * FAIL-LOUD, CERO ESCRITURA PARCIAL: la key, el sha del contenido (T-119-14), el JSON y su forma
+ * se validan y TODO el crudo se parsea/reconcilia ANTES del primer upsert. Un crudo malformado
+ * lanza con el path (sin credenciales — T-119-16) y no deja ni una fila escrita.
+ *
+ * DIVERGENCIA DECLARADA respecto de la ingesta normal: el crudo agregado es un array SIN el id del
+ * parlamentario que originó cada query, así que cada response se reconcilia contra la maestra
+ * COMPLETA con el MISMO test de superconjunto determinista. Es igual de fail-closed (un declarante
+ * que no es superconjunto de ningún objetivo no se escribe) y no depende del orden del array.
+ */
+export async function runProbidadReplay(
+  opts: RunProbidadReplayOpts,
+): Promise<RunProbidadReplayResult> {
+  const log = opts.log ?? (() => {});
+  const m = REPLAY_KEY_RE.exec(opts.r2Path);
+  if (!m) {
+    throw new ReplayR2Error(
+      `--from-r2: r2Path no reconocido (${opts.r2Path}); se espera ` +
+        `infoprobidad/declaraciones/<YYYY-MM-DD>/<sha256>.json`,
+    );
+  }
+  const hasta = m[1]!;
+  const shaKey = m[2]!;
+
+  log(`probidad-replay: leyendo crudo desde R2 (${opts.r2Path}) — CERO consultas al CPLT`);
+  const bytes = await opts.r2.getObject(opts.r2Path);
+
+  // T-119-14: la key ES el sha256 del contenido → se re-calcula y se compara.
+  const shaReal = await sha256Hex(bytes);
+  if (shaReal !== shaKey) {
+    throw new ReplayR2Error(
+      `--from-r2: sha del contenido (${shaReal}) ≠ sha de la key (${shaKey}) en ${opts.r2Path}`,
+    );
+  }
+
+  let crudos: unknown;
+  try {
+    crudos = JSON.parse(new TextDecoder().decode(bytes));
+  } catch (err) {
+    throw new ReplayR2Error(
+      `--from-r2: crudo ilegible en ${opts.r2Path} (${err instanceof Error ? err.message : String(err)})`,
+    );
+  }
+  if (!Array.isArray(crudos)) {
+    throw new ReplayR2Error(
+      `--from-r2: forma inesperada en ${opts.r2Path} (se espera un array de responses SPARQL)`,
+    );
+  }
+  for (const [i, c] of crudos.entries()) {
+    const bindings = (c as { results?: { bindings?: unknown } } | null)?.results?.bindings;
+    if (typeof c !== "object" || c === null || !Array.isArray(bindings)) {
+      throw new ReplayR2Error(
+        `--from-r2: forma inesperada en ${opts.r2Path} — el elemento ${i} no es una response SPARQL ` +
+          `(falta results.bindings)`,
+      );
+    }
+  }
+
+  // Fase 1 (SIN escribir): parsear + reconciliar TODO. Cualquier fallo aborta con cero filas.
+  const porVersion = new Map<string, ReturnType<typeof reconciliarDeclaracionesObjetivo>[number]>();
+  const confirmados = new Set<string>();
+  for (const json of crudos) {
+    const decls = parseDeclaraciones(json, { enlace: INFOPROBIDAD_SPARQL_URL });
+    for (const p of opts.maestra) {
+      const filas = reconciliarDeclaracionesObjetivo(decls, p);
+      for (const f of filas) {
+        // Dedupe por clave de VERSIÓN + objetivo: el mismo declarante puede aparecer en varias
+        // responses del crudo agregado (FILTER coarse por apellidos) — se escribe una sola vez.
+        porVersion.set(`${f.fuenteId}∥${f.fechaPresentacion}∥${p.id}`, f);
+        confirmados.add(p.id);
+      }
+    }
+  }
+
+  // Fase 2 (escritura): upsert idempotente + cursor con la fecha DEL CRUDO.
+  const filas = [...porVersion.values()];
+  await opts.writer.upsertDeclaraciones(filas);
+  await opts.writer.marcarIngestado([...confirmados], hasta);
+
+  const bienes = filas.reduce((n, f) => n + contarBienes(f.bienes), 0);
+  const familiares = filas.reduce((n, f) => n + f.familiares.length, 0);
+  log(
+    `probidad-replay: ${filas.length} versiones / ${confirmados.size} confirmados ` +
+      `(ingestado_hasta=${hasta}, del crudo — NO del reloj)`,
+  );
+
+  return {
+    declaraciones: filas.length,
+    bienes,
+    familiares,
+    confirmados: confirmados.size,
+    ingestadoHasta: hasta,
+    r2Path: opts.r2Path,
+  };
+}
+
 /**
  * Corre la ingesta de probidad para todos los parlamentarios (o los primeros `limite`). Idempotente
  * y VERSIONADA (el writer upserta por la clave de versión). Tolerante: un parlamentario que falla se
