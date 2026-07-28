@@ -180,3 +180,60 @@ GATES 2-4 VERDES — EL FLIP PROCEDE (Plan 02)
 
 El veredicto full-40 (2026-07-27) permanece válido y las tres precondiciones del orden DURO
 (SC#1 shadow-eval documentada, SC#2 drift canary, SC#3 rollback probado) quedan evidenciadas.
+
+---
+
+## Gate 5 — Flip + humo
+
+**Precondición verificada:** `## Veredicto de gates` contiene `GATES 2-4 VERDES — EL FLIP PROCEDE`.
+
+**Autorizaciones del operador (dos actos previos, ambos citados):**
+
+> "Flip autorizado… tras shadow-eval verde y con rollback-by-config" — **2026-07-27** (autorización del flip)
+>
+> "Sí — proceder con gates y flip" — **2026-07-28** (checkpoint de provisión de keys Workers AI, CERRADO; ver `## Gate 1`)
+
+**Acto de flip:** APPEND de una sola línea a `.env` (config local del operador; `.env` NO se
+commitea). La línea añadida es un nombre de variable y el literal `1` — no es un secreto:
+
+```
+CLASIFICACION_ESCALERA=1
+```
+
+`.env.example` NO se tocó (ya trae el placeholder desde 109; `git diff --exit-code .env.example` == 0).
+El append es idempotente: `grep -c "^CLASIFICACION_ESCALERA=1" .env` == 1.
+
+**Comando de humo (verbatim):**
+
+```
+set -a; source .env; set +a
+pnpm --filter @obs/cruces exec tsx src/clasificar-fichas-cli.ts --limite 3 --dry-run
+```
+
+**Hora:** 2026-07-28 16:32 (America/Santiago) — 2026-07-28T20:32:07Z
+**Exit code:** 0
+
+**Salida (íntegra, sin secretos):**
+
+```
+cruces-fichas: provider=tiered:granite→deepseek (CLASIFICACION_ESCALERA=1)
+cruces-fichas: DRY-RUN → 3 procesados / 2 con sector / 1 sin sector (abstención). Cobertura muestra (3): 67% (gate CRUCE-02 ≥70%)
+
+cruces-fichas DRY-RUN: procesados=3 asignados=2 abstenidos=1 coberturaMuestra=67% dbLoaded=false
+```
+
+**Lectura del humo:**
+
+- Línea de provider observada: `provider=tiered:granite→deepseek (CLASIFICACION_ESCALERA=1)` →
+  la escalera está realmente encendida (rama 3 de `resolverProvider`).
+- NO aparece `fallback a DeepSeek (Pitfall 2)` → las keys Workers AI están efectivas.
+- NO aparece la advertencia de URL de Supabase faltante (la que degradaría el dry-run a "sin
+  lectura DB") → hubo lectura real de
+  `proyecto_ficha` y **`procesados=3` (N > 0)**: el provider no solo se resolvió, se ejerció con
+  llamadas LLM reales. El humo es **concluyente**.
+- `--dry-run`: se leyó la DB para reportar cobertura, no se escribió nada (`dbLoaded=false`).
+- La cobertura 67% de la muestra es informativa de un lote de 3 fichas (1 abstención basta para
+  bajar del 70%); el gate CRUCE-02 se evalúa sobre la muestra de corrida completa, no sobre un
+  humo de `--limite 3`. No es un hallazgo del flip.
+
+**VEREDICTO: PASS**
