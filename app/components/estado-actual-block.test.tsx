@@ -719,3 +719,140 @@ describe("estado-actual-block — invariantes de fuente", () => {
     expect(idxBlock).toBeLessThan(idxIdea);
   });
 });
+
+// ── F-09 / F-13 / F-04 / F-03 (117-02, Task 2) ──────────────────────────────
+describe("F-09: las fechas date-only se rinden con diaCalendarioCitacion", () => {
+  it("una citación del 20-jul NO se corre al 19 (contrato date-only-medianoche-UTC)", () => {
+    const { container } = render(
+      <EstadoActualView
+        estado={{
+          citacionVigente: {
+            comision: "Comisión de Salud",
+            fecha: new Date("2026-07-20T00:00:00Z"),
+          },
+        }}
+      />,
+    );
+    expect(container.textContent).toContain("20-jul");
+    expect(container.textContent).not.toContain("19");
+  });
+
+  it("los aria-label de tabla de sala dicen el MISMO día que el texto visible", () => {
+    render(
+      <EstadoActualView
+        estado={{
+          enTablaSala: [
+            {
+              camara: "senado",
+              fecha: new Date("2026-07-20T00:00:00Z"),
+              semanaIso: "2026-W30",
+            },
+          ],
+        }}
+      />,
+    );
+    expect(
+      screen.getByLabelText(/En tabla de sala de la Senado del 20-jul/),
+    ).toBeInTheDocument();
+  });
+
+  it("varias apariciones: cada aria-label usa el día publicado", () => {
+    render(
+      <EstadoActualView
+        estado={{
+          enTablaSala: [
+            {
+              camara: "senado",
+              fecha: new Date("2026-07-20T00:00:00Z"),
+              semanaIso: "2026-W30",
+            },
+            {
+              camara: "camara",
+              fecha: new Date("2026-07-15T00:00:00Z"),
+              semanaIso: "2026-W29",
+            },
+          ],
+        }}
+      />,
+    );
+    expect(
+      screen.getByLabelText(/En tabla de sala de la Senado del 20-jul/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/En tabla de sala de la Cámara del 15-jul/),
+    ).toBeInTheDocument();
+  });
+
+  it("una citación pasada también usa el día publicado", () => {
+    const { container } = render(
+      <EstadoActualView
+        estado={{
+          citacionesPasadas: [
+            {
+              comision: "Comisión de Hacienda",
+              fecha: new Date("2026-03-31T00:00:00Z"),
+            },
+          ],
+        }}
+      />,
+    );
+    expect(container.textContent).toContain("31-mar");
+  });
+});
+
+describe("F-04 en estado-actual-block: el hito del año 2626 no llega al DOM", () => {
+  it("derivarEstadoActual descarta el evento implausible y cae al plausible", () => {
+    const est = derivarEstadoActual(
+      { etapa: "Primer trámite", estado: "En tramitación" },
+      [
+        makeEvento({
+          fecha: "2026-05-14T00:00:00Z",
+          descripcion: "Ingreso de proyecto",
+        }),
+        makeEvento({
+          fecha: "2626-05-25T00:00:00+00:00",
+          descripcion: "Trámite con fecha corrupta",
+        }),
+      ],
+    );
+    expect(est.ultimoHito?.descripcion).toBe("Ingreso de proyecto");
+    const { container } = render(<EstadoActualView estado={est} />);
+    expect(container.textContent).not.toContain("2626");
+  });
+});
+
+describe("F-13: la urgencia vigente NO duplica su fecha absoluta", () => {
+  it("la fecha del inicio de urgencia aparece exactamente UNA vez", () => {
+    const { container } = render(
+      <EstadoActualView
+        estado={{
+          urgenciaEstado: {
+            kind: "vigente",
+            tipo: "Suma",
+            desde: new Date("2026-07-22T00:00:00Z"),
+          },
+        }}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto.match(/22 jul 2026/g) ?? []).toHaveLength(1);
+  });
+});
+
+describe("F-03 (matiz): la fuente de urgencia declara la agregación", () => {
+  it("el idiom 'según … al …' sobrevive y suma '(evento más reciente)'", () => {
+    const { container } = render(
+      <EstadoActualView
+        estado={{
+          urgenciaEstado: { kind: "sin-vigente" },
+          urgenciaFuente: {
+            origen: "senado",
+            fechaCaptura: new Date("2026-07-09T00:00:00Z"),
+          },
+        }}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toMatch(/según .+ al 09 jul 2026 \(evento más reciente\)\./);
+  });
+});
