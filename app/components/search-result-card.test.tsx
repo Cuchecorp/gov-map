@@ -77,3 +77,29 @@ describe("SearchResultCard — sin score (UI-SPEC §5)", () => {
     expect(text).not.toMatch(/\b\d{1,3}%/);
   });
 });
+
+// ── F-12 — el chip de año dice DE QUÉ año se trata ────────────────────────────
+describe("F-12 — chip de año rotulado", () => {
+  it("anio={2021} → 'primer trámite 2021'; el año NUNCA va pelado", () => {
+    const { container } = render(<SearchResultCard {...makeProps({ anio: 2021 })} />);
+    expect(container.textContent ?? "").toContain("primer trámite 2021");
+  });
+
+  it("anio={null} → conserva 'Sin dato' sin inventar año ni componer el rótulo", () => {
+    const { container } = render(<SearchResultCard {...makeProps({ anio: null })} />);
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("Sin dato");
+    // El rótulo se compone SOLO en la rama no-nula del ternario: envolver el
+    // ternario completo produciría la frase absurda "primer trámite Sin dato".
+    expect(texto).not.toMatch(/primer trámite Sin dato/);
+  });
+
+  it("sin la prop anio → no se renderiza chip de año (comportamiento previo intacto)", () => {
+    const props = makeProps();
+    delete (props as { anio?: number | null }).anio;
+    const { container } = render(<SearchResultCard {...props} />);
+    const texto = container.textContent ?? "";
+    expect(texto).not.toContain("primer trámite");
+    expect(texto).not.toContain("Sin dato");
+  });
+});
