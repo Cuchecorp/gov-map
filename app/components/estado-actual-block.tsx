@@ -394,6 +394,19 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
     enTablaSala,
   } = estado;
 
+  // IN-02/IN-01: el día publicado se calcula UNA vez por valor y se reusa en texto y
+  // aria-label. Antes el mismo helper se invocaba 2-3 veces sobre el mismo argumento
+  // (guard + render + nombre accesible): duplicación evitable y, sobre todo, riesgo de
+  // divergencia si alguien edita sólo una de las llamadas — justo el defecto que F-09
+  // cerró cuando el aria-label decía un día distinto del visible.
+  const fechaCitVigente = citacionVigente
+    ? fechaCivilCorta(citacionVigente.fecha)
+    : null;
+  const fechaSala0 =
+    enTablaSala && enTablaSala.length === 1
+      ? fechaCivilCorta(enTablaSala[0].fecha)
+      : null;
+
   // Sin ninguna línea derivable → no se renderiza el bloque (cero contenido
   // fabricado). El resto de la ficha cubre la información. Incluye los campos
   // nuevos (gap #1/#2): el bloque se pinta si hay CUALQUIER línea derivable.
@@ -506,12 +519,10 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
               distintas de fecha se leen como el mismo año.
             */}
             Citado en {citacionVigente.comision}
-            {fechaCivilCorta(citacionVigente.fecha) && (
+            {fechaCitVigente && (
               <>
                 {" el "}
-                <span className="font-mono">
-                  {fechaCivilCorta(citacionVigente.fecha)}
-                </span>
+                <span className="font-mono">{fechaCitVigente}</span>
               </>
             )}
             .
@@ -542,7 +553,7 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
           (regla accent #2) a /agenda?semana=. Varias → conteo honesto + lista de
           cada semana. Se omite si el campo está ausente (nunca "no está en tabla").
         */}
-        {enTablaSala && enTablaSala.length === 1 && (
+        {enTablaSala && enTablaSala.length === 1 && fechaSala0 && (
           <p>
             {/* F-09 + CR-01: `sesion_sala.fecha` es date-only-medianoche-UTC ⇒
                 `fechaCivilCorta` (CON año: la tabla de sala no tiene cota temporal).
@@ -550,13 +561,11 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
                 el canal ÚNICO de la fecha para quien usa lector de pantalla, y con
                 `fechaCorta` decía un día distinto del visible. */}
             En tabla de sala de la {camaraNombre(enTablaSala[0].camara)} del{" "}
-            <span className="font-mono">
-              {fechaCivilCorta(enTablaSala[0].fecha)}
-            </span>{" "}
+            <span className="font-mono">{fechaSala0}</span>{" "}
             <a
               href={`/agenda?semana=${enTablaSala[0].semanaIso}`}
               className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label={`En tabla de sala de la ${camaraNombre(enTablaSala[0].camara)} del ${fechaCivilCorta(enTablaSala[0].fecha)} — ver en la agenda`}
+              aria-label={`En tabla de sala de la ${camaraNombre(enTablaSala[0].camara)} del ${fechaSala0} — ver en la agenda`}
             >
               ver en la agenda
             </a>
@@ -565,21 +574,25 @@ export function EstadoActualView({ estado }: { estado: EstadoActual }) {
         {enTablaSala && enTablaSala.length > 1 && (
           <p>
             En tabla de sala {enTablaSala.length} veces:{" "}
-            {enTablaSala.map((s, i) => (
+            {enTablaSala.map((s, i) => {
+              // IN-01: una sola invocación por fila; texto y aria-label la comparten.
+              const fechaSala = fechaCivilCorta(s.fecha);
+              return (
               <span key={`sala-${i}`}>
                 {i > 0 && ", "}
                 <a
                   href={`/agenda?semana=${s.semanaIso}`}
                   className="inline-flex min-h-11 items-center text-accent-product underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={`En tabla de sala de la ${camaraNombre(s.camara)} del ${fechaCivilCorta(s.fecha)} — ver en la agenda`}
+                  aria-label={`En tabla de sala de la ${camaraNombre(s.camara)} del ${fechaSala} — ver en la agenda`}
                 >
                   {/* F-09 + CR-01: date-only ⇒ `fechaCivilCorta` (con año), texto y
                       aria-label con el MISMO día publicado. */}
                   {camaraNombre(s.camara)},{" "}
-                  <span className="font-mono">{fechaCivilCorta(s.fecha)}</span>
+                  <span className="font-mono">{fechaSala}</span>
                 </a>
               </span>
-            ))}
+              );
+            })}
           </p>
         )}
       </div>
