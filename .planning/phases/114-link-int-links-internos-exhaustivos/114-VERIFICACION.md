@@ -244,8 +244,8 @@ fue tocado; `.env` y `.env.example` están **intactos**. Evidencia:
 
 | Qué re-correr | Resultado esperado |
 |---|---|
-| `node scripts/verificar-links-internos.mjs --out <125>/…` | 95/95 PASS, exit **0** (`4.2.b-404` debe pasar de FAIL a PASS) |
-| `node scripts/verificar-links-internos.selfcheck.mjs` | exit 0 |
+| `node scripts/verificar-links-internos.mjs --out <125>/…` | **cero FAIL**, exit **0** (`4.2.b-404` debe pasar de FAIL a PASS). Los `WARN-STREAM` **no cuentan como FAIL**: son los emisores bajo Suspense y se cierran verificando el **DOM** (BrowserOS), no el HTML servido. |
+| `node scripts/verificar-links-internos.selfcheck.mjs` | exit 0 (**28** fixtures) |
 
 **Divergencia documental abierta (no es defecto de link) — `D-01`:** 113 §4.1 (líneas 1043-1045)
 predice que con `S1338` el carril no ofrece la entrada `#cruces`; el deploy **sí** emite
@@ -270,6 +270,29 @@ Phase 125**, junto con el deploy.
 | `WR-02` | `no-404` aceptaba 3xx y 5xx como sano. Ahora exige 200 ⇒ una entrada que en la corrida guardada figura PASS por un 301/500 puede aparecer en FAIL en 125. **Eso sería el runner mordiendo, no una regresión del sitio.** |
 | `WR-03` / `WR-04` | Los patrones de `ausencia` pasan por la maquinaria endurecida, y el strip de ruido cubre comentarios / `<template>` / `<noscript>`. |
 | `WR-05` | Cota de 15s por request y un reintento sin cachear el fallo de red ⇒ la corrida de 125 es determinista bajo red inestable. |
+| `W-01` | **Corrección del propio `CR-02`** (la encontró el verifier de fase): el assert de emisión daba **falsos FAIL** con las secciones bajo `<Suspense>`. Tercer estado `WARN-STREAM`, que **no falla la corrida**. |
+
+### W-01 — por qué `WARN-STREAM` y no FAIL (medido, no supuesto)
+
+El assert de emisión de CR-02 sólo mira el markup **vivo** (`sinRuido()` remueve los `<script>`).
+Medición contra el deploy (2026-07-28): `/agenda` responde un **shell de streaming** — 54
+`animate-pulse` y **cero** ocurrencias de `14309-04`, ni en el markup vivo **ni en el HTML crudo**:
+el contenido suspendido se resuelve en el cliente. Con el runner tal como quedó tras CR-02, el
+subset `/proyecto` daba **10 FAIL cuando el defecto real era 1**.
+
+`veredictoDeEmision()` usa dos señales, y cualquiera basta para degradar a `WARN-STREAM`:
+(a) el href está en el HTML **crudo** (payload RSC dentro de `<script>`); (b) la respuesta es un
+**shell** con fallbacks de Suspense sin resolver. Un shell no es evidencia de ausencia: es
+**ausencia de evidencia**, y el veredicto honesto es "no se puede concluir desde el HTML servido".
+`FAIL` queda reservado a destino no-200, o href ausente del markup vivo **y** del crudo en una
+página que **no** es shell — ahí el assert conserva su mordida.
+
+**Estado real del subset `/proyecto` con el runner ya corregido** (`--route /proyecto`, deploy
+2026-07-28): **29 entradas · 19 PASS · 1 FAIL · 9 WARN-STREAM · 0 MISSING-SSR**, `exit 1`. El único
+FAIL es `4.2.b-404` — el `H-01` ya corregido en código, cuyo deploy viaja con la **Phase 125**. Las
+9 `WARN-STREAM` son emisores bajo Suspense (`/agenda` ×3, `/agenda?q=trabajo`, `/buscar?q=…`,
+`/proyecto/14309-04` y `/parlamentario/D1165`) y **no son links rotos**: se cierran en 125
+verificando el DOM.
 
 **Expectativa actualizada para la Phase 125:** el «95/95 PASS, exit 0» anclado más abajo se evalúa con
 el runner **endurecido**. Cualquier delta nuevo respecto de `114-CORRIDA-POST.json` debe atribuirse

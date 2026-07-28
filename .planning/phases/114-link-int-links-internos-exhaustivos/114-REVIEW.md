@@ -17,7 +17,7 @@ findings:
 status: issues_found
 fixed_at: 2026-07-28
 fix_scope: critical_warning
-fixed: 9
+fixed: 10 (9 del review + W-01 del verifier)
 skipped: 4
 ---
 
@@ -37,6 +37,7 @@ Alcance aplicado: **Critical + Warning** (CR-01, CR-02, WR-01…WR-06). De los I
 | WR-05 | **fixed** | `fc15bcc` | `AbortSignal.timeout(15s)`, fallo de red no cacheado + 1 reintento con backoff; secuencialidad y delay 400ms intactos. |
 | WR-06 | **fixed** | `ba7c5a5` | Aserción anclada al contador real del rail; mordida probada por mutación (1/13 cae). |
 | IN-01 | **fixed** | `fc9494d` | Contacto del User-Agent desde `INGESTA_CONTACTO`, default genérico. |
+| **W-01** (verifier de fase, no del review) | **fixed** | `07c19ea` | **Defecto introducido por CR-02**: el assert de emisión daba falsos FAIL con secciones bajo `<Suspense>` (subset `/proyecto`: 10 FAIL cuando el defecto real era 1). Nuevo estado `WARN-STREAM` (href en el crudo, **o** origen = shell con fallbacks sin resolver), contado aparte en `meta.warn_stream` y que **no falla la corrida**. Además `--route` con 0 entradas → exit 2. Subset `/proyecto` verificado contra el deploy: **19 PASS / 1 FAIL legítimo (`4.2.b-404`) / 9 WARN-STREAM**. |
 | IN-02 | skipped | — | Fuera del alcance pedido (Info no trivial): exige exportar `verificarCobertura()` y cablearla en `main()` o un test nuevo. El invariante 77/77 sigue verificado a mano en `114-VERIFICACION.md` §Cobertura. |
 | IN-03 | skipped | — | Fuera del alcance pedido: añadir `--strict-anclas` es diseño de CLI nuevo. El supuesto ya está escrito en el header del runner y en §SC#2. |
 | IN-04 | skipped | — | Fuera del alcance pedido: actualizar prosa y extender las listas de anclas del test es trabajo de test, no un one-liner. |
@@ -44,7 +45,7 @@ Alcance aplicado: **Critical + Warning** (CR-01, CR-02, WR-01…WR-06). De los I
 
 **Gates tras los fixes:** suite `pnpm test` exit 0 (`packages/*` sin delta · `app` 107 files / **1431**
 tests, exactamente el baseline post-114-03) · `tsc -b` exit 0 · `node scripts/verificar-links-internos.selfcheck.mjs`
-exit 0 (**22/22** fixtures, antes 10) · 9/9 guards de régimen verdes · `git diff .env .env.example
+exit 0 (**28/28** fixtures, antes 10) · 9/9 guards de régimen verdes · `git diff .env .env.example
 package.json pnpm-lock.yaml` **vacío**.
 
 # Phase 114: Code Review Report
