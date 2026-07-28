@@ -125,6 +125,19 @@ export function fechaHechoCortaSegura(
  * urgencias vencen en el futuro; 5 años deja pasar todo lo legítimo y ataja el typo de
  * siglo. Una fecha inválida (`NaN`) no es plausible y no lanza.
  *
+ * EVIDENCIA DEL PISO (WR-03 de `117-REVIEW.md`, verificado en PROD 2026-07-28 — el
+ * techo ya traía la suya, el piso no):
+ *   select min(fecha), count(*) filter (where fecha < '1990-01-01'), count(*)
+ *     from tramitacion_evento;  →  1995-01-10 | 0 | 48.368
+ *   select min(fecha), count(*) filter (where fecha < '1990-01-01'), count(*)
+ *     from votacion;            →  2002-12-18 | 0 |  4.855
+ * CERO filas legítimas por debajo del piso en las dos tablas que este predicado
+ * gobierna, con 8 años de margen sobre el mínimo real. El piso NO está descartando
+ * tramitación real hoy. Si una ingesta futura incorpora historia pre-1995 (p. ej. un
+ * backfill de boletines antiguos), REPETIR estas consultas antes de confiar en el piso:
+ * un evento anterior quedaría silenciosamente sin fecha en timeline, stepper y
+ * "último hito".
+ *
  * ES UN PREDICADO, NO UN FILTRO: el llamante decide qué hacer (omitir la fecha
  * honestamente, declarar el dato ilegible). PROHIBIDO convertirlo en un
  * `where fecha <= current_date` global — ese fue exactamente el defecto que mató filas
