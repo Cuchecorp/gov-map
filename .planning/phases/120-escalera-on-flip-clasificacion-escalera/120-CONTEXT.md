@@ -20,7 +20,7 @@ Encender la escalera LLM (Granite→DeepSeek) SOLO en clasificación — la úni
 - Clasificación NO corre en ningún cron CI (grep workflows: solo tests en ci.yml) → el flip vive en `.env` local del operador; NO se necesita GH secret. Esta fase NO crea cron nuevo.
 
 ### Orden DURO (LOCKED — cada paso gate del siguiente)
-1. **Checkpoint operador (UNA vez, blocking-human)**: presentar al operador — token ya presente en `.env`; pedir confirmación de que ese token es el provisionado con permiso Workers AI y autorización para proceder con la secuencia de gates. El agente JAMÁS lee/imprime/carga valores. Si el operador no confirma o el token da 401 → cierre honesto sin flip (VÁLIDO).
+1. **Checkpoint operador — CERRADO 2026-07-28**: el operador confirmó en sesión (AskUserQuestion, respuesta "Sí — proceder con gates y flip") que el `WORKERS_AI_API_TOKEN` de `.env` es el provisionado con permiso Workers AI, y autorizó la secuencia completa gates→flip. El agente JAMÁS lee/imprime/carga valores. Si pese a la confirmación el token da 401 en el canary → cierre honesto sin flip (VÁLIDO) + re-checkpoint documentado (no re-preguntar en sesión).
 2. **Drift canary**: `CLASIFICACION_DRIFT_CHECK=1 pnpm --filter @obs/cruces exec vitest run src/drift-canary.test.ts` — mismatch de modelo INVALIDA el veredicto full-40 y ABORTA el flip (cierre honesto).
 3. **Shadow-eval LIVE**: `CLASIFICACION_SHADOW_LIVE=1 … vitest run src/shadow-eval.test.ts` — verde = acuerdo suficiente Granite vs DeepSeek en los 10 casos gate. No-verde → NO flip, documentar.
 4. **Rollback probado**: bloque OFFLINE de shadow-eval + `clasificar-fichas-cli.test.ts` (sin la env var → DeepSeekProvider byte-idéntico). Correr y registrar ANTES del flip.
