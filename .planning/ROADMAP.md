@@ -247,7 +247,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 118-01-PLAN.md — (w1) Probes de las 4 patas (gh / psql / freshness / source_snapshot) + esqueleto: método, inventario cerrado y tabla maestra con veredicto
+- [x] 118-01-PLAN.md — (w1) Probes de las 4 patas (gh / psql / freshness / source_snapshot) + esqueleto: método, inventario cerrado y tabla maestra con veredicto
 
 **Wave 2**
 
@@ -374,7 +374,7 @@ Plans:
 | 115. LINK-EXT | 3/3 | Complete    | 2026-07-28 |
 | 116. FECHA-AUDIT | 4/4 | Complete    | 2026-07-28 |
 | 117. FECHA-FIX | 4/4 | Complete    | 2026-07-28 |
-| 118. CRON-AUDIT | 0/? | Not started | - |
+| 118. CRON-AUDIT | 1/3 | In Progress|  |
 | 119. CRON-FIX | 0/? | Not started | - |
 | 120. ESCALERA-ON | 0/? | Not started | - |
 | 121. ESCALERA-DOC | 0/? | Not started | - |

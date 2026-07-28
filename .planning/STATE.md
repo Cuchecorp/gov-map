@@ -4,13 +4,13 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: executing
 stopped_at: Completed 115-01-PLAN.md
-last_updated: "2026-07-28T16:18:03.096Z"
-last_activity: 2026-07-28 -- Phase 118 planning complete
+last_updated: "2026-07-28T16:34:45.071Z"
+last_activity: 2026-07-28
 progress:
   total_phases: 13
   completed_phases: 5
   total_plans: 23
-  completed_plans: 20
+  completed_plans: 21
   percent: 38
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 117 — FECHA-FIX — Etiquetas de fecha corregidas
+**Current focus:** Phase 118 — CRON-AUDIT — Veredicto por cron con evidencia
 
 ## Current Position
 
-Phase: 118
-Plan: Not started
+Phase: 118 (CRON-AUDIT — Veredicto por cron con evidencia) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-28 -- Phase 118 planning complete
+Last activity: 2026-07-28
 
 ### Roadmap v12.0 (Phases 113-125)
 
@@ -144,6 +144,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 116 P04 | 2h | 3 tasks | 2 files |
 | Phase 117 P03 | 35m | 3 tasks | 20 files |
 | Phase 117 P04 | 35m | 4 tasks | 9 files |
+| Phase 118 P01 | ~50 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -254,6 +255,9 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 117-03: el rótulo de lobby se compone DENTRO del ternario de fechaTexto, nunca como prefijo en el JSX (el fallback textual viaja verbatim)
 - [Phase ?]: 117-03: lobby conserva fechaCorta (no fechaHechoCorta) — PROD refutó el drift de zona en lobby_audiencia.fecha (0/17.762)
 - [Phase ?]: 117-04: F-12 se cierra rotulando (primer trámite {año}), no borrando — el grep vivo refutó la premisa 'chip inerte' del audit
+- [Phase ?]: 118-01: universo de cron CERRADO en 20 unidades = 13 workflows locales + 2 platform-managed (Dependabot/CodeQL) + 5 jobs pg_cron vivos; conteos maquina-parseables DERIVADOS. Taxonomia LOCKED ampliada con etiqueta no-cron (clasificacion, no juicio de salud, siempre con causa archivo:linea) porque 9 de 20 unidades no son ingesta programada. Veredictos: 10 verde / 1 stale / 0 roto / 9 no-cron; NINGUN cron programado roto.
+- [Phase ?]: 118-01: schedule ACTIVO son 6 no 8 (diff contra 118-CONTEXT.md:18 REPORTADO, ninguna cifra ajustada: digest-daily.yml:24-25 y roster-weekly.yml:29-30 comentados por estreno gated). pg_cron delta CERO vs migraciones; rama activa de 0003_orchestration.sql = :214 ('30 seconds', pg_cron>=1.5) no el fallback :221. Billing GH Actions NO bloqueado al 2026-07-28 (corridas schedule success el mismo dia) -> se retira 'billing' como causa candidata.
+- [Phase ?]: 118-01: el unico stale es CURSOR DETENIDO no fuente-sin-novedades (Pitfall 4 operado contra *_ingesta_estado, no contra count de filas): lobby-leylobby corre verde y escribe lobby_audiencia 2026-07-22 pero lobby_ingesta_estado.ingestado_hasta sigue en 2026-06-22 mientras leylobby_cursor_estado si avanzo. A2 REFUTADA (creado_en no existe: fecha_captura/created_at/fetched_at+source); A4 resuelta (backup-parlamentario NO escribe Supabase; su destino es el seed committeado por el bot). CRON-01 sigue Pending: cierra en 118-03.
 
 ### Pending Todos
 
@@ -314,7 +318,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-28T15:07:51.837Z
+Last session: 2026-07-28T16:34:30.103Z
 Stopped at: Completed 115-01-PLAN.md
 Resume file: None
 
