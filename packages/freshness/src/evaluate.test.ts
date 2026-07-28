@@ -1,13 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { evaluate, evaluateCobertura, ghRunEsAveria } from "./evaluate.js";
+import {
+  evaluate,
+  evaluateCobertura,
+  evaluatePgCron,
+  ghRunEsAveria,
+  umbralDesdeSchedule,
+} from "./evaluate.js";
 import {
   CATALOG,
   COBERTURA_SENALES,
   COBERTURA_VOTO_SENALES,
   COBERTURA_RUT_PARLAMENTARIO_SENALES,
   COBERTURA_RUT_ENTIDAD_SENALES,
+  PGCRON_JOBS,
 } from "./catalog.js";
-import type { CoberturaCount, QueryRow } from "./query-runner.js";
+import type { PgCronJobConfig } from "./catalog.js";
+import type { CoberturaCount, PgCronRow, QueryRow } from "./query-runner.js";
 
 const NOW = new Date("2026-07-09T12:00:00Z");
 
@@ -712,5 +720,139 @@ describe("G3 (119-02): actualidad-refresh deja de ser punto ciego (W-1)", () => 
     const r = evaluate([row], [cfg()], NOW)[0]!;
     expect(r.stale).toBe(false);
     expect(r.motivoStale).toBeNull();
+  });
+});
+
+// ─── G3 (119-02): señal de pg_cron ────────────────────────────────────────────
+
+describe("umbralDesdeSchedule (función PURA, sin red ni DB)", () => {
+  it("deriva el umbral del hueco previsto + un intervalo de gracia", () => {
+    // `7 11,14,17,20 * * 1-5`: huecos intradía de 3h y hueco de fin de semana de 63h
+    // (viernes 20:07 → lunes 11:07) ⇒ 63 + 3 = 66h.
+    expect(umbralDesdeSchedule("7 11,14,17,20 * * 1-5")).toBe(66);
+    // Diario: único hueco 24h ⇒ 24 + 24 = 48h.
+    expect(umbralDesdeSchedule("17 3 * * *")).toBe(48);
+    // Cada 15 min ⇒ 0.25 + 0.25 = 0.5h.
+    expect(umbralDesdeSchedule("*/15 * * * *")).toBe(0.5);
+  });
+
+  it("aplica un PISO para schedules sub-minuto (no exige precisión de segundos)", () => {
+    expect(umbralDesdeSchedule("30 seconds")).toBe(0.25);
+  });
+
+  it("devuelve null ante un schedule que no sabe leer (desconocido, no inventado)", () => {
+    expect(umbralDesdeSchedule("cuando salga el sol")).toBeNull();
+    expect(umbralDesdeSchedule("0 0 1 1 *")).toBeNull(); // dom/mes restringidos: no soportado
+  });
+});
+
+describe("evaluatePgCron (G3, 119-02): los 5 jobs dejan de ser invisibles", () => {
+  const AHORA = new Date("2026-07-29T15:00:00Z"); // miércoles
+
+  function job(jobname: string, jobid: number, schedule: string): PgCronJobConfig {
+    return {
+      jobname,
+      jobid,
+      schedule,
+      overrideEnv: `FRESHNESS_UMBRAL_PGCRON_${jobname.toUpperCase().replace(/-/g, "_")}`,
+    };
+  }
+
+  function row(
+    cfg: PgCronJobConfig,
+    horasAtras: number | null,
+    over: Partial<PgCronRow> = {},
+  ): PgCronRow {
+    return {
+      jobid: cfg.jobid,
+      jobname: cfg.jobname,
+      schedule: cfg.schedule,
+      active: true,
+      maxStartTime:
+        horasAtras === null
+          ? null
+          : new Date(AHORA.getTime() - horasAtras * 3_600_000).toISOString(),
+      ...over,
+    };
+  }
+
+  it("Test 1: `30 seconds` con última corrida hace 1 hora ⇒ stale (umbral derivado, no 7 días)", () => {
+    const cfg = job("process-ingest-jobs", 1, "30 seconds");
+    const r = evaluatePgCron([row(cfg, 1)], [cfg], AHORA)[0]!;
+    expect(r.umbralHoras).toBe(0.25);
+    expect(r.stale).toBe(true);
+    expect(r.motivoStale).toBe("horas>umbral");
+  });
+
+  it("Test 2: intradía L-V con última corrida hace 4 horas en día hábil ⇒ NO stale", () => {
+    const cfg = job("actualidad-materializar", 5, "7 11,14,17,20 * * 1-5");
+    const r = evaluatePgCron([row(cfg, 4)], [cfg], AHORA)[0]!;
+    expect(r.stale).toBe(false);
+    expect(r.motivoStale).toBeNull();
+  });
+
+  it("Test 3: mismo schedule con última corrida hace 3 días ⇒ stale", () => {
+    const cfg = job("actualidad-materializar", 5, "7 11,14,17,20 * * 1-5");
+    const r = evaluatePgCron([row(cfg, 72)], [cfg], AHORA)[0]!;
+    expect(r.stale).toBe(true);
+    expect(r.motivoStale).toBe("horas>umbral");
+  });
+
+  it("Test 4: maxStartTime nulo o ilegible ⇒ stale (desconocido = stale, fail-closed)", () => {
+    const cfg = job("cruces-materializar", 4, "23 3 * * *");
+    const nulo = evaluatePgCron([row(cfg, null)], [cfg], AHORA)[0]!;
+    expect(nulo.stale).toBe(true);
+    expect(nulo.motivoStale).toBe("sin corridas");
+    expect(nulo.horasDesde).toBeNull();
+
+    const ilegible = evaluatePgCron(
+      [row(cfg, 1, { maxStartTime: "no-es-una-fecha" })],
+      [cfg],
+      AHORA,
+    )[0]!;
+    expect(ilegible.stale).toBe(true);
+    expect(ilegible.motivoStale).toBe("sin corridas");
+  });
+
+  it("un job AUSENTE de cron.job es señal (no se calla)", () => {
+    const cfg = job("net-materializar-aristas", 3, "17 3 * * *");
+    const r = evaluatePgCron([], [cfg], AHORA)[0]!;
+    expect(r.stale).toBe(true);
+    expect(r.motivoStale).toBe("job ausente");
+  });
+
+  it("un DRIFT de schedule es señal por sí mismo (no se adopta el vivo en silencio)", () => {
+    const cfg = job("cleanup-net-http", 2, "*/15 * * * *");
+    const r = evaluatePgCron(
+      [row(cfg, 0.1, { schedule: "*/59 * * * *" })],
+      [cfg],
+      AHORA,
+    )[0]!;
+    expect(r.stale).toBe(true);
+    expect(r.motivoStale).toBe("schedule-drift");
+    expect(r.scheduleEsperado).toBe("*/15 * * * *");
+    expect(r.scheduleVivo).toBe("*/59 * * * *");
+  });
+
+  it("active=false es señal (un job desprogramado no está sano)", () => {
+    const cfg = job("cleanup-net-http", 2, "*/15 * * * *");
+    const r = evaluatePgCron([row(cfg, 0.1, { active: false })], [cfg], AHORA)[0]!;
+    expect(r.stale).toBe(true);
+    expect(r.motivoStale).toBe("inactivo");
+  });
+
+  it("un schedule ilegible ⇒ stale (nunca un umbral inventado)", () => {
+    const cfg = job("raro", 9, "cuando salga el sol");
+    const r = evaluatePgCron([row(cfg, 0.1)], [cfg], AHORA)[0]!;
+    expect(r.umbralHoras).toBeNull();
+    expect(r.stale).toBe(true);
+    expect(r.motivoStale).toBe("schedule-ilegible");
+  });
+
+  it("PGCRON_JOBS cubre los 5 jobs vivos de PROD con su jobid", () => {
+    expect(PGCRON_JOBS.map((j) => j.jobid).sort()).toEqual([1, 2, 3, 4, 5]);
+    expect(PGCRON_JOBS.find((j) => j.jobid === 5)!.schedule).toBe(
+      "7 11,14,17,20 * * 1-5",
+    );
   });
 });
