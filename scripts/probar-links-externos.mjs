@@ -26,8 +26,12 @@
  *
  * ── Gate de orden robots-primero (T-115-13, BLOCKER 1 del plan) ──────────────────
  * El modo por defecto (pedir las URLs de los casos) se NIEGA a correr si todavía no existe
- * `115-ROBOTS.txt`. El respeto al protocolo de exclusión no depende de la disciplina del
- * operador: lo impone el runner. Primero `--robots`, después la muestra.
+ * `115-ROBOTS.txt`, y —fix WR-01— PARSEA sus directivas antes de emitir un solo request:
+ * cada caso cuyo path caiga bajo un `Disallow` del grupo `User-agent: *`, o cuyo host ni
+ * siquiera figure en el artefacto, aborta la corrida con exit 1 nombrando el `id` ofensor.
+ * El retiro de `www.camara.cl` deja de depender de un comentario a mano. El respeto al
+ * protocolo de exclusión no depende de la disciplina del operador: lo impone el runner.
+ * Primero `--robots`, después la muestra. Self-check: `probar-links-externos.selfcheck.mjs`.
  *
  * ── Comandos ─────────────────────────────────────────────────────────────────────
  *   # 1) robots.txt de cada host del manifiesto (SIEMPRE primero)
@@ -54,7 +58,7 @@
 
 import { parseArgs } from "node:util";
 import { execFile } from "node:child_process";
-import { writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import os from "node:os";
@@ -120,6 +124,108 @@ export const CASOS = [
   // ── datos.cplt.cl ──────────────────────────────────────────────────────────────
   { id: "P-11-c01", patron: "P-11 declaracion*.enlace (7 tablas)", host: "datos.cplt.cl", url: "https://datos.cplt.cl/sparql?query=alessandri%20vergara", espera: "endpoint SPARQL con query — no pagina humana de declaracion" },
 ];
+
+// ── Gate robots-primero: PARSEO del artefacto, no mera existencia (WR-01) ───────
+//
+// El gate anterior era `existsSync(115-ROBOTS.txt)`: un artefacto vacio, obsoleto o de
+// otra corrida lo satisfacia, y el retiro de los 8 casos de `www.camara.cl` estaba
+// implementado como COMENTARIO a mano — agregar manana un CASOS de un host prohibido lo
+// probaria igual. El encabezado afirma que "el respeto al protocolo de exclusion no
+// depende de la disciplina del operador: lo impone el runner"; estas funciones lo hacen
+// cierto: se parsean las directivas del artefacto y se NIEGA todo request que matchee.
+
+/**
+ * Parsea `115-ROBOTS.txt` (artefacto de prosa con los cuerpos verbatim embebidos) y
+ * devuelve `Map<host, string[]>` con los patrones `Disallow` del grupo `User-agent: *`.
+ *
+ * Reglas de lectura, deliberadamente CONSERVADORAS:
+ *  · El host de cada seccion se toma del encabezado numerado (`3. tramitacion.senado.cl`).
+ *  · Solo cuentan las lineas que EMPIEZAN (tras trim) por `User-agent:`/`Disallow:` —
+ *    las menciones en prosa (`retirado por \`Disallow: /\``) no empiezan asi y no cuentan.
+ *  · Solo se acumulan los `Disallow` cuyo grupo vigente es `*`: los grupos de otros
+ *    product tokens (`ClaudeBot`, `GPTBot`, …) NO nos aplican.
+ *  · Los `Allow` se IGNORAN a proposito: es la Lectura B (literal) que el propio
+ *    artefacto adopta para `www.camara.cl` — ante conflicto gana la restriccion.
+ *  · `Disallow:` con valor vacio no restringe nada (RFC 9309) y se descarta.
+ * Un host presente en el artefacto SIN ninguna directiva (robots ausente / 403 / HTML)
+ * queda con `[]` — presente y sin restricciones, que es distinto de ausente.
+ */
+export function parsearRobots(texto) {
+  const porHost = new Map();
+  let host = null;
+  let ua = null;
+  for (const linea of String(texto).split(/\r?\n/)) {
+    const l = linea.trim();
+    const cab = /^\d+\.\s+([a-z0-9][a-z0-9.-]*\.[a-z]{2,})$/i.exec(l);
+    if (cab) {
+      host = cab[1].toLowerCase();
+      ua = null;
+      if (!porHost.has(host)) porHost.set(host, []);
+      continue;
+    }
+    if (!host) continue;
+    const mUa = /^user-agent:\s*(\S+)/i.exec(l);
+    if (mUa) {
+      ua = mUa[1];
+      continue;
+    }
+    const mDis = /^disallow:\s*(\S*)/i.exec(l);
+    if (mDis && ua === "*" && mDis[1]) {
+      porHost.get(host).push(mDis[1]);
+    }
+  }
+  return porHost;
+}
+
+/**
+ * `true` si `path` cae bajo el patron `Disallow` de robots.txt. Soporta el comodin `*`
+ * y el ancla de fin `$` (extensiones de facto, presentes en el robots de
+ * `web-back.senado.cl`); sin ellos, es prefijo simple.
+ */
+export function pathProhibido(path, patron) {
+  const anclado = patron.endsWith("$");
+  const cuerpo = anclado ? patron.slice(0, -1) : patron;
+  const rx = cuerpo
+    .split("*")
+    .map((s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
+    .join(".*");
+  return new RegExp(`^${rx}${anclado ? "$" : ""}`).test(path);
+}
+
+/**
+ * Cruza el manifiesto con el artefacto de robots. Devuelve la lista de VIOLACIONES
+ * (`{ id, host, url, motivo }`). Vacia = se puede emitir.
+ *
+ * Dos motivos de bloqueo, ambos fail-closed:
+ *  · `host-sin-robots-consultado`: el host no aparece en el artefacto ⇒ nunca se
+ *    consulto su protocolo de exclusion. Se NIEGA (no se asume permiso).
+ *  · `disallow`: alguna directiva del grupo `*` cubre el path del caso.
+ */
+export function violacionesRobots(casos, textoArtefacto) {
+  const porHost = parsearRobots(textoArtefacto);
+  const violaciones = [];
+  for (const c of casos) {
+    const host = c.host.toLowerCase();
+    if (!porHost.has(host)) {
+      violaciones.push({ id: c.id, host: c.host, url: c.url, motivo: "host-sin-robots-consultado" });
+      continue;
+    }
+    let path;
+    try {
+      path = new URL(c.url).pathname;
+    } catch {
+      violaciones.push({ id: c.id, host: c.host, url: c.url, motivo: "url-no-parseable" });
+      continue;
+    }
+    for (const patron of porHost.get(host)) {
+      if (pathProhibido(path, patron)) {
+        violaciones.push({ id: c.id, host: c.host, url: c.url, motivo: `Disallow: ${patron}` });
+        break;
+      }
+    }
+  }
+  return violaciones;
+}
 
 // ── Clasificación PROPUESTA (el veredicto de fase lo confirma el Plan 02) ────────
 export const CLASES = ["OK", "REDIR-GENERICA", "XML-CRUDO", "WAF-403", "NO-DISPONIBLE", "RED"];
@@ -292,6 +398,23 @@ async function main(argv) {
     entradas = CASOS.filter((c) => (values.host ? c.host === values.host : true)).filter((c) =>
       values.id ? c.id === values.id : true,
     );
+
+    // WR-01: el gate NO es de existencia sino de CONTENIDO. Se parsean las directivas
+    // del artefacto y se niega TODO caso cuyo path caiga bajo un `Disallow` del grupo
+    // `User-agent: *` — o cuyo host ni siquiera figure en el artefacto. Antes de emitir
+    // un solo request.
+    const violaciones = violacionesRobots(entradas, readFileSync(ROBOTS_ARTEFACTO, "utf8"));
+    if (violaciones.length > 0) {
+      console.error(
+        `protocolo de exclusion: ${violaciones.length} caso(s) del manifiesto NO se pueden pedir.\n` +
+          violaciones
+            .map((v) => `  ${v.id}  ${v.host}  ${v.motivo}\n    ${v.url}`)
+            .join("\n") +
+          `\nRetira esos casos de CASOS (se validan por construccion) o corre \`--robots\` ` +
+          `para consultar el host. No se emitio ningun request.`,
+      );
+      return 1;
+    }
   }
 
   if (entradas.length === 0) {
