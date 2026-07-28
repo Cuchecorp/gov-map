@@ -125,4 +125,58 @@ acordaron. Esto es consistente con el Δ0.0000 del veredicto full-40.
 
 ## Gate 4 — Rollback-by-config probado (pre-flip)
 
-_(pendiente de ejecución en esta corrida)_
+**Precondición:** Gates 2 y 3 en `PASS` — cumplida. Este gate se corre **antes** del flip por
+diseño: la red de seguridad se prueba antes de necesitarla.
+
+**Comando (offline puro, sin `source .env`, sin ningún env-gate LIVE):**
+
+```
+pnpm --filter @obs/cruces exec vitest run src/shadow-eval.test.ts src/clasificar-fichas-cli.test.ts
+```
+
+**Hora:** 2026-07-28 16:29 (America/Santiago) — 2026-07-28T20:29:26Z
+**Exit code:** 0
+
+**Salida:**
+
+```
+ ✓ src/clasificar-fichas-cli.test.ts (5 tests) 6ms
+ ✓ src/shadow-eval.test.ts (5 tests | 1 skipped) 7ms
+
+ Test Files  2 passed (2)
+      Tests  9 passed | 1 skipped (10)
+```
+
+El único `skipped` es el bloque LIVE de shadow-eval (correcto y esperado en modo offline: sin
+`CLASIFICACION_SHADOW_LIVE=1` no debe correr). Ese bloque ya fue ejercido y aprobado en el Gate 3.
+
+**Ramas de `resolverProvider` cubiertas por aserción (`clasificar-fichas-cli.ts:202-245`):**
+
+1. **Sin `CLASIFICACION_ESCALERA`** → `DeepSeekProvider`, y explícitamente NO `TieredProvider`
+   → incumbente **byte-idéntico**. Es la rama del rollback.
+2. **`CLASIFICACION_ESCALERA=1` + keys válidas** → `TieredProvider` (escalera Granite→DeepSeek).
+3. **`CLASIFICACION_ESCALERA=1` con key vacía** → fallback a `DeepSeekProvider` (Pitfall 2),
+   verificado para `WORKERS_AI_API_TOKEN` vacío y para `CLOUDFLARE_ACCOUNT_ID` vacío.
+
+**Naturaleza del rollback (SC#3):** revertir la escalera es **quitar una línea de `.env`**
+(`CLASIFICACION_ESCALERA=1`). NO requiere migración de base de datos, NO requiere deploy, NO
+requiere cambio de código ni redeploy de Cloudflare — la clasificación corre como CLI local y el
+provider se resuelve en tiempo de ejecución desde el entorno. Además, la rama 3 garantiza que
+incluso con la variable encendida pero las keys ausentes/vacías el sistema degrada solo al
+incumbente en vez de fallar.
+
+**VEREDICTO: PASS**
+
+---
+
+## Veredicto de gates
+
+GATES 2-4 VERDES — EL FLIP PROCEDE (Plan 02)
+
+- Gate 1 (checkpoint operador keys Workers AI): CERRADO
+- Gate 2 (drift canary, modelo servido == `@cf/ibm-granite/granite-4.0-h-micro`): PASS
+- Gate 3 (shadow-eval LIVE, acuerdo 8/8 sobre los casos ficha del `GOLDEN_SET_GATE`): PASS
+- Gate 4 (rollback-by-config probado pre-flip, tres ramas aseveradas): PASS
+
+El veredicto full-40 (2026-07-27) permanece válido y las tres precondiciones del orden DURO
+(SC#1 shadow-eval documentada, SC#2 drift canary, SC#3 rollback probado) quedan evidenciadas.
