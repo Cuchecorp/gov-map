@@ -4,13 +4,13 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: executing
 stopped_at: Completed 115-01-PLAN.md
-last_updated: "2026-07-28T14:38:55.176Z"
+last_updated: "2026-07-28T14:52:39.142Z"
 last_activity: 2026-07-28
 progress:
   total_phases: 13
   completed_phases: 4
   total_plans: 20
-  completed_plans: 18
+  completed_plans: 19
   percent: 31
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 117 (FECHA-FIX — Etiquetas de fecha corregidas) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-28
 
@@ -141,6 +141,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 115 P03 | 35m | 3 tasks | 9 files |
 | Phase 116 P116-01 | 35m | 2 tasks | 1 files |
 | Phase 116 P04 | 2h | 3 tasks | 2 files |
+| Phase 117 P03 | 35m | 3 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -248,6 +249,8 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 115-03: los fixes de link externo NO se despliegan; viajan con la Phase 125 (SC3 cierra PASS con limitacion declarada)
 - [Phase ?]: 116-04: el fix de F-05 NO es aplicar timeZone America/Santiago — 45.618 filas de PROD son date-only disfrazadas de timestamptz
 - [Phase ?]: 116-04: el hallazgo de DIA de lobby_audiencia queda REFUTADO por PROD (drift 0/17.762)
+- [Phase ?]: 117-03: el rótulo de lobby se compone DENTRO del ternario de fechaTexto, nunca como prefijo en el JSX (el fallback textual viaja verbatim)
+- [Phase ?]: 117-03: lobby conserva fechaCorta (no fechaHechoCorta) — PROD refutó el drift de zona en lobby_audiencia.fecha (0/17.762)
 
 ### Pending Todos
 
@@ -308,7 +311,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-28T14:38:55.167Z
+Last session: 2026-07-28T14:52:23.446Z
 Stopped at: Completed 115-01-PLAN.md
 Resume file: None
 

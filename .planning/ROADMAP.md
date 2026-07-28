@@ -224,7 +224,7 @@ Plans:
 
 - [x] 117-01-PLAN.md — Capa: linter-first + formatters (F-10, helpers F-05/F-04) + chokepoint ProvenanceBadge (F-01, F-11)
 - [x] 117-02-PLAN.md — Carril proyecto: F-03, F-04, F-05, F-07, F-09, F-13
-- [ ] 117-03-PLAN.md — Carril parlamentario/lobby/cruces/MONEY: F-02, F-05, F-07, F-08
+- [x] 117-03-PLAN.md — Carril parlamentario/lobby/cruces/MONEY: F-02, F-05, F-07, F-08
 - [ ] 117-04-PLAN.md — Home (F-06, F-14) + /buscar (F-12) + F-11 documental + 117-DISPOSICION.md + verificacion global
 
 **UI hint**: yes
@@ -360,7 +360,7 @@ Plans:
 | 114. LINK-INT | 3/3 | Complete    | 2026-07-28 |
 | 115. LINK-EXT | 3/3 | Complete    | 2026-07-28 |
 | 116. FECHA-AUDIT | 4/4 | Complete    | 2026-07-28 |
-| 117. FECHA-FIX | 2/4 | In Progress|  |
+| 117. FECHA-FIX | 3/4 | In Progress|  |
 | 118. CRON-AUDIT | 0/? | Not started | - |
 | 119. CRON-FIX | 0/? | Not started | - |
 | 120. ESCALERA-ON | 0/? | Not started | - |
