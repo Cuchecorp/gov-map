@@ -498,3 +498,79 @@ Por conector tocado:
   de la corrida). Se registra como tal — **no** como validación humana. La lectura fría del operador
   sigue pendiente y su ausencia no invalida ninguna de las evidencias de arriba, que son
   re-ejecutables comando por comando.
+
+---
+
+## 12. Post-scriptum de la pasada de code-review (2026-07-28)
+
+Se agrega DESPUES del cierre, sin reescribir nada de arriba (mismo trato que 119 le dio a 118).
+La disposicion completa de los 20 hallazgos vive en `119-REVIEW.md`, seccion "Disposicion de los
+hallazgos". Aqui solo lo que **corrige o completa** lo declarado en este documento.
+
+### G1 (seccion 2) - la afirmacion era cierta en intencion, no en codigo
+
+La seccion 2 declara que el cursor avanza "con datos y SOLO con datos, la fecha maxima de las
+audiencias ingeridas, nunca el reloj". El review encontro que `ingest-run.ts` conservaba **dos
+escapes al reloj** que la contradecian:
+
+* `const fechaDato = f.fecha != null ? f.fecha.slice(0,10) : hasta;` - una audiencia con fecha no
+  parseable (el campo `fechaRaw` existe precisamente porque la fuente entrega fechas sucias)
+  marcaba `ingestado_hasta = HOY` sin un dato de esa fecha.
+* `for (const id of confirmados) if (!marcados.has(id)) marcados.set(id, hasta);` - el relleno
+  llevaba al corte de la corrida a todo confirmado sin fila fechada.
+
+Ambos eliminados en **`20f3b03`** (CR-02), con dos tests que los congelan. **La afirmacion de la
+seccion 2 pasa a ser literalmente verdadera.** Su conclusion no cambia: que `lobby-leylobby` siga
+`stale:true` sigue siendo el resultado CORRECTO, y por las mismas dos razones (estructural +
+defecto ya corregido).
+
+### G12-119 (seccion 3) - la consecuencia operativa que faltaba sacar
+
+La seccion 3 identifico que `marcarIngestado` vive en el writer **compartido** y que las 136 filas
+vigentes las escribio el conector de la **Camara**. Lo que no se saco de ahi es que **ese
+escritor marcaba con `fechaCaptura`, es decir con el reloj de la corrida**: `ingestado_hasta`
+afirmaba cobertura hasta hoy aunque el listado solo llegara a junio, y la guarda monotonica de
+`writer-supabase.ts` no lo podia frenar porque el reloj siempre avanza - el mecanismo nuevo lo
+sellaba en vez de detenerlo.
+
+Corregido en **`fd43906`** (CR-03): **los DOS escritores** del marcador derivan ahora la cobertura
+de la fecha de las audiencias. `fechaCaptura` queda como provenance de fila y particion de la key
+de R2.
+
+**`G12-119` NO se cierra con esto.** Su hallazgo es de *rotulo* (la senal `lobby-leylobby` mide
+cobertura de lobby por parlamentario, no frescura de leylobby) y sigue ABIERTO con sus dos
+opciones intactas. Lo que cambia es que la tabla que mide ya no la contamina el reloj.
+
+### G7 - `--from-r2` no estaba en los cinco conectores que la seccion 4 sugiere
+
+La seccion 4 registra G7 como **cerrado** con "`--from-r2` en agenda / probidad / lobby-camara con
+la firma dorada", y eso es exacto. Lo que no se noto es que el CLI de **lobby-leylobby**
+`parseaba` el flag y lo guardaba en `opts.fromR2` **sin usarlo nunca**: `main()` construia el
+conector real y corria LIVE. El operador que usaba el flag producia exactamente el fetch que
+queria evitar (regla LOCKED 2). Implementado en **`030bb61`** (CR-01) con la misma firma dorada.
+La tabla de la seccion 9 (`lobby-leylobby` / "via `--from-r2` del CLI de lobby") pasa a ser cierta.
+
+### D-PROB-119 y WR-03 - sin cambios, y por que
+
+* **D-PROB-119** (orden de etapas invertido en probidad) sigue abierto, no tocado.
+* El review levanto ademas que la key de R2 particionada por **fecha de corrida** hace inutil el
+  hash-check fuera del mismo dia en 4 de los 5 conectores (agenda es la excepcion: particiona por
+  semana ISO). Se registra como **limitacion aceptada**, no como gap: la fecha en la key es parte
+  del contrato LOCKED de `CLAUDE.md` (`fuente/recurso/fecha/sha256.ext`) y cambiarla es una
+  decision de arquitectura. Detalle y camino alternativo (HEAD por prefijo) en `119-REVIEW.md`.
+* **WR-02** (el skip de agenda apaga la senal que la propia agenda mide) queda **diferido con
+  pasos**, y con una correccion al diagnostico del review: la via "que la senal mida
+  `source_snapshot`" NO funciona, porque esa fila tampoco se escribe en el camino de skip.
+
+### Bateria de regimen re-corrida tras los fixes
+
+| Check | Resultado |
+|---|---|
+| Suite completa | **packages 1649 passed** (+11 skipped) - **app 1560 passed** - 0 fallos |
+| Typecheck (`tsc -b`) | **exit 0** |
+| `STRICT=1 check-crons.sh` de 118 | **`0 falta(s)`, exit 0** |
+| Inmutabilidad de 118 | `git diff` sobre `118-CRON-VERDICTS.md` sigue **vacio** |
+
+El delta de packages (1616 -> 1649) es todo tests nuevos que congelan los fixes: lobby 82 -> 106,
+freshness 76 -> 83, identity 119 -> 121. **El suite de `app` queda en 1560, sin tocar**: esta
+pasada, como la fase, es conectores + instrumento de frescura.
