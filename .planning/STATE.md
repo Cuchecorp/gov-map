@@ -4,7 +4,7 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: verifying
 stopped_at: Completed 115-01-PLAN.md
-last_updated: "2026-07-28T04:31:58.452Z"
+last_updated: "2026-07-28T05:02:53.414Z"
 last_activity: 2026-07-28
 progress:
   total_phases: 13
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 ## Current Position
 
-Phase: 115 (LINK-EXT — Patrones de link a fuente oficial) — EXECUTING
-Plan: 3 of 3
+Phase: 116
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-07-28
 
@@ -63,6 +63,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | 103 | 5 | - | - |
 | 104 | 3 | - | - |
 | 113 | 6 | - | - |
+| 115 | 3 | - | - |
 
 **Recent Trend:**
 

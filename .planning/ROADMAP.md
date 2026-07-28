@@ -338,7 +338,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 113. INV | 6/6 | Complete    | 2026-07-28 |
 | 114. LINK-INT | 3/3 | Complete    | 2026-07-28 |
-| 115. LINK-EXT | 3/3 | Complete   | 2026-07-28 |
+| 115. LINK-EXT | 3/3 | Complete    | 2026-07-28 |
 | 116. FECHA-AUDIT | 0/? | Not started | - |
 | 117. FECHA-FIX | 0/? | Not started | - |
 | 118. CRON-AUDIT | 0/? | Not started | - |
