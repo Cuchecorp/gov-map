@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { createServerSupabase } from "@/lib/supabase";
-import { fechaCorta, conteoVotacion } from "@/lib/format";
+import { fechaCorta, fechaHechoCorta, conteoVotacion } from "@/lib/format";
 import { safeExternalHref } from "@/lib/utils";
 import { urgenciaVigente } from "@/components/estado-actual-block";
 import { BentoTile } from "@/components/bento/bento-tile";
@@ -17,7 +17,13 @@ import type {
  * Migrados desde el módulo lineal (Phase 52/53) a tiles del BentoGrid:
  *   1. "Votado esta semana"          span-4 — barra cívica por cámara
  *   2. "Urgencias vigentes"          span-2 — chip pill del tipo
- *   3. "Última actualización de datos" span-6 — strip frescura (omitido si 0 items)
+ *   3. Strip de última consulta a las fuentes span-6 (omitido si 0 items)
+ *
+ * ESTADO (Phase 117, F-06): este componente está **HUÉRFANO** — la home lo tiene
+ * superseded por `panel-actualidad.tsx` (E-055 del inventario 113) y hoy no lo
+ * monta ninguna ruta. 117 corrige igualmente su copy de fechas porque el veredicto
+ * de la fase debe valer si alguien lo re-monta; su ELIMINACIÓN se DECLARA fuera de
+ * alcance (117-CONTEXT §Deferred Ideas) y queda para la fase que limpie huérfanos.
  *
  * ┌───────────────────────────────────────────────────────────────────────────┐
  * │ REGLAS DURAS (52-UI-SPEC §SC4 / §Anti-insinuación)                          │
@@ -199,8 +205,8 @@ export function VotadoEstaSemanaView({ items }: { items: VotadoItem[] }) {
                     )}
                     <p className="mt-1 font-mono text-xs text-muted-foreground">
                       {it.camara
-                        ? `${fechaCorta(it.fecha)} · ${camaraLabel(it.camara)}`
-                        : `Votación del ${fechaCorta(it.fecha)}`}
+                        ? `${fechaHechoCorta(it.fecha)} · ${camaraLabel(it.camara)}`
+                        : `Votación del ${fechaHechoCorta(it.fecha)}`}
                     </p>
                     {href ? (
                       <a
@@ -315,7 +321,7 @@ export function UrgenciasVigentesView({ items }: { items: UrgenciaItem[] }) {
                   )}
                 </h3>
                 <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                  desde {fechaCorta(it.desde)}
+                  desde {fechaHechoCorta(it.desde)}
                 </p>
                 <Link
                   href={`/proyecto/${it.boletin}`}
@@ -422,7 +428,12 @@ export async function UrgenciasVigentes() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// BLOQUE 3 — "Última actualización de datos" strip span-6
+// BLOQUE 3 — strip de última consulta a las fuentes, span-6
+//
+// F-06: el rótulo anterior afirmaba que el DATO se había actualizado; lo que la
+// columna leída mide es el reloj de NUESTRO scraping. El strip usa el idiom LOCKED
+// del chokepoint (`según fuente al {fecha}`) y `fechaCorta` —jamás `fechaHechoCorta`,
+// que en su rama de hora real convertiría a la zona de Chile y correría el día.
 // ════════════════════════════════════════════════════════════════════════════
 
 export interface FrescuraItem {
@@ -438,7 +449,7 @@ export function UltimaActualizacionView({ items }: { items: FrescuraItem[] }) {
     <BentoTile variant="default" span={6} asChild>
       <section className="py-[18px] px-6 flex items-center flex-wrap gap-y-2.5 gap-x-[22px]">
         <span className="text-[13px] font-semibold text-foreground mr-1.5">
-          Última actualización de datos
+          Última consulta a las fuentes
         </span>
         {items.map((it) => (
           <span key={it.fuente} className="inline-flex items-center gap-2">
@@ -447,11 +458,16 @@ export function UltimaActualizacionView({ items }: { items: FrescuraItem[] }) {
               aria-hidden="true"
             />
             <span className="text-[13px] text-muted-foreground">{it.fuente}</span>
-            <span className="font-mono text-[13px] text-foreground">
-              {fechaCorta(it.fecha)}
+            <span className="text-[13px] text-foreground">
+              según fuente al{" "}
+              <span className="font-mono">{fechaCorta(it.fecha)}</span>
             </span>
           </span>
         ))}
+        <p className="w-full text-[13px] text-muted-foreground">
+          Esta fecha indica cuándo consultamos cada fuente, no cuándo la fuente
+          publicó o modificó el dato.
+        </p>
       </section>
     </BentoTile>
   );
