@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 
-import { TileSenal, type SenalRow } from "./panel-actualidad";
+import { TileSenal, rotuloFecha, type SenalRow } from "./panel-actualidad";
 
 afterEach(cleanup);
 
@@ -187,5 +187,38 @@ describe("TileSenal — degradación honesta '(sin materia)'", () => {
     render(<TileSenal tipo="agrupacion_materia" filas={[fila]} span={2} />);
 
     expect(screen.getByText("Salud")).toBeInTheDocument();
+  });
+});
+
+// ── F-14 — la fecha del panel se rinde en es-CL, no como ISO crudo ─────────────
+describe("F-14 — rotuloFecha: es-CL para público general y prensa", () => {
+  it("señal agenda_* a medianoche UTC → '10-ago', jamás el ISO crudo", () => {
+    const rot = rotuloFecha("agenda_citacion", "2026-08-10T00:00:00Z");
+    expect(rot).toBe("10-ago");
+    expect(rot).not.toContain("2026-08-10");
+  });
+
+  it("señal agenda_* en el DOM: el tile muestra '10-ago' y no el ISO", () => {
+    render(
+      <TileSenal
+        tipo="agenda_citacion"
+        filas={[makeSenal({ tipo_senal: "agenda_citacion", fecha_max: "2026-08-10T00:00:00Z" })]}
+        span={4}
+      />,
+    );
+    const texto = document.body.textContent ?? "";
+    expect(texto).toContain("10-ago");
+    expect(texto).not.toContain("2026-08-10");
+  });
+
+  it("señal de otro tipo a medianoche UTC → el día sigue siendo el 10 (no se corre al 9)", () => {
+    const rot = rotuloFecha("velocity", "2026-08-10T00:00:00Z");
+    expect(rot).toContain("10");
+    expect(rot).toContain("ago");
+    expect(rot).not.toContain("09");
+  });
+
+  it("fecha_max NULL (agrupacion_materia) → null: la ausencia honesta no se rellena", () => {
+    expect(rotuloFecha("agrupacion_materia", null)).toBeNull();
   });
 });
