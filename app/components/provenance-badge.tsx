@@ -5,7 +5,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn, safeExternalHref } from "@/lib/utils";
-import { relativeTimeEs, esStale } from "@/lib/format";
+import { relativeTimeEs, esStale, fechaCorta } from "@/lib/format";
 import {
   LEYENDA_RECURSO_NO_HUMANO,
   esServicioDeDatos,
@@ -14,8 +14,18 @@ import {
 /**
  * ProvenanceBadge — frescura + fuente (UI-SPEC §4, TRAM-09).
  *
- * Cada dato mostrado lleva "Actualizado hace X · {fuente} — fuente oficial ↗".
- * Si el dato tiene más de 48h se marca en amber (no se oculta). Si no hay
+ * Cada dato mostrado lleva "según fuente al {fecha} · {fuente} — fuente oficial ↗"
+ * (o "recalculado por el Observatorio al {fecha}" cuando el reloj es un recálculo
+ * interno nuestro y no una observación de la fuente).
+ *
+ * F-01 / F-11 (117-01, `116-FECHAS-AUDIT.md`): antes el rótulo era la RECENCIA de
+ * nuestro scraping. Afirmaba que el DATO había cambiado hace X cuando lo único que ocurrió
+ * fue NUESTRA consulta a la fuente — sobre un proyecto sin movimiento desde 2023
+ * insinuaba actividad legislativa inexistente. La fecha de captura JAMÁS es el hecho.
+ * La señal de recencia no se pierde: baja al tooltip ("consultado hace X").
+ *
+ * Si el dato tiene más de 14 días (umbral por cadence de ingesta, `STALE_THRESHOLD_MS`
+ * en `lib/format.ts`) se marca en amber (no se oculta). Si no hay
  * procedencia, se muestra "fuente desconocida" SIN enlace — nunca se omite el
  * badge (UI-SPEC §6.3: su ausencia implicaría falsamente que el dato no tiene
  * fuente).
@@ -55,6 +65,29 @@ export interface ProvenanceBadgeProps {
    * horizontalmente no se desalinean (WR-05).
    */
   densidad?: "bloque" | "lista";
+  /**
+   * De QUIÉN es el reloj que marca `capturedAt` (F-02 de `116-FECHAS-AUDIT.md`).
+   *
+   * `"fuente"` (defecto) — `capturedAt` es cuándo consultamos a la fuente oficial ⇒
+   * "según fuente al {fecha}".
+   *
+   * `"recalculo"` — `capturedAt` es el reloj de un proceso NUESTRO, no una observación
+   * de la fuente. El caso que motivó la prop: `cruce_senal.fecha_captura` es el `now()`
+   * del FULL REBUILD diario de los cruces, así que TODAS las señales comparten timestamp
+   * y ninguna dice nada sobre cuándo la fuente publicó el hecho. Rotularlo "según fuente"
+   * sería tan impreciso como el viejo "Actualizado" ⇒ "recalculado por el Observatorio
+   * al {fecha}".
+   */
+  origenFecha?: "fuente" | "recalculo";
+  /**
+   * Califica la AGREGACIÓN cuando la fecha resume varias filas (F-03 de
+   * `116-FECHAS-AUDIT.md`). Un badge de sección declara típicamente el `MAX` de las
+   * fechas de N filas: sin la nota, el ciudadano no sabe de qué fila habla la fecha
+   * (p.ej. `notaAgregacion="evento más reciente"` ⇒ "según fuente al 14 may 2026
+   * (evento más reciente)"). Se renderiza verbatim entre paréntesis; el llamante es
+   * responsable de que describa un HECHO, no un juicio.
+   */
+  notaAgregacion?: string;
 }
 
 export function ProvenanceBadge({
@@ -62,6 +95,8 @@ export function ProvenanceBadge({
   sourceName,
   sourceUrl,
   densidad = "bloque",
+  origenFecha = "fuente",
+  notaAgregacion,
 }: ProvenanceBadgeProps) {
   const stale = capturedAt !== null && esStale(capturedAt);
   const displaySource = capturedAt === null ? "fuente desconocida" : sourceName;
@@ -87,7 +122,16 @@ export function ProvenanceBadge({
         aria-hidden="true"
       />
       {capturedAt !== null ? (
-        <span>Actualizado {relativeTimeEs(capturedAt)}</span>
+        // F-01: se rotula la FECHA (un hecho fechado y verificable), no la recencia de
+        // nuestro scraping. El prefijo declara DE QUIÉN es el reloj (F-02) y la nota
+        // opcional califica la agregación cuando la fecha resume N filas (F-03).
+        <span>
+          {origenFecha === "recalculo"
+            ? "recalculado por el Observatorio al "
+            : "según fuente al "}
+          {fechaCorta(capturedAt)}
+          {notaAgregacion !== undefined && ` (${notaAgregacion})`}
+        </span>
       ) : (
         <span>Sin fecha de actualización</span>
       )}
@@ -126,6 +170,11 @@ export function ProvenanceBadge({
         <TooltipContent>
           <div className="font-mono text-xs leading-relaxed">
             {capturedAt !== null && <div>{capturedAt.toISOString()}</div>}
+            {/* F-01: la recencia NO desaparece — deja de ser el rótulo principal y
+                pasa a ser lo que siempre fue: cuándo consultamos nosotros. */}
+            {capturedAt !== null && (
+              <div>consultado {relativeTimeEs(capturedAt)}</div>
+            )}
             {safeUrl !== null && <div>{safeUrl}</div>}
             {declarar && <div>{LEYENDA_RECURSO_NO_HUMANO}</div>}
           </div>
