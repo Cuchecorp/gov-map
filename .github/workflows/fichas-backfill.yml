@@ -78,8 +78,15 @@ jobs:
           LIMITE: ${{ github.event.inputs.limite }}
           REEMBED: ${{ github.event.inputs.reembed }}
           BOLETINES: ${{ github.event.inputs.boletines }}
+        # WR-10 (119-REVIEW): pasar los inputs por ENV evita interpolarlos en el YAML, pero la
+        # mitigación se ANULABA al re-expandirlos sin comillas (`$ARGS`): `boletines` quedaba
+        # sujeto a word-splitting y GLOBBING dentro de un step que exporta SUPABASE_SECRET_KEY,
+        # DEEPSEEK_API_KEY, GEMINI_API_KEY y las cuatro R2_*. Con un array y comillas, cada
+        # input viaja como UN argumento, sea cual sea su contenido.
         run: |
-          ARGS="--limite ${LIMITE:-50}"
-          if [ "$REEMBED" = "true" ]; then ARGS="$ARGS --reembed"; fi
-          if [ -n "$BOLETINES" ]; then ARGS="$ARGS --boletines $BOLETINES"; fi
-          pnpm --filter @obs/fichas exec tsx src/pipeline-cli.ts $ARGS
+          # `if` y no `[ ... ] && ...`: el AND-list devuelve 1 cuando la condición es falsa y
+          # GitHub corre los steps con `bash -e`, así que un `--reembed` ausente abortaría el job.
+          ARGS=(--limite "${LIMITE:-50}")
+          if [ "$REEMBED" = "true" ]; then ARGS+=(--reembed); fi
+          if [ -n "$BOLETINES" ]; then ARGS+=(--boletines "$BOLETINES"); fi
+          pnpm --filter @obs/fichas exec tsx src/pipeline-cli.ts "${ARGS[@]}"

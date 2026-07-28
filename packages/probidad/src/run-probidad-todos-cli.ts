@@ -114,8 +114,21 @@ function cargarMaestra(root: string): Parlamentario[] {
 async function main(): Promise<void> {
   const root = findWorkspaceRoot(process.cwd());
   const dryRun = process.argv.includes("--dry-run");
+  // WR-11 (119-REVIEW): sólo se filtraba NaN. `--limit 0` pasaba `limite: 0` ⇒ `slice(0,0)` ⇒
+  // CERO parlamentarios consultados y `[ok] consultados=0` con exit 0; `--limit -5` ⇒
+  // `slice(0,-5)`, que descarta los últimos 5 SIN DECIRLO. Una corrida que no consultó a nadie se
+  // veía igual que una sana. Fail-loud antes de tocar red/DB.
   const limitRaw = flagValue("--limit");
-  const limite = limitRaw != null ? Number.parseInt(limitRaw, 10) : undefined;
+  let limite: number | undefined;
+  if (limitRaw != null) {
+    limite = Number(limitRaw);
+    if (!Number.isInteger(limite) || limite <= 0) {
+      throw new Error(
+        `--limit inválido: ${limitRaw} (esperado un entero > 0; 0 o negativo recortarían la ` +
+          `corrida en silencio)`,
+      );
+    }
+  }
   const env = loadEnv(root);
   const log = (m: string) => console.log(m);
 
@@ -208,7 +221,7 @@ async function main(): Promise<void> {
     conector,
     writer,
     maestra,
-    ...(limite != null && !Number.isNaN(limite) ? { limite } : {}),
+    ...(limite != null ? { limite } : {}),
     ...(r2Store ? { r2Store } : {}),
     ...(snapshotWriter ? { snapshotWriter } : {}),
     log,
