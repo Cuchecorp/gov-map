@@ -191,7 +191,13 @@ Plans:
   3. Las fechas date-only del Congreso (p.ej. `citacion.fecha`, medianoche UTC = día chileno) quedan verificadas contra el gotcha LOCKED: no se convierten de zona horaria
   4. El veredicto está cruzado contra el dato real en PROD (un sujeto concreto por superficie), no solo contra el código
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 116-01-PLAN.md — Base compartida: semántica por formatter + chokepoint ProvenanceBadge
+- [ ] 116-02-PLAN.md — Veredicto grupo A: carril parlamentario, /comparar, /cuenta, gate MONEY
+- [ ] 116-03-PLAN.md — Veredicto grupo B: /proyecto, /agenda, home, /buscar + auditoría date-only
+- [ ] 116-04-PLAN.md — Cruce PROD + ensamblado 116-FECHAS-AUDIT.md + hallazgos F-xx + check-fechas.sh
 
 ### Phase 117: FECHA-FIX — Etiquetas de fecha corregidas
 
