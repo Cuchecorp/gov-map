@@ -19,7 +19,12 @@ import { sourceLabel } from "@/lib/types";
  * ResultadoBadge, ProvenanceBadge, y para el Senado el VotoDetalle expandible.
  */
 export function VotacionCard({ votacion }: { votacion: VotacionRow }) {
-  const fecha = votacion.fecha ? new Date(votacion.fecha) : null;
+  // CR-02: comprobar el `Date`, no la truthiness del RAW. Un `votacion.fecha`
+  // malformado producía `new Date(NaN)` y —antes del guard del helper— reventaba
+  // el Server Component completo de la ficha. Fecha impresentable ⇒ se OMITE el
+  // rótulo (omisión honesta), nunca se rinde "fecha no informada" ni "Invalid Date".
+  const fechaRaw = votacion.fecha ? new Date(votacion.fecha) : null;
+  const fecha = fechaRaw && !Number.isNaN(fechaRaw.getTime()) ? fechaRaw : null;
   const capturedAt = votacion.fecha_captura
     ? new Date(votacion.fecha_captura)
     : null;

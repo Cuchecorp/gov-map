@@ -126,6 +126,18 @@ describe("fechaHechoCorta (F-05, ramifica por presencia de hora)", () => {
   it("hora REAL de tarde → mismo día en Chile y en UTC", () => {
     expect(fechaHechoCorta(new Date("2026-07-20T15:00:00Z"))).toBe("20 jul 2026");
   });
+
+  // CR-02: el guard vive en el HELPER, no en la suerte del call-site.
+  it("Date inválido → fallback honesto, NO lanza RangeError (guard del chokepoint)", () => {
+    expect(() => fechaHechoCorta(new Date("basura"))).not.toThrow();
+    expect(fechaHechoCorta(new Date("basura"))).toBe("fecha no informada");
+    expect(fechaHechoCorta(new Date(NaN))).toBe("fecha no informada");
+  });
+
+  it("Date inválido con fallback propio → ese fallback, nunca 'Invalid Date'", () => {
+    expect(fechaHechoCorta(new Date(NaN), "sin fecha")).toBe("sin fecha");
+    expect(fechaHechoCorta(new Date(NaN), "")).toBe("");
+  });
 });
 
 describe("fechaHechoCortaSegura (guard anti-500 sin slice destructivo)", () => {

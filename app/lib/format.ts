@@ -72,8 +72,17 @@ export function fechaCorta(d: Date): string {
  * heurística tiene un falso positivo estructural: un hecho que ocurrió realmente a las
  * 00:00:00.000 UTC (21:00 del día anterior en Chile) se tratará como date-only. Es un
  * caso raro y el error resultante es el statu quo actual, no una regresión.
+ *
+ * CR-02 (117-REVIEW): guard `NaN` en el CHOKEPOINT. Con `new Date(NaN)` los
+ * `getUTC*()` devuelven `NaN` ⇒ `sinHora === false` ⇒ se ejecutaba
+ * `Intl.DateTimeFormat.prototype.format`, que LANZA `RangeError: Invalid time value`
+ * y revienta el Server Component completo de la ficha (500). Era la única de las
+ * tres helpers nuevas sin guard; que `timeline-event` no cayera era accidente de un
+ * call-site que filtraba con `fechaPlausible` antes. Ahora degrada al mismo copy
+ * honesto de `fechaHechoCortaSegura` / `fechaCortaSegura`, NUNCA "Invalid Date".
  */
-export function fechaHechoCorta(d: Date): string {
+export function fechaHechoCorta(d: Date, fallback = "fecha no informada"): string {
+  if (Number.isNaN(d.getTime())) return fallback;
   const sinHora =
     d.getUTCHours() === 0 &&
     d.getUTCMinutes() === 0 &&
@@ -101,7 +110,8 @@ export function fechaHechoCortaSegura(
   const s = (raw ?? "").trim();
   if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(s)) return fallback;
   const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? fallback : fechaHechoCorta(d);
+  // El `fallback` se propaga al helper: un único copy de degradación por call-site.
+  return Number.isNaN(d.getTime()) ? fallback : fechaHechoCorta(d, fallback);
 }
 
 /**
