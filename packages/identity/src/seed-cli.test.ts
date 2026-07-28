@@ -7,6 +7,7 @@ import {
   readEstadoSnapshot,
   firmaIdentidad,
   buildR2Target,
+  buildSnapshotWriter,
   main,
 } from "./seed-cli";
 import type { Parlamentario } from "@obs/core";
@@ -159,6 +160,9 @@ describe("main — G6: existed:true ⇒ skip de la carga, no del snapshot", () =
           existed == null
             ? null
             : { put: async () => ({ r2Path: "identity/parlamentario-seed/x/y.json", existed }) },
+        // G5: sin writer inyectado, `main` construiría uno real contra el Supabase local.
+        // Estos casos son de G6 → se apaga explícitamente.
+        snapshotWriter: null,
       },
     };
   }
@@ -197,5 +201,121 @@ describe("main — G6: existed:true ⇒ skip de la carga, no del snapshot", () =
     expect(res.dbLoaded).toBe(true);
     expect(res.r2Ok).toBe(false);
     expect(d.logs.some((l) => l.includes("[skip] sin novedades"))).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G5 (119-04): provenance en `source_snapshot`. Gateado por credenciales Supabase:
+// en GitHub Actions (backup-parlamentario.yml mapea SOLO los R2_*) queda apagado, y
+// eso se DICE en el log en vez de fingirse.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("main — G5: SnapshotWriter (source_snapshot)", () => {
+  const MAESTRA = [
+    {
+      id: "S1",
+      camara: "senado",
+      periodo: "senado-vigente-2026",
+      nombre_normalizado: "araya pedro",
+      estado: "no_confirmado",
+    },
+  ] as unknown as Parlamentario[];
+
+  function opts(extra: Record<string, unknown>, logs: string[]) {
+    return {
+      cwd: tmpdir(),
+      serviceKey: "fake-service-key",
+      log: (m: string) => logs.push(m),
+      seeder: async () => MAESTRA.map((r) => ({ ...r })),
+      dbWriter: {
+        upsert: async () => {},
+        promoteToConfirmado: async () => ({ promovidos: 0 }),
+      },
+      fileWriter: { write: async () => {} },
+      r2Target: {
+        put: async () => ({ r2Path: "identity/parlamentario-seed/2026-07-28/abc.json", existed: false }),
+      },
+      ...extra,
+    };
+  }
+
+  it("buildSnapshotWriter devuelve null sin credenciales (CI de backup-parlamentario)", () => {
+    expect(buildSnapshotWriter("", "")).toBeNull();
+    expect(buildSnapshotWriter("http://x", "")).toBeNull();
+    expect(buildSnapshotWriter("", "k")).toBeNull();
+  });
+
+  it("sin credenciales Supabase: writer undefined, corrida OK y el log declara que NO hay snapshot", async () => {
+    const logs: string[] = [];
+    const res = await main(opts({ snapshotWriter: null }, logs) as never);
+    expect(res.r2Ok).toBe(true);
+    expect(logs.some((l) => l.includes("NO se registra fila en source_snapshot"))).toBe(true);
+    // Ningún log fantasma de escritura.
+    expect(logs.some((l) => l.includes("fila source_snapshot escrita"))).toBe(false);
+  });
+
+  it("con stub: `write` se invoca una vez con los 4 campos no vacíos", async () => {
+    const logs: string[] = [];
+    const escrituras: Record<string, unknown>[] = [];
+    await main(
+      opts(
+        {
+          snapshotWriter: {
+            write: async (w: Record<string, unknown>) => {
+              escrituras.push(w);
+              return { r2Path: String(w.r2Path), contentHash: String(w.contentHash) };
+            },
+          },
+        },
+        logs,
+      ) as never,
+    );
+    expect(escrituras).toHaveLength(1);
+    const w = escrituras[0]!;
+    expect(w.source).toBe("identity");
+    expect(w.resource).toBe("parlamentario-seed");
+    expect(String(w.r2Path)).not.toBe("");
+    expect(String(w.contentHash)).toMatch(/^[0-9a-f]{64}$/);
+    expect(String(w.cacheKey)).toMatch(/^identity:parlamentario-seed:\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("existed:true ⇒ CERO escrituras (nunca una fila sin objeto recién creado)", async () => {
+    const logs: string[] = [];
+    const escrituras: unknown[] = [];
+    await main(
+      opts(
+        {
+          r2Target: {
+            put: async () => ({ r2Path: "identity/parlamentario-seed/x/y.json", existed: true }),
+          },
+          snapshotWriter: {
+            write: async (w: unknown) => {
+              escrituras.push(w);
+              return { r2Path: "x", contentHash: "y" };
+            },
+          },
+        },
+        logs,
+      ) as never,
+    );
+    expect(escrituras).toHaveLength(0);
+  });
+
+  it("best-effort: si `write` lanza, la corrida termina OK (r2Ok true, snapshot escrito)", async () => {
+    const logs: string[] = [];
+    const res = await main(
+      opts(
+        {
+          snapshotWriter: {
+            write: async () => {
+              throw new Error("source_snapshot caído");
+            },
+          },
+        },
+        logs,
+      ) as never,
+    );
+    expect(res.r2Ok).toBe(true);
+    expect(res.total).toBe(1);
+    expect(logs.some((l) => l.includes("source_snapshot falló (no fatal)"))).toBe(true);
   });
 });

@@ -22,13 +22,19 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { createClient } from "@supabase/supabase-js";
 import {
   Fetcher,
   HostRateLimiter,
   RobotsGuard,
   R2Store,
   sha256Hex,
+  SnapshotWriter,
+  SupabaseSnapshotStore,
+  type CreateSupabaseClient,
 } from "@obs/ingest";
+import { makeProvenance } from "@obs/core";
+import { SENADO_URL } from "./parse-senado";
 import {
   runSeeder,
   upsertMaestra,
@@ -176,6 +182,11 @@ export interface SeedCliOptions {
   fileWriter?: SeedFileWriter;
   /** Reemplaza `buildR2Target()` (null = sin credenciales R2 ⇒ no-op explícito). */
   r2Target?: R2BackupTarget | null;
+  /**
+   * Reemplaza el `SnapshotWriter` construido desde credenciales Supabase (null = sin
+   * credenciales ⇒ no se registra provenance, y se dice).
+   */
+  snapshotWriter?: Pick<SnapshotWriter, "write"> | null;
 }
 
 export interface SeedCliResult {
@@ -215,6 +226,33 @@ export function buildR2Target(): R2BackupTarget | null {
       return store.putImmutable("identity", "parlamentario-seed", date, sha, "json", body);
     },
   };
+}
+
+/**
+ * Adapta el `createClient` de supabase-js a la factory estructural de `SupabaseSnapshotStore`
+ * (espejo de `run-tramitacion-prod-cli.ts:49-50`). @obs/identity ya declara `@supabase/supabase-js`.
+ */
+const createSupabaseClient: CreateSupabaseClient = (url, serviceKey) =>
+  createClient(url, serviceKey) as unknown as ReturnType<CreateSupabaseClient>;
+
+/**
+ * G5 — `SnapshotWriter` sobre `SupabaseSnapshotStore`, gateado por PRESENCIA de credenciales
+ * Supabase (plantilla dorada `run-tramitacion-prod-cli.ts:215-224`).
+ *
+ * HONESTIDAD REQUERIDA: en la corrida de GitHub Actions de `backup-parlamentario.yml` NO hay
+ * service key — el propio YAML (L38-42) mapea SOLO los cuatro `R2_*`. Allí este writer queda
+ * `undefined` y la corrida NO registra fila en `source_snapshot`. Es correcto y deliberado: no
+ * se fabrica una credencial ni se asume que el cron cubrirá el registro. La ruta que SÍ escribe
+ * provenance es la corrida LOCAL del operador, con el `.env` completo.
+ */
+export function buildSnapshotWriter(
+  url: string,
+  serviceKey: string,
+): Pick<SnapshotWriter, "write"> | null {
+  if (!url || !serviceKey) return null;
+  return new SnapshotWriter(
+    new SupabaseSnapshotStore({ url, serviceKey, createClient: createSupabaseClient }),
+  );
 }
 
 /**
@@ -264,17 +302,56 @@ export async function main(opts: SeedCliOptions = {}): Promise<SeedCliResult> {
   if (opts.r2 && r2Target == null) {
     log("seed: --r2 pedido pero sin credenciales R2 completas -> R2 OMITIDO (no-op, WR-02)");
   }
+  const snapshotWriter =
+    opts.snapshotWriter !== undefined
+      ? opts.snapshotWriter
+      : buildSnapshotWriter(localUrl, serviceKey);
+  if (r2Target != null && snapshotWriter == null) {
+    log(
+      "seed: sin credenciales Supabase -> NO se registra fila en source_snapshot " +
+        "(esperado en GitHub Actions: backup-parlamentario.yml mapea solo los R2_*)",
+    );
+  }
   let r2Ok = false;
   let sinNovedades = false;
   if (r2Target != null) {
     try {
-      const { r2Path, existed } = await r2Target.put(serializeMaestra(maestra));
+      const crudo = serializeMaestra(maestra);
+      const { r2Path, existed } = await r2Target.put(crudo);
       r2Ok = true; // 412 = éxito idempotente: el objeto ESTÁ en R2.
       if (existed) {
         sinNovedades = true;
         log(`[skip] sin novedades — identity parlamentario-seed (${r2Path})`);
       } else {
         log(`seed: crudo de la maestra en R2 -> ${r2Path}`);
+        // G5: la fila de provenance va SOLO tras un put con existed:false — jamás se
+        // registra un snapshot cuyo objeto no se acabe de escribir (T-119-12).
+        // BEST-EFFORT: un fallo del registro no aborta la siembra ni el snapshot git.
+        if (snapshotWriter != null) {
+          const fecha = new Date().toISOString().slice(0, 10);
+          try {
+            const sha = await sha256Hex(new TextEncoder().encode(crudo));
+            await snapshotWriter.write({
+              source: "identity",
+              resource: "parlamentario-seed",
+              cacheKey: `identity:parlamentario-seed:${fecha}`,
+              r2Path,
+              contentHash: sha,
+              fingerprint: sha,
+              dateBucket: fecha,
+              // `sourceUrl` es un solo campo y el crudo AGREGA dos catálogos (Senado XML +
+              // Cámara asmx): se registra el del Senado como enlace representativo. El
+              // detalle por catálogo vive en el propio objeto R2, no se infiere de acá.
+              provenance: makeProvenance("identity", SENADO_URL),
+            });
+            log(`seed: fila source_snapshot escrita (r2_path=${r2Path})`);
+          } catch (snapErr) {
+            log(
+              `seed: source_snapshot falló (no fatal): ` +
+                `${snapErr instanceof Error ? snapErr.message : String(snapErr)}`,
+            );
+          }
+        }
       }
     } catch (err) {
       log(
