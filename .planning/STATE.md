@@ -4,13 +4,13 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: executing
 stopped_at: Completed 115-01-PLAN.md
-last_updated: "2026-07-28T14:14:11.398Z"
-last_activity: 2026-07-28 -- Phase 117 planning complete
+last_updated: "2026-07-28T14:27:22.695Z"
+last_activity: 2026-07-28
 progress:
   total_phases: 13
   completed_phases: 4
   total_plans: 20
-  completed_plans: 16
+  completed_plans: 17
   percent: 31
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 116 — FECHA-AUDIT — Semántica de cada fecha visible
+**Current focus:** Phase 117 — FECHA-FIX — Etiquetas de fecha corregidas
 
 ## Current Position
 
-Phase: 117
-Plan: Not started
+Phase: 117 (FECHA-FIX — Etiquetas de fecha corregidas) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-28 -- Phase 117 planning complete
+Last activity: 2026-07-28
 
 ### Roadmap v12.0 (Phases 113-125)
 
@@ -308,7 +308,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-28T13:38:09.617Z
+Last session: 2026-07-28T14:27:22.687Z
 Stopped at: Completed 115-01-PLAN.md
 Resume file: None
 

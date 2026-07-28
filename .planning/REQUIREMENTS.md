@@ -15,7 +15,7 @@
 ### Fechas
 
 - [x] **FECHA-01**: Cada fecha visible en cada superficie queda auditada semánticamente (fecha del hecho vs fecha de captura) — `fecha_captura` jamás presentada como el hecho
-- [ ] **FECHA-02**: Toda etiqueta de fecha incorrecta o ambigua queda corregida ("según fuente al…" donde corresponda)
+- [x] **FECHA-02**: Toda etiqueta de fecha incorrecta o ambigua queda corregida ("según fuente al…" donde corresponda)
 
 ### Crons
 
@@ -62,7 +62,7 @@ Mapeado por el roadmap v12.0 (Phases 113-125). Coverage 13/13 — cero huérfano
 | LINK-02 | Phase 114 — LINK-INT links internos exhaustivos | Complete |
 | LINK-03 | Phase 115 — LINK-EXT patrones de link a fuente oficial | Complete |
 | FECHA-01 | Phase 116 — FECHA-AUDIT semántica de cada fecha visible | Complete |
-| FECHA-02 | Phase 117 — FECHA-FIX etiquetas de fecha corregidas | Pending |
+| FECHA-02 | Phase 117 — FECHA-FIX etiquetas de fecha corregidas | Complete |
 | CRON-01 | Phase 118 — CRON-AUDIT veredicto por cron con evidencia | Pending |
 | CRON-02 | Phase 119 — CRON-FIX robustez de ingesta | Pending |
 | CRON-03 | Phase 120 — ESCALERA-ON flip `CLASIFICACION_ESCALERA=1` | Pending |
