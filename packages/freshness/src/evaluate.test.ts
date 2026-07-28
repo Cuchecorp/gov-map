@@ -134,7 +134,9 @@ describe("staleness de ChileCompra (MONEY-01)", () => {
     expect(cfg!.columna).toBe("ingestado_hasta");
     expect(cfg!.umbralDias).toBe(30);
     expect(cfg!.overrideEnv).toBe("FRESHNESS_UMBRAL_CHILECOMPRA");
-    expect(cfg!.workflowYml).toBe("chilecompra-weekly.yml");
+    // G2 (119-01): ANTES apuntaba a "chilecompra-weekly.yml", archivo que NO existe → un
+    // HTTP 404 en stderr por corrida. Ahora la ausencia se DECLARA con null (el .yml NO se crea).
+    expect(cfg!.workflowYml).toBeNull();
   });
 
   it("stale-null: ingestado_hasta null (nunca barrido, estado HOY) → stale (desconocido = stale, fail-closed)", () => {
@@ -183,8 +185,10 @@ describe("staleness de SERVEL (MONEY-02)", () => {
     expect(cfg!.columna).toBe("ingestado_hasta");
     expect(cfg!.umbralDias).toBe(365);
     expect(cfg!.overrideEnv).toBe("FRESHNESS_UMBRAL_SERVEL");
-    // servel-weekly.yml NO existe (LOCAL sin cron) — la señal GH figura "n/d" (honesto).
-    expect(cfg!.workflowYml).toBe("servel-weekly.yml");
+    // servel-weekly.yml NO existe (LOCAL sin cron). G2 (119-01): la ausencia se DECLARA con
+    // null (antes apuntaba al .yml inexistente → HTTP 404); la señal GH figura
+    // "n/d (sin workflow)" (honesto). El .yml NO se crea.
+    expect(cfg!.workflowYml).toBeNull();
   });
 
   it("stale-null: ingestado_hasta null (nunca barrido, estado HOY) → stale (desconocido = stale, fail-closed)", () => {
@@ -535,5 +539,49 @@ describe("evaluateCobertura de RUT DV-válido (RUT-01)", () => {
     for (const r of [...parl, ...ent]) {
       expect(r.pct).toBeNull(); // M=0 → sin universo, no 0%
     }
+  });
+});
+
+describe("G2 (119-01): workflowYml null = ausencia DECLARADA de workflow", () => {
+  // 118 §4 G2: `chilecompra-weekly.yml` y `servel-weekly.yml` NO existen y NO deben crearse
+  // (crear un .yml vacío para callar el 404 = fabricar cobertura de señal). La ausencia se
+  // DECLARA con `workflowYml: null`; el cliente omite `gh run list` y la señal figura
+  // "n/d (sin workflow)". La fila sigue reportando stale:true por `ingestado_hasta` null
+  // (118 §4.1, estado esperado de MONEY/SERVEL gated) — este cambio NO la pone verde.
+  it("servel declara workflowYml null y sigue stale:true con ingestado_hasta null", () => {
+    expect(CATALOG.find((c) => c.fuente === "servel")!.workflowYml).toBeNull();
+
+    const catalog = CATALOG.filter((c) => c.fuente === "servel");
+    const rows: QueryRow[] = [
+      {
+        fuente: "servel",
+        ultimoUpsert: null, // ingestado_hasta null = nunca barrido
+        ghRun: "n/d (sin workflow)",
+        r2Snapshot: "n/d (sin snapshots)",
+      },
+    ];
+    const results = evaluate(rows, catalog, NOW);
+    expect(results[0]!.stale).toBe(true);
+    expect(results[0]!.ghRun).toBe("n/d (sin workflow)");
+  });
+
+  it("chilecompra declara workflowYml null y sigue stale:true con ingestado_hasta null", () => {
+    expect(CATALOG.find((c) => c.fuente === "chilecompra")!.workflowYml).toBeNull();
+
+    const catalog = CATALOG.filter((c) => c.fuente === "chilecompra");
+    const rows: QueryRow[] = [
+      {
+        fuente: "chilecompra",
+        ultimoUpsert: null,
+        ghRun: "n/d (sin workflow)",
+        r2Snapshot: "n/d (sin snapshots)",
+      },
+    ];
+    expect(evaluate(rows, catalog, NOW)[0]!.stale).toBe(true);
+  });
+
+  it("exactamente 2 fuentes con workflowYml null; el resto declara su .yml", () => {
+    const nulls = CATALOG.filter((c) => c.workflowYml === null).map((c) => c.fuente);
+    expect(nulls.sort()).toEqual(["chilecompra", "servel"]);
   });
 });

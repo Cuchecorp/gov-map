@@ -140,8 +140,17 @@ export async function queryFreshness(dbUrl: string): Promise<QueryRow[]> {
     const ultimoUpsert =
       !raw || raw === "" || raw.toLowerCase() === "null" ? null : raw;
 
-    // (b) GH Actions signal
-    const ghRun = ghRunSignal(cfg.workflowYml);
+    // (b) GH Actions signal. G2 (119-01): `workflowYml === null` = ausencia DECLARADA de
+    // workflow (MONEY/SERVEL gated) → NO se invoca `gh run list` (antes producía un HTTP 404
+    // en stderr por cada corrida) y la señal es la cadena propia "n/d (sin workflow)".
+    // Las tres degradaciones son DISTINTAS y honestas, no se colapsan:
+    //   "n/d (sin workflow)" → no hay workflow por decisión (no es avería)
+    //   "n/d (sin corridas)" → el workflow existe pero nunca corrió (SÍ es avería)
+    //   "n/d"                → la llamada a `gh` falló (falla del instrumento, no del cron)
+    const ghRun =
+      cfg.workflowYml === null
+        ? "n/d (sin workflow)"
+        : ghRunSignal(cfg.workflowYml);
 
     // (c) R2 snapshot signal via source_snapshot
     const r2Snapshot = r2SnapshotSignal(dbUrl, cfg.fuente);

@@ -23,6 +23,11 @@
  *   Formato: FRESHNESS_UMBRAL_<FUENTE_UPPERCASE_GUIONES_A_UNDERSCORE>
  *
  * workflowYml: nombre del archivo .yml en .github/workflows/ (señal GH Actions).
+ *   `null` significa: esta fuente NO tiene workflow de GH Actions POR DECISIÓN DECLARADA
+ *   (gating legal MONEY/SERVEL, ingesta local por diseño) — NO "aún no lo escribimos".
+ *   Cuando es null el cliente OMITE la llamada a `gh run list` y la señal figura
+ *   "n/d (sin workflow)". Crear un .yml vacío para callar el 404 sería FABRICAR COBERTURA
+ *   de señal: prohibido (G2 de 118-CRON-VERDICTS.md §4, opción (a)).
  */
 
 export interface FuenteConfig {
@@ -31,7 +36,8 @@ export interface FuenteConfig {
   columna: string;
   umbralDias: number;
   overrideEnv: string;
-  workflowYml: string;
+  /** Archivo .yml en .github/workflows/, o `null` = sin workflow por decisión declarada. */
+  workflowYml: string | null;
   /**
    * Agregado SQL de la señal de último upsert. Default MAX (última ingesta) — TODAS las
    * fuentes v6.0 lo OMITEN → conservan MAX sin cambio. Solo `leyes-min-edad` usa "MIN"
@@ -303,6 +309,9 @@ export const CATALOG: FuenteConfig[] = [
     // umbral 30d: la fuente OCDS/Mercado Público se refresca mensual (día ~20); >30d = stale honesto.
     // workflowYml "chilecompra-weekly.yml" AÚN NO existe (el flip MONEY vive en Phase 73) → la señal
     // de GH Actions figura "n/d" hasta entonces: comportamiento honesto, NO un error.
+    // G2 (119-01): el campo `workflowYml` va en nulo para DECLARAR esa ausencia en vez de
+    // apuntar a un archivo inexistente (que producía un HTTP 404 en stderr en cada corrida).
+    // El .yml NO se crea.
     // HONESTIDAD (MONEY-01): sin crawl LIVE corrido, `ingestado_hasta` es null HOY → la señal reporta
     // stale (desconocido = stale, fail-closed), reflejando cobertura ≈ 0, no un fresco fingido.
     fuente: "chilecompra",
@@ -310,7 +319,7 @@ export const CATALOG: FuenteConfig[] = [
     columna: "ingestado_hasta",
     umbralDias: 30,
     overrideEnv: "FRESHNESS_UMBRAL_CHILECOMPRA",
-    workflowYml: "chilecompra-weekly.yml",
+    workflowYml: null,
   },
   {
     // SERVEL (MONEY-02) — staleness del barrido de aportes de campaña por parlamentario.
@@ -324,6 +333,8 @@ export const CATALOG: FuenteConfig[] = [
     // LOCAL POR DISEÑO (DEBT-01): SERVEL no publica una API amable — el operador descarga el `.xlsx`
     // a mano y lo coloca en R2 (run-servel-local-cli). NO hay cron ni GH Actions → `servel-weekly.yml`
     // NO existe ni debe crearse → la señal de GH Actions figura "n/d" (honesto, NO un error).
+    // G2 (119-01): el campo `workflowYml` va en nulo para DECLARAR esa ausencia (antes
+    // apuntaba a un archivo inexistente → HTTP 404 en stderr en cada corrida). El .yml NO se crea.
     //
     // umbral 365d GENEROSO: los ciclos electorales son bianuales/cuatrienales; un barrido con >365d
     // sigue siendo el corte vigente hasta la próxima elección. Override por `FRESHNESS_UMBRAL_SERVEL`.
@@ -334,6 +345,6 @@ export const CATALOG: FuenteConfig[] = [
     columna: "ingestado_hasta",
     umbralDias: 365,
     overrideEnv: "FRESHNESS_UMBRAL_SERVEL",
-    workflowYml: "servel-weekly.yml",
+    workflowYml: null,
   },
 ];
