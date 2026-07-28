@@ -15,6 +15,7 @@ import {
   COBERTURA_RUT_PARLAMENTARIO_SENALES,
   COBERTURA_RUT_ENTIDAD_SENALES,
   PGCRON_JOBS,
+  GH_EN_CURSO,
 } from "./catalog.js";
 import type { PgCronJobConfig } from "./catalog.js";
 import type { CoberturaCount, PgCronRow, QueryRow } from "./query-runner.js";
@@ -912,5 +913,33 @@ describe("G12-119 (119-07): la atribución de lobby-leylobby está declarada, no
     const entrada = CATALOG.find((c) => c.fuente === "lobby-leylobby");
     expect(entrada?.tabla).toBe("lobby_ingesta_estado");
     expect(entrada?.columna).toBe("ingestado_hasta");
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// WR-07 (119-REVIEW) — `gh run list --json conclusion` devuelve "" (o null) para un run
+// `in_progress`. `ghRunSignal` producía " @ <fecha>" y `ghRunEsAveria` leía conclusion="" ⇒ ni
+// success ni skipped ⇒ true ⇒ `stale (gh-failure)` MIENTRAS el cron corría con normalidad.
+// ---------------------------------------------------------------------------------------------
+describe("WR-07 — un workflow EN CURSO no es una avería", () => {
+  it("el rótulo `en curso` NO se afirma como avería", () => {
+    expect(ghRunEsAveria(`${GH_EN_CURSO} @ 2026-07-28`)).toBe(false);
+  });
+
+  it("una conclusion vacía (run sin concluir) tampoco (defensa por si el rótulo no se aplicó)", () => {
+    expect(ghRunEsAveria(" @ 2026-07-28")).toBe(false);
+    expect(ghRunEsAveria("? @ 2026-07-28")).toBe(false);
+  });
+
+  it("no se ablandó nada: failure/cancelled/timed_out siguen siendo avería", () => {
+    expect(ghRunEsAveria("failure @ 2026-07-28")).toBe(true);
+    expect(ghRunEsAveria("cancelled @ 2026-07-28")).toBe(true);
+    expect(ghRunEsAveria("timed_out @ 2026-07-28")).toBe(true);
+    expect(ghRunEsAveria("n/d (sin corridas)")).toBe(true);
+  });
+
+  it("success/skipped siguen sin ser avería", () => {
+    expect(ghRunEsAveria("success @ 2026-07-28")).toBe(false);
+    expect(ghRunEsAveria("skipped @ 2026-07-28")).toBe(false);
   });
 });

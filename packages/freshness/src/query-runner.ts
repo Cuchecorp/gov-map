@@ -33,6 +33,7 @@ import {
   COBERTURA_VOTO_SENALES,
   COBERTURA_RUT_PARLAMENTARIO_SENALES,
   COBERTURA_RUT_ENTIDAD_SENALES,
+  GH_EN_CURSO,
 } from "./catalog.js";
 import type { CoberturaSenalConfig } from "./catalog.js";
 
@@ -109,18 +110,25 @@ function ghRunSignal(workflowYml: string): string {
         "--limit",
         "1",
         "--json",
-        "conclusion,startedAt",
+        "conclusion,startedAt,status",
       ],
       { encoding: "utf8", timeout: 5_000 },
     );
     const parsed = JSON.parse(out.trim()) as Array<{
       conclusion: string;
       startedAt: string;
+      status: string;
     }>;
     if (!parsed.length) return "n/d (sin corridas)";
     const run = parsed[0]!;
     const date = run.startedAt ? run.startedAt.slice(0, 10) : "?";
-    return `${run.conclusion ?? "?"} @ ${date}`;
+    // WR-07 (119-REVIEW): un run `in_progress`/`queued` NO trae `conclusion` (viene "" o null).
+    // Rotularlo con `?` hacía que `ghRunEsAveria` lo leyera como avería ⇒ `stale (gh-failure)`
+    // MIENTRAS el cron corre con toda normalidad. Se emite un rótulo propio: en curso ≠ caído.
+    if (run.status === "in_progress" || run.status === "queued" || run.status === "requested") {
+      return `${GH_EN_CURSO} @ ${date}`;
+    }
+    return `${run.conclusion || GH_EN_CURSO} @ ${date}`;
   } catch {
     return "n/d";
   }

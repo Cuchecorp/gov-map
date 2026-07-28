@@ -73,6 +73,16 @@
  *   de señal: prohibido (G2 de 118-CRON-VERDICTS.md §4, opción (a)).
  */
 
+/**
+ * WR-07 (119-REVIEW) — rótulo de un run de GH Actions que TODAVÍA NO TERMINÓ
+ * (`status: in_progress|queued|requested`, sin `conclusion`).
+ *
+ * Vive aquí porque lo PRODUCE `query-runner` y lo CONSUME `evaluate`: es el contrato entre
+ * ambos. "En curso" es un tercer estado, distinto de `success` y de avería — afirmar avería
+ * sobre algo que aún no concluyó es el mismo error que afirmarla desde un medidor roto.
+ */
+export const GH_EN_CURSO = "en curso";
+
 export interface FuenteConfig {
   fuente: string;
   tabla: string;

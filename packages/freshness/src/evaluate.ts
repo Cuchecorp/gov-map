@@ -3,6 +3,7 @@
  * Sin I/O, sin red, sin llamadas a DB. Testeable en aislamiento.
  */
 
+import { GH_EN_CURSO } from "./catalog.js";
 import type {
   CoberturaSenalConfig,
   FuenteConfig,
@@ -39,6 +40,8 @@ export interface FuenteResult {
  * Devuelve false para las dos degradaciones que NO son avería del cron:
  *   - "n/d (sin workflow)" → ausencia DECLARADA de workflow (MONEY/SERVEL gated, G2). Una
  *     decisión no es una avería; si fuera true, MONEY/SERVEL ganarían un stale nuevo y falso.
+ *   - "en curso" → el run está `in_progress`/`queued` y aún no tiene `conclusion` (WR-07). Un
+ *     cron corriendo con normalidad no es un cron averiado.
  *   - "n/d" → la llamada a `gh` falló (binario ausente, sin auth, timeout). Es una falla del
  *     INSTRUMENTO, no del cron: no se puede afirmar avería desde un medidor roto. El
  *     fail-closed de este módulo aplica sobre el DATO (ultimoUpsert), no sobre el medidor.
@@ -48,6 +51,11 @@ export function ghRunEsAveria(ghRun: string): boolean {
   if (ghRun === "n/d (sin workflow)" || ghRun === "n/d") return false;
   // Formato "<conclusion> @ YYYY-MM-DD" producido por ghRunSignal.
   const conclusion = ghRun.split("@")[0]!.trim();
+  // WR-07: un run EN CURSO (`in_progress`/`queued`) todavía no tiene `conclusion`. Antes caía en
+  // el `!== success && !== skipped` ⇒ avería ⇒ `stale (gh-failure)` mientras el cron corría con
+  // normalidad — falso positivo recurrente, justo el ruido que el diseño dice querer evitar. No
+  // se puede afirmar avería de algo que aún no terminó: mismo criterio que el medidor roto.
+  if (conclusion === GH_EN_CURSO || conclusion === "" || conclusion === "?") return false;
   return conclusion !== "success" && conclusion !== "skipped";
 }
 
