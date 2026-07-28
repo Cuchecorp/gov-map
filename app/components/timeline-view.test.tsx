@@ -257,3 +257,116 @@ describe("SC7 — provenance por sección (source-scan, Pitfall 8)", () => {
     expect(usos.length).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// LINK-EXT (115-03, A-2) — el enlace de cada evento llega al recurso HUMANO y
+// pasa por el guard `safeExternalHref`.
+//
+// Los tests renderizan desde `TimelineView` —NUNCA desde `TimelineEvent` aislado—
+// porque el componente tiene DOS call-sites (`:243` evento suelto y `:252` evento
+// dentro de un período de urgencia expandido) y un fix aplicado a medias pasaría
+// un test sobre el hijo suelto. Ambas ramas se ejercitan explícitamente.
+//
+// Evidencia de PROD (115-VEREDICTO §3): las 982 filas de `tramitacion_evento` en
+// `tramitacion.senado.cl` son TODAS de path `/wspublico/` (XML vacío para un
+// humano), y `TramitacionEventoRow.boletin` es `string` no-nulable con 0 nulos
+// (`lib/types.ts:32-33`) → el boletín viaja DENTRO de la fila y NO se threadea.
+// ---------------------------------------------------------------------------
+const WSPUBLICO =
+  "https://tramitacion.senado.cl/wspublico/votaciones.php?boletin=16284-07";
+const FICHA_HUMANA =
+  "https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=16284-07";
+
+function hrefsDeFuente(): (string | null)[] {
+  return screen
+    .queryAllByRole("link", { name: /Ver fuente oficial/ })
+    .map((a) => a.getAttribute("href"));
+}
+
+describe("TimelineView — enlace externo del evento (LINK-EXT A-2)", () => {
+  it("rama :243 (evento suelto): un enlace /wspublico/ se reescribe a la ficha humana del boletín del evento", () => {
+    render(
+      <TimelineView
+        boletin="16284-07"
+        eventos={[
+          makeEvento({
+            tipo: "informe",
+            descripcion: "Informe de comisión",
+            enlace: WSPUBLICO,
+          }),
+        ]}
+      />,
+    );
+    expect(hrefsDeFuente()).toEqual([FICHA_HUMANA]);
+  });
+
+  it("rama :252 (evento dentro de un período de urgencia expandido): el mismo rewrite aplica", () => {
+    const eventos = [
+      makeEvento({
+        fecha: "2026-03-10T00:00:00Z",
+        tipo: "tramite",
+        descripcion: "hace presente la urgencia Suma",
+        enlace: WSPUBLICO,
+      }),
+      makeEvento({
+        fecha: "2026-04-11T00:00:00Z",
+        tipo: "urgencia",
+        descripcion: "Suma",
+        enlace: WSPUBLICO,
+      }),
+    ];
+    // `urgenciaExpandida="u1"` fuerza la rama expandida (el run contiguo ≥2 del
+    // mismo tipo se colapsa en el período "u1"); sin ella el fix de :252 quedaría
+    // sin ejercitar y un fix a medias pasaría verde.
+    render(
+      <TimelineView boletin="16284-07" eventos={eventos} urgenciaExpandida="u1" />,
+    );
+    const hrefs = hrefsDeFuente();
+    expect(hrefs).toHaveLength(2);
+    expect(hrefs).toEqual([FICHA_HUMANA, FICHA_HUMANA]);
+  });
+
+  it("rama verbatim: un enlace de otro host (www.senado.cl / opendata.camara.cl) pasa SIN cambios", () => {
+    const otroSenado = "https://www.senado.cl/appsenado/index.php?iddocto=11240";
+    const camara =
+      "https://opendata.camara.cl/wscamaradiputados.asmx/getProyecto?prmBoletin=16284-07";
+    render(
+      <TimelineView
+        boletin="16284-07"
+        eventos={[
+          makeEvento({ fecha: "2026-01-10T00:00:00Z", tipo: "oficio", enlace: otroSenado }),
+          makeEvento({ fecha: "2026-02-10T00:00:00Z", tipo: "informe", enlace: camara }),
+        ]}
+      />,
+    );
+    expect(hrefsDeFuente()).toEqual([otroSenado, camara]);
+  });
+
+  it("seguridad (T-115-10): un enlace con esquema no-web (`javascript:`) NO emite `<a>`", () => {
+    render(
+      <TimelineView
+        boletin="16284-07"
+        eventos={[
+          makeEvento({
+            tipo: "informe",
+            descripcion: "Informe de comisión",
+            enlace: "javascript:alert(1)",
+          }),
+        ]}
+      />,
+    );
+    expect(hrefsDeFuente()).toEqual([]);
+    // El evento SIGUE visible: se pierde el link, jamás el hecho.
+    expect(screen.getByText("Informe de comisión")).toBeTruthy();
+  });
+
+  it("enlace null: no se emite `<a>` y el evento sigue visible", () => {
+    render(
+      <TimelineView
+        boletin="16284-07"
+        eventos={[makeEvento({ tipo: "informe", enlace: null })]}
+      />,
+    );
+    expect(hrefsDeFuente()).toEqual([]);
+  });
+});

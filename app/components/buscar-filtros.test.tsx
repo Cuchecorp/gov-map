@@ -493,3 +493,63 @@ describe("BuscarFiltros — accesibilidad", () => {
     expect(btn.getAttribute("aria-pressed")).toBe("true");
   });
 });
+
+// ---------------------------------------------------------------------------
+// 10. LINK-EXT (115-03, A-1) — el badge de cada resultado enlaza al recurso HUMANO
+//
+// Evidencia de PROD (115-VEREDICTO §3): las 3.658 filas de `proyecto.enlace` en
+// `tramitacion.senado.cl` son TODAS de path `/wspublico/`, y la respuesta live del
+// endpoint es XML VACÍO (`<proyectos></proyectos>`). `/buscar` era el único
+// call-site que NO aplicaba `enlaceHumanoProyecto` (los otros cuatro sí:
+// ficha-header, autor-row, votacion-card, proyectos-similares).
+// ---------------------------------------------------------------------------
+const FILA_BASE = {
+  boletin: "14309-04",
+  titulo: "Proyecto con enlace crudo",
+  anio: 2021,
+  iniciativa: "Moción" as const,
+  estadoBucket: "en_tramitacion" as const,
+  camaraOrigen: "Senado",
+  fecha: "2021-03-01",
+  fecha_captura: "2026-07-20T00:00:00Z",
+  origen: "senado",
+};
+
+function hrefFuenteOficial(): string | null | undefined {
+  const links = screen.queryAllByRole("link", { name: /Fuente oficial/ });
+  return links.length === 0 ? undefined : links[0].getAttribute("href");
+}
+
+describe("BuscarFiltros — enlace de procedencia del resultado (LINK-EXT A-1)", () => {
+  it("un `enlace` /wspublico/ del Senado se reescribe a la ficha humana del boletín de la fila", () => {
+    render(
+      <BuscarFiltros
+        slice={[
+          {
+            ...FILA_BASE,
+            enlace:
+              "https://tramitacion.senado.cl/wspublico/tramitacion.php?boletin=14309-04",
+          },
+        ]}
+      />,
+    );
+    expect(hrefFuenteOficial()).toBe(
+      "https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=14309-04",
+    );
+  });
+
+  it("rama verbatim: un `enlace` de otro host (opendata.camara.cl) pasa SIN cambios (rewrite por host+path, jamás por substring)", () => {
+    const camara =
+      "https://opendata.camara.cl/wscamaradiputados.asmx/getProyecto?prmBoletin=14309-04";
+    render(<BuscarFiltros slice={[{ ...FILA_BASE, enlace: camara }]} />);
+    expect(hrefFuenteOficial()).toBe(camara);
+  });
+
+  it("borde: `enlace` ausente o vacío → el badge no emite `<a>` (nunca una URL fabricada)", () => {
+    render(<BuscarFiltros slice={[{ ...FILA_BASE, enlace: null }]} />);
+    expect(hrefFuenteOficial()).toBeUndefined();
+    cleanup();
+    render(<BuscarFiltros slice={[{ ...FILA_BASE, enlace: "" }]} />);
+    expect(hrefFuenteOficial()).toBeUndefined();
+  });
+});
