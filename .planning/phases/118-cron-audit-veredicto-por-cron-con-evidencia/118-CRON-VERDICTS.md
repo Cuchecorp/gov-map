@@ -1925,3 +1925,91 @@ hasta dónde llega la autoridad de este documento.
    Un workflow añadido después del 2026-07-28, o un job de `pg_cron` creado por migración
    posterior, no está aquí. El denominador se deriva en cada corrida de `check-crons.sh`
    precisamente para que esa deriva se detecte como diff, en vez de pasar inadvertida.
+
+---
+
+## 7. Verificación de cierre
+
+El documento se auto-verifica. El gate re-ejecutable vive en
+[`check-crons.sh`](./check-crons.sh) — read-only, sin red, sin DB, corre en segundos:
+
+```bash
+cd .planning/phases/118-cron-audit-veredicto-por-cron-con-evidencia
+bash check-crons.sh              # modo reporte: imprime todo, exit 0 siempre
+STRICT=1 bash check-crons.sh     # modo cierre de fase: cualquier falta => exit 1
+```
+
+Los greps van **embebidos aquí** para que el gate no dependa del script: si mañana
+`check-crons.sh` desapareciera, el documento seguiría siendo verificable a mano.
+
+```bash
+# C1a — denominador DERIVADO del filesystem, contra el declarado en §1.1.
+#       El ancla ESPERADO=13 se REPORTA con el diff si difiere; jamás se ajusta.
+ls .github/workflows/*.yml | wc -l                                  # 13
+grep -E '^conteo_workflows_locales: [0-9]+$' 118-CRON-VERDICTS.md    # 13
+
+# C1b — pg_cron cross-checkeado contra DOS fuentes independientes.
+grep -E '^conteo_pg_cron_vivos: [0-9]+$' 118-CRON-VERDICTS.md        # 5
+grep -c '^### PG-[0-9]' 118-CRON-VERDICTS.md                         # 5  (secciones)
+awk '/^## P6 —/,/^## P7/' 118-PROBES-RAW.md | grep -cE '^[0-9]+\|[a-z0-9-]+\|'   # 5 (probe)
+
+# C1c — el total es la SUMA, y hay un veredicto por unidad EN CADA REGIÓN.
+#       Ojo: el conteo global de "Veredicto: " da 40, no 20 — cada unidad aparece dos
+#       veces por diseño (fila en §1.3 + sección en §2). Se cuenta por región.
+grep -E '^conteo_total_unidades: [0-9]+$' 118-CRON-VERDICTS.md       # 20 = 13 + 2 + 5
+awk '/^### 1\.3 /,/^### 1\.4 /' 118-CRON-VERDICTS.md | grep -c 'Veredicto: '        # 20
+awk '/^## 2\. Unidades/,/^## 3\. Estado/' 118-CRON-VERDICTS.md | grep -c 'Veredicto: ' # 20
+
+# C2 — evidencia observada, no lectura de YAML.
+grep -c '^#### Evidencia observada' 118-CRON-VERDICTS.md             # 20 >= 20 unidades
+
+# C3 — punteros archivo:línea asociados a gaps.
+grep -cE 'G[0-9]+.*\.(ts|yml|sql):[0-9]+' 118-CRON-VERDICTS.md       # 12 >= 10
+
+# C4 — gap-list priorizada + §5 completa + §6 con límites numerados.
+grep -cE '^\| G[0-9]+ \| .* \| \*\*P[012]\*\*[^|]*\|' 118-CRON-VERDICTS.md          # 11
+awk '/^## 5\./,/^## 6\./' 118-CRON-VERDICTS.md | grep -cE '^\| (A[1-5]|OQ[1-4]) \|' # 9
+awk '/^## 6\. Límites/,/^## 7\./' 118-CRON-VERDICTS.md | grep -cE '^[0-9]+\. '       # 9
+
+# C5 — reproducibilidad por unidad.
+grep -c '^#### Cómo re-verificar' 118-CRON-VERDICTS.md               # 21 >= 20
+
+# C6 — ANTI-SECRETO sobre los TRES artefactos. Ambos deben dar 0.
+grep -icE '(sk|ghp|gho|eyJ|sb_secret_|sb_publishable_)[-_a-z0-9]{12,}|[0-9a-f]{40}' \
+  118-CRON-VERDICTS.md 118-PROBES-RAW.md 118-OPERATOR-CHECKPOINT.md
+grep -icE 'postgres(ql)?://' \
+  118-CRON-VERDICTS.md 118-PROBES-RAW.md 118-OPERATOR-CHECKPOINT.md
+
+# C7 — ids G<n> bidireccionales §2 <-> §4 (el patrón exige G pegado a dígito:
+#      'PG-1' no casa, así que los jobs de pg_cron no contaminan el conteo).
+awk '/^## 2\. Unidades/,/^## 3\. Estado/' 118-CRON-VERDICTS.md | grep -oE '\bG[0-9]+\b' | sort -u
+awk '/^## 4\. Gaps/,/^## 5\./'           118-CRON-VERDICTS.md | grep -oE '\bG[0-9]+\b' | sort -u
+```
+
+**Higiene del propio gate.** `check-crons.sh` contiene en su código los mismos patrones de
+secreto que busca; por eso C6 se aplica **a los tres artefactos y nunca al script**, que ni
+siquiera figura en la lista de archivos escaneados. El patrón se validó contra un fixture
+temporal creado **fuera del repo** y borrado tras la prueba: detectó los seis casos positivos
+(`sk`, `ghp`, `gho`, `eyJ`, `sb_secret_`/`sb_publishable_`, hex-40) más la URL de DB, y no marcó
+el falso positivo obvio del castellano (`skip legítimo`). Los conteos que se hacen sobre el
+documento se toman **por región** (`awk` de §1.3, §2, §4, §5, §6) precisamente para que los
+bloques de código de este §7 no se cuenten a sí mismos.
+
+**Estado al cierre:** `STRICT=1 bash check-crons.sh` → **0 faltas, exit 0**.
+
+---
+
+### Firma de cierre
+
+Auditoría cerrada el **2026-07-28** sobre `Cuchecorp/gov-map`, con **20 unidades de cron**
+inventariadas (13 workflows locales + 2 platform-managed + 5 jobs de `pg_cron`) y un veredicto
+por unidad: **10 verde · 1 stale · 0 roto · 9 no-cron**. Backlog para Phase 119: **11 gaps —
+0 P0, 5 P1, 6 P2**.
+
+**Probes usadas:** P0 (inventario local), P1 (`gh workflow list` remoto), P2 (última corrida por
+workflow), P3.a/P3.b (logs de los dos `failure`), P4 (`gh secret list`, NOMBRES), P5 (billing),
+P6a/P6 (`cron.job` + `job_run_details` vivos), P7 (última fila por tabla destino), P8 (cursores),
+P9 (`freshness --json`), P10 (`source_snapshot` como proxy de R2). Bitácora literal en
+[`118-PROBES-RAW.md`](./118-PROBES-RAW.md).
+
+**Ningún valor de secret fue impreso en este documento.**
