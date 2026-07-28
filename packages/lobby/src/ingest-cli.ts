@@ -10,6 +10,10 @@
 //   --anio YYYY          año del listado de audiencias (default: año actual)
 //   --paginas N          número de páginas desde 1 (default 1 — corrida acotada)
 //   --dry-run            NO escribe en la DB (corre fetch/parse, descarta el upsert)
+//   --from-r2 <r2Path>   REPLAY: la Etapa 2 lee el crudo YA versionado en R2 (regla LOCKED 2 de
+//                        CLAUDE.md) — CERO fetches a leylobby.gob.cl. La key la imprime la corrida
+//                        que lo escribió: leylobby/<INST>/<YYYY>/p<N>/<YYYY-MM-DD>/<sha256>.html.
+//                        La tarea se DERIVA de la key; el cursor durable no se consulta ni avanza.
 //
 // La maestra de parlamentarios se inyecta (tests) o se deja vacía en dry-run (el cruce degrada a
 // no_confirmado sin fabricar). NOTA CONGRESO (Open Question 2): la Cámara/Senado NO están en
@@ -23,6 +27,7 @@ import {
   HostRateLimiter,
   RobotsGuard,
   R2Store,
+  sha256Hex,
   SnapshotWriter,
   SupabaseSnapshotStore,
   type CreateSupabaseClient,
@@ -46,6 +51,32 @@ import {
 } from "./cursor-leylobby";
 
 const DEFAULT_INSTITUCION = "AA001";
+
+/**
+ * CR-01 (119-REVIEW) — keys ACEPTADAS por `--from-r2`, ancladas de punta a punta.
+ *
+ * Es EXACTAMENTE la partición que escribe la Etapa 1 de este conector
+ * (`ingest-run.ts`: `putImmutable("leylobby", "<INST>/<year>/p<page>", <fecha>, <sha>, "html")`)
+ * ⇒ `leylobby/<INST>/<YYYY>/p<N>/<YYYY-MM-DD>/<sha256>.html`. El anclaje excluye `..`, rutas
+ * absolutas y prefijos de otras fuentes: el r2Path es input del operador y se usa como key de
+ * `getObject` (T-119-13).
+ */
+export const R2_KEY_LEYLOBBY_RE =
+  /^leylobby\/([A-Za-z0-9]+)\/(\d{4})\/p(\d+)\/\d{4}-\d{2}-\d{2}\/([0-9a-f]{64})\.html$/;
+
+/** Tarea + sha derivados de una key de replay ya validada contra `R2_KEY_LEYLOBBY_RE`. */
+export function tareaDesdeR2Path(
+  r2Path: string,
+): { institucion: string; year: number; page: number; sha: string } | null {
+  const m = R2_KEY_LEYLOBBY_RE.exec(r2Path);
+  if (!m) return null;
+  return {
+    institucion: m[1]!,
+    year: Number(m[2]),
+    page: Number(m[3]),
+    sha: m[4]!,
+  };
+}
 
 /**
  * G1 (119-06) — Carga la maestra del seed autoritativo (`supabase/seeds/parlamentario.seed.json`,
@@ -177,7 +208,16 @@ export function parseArgs(argv: string[]): LobbyCliOptions {
       }
       case "--from-r2": {
         const path = argv[++i];
-        if (!path) throw new LobbyCliArgsError("--from-r2 requiere un r2Path");
+        if (!path || path.startsWith("--")) {
+          throw new LobbyCliArgsError("--from-r2 requiere un r2Path");
+        }
+        // CR-01: la key se valida AQUÍ, antes de cualquier red/DB — fail-loud, sin adivinar.
+        if (!R2_KEY_LEYLOBBY_RE.test(path)) {
+          throw new LobbyCliArgsError(
+            `--from-r2: r2Path no reconocido (${path}); se espera ` +
+              `leylobby/<INST>/<YYYY>/p<N>/<YYYY-MM-DD>/<sha256>.html`,
+          );
+        }
         opts.fromR2 = path;
         break;
       }
@@ -240,18 +280,85 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
       ? new R2Store({ accessKeyId: ak, secretAccessKey: sk, endpoint: ep, bucket: bk })
       : null;
   }
-  if (!r2Store && !dryRun) {
+  // En REPLAY la ausencia de Etapa 1 NO es degradación (el crudo ya está versionado): el WARN
+  // sería una alarma falsa. Y sin store el replay ni siquiera puede leer — falla más abajo.
+  if (!r2Store && !dryRun && !opts.fromR2) {
     log("[WARN] R2 no configurado — Etapa 1 omitida (sin crudo versionado)");
   }
 
-  // Conector REAL de @obs/ingest (rate-limit 2-3s + robots + UA + SSRF), salvo inyección (tests).
-  const conector =
-    opts.conector ??
-    new LeylobbyConnector({
-      fetcher: new Fetcher(),
-      rateLimiter: new HostRateLimiter(),
-      robots: new RobotsGuard({ allowlist: {} }),
-    });
+  // CR-01 (119-REVIEW) — REPLAY desde R2 (`--from-r2`).
+  //
+  // Hasta aquí el flag se parseaba, se guardaba en `opts.fromR2` y NUNCA se leía: `main()`
+  // construía el conector real y corría LIVE. El operador que usaba el flag documentado para
+  // "re-ingestar sin molestar al servidor" producía EXACTAMENTE el fetch que quería evitar,
+  // contra una fuente volátil (Laravel/Azure, 403/503) — violación silenciosa de la regla
+  // LOCKED 2 de CLAUDE.md ("Etapa 2 lee del crudo, NUNCA de la fuente").
+  //
+  // El replay espeja `run-camara-lobby-cli.ts:132-158` (la firma dorada): key anclada,
+  // `getObject`, re-verificación del sha contra la key, y CERO conector real — es
+  // estructuralmente imposible tocar leylobby.gob.cl en este camino.
+  const replay = opts.fromR2 ? tareaDesdeR2Path(opts.fromR2) : null;
+  if (opts.fromR2 && !replay) {
+    // Defensa en profundidad: `parseArgs` ya valida, pero `main()` es API pública (tests/callers).
+    throw new LobbyCliArgsError(
+      `--from-r2: r2Path no reconocido (${opts.fromR2}); se espera ` +
+        `leylobby/<INST>/<YYYY>/p<N>/<YYYY-MM-DD>/<sha256>.html`,
+    );
+  }
+
+  // Conector REAL de @obs/ingest (rate-limit 2-3s + robots + UA + SSRF), salvo inyección (tests)
+  // o REPLAY (stub sobre el crudo ya versionado).
+  let conector: LeylobbyConnector;
+  if (replay && opts.fromR2) {
+    const fromR2 = opts.fromR2;
+    const lector = r2Store;
+    if (!lector) {
+      throw new Error(
+        "--from-r2 requiere R2 configurado (R2_ENDPOINT_URL + R2_ACCESS_KEY_ID + R2_SECRET_ACCESS_KEY)",
+      );
+    }
+    const urlReal = (code: string, year: number, page = 1) =>
+      `https://www.leylobby.gob.cl/instituciones/${encodeURIComponent(code)}/audiencias/${year}` +
+      (page > 1 ? `?page=${page}` : "");
+    conector = {
+      urlAudiencias: urlReal,
+      urlDetalle: (code: string, year: number, rowId: string) =>
+        `https://www.leylobby.gob.cl/instituciones/${encodeURIComponent(code)}/audiencias/${year}/${encodeURIComponent(rowId)}`,
+      async fetchAudiencias() {
+        // `getObject` lanza con status y path, SIN credenciales (T-119-16). Fail-loud: el
+        // replay NUNCA degrada a re-fetch de la fuente.
+        const bytes = await lector.getObject(fromR2);
+        // T-119-14: la key ES el sha256 del contenido → se re-verifica antes de parsear.
+        const shaReal = await sha256Hex(bytes);
+        if (shaReal !== replay.sha) {
+          throw new Error(
+            `--from-r2: sha del contenido (${shaReal}) ≠ sha de la key (${replay.sha}) en ${fromR2}`,
+          );
+        }
+        return new TextDecoder().decode(bytes);
+      },
+      async fetchDetalle(_code: string, _year: number, rowId: string) {
+        // El crawl de DOS PASOS necesita fetchear cada detalle. En replay ese crudo NO está en
+        // la key que el operador pasó, y salir a buscarlo sería volver a la fuente por la puerta
+        // de atrás — justo lo que el flag existe para evitar. Se falla LOUD, sin adivinar: el
+        // replay reproduce lo que hay en el crudo, ni una fila más.
+        throw new Error(
+          `--from-r2: el crudo de ${fromR2} es un LISTADO y requeriría fetchear el detalle ` +
+            `${rowId} desde leylobby.gob.cl. El replay no vuelve a la fuente: re-ingesta el ` +
+            `crudo de la página de DETALLE correspondiente.`,
+        );
+      },
+    } as unknown as LeylobbyConnector;
+    log(`ingest-lobby: REPLAY desde R2 (${opts.fromR2}) — CERO fetch a leylobby.gob.cl`);
+  } else {
+    conector =
+      opts.conector ??
+      new LeylobbyConnector({
+        fetcher: new Fetcher(),
+        rateLimiter: new HostRateLimiter(),
+        robots: new RobotsGuard({ allowlist: {} }),
+      });
+  }
 
   let writer: LobbyWriter;
   let dbLoaded = false;
@@ -268,12 +375,21 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
   //   * Sin override + writer real (no dry-run): LEE el cursor durable (leylobby_cursor_estado) y
   //     deriva la tarea de UNA página; tras corrida exitosa AVANZA + persiste (más abajo).
   //   * Sin override + dry-run: default histórico (año actual, página 1) sin tocar el cursor.
+  // CR-01: el replay es una corrida DIRIGIDA por la key del crudo — no consulta ni mueve el
+  // cursor durable (re-procesar un crudo viejo jamás puede empujar el barrido).
   const overrideExplicito = opts.anio !== undefined || opts.paginas !== undefined;
-  const usaCursor = !overrideExplicito && !dryRun;
+  const usaCursor = !overrideExplicito && !dryRun && !replay;
 
   let tareas: TareaInstitucion[];
   let cursorPrevio: CursorLeylobby | null = null;
-  if (usaCursor) {
+  if (replay) {
+    tareas = [
+      { institucionCodigo: replay.institucion, year: replay.year, pages: [replay.page] },
+    ];
+    log(
+      `ingest-lobby: tarea derivada de la key → ${replay.institucion}/${replay.year}/p${replay.page}`,
+    );
+  } else if (usaCursor) {
     cursorPrevio = (await writer.leerCursor(institucion)) ?? cursorInicial(institucion);
     tareas = [deriveTarea(cursorPrevio)];
     log(
@@ -308,7 +424,10 @@ export async function main(opts: LobbyCliOptions = {}): Promise<LobbyCliResult> 
     tareas,
     ...(opts.reconciliar !== undefined ? { reconciliar: opts.reconciliar } : {}),
     ...(opts.driftStore !== undefined ? { driftStore: opts.driftStore } : {}),
-    ...(r2Store ? { r2Store } : {}),
+    // En REPLAY no se pasa store: el crudo YA está content-addressed en R2, así que re-escribirlo
+    // daría 412 → `existed:true` → `[skip]` de la Etapa 2 entera, que es justo lo que el operador
+    // quiere correr (mismo razonamiento que `omitirEtapa1` en run-camara-lobby-cli.ts).
+    ...(r2Store && !replay ? { r2Store } : {}),
     ...(snapshotWriter ? { snapshotWriter } : {}),
     log,
   });
