@@ -72,7 +72,7 @@ Notas de secuencia: el inventario 113 es load-bearing — sin él las fases de l
 - [x] **Phase 117: FECHA-FIX — Etiquetas de fecha corregidas** — "según fuente al…" donde corresponda; `fecha_captura` nunca como el hecho; guards y suite verdes (completed 2026-07-28)
 - [x] **Phase 118: CRON-AUDIT — Veredicto por cron con evidencia** — GH Actions + pg_cron enumerados y clasificados verde/stale/roto con causa (completed 2026-07-28)
 - [x] **Phase 119: CRON-FIX — Robustez de ingesta** — reintentos/backoff, cursores, hash-check, señales freshness; degrade honesto, jamás fabricación (completed 2026-07-28)
-- [ ] **Phase 120: ESCALERA-ON — Flip `CLASIFICACION_ESCALERA=1`** — shadow-eval verde + drift canary + rollback-by-config probado + checkpoint de provisión de keys Workers AI con el operador
+- [x] **Phase 120: ESCALERA-ON — Flip `CLASIFICACION_ESCALERA=1`** — shadow-eval verde + drift canary + rollback-by-config probado + checkpoint de provisión de keys Workers AI con el operador (completed 2026-07-28)
 - [ ] **Phase 121: ESCALERA-DOC — Extensión solo con benchmark** — estado por tarea (extendida/no) con su evidencia; adjudicación INTOCABLE por decisión
 - [ ] **Phase 122: CRUCE-SQL — Cruces visibles × SQL de PROD** — conteos, denominadores honestos y cobertura declarada cuadran; discrepancias corregidas o declaradas
 - [ ] **Phase 123: SUPA-AUDIT — Auditoría de estructura Supabase** — schema/RLS/grants/RPCs bounded/allowlist/secdef contra la DB viva, supabase-reviewer como gate
@@ -315,7 +315,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 120-02-PLAN.md — Flip `CLASIFICACION_ESCALERA=1`, humo acotado, rollback inverso re-probado, guards + suite + cierre del registro
+- [x] 120-02-PLAN.md — Flip `CLASIFICACION_ESCALERA=1`, humo acotado, rollback inverso re-probado, guards + suite + cierre del registro
 
 ### Phase 121: ESCALERA-DOC — Extensión solo con benchmark
 
@@ -405,7 +405,7 @@ Plans:
 | 117. FECHA-FIX | 4/4 | Complete    | 2026-07-28 |
 | 118. CRON-AUDIT | 3/3 | Complete    | 2026-07-28 |
 | 119. CRON-FIX | 7/7 | Complete    | 2026-07-28 |
-| 120. ESCALERA-ON | 1/2 | In Progress|  |
+| 120. ESCALERA-ON | 2/2 | Complete   | 2026-07-28 |
 | 121. ESCALERA-DOC | 0/? | Not started | - |
 | 122. CRUCE-SQL | 0/? | Not started | - |
 | 123. SUPA-AUDIT | 0/? | Not started | - |

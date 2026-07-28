@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
-status: executing
+status: verifying
 stopped_at: Completed 115-01-PLAN.md
-last_updated: "2026-07-28T20:30:46.054Z"
+last_updated: "2026-07-28T20:36:11.601Z"
 last_activity: 2026-07-28
 progress:
   total_phases: 13
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 32
-  completed_plans: 31
-  percent: 54
+  completed_plans: 32
+  percent: 62
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 120 (ESCALERA-ON — Flip CLASIFICACION_ESCALERA=1) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-28
 
 ### Roadmap v12.0 (Phases 113-125)
@@ -151,6 +151,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 119 P02 | ~25min | 3 tasks | 5 files |
 | Phase 119 P05 | 1h | 3 tasks | 13 files |
 | Phase 119 P07 | ~55min | 4 tasks | 3 files |
+| Phase 120 P02 | 5 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -268,6 +269,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 118-02: gotcha 57-05 con consecuencia material — auditado el entrypoint REAL, leyes-weekly resulta la UNICA cadena dos-etapas completa del proyecto (56 la juzgo contra el CLI hermano)
 - [Phase ?]: 119-02: señal de pg_cron en PGCRON_JOBS SEPARADO de CATALOG; umbral DERIVADO del schedule (hueco más largo + el más corto como gracia, piso 0.25h): el hueco largo evita el falso STALE de cada lunes en crons L-V y el margen aditivo impide que 3 días de silencio en un job intradía pasen por sanos. Drift/inactivo/ilegible/sin-corridas = stale fail-closed; los jobs entran al exit code. Solo se proyectan jobid/jobname/schedule/active/max(start_time) — nunca command ni return_message (URLs/keys de pg_net). W-3 backup-parlamentario y W-7 digest-daily DECLARADOS fuera en el JSDoc de catalog.ts (no escribe Supabase / NOTIF parked), no rellenados.
 - [Phase ?]: 119-05: replay de agenda sobre crudos legacy exige --semana explicita; la fecha de corrida no determina la semana del contenido
+- [Phase ?]: Flip CLASIFICACION_ESCALERA=1 tras gates verdes; rollback ON-OFF-ON probado en vivo
 
 ### Pending Todos
 
@@ -328,7 +330,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-28T20:30:46.044Z
+Last session: 2026-07-28T20:36:06.895Z
 Stopped at: Completed 115-01-PLAN.md
 Resume file: None
 
