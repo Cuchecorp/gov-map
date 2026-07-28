@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
-status: executing
+status: verifying
 stopped_at: Completed 115-01-PLAN.md
-last_updated: "2026-07-28T04:15:01.773Z"
+last_updated: "2026-07-28T04:31:58.452Z"
 last_activity: 2026-07-28
 progress:
   total_phases: 13
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 12
-  completed_plans: 11
-  percent: 15
+  completed_plans: 12
+  percent: 23
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 115 (LINK-EXT — Patrones de link a fuente oficial) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-28
 
 ### Roadmap v12.0 (Phases 113-125)
@@ -136,6 +136,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 113 P05 | 1 sesion | 3 tasks | 2 files |
 | Phase 115 P01 | ~30 min | 3 tasks | 3 files |
 | Phase 115 P02 | 25m | 2 tasks | 4 files |
+| Phase 115 P03 | 35m | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -239,6 +240,8 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 115-01: el universo de links externos usa el grep AMPLIADO de sourceUrl (prop JSX + propiedad de objeto); suma 5 call-sites ausentes de §3.1.4, incluido buscar-filtros.tsx:493 (proyecto.enlace CRUDO sin enlaceHumanoProyecto = candidato #1).
 - [Phase ?]: 115-02: cero patrones FUENTE-CAIDA-WAF; los 500 de opendata.camara.cl acusan nuestra URL (Falta el parametro: prmBoletin) y los hosts con WAF-en-robots si sirvieron el recurso
 - [Phase ?]: 115-02: el fix del timeline no requiere threadear el boletin (TramitacionEventoRow.boletin no-nulable, 0 nulos en PROD); timeline-view.tsx:243,252 son revision obligada por ser los dos call-sites
+- [Phase ?]: 115-03: el boletin del timeline NO se threadea (viaja en la fila, types.ts:32-33); el gate de paridad se re-expresa con typecheck + test por call-site + mutacion de :252
+- [Phase ?]: 115-03: los fixes de link externo NO se despliegan; viajan con la Phase 125 (SC3 cierra PASS con limitacion declarada)
 
 ### Pending Todos
 
@@ -299,7 +302,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-28T04:14:55.484Z
+Last session: 2026-07-28T04:31:53.243Z
 Stopped at: Completed 115-01-PLAN.md
 Resume file: None
 
