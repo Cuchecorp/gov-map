@@ -486,9 +486,21 @@ export async function TramitacionSection({
   );
 
   // SC7: UN ProvenanceBadge por sección (aquí, en el heading), en vez de 100+ badges
-  // idénticos (uno por evento). Frescura = el `fecha_captura` MÁS RECIENTE del set
-  // (esStale/14d lo evalúa el propio badge); la fuente = el `origen` de ese evento.
-  // Cada evento CONSERVA su link "Ver fuente oficial ↗" (trazabilidad por dato, SC7).
+  // idénticos (uno por evento). Frescura = el `tramitacion_evento.fecha_captura` MÁS
+  // RECIENTE del set (esStale/14d lo evalúa el propio badge); la fuente = el `origen`
+  // de ese evento. Cada evento CONSERVA su link "Ver fuente oficial ↗" (trazabilidad
+  // por dato, SC7).
+  //
+  // F-03 (116-FECHAS-AUDIT §3 y §1.2 fila 1): este MAX es una AGREGACIÓN, y sin
+  // decirlo el badge afirmaba que la sección entera estaba fresca a esa fecha —
+  // bastaba UN evento re-scrapeado hoy. Verificado en PROD sobre el boletín
+  // `14309-04`: `max(fecha_captura) = 2026-07-09` sobre 99 eventos cuyo hecho más
+  // reciente es del `2026-07-07`. El defecto de agregación NO se corrige cambiando el
+  // `reduce` (el MAX es lo que hay); se hace VISIBLE con el calificador
+  // `notaAgregacion` que se pasa abajo. La columna de origen es, con nombre y
+  // apellido, `tramitacion_evento.fecha_captura`: atribuirla a la tabla de snapshots
+  // crudos era imposible — esa tabla no tiene ni `fecha_captura` ni `proyecto_id`
+  // (§1.2 fila 1 del audit).
   const masReciente = eventos.reduce<TramitacionEventoRow | null>((acc, e) => {
     if (!e.fecha_captura) return acc;
     if (!acc) return e;
@@ -504,6 +516,7 @@ export async function TramitacionSection({
             capturedAt={new Date(masReciente.fecha_captura)}
             sourceName={sourceLabel(masReciente.origen)}
             sourceUrl={null}
+            notaAgregacion="evento más reciente"
           />
         )}
       </div>
