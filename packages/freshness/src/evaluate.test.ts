@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   evaluate,
   evaluateCobertura,
@@ -873,5 +875,42 @@ describe("G3 (119-02): los huecos de cobertura son DECISIÓN, no relleno", () =>
         ),
       ),
     ).toHaveLength(0);
+  });
+});
+
+describe("G12-119 (119-07): la atribución de lobby-leylobby está declarada, no invertida", () => {
+  // Hallazgo de 119-06: el comentario del catálogo afirmaba que
+  // `lobby_ingesta_estado.ingestado_hasta` "solo lo escribe el conector leylobby".
+  // Es falso: `marcarIngestado` vive en el writer COMPARTIDO y lo invocan los DOS
+  // conectores; las 136 filas vigentes las escribió el de la Cámara. Este test
+  // congela la corrección para que la afirmación invertida no vuelva.
+  const fuente = readFileSync(
+    join(import.meta.dirname, "catalog.ts"),
+    "utf8",
+  );
+
+  it("el catálogo NO afirma que la tabla la escriba solo el conector leylobby", () => {
+    // La frase sobrevive UNA vez, entrecomillada y seguida de su refutación explícita:
+    // borrarla dejaría el registro sin memoria del error. Lo que el test prohíbe es que
+    // vuelva a aparecer como AFIRMACIÓN (sin el "Es FALSO" pegado).
+    const ocurrencias = [
+      ...fuente.matchAll(/solo lo escribe el conector leylobby/g),
+    ];
+    expect(ocurrencias).toHaveLength(1);
+    for (const m of ocurrencias) {
+      expect(fuente.slice(m.index, m.index + 90)).toMatch(/Es FALSO/);
+    }
+  });
+
+  it("el catálogo declara el CAVEAT de atribución no exclusiva con sus dos escritores", () => {
+    expect(fuente).toMatch(/CAVEAT lobby-leylobby/);
+    expect(fuente).toMatch(/run-camara-lobby\.ts:164/);
+    expect(fuente).toMatch(/writer-supabase\.ts:145/);
+  });
+
+  it("la entrada sigue midiendo lobby_ingesta_estado (el CAVEAT declara, no reapunta)", () => {
+    const entrada = CATALOG.find((c) => c.fuente === "lobby-leylobby");
+    expect(entrada?.tabla).toBe("lobby_ingesta_estado");
+    expect(entrada?.columna).toBe("ingestado_hasta");
   });
 });

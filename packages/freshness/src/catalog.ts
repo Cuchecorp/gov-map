@@ -8,7 +8,7 @@
  * | leyes            | proyecto               | fecha_captura    | 7d     | última vez que tramitación ingestó           |
  * | agenda           | citacion               | fecha_captura    | 7d     | citaciones y sesiones de tabla               |
  * | lobby-camara     | lobby_contraparte      | fecha_captura    | 14d    | WAF bloquea GH Actions → local semanal      |
- * | lobby-leylobby   | lobby_ingesta_estado   | ingestado_hasta  | 7d     | tabla distinta para distinguir de camara    |
+ * | lobby-leylobby   | lobby_ingesta_estado   | ingestado_hasta  | 7d     | cobertura por parlamentario (ver CAVEAT)    |
  * | probidad         | declaracion            | fecha_captura    | 30d    | patrimonio/intereses CPLT                   |
  * | fichas           | proyecto_ficha         | fecha_captura    | 30d    | tabla propia del pipeline de fichas         |
  * | chilecompra      | contratos_ingesta_estado | ingestado_hasta | 30d  | marcador de barrido (dist. "0 filas" de "no barrido") |
@@ -22,10 +22,27 @@
  *
  * NOTA lobby-camara vs lobby-leylobby:
  *   Ambas fuentes escriben en lobby_audiencia (sin columna discriminadora "fuente"), así
- *   que NINGUNA de las dos la usa como señal. lobby-leylobby mide
- *   lobby_ingesta_estado.ingestado_hasta (solo lo escribe el conector leylobby) y
- *   lobby-camara mide lobby_contraparte.fecha_captura (solo la escribe el conector de
- *   Cámara, vía `upsertContrapartes`). Cada señal es atribuible a su propio cron.
+ *   que NINGUNA de las dos la usa como señal. lobby-camara mide
+ *   lobby_contraparte.fecha_captura (solo la escribe el conector de Cámara, vía
+ *   `upsertContrapartes`) — esa atribución sí es exclusiva.
+ *
+ * CAVEAT lobby-leylobby — la atribución NO es exclusiva (119-07, hallazgo de 119-06):
+ *   Una versión previa de este comentario afirmaba que `lobby_ingesta_estado.ingestado_hasta`
+ *   "solo lo escribe el conector leylobby". Es FALSO y está invertido. `marcarIngestado` vive
+ *   en el writer COMPARTIDO (`packages/lobby/src/writer-supabase.ts:145`) y lo invocan LOS DOS
+ *   conectores: el de la Cámara (`packages/lobby/src/run-camara-lobby.ts:164`) y —desde 119-06—
+ *   el de leylobby (`packages/lobby/src/ingest-run.ts:322`). Empíricamente, las 136 filas
+ *   vigentes (`max(ingestado_hasta) = 2026-06-22`) las escribió el conector de la CÁMARA:
+ *   leylobby nunca ha confirmado un parlamentario (32 filas, todas `no_confirmado`), porque su
+ *   alcance LOCKED son instituciones del EJECUTIVO, cuyos sujetos pasivos no son parlamentarios
+ *   (`lobby-leylobby-weekly.yml:3-5`).
+ *
+ *   Consecuencia honesta: esta señal mide la COBERTURA DE LOBBY POR PARLAMENTARIO —no la
+ *   frescura del conector leylobby—, y por eso su `stale:true` NO implica que leylobby esté
+ *   caído. Es la dirección espejo del "verde prestado" que G4 erradicó: acá el rojo es prestado.
+ *   La señal que sí es propia de leylobby es su huella en `source_snapshot`
+ *   (`where source = 'lobby-leylobby'`, existente desde 2026-07-28), que hoy `r2Snapshot` ya
+ *   expone al lado. Gap residual y criterio de cierre: `119-GAP-CLOSURES.md` §G12-119.
  *
  * HUECOS DECLARADOS DE COBERTURA (G3, 119-02)
  *
