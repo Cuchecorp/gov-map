@@ -96,7 +96,14 @@ export const USER_AGENT = `ObservatorioCongreso360/1.0 (+https://observatorio-co
 export const DELAY_MS = 2500;
 const REINTENTO_MS = 5000;
 const MAX_TIME_S = 20;
-const MAX_FILESIZE = 200000;
+// IN-04: alineado con `--range 0-8191`. Antes eran 200 KB: si el servidor IGNORA el
+// `Range` (frecuente), el corte real era 25× el declarado y, al excederse, curl salía con
+// error → se clasificaba como fallo de RED → SE REINTENTABA, doblando el request contra
+// ese host. Fricción innecesaria con la regla de ingesta respetuosa.
+const MAX_FILESIZE = 16384;
+// Código de salida de curl para "--max-filesize excedido". NO es un fallo de red: el
+// servidor respondió. Reintentarlo duplicaría el request (IN-04).
+const CURL_EXIT_FILESIZE = 63;
 
 // Prefijo de salida por defecto. Portabilidad LOCKED: `os.tmpdir()` de Node, JAMÁS una
 // variable de entorno de temp (en Git Bash/Windows es `undefined`).
@@ -281,7 +288,12 @@ function curl(url) {
   return new Promise((resolve) => {
     execFile("curl", args, { maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
       if (err && !stdout) {
-        resolve({ redError: String(err.message || stderr || err).trim() });
+        resolve({
+          redError: String(err.message || stderr || err).trim(),
+          // IN-04: distingue "el servidor respondió pero nos pasamos del corte" de un
+          // fallo de red real, para NO reintentar (y no doblar el request).
+          reintentable: err.code !== CURL_EXIT_FILESIZE,
+        });
         return;
       }
       const i = stdout.lastIndexOf("");
@@ -303,20 +315,38 @@ function snippet(cuerpo) {
   return String(cuerpo || "").replace(/\s+/g, " ").trim().slice(0, 300);
 }
 
+/**
+ * IN-03: `CLASES` estaba exportado y no validaba nada — `clasificar` podía devolver un
+ * valor fuera de la lista sin que nadie lo notara. Ahora es el contrato: toda
+ * clasificación pasa por aquí y una clase desconocida falla ruidosamente en vez de
+ * colarse al artefacto.
+ */
 export function clasificar(r) {
+  const c = clasificarBruto(r);
+  if (!CLASES.includes(c)) {
+    throw new Error(`clasificacion fuera de CLASES: ${JSON.stringify(c)}`);
+  }
+  return c;
+}
+
+function clasificarBruto(r) {
   if (r.clase_red) return "RED";
   if (r.http_code === 403 || r.http_code === 429) return "WAF-403";
   // Cualquier 4xx (no sólo 404) y cualquier 5xx es "no disponible". Sin esta rama, un 400
   // —p.ej. el `Virtuoso ... syntax error` de `datos.cplt.cl` ante un SPARQL mal formado—
   // caía al `return "OK"` final y se etiquetaba como éxito. Defecto de la clasificación
   // PROPUESTA, no de la respuesta: los campos crudos del registro no cambian.
-  if (r.http_code === 0 || r.http_code >= 500 || (r.http_code >= 400 && r.http_code < 500)) {
-    return "NO-DISPONIBLE";
-  }
+  // IN-01: `>= 500 || (>= 400 && < 500)` es simplemente `>= 400` — la forma larga
+  // sugería una distinción que no existe.
+  if (r.http_code === 0 || r.http_code >= 400) return "NO-DISPONIBLE";
   const ct = (r.content_type || "").toLowerCase();
   const sn = (r.snippet || "").slice(0, 80).toLowerCase();
   if (ct.includes("xml") || sn.startsWith("<?xml")) return "XML-CRUDO";
   if (r.num_redirects > 0) return "REDIR-GENERICA";
+  // IN-02: con `--location`, un 3xx FINAL (304, o un redirect no seguido por el límite
+  // de saltos) no caía en ninguna rama y se etiquetaba `OK` — el mismo tipo de defecto
+  // que el 400→`OK` ya corregido arriba.
+  if (r.http_code >= 300 && r.http_code < 400) return "REDIR-GENERICA";
   return "OK";
 }
 
@@ -324,7 +354,10 @@ async function pedir({ id, patron, host, url, espera }) {
   const ts_inicio = new Date().toISOString();
   let res = await curl(url);
   let reintentado = false;
-  if (res.redError) {
+  // Reintento: máximo UNO y sólo ante fallo de RED de verdad. IN-04: el corte por
+  // `--max-filesize` NO es un fallo de red (el servidor respondió) y reintentarlo
+  // doblaría el request contra ese host.
+  if (res.redError && res.reintentable !== false) {
     reintentado = true;
     await dormir(REINTENTO_MS);
     res = await curl(url);
