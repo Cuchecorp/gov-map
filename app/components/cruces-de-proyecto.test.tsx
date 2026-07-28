@@ -237,6 +237,42 @@ describe("CrucesView — negative-match anti-insinuación (§9.1)", () => {
   });
 });
 
+// ── F-02 (117-03): el badge del cruce nombra el REBUILD como rebuild ────────────
+//    fecha_captura es el now() del FULL REBUILD diario, no una observación de la
+//    fuente. El badge debe decirlo con origenFecha="recalculo".
+describe("CrucesView — F-02: fecha_captura es recálculo, no captura de fuente", () => {
+  it("el badge dice 'recalculado por el Observatorio al' y NO 'según fuente al'", () => {
+    const { container } = render(
+      <CrucesView
+        rows={[makeRow({ fecha_captura: "2026-07-28T03:23:00Z" })]}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("recalculado por el Observatorio al 28 jul 2026");
+    expect(texto).not.toContain("según fuente al");
+  });
+
+  it("la fecha de la REUNIÓN sigue presente y sin correrse de día", () => {
+    const { container } = render(
+      <CrucesView
+        rows={[
+          makeRow({
+            fecha_captura: "2026-07-28T03:23:00Z",
+            evidencia: {
+              conteo: 1,
+              items: [makeItem({ fecha: "2025-04-10T14:00:00Z" })],
+            },
+            conteo: 1,
+          }),
+        ]}
+      />,
+    );
+    expect(container.textContent ?? "").toContain(
+      "Reunión registrada el 10 abr 2025",
+    );
+  });
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // CrucesSection (Server Component) — degrade honesto de 3 caminos
 // ═══════════════════════════════════════════════════════════════════════════════

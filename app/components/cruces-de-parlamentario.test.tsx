@@ -323,7 +323,7 @@ describe("CrucesView — frescura honesta (CRUCEN-01 / WR-02)", () => {
   });
 
   it("muestra el idiom de fecha y NO 'Sin fecha de actualización'", () => {
-    render(
+    const { container } = render(
       <CrucesView
         data={makeViewData({
           cruces: [makeSenal({ fecha_captura: new Date().toISOString() })],
@@ -333,10 +333,39 @@ describe("CrucesView — frescura honesta (CRUCEN-01 / WR-02)", () => {
     expect(
       screen.queryByText(/Sin fecha de actualización/i),
     ).not.toBeInTheDocument();
-    // 117-01: idiom LOCKED. El Plan 03 lo mueve a /recalculado por el Observatorio al/
-    // cuando esta superficie pase origenFecha="recalculo" (F-02: el cruce es un rebuild
-    // NUESTRO, no una observación de la fuente).
-    expect(screen.getByText(/según fuente al/i)).toBeInTheDocument();
+    // 117-03 / F-02: esta superficie pasa origenFecha="recalculo" — el cruce es un
+    // rebuild NUESTRO, no una observación de la fuente.
+    expect(
+      screen.getByText(/recalculado por el Observatorio al/i),
+    ).toBeInTheDocument();
+    expect(container.textContent ?? "").not.toContain("según fuente al");
+  });
+
+  // ── F-02 (117-03): evidencia de PROD — las 11 señales de D1165 comparten
+  //    fecha_captura al microsegundo (2026-07-28 03:23:00.035505+00) sobre una
+  //    reunión del 2025-04-10: es el reloj del rebuild, no el de la fuente.
+  it("F-02: fecha_captura se rinde como recálculo del Observatorio, con el día correcto", () => {
+    const { container } = render(
+      <CrucesView
+        data={makeViewData({
+          cruces: [
+            makeSenal({
+              fecha_captura: "2026-07-28T03:23:00Z",
+              evidencia: {
+                conteo: 1,
+                items: [makeItem({ fecha: "2025-04-10T14:00:00Z" })],
+              },
+              conteo: 1,
+            }),
+          ],
+        })}
+      />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain("recalculado por el Observatorio al 28 jul 2026");
+    expect(texto).not.toContain("según fuente al");
+    // La fecha de la REUNIÓN sobrevive intacta (rótulo limpio preexistente).
+    expect(texto).toContain("Reunión registrada el 10 abr 2025");
   });
 
   it("texto factual de reunión: presente cuando item.fecha set, ausente cuando null", () => {
