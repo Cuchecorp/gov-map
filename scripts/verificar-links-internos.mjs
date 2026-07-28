@@ -185,7 +185,7 @@ async function main() {
       } else if (!r.html.includes(entrada.espera)) {
         resultado = "PASS";
       } else {
-        causa = `patrón presente con el gate ${entrada.gate} OFF: ${entrada.espera}`;
+        causa = `patrón presente aunque el inventario lo declara ausente (gate ${entrada.gate}): ${entrada.espera}`;
       }
     }
 

@@ -1,0 +1,157 @@
+=== verificar-links-internos.mjs ===
+base_url : https://observatorio-congreso.thevalis.workers.dev
+timestamp: 2026-07-28T01:06:03.406Z
+filtros  : route=— tipo=—
+entradas : 95 de 95
+cheerio  : CHEERIO_NO (cheerio no resuelve desde la raíz; verificación por búsqueda sobre el HTML servido)
+
+  id                         tipo      gate    url                                                      res          causa
+  C-01-2                     status    —       /metodologia                                             PASS         
+  C-01-3                     status    —       /sobre                                                   PASS         
+  C-02-1                     status    —       /buscar                                                  PASS         
+  C-02-2                     status    —       /parlamentarios                                          PASS         
+  C-02-3                     status    —       /agenda                                                  PASS         
+  C-02-4                     status    NET     /red                                                     PASS         
+  C-02-5                     status    —       /sobre                                                   PASS         
+  C-03-1                     status    —       /                                                        PASS         
+  4.1-A1                     status    —       /comparar?a=D1165                                        PASS         
+  4.1-A2                     status    NET     /red?seed=D1165                                          PASS         
+  4.1-A3-votos               ancla     —       /parlamentario/D1165                                     PASS         
+  4.1-A3-lobby               ancla     —       /parlamentario/D1165                                     PASS         
+  4.1-A3-patrimonio          ancla     —       /parlamentario/D1165                                     PASS         
+  4.1-A3-cruces              ancla     CRUCES  /parlamentario/D1165                                     PASS         
+  4.1-A3-S-votos             ancla     —       /parlamentario/S1338                                     PASS         
+  4.1-A3-S-patrimonio        ancla     —       /parlamentario/S1338                                     PASS         
+  4.1-A3-S-cruces            ancla     CRUCES  /parlamentario/S1338                                     PASS         
+  4.1-A4                     status    —       /parlamentario/D1165                                     PASS         
+  4.1-A6                     status    —       /proyecto/14309-04                                       PASS         
+  4.1-A7                     status    —       /parlamentario/D1165                                     PASS         
+  4.1-A8                     status    —       /parlamentarios                                          PASS         
+  4.1-A9                     status    —       /parlamentario/D1165                                     PASS         
+  4.1-A10                    status    —       /parlamentario/D1165?votosPage=2                         PASS         
+  4.1-A11                    status    —       /parlamentario/D1165                                     PASS         
+  4.1-A12                    status    —       /parlamentario/D1165?vista=cronologica                   PASS         
+  4.1-A13                    status    —       /buscar                                                  PASS         
+  4.1-A14                    status    —       /parlamentario/D1165?lobbyPage=2&vista=cronologica       PASS         
+  4.1-A15                    status    —       /proyecto/14309-04                                       PASS         
+  4.1-A16                    status    —       /parlamentario/D1165                                     PASS         
+  4.1-A17                    status    —       /parlamentario/D1165?patrimonioPage=2                    PASS         
+  4.1-A18                    ausencia  NOTIF   /parlamentario/D1165                                     PASS         
+  4.1-A19                    ausencia  MONEY   /parlamentario/D1165                                     PASS         
+  4.1-A19-contratos          ausencia  MONEY   /parlamentario/D1165                                     PASS         
+  4.1-A20                    ausencia  MONEY   /parlamentario/D1165                                     PASS         
+  4.1-A20-aportes            ausencia  MONEY   /parlamentario/D1165                                     PASS         
+  4.1-A20-pendiente          ancla     MONEY   /parlamentario/D1165                                     PASS         
+  4.1.b-404                  status    —       /parlamentario/D0000000                                  PASS         
+  4.1.b-A1                   status    —       /                                                        PASS         
+  4.2-A1-estado              ancla     —       /proyecto/14309-04                                       PASS         
+  4.2-A1-timeline            ancla     —       /proyecto/14309-04                                       PASS         
+  4.2-A1-votaciones          ancla     —       /proyecto/14309-04                                       PASS         
+  4.2-A1-autores             ancla     —       /proyecto/14309-04                                       PASS         
+  4.2-A1-lobby-tramitacion   ancla     —       /proyecto/14309-04                                       PASS         
+  4.2-A1-lobby-menciones     ancla     —       /proyecto/14309-04                                       PASS         
+  4.2-A1-cruces              ancla     CRUCES  /proyecto/14309-04                                       PASS         
+  4.2-A1-idea-matriz         ancla     —       /proyecto/14309-04                                       PASS         
+  4.2-A1-cuerpos-legales     ancla     —       /proyecto/14309-04                                       PASS         
+  4.2-A1-similares           ancla     —       /proyecto/14309-04                                       PASS         
+  4.2-A1-validacion-fuente   ancla     —       /proyecto/14309-04                                       PASS         
+  4.2-A2                     ancla     —       /proyecto/14309-04                                       PASS         
+  4.2-A3                     status    —       /agenda?semana=2026-W30                                  PASS         
+  4.2-A4                     status    —       /proyecto/14309-04                                       PASS         
+  4.2-A6                     status    —       /parlamentario/D1165                                     PASS         
+  4.2-A7                     status    —       /parlamentario/D1165                                     PASS         
+  4.2-A8                     status    —       /parlamentario/D1165                                     PASS         
+  4.2-A9                     status    CRUCES  /parlamentario/D1165                                     PASS         
+  4.2-A10                    status    —       /proyecto/17870-05                                       PASS         
+  4.2-A11                    ausencia  NOTIF   /proyecto/14309-04                                       PASS         
+  4.2.b-404                  status    —       /proyecto/00000-00                                       FAIL         esperaba 404, observado 200
+  4.2.b-A1                   status    —       /                                                        PASS         
+  4.3-A1-desde-parlamentario ausencia  MONEY   /parlamentario/D1165                                     PASS         
+  4.3-A1-desde-proyecto      ausencia  MONEY   /proyecto/14309-04                                       PASS         
+  4.3-A2-A3                  status    —       /contraparte/c:sujeto-inexistente                        PASS         
+  4.3.b-A1                   status    —       /                                                        PASS         
+  4.4-A1                     status    —       /sobre                                                   PASS         
+  4.4-A2                     status    —       /buscar                                                  PASS         
+  4.4-A3                     status    —       /parlamentarios                                          PASS         
+  4.4-A4                     status    —       /agenda                                                  PASS         
+  4.5-A1                     status    —       /agenda                                                  PASS         
+  4.5-A2                     status    —       /agenda?q=trabajo&camara=diputados                       PASS         
+  4.5-A3                     status    —       /proyecto/14309-04                                       PASS         
+  4.5-A4                     status    —       /buscar                                                  PASS         
+  4.5-A5                     status    —       /agenda?semana=2026-W30                                  PASS         
+  4.5-A6                     status    —       /agenda?semana=2026-W32                                  PASS         
+  4.5-A7                     status    —       /proyecto/14309-04                                       PASS         
+  4.5-A8                     status    —       /proyecto/14309-04                                       PASS         
+  4.6-A1                     status    —       /agenda                                                  PASS         
+  4.6-A2                     status    —       /buscar?q=pension&page=1                                 PASS         
+  4.6-A3                     status    —       /buscar?q=pension&page=2                                 PASS         
+  4.6-A4                     status    —       /proyecto/14309-04                                       PASS         
+  4.7-A1                     status    —       /comparar                                                PASS         
+  4.8-A1-dip                 status    —       /parlamentario/D1165                                     PASS         
+  4.8-A1-sen                 status    —       /parlamentario/S1338                                     PASS         
+  4.9-A1                     status    NET     /red?seed=D1165                                          PASS         
+  4.9-A2                     status    NET     /parlamentarios                                          PASS         
+  4.9.b-404                  status    NET     /red?seed=D0000000                                       PASS         
+  4.9.b-A1                   status    —       /                                                        PASS         
+  4.10-A1                    status    —       /                                                        PASS         
+  4.11-A1                    status    —       /buscar                                                  PASS         
+  4.11-A2                    status    —       /agenda                                                  PASS         
+  4.11-A3                    status    —       /parlamentarios                                          PASS         
+  4.11-A4                    status    —       /                                                        PASS         
+  4.12-A1                    status    NOTIF   /cuenta                                                  PASS         
+  4.13-A1                    status    NOTIF   /notificaciones/baja                                     PASS         
+  4.14-A1                    status    NOTIF   /notificaciones/confirmar?token=x                        PASS         
+
+Total: 95 | PASS 94 | FAIL 1 | MISSING-SSR 0
+
+=== LECTURA DE LA CORRIDA ===
+
+Comando verbatim:
+  node scripts/verificar-links-internos.mjs --out .planning/phases/114-link-int-links-internos-exhaustivos/114-CORRIDA-PRE
+
+Timestamp de la corrida : 2026-07-28T01:06:03.406Z
+Deploy                  : https://observatorio-congreso.thevalis.workers.dev
+Exit code observado     : 1  (>=1 FAIL; los MISSING-SSR no fallan la corrida)
+
+Conteos: PASS 94 | FAIL 1 | MISSING-SSR 0   (total 95 entradas)
+
+--- RECONCILIACION DE COBERTURA (cerrada AQUI, en Wave 1) ---
+Entradas corridas                       : 95 de 95 del MANIFIESTO (corrida completa, no muestra)
+Refs del inventario 113 (denominador)   : 77  (66 filas AN de Tabla A + 11 filas de chrome)
+Refs cubiertas por los resultados       : 73
+Refs cubiertas por EXCLUIDOS            : 4   (C-01-1 externo CC BY, C-01-4 mailto,
+                                               C-04-1 breadcrumbs sin href propio,
+                                               4.1-A5 verTodosHref null en los 5 bloques)
+Union resultados + EXCLUIDOS            : 77 / 77  -> COBERTURA COMPLETA, cero gap, cero ref inventada.
+Comandos de derivacion del denominador (re-ejecutables, dieron 66 y 11):
+  awk 'NR>=985 && /^\| A[0-9]+ \|/' 113-INVENTARIO.md | wc -l
+  awk 'NR>=458 && NR<=523 && /^\| [0-9]+ \|/' 113-INVENTARIO.md | wc -l
+
+--- FAIL (1) ---
+id        | href                | status | causa                    | hipotesis
+4.2.b-404 | /proyecto/00000-00  | 200    | esperaba 404, observado 200 | el boletin inexistente supera BOLETIN_RE y la pagina renderiza en vez de llamar notFound(): la ficha de proyecto probablemente no corta cuando la consulta devuelve 0 filas, a diferencia de /parlamentario/[id] (que si 404ea con D0000000). Sin corregir aqui: viaja al Plan 03.
+
+--- MISSING-SSR (0) ---
+Ninguno. Las 19 anclas verificadas aparecen como atributo id en el HTML SSR ->
+NO se requiere el fallback BrowserOS del Plan 02 para ninguna ancla de esta corrida.
+
+--- GATES: contraste con §5 del inventario ---
+NET    ON  : /red -> no-404, href="/red" en el nav, /red?seed=D1165 -> no-404          COINCIDE
+CRUCES ON  : ancla #cruces presente en /proyecto/14309-04 y en /parlamentario/D1165     COINCIDE
+VSIM   ON  : no ejercitado por links internos (no aporta hrefs a la Tabla A)            n/a
+MONEY  OFF : ausencia de href="/contraparte/ en /parlamentario/D1165 y /proyecto/14309-04;
+             ausencia de id="dinero" / "contratos" / "financiamiento" / "aportes";
+             presencia de id="financiamiento-pendiente"; /contraparte/<placeholder> -> 404  COINCIDE
+NOTIF  OFF : ausencia de /cuenta?next= en ficha de parlamentario y de proyecto;
+             /cuenta, /notificaciones/baja y /notificaciones/confirmar?token=x -> no-404    COINCIDE
+Cero divergencias de regimen. NINGUN flag fue tocado en esta corrida (el script solo LEE).
+
+--- HALLAZGO DE INVENTARIO (no es de regimen; no se corrigio nada) ---
+§4.1 "Diferencia por sujeto" afirma que con S1338 el carril NO ofrece la entrada #cruces.
+Observado 2026-07-28 sobre el deploy: /parlamentario/S1338 emite href="#cruces" Y tiene id="cruces"
+(1 y 1). El link NO esta roto (destino existente), por lo que la entrada 4.1-A3-S-cruces se verifica
+como ancla y PASA. La divergencia se reporta a 114-02 / 114-03; el inventario 113 no se edita aqui.
+
+--- PII ---
+Cero RUT en ambos artefactos. El id de contraparte usado es el placeholder sintetico
+`c:sujeto-inexistente` de §5, jamas un RUT. El JSON guarda status y causa, NUNCA el cuerpo HTML.

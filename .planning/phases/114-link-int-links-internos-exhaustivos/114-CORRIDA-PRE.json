@@ -1,0 +1,1446 @@
+{
+  "meta": {
+    "base_url": "https://observatorio-congreso.thevalis.workers.dev",
+    "iso_timestamp": "2026-07-28T01:06:03.406Z",
+    "total": 95,
+    "pass": 94,
+    "fail": 1,
+    "missing_ssr": 0,
+    "filtros": {
+      "route": null,
+      "tipo": null
+    },
+    "cheerio_probe": "CHEERIO_NO (cheerio no resuelve desde la raíz; verificación por búsqueda sobre el HTML servido)",
+    "delay_ms": 400,
+    "user_agent": "ObservatorioCongreso360/1.0 (+https://observatorio-congreso.thevalis.workers.dev; contacto: sanchez.rossi@gmail.com)"
+  },
+  "resultados": [
+    {
+      "id": "C-01-2",
+      "inventarioRef": [
+        "C-01-2"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "chrome",
+      "destino": "/metodologia",
+      "href": "/metodologia",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "C-01-3",
+      "inventarioRef": [
+        "C-01-3"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "chrome",
+      "destino": "/sobre",
+      "href": "/sobre",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "C-02-1",
+      "inventarioRef": [
+        "C-02-1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "chrome",
+      "destino": "/buscar",
+      "href": "/buscar",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "C-02-2",
+      "inventarioRef": [
+        "C-02-2"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "chrome",
+      "destino": "/parlamentarios",
+      "href": "/parlamentarios",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "C-02-3",
+      "inventarioRef": [
+        "C-02-3"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "chrome",
+      "destino": "/agenda",
+      "href": "/agenda",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "C-02-4",
+      "inventarioRef": [
+        "C-02-4"
+      ],
+      "tipo": "status",
+      "gate": "NET",
+      "origen": "chrome",
+      "destino": "/red",
+      "href": "/red",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "C-02-5",
+      "inventarioRef": [
+        "C-02-5"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "chrome",
+      "destino": "/sobre",
+      "href": "/sobre",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "C-03-1",
+      "inventarioRef": [
+        "C-03-1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "chrome",
+      "destino": "/",
+      "href": "/",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A1",
+      "inventarioRef": [
+        "4.1-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/comparar?a=D1165",
+      "href": "/comparar?a=D1165",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A2",
+      "inventarioRef": [
+        "4.1-A2"
+      ],
+      "tipo": "status",
+      "gate": "NET",
+      "origen": "/parlamentario/D1165",
+      "destino": "/red?seed=D1165",
+      "href": "/red?seed=D1165",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A3-votos",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "#votos",
+      "espera": "votos",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A3-lobby",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "#lobby",
+      "espera": "lobby",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A3-patrimonio",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "#patrimonio",
+      "espera": "patrimonio",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A3-cruces",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "CRUCES",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "#cruces",
+      "espera": "cruces",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A3-S-votos",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/parlamentario/S1338",
+      "destino": "/parlamentario/S1338",
+      "href": "#votos",
+      "espera": "votos",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A3-S-patrimonio",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/parlamentario/S1338",
+      "destino": "/parlamentario/S1338",
+      "href": "#patrimonio",
+      "espera": "patrimonio",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A3-S-cruces",
+      "inventarioRef": [
+        "4.1-A3"
+      ],
+      "tipo": "ancla",
+      "gate": "CRUCES",
+      "origen": "/parlamentario/S1338",
+      "destino": "/parlamentario/S1338",
+      "href": "#cruces",
+      "espera": "cruces",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A4",
+      "inventarioRef": [
+        "4.1-A4"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "/parlamentario/D1165",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A6",
+      "inventarioRef": [
+        "4.1-A6"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/proyecto/14309-04",
+      "href": "/proyecto/14309-04",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A7",
+      "inventarioRef": [
+        "4.1-A7"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "/parlamentario/D1165",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A8",
+      "inventarioRef": [
+        "4.1-A8"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentarios",
+      "href": "/parlamentarios",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A9",
+      "inventarioRef": [
+        "4.1-A9"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "/parlamentario/D1165#votos",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A10",
+      "inventarioRef": [
+        "4.1-A10"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165?votosPage=2",
+      "href": "/parlamentario/D1165?votosPage=2#votos",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A11",
+      "inventarioRef": [
+        "4.1-A11"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "/parlamentario/D1165#lobby",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A12",
+      "inventarioRef": [
+        "4.1-A12"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165?vista=cronologica",
+      "href": "/parlamentario/D1165?vista=cronologica#lobby",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A13",
+      "inventarioRef": [
+        "4.1-A13"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/S1338",
+      "destino": "/buscar",
+      "href": "/buscar",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A14",
+      "inventarioRef": [
+        "4.1-A14"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165?lobbyPage=2&vista=cronologica",
+      "href": "/parlamentario/D1165?lobbyPage=2&vista=cronologica#lobby",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A15",
+      "inventarioRef": [
+        "4.1-A15"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/proyecto/14309-04",
+      "href": "/proyecto/14309-04",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A16",
+      "inventarioRef": [
+        "4.1-A16"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "/parlamentario/D1165",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A17",
+      "inventarioRef": [
+        "4.1-A17"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165?patrimonioPage=2",
+      "href": "/parlamentario/D1165?patrimonioPage=2#patrimonio",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A18",
+      "inventarioRef": [
+        "4.1-A18"
+      ],
+      "tipo": "ausencia",
+      "gate": "NOTIF",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": null,
+      "espera": "/cuenta?next=",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A19",
+      "inventarioRef": [
+        "4.1-A19"
+      ],
+      "tipo": "ausencia",
+      "gate": "MONEY",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": null,
+      "espera": "id=\"dinero\"",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A19-contratos",
+      "inventarioRef": [
+        "4.1-A19"
+      ],
+      "tipo": "ausencia",
+      "gate": "MONEY",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": null,
+      "espera": "id=\"contratos\"",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A20",
+      "inventarioRef": [
+        "4.1-A20"
+      ],
+      "tipo": "ausencia",
+      "gate": "MONEY",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": null,
+      "espera": "id=\"financiamiento\"",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A20-aportes",
+      "inventarioRef": [
+        "4.1-A20"
+      ],
+      "tipo": "ausencia",
+      "gate": "MONEY",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": null,
+      "espera": "id=\"aportes\"",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1-A20-pendiente",
+      "inventarioRef": [
+        "4.1-A20"
+      ],
+      "tipo": "ancla",
+      "gate": "MONEY",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": "#financiamiento-pendiente",
+      "espera": "financiamiento-pendiente",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1.b-404",
+      "inventarioRef": [
+        "4.1.b-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "—",
+      "destino": "/parlamentario/D0000000",
+      "href": "/parlamentario/D0000000",
+      "espera": 404,
+      "status": 404,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.1.b-A1",
+      "inventarioRef": [
+        "4.1.b-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentario/D0000000",
+      "destino": "/",
+      "href": "/",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-estado",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#estado",
+      "espera": "estado",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-timeline",
+      "inventarioRef": [
+        "4.2-A1",
+        "4.2-A5"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#timeline",
+      "espera": "timeline",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-votaciones",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#votaciones",
+      "espera": "votaciones",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-autores",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#autores",
+      "espera": "autores",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-lobby-tramitacion",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#lobby-tramitacion",
+      "espera": "lobby-tramitacion",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-lobby-menciones",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#lobby-menciones",
+      "espera": "lobby-menciones",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-cruces",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "CRUCES",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#cruces",
+      "espera": "cruces",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-idea-matriz",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#idea-matriz",
+      "espera": "idea-matriz",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-cuerpos-legales",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#cuerpos-legales",
+      "espera": "cuerpos-legales",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-similares",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#similares",
+      "espera": "similares",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A1-validacion-fuente",
+      "inventarioRef": [
+        "4.2-A1"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#validacion-fuente",
+      "espera": "validacion-fuente",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A2",
+      "inventarioRef": [
+        "4.2-A2"
+      ],
+      "tipo": "ancla",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "#idea-matriz",
+      "espera": "idea-matriz",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A3",
+      "inventarioRef": [
+        "4.2-A3"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/agenda?semana=2026-W30",
+      "href": "/agenda?semana=2026-W30",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A4",
+      "inventarioRef": [
+        "4.2-A4"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": "/proyecto/14309-04",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A6",
+      "inventarioRef": [
+        "4.2-A6"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/parlamentario/D1165",
+      "href": "/parlamentario/D1165",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A7",
+      "inventarioRef": [
+        "4.2-A7"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/parlamentario/D1165",
+      "href": "/parlamentario/D1165",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A8",
+      "inventarioRef": [
+        "4.2-A8"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/parlamentario/D1165",
+      "href": "/parlamentario/D1165",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A9",
+      "inventarioRef": [
+        "4.2-A9"
+      ],
+      "tipo": "status",
+      "gate": "CRUCES",
+      "origen": "/proyecto/14309-04",
+      "destino": "/parlamentario/D1165",
+      "href": "/parlamentario/D1165",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A10",
+      "inventarioRef": [
+        "4.2-A10"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/17870-05",
+      "href": "/proyecto/17870-05",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2-A11",
+      "inventarioRef": [
+        "4.2-A11"
+      ],
+      "tipo": "ausencia",
+      "gate": "NOTIF",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": null,
+      "espera": "/cuenta?next=",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.2.b-404",
+      "inventarioRef": [
+        "4.2.b-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "—",
+      "destino": "/proyecto/00000-00",
+      "href": "/proyecto/00000-00",
+      "espera": 404,
+      "status": 200,
+      "resultado": "FAIL",
+      "causa": "esperaba 404, observado 200"
+    },
+    {
+      "id": "4.2.b-A1",
+      "inventarioRef": [
+        "4.2.b-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/proyecto/00000-00",
+      "destino": "/",
+      "href": "/",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.3-A1-desde-parlamentario",
+      "inventarioRef": [
+        "4.3-A1"
+      ],
+      "tipo": "ausencia",
+      "gate": "MONEY",
+      "origen": "/parlamentario/D1165",
+      "destino": "/parlamentario/D1165",
+      "href": null,
+      "espera": "href=\"/contraparte/",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.3-A1-desde-proyecto",
+      "inventarioRef": [
+        "4.3-A1"
+      ],
+      "tipo": "ausencia",
+      "gate": "MONEY",
+      "origen": "/proyecto/14309-04",
+      "destino": "/proyecto/14309-04",
+      "href": null,
+      "espera": "href=\"/contraparte/",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.3-A2-A3",
+      "inventarioRef": [
+        "4.3-A2",
+        "4.3-A3"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "—",
+      "destino": "/contraparte/c:sujeto-inexistente",
+      "href": "/contraparte/c:sujeto-inexistente",
+      "espera": 404,
+      "status": 404,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.3.b-A1",
+      "inventarioRef": [
+        "4.3.b-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/contraparte/c:sujeto-inexistente",
+      "destino": "/",
+      "href": "/",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.4-A1",
+      "inventarioRef": [
+        "4.4-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/",
+      "destino": "/sobre",
+      "href": "/sobre",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.4-A2",
+      "inventarioRef": [
+        "4.4-A2"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/",
+      "destino": "/buscar",
+      "href": "/buscar",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.4-A3",
+      "inventarioRef": [
+        "4.4-A3"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/",
+      "destino": "/parlamentarios",
+      "href": "/parlamentarios",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.4-A4",
+      "inventarioRef": [
+        "4.4-A4"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/",
+      "destino": "/agenda",
+      "href": "/agenda",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.5-A1",
+      "inventarioRef": [
+        "4.5-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/agenda?q=trabajo",
+      "destino": "/agenda",
+      "href": "/agenda",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.5-A2",
+      "inventarioRef": [
+        "4.5-A2"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/agenda?q=trabajo",
+      "destino": "/agenda?q=trabajo&camara=diputados",
+      "href": "/agenda?q=trabajo&camara=diputados",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.5-A3",
+      "inventarioRef": [
+        "4.5-A3"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/agenda?q=trabajo",
+      "destino": "/proyecto/14309-04",
+      "href": "/proyecto/14309-04",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.5-A4",
+      "inventarioRef": [
+        "4.5-A4"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/agenda",
+      "destino": "/buscar",
+      "href": "/buscar",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.5-A5",
+      "inventarioRef": [
+        "4.5-A5"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/agenda",
+      "destino": "/agenda?semana=2026-W30",
+      "href": "/agenda?semana=2026-W30",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.5-A6",
+      "inventarioRef": [
+        "4.5-A6"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/agenda",
+      "destino": "/agenda?semana=2026-W32",
+      "href": "/agenda?semana=2026-W32",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.5-A7",
+      "inventarioRef": [
+        "4.5-A7"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/agenda",
+      "destino": "/proyecto/14309-04",
+      "href": "/proyecto/14309-04",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.5-A8",
+      "inventarioRef": [
+        "4.5-A8"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/agenda",
+      "destino": "/proyecto/14309-04",
+      "href": "/proyecto/14309-04",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.6-A1",
+      "inventarioRef": [
+        "4.6-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/buscar",
+      "destino": "/agenda",
+      "href": "/agenda",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.6-A2",
+      "inventarioRef": [
+        "4.6-A2"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/buscar?q=pension&page=2",
+      "destino": "/buscar?q=pension&page=1",
+      "href": "/buscar?q=pension&page=1",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.6-A3",
+      "inventarioRef": [
+        "4.6-A3"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/buscar?q=pension&page=1",
+      "destino": "/buscar?q=pension&page=2",
+      "href": "/buscar?q=pension&page=2",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.6-A4",
+      "inventarioRef": [
+        "4.6-A4"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/buscar?q=pension&page=1",
+      "destino": "/proyecto/14309-04",
+      "href": "/proyecto/14309-04",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.7-A1",
+      "inventarioRef": [
+        "4.7-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "—",
+      "destino": "/comparar",
+      "href": "/comparar",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.8-A1-dip",
+      "inventarioRef": [
+        "4.8-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentarios",
+      "destino": "/parlamentario/D1165",
+      "href": "/parlamentario/D1165",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.8-A1-sen",
+      "inventarioRef": [
+        "4.8-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/parlamentarios",
+      "destino": "/parlamentario/S1338",
+      "href": "/parlamentario/S1338",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.9-A1",
+      "inventarioRef": [
+        "4.9-A1"
+      ],
+      "tipo": "status",
+      "gate": "NET",
+      "origen": "/red?seed=D1165",
+      "destino": "/red?seed=D1165",
+      "href": "/red?seed=D1165",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.9-A2",
+      "inventarioRef": [
+        "4.9-A2"
+      ],
+      "tipo": "status",
+      "gate": "NET",
+      "origen": "/red?seed=S1338",
+      "destino": "/parlamentarios",
+      "href": "/parlamentarios",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.9.b-404",
+      "inventarioRef": [
+        "4.9.b-A1"
+      ],
+      "tipo": "status",
+      "gate": "NET",
+      "origen": "—",
+      "destino": "/red?seed=D0000000",
+      "href": "/red?seed=D0000000",
+      "espera": 404,
+      "status": 404,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.9.b-A1",
+      "inventarioRef": [
+        "4.9.b-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/red?seed=D0000000",
+      "destino": "/",
+      "href": "/",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.10-A1",
+      "inventarioRef": [
+        "4.10-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/metodologia",
+      "destino": "/",
+      "href": "/",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.11-A1",
+      "inventarioRef": [
+        "4.11-A1"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/sobre",
+      "destino": "/buscar",
+      "href": "/buscar",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.11-A2",
+      "inventarioRef": [
+        "4.11-A2"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/sobre",
+      "destino": "/agenda",
+      "href": "/agenda",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.11-A3",
+      "inventarioRef": [
+        "4.11-A3"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/sobre",
+      "destino": "/parlamentarios",
+      "href": "/parlamentarios",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.11-A4",
+      "inventarioRef": [
+        "4.11-A4"
+      ],
+      "tipo": "status",
+      "gate": "—",
+      "origen": "/sobre",
+      "destino": "/",
+      "href": "/",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.12-A1",
+      "inventarioRef": [
+        "4.12-A1"
+      ],
+      "tipo": "status",
+      "gate": "NOTIF",
+      "origen": "—",
+      "destino": "/cuenta",
+      "href": "/cuenta",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.13-A1",
+      "inventarioRef": [
+        "4.13-A1"
+      ],
+      "tipo": "status",
+      "gate": "NOTIF",
+      "origen": "—",
+      "destino": "/notificaciones/baja",
+      "href": "/notificaciones/baja",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    },
+    {
+      "id": "4.14-A1",
+      "inventarioRef": [
+        "4.14-A1"
+      ],
+      "tipo": "status",
+      "gate": "NOTIF",
+      "origen": "—",
+      "destino": "/notificaciones/confirmar?token=x",
+      "href": "/notificaciones/confirmar?token=x",
+      "espera": "no-404",
+      "status": 200,
+      "resultado": "PASS",
+      "causa": ""
+    }
+  ]
+}
