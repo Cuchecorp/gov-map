@@ -134,8 +134,21 @@ Plans:
   3. Todo link o ancla roto quedó corregido en el código, con evidencia antes/después
   4. La corrida de verificación es reproducible (comando + salida guardada), no un chequeo manual irrepetible
 
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
+
+Plans:
+**Wave 1**
+
+- [ ] 114-01-PLAN.md — (w1) Manifiesto del universo de links + runner reproducible + corrida PRE-FIX
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 114-02-PLAN.md — (w2) Veredicto de anclas (SSR + fallback BrowserOS) + lista cerrada de hallazgos
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 114-03-PLAN.md — (w3) Fixes con evidencia antes/despues + corrida POST-FIX + no-regresion + cierre
 
 ### Phase 115: LINK-EXT — Patrones de link a fuente oficial
 
