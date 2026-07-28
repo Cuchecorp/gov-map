@@ -54,6 +54,7 @@ import {
   EMPTY_MENCIONES_LOBBY,
 } from "@/components/lobby-menciones-de-boletin";
 import { LEYENDA_SIMILITUD_VOTO } from "@/components/similitud-votacion-comparar";
+import { LEYENDA_RECURSO_NO_HUMANO } from "@/lib/recurso-no-humano";
 
 // ---------------------------------------------------------------------------
 // Helpers (espejo verbatim de lockdown-guard.test.ts)
@@ -419,11 +420,13 @@ const SUPERFICIES_NOTIF: string[] = [
  * (abajo, bloque LINK-EXT de TERMINOS_PROHIBIDOS) ANTES de que exista una sola línea
  * del copy nuevo (orden LOCKED 68-01 / 100-01 / 101-02 / 103-03).
  *
- * Las 4 superficies que la fase toca o que emiten copy sobre el origen del enlace:
+ * Las superficies que la fase toca o que emiten copy sobre el origen del enlace:
  *  - `components/timeline-event.tsx`  — el `<a>` "Ver fuente oficial ↗" por evento (A-2).
- *  - `components/timeline-view.tsx`   — el intermediario con los DOS call-sites del evento.
+ *  - `components/timeline-view.tsx`   — el intermediario con los DOS call-sites del evento,
+ *                                       y donde se DECLARA la leyenda una vez por contenedor.
  *  - `components/buscar-filtros.tsx`  — el badge de cada resultado de /buscar (A-1).
- *  - `components/provenance-badge.tsx`— donde vive la leyenda de recurso no-humano (A-3/4/5).
+ *  - `components/provenance-badge.tsx`— el badge que declara la limitación (A-3/4/5).
+ *  - `lib/recurso-no-humano.ts`       — donde vive HOY la leyenda (single-source, CR-01).
  *
  * DEDUPE (Pitfall 4, precedente `app/comparar/page.tsx` en VSIM): `buscar-filtros.tsx`
  * ya vive en `SUPERFICIES_BUSQUEDA` y `provenance-badge.tsx` en `SUPERFICIES_DEEPLINK`.
@@ -448,16 +451,54 @@ const SUPERFICIES_LINK_EXT: string[] = [
   "components/timeline-view.tsx",
   "components/buscar-filtros.tsx",
   "components/provenance-badge.tsx",
+  // CR-01 de la review: la leyenda se mudó a un módulo compartido de `lib/` (el
+  // source-scan SC7 prohíbe que `timeline-event.tsx` importe de `provenance-badge`).
+  // Es donde vive HOY el copy renderizado → tiene que estar en el escaneo.
+  "lib/recurso-no-humano.ts",
 ];
 
 /**
- * Leyenda de RECURSO NO-HUMANO (115-03, A-3/A-4/A-5). Se declara aquí como fixture del
- * guard ANTES de que el copy exista en `provenance-badge.tsx` (Wave 0). El Test (3)
- * prueba que está limpia; si alguien la edita hacia la insinuación ("la fuente no
- * quiere publicarlo", "lo esconde"), el detector la caza.
+ * Leyenda de RECURSO NO-HUMANO (115-03, A-3/A-4/A-5). El Test (3) prueba que está
+ * limpia; si alguien la edita hacia la insinuación ("la fuente no quiere publicarlo",
+ * "lo esconde"), el detector la caza.
+ *
+ * WR-02: se IMPORTA la constante REAL de `@/lib/recurso-no-humano` — antes era una
+ * COPIA literal, de modo que el test verificaba la copia y no el copy renderido: editar
+ * la constante real hacia vocabulario insinuante dejaba este test verde. La copia era el
+ * drift silencioso que el propio test decía prevenir.
  */
-const LEYENDA_RECURSO_NO_HUMANO_FIXTURE =
-  "La fuente oficial publica este dato como servicio de datos, no como página de consulta.";
+const LEYENDA_RECURSO_NO_HUMANO_FIXTURE = LEYENDA_RECURSO_NO_HUMANO;
+
+/**
+ * Vocabulario del carril LINK-EXT (115-03, LINK-03) — insinuación de INTENCIÓN DE LA
+ * FUENTE. Que un enlace oficial lleve a un XML crudo, a una API o a un endpoint sin
+ * parámetro es un HECHO de formato (y, en los casos A-1/A-2, un defecto NUESTRO), jamás
+ * una voluntad del organismo de ocultar.
+ *
+ * Se extrae a su propia constante por WR-03 de la review: estos términos se agregaron a
+ * la lista GLOBAL (que se aplica a ~50 archivos de TODOS los carriles) pero la
+ * verificación declarada se había hecho por grep sobre 4 superficies. Términos genéricos
+ * del español ("oculta", "esconde", "censura") son minas de falso positivo para copy
+ * factual futuro de superficies ajenas ("la tabla oculta las columnas sin dato") y
+ * bloquearían fases no relacionadas. Con la constante nombrada, el test
+ * "(1b) WR-03" de abajo verifica —POR CÓDIGO y sobre el conjunto COMPLETO de superficies
+ * de todos los carriles, no por grep manual sobre 4— que ninguno tiene hit hoy, y
+ * nombra el archivo exacto si mañana lo tuviera.
+ *
+ * TILDES EXACTAS (buildTermRegex NO es accent-insensitive) y CERO tokens genéricos que
+ * colisionen con identificadores (lección del `top` pelado rechazado en 100-01).
+ * DEDUPE: "influencia"/"captura" ya están en el carril MONEY → NO se re-agregan.
+ */
+const TERMINOS_LINK_EXT: string[] = [
+  "oculta",
+  "ocultan",
+  "esconde",
+  "esconden",
+  "no quiere",
+  "se niega a",
+  "bloquea a propósito",
+  "censura",
+];
 
 /**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
@@ -593,26 +634,11 @@ const TERMINOS_PROHIBIDOS: string[] = [
   "aliada",
   "tasa de coincidencia",
   "señal",
-  // --- Carril LINK-EXT (115-03, LINK-03) — insinuación de INTENCIÓN DE LA FUENTE. Que
-  //     un enlace oficial lleve a un XML crudo, a una API o a un endpoint sin parámetro
-  //     es un HECHO de formato (y, en los casos A-1/A-2, un defecto NUESTRO), jamás una
-  //     voluntad del organismo de ocultar. TILDES EXACTAS (buildTermRegex NO es
-  //     accent-insensitive) y CERO tokens genéricos que colisionen con identificadores
-  //     (lección del `top` pelado rechazado en 100-01): el escaneo corre sobre el texto
-  //     RENDERIZADO tras stripTsComments, pero un token demasiado corto igual cazaría
-  //     nombres de variables. Verificado por grep sobre las 4 superficies: el único
-  //     "oculta"/"esconde" del árbol vive en COMENTARIOS (timeline-view.tsx:16,
-  //     provenance-badge.tsx:14) → strippeados. "oculta"/"esconde" NO cazan
-  //     "Ocultar urgencias" ni "esconderse" por el límite de palabra.
-  //     DEDUPE: "influencia"/"captura" ya están arriba (carril MONEY) → NO se re-agregan.
-  "oculta",
-  "ocultan",
-  "esconde",
-  "esconden",
-  "no quiere",
-  "se niega a",
-  "bloquea a propósito",
-  "censura",
+  // --- Carril LINK-EXT (115-03, LINK-03) — insinuación de INTENCIÓN DE LA FUENTE.
+  //     WR-03: la lista vive en `TERMINOS_LINK_EXT` (arriba, con su JSDoc) y su ausencia
+  //     se verifica POR CÓDIGO sobre TODAS las superficies de todos los carriles —no por
+  //     grep manual sobre 4— en el test "(1b) WR-03".
+  ...TERMINOS_LINK_EXT,
 ];
 
 /**
@@ -682,6 +708,44 @@ function escapeRegex(s: string): string {
  *
  * Es la pieza que el mutation self-check (Test 2) ejercita contra un string inyectado.
  */
+/**
+ * Union DEDUPEada de las superficies de TODOS los carriles. `Set` = una ruta repetida
+ * entre carriles se escanea (y se reporta) UNA vez; el orden de inserción se conserva.
+ * Extraída del bucle del Test (1) para que el Test (1b) —verificación por carril del
+ * vocabulario nuevo, WR-03— escanee exactamente el mismo conjunto y no una copia que
+ * derive.
+ */
+const TODAS_LAS_SUPERFICIES: string[] = [
+  ...new Set([
+    ...SUPERFICIES_VOTO,
+    ...SUPERFICIES_MONEY,
+    ...SUPERFICIES_HOME,
+    ...SUPERFICIES_BUSQUEDA,
+    ...SUPERFICIES_PERSONAS,
+    ...SUPERFICIES_LOBBY,
+    ...SUPERFICIES_AGENDA,
+    ...SUPERFICIES_DEEPLINK,
+    ...SUPERFICIES_PANEL,
+    ...SUPERFICIES_RELACIONES,
+    ...SUPERFICIES_VSIM,
+    ...SUPERFICIES_NOTIF,
+    ...SUPERFICIES_LINK_EXT,
+  ]),
+];
+
+/**
+ * Igual que `detectarInsinuaciones` pero restringido a un SUBCONJUNTO de términos.
+ * Sirve para verificar el impacto de un carril concreto sobre el árbol completo (WR-03)
+ * sin re-implementar el strip de comentarios ni la resta de negaciones LOCKED.
+ */
+function detectarTerminos(rawContent: string, terminos: string[]): string[] {
+  let texto = stripTsComments(rawContent).replace(/\s+/g, " ");
+  for (const neg of NEGACIONES_LOCKED) {
+    texto = texto.split(neg.replace(/\s+/g, " ")).join(" ");
+  }
+  return terminos.filter((t) => buildTermRegex(t).test(texto));
+}
+
 function detectarInsinuaciones(rawContent: string): string[] {
   let texto = stripTsComments(rawContent);
   // IN-03 fix: normalizar whitespace antes de restar negaciones LOCKED,
@@ -726,7 +790,7 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
     // re-lista buscar-filtros.tsx y provenance-badge.tsx, que ya viven en BUSQUEDA y
     // DEEPLINK). Sin él, un offender se reportaría dos veces y el archivo se leería
     // dos veces. El orden de escaneo se conserva (Set preserva orden de inserción).
-    for (const rel of new Set([...SUPERFICIES_VOTO, ...SUPERFICIES_MONEY, ...SUPERFICIES_HOME, ...SUPERFICIES_BUSQUEDA, ...SUPERFICIES_PERSONAS, ...SUPERFICIES_LOBBY, ...SUPERFICIES_AGENDA, ...SUPERFICIES_DEEPLINK, ...SUPERFICIES_PANEL, ...SUPERFICIES_RELACIONES, ...SUPERFICIES_VSIM, ...SUPERFICIES_NOTIF, ...SUPERFICIES_LINK_EXT])) {
+    for (const rel of TODAS_LAS_SUPERFICIES) {
       const full = path.join(APP_ROOT, rel);
       let raw: string;
       try {
@@ -747,6 +811,51 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
         `en // o /* */ (el guard strippea comentarios); si es la leyenda LOCKED que ` +
         `NIEGA el término, añádela a NEGACIONES_LOCKED verbatim.`,
     ).toHaveLength(0);
+  });
+
+  it("(1b) WR-03: el vocabulario LINK-EXT no tiene hits en NINGUNA superficie de NINGÚN carril", () => {
+    // El vocabulario nuevo del carril LINK-EXT se agregó a la lista GLOBAL (aplicada a
+    // ~50 archivos de todos los carriles) pero su verificación declarada se había hecho
+    // por grep manual sobre 4 superficies. "oculta"/"esconde"/"censura" son términos
+    // genéricos del español: un copy factual futuro de una superficie ajena ("la tabla
+    // oculta las columnas sin dato") los dispararía y bloquearía una fase no
+    // relacionada. Este test hace la verificación POR CÓDIGO sobre el conjunto COMPLETO
+    // y nombra archivo + término si algún día hubiera un hit.
+    const offenders: string[] = [];
+    for (const rel of TODAS_LAS_SUPERFICIES) {
+      let raw: string;
+      try {
+        raw = readFileSync(path.join(APP_ROOT, rel), "utf-8");
+      } catch {
+        continue; // ausencia legítima (mismo criterio que el Test (1))
+      }
+      for (const term of detectarTerminos(raw, TERMINOS_LINK_EXT)) {
+        offenders.push(`${rel} → "${term}"`);
+      }
+    }
+    expect(
+      offenders,
+      `El vocabulario LINK-EXT caza copy de superficies AJENAS al carril: ` +
+        `[${offenders.join("; ")}]. Si el copy es factual y correcto, el término es ` +
+        `demasiado genérico para la lista GLOBAL: muévelo a un escaneo por carril en ` +
+        `vez de relajar el copy.`,
+    ).toHaveLength(0);
+  });
+
+  it("(1c) WR-03: el escaneo cubre TODAS las superficies declaradas (no un subconjunto)", () => {
+    // Sanity de la extracción: el conjunto único incluye cada carril y es estrictamente
+    // mayor que cualquiera de ellos. Si alguien añade un array de superficies y olvida
+    // sumarlo a TODAS_LAS_SUPERFICIES, el guard escanearía de menos en silencio.
+    for (const carril of [
+      SUPERFICIES_VOTO, SUPERFICIES_MONEY, SUPERFICIES_HOME, SUPERFICIES_BUSQUEDA,
+      SUPERFICIES_PERSONAS, SUPERFICIES_LOBBY, SUPERFICIES_AGENDA, SUPERFICIES_DEEPLINK,
+      SUPERFICIES_PANEL, SUPERFICIES_RELACIONES, SUPERFICIES_VSIM, SUPERFICIES_NOTIF,
+      SUPERFICIES_LINK_EXT,
+    ]) {
+      for (const rel of carril) expect(TODAS_LAS_SUPERFICIES).toContain(rel);
+    }
+    // Muy por encima de las 4 superficies contra las que se declaró el grep original.
+    expect(TODAS_LAS_SUPERFICIES.length).toBeGreaterThan(20);
   });
 });
 
