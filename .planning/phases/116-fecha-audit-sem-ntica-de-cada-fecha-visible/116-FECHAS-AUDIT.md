@@ -990,3 +990,110 @@ silenciado, no.
    `113-INVENTARIO.md` §5, observado el **2026-07-27**. Esta fase **no** los re-observó contra el
    deploy porque hacerlo habría requerido tocar flags o pedir rutas gated. Se marca
    `heredada: true` en vez de presentarlo como observación propia.
+
+---
+
+## 7. Verificación de cierre
+
+### 7.1 Salida verbatim de `check-fechas.sh` con `STRICT=1`
+
+```
+$ STRICT=1 bash .planning/phases/116-fecha-audit-sem-ntica-de-cada-fecha-visible/check-fechas.sh
+OK check 1 — denominador derivado de 113-INVENTARIO §3.0 = 38 (esperado 38)
+OK check 2 — los 38 ids del denominador aparecen en el artefacto
+OK check 3 — los 38 ids tienen veredicto en '## 3.' o en '## 4.'
+OK check 4 — las 100 celdas de VEREDICTO de '### 1.4' están en {hecho, captura, ambigua}
+OK check 5 — higiene: 0 credenciales, 0 RUT, 0 marcadores pendientes, 0 celdas vacías
+OK check 6 — régimen solo-lectura: git status --porcelain app/ packages/ vacío
+---
+RESULTADO: sin faltas (STRICT=1)
+EXIT=0
+```
+
+`STRICT=0 bash check-fechas.sh` ⇒ **exit 0** (modo reporte, verificado).
+
+### 7.2 Prueba negativa de la regla de celda — **con una desviación que se REPORTA**
+
+Al relajar la regla LOCKED a una comparación **por igualdad** contra `—` (en vez de "empieza por"),
+el denominador se infla:
+
+```bash
+# regla RELAJADA (incorrecta)
+awk -F'|' '/^\| E-/{c=$5; gsub(/[ \t`]/,"",c); if(c!="—"){...}}' 113-INVENTARIO.md | sort -u | wc -l
+```
+
+| regla | denominador observado |
+|---|---|
+| LOCKED ("empieza por `—`" tras quitar espacios/tabs/backticks) | **38** |
+| relajada (igualdad exacta contra `—`) | **51** |
+| total de filas `\| E-` en 113 §3.0 (referencia) | **60** |
+
+**Desviación respecto del plan, declarada y no silenciada:** `116-04-PLAN.md` (acceptance del Task 3)
+afirma que la regla relajada "salta a **60**". El valor observado es **51**. El **60** del plan es el
+**total de filas** `E-xxx` del catálogo §3.0, no el resultado de la regla relajada — se confundieron
+dos magnitudes. El **fondo del argumento del plan se sostiene y se refuerza**: la regla relajada
+introduce **13 falsos positivos**, es decir 13 emisores que no muestran ninguna fecha y para los que
+los checks 2 y 3 exigirían un veredicto ⇒ 13 declaraciones falsas de "sin hallazgos".
+
+Falsos positivos exactos (en la regla relajada, ausentes de la LOCKED):
+
+`E-006` `E-007` `E-009` `E-017` `E-023` `E-024` `E-025` `E-029` `E-036` `E-039` `E-047` `E-049` `E-050`
+
+**`E-006` y `E-039` NO están en el denominador LOCKED**, tal como exige la acceptance del plan
+(sus celdas empiezan por `—` tras quitar backticks). Verificado.
+
+El check 1 **reporta** la desviación en vez de continuar cuando el denominador derivado difiere del
+ancla `ESPERADO=38`; el ancla no se ajusta jamás para que el script pase.
+
+### 7.3 Mutación de prueba — el script MUERDE
+
+Se borraron temporalmente todas las líneas que mencionan `E-057` en una copia de trabajo de
+`116-FECHAS-AUDIT.md` y se re-corrió el script en `STRICT=1`:
+
+```
+OK check 1 — denominador derivado de 113-INVENTARIO §3.0 = 38 (esperado 38)
+FALTA check 2 — E-057 ausente de 116-FECHAS-AUDIT.md
+-- check 2 — 1 de 38 ids ausentes del artefacto
+FALTA check 3 — E-057 sin veredicto: ausente de '## 3. HALLAZGOS' y de '## 4. Cobertura'
+-- check 3 — 1 de 38 ids sin veredicto declarado
+OK check 4 — las 99 celdas de VEREDICTO de '### 1.4' están en {hecho, captura, ambigua}
+OK check 5 — higiene: 0 credenciales, 0 RUT, 0 marcadores pendientes, 0 celdas vacías
+OK check 6 — régimen solo-lectura: git status --porcelain app/ packages/ vacío
+---
+RESULTADO: 2 falta(s)
+EXIT=1
+```
+
+Los checks 2 **y** 3 mordieron y el exit fue **1**. El archivo se **restauró** desde la copia previa;
+`git status --porcelain` sobre el artefacto quedó vacío y la corrida siguiente volvió a
+`RESULTADO: sin faltas (STRICT=1)`. La completitud de este audit es, por tanto, una **propiedad
+probada**, no una afirmación.
+
+### 7.4 Compuertas de higiene y no-regresión
+
+| compuerta | comando | resultado |
+|---|---|---|
+| credenciales | `grep -cE 'postgres(ql)?://' 116-FECHAS-AUDIT.md` | `0` |
+| RUT | `grep -cE '[0-9]{7,8}-[0-9kK]' 116-FECHAS-AUDIT.md` | `0` |
+| marcadores pendientes | check 5 del script (los tres marcadores de trabajo inconcluso) | `0` |
+| celdas de tabla vacías | check 5 del script | `0` |
+| email de persona natural | `grep -oE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+' \| sort -u` | sin match |
+| código de producto | `git status --porcelain app/ packages/` | vacío |
+| flags / entorno | `git diff --quiet -- .env .env.example` | limpio |
+
+**Suite de tests: NO se corrió `pnpm test`, y el motivo se declara explícitamente.** Esta fase es de
+auditoría en régimen solo-lectura: no modifica una sola línea de `app/` ni de `packages/`
+(compuerta anterior, vacía). Sin cambio de código no hay regresión posible que la suite pueda
+detectar, así que correrla sería ruido, no verificación. La suite vuelve a ser obligatoria en
+**Phase 117**, que sí toca código.
+
+### 7.5 Cierre
+
+| criterio | estado |
+|---|---|
+| SC1 — veredicto por fecha con origen citado | `### 1.4` — 100 filas, 38/38 ids cubiertos |
+| SC2 — lista de `fecha_captura`-como-hecho con archivo:línea y superficie | `### 5.1` — 25 entradas |
+| SC3 — date-only verificadas contra el gotcha tz | `### 1.3` — 18 filas, 0 conversiones activas, 0 pendientes |
+| SC4 — cruce contra PROD, un sujeto por superficie | `## 2.` — 26 filas, 10/10 superficies |
+| completitud probada por script que muerde | `## 7.1`–`## 7.3` — 6/6 checks OK, mutación mordida |
+| hallazgos consumibles por Phase 117 sin re-investigar | `## 3.` — F-01..F-14, 8 campos poblados cada uno |
