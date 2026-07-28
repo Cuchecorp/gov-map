@@ -522,9 +522,14 @@ describe("runIngest — G5: SnapshotWriter (source_snapshot)", () => {
     }
     expect(escrituras.map((e) => e.resource)).toContain("citaciones-semana");
     expect(escrituras.map((e) => e.resource)).toContain("tabla-sala");
-    // La partición del snapshot es la MISMA que la key de R2 (semana ISO, WR-01).
-    expect(escrituras[0]!.dateBucket).toBe("2026-W24");
+    // La partición del snapshot es la MISMA semana que la key de R2 (WR-01), pero
+    // `date_bucket` es una columna DATE en PROD → se emite el LUNES de esa semana ISO.
+    // (Regresión: enviar "2026-W24" produjo 22P02 en la corrida LIVE del 2026-07-28.)
     expect(escrituras[0]!.cacheKey).toBe("agenda:citaciones-semana:2026-W24");
+    expect(escrituras[0]!.dateBucket).toBe("2026-06-08");
+    for (const e of escrituras) {
+      expect(String(e.dateBucket)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
   });
 
   it("(2) existed:true ⇒ CERO escrituras (nunca una fila sin objeto recién creado)", async () => {

@@ -21,7 +21,7 @@ import { CamaraBloqueadaError } from "./connector-camara";
 import type { SenadoActividadConnector } from "./connector-senado";
 import type { AgendaWriter } from "./writer";
 import type { SemanaIso } from "./semana-iso";
-import { semanaIsoKey } from "./semana-iso";
+import { semanaIsoKey, primerDiaSemanaIso } from "./semana-iso";
 import { parseCamaraCitaciones } from "./parse-camara-citaciones";
 import { parseSenadoCitaciones } from "./parse-senado-citaciones";
 import { parseSenadoTabla } from "./parse-senado-tabla";
@@ -195,7 +195,12 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
                     r2Path: key,
                     contentHash: sha,
                     fingerprint: sha,
-                    dateBucket: clave,
+                    // `source_snapshot.date_bucket` es una columna DATE (verificado contra
+                    // PROD 2026-07-28: "2026-W40" → 22P02 invalid input syntax for type date).
+                    // Se usa el LUNES de la semana ISO: sigue siendo la misma partición
+                    // semanal que la key de R2 (WR-01) expresada como fecha real, así el
+                    // unique (source,resource,date_bucket) da UNA fila por semana ingerida.
+                    dateBucket: primerDiaSemanaIso(semana.year, semana.week),
                     provenance: makeProvenance(
                       "agenda",
                       opts.conectorCamara.urlSemana(semana.year, semana.week),
@@ -362,7 +367,8 @@ export async function runIngest(opts: RunIngestOpts): Promise<RunIngestResult> {
                   r2Path: key,
                   contentHash: sha,
                   fingerprint: sha,
-                  dateBucket: claveTabla,
+                  // DATE, no texto (ver nota del bloque de citaciones).
+                  dateBucket: primerDiaSemanaIso(semanaTabla.year, semanaTabla.week),
                   provenance: makeProvenance("agenda", CAMARA_TABLA_PDF_URL),
                 });
                 log(`ingest: Cámara tabla → fila source_snapshot escrita`);
