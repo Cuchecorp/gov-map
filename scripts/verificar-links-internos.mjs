@@ -30,7 +30,9 @@
  * ── Mesura (T-114-02) ────────────────────────────────────────────────────────────
  * Recorrido SECUENCIAL con sleep(400) entre requests reales. Concurrencia PROHIBIDA (nada de
  * disparar los fetch en paralelo). El HTML se cachea por URL dentro de la corrida: N anclas sobre
- * la misma página cuestan UN solo request.
+ * la misma página cuestan UN solo request. Cada request tiene una cota de 15s
+ * (`AbortSignal.timeout`) y un fallo de RED se reintenta UNA vez tras 2s sin cachearse
+ * (WR-05) — la secuencialidad y el delay se mantienen intactos.
  *
  * ── Portabilidad (LOCKED) ────────────────────────────────────────────────────────
  * Windows / Git Bash NO define la variable de entorno de directorio temporal. Para rutas
@@ -65,6 +67,8 @@ const UA =
   "ObservatorioCongreso360/1.0 (+https://observatorio-congreso.thevalis.workers.dev; contacto: sanchez.rossi@gmail.com)";
 
 const DELAY_MS = 400; // rango 300-500ms del CONTEXT
+const TIMEOUT_MS = 15_000; // WR-05: cota por request; sin ella una ruta colgada cuelga la corrida
+const REINTENTO_MS = 2_000; // WR-05: backoff antes del único reintento tras un fallo de red
 const TIPOS = ["status", "ancla", "ausencia"];
 const CHEERIO_PROBE = "CHEERIO_NO (cheerio no resuelve desde la raíz; verificación por búsqueda sobre el HTML servido)";
 
@@ -236,24 +240,43 @@ async function main() {
   /** @type {Map<string,{status:number,html:string,error?:string}>} */
   const cache = new Map();
 
-  async function pedir(ruta) {
-    if (cache.has(ruta)) return cache.get(ruta);
+  async function pedirUnaVez(ruta) {
     await sleep(DELAY_MS); // mesura: solo antes de un request REAL
-    let out;
     try {
       const res = await fetch(`${BASE_URL}${ruta}`, {
         headers: { "user-agent": UA },
         redirect: "manual",
+        // WR-05: sin timeout, una ruta colgada bloqueaba la corrida indefinidamente.
+        signal: AbortSignal.timeout(TIMEOUT_MS),
       });
       // CR-02: el cuerpo se lee SIEMPRE, también con status != 200 — las páginas
       // not-found se sirven con 404 y su único link (`/`) sólo se puede comprobar
       // leyendo ese cuerpo. Quien exija 200 lo hace explícitamente (rama `ausencia`).
       const html = await res.text();
-      out = { status: res.status, html };
+      return { status: res.status, html };
     } catch (err) {
-      out = { status: -1, html: "", error: err.message };
+      return { status: -1, html: "", error: err.message };
     }
-    cache.set(ruta, out);
+  }
+
+  /**
+   * WR-05 (review 114): un fallo de red NO se cachea y se reintenta UNA vez.
+   *
+   * Antes, `cache.set(ruta, out)` corría también en el `catch`: un único ECONNRESET
+   * transitorio marcaba la ruta como fallida para TODAS las entradas restantes que la
+   * comparten (las 11 anclas de `/proyecto/14309-04` caían juntas) sin un solo reintento
+   * y sin volver a pagar el `sleep`, porque la ruta ya estaba en caché. La corrida se
+   * volvía no determinista bajo red inestable — inaceptable en un artefacto reproducible.
+   * Sólo se cachea una respuesta REAL del servidor (cualquier status HTTP).
+   */
+  async function pedir(ruta) {
+    if (cache.has(ruta)) return cache.get(ruta);
+    let out = await pedirUnaVez(ruta);
+    if (out.error) {
+      await sleep(REINTENTO_MS); // backoff antes del único reintento
+      out = await pedirUnaVez(ruta);
+    }
+    if (!out.error) cache.set(ruta, out);
     return out;
   }
 
@@ -364,6 +387,8 @@ async function main() {
     filtros: { route: values.route ?? null, tipo: values.tipo ?? null },
     cheerio_probe: CHEERIO_PROBE,
     delay_ms: DELAY_MS,
+    timeout_ms: TIMEOUT_MS,
+    reintento_ms: REINTENTO_MS,
     user_agent: UA,
   };
 
