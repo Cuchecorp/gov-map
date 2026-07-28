@@ -314,6 +314,7 @@ ode_modules (lock Linux-container, sin secrets — borrar tras reboot).
 | 260713-izo | Rediseñar /red: layout B seed→columna con conectores fan-out (sketch 002) | 2026-07-13 | 75a8617 | [260713-izo-redisenar-red-layout-b-seed-columna-con-](./quick/260713-izo-redisenar-red-layout-b-seed-columna-con-/) |
 | 260715-bvd | Parchar 3 alertas Dependabot (postcss/uuid/esbuild) vía pnpm overrides | 2026-07-15 | 72be412 | [260715-bvd-parchar-3-alertas-dependabot-bump-transi](./quick/260715-bvd-parchar-3-alertas-dependabot-bump-transi/) |
 | 260722-eia | Deep-links humanos (wspublico→ficha Senado + link Cámara) + token urgencia 3 estados en la ficha; deploy PROD d99b8fa9 | 2026-07-22 | b1ee8f7 | [260722-eia-deeplinks-humanos-urgencia-token-ficha](./quick/260722-eia-deeplinks-humanos-urgencia-token-ficha/) |
+| 260728-nlb | Descubrimiento de boletines nuevos del año en curso en el cron de tramitación (cap 20, ≤2 requests extra, `--sin-descubrimiento`) + corrida LOCAL: 60 faltantes 2025+2026 medidos, 16 ingeridos (testigo 18464-14), corpus 3.659→3.675 | 2026-07-28 | 3aba04a | [260728-nlb-descubrimiento-boletines-nuevos-cron-tra](./quick/260728-nlb-descubrimiento-boletines-nuevos-cron-tra/) |
 
 ## Deferred Items
 
