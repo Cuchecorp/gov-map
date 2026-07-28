@@ -283,12 +283,12 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
 // ── Rail sticky de la ficha (UXCOG 55-04) ─────────────────────────────────────
 // Server component: lee la cabecera del proyecto (título/boletín/estado) vía la
 // lectura CACHEADA `leerProyecto` (dedup con FichaSection — React.cache) + un
-// conteo de votaciones honesto, y arma las 7–8 entradas del rail (según el gate de
-// cruces). La isla FichaRail
+// conteo de votaciones honesto, y arma las 9–11 entradas del rail (9 fijas + autores
+// si nAutores > 0 + cruces si el gate está ON). La isla FichaRail
 // (client, scrollspy) recibe el `header` como ReactNode server + `navEntries` YA
 // serializadas — NUNCA deriva un dígito ni importa Supabase (contrato no-leak F45).
-// La entrada de cruces está gated por el Candado B (crucesPublicEnabled): 7 entradas
-// con el gate OFF, 8 con ON. Si el proyecto no existe, retorna
+// La entrada de cruces está gated por el Candado B (crucesPublicEnabled): una entrada
+// menos con el gate OFF. Si el proyecto no existe, retorna
 // null: FichaSection resuelve el 404 de la ruta.
 export async function ProyectoRail({ boletin }: { boletin: string }) {
   const proyecto = await leerProyecto(boletin);
@@ -695,15 +695,22 @@ async function ValidacionFuenteServerSection({ boletin }: { boletin: string }) {
 }
 
 // ── Skeletons (UI-SPEC §6.2) ─────────────────────────────────────────────────
-// Rail: cabecera compacta (título/boletín/estado) + 7–8 entradas de nav + caveat.
+// Rail: cabecera compacta (título/boletín/estado) + 9–11 entradas de nav + caveat.
 // Shape-matched a FichaRail para no producir layout shift al resolver: el conteo
-// DEBE igualar a `ProyectoRail.navEntries` — 7 con el gate de cruces OFF, 8 con ON
-// (WR-02). Un 6→8 producía un salto CLS visible al resolver el rail.
+// DEBE igualar a `ProyectoRail.navEntries`. Un 6→8 producía un salto CLS visible.
 function RailSkeleton() {
-  // Phase 89 added "validacion-fuente" → +1 entry in every configuration (WR-02).
-  // Phase 92 added "lobby-menciones" → +1 more in every configuration (siempre
-  // presente, no gated). Debe igualar `ProyectoRail.navEntries` para no producir CLS.
-  const nEntries = crucesPublicEnabled(process.env) ? 10 : 9;
+  // Derivado de `ProyectoRail.navEntries` (page.tsx, misma fuente de verdad):
+  //   9 fijas (estado, timeline, votaciones, lobby-tramitacion, lobby-menciones,
+  //   idea-matriz, cuerpos-legales, similares, validacion-fuente)
+  //   + 1 si hay autores (nAutores > 0)  ← requiere query: no es conocible aquí
+  //   + 1 si el Candado B de cruces está ON.
+  // WR-01 (review 114): el conteo anterior (10/9) ignoraba la entrada condicional de
+  // autores y quedaba corto en el caso MÁS frecuente (la mayoría de las mociones tienen
+  // autores confirmados) — justo el salto que este skeleton dice prevenir. Se usa el
+  // extremo ALTO del rango: sobrar una fila de esqueleto colapsa hacia arriba al
+  // resolver (salto menor y hacia el flujo ya leído), faltar una empuja el contenido
+  // hacia abajo.
+  const nEntries = 9 + 1 /* autores: caso frecuente */ + (crucesPublicEnabled(process.env) ? 1 : 0);
   return (
     <div className="space-y-4" aria-hidden="true">
       <div className="space-y-1.5">
