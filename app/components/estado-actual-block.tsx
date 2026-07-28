@@ -191,13 +191,15 @@ export function citacionVigente(
   // WR-01: deduplicar por id de citación (mismo padre en ≥2 puntos = una citación).
   const futuras = dedupPorCitacion(citaciones)
     .map((c) => ({ c, d: fechaValida(c.fecha) }))
-    .filter(
-      (x): x is { c: CitacionCruda; d: Date } =>
-        x.d !== null &&
-        !!x.c.comision?.trim() &&
-        // Día publicado de la citación (parte fecha UTC, contrato date-only) vs hoy-Chile.
-        diaCalendarioCitacion(x.d)! >= hoyChile,
-    )
+    .filter((x): x is { c: CitacionCruda; d: Date } => {
+      if (x.d === null || !x.c.comision?.trim()) return false;
+      // Día publicado de la citación (parte fecha UTC, contrato date-only) vs hoy-Chile.
+      // IN-02: null CHEQUEADO, no aserción `!`. El `!` era seguro sólo porque
+      // `fechaValida` corre antes; si alguien reordena, escondería el null y compararía
+      // la STRING "null" contra la fecha.
+      const dia = diaCalendarioCitacion(x.d);
+      return dia !== null && dia >= hoyChile;
+    })
     .sort((a, b) => a.d.getTime() - b.d.getTime());
 
   const prox = futuras[0];
@@ -223,13 +225,12 @@ export function citacionesPasadas(
   // en ≥2 puntos de la misma citación NO debe producir dos líneas idénticas.
   return dedupPorCitacion(citaciones)
     .map((c) => ({ c, d: fechaValida(c.fecha) }))
-    .filter(
-      (x): x is { c: CitacionCruda; d: Date } =>
-        x.d !== null &&
-        !!x.c.comision?.trim() &&
-        // Día publicado de la citación (parte fecha UTC, contrato date-only) vs hoy-Chile.
-        diaCalendarioCitacion(x.d)! < hoyChile,
-    )
+    .filter((x): x is { c: CitacionCruda; d: Date } => {
+      if (x.d === null || !x.c.comision?.trim()) return false;
+      // IN-02: null chequeado, no `!` (ver `citacionVigente`).
+      const dia = diaCalendarioCitacion(x.d);
+      return dia !== null && dia < hoyChile;
+    })
     .sort((a, b) => b.d.getTime() - a.d.getTime()) // DESC: más reciente primero
     .slice(0, 5)
     .map((x) => ({ comision: x.c.comision!.trim(), fecha: x.d }));
@@ -242,9 +243,14 @@ export function citacionesPasadas(
  * a tz Chile (que retrocedería un día y podría corrimiento de semana ISO). Se toma
  * ese día publicado y se calcula su semana ISO sobre él (a medianoche UTC, para que
  * `isoWeekOf` — que opera en UTC — no cruce de huso).
+ *
+ * IN-02: devuelve `null` cuando el día publicado no es derivable, en vez de asertar
+ * `!`. El caller descarta esa fila (omisión honesta) — jamás construye un link de
+ * semana sobre una fecha que no existe.
  */
-function semanaIsoChile(fecha: Date): string {
-  const diaPublicado = diaCalendarioCitacion(fecha)!; // YYYY-MM-DD (día publicado)
+function semanaIsoChile(fecha: Date): string | null {
+  const diaPublicado = diaCalendarioCitacion(fecha); // YYYY-MM-DD (día publicado)
+  if (diaPublicado === null) return null;
   const [y, m, d] = diaPublicado.split("-").map(Number);
   const { year, week } = isoWeekOf(new Date(Date.UTC(y, m - 1, d)));
   return semanaIsoKey(year, week);
@@ -282,11 +288,19 @@ export function enTablaSala(
       vistos.add(clave);
       return true;
     })
+    // IN-02: sin semana ISO derivable no hay link honesto a /agenda → la fila se
+    // descarta (omisión honesta), nunca se fabrica una semana.
     .map((x) => ({
       camara: x.f.camara as "camara" | "senado",
       fecha: x.d,
       semanaIso: semanaIsoChile(x.d),
-    }));
+    }))
+    .filter(
+      (
+        x,
+      ): x is { camara: "camara" | "senado"; fecha: Date; semanaIso: string } =>
+        x.semanaIso !== null,
+    );
 }
 
 /**

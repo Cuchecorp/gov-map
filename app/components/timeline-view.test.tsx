@@ -544,7 +544,8 @@ describe("construirItems — orden: las fechas implausibles van al FINAL, no al 
 
   it("varios implausibles conservan el orden de entrada (sort estable)", () => {
     const a = makeEvento({ fecha: "2626-01-01T00:00:00Z", descripcion: "corrupto A" });
-    const b = makeEvento({ fecha: null, descripcion: "corrupto B" });
+    // Bajo el piso de `fechaPlausible` (1990) → también implausible.
+    const b = makeEvento({ fecha: "1899-01-01T00:00:00Z", descripcion: "corrupto B" });
     const orden = descripciones(construirItems([a, b, reciente]));
     expect(orden).toEqual(["Informe de comisión", "corrupto A", "corrupto B"]);
   });
