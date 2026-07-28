@@ -84,6 +84,31 @@ const FIXTURES = [
     ancla: "idea-matriz",
     espera: true,
   },
+  // ── WR-04 (review 114): markup que NO es nodo navegable ───────────────────────
+  {
+    nombre: "id dentro de un comentario HTML no es un elemento",
+    html: '<!-- <section id="votos"> -->',
+    ancla: "votos",
+    espera: false,
+  },
+  {
+    nombre: "id dentro de <template> no es un elemento del documento",
+    html: '<template><section id="cruces"></section></template>',
+    ancla: "cruces",
+    espera: false,
+  },
+  {
+    nombre: "id dentro de <noscript> no es destino de salto",
+    html: '<noscript><section id="patrimonio"></section></noscript>',
+    ancla: "patrimonio",
+    espera: false,
+  },
+  {
+    nombre: "el strip de ruido NO se come el markup vivo que lo rodea",
+    html: '<!-- comentario --><section id="similares"></section>',
+    ancla: "similares",
+    espera: true,
+  },
 ];
 
 /**

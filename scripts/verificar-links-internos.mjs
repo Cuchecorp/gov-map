@@ -88,14 +88,28 @@ function usage(msg) {
  *    (el atributo debe ser exactamente `id`, precedido de whitespace: `\s` + `id=`).
  *  - un `{"id":"votos"}` dentro de un bloque `<script>` → false (los bloques script se
  *    remueven del HTML ANTES de buscar: el payload RSC de Next.js es texto, no DOM).
+ *  - markup dentro de un comentario HTML, de `<template>` o de `<noscript>` → false (WR-04:
+ *    no son nodos navegables ⇒ no pueden ser destino de un salto `#id`).
  *  - `<section id="votos">` / `<section id='votos'>` → true.
  *  - `<section id="votos-extra">` con ancla `votos` → false (la comilla de cierre ancla el final).
  *
  * Exportada con nombre para poder ejercerla desde el self-check: una aserción sin prueba de
  * que muerde no cuenta como aserción (patrón mutation self-check: 68-01, 100-01, 103-01).
  */
+/**
+ * Remueve del HTML todo lo que NO es markup vivo del documento servido.
+ *
+ * WR-04 (review 114): con sólo los bloques `<script>` fuera, un `<!-- <section id="votos"> -->`
+ * o markup dentro de `<template>` / `<noscript>` producía un PASS falso para un ancla que no
+ * existe como destino de salto (ni el comentario ni el contenido de `<template>` son nodos
+ * navegables; `<noscript>` sólo se materializa con JS deshabilitado).
+ */
 export function sinRuido(html) {
-  return String(html).replace(/<script\b[\s\S]*?<\/script\s*>/gi, " ");
+  return String(html)
+    .replace(/<script\b[\s\S]*?<\/script\s*>/gi, " ")
+    .replace(/<template\b[\s\S]*?<\/template\s*>/gi, " ")
+    .replace(/<noscript\b[\s\S]*?<\/noscript\s*>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ");
 }
 
 export function tieneId(html, id) {
