@@ -1,6 +1,13 @@
 import Link from "next/link";
 
-import { TimelineEvent } from "@/components/timeline-event";
+import {
+  TimelineEvent,
+  hrefFuenteDeEvento,
+} from "@/components/timeline-event";
+import {
+  LEYENDA_RECURSO_NO_HUMANO,
+  esServicioDeDatos,
+} from "@/lib/recurso-no-humano";
 import type { TramitacionEventoRow } from "@/lib/types";
 
 /**
@@ -236,7 +243,21 @@ export function TimelineView({
 
   const items = construirItems(eventos);
 
-  return (
+  // LINK-EXT (115-03, A-3 — CR-01 de la review). El rewrite A-2 lleva los enlaces del
+  // Senado al recurso humano; los que QUEDAN apuntando a un servicio de datos (sobre
+  // todo `opendata.camara.cl`, 3.797 filas de `tramitacion_evento`, respuesta live HTTP
+  // 500) exigen DECLARAR a qué se llega. Se calcula sobre TODOS los eventos —no sólo
+  // los visibles— porque los de un período colapsado se despliegan en la misma vista con
+  // `?urgencias=`, y la declaración no debe aparecer y desaparecer según el plegado.
+  //
+  // WR-04 (patrón SC7, mismo defecto que motivó retirar el badge por evento): UNA sola
+  // vez por contenedor, jamás una copia de 90 caracteres por fila. Por fila la
+  // limitación viaja en el nombre accesible/`title` del propio enlace.
+  const declararServicioDeDatos = eventos.some((e) =>
+    esServicioDeDatos(hrefFuenteDeEvento(e)),
+  );
+
+  const lista = (
     <ul className="relative pl-8 border-l-2 border-border">
       {items.map((item) => {
         if (item.kind === "evento") {
@@ -280,5 +301,16 @@ export function TimelineView({
         );
       })}
     </ul>
+  );
+
+  if (!declararServicioDeDatos) return lista;
+
+  return (
+    <>
+      {lista}
+      <p className="text-xs text-muted-foreground mt-3">
+        {LEYENDA_RECURSO_NO_HUMANO}
+      </p>
+    </>
   );
 }

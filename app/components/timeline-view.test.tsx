@@ -8,6 +8,7 @@ import {
   esEventoUrgencia,
   paresDeUrgencia,
 } from "./timeline-view";
+import { LEYENDA_RECURSO_NO_HUMANO } from "@/lib/recurso-no-humano";
 import type { TramitacionEventoRow } from "@/lib/types";
 
 afterEach(cleanup);
@@ -368,5 +369,109 @@ describe("TimelineView — enlace externo del evento (LINK-EXT A-2)", () => {
       />,
     );
     expect(hrefsDeFuente()).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// LINK-EXT (115-03, A-3) — CR-01: la declaración de recurso NO-HUMANO llega a la
+// superficie con la MAYOR población afectada (3.797 filas de `tramitacion_evento`
+// con host `opendata.camara.cl`, respuesta live HTTP 500 "Falta el parámetro:
+// prmBoletin"). Antes del fix, esa superficie rotulaba "Ver fuente oficial ↗" sin
+// declarar nada.
+//
+// WR-04 (patrón SC7): la leyenda se declara UNA vez por contenedor — jamás una copia
+// de 90 caracteres por fila, que es el defecto que motivó retirar el badge por evento.
+// ---------------------------------------------------------------------------
+const OPENDATA =
+  "https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin";
+
+describe("TimelineView — declaración de recurso no-humano (LINK-EXT A-3)", () => {
+  it("un evento con destino de servicio de datos → la leyenda aparece (y el enlace se conserva)", () => {
+    render(
+      <TimelineView
+        boletin="16284-07"
+        eventos={[makeEvento({ tipo: "votacion", enlace: OPENDATA })]}
+      />,
+    );
+    expect(
+      screen.getByText(LEYENDA_RECURSO_NO_HUMANO),
+    ).toBeInTheDocument();
+    // La limitación se declara SIN quitar el enlace: el ciudadano igual puede ir.
+    expect(hrefsDeFuente()).toEqual([OPENDATA]);
+  });
+
+  it("WR-04: con N filas de servicio de datos la leyenda se renderiza UNA sola vez", () => {
+    render(
+      <TimelineView
+        boletin="16284-07"
+        eventos={[
+          makeEvento({ fecha: "2026-01-10T00:00:00Z", tipo: "votacion", enlace: OPENDATA }),
+          makeEvento({ fecha: "2026-02-10T00:00:00Z", tipo: "informe", enlace: OPENDATA }),
+          makeEvento({ fecha: "2026-03-10T00:00:00Z", tipo: "oficio", enlace: OPENDATA }),
+        ]}
+      />,
+    );
+    expect(screen.getAllByText(LEYENDA_RECURSO_NO_HUMANO)).toHaveLength(1);
+    expect(hrefsDeFuente()).toHaveLength(3);
+  });
+
+  it("por fila la limitación viaja en el nombre accesible y el `title` (sin ocupar caja)", () => {
+    render(
+      <TimelineView
+        boletin="16284-07"
+        eventos={[makeEvento({ tipo: "votacion", enlace: OPENDATA })]}
+      />,
+    );
+    const a = screen.getByRole("link", { name: /Ver fuente oficial/ });
+    expect(a.getAttribute("aria-label")).toContain(LEYENDA_RECURSO_NO_HUMANO);
+    expect(a).toHaveAttribute("title", LEYENDA_RECURSO_NO_HUMANO);
+  });
+
+  it("tras el rewrite A-2 un `/wspublico/` del Senado YA es página humana → NINGUNA leyenda", () => {
+    render(
+      <TimelineView
+        boletin="16284-07"
+        eventos={[makeEvento({ tipo: "informe", enlace: WSPUBLICO })]}
+      />,
+    );
+    expect(hrefsDeFuente()).toEqual([FICHA_HUMANA]);
+    expect(
+      screen.queryByText(LEYENDA_RECURSO_NO_HUMANO),
+    ).not.toBeInTheDocument();
+    const a = screen.getByRole("link", { name: /Ver fuente oficial/ });
+    expect(a).not.toHaveAttribute("title");
+  });
+
+  it("un evento de servicio de datos DENTRO de un período colapsado también declara", () => {
+    // El período se colapsa por defecto: sus filas no se renderizan. La declaración se
+    // calcula sobre TODOS los eventos, para que no aparezca y desaparezca con el plegado.
+    render(
+      <TimelineView
+        boletin="16284-07"
+        eventos={[
+          makeEvento({
+            fecha: "2026-03-10T00:00:00Z",
+            tipo: "tramite",
+            descripcion: "hace presente la urgencia Suma",
+            enlace: OPENDATA,
+          }),
+          makeEvento({
+            fecha: "2026-04-11T00:00:00Z",
+            tipo: "urgencia",
+            descripcion: "Suma",
+            enlace: OPENDATA,
+          }),
+        ]}
+      />,
+    );
+    expect(hrefsDeFuente()).toEqual([]); // colapsado: cero filas visibles
+    expect(screen.getAllByText(LEYENDA_RECURSO_NO_HUMANO)).toHaveLength(1);
+  });
+
+  it("sin ningún destino de servicio de datos → CERO leyenda (no se declara de más)", () => {
+    render(<TimelineView eventos={fixtureMixto()} boletin="16284-07" />);
+    expect(
+      screen.queryByText(LEYENDA_RECURSO_NO_HUMANO),
+    ).not.toBeInTheDocument();
   });
 });

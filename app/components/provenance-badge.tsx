@@ -6,6 +6,10 @@ import {
 } from "@/components/ui/tooltip";
 import { cn, safeExternalHref } from "@/lib/utils";
 import { relativeTimeEs, esStale } from "@/lib/format";
+import {
+  LEYENDA_RECURSO_NO_HUMANO,
+  esServicioDeDatos,
+} from "@/lib/recurso-no-humano";
 
 /**
  * ProvenanceBadge — frescura + fuente (UI-SPEC §4, TRAM-09).
@@ -17,51 +21,17 @@ import { relativeTimeEs, esStale } from "@/lib/format";
  * fuente).
  */
 /**
- * LEYENDA_RECURSO_NO_HUMANO (115-03, acciones A-3/A-4/A-5 de `115-VEREDICTO.md`).
+ * LEYENDA_RECURSO_NO_HUMANO / `esServicioDeDatos` (115-03, A-3/A-4/A-5).
  *
- * Hay destinos oficiales para los que NO existe una página de consulta derivable con
- * los datos en mano: `opendata.camara.cl/...getVotaciones_Boletin` exige un `prmID`
- * que no acompaña a `tramitacion_evento` ni a `votacion` (A-3); `web-back.senado.cl/api/*`
- * y los `/wspublico/*` sin parámetro de fila entregan JSON/XML a una máquina, y su
- * `?limit=100` es paginación, no identidad (A-4); `datos.cplt.cl/sparql` recibe una
- * consulta persistida por la INGESTA, deuda registrada aparte (A-5). En vez de fabricar
- * una URL humana o de callar, se DECLARA la limitación.
- *
- * El copy describe el FORMATO en que la fuente publica el dato. JAMÁS su intención: que
- * un organismo publique un servicio de datos no significa que oculte, esconda ni se
- * niegue a publicar nada (el carril LINK-EXT de `anti-insinuacion-guard.test.ts` caza
- * ese vocabulario, y verifica que ESTA leyenda esté limpia).
+ * Viven en `@/lib/recurso-no-humano` (single-source) porque `timeline-event.tsx` también
+ * los consume y el source-scan SC7 le prohíbe importar de este archivo. Se RE-EXPORTAN
+ * aquí para no romper los imports existentes (`./provenance-badge`) — la definición es
+ * UNA sola, jamás una copia.
  */
-export const LEYENDA_RECURSO_NO_HUMANO =
-  "La fuente oficial publica este dato como servicio de datos, no como página de consulta.";
-
-/**
- * `true` si el destino es un servicio de datos oficial sin página humana derivable.
- *
- * Lista CERRADA derivada de la muestra live de `115-MUESTRA.json` (§2 del veredicto),
- * decidida SIEMPRE por host + path, NUNCA por substring suelto del string completo: el
- * literal "wspublico" en el query de otro host no debe declarar nada. Si la URL no
- * parsea, se devuelve `false` — se declara sólo lo que se puede probar.
- */
-export function esServicioDeDatos(url: string | null | undefined): boolean {
-  if (!url) return false;
-  try {
-    const u = new URL(url);
-    const host = u.hostname.toLowerCase();
-    const path = u.pathname.toLowerCase();
-    // A-3: los web services de la Cámara (`*.asmx`) — el host entero es de datos.
-    if (host === "opendata.camara.cl") return true;
-    // A-4: la API del portal del Senado (paginación, sin identidad de fila).
-    if (host === "web-back.senado.cl" && path.startsWith("/api/")) return true;
-    // A-4: los endpoints WS del Senado que no son la ficha humana.
-    if (host === "tramitacion.senado.cl" && path.includes("/wspublico/")) return true;
-    // A-5: el endpoint SPARQL del Consejo para la Transparencia.
-    if (host === "datos.cplt.cl" && path.includes("/sparql")) return true;
-  } catch {
-    // URL malformada → no se afirma nada sobre ella.
-  }
-  return false;
-}
+export {
+  LEYENDA_RECURSO_NO_HUMANO,
+  esServicioDeDatos,
+} from "@/lib/recurso-no-humano";
 
 export interface ProvenanceBadgeProps {
   /** Momento de captura. `null` → procedencia desconocida. */
