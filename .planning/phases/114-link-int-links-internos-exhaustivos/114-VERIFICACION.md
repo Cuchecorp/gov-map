@@ -255,6 +255,28 @@ roto. El inventario 113 **no se editó** (es rector y está `validado`): queda r
 
 ---
 
+## Nota post code-review — el runner se endureció DESPUÉS de las corridas guardadas
+
+El code-review de esta fase (`114-REVIEW.md`) encontró que el runner con el que se produjeron
+`114-CORRIDA-PRE/POST` era **más laxo** de lo que sus veredictos daban a entender. Los fixes están
+aplicados en `scripts/verificar-links-internos.mjs`; los artefactos históricos **NO se re-escribieron**
+(sería falsificar la evidencia de lo que realmente se corrió). **La re-corrida real ocurre en la
+Phase 125**, junto con el deploy.
+
+| Fix | Qué cambia en el veredicto |
+|---|---|
+| `CR-01` | `ausencia` exigía sólo "200 **o** 404"; como el cuerpo no se leía fuera del 200, un origen 404 daba **PASS siempre**. Las 8 entradas `tipo=ausencia` que respaldan los gates MONEY/NOTIF eran vacuas ante un origen roto. Ahora exigen 200 con cuerpo no vacío. |
+| `CR-02` | `tipo=status` sólo probaba **alcanzabilidad del destino**, nunca que el origen EMITA el href. El veredicto «SC#1 PASS · 63/63» de `114-03-SUMMARY.md` y de §SC#1 de este documento debe leerse, para la corrida guardada, como **"63 destinos alcanzables"**, no como "63 links íntegros". El runner ya comprueba la emisión; la afirmación fuerte sólo podrá hacerse con la corrida de 125. |
+| `WR-02` | `no-404` aceptaba 3xx y 5xx como sano. Ahora exige 200 ⇒ una entrada que en la corrida guardada figura PASS por un 301/500 puede aparecer en FAIL en 125. **Eso sería el runner mordiendo, no una regresión del sitio.** |
+| `WR-03` / `WR-04` | Los patrones de `ausencia` pasan por la maquinaria endurecida, y el strip de ruido cubre comentarios / `<template>` / `<noscript>`. |
+| `WR-05` | Cota de 15s por request y un reintento sin cachear el fallo de red ⇒ la corrida de 125 es determinista bajo red inestable. |
+
+**Expectativa actualizada para la Phase 125:** el «95/95 PASS, exit 0» anclado más abajo se evalúa con
+el runner **endurecido**. Cualquier delta nuevo respecto de `114-CORRIDA-POST.json` debe atribuirse
+primero a estos cinco fixes antes que a un cambio del deploy.
+
+---
+
 ## Régimen
 
 Los estados de gate observados en ambas corridas **coinciden exactamente** con §5 del inventario 113
