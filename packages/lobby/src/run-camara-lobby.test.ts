@@ -95,9 +95,10 @@ describe("runCamaraLobby — ingesta de la Cámara con adjudicación", () => {
       "María José Castañeda Marambio (Asesor(a) H.D. Cristian Mella Andaur)",
     );
 
-    // El marcador de ingesta apunta al diputado confirmado.
+    // El marcador de ingesta apunta al diputado confirmado, con la fecha DEL DATO (la audiencia
+    // del fixture es del "26 jun. 2026"), NO con `fechaCaptura` (2026-06-22) — CR-03.
     expect(writer.ingestaEstado.has("PDIP-MELLA")).toBe(true);
-    expect(writer.ingestaEstado.get("PDIP-MELLA")!.ingestado_hasta).toBe("2026-06-22");
+    expect(writer.ingestaEstado.get("PDIP-MELLA")!.ingestado_hasta).toBe("2026-06-26");
   });
 
   it("las filas sin match en la maestra quedan no_confirmado y NUNCA fabrican un FK", async () => {
@@ -233,5 +234,52 @@ describe("runCamaraLobby — W-9: Etapa 1 del crudo local + replay idempotente",
     expect(b.contrapartes).toBe(a.contrapartes);
     expect(writer.audiencias.size).toBe(nAud);
     expect(writer.contrapartes.size).toBe(nContra);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// CR-03 (119-REVIEW) — el conector de la Cámara es el que escribe las 136 filas vigentes de
+// `lobby_ingesta_estado`. Marcaba con `fechaCaptura` (wall-clock): `ingestado_hasta` afirmaba
+// cobertura hasta HOY aunque el listado sólo llegara a junio, y la guarda monotónica del writer
+// no lo podía frenar porque el reloj siempre avanza.
+// ---------------------------------------------------------------------------------------------
+describe("CR-03 — la cobertura de la Cámara sale del DATO, nunca del reloj", () => {
+  it("un `fechaCaptura` muy posterior al lote NO mueve `ingestado_hasta`", async () => {
+    const writer = new InMemoryLobbyWriter();
+    const res = await runCamaraLobby({
+      conector: mockConector(FIXTURE),
+      writer,
+      maestra: [DIP_MELLA],
+      // Reloj deliberadamente MUY posterior a la audiencia del fixture (26 jun. 2026).
+      fechaCaptura: "2026-12-31T23:59:00Z",
+      omitirEtapa1: true,
+    });
+
+    expect(res.confirmados).toBe(1);
+    expect(writer.ingestaEstado.get("PDIP-MELLA")!.ingestado_hasta).toBe("2026-06-26");
+    expect(writer.ingestaEstado.get("PDIP-MELLA")!.ingestado_hasta).not.toBe("2026-12-31");
+    expect(res.marcadoHasta).toEqual({ "PDIP-MELLA": "2026-06-26" });
+  });
+
+  it("audiencias sin fecha parseable ⇒ confirmado pero NO marcado (cero cobertura fabricada)", async () => {
+    // Se ensucia la celda de fecha de TODAS las filas del fixture.
+    const sucio = FIXTURE.replaceAll(/<td> \d{1,2} \w{3}\. \d{4}<\/td>/g, "<td> s/i</td>");
+    expect(sucio).not.toBe(FIXTURE); // control: el reemplazo ocurrió (si no, el test sería vacuo)
+
+    const writer = new InMemoryLobbyWriter();
+    const res = await runCamaraLobby({
+      conector: mockConector(sucio),
+      writer,
+      maestra: [DIP_MELLA],
+      fechaCaptura: "2026-12-31T23:59:00Z",
+      omitirEtapa1: true,
+    });
+
+    // El cruce de identidad sigue funcionando (la fecha no participa del match)…
+    expect(res.confirmados).toBe(1);
+    // …pero sin fecha del dato NO hay cobertura que marcar.
+    expect(res.parlamentariosMarcados).toBe(0);
+    expect(res.marcadoHasta).toEqual({});
+    expect(writer.ingestaEstado.size).toBe(0);
   });
 });

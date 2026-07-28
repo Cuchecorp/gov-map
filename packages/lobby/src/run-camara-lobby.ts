@@ -64,10 +64,18 @@ export interface RunCamaraLobbyResult {
   audiencias: number;
   /** Suma de contrapartes (terceros) escritas. */
   contrapartes: number;
-  /** Parlamentarios marcados como ingestados (= confirmados en esta corrida). */
+  /**
+   * Parlamentarios marcados como ingestados. CR-03: es un SUBCONJUNTO de `confirmados` — sólo
+   * los que traen al menos una audiencia con fecha parseable pueden empujar la cobertura.
+   */
   parlamentariosMarcados: number;
   /** Parlamentarios con FK confirmado en esta corrida. */
   confirmados: number;
+  /**
+   * CR-03 — cobertura marcada por parlamentario (`parlamentarioId → ingestado_hasta`, `YYYY-MM-DD`),
+   * derivada de la fecha máxima de SUS audiencias. Vacío ⇒ no se marcó a nadie.
+   */
+  marcadoHasta: Record<string, string>;
   /** Key del crudo en R2, o null (Etapa 1 omitida o fallida — no fatal). */
   r2Path: string | null;
 }
@@ -84,7 +92,8 @@ export async function runCamaraLobby(opts: RunCamaraLobbyOpts): Promise<RunCamar
   const html = await opts.conector.fetchListado();
   log(`camara-lobby: HTML recibido (${html.length} chars)`);
 
-  // Fecha de captura → la misma para R2 (date) y para el marcado de ingesta.
+  // Fecha de captura → provenance de fila y partición de la key de R2. CR-03: ya NO alimenta el
+  // marcado de cobertura (`ingestado_hasta`), que sale de la fecha de las audiencias.
   const fechaCaptura = opts.fechaCaptura ?? new Date().toISOString();
   const date = fechaCaptura.slice(0, 10);
 
@@ -106,7 +115,14 @@ export async function runCamaraLobby(opts: RunCamaraLobbyOpts): Promise<RunCamar
       r2Path = newPath;
       if (existed) {
         log("[skip] sin novedades — camara-lobby listadodeaudiencias");
-        return { audiencias: 0, contrapartes: 0, parlamentariosMarcados: 0, confirmados: 0, r2Path };
+        return {
+          audiencias: 0,
+          contrapartes: 0,
+          parlamentariosMarcados: 0,
+          confirmados: 0,
+          marcadoHasta: {},
+          r2Path,
+        };
       }
       log(`camara-lobby: crudo en R2 → ${r2Path}`);
     } catch (err) {
@@ -160,21 +176,54 @@ export async function runCamaraLobby(opts: RunCamaraLobbyOpts): Promise<RunCamar
 
   // Writer idempotente: upsert de audiencias + marcado de los confirmados.
   await opts.writer.upsertAudiencias(filas);
-  if (parlamentariosConfirmados.length > 0) {
-    await opts.writer.marcarIngestado(parlamentariosConfirmados, date);
+
+  // CR-03 (119-REVIEW) — la cobertura de cada parlamentario confirmado sale de la fecha MÁXIMA
+  // de SUS audiencias en este lote, NUNCA de `fechaCaptura` (wall-clock de la corrida).
+  //
+  // POR QUÉ IMPORTA: este conector es el que escribe las 136 filas vigentes de
+  // `lobby_ingesta_estado`. Marcando con el reloj, `ingestado_hasta` afirmaba cobertura hasta HOY
+  // aunque el listado sólo llegara a junio — y la guarda monotónica de `writer-supabase.ts` no lo
+  // podía detectar, porque el reloj siempre avanza: el mecanismo nuevo lo SELLABA en vez de
+  // frenarlo. `fechaCaptura` se queda sólo como provenance de fila y partición de la key de R2.
+  //
+  // Una fila sin fecha parseable no empuja nada (mismo criterio que CR-02 en el conector
+  // leylobby); un confirmado sin ninguna fila fechada NO se marca.
+  const confirmados = new Set(parlamentariosConfirmados);
+  const marcados = new Map<string, string>();
+  for (const f of filas) {
+    const id = f.enlace?.parlamentarioId;
+    if (id == null || !confirmados.has(id)) continue;
+    if (f.fecha == null) continue;
+    const fechaDato = f.fecha.slice(0, 10);
+    const prev = marcados.get(id);
+    if (prev === undefined || fechaDato > prev) marcados.set(id, fechaDato);
+  }
+  // Se agrupa por fecha porque `marcarIngestado` toma un solo `hasta` por lote y distintos
+  // parlamentarios tienen distinta fecha máxima ingerida. El writer es COMPARTIDO con el conector
+  // leylobby: la firma `(ids, hasta)` no cambia — sólo cambia de dónde sale `hasta`.
+  const porHasta = new Map<string, string[]>();
+  for (const [id, h] of marcados) {
+    const lote = porHasta.get(h);
+    if (lote) lote.push(id);
+    else porHasta.set(h, [id]);
+  }
+  for (const [h, ids] of porHasta) {
+    await opts.writer.marcarIngestado(ids, h);
   }
 
   const contrapartes = filas.reduce((acc, f) => acc + f.contrapartes.length, 0);
   log(
     `camara-lobby: OK → ${filas.length} audiencias / ${contrapartes} contrapartes / ` +
-      `${parlamentariosConfirmados.length} confirmados (r2Path=${r2Path ?? "none"})`,
+      `${parlamentariosConfirmados.length} confirmados / ${marcados.size} marcados ` +
+      `(r2Path=${r2Path ?? "none"})`,
   );
 
   return {
     audiencias: filas.length,
     contrapartes,
-    parlamentariosMarcados: parlamentariosConfirmados.length,
+    parlamentariosMarcados: marcados.size,
     confirmados: parlamentariosConfirmados.length,
+    marcadoHasta: Object.fromEntries(marcados),
     r2Path,
   };
 }
