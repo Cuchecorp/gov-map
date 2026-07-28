@@ -1,132 +1,110 @@
-# 121 — VERIFICATION: cierre de ESCALERA-DOC
-
-**Fase:** 121-escalera-doc-extension-solo-con-benchmark
-**Plan:** 121-01
-**Fecha:** 2026-07-28 (2026-07-28T20:53:24Z)
-**Artefacto verificado:** `.planning/phases/121-escalera-doc-extension-solo-con-benchmark/121-ESCALERA-ESTADO.md`
-
+---
+phase: 121-escalera-doc-extension-solo-con-benchmark
+verified: 2026-07-28T21:20:00Z
+status: passed
+score: 4/4 must-haves verified
+overrides_applied: 0
 ---
 
-## 1. Comando y resultado
+# Phase 121: ESCALERA-DOC — Extensión solo con benchmark — Verification Report
 
-**Comando exacto (corrida final registrada):**
+**Phase Goal:** Queda registrado, tarea por tarea, por qué la escalera se extiende o no — de modo que nadie la extienda por intuición.
+**Requirement:** CRON-04
+**Verified:** 2026-07-28
+**Status:** passed
+**Re-verification:** No — initial verification (normaliza el 121-VERIFICATION.md escrito por el ejecutor)
 
-```
-bash .planning/phases/121-escalera-doc-extension-solo-con-benchmark/check-escalera-doc.sh
-```
+## Goal Achievement
 
-**Exit code: 0** — `=== GATE VERDE`
+### Observable Truths (ROADMAP §Phase 121 Success Criteria)
 
-El script también se invocó como `sh .planning/phases/121-escalera-doc-extension-solo-con-benchmark/check-escalera-doc.sh`
-(la forma que usa el `<verify>` del plan) con el mismo **exit code 0**.
-
-**Salida íntegra (sin secretos):**
-
-```
-=== check-escalera-doc.sh — gate de 121-ESCALERA-ESTADO.md
-repo: C:/Users/Carlo/OneDrive - pjud.cl/Documentos/GitHub/Observatorio
-
---- C1 · el documento existe
-PASS C1 121-ESCALERA-ESTADO.md presente
-
---- C2 · las 5 tareas LLM están nombradas
-PASS C2 tarea presente en la tabla maestra: routing
-PASS C2 tarea presente en la tabla maestra: clasificaci
-PASS C2 tarea presente en la tabla maestra: juez
-PASS C2 tarea presente en la tabla maestra: extracci
-PASS C2 tarea presente en la tabla maestra: adjudicaci
-
---- C3 · estado explícito por tarea (vocabulario cerrado, celdas de la tabla maestra)
-C3 celdas de estado -> EXTENDIDA=1 · NO EXTENDIDA=3 · INTOCABLE=1 · total=5
-PASS C3 exactamente 1 celda EXTENDIDA
-PASS C3 exactamente 3 celdas NO EXTENDIDA
-PASS C3 exactamente 1 celda INTOCABLE
-PASS C3 la tabla maestra tiene 5 filas de tarea con estado
-PASS C3 existe la sección 'Cómo leer los estados'
-
---- C4 · citas verificables
-PASS C4 cita presente (10 ocurrencia(s)): 107-VEREDICTO-LIVE-FULL-2026-07-27
-PASS C4 cita presente (9 ocurrencia(s)): be0b1b9
-PASS C4 cita presente (6 ocurrencia(s)): 120-FLIP-RECORD
-PASS C4 la adjudicación referencia SEED-001 (decisión de diseño, no métrica)
-PASS C4 las 5 filas de la tabla maestra citan una fuente
-
---- C5 · subparte 'qué evidencia … la extendería'
-C5 ocurrencias de 'qué evidencia'=6 (mínimo 5)
-PASS C5 las 5 tareas declaran qué evidencia las extendería
-PASS C5 adjudicación responde N/A por diseño (presencia, no omisión)
-
---- C6 · anti-secreto (sobre el artefacto, jamás sobre este script)
-C6 filtro aplicado: se excluye 'CLASIFICACION_ESCALERA=1' y los placeholders redactados (*** / <X> / ${X})
-PASS C6 cero patrones de secreto en 121-ESCALERA-ESTADO.md
-
---- C7 · self-check anti-secreto (dos fixtures inventados, fuera del repo)
-C7 fixture A (asignación con valor): hits=1 · fixture B (blob hex suelto): hits=1
-PASS C7 el detector MUERDE la rama de asignación con valor
-PASS C7 el detector MUERDE la rama de blob que parece credencial
-PASS C7 la excepción CLASIFICACION_ESCALERA=1 no abre agujero (control: 1 hit, el otro token)
-
-=== RESULTADO: 0 falta(s)
-=== GATE VERDE
-```
-
-**Self-check anti-secreto:** ambas ramas del detector **mordieron** (fixture A = asignación de
-credencial con valor falso inventado; fixture B = blob hex de 40 caracteres suelto, sin `=` delante),
-más un control negativo que confirma que la excepción `CLASIFICACION_ESCALERA=1` no abre un agujero
-general (1 hit sobre el token de control, 0 sobre la excepción). Los dos fixtures son **inventados**:
-en ningún momento se copió un valor real de `.env`. Los temporales se crearon fuera del repo (en el
-scratchpad de sesión) y se borraron por `trap … EXIT` — verificado: cero archivos
-`escalera-selfcheck-*` residuales.
-
----
-
-## 2. Mapeo SC#1–SC#4 → comprobación → sección del documento
-
-| SC | Enunciado | Comprobación del script | Sección de `121-ESCALERA-ESTADO.md` que lo satisface |
+| # | Truth | Status | Evidence |
 |---|---|---|---|
-| **SC#1** | Las 5 tareas LLM tienen estado explícito con evidencia de benchmark que lo respalda | **C2** (las 5 tareas nombradas) + **C3** (1 EXTENDIDA / 3 NO EXTENDIDA / 1 INTOCABLE, celdas del vocabulario cerrado, total 5) + **C4** (cada fila cita una fuente) | `## Tabla maestra` · `## Cómo leer los estados` · las 5 secciones por tarea (subpartes **Estado** y **Evidencia**) |
-| **SC#2** | Las tareas sin benchmark de paridad quedan NO EXTENDIDAS citando "ante la duda, siempre calidad", con el flip de routing y el veto es-CL registrados | **C3** (3 celdas NO EXTENDIDA) + **C4** (cita a `107-VEREDICTO-LIVE-FULL-2026-07-27` / `be0b1b9`) | `## Recuadro — la lección` (flip 10-sample `+0.10` → full-40 `−0.10`, regla LOCKED literal) · `## Routing` · `## Extracción` (veto es-CL por corto-circuito, `negacion.accuracy` 0/3 vs 1/3) · `## Juez` |
-| **SC#3** | Adjudicación INTOCABLE por decisión explícita (SEED-001), con su propia subparte "qué la extendería" respondida N/A por diseño — presencia, no omisión | **C3** (1 celda INTOCABLE) + **C4** (referencia `SEED-001`) + **C5** (`N/A por diseño` presente) | `## Adjudicación de identidad` (las 4 subpartes, incluida **Qué evidencia concreta la extendería: N/A por diseño**) · `## Régimen de guards` |
-| **SC#4** | Cada tarea pendiente declara qué evidencia concreta y verificable la extendería | **C5** (≥5 ocurrencias de "qué evidencia"; observadas 6) | Subparte **Qué evidencia concreta la extendería** en `## Clasificación`, `## Routing`, `## Extracción`, `## Juez`, `## Adjudicación de identidad` |
+| 1 | Cada tarea LLM (routing, clasificación, juez, extracción, adjudicación) tiene estado explícito con evidencia de benchmark | ✓ VERIFIED | Gate C2+C3+C4 verde en corrida independiente del verificador: 5 tareas nombradas, celdas `EXTENDIDA=1 · NO EXTENDIDA=3 · INTOCABLE=1 · total=5`, las 5 filas citan fuente. Confirmado por lectura directa de `121-ESCALERA-ESTADO.md` §Tabla maestra + 5 secciones por tarea |
+| 2 | Sin benchmark de paridad = NO extendida citando "ante la duda, siempre calidad" (routing flip; extracción veto es-CL) | ✓ VERIFIED | Regla LOCKED literal en L7 y L80. §Recuadro documenta el flip 10-sample `+0.10` → full-40 `−0.10`; verificado contra el veredicto L14 y L60 («SÍ — flip. Manda el full-40»). Extracción: veto es-CL corto-circuito, verificado contra veredicto L16 |
+| 3 | Adjudicación INTOCABLE por decisión explícita, no por omisión | ✓ VERIFIED | §Adjudicación de identidad: «el estado es INTOCABLE **por decisión, no por omisión**. No es que falte medirla: es que no se mide». Referencia SEED-001 (gate C4). Respaldado por veredicto L35 y por los 3 guards de `packages/llm/src/` |
+| 4 | El documento dice qué evidencia concreta extendería cada tarea pendiente | ✓ VERIFIED | Gate C5: 6 ocurrencias de "qué evidencia" (mínimo 5). Subparte presente en las 5 secciones; adjudicación responde **N/A por diseño** — presencia explícita, no omisión |
 
-**Criterios adicionales del plan:**
+**Score:** 4/4 truths verified
 
-| Criterio | Comprobación | Resultado |
+### Required Artifacts
+
+| Artifact | Expected | Status | Details |
+|---|---|---|---|
+| `121-ESCALERA-ESTADO.md` | Estado por tarea + evidencia citada | ✓ VERIFIED | 256 líneas; tabla maestra + 5 secciones + guards + condición de vigencia + límites declarados. No es stub |
+| `check-escalera-doc.sh` | Gate por grep re-ejecutable | ✓ VERIFIED | Re-ejecutado por el verificador en proceso propio: **exit 0**, `=== RESULTADO: 0 falta(s) / === GATE VERDE`. 7 comprobaciones (C1–C7) |
+| `121-01-SUMMARY.md` | Registro de ejecución | ✓ VERIFIED | Presente |
+
+### Probe Execution
+
+| Probe | Command | Result | Status |
+|---|---|---|---|
+| Gate ESCALERA-DOC | `bash .planning/phases/121-*/check-escalera-doc.sh` | exit 0 — 0 faltas, GATE VERDE (C1–C7 todas PASS) | PASS |
+
+Ejecutado por el verificador, no tomado del SUMMARY. Salida idéntica a la registrada por el ejecutor, incluido el self-check anti-secreto C7 (ambas ramas del detector muerden + control negativo sobre `CLASIFICACION_ESCALERA=1`).
+
+### Fidelity Spot-Check (≥5 cifras, exigido)
+
+Verificación independiente `grep -cF` de las cifras del documento contra los archivos de origen. **11 cifras comprobadas, 11 presentes literalmente:**
+
+| Cifra | En 121-ESCALERA-ESTADO | En 107-VEREDICTO-LIVE-FULL | Status |
+|---|---|---|---|
+| `−0.1000` (Δ routing, menos tipográfico U+2212) | 2 | 1 | ✓ |
+| `0.9167` (`recall_rechazo` Phi) | 2 | 2 | ✓ |
+| `0.098/0.182` (value P/R Granite) | 2 | 1 | ✓ |
+| `996.5s` (duración full-40) | 1 | 1 | ✓ |
+| `+0.1667` (Δcalidad juez) | 2 | 1 | ✓ |
+| `0.9500` (`precision_ok`) | 2 | 1 | ✓ |
+| `$0.0107` (costo/1k Granite) | 1 | 1 | ✓ |
+| `$0.8944` (costo/1k DeepSeek) | 1 | 1 | ✓ |
+| `incumbent-stays` / `approved-model` | — | 4 / 2 | ✓ |
+| `negacion.accuracy` (0/3 vs 1/3) | sí | 1 | ✓ |
+
+Contra `120-FLIP-RECORD.md`: `acuerdo=8/8` (4 ocurrencias), `granite-4.0-h-micro` (5), `3 passed` / `7 passed` (guards Gate 6), `CLASIFICACION_ESCALERA` (18). Todas confirmadas.
+
+**Verificación semántica (no sólo literal):** las cifras no están sólo presentes, están usadas con el mismo sentido que en el origen. Veredicto L14 (routing incumbent-stays), L15 (clasificación approved Granite Δ 0.0000), L16 (extracción veto es-CL duro), L60 (contraste 10-sample vs full-40) coinciden con lo que el documento afirma. **Cero cifras de memoria, cero redondeos nuevos.**
+
+### Reconciliaciones de vocabulario (revisadas, correctas)
+
+| Caso | Riesgo | Resolución en el documento |
 |---|---|---|
-| El check por grep pasa en verde | corrida completa | exit 0, 0 faltas |
-| El self-check de secretos muerde | **C7** (dos fixtures + control negativo) | PASS ×3 |
-| Cero código de producto tocado | `git status --porcelain` | sólo los 3 archivos de `files_modified` de esta fase; cero cambios en `packages/`, `app/`, `supabase/`, `.env`, `.env.example`, `package.json` |
+| Extracción: veredicto dice «DeepSeek se queda. INTOCABLE» pero el doc la marca NO EXTENDIDA | Contradicción aparente con la fuente | ✓ Reconciliado explícitamente (L138–144): en el veredicto "INTOCABLE" = «el incumbente no se mueve»; en este doc `INTOCABLE` = «no candidata a benchmark». Extracción sí es candidata → NO EXTENDIDA. Honesto y correcto |
+| Juez: veredicto lo rotula `approved-model` (BENCH-04) pero el doc lo marca NO EXTENDIDA | Podría leerse como degradar la fuente | ✓ Defendible: el doc expone las métricas que aprueban (Δ **+0.1667** ≥ −0.05, recall 0.9167) y explica que aprobar juez-vs-**humano** no es benchmark de paridad juez-vs-**juez** para promoverlo a decisor → permanece ESCALATE-ONLY (estado real desde Phase 108). El veredicto mismo dice «No gatea 109» |
+
+### Anti-Patterns Found
+
+| File | Line | Pattern | Severity | Impact |
+|---|---|---|---|---|
+| `check-escalera-doc.sh` | 194–195 | `XXXXXX` | ℹ️ Info | Falso positivo — plantilla de `mktemp`, no marcador de deuda |
+
+Cero `TBD` / `FIXME` / marcadores de deuda reales en los artefactos de la fase. Cero secretos (C6 + C7).
+
+### Scope Check
+
+`git status --porcelain` no lista ningún archivo de `packages/`, `app/`, `supabase/`, `.env` ni `package.json`. Los artefactos de la fase están commiteados. Los dos archivos modificados en el árbol (`119-REVIEW.md`, `pnpm-workspace.yaml`) son previos a esta fase y ajenos a ella. **Confirmado: cero código de producto tocado.**
+
+### Requirements Coverage
+
+| Requirement | Description | Status | Evidence |
+|---|---|---|---|
+| CRON-04 | Extensión de la escalera a otras tareas SOLO con benchmark nuevo de paridad; sin evidencia = no se extiende (documentado por tarea) | ✓ SATISFIED | Las 5 tareas documentadas con estado + evidencia citada + condición de extensión. `REQUIREMENTS.md` L69 ya lo marca Complete contra Phase 121 |
+
+### Human Verification Required
+
+Ninguna. La fase es documental y las 4 SC son verificables íntegramente en el repo: el gate se re-ejecutó en proceso propio (exit 0) y las cifras se cotejaron una a una contra las fuentes primarias. No hay superficie de UI, red ni servicio externo que requiera juicio humano.
+
+### Gaps Summary
+
+Sin gaps. El objetivo de la fase —que el estado de extensión de la escalera quede registrado tarea por tarea con evidencia citada, de modo que nadie la extienda por intuición— está cumplido y es auditable:
+
+- El vocabulario es **cerrado** (EXTENDIDA / NO EXTENDIDA / INTOCABLE) y el gate cuenta las celdas, así que el documento no puede degradarse en silencio a prosa ambigua.
+- Cada estado lleva **cita a archivo de evidencia**, y el muestreo independiente de 11 cifras confirma que no hay números de memoria.
+- Los dos choques de vocabulario con la fuente (extracción, juez) están **reconciliados en el texto**, no ocultos.
+- El estado EXTENDIDA de clasificación tiene **condición de caducidad explícita** (drift canary) con regla de invalidación y rollback probado — el documento no declara una victoria permanente.
+
+**Límites declarados de esta verificación:** (1) el gate comprueba completitud y forma del documento, no re-mide las cifras del veredicto — esas las fija la corrida de Phase 107, que este documento cita; (2) no se re-ejecutaron drift canary ni shadow-eval (env-gated, consumen `.env` y red); (3) esta fase no autoriza ni flipea nada — `CLASIFICACION_ESCALERA=1` viene de Phase 120 y no fue tocado.
 
 ---
 
-## 3. Muestreo de fidelidad
-
-Verificación de que las cifras del documento existen **literalmente** en el archivo de origen
-(`grep -cF` sobre ambos archivos):
-
-| Cifra | Ocurrencias en `121-ESCALERA-ESTADO.md` | Ocurrencias en `107-VEREDICTO-LIVE-FULL-2026-07-27.md` |
-|---|---|---|
-| `−0.1000` (Δcalidad routing) | 2 | 1 |
-| `0.9167` (`recall_rechazo` Phi) | 2 | 2 |
-| `0.098/0.182` (value P/R Granite, extracción) | 2 | 1 |
-| `996.5s` (duración de la corrida full-40) | 1 | 1 |
-| `+0.1667` (Δcalidad juez) | 2 | 1 |
-| `0.9500` (`precision_ok`) | 2 | 1 |
-| `$0.0107` (costo/1k casos Granite) | 1 | 1 |
-
-Cero cifras de memoria. Cero redondeos nuevos.
-
-**Nota de codificación:** el signo del Δ de routing es el **menos tipográfico U+2212** (`−`), no el
-guion ASCII. Se copió byte a byte del veredicto; un `grep -- '-0.1000'` con guion ASCII devuelve 0
-tanto en el origen como aquí, y eso es correcto, no una falta.
-
----
-
-## 4. Límites de esta verificación
-
-1. El gate comprueba **completitud y forma** del documento, no la veracidad de las cifras del
-   veredicto — eso lo fija la corrida de la Phase 107, que este documento cita, no re-mide.
-2. El gate **no re-ejecuta** el drift canary ni el shadow-eval: son env-gated y consumen `.env` y
-   red. La §Condición de vigencia del documento da el comando para re-ejecutarlos cuando toque.
-3. Esta fase **no autoriza ni flipea nada**. El estado `CLASIFICACION_ESCALERA=1` viene de la
-   Phase 120 y no fue tocado aquí.
+_Verified: 2026-07-28T21:20:00Z_
+_Verifier: Claude (gsd-verifier)_
