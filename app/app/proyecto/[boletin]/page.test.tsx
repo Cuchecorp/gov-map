@@ -48,6 +48,10 @@ const proyectoRow = {
   enlace: "https://senado.cl/16284-07",
 };
 
+// Fila devuelta por `.from("proyecto")`. Mutable para poder simular "no existe"
+// (0 filas) en el test del 404 de H-01; `beforeEach` la restaura a la fila válida.
+let proyectoData: typeof proyectoRow | null = proyectoRow;
+
 // Hitos clave estructurales + una corrida de urgencia repetitiva ≥2 (agrupable).
 const eventos = [
   {
@@ -100,7 +104,7 @@ const fromMock = vi.fn((tabla: string) => {
       select: () => ({
         eq: () => ({
           maybeSingle: () =>
-            Promise.resolve({ data: proyectoRow, error: null }),
+            Promise.resolve({ data: proyectoData, error: null }),
         }),
       }),
     };
@@ -142,6 +146,7 @@ import ProyectoPage, { ProyectoRail, TramitacionSection } from "./page";
 import { renderToStaticMarkup } from "react-dom/server";
 
 beforeEach(() => {
+  proyectoData = proyectoRow;
   notFoundMock.mockClear();
   fromMock.mockClear();
   createServerSupabaseMock.mockClear();
@@ -188,6 +193,41 @@ describe("/proyecto/[boletin] — shell rail + grid (UXCOG 55-04)", () => {
     // Breadcrumb F53 preservado.
     expect(html).toContain('aria-label="Ruta de navegación"');
     expect(notFoundMock).not.toHaveBeenCalled();
+  });
+});
+
+// ── H-01 (Phase 114-03): el 404 sale ANTES de abrir el streaming ──────────────
+// Síntoma corregido: `/proyecto/<boletín con formato válido pero inexistente>`
+// respondía HTTP 200 porque el único `notFound()` vivía dentro de `FichaSection`
+// (bajo <Suspense>) — las cabeceras ya se habían emitido. Ahora la comprobación de
+// existencia ocurre en el componente de página, antes de devolver el árbol.
+describe("/proyecto/[boletin] — 404 de boletín inexistente (H-01)", () => {
+  it("llama notFound() ANTES de devolver el árbol cuando el proyecto no existe", async () => {
+    proyectoData = null;
+    // La página misma (no una sección suspendida) rechaza: `notFound()` lanza su
+    // sentinel durante el await de ProyectoPage, sin llegar a producir markup.
+    await expect(ProyectoPage(makeProps("00000-00"))).rejects.toThrow(
+      "NEXT_NOT_FOUND",
+    );
+    expect(notFoundMock).toHaveBeenCalled();
+  });
+
+  it("con un boletín existente NO llama notFound() y sí devuelve el árbol", async () => {
+    const html = renderToStaticMarkup(await ProyectoPage(makeProps()));
+    expect(html).toContain('id="estado"');
+    expect(notFoundMock).not.toHaveBeenCalled();
+  });
+
+  it("la comprobación de existencia vive en la page, ANTES del primer <Suspense>", () => {
+    const src = readFileSync(
+      path.join(process.cwd(), "app", "proyecto", "[boletin]", "page.tsx"),
+      "utf8",
+    );
+    const idxLeer = src.indexOf("await leerProyecto(boletin)");
+    // Primer boundary de streaming REAL (JSX), no la mención en un comentario.
+    const idxSuspense = src.indexOf("<Suspense fallback=");
+    expect(idxLeer).toBeGreaterThan(0);
+    expect(idxSuspense).toBeGreaterThan(idxLeer);
   });
 });
 

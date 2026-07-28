@@ -61,6 +61,20 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
     notFound();
   }
 
+  // 114-03 (H-01) — El 404 de "boletín inexistente" DEBE resolverse ANTES de abrir
+  // cualquier boundary de streaming. Antes, la única comprobación de existencia vivía
+  // en `FichaSection` (dentro de un <Suspense>): para un boletín con formato válido
+  // pero sin fila, el shell ya se había emitido con las cabeceras puestas, así que el
+  // `notFound()` pintaba la UI de not-found pero el status quedaba en 200. Aquí se
+  // resuelve en el componente de página, antes del `return`, y por tanto antes de que
+  // Next envíe cabecera alguna. La lectura es la MISMA `leerProyecto` cacheada
+  // (React.cache) que consumen el rail, la ficha y la tramitación ⇒ cero query extra.
+  // `leerProyecto` LANZA ante un error real de DB/red (#34): esto no fabrica un 404 a
+  // partir de un fallo, sólo lo emite cuando la fila realmente no existe.
+  if (!(await leerProyecto(boletin))) {
+    notFound();
+  }
+
   // Período de urgencia expandido (SC2, server-driven): ?urgencias=<id>. Normalizado
   // como los demás params del repo (string[] → primer valor; vacío → null). Nunca se
   // interpola en SQL — se compara por igualdad contra ids de período ya conocidos
