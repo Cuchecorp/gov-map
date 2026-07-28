@@ -192,13 +192,13 @@ describe("TileSenal — degradación honesta '(sin materia)'", () => {
 
 // ── F-14 — la fecha del panel se rinde en es-CL, no como ISO crudo ─────────────
 describe("F-14 — rotuloFecha: es-CL para público general y prensa", () => {
-  it("señal agenda_* a medianoche UTC → '10-ago', jamás el ISO crudo", () => {
+  it("señal agenda_* a medianoche UTC → '10 ago 2026' (con AÑO), jamás el ISO crudo", () => {
     const rot = rotuloFecha("agenda_citacion", "2026-08-10T00:00:00Z");
-    expect(rot).toBe("10-ago");
+    expect(rot).toBe("10 ago 2026");
     expect(rot).not.toContain("2026-08-10");
   });
 
-  it("señal agenda_* en el DOM: el tile muestra '10-ago' y no el ISO", () => {
+  it("señal agenda_* en el DOM: el tile muestra '10 ago 2026' y no el ISO", () => {
     render(
       <TileSenal
         tipo="agenda_citacion"
@@ -207,7 +207,7 @@ describe("F-14 — rotuloFecha: es-CL para público general y prensa", () => {
       />,
     );
     const texto = document.body.textContent ?? "";
-    expect(texto).toContain("10-ago");
+    expect(texto).toContain("10 ago 2026");
     expect(texto).not.toContain("2026-08-10");
   });
 
@@ -220,5 +220,18 @@ describe("F-14 — rotuloFecha: es-CL para público general y prensa", () => {
 
   it("fecha_max NULL (agrupacion_materia) → null: la ausencia honesta no se rellena", () => {
     expect(rotuloFecha("agrupacion_materia", null)).toBeNull();
+  });
+
+  // WR-05 (117-REVIEW): las dos ramas se listan una junto a otra en el MISMO panel.
+  // Dos convenciones distintas —una sin año— hacían que el ciudadano leyera la señal
+  // de agenda como si fuera del año en curso.
+  it("ambas ramas usan el MISMO formato, y ninguna omite el año", () => {
+    const agenda = rotuloFecha("agenda_citacion", "2026-08-10T00:00:00Z");
+    const otro = rotuloFecha("velocity", "2026-08-10T00:00:00Z");
+    expect(agenda).toBe(otro);
+    expect(agenda).toContain("2026");
+    expect(otro).toContain("2026");
+    // El badge compacto sin año ("10-ago") queda reservado a /agenda.
+    expect(agenda).not.toMatch(/^\d{2}-[a-z]{3}$/);
   });
 });
