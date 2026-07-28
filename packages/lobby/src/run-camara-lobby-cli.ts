@@ -210,7 +210,8 @@ async function main(): Promise<void> {
   console.log(
     `\ncamara-lobby ${dryRun ? "DRY-RUN" : "LIVE"}: audiencias=${res.audiencias} ` +
       `contrapartes=${res.contrapartes} confirmados=${res.confirmados} ` +
-      `marcados=${res.parlamentariosMarcados} r2Path=${res.r2Path ?? fromR2 ?? "none"}`,
+      `marcados=${res.parlamentariosMarcados} sinNovedades=${res.sinNovedades} ` +
+      `r2Path=${res.r2Path ?? fromR2 ?? "none"}`,
   );
 }
 

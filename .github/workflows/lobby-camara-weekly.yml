@@ -72,4 +72,17 @@ jobs:
           R2PATH=$(echo "$OUT" | grep -oE 'r2Path=[^ ]+' | tail -1 | cut -d= -f2-)
           echo "crudo re-procesable en R2 → r2Path=${R2PATH:-none}"
           echo "replay: pnpm --filter @obs/lobby exec tsx src/run-camara-lobby-cli.ts --from-r2 ${R2PATH:-<r2Path>}"
-          echo "$OUT" | grep -qE 'audiencias=[1-9][0-9]*' || { echo "audiencias=0"; exit 1; }
+          # WR-01 (119-REVIEW): el guard distingue DOS cosas que antes colapsaba en `failure`.
+          #   * `audiencias=<N>` con N>0 → corrida sana que trajo datos.
+          #   * `sinNovedades=true`     → el hash-check de la Etapa 1 dio 412: el crudo NO cambió,
+          #     así que la Etapa 2 se omitió A PROPÓSITO (regla LOCKED 2 de CLAUDE.md, "salir
+          #     temprano cuando no hay novedades"). Eso es una corrida SANA con audiencias=0.
+          # Antes, esa segunda salía `exit 1` → workflow `failure` → y como la señal de frescura
+          # trata un `failure` como stale POR SÍ SOLO, se FABRICABA rojo: la dirección espejo del
+          # verde prestado que esta fase erradicó. Un skip honesto sale 0 y se ve en el log.
+          if echo "$OUT" | grep -qE 'sinNovedades=true'; then
+            echo "[skip] sin novedades — el crudo no cambió; Etapa 2 omitida a propósito (exit 0)"
+          elif ! echo "$OUT" | grep -qE 'audiencias=[1-9][0-9]*'; then
+            echo "audiencias=0 sin skip declarado → la corrida no trajo ni omitió datos"
+            exit 1
+          fi

@@ -78,6 +78,12 @@ export interface RunCamaraLobbyResult {
   marcadoHasta: Record<string, string>;
   /** Key del crudo en R2, o null (Etapa 1 omitida o fallida — no fatal). */
   r2Path: string | null;
+  /**
+   * WR-01 — true cuando el hash-check de la Etapa 1 dio 412 (`existed`): el crudo NO cambió, así
+   * que la Etapa 2 se omitió A PROPÓSITO. Es una corrida SANA con `audiencias: 0`, y quien la
+   * inspeccione (el guard del workflow) debe poder distinguirla de un fallo real.
+   */
+  sinNovedades: boolean;
 }
 
 /**
@@ -122,6 +128,7 @@ export async function runCamaraLobby(opts: RunCamaraLobbyOpts): Promise<RunCamar
           confirmados: 0,
           marcadoHasta: {},
           r2Path,
+          sinNovedades: true,
         };
       }
       log(`camara-lobby: crudo en R2 → ${r2Path}`);
@@ -224,6 +231,7 @@ export async function runCamaraLobby(opts: RunCamaraLobbyOpts): Promise<RunCamar
     parlamentariosMarcados: marcados.size,
     confirmados: parlamentariosConfirmados.length,
     marcadoHasta: Object.fromEntries(marcados),
+    sinNovedades: false,
     r2Path,
   };
 }

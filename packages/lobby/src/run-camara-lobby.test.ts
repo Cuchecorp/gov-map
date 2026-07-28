@@ -283,3 +283,45 @@ describe("CR-03 — la cobertura de la Cámara sale del DATO, nunca del reloj", 
     expect(writer.ingestaEstado.size).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// WR-01 (119-REVIEW) — un `[skip] sin novedades` (412 del hash-check) es una corrida SANA con
+// audiencias=0. El guard del workflow la contaba como `failure`, y un failure produce stale POR
+// SÍ SOLO ⇒ se fabricaba rojo. El runner debe DECIRLO en el resultado para que el guard distinga.
+// ---------------------------------------------------------------------------------------------
+describe("WR-01 — el skip por hash-check se declara, no se confunde con una corrida vacía", () => {
+  it("existed:true ⇒ sinNovedades:true con audiencias 0 (skip honesto)", async () => {
+    const writer = new InMemoryLobbyWriter();
+    const res = await runCamaraLobby({
+      conector: mockConector(FIXTURE),
+      writer,
+      maestra: [DIP_MELLA],
+      fechaCaptura: "2026-06-22T00:00:00Z",
+      r2Store: {
+        putImmutable: async () => ({
+          r2Path: "camara-lobby/listadodeaudiencias/2026-06-22/abc.html",
+          existed: true,
+        }),
+      } as never,
+    });
+
+    expect(res.sinNovedades).toBe(true);
+    expect(res.audiencias).toBe(0);
+    // Y nada se escribió: el skip ocurre ANTES de parsear.
+    expect(writer.audiencias.size).toBe(0);
+  });
+
+  it("existed:false ⇒ sinNovedades:false (una corrida con datos NUNCA se rotula como skip)", async () => {
+    const writer = new InMemoryLobbyWriter();
+    const res = await runCamaraLobby({
+      conector: mockConector(FIXTURE),
+      writer,
+      maestra: [DIP_MELLA],
+      fechaCaptura: "2026-06-22T00:00:00Z",
+      omitirEtapa1: true,
+    });
+
+    expect(res.sinNovedades).toBe(false);
+    expect(res.audiencias).toBeGreaterThan(0);
+  });
+});
