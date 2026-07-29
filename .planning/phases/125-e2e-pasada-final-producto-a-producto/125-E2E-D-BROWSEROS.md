@@ -137,7 +137,8 @@ MCP **vivo**. Gate de operador (arrancar BrowserOS) **no requiere escalada**.
 | check | comando | esperado | observado |
 |---|---|---:|---:|
 | filas de la Tabla D en §0.3 | `sed -n '/§0.3/,/Denominador/p' … \| grep -oE '^\| [0-9]+ \|' \| wc -l` | 19 | **19** ✓ |
-| cadena prohibida ausente | `grep -o "se recorri" … \| wc -l` | 0 | **0** ✓ |
+| cadena prohibida ausente | `grep -oE "se[ ]recorri[oó] tod" … \| wc -l` (regex, para no reintroducir el literal en el propio check — el `[ ]` rompe la coincidencia consigo mismo) | 0 | **0** ✓ |
+| control positivo apareado del grep anterior | `grep -o "recorrido" … \| wc -l` | >0 | **4** ✓ (el grep sí encuentra cuando hay qué encontrar) |
 | huérfanos listados | `sed -n '/§0.6/,/§0.7/p' … \| grep -cE '^\| .E-0'` | 4 | **4** ✓ |
 | la palabra `estratificación` presente (must_have `contains`) | `grep -o "estratificación" … \| wc -l` | ≥1 | **2** ✓ |
 
