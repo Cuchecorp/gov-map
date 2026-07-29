@@ -4,14 +4,14 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: verifying
 stopped_at: Completed 122-05-PLAN.md
-last_updated: "2026-07-29T19:18:52.534Z"
+last_updated: "2026-07-29T21:34:01.060Z"
 last_activity: 2026-07-29
 progress:
   total_phases: 13
   completed_phases: 12
-  total_plans: 52
-  completed_plans: 52
-  percent: 92
+  total_plans: 59
+  completed_plans: 53
+  percent: 90
 ---
 
 # Project State
@@ -158,6 +158,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 123 P05 | 1h | 2 tasks | 2 files |
 | Phase 123 P06 | 1 sesion | 4 tasks | 3 files |
 | Phase 124 P07 | 45m | 3 tasks | 3 files |
+| Phase 125 P01 | 50m | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -288,6 +289,8 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 124-07: veredicto de los 13 offenders con vocabulario cerrado (6 CERRADO / 2 DEUDA-OPERADOR / 2 DIFERIDO / 3 CERRADO-EN-123); identidad == 13 cuadra
 - [Phase ?]: 124-07 precedente LOCKED: un REVOKE ajeno no falla (WARNING 01006 no-op); el post-check fail-closed es lo unico que separa un cierre real de uno falso
 - [Phase ?]: 124-07 precedente LOCKED: los numeros de un audit son hipotesis a verificar contra PROD, no hechos (4 transcripciones falladas en 124)
+- [Phase ?]: 125-01: deploy v12.0 = 0ea5d97f-a172-436e-aad0-add95940ee0e; los 3 fixes (114/117/122) probados por DOM, no por disponibilidad
+- [Phase ?]: 125-01: sobre el HTML del Worker usar 'grep -o | wc -l' (es una sola linea, grep -c miente); 'Actualizado hace' es control INERTE, el discriminante real es 'Actualizado' 318->0
 
 ### Pending Todos
 
@@ -351,7 +354,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-29T19:18:45.462Z
+Last session: 2026-07-29T21:33:45.376Z
 Stopped at: Completed 122-05-PLAN.md
 Resume file: None
 

@@ -442,7 +442,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 125-01-PLAN.md — (w1) Gate pre-deploy + deploy agrupado a Cloudflare (fixes 114/117/122) + smoke con marcadores DOM
+- [x] 125-01-PLAN.md — (w1) Gate pre-deploy + deploy agrupado a Cloudflare (fixes 114/117/122) + smoke con marcadores DOM
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -475,7 +475,7 @@ Plans:
 | 122. CRUCE-SQL | 6/6 | Complete   | 2026-07-29 |
 | 123. SUPA-AUDIT | 6/6 | Complete   | 2026-07-29 |
 | 124. SUPA-FIX | 7/7 | Complete   | 2026-07-29 |
-| 125. E2E | 0/7 | Planned | - |
+| 125. E2E | 1/7 | In Progress|  |
 
 ### Requirement coverage map (v12.0)
 
