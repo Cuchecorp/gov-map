@@ -1,0 +1,118 @@
+# .supabase-ops.yaml — manifiesto SSoT del proyecto (skill supabase-ops).
+# ESTE ARCHIVO ESTÁ VERSIONADO EN GIT: PROHIBIDO todo valor de credencial
+# (password, token, key, PAT, connection string). Solo NOMBRES de variable de entorno.
+#
+# Bootstrapeado en Phase 123 (123-01) contra la DB VIVA, no contra supabase/migrations.
+# Ancla temporal de la verificación: 2026-07-29, TimeZone=UTC, PostgreSQL 17.6.
+# Lo no verificable va literalmente como "UNKNOWN — verify".
+
+project: observatorio-congreso-360
+
+environments:
+  prod:
+    ref: "bctyygbmqcvizyplktuw"
+    region: "sa-east-1"
+    url: "https://bctyygbmqcvizyplktuw.supabase.co"
+  # preview: no existe. El proyecto NO usa Supabase branching.
+
+dead_refs: []                       # sin evidencia de refs muertos en el repo
+
+corpus:
+  # Fuente: pg_class/pg_proc en schema public con filtro pg_depend deptype='e'
+  # (excluye objetos de extensión). Verificado 2026-07-29.
+  live_tables:
+    [actualidad_senal, aporte, aportes_ingesta_estado, arista, citacion,
+     citacion_invitado, citacion_punto, comision, comision_membresia,
+     consentimiento, contratista, contrato, contratos_ingesta_estado,
+     cruce_senal, declaracion, declaracion_accion_derecho, declaracion_actividad,
+     declaracion_bien_inmueble, declaracion_bien_mueble, declaracion_familiar,
+     declaracion_pasivo, declaracion_valor, donante, drift_alert, entidad,
+     entidad_tercero, entidad_tercero_alias, identidad_audit, ingest_run,
+     leyes_rotacion_estado, leylobby_cursor_estado, lobby_audiencia,
+     lobby_contraparte, lobby_ingesta_estado, notificacion_envio, parlamentario,
+     parlamentario_alias, parlamentario_bio, parlamentario_militancia,
+     pii_contraparte_declaracion, probidad_ingesta_estado, proyecto,
+     proyecto_autor, proyecto_embedding, proyecto_ficha, revision_entidad,
+     revision_identidad, sector, sesion_sala, sesion_tabla_item, source_snapshot,
+     suscripcion, tramitacion_evento, vinculo_entidad, vinculo_identidad,
+     votacion, voto]
+  live_rpcs:
+    [actualidad_senales_panel, agregado_por_contraparte, agregado_por_contraparte_cap,
+     aportes_de_parlamentario, bienes_de_parlamentario, buscar_citaciones,
+     buscar_proyectos_hibrido, co_comisionados_de_parlamentario,
+     coautores_de_parlamentario, coincidencia_votos_par,
+     comisiones_de_parlamentario, comparar_declaraciones, contratos_de_parlamentario,
+     copartidarios_de_parlamentario, cruces_de_parlamentario, cruces_de_proyecto,
+     de_la_misma_zona, declaraciones_de_parlamentario,
+     entidad_tercero_estado_no_regresa, f_unaccent, identidad_audit_immutable,
+     lobby_de_parlamentario, lobby_en_tramitacion, lobby_menciones_de_boletin,
+     match_proyectos, militancia_historica_compartida, militancias_de_parlamentario,
+     parlamentario_estado_no_regresa, parlamentario_publico, parlamentario_publico_v2,
+     parlamentarios_publico, parlamentarios_publico_v2, rebeldias_de_parlamentario,
+     resolver_entidad, resolver_identidad, subgrafo_red, tasa_ausencia_comparada,
+     vinculo_entidad_guarda, vinculo_entidad_guarda_insert, vinculo_identidad_guarda,
+     vinculo_identidad_guarda_insert, votos_de_parlamentario]
+  # NOTA: live_rpcs enumera TODAS las funciones de public (incluye triggers y
+  # helpers internos como f_unaccent / *_estado_no_regresa / *_guarda). El
+  # subconjunto PÚBLICO real (allowlist) se audita en la Phase 123, plan 123-03.
+  live_efs: [ingest-worker]         # ls supabase/functions (deno.json/deno.lock no son EFs)
+  dead_objects: [web_reader, obtenerinfoley]
+
+embeddings:
+  provider: "gemini"
+  model: "gemini-embedding-001"
+  dim: 768                          # VERIFICADO: proyecto_embedding.embedding = vector(768)
+  type: "vector"                    # VERIFICADO: format_type = vector, no halfvec
+  index: "hnsw"                     # VERIFICADO: proyecto_embedding_hnsw, am=hnsw, m=16 ef_construction=64
+  distance: "cosine"                # VERIFICADO: vector_cosine_ops
+  task_type_doc: "UNKNOWN — verify"
+  task_type_query: "UNKNOWN — verify"
+
+storage:
+  supabase_buckets: []              # VERIFICADO: select id,name,public from storage.buckets → 0 filas
+  # NOTA: SERVEL_CRUDO_BUCKET declara el bucket privado "crudo-servel" en
+  # .env.example, pero storage.buckets está VACÍO en PROD → el operador aún no
+  # lo creó. Offender candidato para el eje 6 (plan 123-04).
+  r2_buckets:
+    - { name: "UNKNOWN — verify", access: private, purpose: "crudo inmutable content-addressed (env: R2_BUCKET, vacío en .env.example)" }
+  rule: "metadata en Postgres (con RLS); blob en R2 (crudo inmutable, fuente/recurso/fecha/sha256.ext)"
+
+deploy:
+  frontend:
+    host: "cloudflare-workers"
+    command: "cd app && pnpm deploy   # opennextjs-cloudflare build && deploy (build en Docker Linux)"
+    probe_url: "https://observatorio-congreso.thevalis.workers.dev"
+    runtime_headers_expected: ["Server: cloudflare"]
+    worker_name: "observatorio-congreso"
+  edge_functions:
+    command: "supabase functions deploy <name>"
+    deploys_on_merge: false
+  cutover_atomic_pair: []
+  env_var_canonical: "UNKNOWN — verify"
+  env_var_drift: []
+
+connections:
+  frontend_ef: "UNKNOWN — verify"
+  backend_etl: "direct:5432"        # env: SUPABASE_DB_URL
+  hyperdrive: "UNKNOWN — verify"    # no hay evidencia de Hyperdrive en el repo
+
+drift_patterns:
+  - { pattern: "supabase db push", reason: "prohibido por convención del proyecto: aplicar con psql --single-transaction -f" }
+  - { pattern: "obtenerinfoley", reason: "endpoint BCN obsoleto (404); usar obtxml?opt=7&idNorma=" }
+  - { pattern: "web_reader", reason: "rol dropeado en el cutover Camino A (v4.0); el sitio lee con service_role" }
+  - { pattern: "Vercel|VERCEL_TOKEN", reason: "host canónico es Cloudflare Workers, no Vercel" }
+
+model_routing_overrides:
+  - { task: "tocar RLS, grants o PUBLIC_RPC_ALLOWLIST", tier: 3 }
+  - { task: "cambiar modelo o dim de embeddings", tier: 3 }
+
+canonical_docs: [CLAUDE.md, .planning/PROJECT.md, docs/deploy-cloudflare.md, docs/crons.md]
+debt_ledger: "UNKNOWN — verify"     # la deuda vive en .planning/STATE.md y en los *-SUMMARY
+
+# ──────────────────────────────────────────────────────────────────────────
+# GOTCHA RECTOR (demostrado en 123-SUPA-AUDIT-00-METODO.md §0.4):
+# supabase_migrations.schema_migrations está INCOMPLETA. Faltan 0026, 0028,
+# 0030, 0031, 0052 y TODO el tramo 0059-0068 — que SÍ están aplicadas en la DB
+# viva (probado por existencia de objeto). Además 0027 y 0029 no existen en
+# ninguna de las dos caras: la numeración del repo tiene huecos propios.
+# ⇒ Leer supabase/migrations da una foto FALSA. La DB VIVA manda, siempre.
