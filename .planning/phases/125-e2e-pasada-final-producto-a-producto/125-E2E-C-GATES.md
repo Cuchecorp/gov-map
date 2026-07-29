@@ -81,6 +81,22 @@ cuando el copy estaba a la vista. Matriz sobre la cadena sembrada `xx SUSCRIPCIO
 `-oiF` y fue **recalculada con `-oi`** (§2.3); todas las demás tablas usaron `-oF` desde el principio
 y son válidas.
 
+### §0.3 Gotcha NUEVO (2) — `set -o pipefail` + `grep -q` fabrica falsos negativos
+
+Detectado en el **self-check** de este propio plan, que reportó `MISSING: 873f602` para un commit que
+**existe**. Causa: `grep -q` cierra el pipe en la primera coincidencia → `git log` muere por **SIGPIPE**
+→ con `pipefail` la tubería completa sale **141** (`128+13`), y el `&&` no dispara.
+
+| forma | exit | veredicto |
+|---|---:|:---:|
+| `set -o pipefail; git log --oneline --all \| grep -q <hash>` | **141** | ✗ **falso negativo** |
+| `git log --oneline --all \| grep -q <hash>` (sin pipefail) | 0 | ✓ |
+| `git cat-file -t <hash>` | 0 | ✓ **robusto, sin tubería** |
+
+**Regla:** para comprobar existencia de un commit usar `git cat-file -t <hash>`, nunca `git log | grep -q`
+bajo `pipefail`. **Ninguna cifra de este artefacto está afectada**: todas las mediciones usan
+`grep -o … | wc -l` (que consume el stream completo y no provoca SIGPIPE), no `grep -q`.
+
 Los gotchas 3 (`<!-- -->` intercalado), 4 (Suspense `<div hidden>`) y 5 (backtracking) también se
 respetaron: los greps corren sobre el **archivo completo** —lo que **incluye** los `<div hidden id="S:n">`
 y el payload RSC— y ninguna ventana de contexto excede `.{0,300}`.
@@ -412,6 +428,17 @@ literalmente `125-E2E-C-GATES.md`. Un `grep -iE "\.env|wrangler|gate"` sobre el 
 **auto-falsaría** con la evidencia de que no hubo flips. La acotación a `app/ packages/ supabase/ .github/`
 con `':!.planning/'` es lo que hace la prueba significativa.
 
+Y no es hipotético — **queda demostrado empíricamente**. Re-corridos ambos diffs con este artefacto ya
+commiteado (`873f602`, base `338ffa4`):
+
+| variante | comando | salida |
+|---|---|---|
+| **acotada** (válida) | `git diff --name-only 338ffa4..HEAD -- app/ packages/ supabase/ .github/ ':!.planning/' \| grep -iE "\.env\|wrangler\|gate"` | **VACÍA** ✓ (0 archivos en el diff) |
+| sin acotar (se auto-falsa) | `git diff --name-only 338ffa4..HEAD \| grep -iE "\.env\|wrangler\|gate"` | `.planning/phases/125-…/125-E2E-C-GATES.md` |
+
+El único «hit» del criterio sin acotar es **este mismo archivo de evidencia**. Un plan que hubiera
+usado el diff completo habría reportado un flip inexistente causado por su propio informe.
+
 ---
 
 ## §6 Deuda y límites declarados
@@ -424,3 +451,4 @@ con `':!.planning/'` es lo que hace la prueba significativa.
 | 4 | `og:image` / `twitter:image` apuntan a `http://localhost:3000/opengraph-image.png` en el deploy | **observado, no arreglado** — ajeno a los 5 gates y a este plan; registrado en `deferred-items.md` |
 | 5 | Criterio `Financiamiento → 0` del plan | **inválido**, sustituido por los 14 discriminantes (§2.3, RULE-1) |
 | 6 | Gotcha `grep -i` + `-F` = falso cero (GNU grep 3.0) | **nuevo**, documentado en §0.2 para 125-02 … 125-07 |
+| 7 | Gotcha `pipefail` + `grep -q` = falso negativo por SIGPIPE (exit 141) | **nuevo**, documentado en §0.3; usar `git cat-file -t` para existencia de commits |
