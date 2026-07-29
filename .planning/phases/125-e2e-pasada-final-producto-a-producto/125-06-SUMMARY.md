@@ -14,7 +14,7 @@ provides:
   - "HALLAZGO H-01 (/comparar, error transitorio hidratado) escalado"
 affects:
   - "SC2 del ROADMAP v12.0 (parte BrowserOS)"
-  - "125-HANDOFF-HUMANO.md (Plan 07): gate humano abierto + 4.9-A1 + H-01"
+  - "125-HANDOFF-HUMANO.md (Plan 07): 4.9-A1 + H-01 (el gate humano NO viaja: cerrado APROBADO 2026-07-29)"
 tech-stack:
   added: []
   patterns:
@@ -32,6 +32,7 @@ decisions:
   - "La ausencia del idiom 'segun … al' en / y /agenda NO es defecto: 117 lo exige en los chokepoints de procedencia, no en fechas de hecho desnudas"
   - "El criterio F-06 no se re-intenta: el 125-03 ya lo declaro insatisfacible por emisor huerfano (E-008)"
   - "H-01 se clasifica transitorio (1 de 2 observaciones, re-test 3/3 sano, HTML servido limpio) y se escala sin arreglar: un fix exigiria re-deploy"
+  - "El gate humano CERRO APROBADO por acto explicito del operador (2026-07-29), no por silencio; su alcance es solo el copy de las 3 preguntas y NO convierte 4.9-A1 ni H-01"
   - "La captura del estado de error de /comparar se PRESERVA como evidencia ademas de la captura sana canonica"
 metrics:
   duration: "~85 min"
@@ -40,6 +41,8 @@ metrics:
   urls_recorridas: 21
   capturas: 23
   veredictos: "17 ok + 1 hallazgo"
+gate_humano: "CERRADO — APROBADO por el operador 2026-07-29"
+tasks_completadas: "3/3"
 version_desplegada: 0ea5d97f-a172-436e-aad0-add95940ee0e
 flips_ejecutados: 0
 ddl_dml_ejecutado: 0
@@ -127,21 +130,36 @@ hubo que escalar el gate de operador. Confirma T-125-17.
 el emisor real (`red-graph.tsx:210`) produce `/red?seed=<vecinoId>`. Corregido y declarado en §1.5 —
 el hallazgo original habría sido un falso negativo por selector equivocado.
 
-## Gate humano: ABIERTO
+## Gate humano: CERRADO — APROBADO (2026-07-29)
 
-**El gate NO está cerrado.** Registrado en §3.3 como `SIN RESPUESTA DEL OPERADOR — handoff`. Exige
-juicio humano de copy sobre dos capturas (línea de cobertura de lobby en `14309-04`; carril de lobby
-sin cifras en `S1338`). **Ninguna aprobación se infirió del silencio** (T-125-18). Lo cierra el
-orquestador, o viaja a `125-HANDOFF-HUMANO.md` (Plan 07).
+**Task 3 completa.** El **operador** cerró el gate con respuesta explícita, transmitida vía el
+orquestador. Respuesta verbatim registrada en §3.3:
 
-## Ítems escalados (no arreglados aquí)
+```
+Aprobado — cierro el gate
+```
 
-| id | ítem | destino |
-|----|------|---------|
-| **H-01** | error transitorio hidratado en `/comparar` | Plan 07 / backlog |
-| **4.9-A1** | href `/red?seed=<vecinoId>` no observado en DOM | Plan 07 (verificación manual) |
-| gate humano | 3 preguntas de copy sin responder | Plan 07 |
-| copy C3/C4 | `not-found` de contraparte y red con copy genérico, sin salida a fuente oficial (C2 sí la ofrece) | observación, sin escalar |
+Aprobó el enunciado *"el copy pasa — describe el recorte del canal sin insinuar que se esconde algo, y
+el 3,8 % se lee como cobertura parcial declarada"*, sobre la línea de cobertura lobby↔PL de
+`/proyecto/14309-04`. El **ítem 2** (`Reuniones de lobby—` en `S1338`: em-dash, sin número, sin afirmar
+ausencia) queda **cubierto por la misma aprobación**; el **ítem 3** (lectura fría de las 82 filas de
+`122-CRUCES-SQL.md`) era opcional y quedó **NO EJERCIDO** — no se declara aprobado ni rechazado.
+
+**Ninguna aprobación se infirió del silencio** (T-125-18): la versión previa de este summary y del
+artefacto decía `SIN RESPUESTA DEL OPERADOR — handoff`, y sólo se sustituyó al llegar la respuesta real.
+El ítem del gate **no** viaja al Plan 07.
+
+## Ítems escalados (no arreglados aquí) — el gate aprobado NO los toca
+
+El gate era de **copy**, con alcance exactamente el de §3.2. No convierte ninguno de estos:
+
+| id | ítem | estado | destino |
+|----|------|--------|---------|
+| **H-01** | error transitorio hidratado en `/comparar` | **sigue hallazgo ABIERTO** | Plan 07 / backlog |
+| **4.9-A1** | href `/red?seed=<vecinoId>` no observado en DOM | **sigue `NOT OBSERVED`: ni PASS ni defecto**; fabricar el reveal vía `$RC` sigue prohibido | Plan 07 (verificación manual) |
+| **E2E-01** | requisito de la fase | **sigue `Pending`**: abarca la fase y el Plan 07 falta | Plan 07 |
+| copy C3/C4 | `not-found` de contraparte y red con copy genérico, sin salida a fuente oficial (C2 sí la ofrece) | observación; no fue parte de las 3 preguntas | sin escalar |
+| **M-1…M-6** | límites de instrumento de §0.10 | **como están**: hallazgos de método heredados | documentados |
 
 ## Restricciones respetadas
 
@@ -172,6 +190,9 @@ orquestador, o viaja a `125-HANDOFF-HUMANO.md` (Plan 07).
 | 19 filas de la Tabla D en §0.3 | 19 | ✓ 19 |
 | 18 filas con fragmento verbatim + veredicto | 18 | ✓ 18 |
 | cadena prohibida en el artefacto | 0 | ✓ 0 (control positivo `recorrido` = 5) |
-| gate registrado (`aprobado\|SIN RESPUESTA`) | ≥1 | ✓ 1 |
+| gate registrado (`aprobado\|SIN RESPUESTA DEL OPERADOR`) — verify del plan | ≥1 | ✓ **1** (ahora `APROBADO` + cita verbatim; ya no `SIN RESPUESTA`) |
+| §3.3 sin la línea de handoff | 0 `SIN RESPUESTA DEL OPERADOR` | ✓ 0 |
+| H-01 y 4.9-A1 siguen escalados tras el cierre del gate | sí | ✓ §3.4 los declara INTACTOS |
+| `E2E-01` en `REQUIREMENTS.md` | `Pending` | ✓ sigue Pending |
 | commits existen | 3 | ✓ `8d76d69` `bc781cc` `168e6c9` |
 | borrados en el commit de capturas | 0 | ✓ `git diff --diff-filter=D` vacío |

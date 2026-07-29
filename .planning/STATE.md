@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: verifying
-stopped_at: Completado 125-06-PLAN.md (gate humano ABIERTO)
+stopped_at: Completado 125-06-PLAN.md (gate humano CERRADO — APROBADO)
 last_updated: "2026-07-29T23:04:41.519Z"
 last_activity: 2026-07-29
 progress:
@@ -329,7 +329,7 @@ ode_modules (lock Linux-container, sin secrets — borrar tras reboot).
 - OFF-01 (default ACL supabase_admin en public) NO cerrable desde postgres: SQLSTATE 42501. DEUDA-OPERADOR - ver 124-OFF-01-RESULTADO.md
 - DEUDA OPERADOR: OFF-01 + OFF-6-03 en UN ticket a soporte Supabase (7 sentencias como supabase_admin, zero-credential-value). Cadena SSRF de net ABIERTA; OP-1 y OP-4 urgencia ELEVADA. Ver 124-SUPA-FIX.md
 - 125-06 H-01: error transitorio hidratado en /comparar (No pudimos cargar la portada), no reproducible, solo visible tras hidratacion — escalado
-- 125-06: gate humano ABIERTO (juicio de copy sobre 2 capturas) — sin respuesta del operador; va a 125-HANDOFF-HUMANO.md (Plan 07)
+- 125-06: gate humano CERRADO — APROBADO por el operador 2026-07-29 ("Aprobado — cierro el gate"); NO viaja al Plan 07. Su alcance es solo el copy: no convierte 4.9-A1 ni H-01
 - 125-06: 4.9-A1 (href /red?seed= de red-graph.tsx:210) NO OBSERVADO en el DOM; requiere verificacion manual
 
 ### Quick Tasks Completed
@@ -360,7 +360,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 ## Session Continuity
 
 Last session: 2026-07-29T23:04:27.283Z
-Stopped at: Completado 125-06-PLAN.md (gate humano ABIERTO)
+Stopped at: Completado 125-06-PLAN.md (gate humano CERRADO — APROBADO)
 Resume file: None
 
 ## Operator Next Steps

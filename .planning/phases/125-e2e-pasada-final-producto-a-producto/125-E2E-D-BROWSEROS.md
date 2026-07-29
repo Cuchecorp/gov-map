@@ -511,10 +511,13 @@ actual de la ruta: el estado canónico de `/comparar` tras el re-test es `ok` (�
 
 ## §3 Gate humano — lectura fría y juicio de copy
 
-**Estado: ABIERTO — pendiente de respuesta del operador.**
+**Estado: CERRADO — APROBADO por el operador el 2026-07-29.**
 
-Este subagente **no puede** cerrar este gate: exige juicio humano de copy. Se presenta el material y
-se registra la respuesta verbatim. **Prohibido inferir aprobación por silencio** (T-125-18).
+Este subagente **no puede** cerrar este gate por sí mismo: exige juicio humano de copy. Se presentó el
+material, el **operador** respondió y su respuesta se registra **verbatim** en §3.3. La aprobación es
+un **acto explícito del operador transmitido vía el orquestador**, **no** una inferencia por silencio
+(T-125-18 respetada: la versión previa de este documento decía `SIN RESPUESTA DEL OPERADOR — handoff`
+y sólo se sustituyó al llegar la respuesta real).
 
 ### §3.1 Material a leer
 
@@ -543,20 +546,51 @@ Confirmar a ojo que **no muestra ningún número** y que **no afirma una ausenci
 **Pregunta 3 (opcional, ítem 1 de 122).** Hojear `122-CRUCES-SQL.md`: ¿sus 82 filas se auditan sin
 abrir el código?
 
-### §3.3 Respuesta del operador
+### §3.3 Respuesta del operador — APROBADO
+
+**Veredicto: APROBADO.** **Fecha:** 2026-07-29. **Quién:** el **operador**, respondiendo a la
+Pregunta 1 y transmitido vía el orquestador. **Vía:** cierre explícito del gate, no inferido del
+silencio.
+
+Respuesta **verbatim** del operador:
 
 ```
-SIN RESPUESTA DEL OPERADOR — handoff
+Aprobado — cierro el gate
 ```
 
-Queda para `125-HANDOFF-HUMANO.md` (Plan 07), patrón v7/v9/v10/v11. El orquestador cierra este gate;
-si el operador responde, su texto se registra **verbatim** en este bloque, sustituyendo la línea de
-arriba.
+Enunciado de la opción que el operador aprobó, verbatim:
 
-### §3.4 Ítems que este plan escala (no arregla)
+```
+el copy pasa — describe el recorte del canal sin insinuar que se esconde algo, y el 3,8 % se lee
+como cobertura parcial declarada
+```
 
-| id | ítem | por qué no se arregla aquí |
-|----|------|---------------------------|
-| **H-01** | error transitorio hidratado en `/comparar` (§1.6) | un fix exige re-deploy; esta fase ya desplegó |
-| **4.9-A1** | href `/red?seed=<vecinoId>` no observado en DOM (§1.5) | requiere expandir la tarjeta del vecino; no se fabrica evidencia |
-| copy C3/C4 | `not-found` de contraparte y red comparten copy genérico, sin salida a fuente (§2.2) | juicio de copy, no defecto funcional |
+Disposición de los tres ítems de §3.2 bajo esta misma aprobación:
+
+| ítem | disposición |
+|------|-------------|
+| **1 — línea de cobertura lobby↔PL en `/proyecto/14309-04`** (`195 de las 5.106 … (3,8 %), según fuente al 29 jul 2026`) | **APROBADO** — es el ítem sobre el que el operador respondió. Queda asentado que el copy describe el recorte del canal **sin insinuar ocultamiento** y que el **3,8 % se lee como cobertura parcial declarada**, nunca como total |
+| **2 — carril de lobby de `/parlamentario/S1338`** (`Reuniones de lobby—`) | **CUBIERTO por la misma aprobación** — em-dash, **sin número** y **sin afirmar ausencia en la fuente**, tal como se presentó al operador |
+| **3 — lectura fría de las 82 filas de `122-CRUCES-SQL.md`** | **OPCIONAL — NO EJERCIDO.** Era opcional por diseño; el operador no lo ejerció y **no** se declara aprobado ni rechazado |
+
+Con esto, el ítem del gate humano **no** viaja a `125-HANDOFF-HUMANO.md`: quedó cerrado aquí. Lo que
+**sí** sigue viajando al Plan 07 es §3.4, que esta aprobación **no** toca.
+
+### §3.4 Ítems que este plan escala (no arregla) — INTACTOS tras la aprobación
+
+**El gate aprobado era de COPY, y su alcance es exactamente el de §3.2.** No arrastra ninguno de los
+ítems de abajo: el operador juzgó dos líneas de texto, no el comportamiento de `/comparar` ni la
+existencia de un href en el DOM. Ninguno de estos ítems cambia de estado por el cierre del gate.
+
+| id | ítem | estado tras la aprobación | por qué no se arregla aquí |
+|----|------|---------------------------|---------------------------|
+| **H-01** | error transitorio hidratado en `/comparar` (§1.6) | **sigue HALLAZGO ABIERTO** — escalado al Plan 07 | un fix exige re-deploy; esta fase ya desplegó |
+| **4.9-A1** | href `/red?seed=<vecinoId>` no observado en DOM (§1.5) | **sigue `NOT OBSERVED`: ni PASS ni defecto** — escalado al Plan 07 | requiere expandir la tarjeta del vecino; **fabricar la revelación vía `$RC` sigue prohibido** |
+| copy C3/C4 | `not-found` de contraparte y red comparten copy genérico, sin salida a fuente (§2.2) | observación, sin escalar | juicio de copy, no defecto funcional; **no fue parte de las 3 preguntas del gate** |
+
+**`E2E-01` sigue `Pending`** en `REQUIREMENTS.md`: abarca toda la fase 125 y el **Plan 07** falta. El
+cierre de este gate **no** lo completa.
+
+Los límites de instrumento **M-1…M-6** de §0.10 quedan **como están**: son hallazgos de método que el
+proyecto hereda (en particular, que `bros-cli` **sale con 0** tras `CDP request timeout`, y que
+`get_page_content`/`innerText` son **ciegos** al contenido de Suspense).
