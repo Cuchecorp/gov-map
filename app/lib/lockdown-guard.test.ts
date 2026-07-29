@@ -833,3 +833,501 @@ describe("(B) Guard — el arbol publico (service-role) no toca tablas PII", () 
     expect(NOTIF_SERVICE_TS).not.toBe(SUPABASE_TS);
   });
 });
+
+// ===========================================================================
+// EXTENSIÓN Phase 123 (plan 123-05) — "guard primero", ANTES de que la Phase
+// 124 toque estructura de datos.
+//
+// La auditoría SUPA-AUDIT (fragmentos 01/02/03) enumeró la DB VIVA de PROD y
+// contrastó cada eje contra este guard. Donde el guard decía "0 offenders" y el
+// catálogo mostraba superficie, hay un PUNTO CIEGO: un fix futuro podría
+// reintroducir el mismo defecto y pasar CI verde. Tres offenders salieron con
+// `destino: guard` y los cierran los bloques (A4), (A5) y (A6) de abajo.
+//
+// LÍMITE RECTOR, declarado (ci.yml: "Sin secrets de DB: los guards son
+// estáticos"): CI NO tiene acceso a Postgres. Todo lo de abajo es ESTÁTICO
+// sobre el texto de `supabase/migrations/*.sql`. Por tanto NO puede ver:
+//   - el default-ACL vivo de `supabase_admin` sobre `public` (Q-10)
+//   - las 1.209 funciones de extensión exec-anon ya instaladas (Q-24b)
+//   - el `USAGE TO PUBLIC` sobre `public`/`net` (Q-11, Q-22b)
+//   - el `EXECUTE TO PUBLIC` ya materializado sobre las 8 fn de Q-15
+// Esa mitad la cierra la Phase 124. Extender el guard NO cierra los offenders
+// existentes: IMPIDE LA REGRESIÓN FUTURA. Ver
+// `.planning/phases/123-supa-audit-*/123-SUPA-AUDIT-04-GUARDS.md` §Límites.
+//
+// NOTA sobre Direction-C (descartada con evidencia, NO por omisión): un chequeo
+// «`grant execute … to anon` ⊆ PUBLIC_RPC_ALLOWLIST» sería estrictamente MÁS
+// DÉBIL que el Block A ya existente (que prohíbe TODO grant a anon en >0044,
+// allowlisted o no — ver su caso (a) de fixture), y aplicado repo-wide daría 9
+// falsos positivos (los grants de 0011–0024 revocados después por 0044/0045;
+// la DB viva da exec_anon=f para las nueve). Además PUBLIC_RPC_ALLOWLIST
+// gobierna `service_role`, NO `anon` (ver su doc en :180-182).
+// ===========================================================================
+
+/** Migraciones con número > LOCKDOWN_CUTOFF, leídas una sola vez. */
+const LOCKDOWN_CUTOFF_123 = 44;
+
+function readFutureMigrations(): { filename: string; sql: string }[] {
+  return readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .filter((f) => {
+      const n = migrationNumber(f);
+      return n !== null && n > LOCKDOWN_CUTOFF_123;
+    })
+    .sort()
+    .map((filename) => ({
+      filename,
+      // Mismo contrato que anonGrantOffenders: SQL ya stripeado y en minúscula.
+      sql: stripSqlComments(
+        readFileSync(path.join(MIGRATIONS_DIR, filename), "utf-8"),
+      ).toLowerCase(),
+    }));
+}
+
+// ---------------------------------------------------------------------------
+// (A4) `ALTER DEFAULT PRIVILEGES … GRANT … TO anon|public|authenticated`
+//      — cierra OFF-02 (fragmento 01, Q-10)
+//
+// La superficie a `anon` puede abrirse SIN UN SOLO `GRANT` sobre un objeto
+// concreto: `ALTER DEFAULT PRIVILEGES` concede sobre objetos FUTUROS. Q-10 lo
+// demuestra en PROD: `alter default privileges for role supabase_admin in
+// schema public` sigue concediendo `arwdDxtm` a anon/authenticated sobre toda
+// tabla futura — 0044 revocó el default de `postgres` y NO tocó ése. Ninguna
+// línea de código del repo lo delata, y el guard no tenía NINGUNA aserción
+// sobre esta clase de sentencia.
+//
+// Por qué un bloque propio y no confiar en Block A/D: hoy `anonGrantOffenders`
+// matchea INCIDENTALMENTE la variante `… grant select on tables to anon` (su
+// regex solo exige `grant … to anon`), y `authenticatedGrantOffenders` la
+// variante `to authenticated`. Eso es coincidencia de regex, no cobertura: el
+// mensaje de fallo hablaría de "GRANT a anon sobre una tabla" cuando el defecto
+// real es un default-ACL sobre objetos FUTUROS, y una reescritura del regex de
+// Block A la perdería en silencio. Este bloque NOMBRA el vector.
+// ---------------------------------------------------------------------------
+
+/**
+ * Detector puro: sentencias `alter default privileges` que CONCEDEN a un rol
+ * público (`anon`, `public` o `authenticated`).
+ *
+ * Recibe el SQL YA stripeado de comentarios y en minúscula (mismo contrato que
+ * `anonGrantOffenders` / `authenticatedGrantOffenders`). Decisión POR-SENTENCIA
+ * (`split(";")`) para reportar el offender exacto.
+ *
+ * `alter default privileges … REVOKE all … from anon` NO matchea (no contiene
+ * `grant`) — es justamente el idiom legítimo de 0044:185-187.
+ */
+function alterDefaultPrivilegesOffenders(strippedLowerSql: string): string[] {
+  const offenders: string[] = [];
+  const isAdp = /alter\s+default\s+privileges/;
+  const grantsToPublicRole =
+    /\bgrant\b[\s\S]*?\bto\s+[\w,\s]*\b(?:anon|public|authenticated)\b/;
+  for (const stmt of strippedLowerSql.split(";")) {
+    if (!isAdp.test(stmt)) continue;
+    if (!grantsToPublicRole.test(stmt)) continue;
+    offenders.push(stmt.trim().replace(/\s+/g, " ").slice(0, 120));
+  }
+  return offenders;
+}
+
+describe("(A4) Guard — ningun `ALTER DEFAULT PRIVILEGES … GRANT` a rol publico (OFF-02, Phase 123)", () => {
+  const futureMigrations = readFutureMigrations();
+
+  it("sanity: el set de migraciones > 0044 no esta vacio (el glob resuelve)", () => {
+    expect(futureMigrations.length).toBeGreaterThan(0);
+  });
+
+  it("ninguna migracion > 0044 emite `alter default privileges … grant … to anon/public/authenticated`", () => {
+    const offenders: string[] = [];
+    for (const { filename, sql } of futureMigrations) {
+      for (const off of alterDefaultPrivilegesOffenders(sql)) {
+        offenders.push(`${filename}: ${off}`);
+      }
+    }
+    expect(
+      offenders,
+      `ALTER DEFAULT PRIVILEGES concediendo a un rol publico (OFF-02: abre TODA tabla/funcion ` +
+        `FUTURA de public a anon sin que exista un solo GRANT que lo delate; anon ya tiene USAGE ` +
+        `sobre el esquema, Q-11): [${offenders.join(", ")}] — elimina el ALTER DEFAULT PRIVILEGES. ` +
+        `El unico idiom legitimo es el REVOKE de 0044 (…revoke all on tables from anon, authenticated).`,
+    ).toHaveLength(0);
+  });
+
+  it("mutation self-check (A4): el detector MUERDE por fixture y tolera el REVOKE legitimo", () => {
+    const norm = (sql: string) => stripSqlComments(sql).toLowerCase();
+
+    // (a) POSITIVO — las tres variantes de rol publico y los tres tipos de objeto.
+    expect(
+      alterDefaultPrivilegesOffenders(
+        norm(
+          "alter default privileges in schema public grant select on tables to anon;",
+        ),
+      ),
+    ).toHaveLength(1);
+    expect(
+      alterDefaultPrivilegesOffenders(
+        norm(
+          "alter default privileges for role supabase_admin in schema public grant all on tables to public;",
+        ),
+      ),
+    ).toHaveLength(1);
+    expect(
+      alterDefaultPrivilegesOffenders(
+        norm(
+          "alter default privileges in schema public grant execute on functions to authenticated;",
+        ),
+      ),
+    ).toHaveLength(1);
+    // El offender reportado nombra la sentencia (mensaje accionable).
+    expect(
+      alterDefaultPrivilegesOffenders(
+        norm(
+          "alter default privileges in schema public grant usage on sequences to anon;",
+        ),
+      )[0],
+    ).toContain("alter default privileges");
+
+    // (b) NEGATIVO — el REVOKE de 0044 (idiom legitimo) y un grant a service_role.
+    expect(
+      alterDefaultPrivilegesOffenders(
+        norm(
+          "alter default privileges for role postgres in schema public revoke all on tables from anon, authenticated;",
+        ),
+      ),
+    ).toHaveLength(0);
+    expect(
+      alterDefaultPrivilegesOffenders(
+        norm(
+          "alter default privileges for role postgres in schema public grant all on tables to service_role;",
+        ),
+      ),
+    ).toHaveLength(0);
+    // Un GRANT normal (sin ALTER DEFAULT PRIVILEGES) no es asunto de este bloque: lo caza Block A.
+    expect(
+      alterDefaultPrivilegesOffenders(
+        norm("grant select on public.parlamentario to anon;"),
+      ),
+    ).toHaveLength(0);
+
+    // (c) COMENTARIO — la prosa de un header NO auto-invalida el guard.
+    // (0044:76-78 documenta el ROLLBACK con exactamente estas lineas comentadas.)
+    expect(
+      alterDefaultPrivilegesOffenders(
+        norm(
+          "-- alter default privileges in schema public grant select on tables to anon\nselect 1;",
+        ),
+      ),
+    ).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (A5) Toda `CREATE FUNCTION` en `public` lleva su `REVOKE EXECUTE … FROM PUBLIC`
+//      — cierra OFF-4-05 (fragmento 02, Q-15 + comm -13)
+//
+// Postgres concede `EXECUTE TO PUBLIC` por DEFAULT a toda funcion nueva, y anon
+// es miembro implicito de `public`. Q-15 encontro 8 funciones de public con ACL
+// `=X/postgres` (= el default nunca revocado) => exec-anon en la DB viva, fuera
+// de PUBLIC_RPC_ALLOWLIST y fuera de todo guard. Direction-B solo verifica que
+// la allowlist tenga funcion DEFINIDA; nunca mira grants. Ese es el defecto
+// exacto que produjo OFF-4-01 (f_unaccent) y OFF-4-02 (las 7 RETURNS trigger).
+// ---------------------------------------------------------------------------
+
+/** Regex de `create [or replace] function [<schema>.]<nombre>(` con captura del schema. */
+const CREATE_FUNCTION_SCHEMA_REGEX =
+  /create\s+(?:or\s+replace\s+)?function\s+(?:(\w+)\.)?(\w+)\s*\(/g;
+
+/**
+ * Detector puro: funciones creadas en `public` (schema ausente => public por
+ * search_path, o `public.` explicito) para las que NINGUNA migracion del
+ * conjunto emite un `revoke {all|execute} … on function [public.]<n>( … from …
+ * public`.
+ *
+ * El revoke puede vivir en la MISMA migracion o en una POSTERIOR: es la unica
+ * forma de que un fix aditivo futuro (Phase 124, 0073+) pueda limpiar la
+ * baseline sin reescribir una migracion ya aplicada a PROD.
+ *
+ * Funciones de otros esquemas (`cruces.materializar_cruces`,
+ * `actualidad.materializar_senales`) quedan FUERA por diseno: no viven en el
+ * esquema que PostgREST expone.
+ *
+ * Recibe migraciones YA leidas, con el SQL stripeado y en minuscula.
+ */
+function missingRevokeFromPublicOffenders(
+  migrations: { filename: string; sql: string }[],
+): string[] {
+  const offenders: string[] = [];
+  const allSql = migrations.map((m) => m.sql).join("\n");
+  for (const { filename, sql } of migrations) {
+    CREATE_FUNCTION_SCHEMA_REGEX.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    const seen = new Set<string>();
+    while ((m = CREATE_FUNCTION_SCHEMA_REGEX.exec(sql)) !== null) {
+      const schema = m[1];
+      const name = m[2];
+      if (schema && schema !== "public") continue;
+      if (seen.has(name)) continue;
+      seen.add(name);
+      const revoke = new RegExp(
+        "revoke\\s+(?:all|execute)[^;]*?\\bon\\s+function\\s+(?:public\\.)?" +
+          name +
+          "\\s*\\([^;]*?\\bfrom\\s+[\\w,\\s]*\\bpublic\\b",
+      );
+      if (!revoke.test(allSql)) offenders.push(`${filename}: ${name}`);
+    }
+  }
+  return offenders;
+}
+
+/**
+ * BASELINE CONGELADA — deuda REAL, visible en CI, NO una exencion muda.
+ *
+ * `f_unaccent` (0055_busqueda_hibrida.sql) es la unica funcion de `public`
+ * invocable por anon via POST /rest/v1/rpc/f_unaccent (Q-15: ACL `=X/postgres`).
+ * Es OFF-4-01 / OFF-5-01 de la auditoria, con `destino: 124-aditivo`. Este plan
+ * tiene PROHIBIDO tocar `supabase/` — asi que la deuda se congela aqui, a la
+ * vista, en vez de silenciarse dentro del detector.
+ *
+ * El assert de abajo compara por IGUALDAD, no por subconjunto, asi que muerde
+ * en AMBAS direcciones:
+ *   - migracion futura que cree una fn de public sin revoke  => ROJO (regresion)
+ *   - Phase 124 anade `revoke execute on function public.f_unaccent(text)
+ *     from public`                                            => ROJO tambien,
+ *     obligando a BORRAR esta entrada y dejando constancia de que se pago.
+ * Una baseline que se limpia sola es una baseline que se olvida.
+ */
+const KNOWN_MISSING_REVOKE_FROM_PUBLIC = [
+  "0055_busqueda_hibrida.sql: f_unaccent",
+];
+
+describe("(A5) Guard — toda `create function` en public lleva su `revoke execute … from public` (OFF-4-05, Phase 123)", () => {
+  const futureMigrations = readFutureMigrations();
+
+  it("sanity: el detector ve funciones de public en las migraciones > 0044 (el scan no es vacuo)", () => {
+    // Denominador explicito: un "0 offenders" sobre 0 objetos inspeccionados seria
+    // un cero VACUO (nota anti-"todo bien" del fragmento 02, Q-17 vs Q-18).
+    let publicFns = 0;
+    for (const { sql } of futureMigrations) {
+      CREATE_FUNCTION_SCHEMA_REGEX.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = CREATE_FUNCTION_SCHEMA_REGEX.exec(sql)) !== null) {
+        if (!m[1] || m[1] === "public") publicFns++;
+      }
+    }
+    expect(publicFns).toBeGreaterThan(20);
+  });
+
+  it("el set de funciones de public SIN `revoke … from public` es EXACTAMENTE la baseline congelada", () => {
+    const offenders = missingRevokeFromPublicOffenders(futureMigrations).sort();
+    expect(
+      offenders,
+      `Funciones de public sin su \`revoke execute … from public\` (OFF-4-05: Postgres concede ` +
+        `EXECUTE TO PUBLIC por default y anon es miembro implicito de public => la funcion nace ` +
+        `invocable por anon via /rest/v1/rpc/, fuera de PUBLIC_RPC_ALLOWLIST). ` +
+        `Encontrado: [${offenders.join(", ")}] — esperado exactamente ` +
+        `[${KNOWN_MISSING_REVOKE_FROM_PUBLIC.join(", ")}]. ` +
+        `Si SOBRA una entrada: anade \`revoke execute on function public.<f>(<args>) from public;\` ` +
+        `a tu migracion. Si FALTA una: la deuda se pago (Phase 124) — BORRA la entrada de ` +
+        `KNOWN_MISSING_REVOKE_FROM_PUBLIC.`,
+    ).toEqual([...KNOWN_MISSING_REVOKE_FROM_PUBLIC].sort());
+  });
+
+  it("mutation self-check (A5): el detector MUERDE por fixture en memoria y tolera el revoke y los otros esquemas", () => {
+    const norm = (filename: string, sql: string) => [
+      { filename, sql: stripSqlComments(sql).toLowerCase() },
+    ];
+
+    // (a) POSITIVO — create function en public SIN revoke => offender.
+    expect(
+      missingRevokeFromPublicOffenders(
+        norm(
+          "9001_fixture.sql",
+          "create or replace function public.nueva_fn(p_id text) returns table(x int) language sql as $$ select 1; $$;",
+        ),
+      ),
+    ).toEqual(["9001_fixture.sql: nueva_fn"]);
+    // Sin qualifier de schema => resuelve a public por search_path => tambien offender.
+    expect(
+      missingRevokeFromPublicOffenders(
+        norm(
+          "9001_fixture.sql",
+          "create function sin_qualifier(p_id text) returns int language sql as $$ select 1; $$;",
+        ),
+      ),
+    ).toEqual(["9001_fixture.sql: sin_qualifier"]);
+
+    // (b) NEGATIVO — la misma CON su revoke => 0 offenders.
+    expect(
+      missingRevokeFromPublicOffenders(
+        norm(
+          "9001_fixture.sql",
+          "create or replace function public.nueva_fn(p_id text) returns table(x int) language sql as $$ select 1; $$;\n" +
+            "revoke execute on function public.nueva_fn(text) from public;\n" +
+            "revoke all on function public.nueva_fn(text) from anon, authenticated;",
+        ),
+      ),
+    ).toHaveLength(0);
+    // Funcion de OTRO esquema (no lo expone PostgREST) => fuera de alcance por diseno.
+    expect(
+      missingRevokeFromPublicOffenders(
+        norm(
+          "9001_fixture.sql",
+          "create or replace function cruces.materializar_cruces() returns void language plpgsql as $$ begin end; $$;",
+        ),
+      ),
+    ).toHaveLength(0);
+    // El revoke puede venir en una migracion POSTERIOR (asi la Phase 124 podra limpiar la baseline).
+    expect(
+      missingRevokeFromPublicOffenders([
+        {
+          filename: "9001_fixture.sql",
+          sql: "create function public.tardia(p text) returns int language sql as $$ select 1; $$;",
+        },
+        {
+          filename: "9002_fixture.sql",
+          sql: "revoke execute on function public.tardia(text) from public;",
+        },
+      ]),
+    ).toHaveLength(0);
+
+    // (c) COMENTARIO — un `create function` dentro de `-- …` no dispara.
+    expect(
+      missingRevokeFromPublicOffenders(
+        norm(
+          "9001_fixture.sql",
+          "-- create or replace function public.solo_prosa(p text) returns int\nselect 1;",
+        ),
+      ),
+    ).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (A6) Allowlist de EXTENSIONES instalables en `public`
+//      — cierra OFF-6-05c (fragmento 03, Q-24/Q-24b/Q-24c)
+//
+// El filtro `pg_depend deptype='e'` que usa toda la auditoria (correcto como
+// regla) OCULTA la superficie de extensiones. Q-24b/Q-24c la destaparon: `pgtap`
+// vive en `public` con 1.079 funciones EJECUTABLES por anon — ejecucion PROBADA
+// (`set role anon; select public.pg_version()` -> 17.6), no inferida. La
+// superficie anon real de public no son 8 funciones: son 1.209. Ni un solo test
+// se pone rojo por ello.
+//
+// Este bloque no puede desinstalar nada (LIM-05-02: las ya instaladas no vienen
+// de ninguna migracion del repo). Impide que UNA NUEVA entre por migracion.
+// ---------------------------------------------------------------------------
+
+/**
+ * Extensiones toleradas en `public` — excepcion DOCUMENTADA, no descuido.
+ * `vector` sostiene el tipo de columna de `proyecto_embedding` y el indice HNSW;
+ * `unaccent` es la base de `f_unaccent` y del FTS. Moverlas de esquema romperia
+ * tipos de columna, indices y firmas (OFF-6-02: "lo razonable es documentar la
+ * excepcion, no mover"). Cualquier OTRA extension va a `extensions`.
+ */
+const PUBLIC_EXTENSION_ALLOWLIST = new Set(["vector", "unaccent"]);
+
+/**
+ * Detector puro: `create extension [if not exists] <nombre>` cuya clausula
+ * `schema` esta AUSENTE (=> public por search_path) o es explicitamente
+ * `public`, y cuyo nombre no esta allowlisted.
+ *
+ * Recibe el SQL YA stripeado y en minuscula. Por-sentencia (`split(";")`).
+ */
+function publicExtensionOffenders(
+  strippedLowerSql: string,
+  allowlist: Set<string>,
+): string[] {
+  const offenders: string[] = [];
+  const createExt =
+    /create\s+extension\s+(?:if\s+not\s+exists\s+)?"?([a-z0-9_]+)"?/;
+  const schemaClause = /\bschema\s+"?([a-z0-9_]+)"?/;
+  for (const stmt of strippedLowerSql.split(";")) {
+    const m = createExt.exec(stmt);
+    if (!m) continue;
+    const name = m[1];
+    const sm = schemaClause.exec(stmt.slice(m.index + m[0].length));
+    const schema = sm ? sm[1] : "public"; // sin clausula => search_path => public
+    if (schema !== "public") continue;
+    if (allowlist.has(name)) continue;
+    offenders.push(`${name} (schema ${schema})`);
+  }
+  return offenders;
+}
+
+describe("(A6) Guard — ninguna extension nueva se instala en `public` fuera de la allowlist (OFF-6-05c, Phase 123)", () => {
+  const futureMigrations = readFutureMigrations();
+
+  it("PUBLIC_EXTENSION_ALLOWLIST contiene EXACTAMENTE vector y unaccent", () => {
+    expect([...PUBLIC_EXTENSION_ALLOWLIST].sort()).toEqual([
+      "unaccent",
+      "vector",
+    ]);
+    // pgtap NUNCA es allowlisted en public: 1.079 funciones exec-anon (Q-24b) que
+    // permiten a un cliente no autenticado enumerar tablas y columnas (has_table,
+    // columns_are, findfuncs) => mapa completo de las 57 tablas, PII incluida.
+    expect(PUBLIC_EXTENSION_ALLOWLIST.has("pgtap")).toBe(false);
+    expect(PUBLIC_EXTENSION_ALLOWLIST.has("pg_net")).toBe(false);
+  });
+
+  it("ninguna migracion > 0044 instala una extension en `public` fuera de la allowlist", () => {
+    // SCOPE >0044 deliberado: 0001_extensions.sql instala pg_cron/pg_net/pgmq en
+    // public y es PRE-lockdown (historia congelada; pg_net ya esta ruteada como
+    // OFF-6-03 -> 124-aditivo). Un scope repo-wide naceria rojo por historia, que
+    // es la trampa de polaridad que check_drift.sh demostro con 714 falsos positivos.
+    const offenders: string[] = [];
+    for (const { filename, sql } of futureMigrations) {
+      for (const off of publicExtensionOffenders(sql, PUBLIC_EXTENSION_ALLOWLIST)) {
+        offenders.push(`${filename}: ${off}`);
+      }
+    }
+    expect(
+      offenders,
+      `Extension instalada en el esquema que PostgREST expone, fuera de la allowlist ` +
+        `(OFF-6-05c: sus funciones nacen exec-anon por el default EXECUTE TO PUBLIC y quedan ` +
+        `fuera de PUBLIC_RPC_ALLOWLIST y de todo guard — es el caso pgtap, 1.079 fn): ` +
+        `[${offenders.join(", ")}] — instalala con \`create extension <n> schema extensions;\` ` +
+        `(patron que el proyecto ya aplica a pgcrypto/uuid-ossp/pg_stat_statements), o ` +
+        `justifica la excepcion anadiendola a PUBLIC_EXTENSION_ALLOWLIST.`,
+    ).toHaveLength(0);
+  });
+
+  it("mutation self-check (A6): el detector MUERDE por fixture y tolera allowlist y `schema extensions`", () => {
+    const norm = (sql: string) => stripSqlComments(sql).toLowerCase();
+    const A = PUBLIC_EXTENSION_ALLOWLIST;
+
+    // (a) POSITIVO — pgtap sin clausula schema (=> public) y pg_net con `schema public`.
+    expect(publicExtensionOffenders(norm("create extension pgtap;"), A)).toEqual([
+      "pgtap (schema public)",
+    ]);
+    expect(
+      publicExtensionOffenders(
+        norm("create extension if not exists pg_net schema public;"),
+        A,
+      ),
+    ).toHaveLength(1);
+
+    // (b) NEGATIVO — allowlisted, y cualquier extension fuera de `public`.
+    expect(
+      publicExtensionOffenders(
+        norm("create extension if not exists unaccent;"),
+        A,
+      ),
+    ).toHaveLength(0);
+    expect(
+      publicExtensionOffenders(norm("create extension vector;"), A),
+    ).toHaveLength(0);
+    expect(
+      publicExtensionOffenders(
+        norm("create extension if not exists pgtap schema extensions;"),
+        A,
+      ),
+    ).toHaveLength(0);
+
+    // (c) COMENTARIO — la prosa de un header no auto-invalida el guard.
+    expect(
+      publicExtensionOffenders(
+        norm("-- create extension pgtap;\nselect 1;"),
+        A,
+      ),
+    ).toHaveLength(0);
+  });
+});
