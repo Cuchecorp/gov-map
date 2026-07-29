@@ -78,7 +78,7 @@ Notas de secuencia: el inventario 113 es load-bearing — sin él las fases de l
 
 - [x] **Phase 122: CRUCE-SQL — Cruces visibles × SQL de PROD** — conteos, denominadores honestos y cobertura declarada cuadran; discrepancias corregidas o declaradas (completed 2026-07-29)
 - [x] **Phase 123: SUPA-AUDIT — Auditoría de estructura Supabase** — schema/RLS/grants/RPCs bounded/allowlist/secdef contra la DB viva, supabase-reviewer como gate (completed 2026-07-29)
-- [ ] **Phase 124: SUPA-FIX — Migraciones aditivas a PROD** — fixes por `psql --single-transaction` + pgTAP contra schema aplicado + re-audit 0 offenders
+- [x] **Phase 124: SUPA-FIX — Migraciones aditivas a PROD** — fixes por `psql --single-transaction` + pgTAP contra schema aplicado + re-audit 0 offenders (completed 2026-07-29)
 - [ ] **Phase 125: E2E — Pasada final producto-a-producto sobre el deploy real** — BrowserOS por superficie post-deploy; links, fechas y cruces re-verificados; flags no autorizados OFF
 
 ## Phase Details
@@ -410,7 +410,7 @@ Plans:
   3. pgTAP corre contra el schema APLICADO y pasa, cubriendo específicamente el defecto que la migración arregla
   4. La re-corrida del audit de 123 sobre la DB viva da 0 offenders en lo corregido
 
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 
@@ -420,7 +420,7 @@ Plans:
 - [x] 124-04-PLAN.md — OFF-4-03/OFF-4-04 (configuracion): `statement_timeout` a las 18
 - [x] 124-05-PLAN.md — OFF-4-03/OFF-4-04 (cuerpo): cotas duras de parametro + fan-out de `subgrafo_red`
 - [x] 124-06-PLAN.md — OFF-4-03 (cuerpo): `LIMIT` explicito en las 12, con cardinalidad medida
-- [ ] 124-07-PLAN.md — Re-audit verbatim (0 offenders) + veredicto de los 13 + handoff de B-01/B-02/B-03
+- [x] 124-07-PLAN.md — Re-audit verbatim (0 offenders) + veredicto de los 13 + handoff de B-01/B-02/B-03
 
 ### Phase 125: E2E — Pasada final producto-a-producto sobre el deploy real
 
@@ -454,7 +454,7 @@ Plans:
 | 121. ESCALERA-DOC | 1/1 | Complete    | 2026-07-28 |
 | 122. CRUCE-SQL | 6/6 | Complete   | 2026-07-29 |
 | 123. SUPA-AUDIT | 6/6 | Complete   | 2026-07-29 |
-| 124. SUPA-FIX | 6/7 | In Progress|  |
+| 124. SUPA-FIX | 7/7 | Complete   | 2026-07-29 |
 | 125. E2E | 0/? | Not started | - |
 
 ### Requirement coverage map (v12.0)

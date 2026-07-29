@@ -31,7 +31,7 @@
 ### Supabase
 
 - [x] **SUPA-01**: Auditoría de estructura completa (schema, RLS, grants, RPCs bounded, PUBLIC_RPC_ALLOWLIST, secdef/search_path) con supabase-reviewer como gate — 0 offenders o fix aplicado
-- [ ] **SUPA-02**: Fixes de estructura aplicados a PROD como migraciones aditivas + pgTAP contra schema aplicado
+- [x] **SUPA-02**: Fixes de estructura aplicados a PROD como migraciones aditivas + pgTAP contra schema aplicado
 
 ### Cierre
 
@@ -69,7 +69,7 @@ Mapeado por el roadmap v12.0 (Phases 113-125). Coverage 13/13 — cero huérfano
 | CRON-04 | Phase 121 — ESCALERA-DOC extensión solo con benchmark | Complete |
 | CRUCE-01 | Phase 122 — CRUCE-SQL cruces visibles × SQL de PROD | Complete |
 | SUPA-01 | Phase 123 — SUPA-AUDIT auditoría de estructura Supabase | Complete |
-| SUPA-02 | Phase 124 — SUPA-FIX migraciones aditivas a PROD | Pending |
+| SUPA-02 | Phase 124 — SUPA-FIX migraciones aditivas a PROD | Complete |
 | E2E-01 | Phase 125 — E2E pasada final sobre el deploy real | Pending |
 
 ---

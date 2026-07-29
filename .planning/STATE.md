@@ -4,14 +4,14 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: verifying
 stopped_at: Completed 122-05-PLAN.md
-last_updated: "2026-07-29T19:00:47.840Z"
+last_updated: "2026-07-29T19:18:52.534Z"
 last_activity: 2026-07-29
 progress:
   total_phases: 13
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 52
-  completed_plans: 51
-  percent: 85
+  completed_plans: 52
+  percent: 92
 ---
 
 # Project State
@@ -157,6 +157,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 122 P05 | ~35 min | 3 tasks | 7 files |
 | Phase 123 P05 | 1h | 2 tasks | 2 files |
 | Phase 123 P06 | 1 sesion | 4 tasks | 3 files |
+| Phase 124 P07 | 45m | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -284,6 +285,9 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 122-06: 6 huecos de cobertura cerrados con SQL+DOM; artefacto final = 82 filas (72 cuadra / 2 corregida / 8 declarada)
 - [Phase ?]: 123-05: guard extendido A4/A5/A6; Direction-C descartada (Block A superconjunto)
 - [Phase ?]: Phase 123 gate: PASS CON RESERVAS del supabase-reviewer — 124 no aplica nada sin el orden LOCKED (OFF-01, OFF-6-04, OFF-6-03 primero) ni sin los checkpoints de operador OP-1 (probe REST anon key) y OP-2 (Database Advisors)
+- [Phase ?]: 124-07: veredicto de los 13 offenders con vocabulario cerrado (6 CERRADO / 2 DEUDA-OPERADOR / 2 DIFERIDO / 3 CERRADO-EN-123); identidad == 13 cuadra
+- [Phase ?]: 124-07 precedente LOCKED: un REVOKE ajeno no falla (WARNING 01006 no-op); el post-check fail-closed es lo unico que separa un cierre real de uno falso
+- [Phase ?]: 124-07 precedente LOCKED: los numeros de un audit son hipotesis a verificar contra PROD, no hechos (4 transcripciones falladas en 124)
 
 ### Pending Todos
 
@@ -318,6 +322,7 @@ ode_modules (lock Linux-container, sin secrets — borrar tras reboot).
 - Operador: rotar DB password Supabase (B26) en Dashboard; re-cargar SUPABASE_DB_URL en .env local + revisar *_DB_URL en Cuchecorp/gov-map; confirmar url-vieja-falla + url-nueva-funciona + CI/sitio verdes. Checkpoint BLOCKING plan 75-02 (agente NO rota).
 - 107-03 PENDIENTE operador (checkpoint:human-action, VEREDICTO PENDING-EVIDENCE): agregar 3 keys de CANDIDATO a .env (NUNCA .env.example) - WORKERS_AI_API_TOKEN + CLOUDFLARE_ACCOUNT_ID (Granite Workers AI) O OPENROUTER_API_KEY (Granite fallback + Phi juez); DEEPSEEK_API_KEY ya presente (incumbente same-run). Correr: LLM_BENCH_LIVE=1 pnpm --filter @obs/llm-bench exec vitest run src/candidatos.live.test.ts. Sin provision = pending-evidence (outcome VALIDO). Ver 107-OPERATOR-HANDOFF.md. Resume: corrido con veredicto o diferido.
 - OFF-01 (default ACL supabase_admin en public) NO cerrable desde postgres: SQLSTATE 42501. DEUDA-OPERADOR - ver 124-OFF-01-RESULTADO.md
+- DEUDA OPERADOR: OFF-01 + OFF-6-03 en UN ticket a soporte Supabase (7 sentencias como supabase_admin, zero-credential-value). Cadena SSRF de net ABIERTA; OP-1 y OP-4 urgencia ELEVADA. Ver 124-SUPA-FIX.md
 
 ### Quick Tasks Completed
 
@@ -346,7 +351,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-29T19:00:47.829Z
+Last session: 2026-07-29T19:18:45.462Z
 Stopped at: Completed 122-05-PLAN.md
 Resume file: None
 
