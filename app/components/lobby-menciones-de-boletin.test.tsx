@@ -5,6 +5,7 @@ import {
   LobbyMencionesView,
   LEYENDA_MENCIONES_LOBBY,
   EMPTY_MENCIONES_LOBBY,
+  COBERTURA_MENCIONES_LOBBY,
   type LobbyMencionRow,
 } from "./lobby-menciones-de-boletin";
 
@@ -145,12 +146,86 @@ describe("LobbyMencionesView — F-07: rótulo de la fecha de la reunión", () =
   });
 
   // Esta superficie NO monta ProvenanceBadge (a diferencia de las otras tres del
-  // carril): no hay una segunda fecha en la fila, así que el assert de coexistencia
+  // carril): no hay una segunda fecha EN LA FILA, así que el assert de coexistencia
   // no aplica. Se ancla el hecho para que un badge futuro no entre sin rótulo.
-  it("no hay idiom de captura porque esta superficie no lleva badge", () => {
+  //
+  // 122-05 (fila 5.12): el assert se acota al `<li>` de la fila. Antes miraba todo el
+  // contenedor, pero la línea de cobertura declarada de 5.12 introduce
+  // deliberadamente el idiom "según fuente al …" a nivel de SECCIÓN (es la fecha de
+  // observación de la cifra de cobertura, no la procedencia de una audiencia). El
+  // hecho que este test protege —la FILA no lleva fecha de badge— se conserva intacto;
+  // lo que cambió es el alcance, no la regla.
+  it("no hay idiom de captura EN LA FILA porque esta superficie no lleva badge", () => {
     const { container } = render(
       <LobbyMencionesView rows={[makeMencion({ fecha: "2026-05-14T13:00:00Z" })]} />,
     );
-    expect(container.textContent ?? "").not.toContain("según fuente al");
+    const fila = container.querySelector("li");
+    expect(fila).not.toBeNull();
+    expect(fila?.textContent ?? "").not.toContain("según fuente al");
+    // "captura" pelada sigue PROHIBIDA en toda la superficie (TERMINOS_PROHIBIDOS).
+    expect(container.textContent ?? "").not.toMatch(/captura/i);
+  });
+});
+
+/**
+ * 122-05, fila 5.12 de `122-CRUCES-SQL-03-LOBBY.md` — cobertura parcial DECLARADA.
+ *
+ * Hallazgo: la superficie declaraba el CRITERIO (leyenda `:87` y empty `:95`, ambos
+ * honestos) pero NUNCA cuantificaba la parcialidad. Un lector de `/proyecto/14309-04`
+ * veía "1 audiencia registrada menciona este boletín" sin enterarse de que sólo el
+ * 3,8 % de las audiencias confirmadas entra siquiera en este canal.
+ *
+ * Cifra recalculada contra PROD con la query verbatim de 92-04 (`Q-L07`) el
+ * 2026-07-29: 195 de 5.106 = 3,82 % sobre 82 boletines distintos — idéntica a 92-04.
+ *
+ * Decisión adjudicada por 122-05: la cifra se HORNEA con su fecha explícita (derivarla
+ * exigiría una RPC pública nueva = aguja completa: secdef PII-safe, `search_path`,
+ * bounded, doble-revoke, `PUBLIC_RPC_ALLOWLIST` — coste desproporcionado para una
+ * línea de copy). Se re-verifica con `Q-L07` en cada milestone.
+ */
+describe("LobbyMencionesView — 5.12: cobertura parcial declarada", () => {
+  it("declara la cobertura en el camino CON filas, ANTES del conteo", () => {
+    const { container } = render(
+      <LobbyMencionesView rows={[makeMencion()]} />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain(COBERTURA_MENCIONES_LOBBY);
+    // La parcialidad se lee ANTES que el número, y DESPUÉS de la leyenda anti-causal.
+    expect(texto.indexOf(LEYENDA_MENCIONES_LOBBY)).toBeLessThan(
+      texto.indexOf(COBERTURA_MENCIONES_LOBBY),
+    );
+    expect(texto.indexOf(COBERTURA_MENCIONES_LOBBY)).toBeLessThan(
+      texto.indexOf("audiencia registrada menciona"),
+    );
+  });
+
+  it("declara la cobertura en el camino EMPTY (donde más se puede leer un 0 como 'no hubo lobby')", () => {
+    const { container } = render(<LobbyMencionesView rows={[]} />);
+    expect(container.textContent ?? "").toContain(COBERTURA_MENCIONES_LOBBY);
+  });
+
+  it("declara la cobertura en el camino TRUNCADO", () => {
+    const { container } = render(
+      <LobbyMencionesView rows={[makeMencion({ total_n: 80 })]} />,
+    );
+    const texto = container.textContent ?? "";
+    expect(texto).toContain(COBERTURA_MENCIONES_LOBBY);
+    expect(texto).toContain("Se muestran");
+  });
+
+  it("la cifra viaja SIEMPRE con su fecha y con el idiom aprobado, nunca con 'captura' pelada", () => {
+    expect(COBERTURA_MENCIONES_LOBBY).toContain("según fuente al");
+    expect(COBERTURA_MENCIONES_LOBBY).toMatch(/29 jul 2026/);
+    expect(COBERTURA_MENCIONES_LOBBY).not.toMatch(/captura/i);
+    // Ambos números presentes: el parcial NUNCA se presenta como total.
+    expect(COBERTURA_MENCIONES_LOBBY).toContain("195");
+    expect(COBERTURA_MENCIONES_LOBBY).toContain("5.106");
+    expect(COBERTURA_MENCIONES_LOBBY).toContain("3,8 %");
+  });
+
+  it("CERO causalidad/intención en la línea de cobertura (negative-match §9.1)", () => {
+    expect(COBERTURA_MENCIONES_LOBBY).not.toMatch(
+      /influencia|a cambio de|oculta|esconde|punta del iceberg|subregistro|cifra negra|en realidad son/i,
+    );
   });
 });

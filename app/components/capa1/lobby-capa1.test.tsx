@@ -20,7 +20,7 @@ function fixture(): LobbyMateria[] {
 
 describe("LobbyCapa1 — resumen preatentivo de lobby (55-02)", () => {
   it("muestra barras top-N por materia (asunto verbatim) + conteo total", () => {
-    const { container } = render(<LobbyCapa1 topMaterias={fixture()} total={10} />);
+    const { container } = render(<LobbyCapa1 topMaterias={fixture()} estado={{ tipo: "dato", n: 10 }} />);
     const barras = container.querySelectorAll("li");
     expect(barras).toHaveLength(3);
     // orden preservado (ya viene rankeado desc del productor).
@@ -32,21 +32,77 @@ describe("LobbyCapa1 — resumen preatentivo de lobby (55-02)", () => {
   });
 
   it("usa color NEUTRO en las barras, NUNCA petróleo", () => {
-    const { container } = render(<LobbyCapa1 topMaterias={fixture()} total={10} />);
+    const { container } = render(<LobbyCapa1 topMaterias={fixture()} estado={{ tipo: "dato", n: 10 }} />);
     const html = container.innerHTML;
     expect(html).toMatch(/bg-muted-foreground/);
     expect(html).not.toMatch(/accent-product/);
   });
 
   it("degradación honesta: sin materias publicadas muestra solo el conteo total", () => {
-    const { container } = render(<LobbyCapa1 topMaterias={[]} total={4} />);
+    const { container } = render(<LobbyCapa1 topMaterias={[]} estado={{ tipo: "dato", n: 4 }} />);
     expect(container.querySelectorAll("li")).toHaveLength(0);
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText(/reuniones/)).toBeInTheDocument();
   });
 
+  /**
+   * 122-05, fila 5.11 de `122-CRUCES-SQL-03-LOBBY.md`.
+   *
+   * `page.tsx:617` pasaba `total={conteos.lobby.tipo === "dato" ? conteos.lobby.n : 0}`,
+   * colapsando `vacio` y `no_ingerido` al literal `0`, que este componente imprimía
+   * como el HECHO "0 reuniones". En `/parlamentario/S1338` la MISMA sección declaraba
+   * `—` en su encabezado (honesto: no ingerido) y `0 reuniones` tres líneas más abajo
+   * (afirmación de hecho: se ingirió y no hubo ninguna). Contradice la regla LOCKED de
+   * `lobby-de-parlamentario.tsx:47`: "Un vacío es un HECHO, no una virtud: 'no
+   * ingestado' ≠ 'ingestado, cero'".
+   *
+   * El fix es de TIPO, no de copy: el componente recibe el `CarrilEstado` completo y
+   * OMITE la línea de conteo cuando el estado no es `dato` — espejo de
+   * `cruces-capa1.tsx:28` (`{sector.nVotos > 0 && …}`), que ya resuelve el mismo
+   * problema por omisión honesta. El 3-estado lo declara el rótulo del carril
+   * (`conteoLabel`), que es su único emisor legítimo.
+   */
+  describe("5.11 — un estado no-`dato` JAMÁS se imprime como el hecho `0 reuniones`", () => {
+    it("`no_ingerido`: omite la línea de conteo (no fabrica un dígito)", () => {
+      const { container } = render(
+        <LobbyCapa1 topMaterias={[]} estado={{ tipo: "no_ingerido" }} />,
+      );
+      expect(container.textContent ?? "").not.toMatch(/reuni[óo]n/i);
+      expect(container.textContent ?? "").not.toMatch(/\d/);
+    });
+
+    it("`vacio`: omite la línea de conteo (ingestado y cero lo declara el rótulo)", () => {
+      const { container } = render(
+        <LobbyCapa1 topMaterias={[]} estado={{ tipo: "vacio" }} />,
+      );
+      expect(container.textContent ?? "").not.toMatch(/reuni[óo]n/i);
+      expect(container.textContent ?? "").not.toMatch(/\d/);
+    });
+
+    it("`pendiente`: omite la línea de conteo", () => {
+      const { container } = render(
+        <LobbyCapa1 topMaterias={[]} estado={{ tipo: "pendiente" }} />,
+      );
+      expect(container.textContent ?? "").not.toMatch(/reuni[óo]n/i);
+    });
+
+    it("`dato` con n=0 SÍ declara el cero (cero honesto, nunca se rellena ni se oculta)", () => {
+      const { container } = render(
+        <LobbyCapa1 topMaterias={[]} estado={{ tipo: "dato", n: 0 }} />,
+      );
+      expect(container.textContent ?? "").toMatch(/0\s*reuniones/);
+    });
+
+    it("`dato` con n=1 usa el singular", () => {
+      const { container } = render(
+        <LobbyCapa1 topMaterias={[]} estado={{ tipo: "dato", n: 1 }} />,
+      );
+      expect(container.textContent ?? "").toMatch(/1\s*reunión/);
+    });
+  });
+
   it("CERO vocabulario causal/insinuante (negative-match §9.1)", () => {
-    const { container } = render(<LobbyCapa1 topMaterias={fixture()} total={10} />);
+    const { container } = render(<LobbyCapa1 topMaterias={fixture()} estado={{ tipo: "dato", n: 10 }} />);
     expect(container.textContent ?? "").not.toMatch(PROHIBIDO);
   });
 });
