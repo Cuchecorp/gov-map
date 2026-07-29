@@ -241,6 +241,46 @@ El fixture (c) prueba dos cosas a la vez: que `stripSqlComments` está en el cam
 este proyecto (la inversión de polaridad de `check_drift.sh`, 139 falsos positivos por buscar la
 cadena literal `supabase db push` que aparece en la frase **`NUNCA supabase db push`**).
 
+### Prueba de mordida **contra el disco real** (inyectar → rojo; restaurar → verde)
+
+Los fixtures en memoria prueban el detector; esto prueba el **scan**. Se inyectó una migración
+sintética `9999_mutation_probe.sql` con los tres vectores a la vez y se corrió el guard:
+
+```sql
+alter default privileges in schema public grant select on tables to anon;
+create or replace function public.probe_sin_revoke(p text) returns int language sql as $$ select 1; $$;
+create extension if not exists pgtap;
+```
+
+```
+ ❯ lib/lockdown-guard.test.ts (31 tests | 5 failed)
+   × (A) … no existe ningun `GRANT … TO … anon/public` en migraciones > 0044
+   × (A) … las migraciones > 0044 existentes son revoke/hardening
+   × (A4) … ninguna migracion > 0044 emite `alter default privileges … grant … to anon/public/authenticated`
+   × (A5) … el set de funciones de public SIN `revoke … from public` es EXACTAMENTE la baseline congelada
+   × (A6) … ninguna migracion > 0044 instala una extension en `public` fuera de la allowlist
+```
+
+Los tres bloques nuevos se pusieron **rojos**, cada uno con su mensaje accionable nombrando
+`9999_mutation_probe.sql`. (Los dos rojos de Block A confirman lo dicho en §(A4): Block A matchea la
+variante `to anon` **incidentalmente** — por eso (A4) existe con nombre propio.)
+
+**Segunda mordida, dirección inversa de la baseline (A5).** Se inyectó
+`9998_probe_deuda_pagada.sql` con `revoke execute on function public.f_unaccent(text) from public;`
+— es decir, la deuda **pagada**:
+
+```
+   × (A5) … el set de funciones de public SIN `revoke … from public` es EXACTAMENTE la baseline congelada
+     → Encontrado: [] — esperado exactamente [0055_busqueda_hibrida.sql: f_unaccent]. …
+       Si FALTA una: la deuda se pago (Phase 124) — BORRA la entrada de KNOWN_MISSING_REVOKE_FROM_PUBLIC.
+```
+
+Rojo también, con la instrucción exacta. La baseline no puede limpiarse en silencio.
+
+**Restauración verificada:** ambos archivos sonda se eliminaron y
+`git diff --quiet -- supabase` → **exit 0**; `git status --short -- supabase` → **vacío**. Con el
+repo restaurado el guard vuelve a **31/31 verde**.
+
 Además, la baseline de (A5) es en sí misma una prueba de mordida **contra el repo real, no contra un
 fixture**: el detector encuentra `f_unaccent` en `0055`, que es exactamente el offender que la
 auditoría halló en la DB viva por otra vía (`Q-15`, ACL `=X/postgres`). Guard estático y catálogo

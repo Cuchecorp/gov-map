@@ -4,13 +4,13 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: verifying
 stopped_at: Completed 122-05-PLAN.md
-last_updated: "2026-07-29T16:25:18.862Z"
+last_updated: "2026-07-29T16:36:35.608Z"
 last_activity: 2026-07-29
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 45
-  completed_plans: 43
+  completed_plans: 44
   percent: 77
 ---
 
@@ -155,6 +155,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 119 P07 | ~55min | 4 tasks | 3 files |
 | Phase 120 P02 | 5 min | 3 tasks | 2 files |
 | Phase 122 P05 | ~35 min | 3 tasks | 7 files |
+| Phase 123 P05 | 1h | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -280,6 +281,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: Flip CLASIFICACION_ESCALERA=1 tras gates verdes; rollback ON-OFF-ON probado en vivo
 - [Phase ?]: 121-01: INTOCABLE reservado a lo NO candidato a benchmark (solo adjudicacion, SEED-001); extraccion = NO EXTENDIDA porque SI es candidata. EXTENDIDA de clasificacion es CONDICIONAL al drift canary (mismatch invalida el veredicto; rollback = quitar CLASIFICACION_ESCALERA=1 de .env). GOTCHA: bracket-expression con vocal acentuada no casa bajo LC_ALL=C -> falso FAIL; usar 'qu.{1,2} evidencia'.
 - [Phase ?]: 122-06: 6 huecos de cobertura cerrados con SQL+DOM; artefacto final = 82 filas (72 cuadra / 2 corregida / 8 declarada)
+- [Phase ?]: 123-05: guard extendido A4/A5/A6; Direction-C descartada (Block A superconjunto)
 
 ### Pending Todos
 
@@ -341,7 +343,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-29T16:25:18.852Z
+Last session: 2026-07-29T16:36:30.947Z
 Stopped at: Completed 122-05-PLAN.md
 Resume file: None
 
