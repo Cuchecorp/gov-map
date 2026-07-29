@@ -436,8 +436,28 @@ Plans:
   4. Las fechas visibles siguen correctamente etiquetadas y los cruces siguen cuadrando contra SQL en el deploy final
   5. Los flags no autorizados (MONEY, NOTIF) siguen OFF y ausentes del DOM; guards de régimen y suite verdes
 
-**Plans**: TBD
+**Plans**: 7 plans
 **UI hint**: yes
+
+Plans:
+**Wave 1**
+
+- [ ] 125-01-PLAN.md — (w1) Gate pre-deploy + deploy agrupado a Cloudflare (fixes 114/117/122) + smoke con marcadores DOM
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 125-02-PLAN.md — (w2) E2E-A: fichas densas (D1165/S1338/14309-04/17870-05) + cierre de los 2 ítems post-deploy de 122
+- [ ] 125-03-PLAN.md — (w2) E2E-B: chrome + / + /parlamentarios + /agenda + /buscar + /comparar + /red + estáticas + 4 not-found
+- [ ] 125-04-PLAN.md — (w2) E2E-C: MONEY y NOTIF OFF y ausentes del DOM + tabla de los 5 gates + guards sobre el deploy
+- [ ] 125-05-PLAN.md — (w2) RE-VERIFICACIÓN: links internos (runner 114) + muestra externa con rate-limit (runner 115) + fechas sobre el DOM
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 125-06-PLAN.md — (w3) E2E-D: pasada BrowserOS de las superficies hidratación-dependientes + gate humano de copy
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 125-07-PLAN.md — (w4) Consolidación 125-E2E.md (cobertura 19 rutas × 60 emisores) + handoff humano + gate de cierre
 
 ## Progress
 
@@ -455,7 +475,7 @@ Plans:
 | 122. CRUCE-SQL | 6/6 | Complete   | 2026-07-29 |
 | 123. SUPA-AUDIT | 6/6 | Complete   | 2026-07-29 |
 | 124. SUPA-FIX | 7/7 | Complete   | 2026-07-29 |
-| 125. E2E | 0/? | Not started | - |
+| 125. E2E | 0/7 | Planned | - |
 
 ### Requirement coverage map (v12.0)
 
