@@ -188,5 +188,6 @@ enumeradas en el mensaje. Mismo criterio que 122-01.
 - §4 tiene 6 filas ≥ 3 exigidas, cada una con query y "¿es bug?" resuelta; abre con la regla LOCKED
   transcrita; la fila de `lobby_sector_aporte` dice **explícitamente** que NO es bug y explica la
   causa (CTE `empresa_sector where false` ⇒ arista `<rut de la empresa → sector>` ausente)
-- Cero `postgres://`; cero PII de valor; `git diff --stat` del commit = **1 archivo**
+- Cero cadenas de conexión (grep de ambos esquemas de URI de Postgres → 0); cero PII de valor;
+  `git diff --stat` del commit = **1 archivo**
 - Commit `8dac59d` existe
