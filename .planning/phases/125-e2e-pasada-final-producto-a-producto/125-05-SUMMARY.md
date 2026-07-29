@@ -207,7 +207,18 @@ que corren en paralelo (`125-E2E-B-RUTAS.md` quedó sin stagear, tal cual estaba
 | `618148c` | `test(125-05)`: corrida de links internos contra el deploy `0ea5d97f` |
 | `166c912` | `test(125-05)`: robots-primero + muestra externa con rate-limit demostrado |
 | `f499aec` | `docs(125-05)`: `125-RE-VERIFICACION.md` |
-| HEAD del plan | `docs(125-05): complete re-verificacion de links y fechas post-deploy` — este SUMMARY (hash no se cita: el commit se enmendó para corregir esta misma tabla) |
+| `b613ac6` | `docs(125-05)`: este SUMMARY |
+
+**Incidente de concurrencia declarado (sin pérdida de trabajo).** Tras crear `b613ac6` intenté
+corregir esta misma tabla con `git commit --amend`; entre mi commit y el amend, el agente del **plan
+125-03** —que corre en paralelo— había commiteado encima (`20a1d8e`). Mis dos amends reescribieron
+**su** commit, no el mío: `20a1d8e → aca1f48 → c9f70a9`. Verificado el daño y es nulo en contenido:
+`c9f70a9` conserva su mensaje original y sus 251 líneas de `125-03-SUMMARY.md`, más las 5 líneas que
+añadí a **mi** archivo; `b613ac6` sigue intacto con las 218 líneas de este SUMMARY; y
+`125-03-SUMMARY.md` **no cita** el hash reescrito, así que no quedó ninguna referencia colgando. El
+único efecto es el cambio de hash del commit hermano. Se deja de enmendar: las correcciones
+posteriores van en commits nuevos. **Lección para waves paralelas: `--amend` es inseguro cuando otro
+agente puede haber movido HEAD; usar siempre un commit nuevo.**
 
 **Gotcha de verificación pagado aquí:** con `set -o pipefail`, un `git log --oneline \| grep -q <hash>`
 devuelve exit ≠ 0 aunque el hash exista — `grep -q` cierra el pipe y `git log` muere con SIGPIPE,
