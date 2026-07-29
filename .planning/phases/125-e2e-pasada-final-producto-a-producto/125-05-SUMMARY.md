@@ -207,6 +207,11 @@ que corren en paralelo (`125-E2E-B-RUTAS.md` quedó sin stagear, tal cual estaba
 | `618148c` | `test(125-05)`: corrida de links internos contra el deploy `0ea5d97f` |
 | `166c912` | `test(125-05)`: robots-primero + muestra externa con rate-limit demostrado |
 | `f499aec` | `docs(125-05)`: `125-RE-VERIFICACION.md` |
+| HEAD del plan | `docs(125-05): complete re-verificacion de links y fechas post-deploy` — este SUMMARY (hash no se cita: el commit se enmendó para corregir esta misma tabla) |
+
+**Gotcha de verificación pagado aquí:** con `set -o pipefail`, un `git log --oneline \| grep -q <hash>`
+devuelve exit ≠ 0 aunque el hash exista — `grep -q` cierra el pipe y `git log` muere con SIGPIPE,
+que `pipefail` propaga. La comprobación fiable es `git cat-file -t <hash>` (los cuatro → `commit`).
 
 ## Self-Check: PASSED
 
