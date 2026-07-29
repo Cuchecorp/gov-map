@@ -223,6 +223,35 @@ describe("LobbyMencionesView — 5.12: cobertura parcial declarada", () => {
     expect(COBERTURA_MENCIONES_LOBBY).toContain("3,8 %");
   });
 
+  /**
+   * W-02 del code-review de 122 — el denominador del copy era MÁS ANCHO que el medido.
+   *
+   * `Q-L07` filtra `estado_vinculo='confirmado' AND parlamentario_id IS NOT NULL AND
+   * materia IS NOT NULL`: el universo contado son las audiencias confirmadas con
+   * parlamentario **y materia**. El copy decía sólo "con parlamentario identificado",
+   * publicando el 3,8 % contra un universo que NO es el que se contó. Si existieran
+   * audiencias confirmadas sin materia, el porcentaje sería falso por construcción.
+   *
+   * El assert es ESTRUCTURAL, no sobre la redacción: la cláusula que califica al
+   * denominador (todo lo anterior al paréntesis del porcentaje) debe nombrar AMBAS
+   * restricciones de `Q-L07`. Así el copy puede reescribirse sin romper el test, pero
+   * no puede volver a ensancharse en silencio.
+   */
+  it("el denominador nombra el universo EXACTO medido por Q-L07 (parlamentario Y materia)", () => {
+    // La cláusula del denominador es todo lo anterior al verbo del numerador
+    // ("… audiencias <calificadores> CITAN el número de un boletín …"). Se exige que
+    // el split ocurra para que el test no pueda pasar en vacío leyendo la frase entera
+    // (donde "materia" aparece, pero como parte del NUMERADOR).
+    const partes = COBERTURA_MENCIONES_LOBBY.split(/\bcitan\b/i);
+    expect(
+      partes,
+      "El copy ya no tiene el verbo del numerador: re-ancla este test antes de tocarlo.",
+    ).toHaveLength(2);
+    const denominador = partes[0];
+    expect(denominador).toMatch(/parlamentario/i);
+    expect(denominador).toMatch(/materia/i);
+  });
+
   it("CERO causalidad/intención en la línea de cobertura (negative-match §9.1)", () => {
     expect(COBERTURA_MENCIONES_LOBBY).not.toMatch(
       /influencia|a cambio de|oculta|esconde|punta del iceberg|subregistro|cifra negra|en realidad son/i,

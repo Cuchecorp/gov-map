@@ -104,6 +104,14 @@ export const EMPTY_MENCIONES_LOBBY = "Ninguna audiencia de lobby registrada menc
 // 92-04 (`Q-L07` de `122-CRUCES-SQL-03-LOBBY.md` §3.1) el 2026-07-29:
 //   195 audiencias con mención válida / 5.106 confirmadas con parlamentario y
 //   materia = 3,82 %, sobre 82 boletines distintos — idéntica a la cifra de 92-04.
+//
+// W-02 (code-review de 122): el copy debe nombrar el universo EXACTO que `Q-L07` mide.
+// El `base` de la query filtra `estado_vinculo='confirmado' AND parlamentario_id IS NOT
+// NULL AND materia IS NOT NULL`, así que el denominador es "con parlamentario
+// identificado **y materia publicada**". El literal decía sólo "con parlamentario
+// identificado" — un universo MÁS ANCHO que el contado, que habría publicado el 3,8 %
+// contra un denominador que la query no calcula. Anclado por el test estructural
+// "el denominador nombra el universo EXACTO medido por Q-L07".
 // Se hornea en vez de derivarse en runtime porque derivarla exigiría una RPC
 // pública nueva (aguja completa: secdef PII-safe, `search_path`, bounded,
 // doble-revoke, `PUBLIC_RPC_ALLOWLIST`), coste desproporcionado para una línea de
@@ -117,7 +125,7 @@ export const EMPTY_MENCIONES_LOBBY = "Ninguna audiencia de lobby registrada menc
 // test (1e) COBERTURA-122 del linter, Wave-0, ANTES de que este literal existiera).
 // prettier-ignore — SOLO string literal en una línea (misma razón que las de arriba).
 // eslint-disable-next-line
-export const COBERTURA_MENCIONES_LOBBY = "195 de las 5.106 audiencias registradas con parlamentario identificado citan el número de un boletín en su materia (3,8 %), según fuente al 29 jul 2026. Este recuento cubre solo esa parte del registro.";
+export const COBERTURA_MENCIONES_LOBBY = "195 de las 5.106 audiencias registradas con parlamentario identificado y materia publicada citan el número de un boletín en su materia (3,8 %), según fuente al 29 jul 2026. Este recuento cubre solo esa parte del registro.";
 
 // ── Fecha ISO parseable → Date válida, o null (nunca "Invalid Date") ────────────
 function fechaValida(raw: string | null | undefined): Date | null {
