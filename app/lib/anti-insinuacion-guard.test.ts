@@ -52,6 +52,7 @@ import { LEYENDA_CROSS_LINK } from "@/components/cross-links-parlamentario";
 import {
   LEYENDA_MENCIONES_LOBBY,
   EMPTY_MENCIONES_LOBBY,
+  COBERTURA_MENCIONES_LOBBY,
 } from "@/components/lobby-menciones-de-boletin";
 import { LEYENDA_SIMILITUD_VOTO } from "@/components/similitud-votacion-comparar";
 import { LEYENDA_RECURSO_NO_HUMANO } from "@/lib/recurso-no-humano";
@@ -1052,8 +1053,8 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
    * (1e) COBERTURA-122 (122-05, fila 5.12) — el idiom de cobertura parcial está limpio
    * ANTES de aterrizar en la superficie (Wave-0 LOCKED).
    *
-   * Mismo contrato que (1d): fixture EN MEMORIA con el string VERBATIM que
-   * `lobby-menciones-de-boletin.tsx` renderiza, pasado por el detector REAL. No tiene
+   * Mismo contrato que (1d), con una DEPARTURE: el idiom se IMPORTA del componente
+   * (`COBERTURA_MENCIONES_LOBBY`), no se re-tipea. Pasa por el detector REAL. No tiene
    * propiedad de detección sobre el repo (eso lo da el test (1) sobre
    * `SUPERFICIES_LOBBY`, donde el componente ya vive): aporta la verificación previa y
    * deja el idiom escrito en un solo lugar legible.
@@ -1063,13 +1064,14 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
    * nunca sola, y nunca se presenta como total.
    */
   it("(1e) COBERTURA-122: el idiom de cobertura parcial de lobby↔PL está limpio", () => {
-    // VERBATIM del literal que la fila 5.12 hornea. Se declara aquí como string EN
-    // MEMORIA (precedente (1d)) para que Wave-0 corra ANTES de que el copy exista en
-    // `lobby-menciones-de-boletin.tsx` — esta tarea NO toca archivos de copy.
-    const COBERTURA_MENCIONES_LOBBY =
-      "195 de las 5.106 audiencias registradas con parlamentario identificado citan " +
-      "el número de un boletín en su materia (3,8 %), según fuente al 29 jul 2026. " +
-      "Este recuento cubre solo esa parte del registro.";
+    // W-01 (code-review de 122): el literal se IMPORTA del componente, NO se re-tipea.
+    // En el commit `45cdac4` esto era una copia en memoria porque el copy aún no
+    // existía (Wave-0, ANTES del componente); en HEAD el copy ya existe y exporta la
+    // constante, así que la copia era deuda pura — exactamente la regresión que este
+    // mismo archivo documenta en `LEYENDA_RECURSO_NO_HUMANO_FIXTURE` (WR-02): "el test
+    // verificaba la copia y no el copy renderizado; la copia era el drift silencioso
+    // que el propio test decía prevenir". Demostrado: con la copia, inyectar "punta del
+    // iceberg"/"subregistro" en la constante REAL dejaba este test en verde.
     const IDIOMS_COBERTURA_122: string[] = [
       COBERTURA_MENCIONES_LOBBY,
       "195 de 5.106 audiencias (3,8 %), según fuente al 29 jul 2026",
