@@ -394,3 +394,249 @@ cron de cruces es global ⇒ `ingestado = true`), que ya había superado ese sup
 **Nota 2 — `S1338` no es el caso de vacío total** (LÍMITE 1 de 122, re-confirmado hoy por SQL): tiene
 **4 de 5** ejes con datos (`9 / 4 / 0 / 21 / 2`). El contrato `RelacionesSection vacio` no se dispara
 para ningún sujeto de PROD. Lo verificado es el vacío honesto **por bloque** (filas 1.2 y 1.8).
+
+---
+
+## §3 `/proyecto/[boletin]` — `14309-04` (bicameral) y `17870-05` (zona solo-Senado)
+
+### §3.0 Los dos sujetos, confirmados por SQL (no asumidos)
+
+```sql
+select p.boletin || ' | prm_id_camara=' || coalesce(prm_id_camara::text,'NULL') from public.proyecto
+where boletin in ('14309-04','17870-05') order by boletin;
+-- 14309-04 | prm_id_camara=14891
+-- 17870-05 | prm_id_camara=NULL      ← el sujeto D de 113 §1.4, zona solo-Senado
+```
+
+| boletín | `prm_id_camara` | votaciones | eventos de tramitación |
+|---|---|---:|---:|
+| `14309-04` | **14891** | 7 | 99 |
+| `17870-05` | **NULL** | 256 | 355 |
+
+### §3.1 Anclas emitidas — **las mismas 12 en ambas rutas**
+
+```bash
+grep -o 'id="[a-z-]*"' $f.html | sort -u
+```
+
+`autores` · `cruces` · `cuerpos-legales` · `estado` · `estado-actual` · `idea-matriz` ·
+`lobby-menciones` · `lobby-tramitacion` · `similares` · `timeline` · `validacion-fuente` ·
+`votaciones` — **12/12 en las dos rutas**. La ruta solo-Senado **no oculta secciones**: degrada
+**dentro** de ellas (§3.4).
+
+**Gotcha de Suspense confirmado en vivo:** en `17870-05` la mayoría de secciones llega al shell como
+placeholder (`<!--$?--><template id="B:8">` + `animate-pulse`) y el contenido real vive en
+`<div hidden id="S:8">` más adelante (offset 1.026.807 para cruces, 1.032.629 para validación de
+fuente). **Leer sólo el shell habría reportado "sección vacía" en 11 de 12 secciones.** Todos los
+fragmentos de abajo salen del `div hidden` resuelto.
+
+### §3.2 Cruces de proyecto — re-calculados contra SQL
+
+```sql
+select count(*) from public.cruces_de_proyecto('<boletin>');
+-- 14309-04 → 47   ·   17870-05 → 0   ·   18296-05 → 30 (runner-up de 122, control)
+```
+
+| # (122) | superficie | SQL hoy | DOM (deploy) | veredicto |
+|---|---|---:|---|:---:|
+| 3.a-1 | `14309-04` encabezado de cruces | **47** | `…con el sector del proyecto</span><span class="…tabular-nums…">47 parlamentarios</span>` | `cuadra` |
+| 3.a-2 | `14309-04` disclosure | **47** | `dden">Explorar los 47 cruces</span>` | `cuadra` |
+| — | `17870-05` encabezado de cruces | **0** | `sin registros` + copy de cero declarado (§3.4) | `cuadra` — el cero se presenta como cero |
+
+El número vivo se registra, no el recordado: **`47` sigue siendo `47`** y sigue siendo el techo del
+universo (fila 3.a-6: la RPC **no** tiene `LIMIT`, `tiene_limit = f`) ⇒ ningún cap alcanzable.
+
+### §3.3 Tramitación, timeline y fechas — contrastados con la disposición de 117
+
+**F-03 — badge con `notaAgregacion="evento más reciente"`.** Presente en **ambas** rutas (4
+ocurrencias cada una = 2 en HTML + 2 en payload), y la fecha **cuadra con el SQL**:
+
+| ruta | DOM verbatim | `max(fecha_captura)` de `tramitacion_evento` | veredicto |
+|---|---|---|:---:|
+| `14309-04` | `según fuente al <!-- -->09 jul 2026<!-- --> (evento más reciente)` | `2026-07-09` | `cuadra` |
+| `17870-05` | `según fuente al <!-- -->10 jul 2026<!-- --> (evento más reciente)` | `2026-07-10` | `cuadra` |
+
+El calificador está presente ⇒ el badge **no** presenta un agregado (`max`) como si fuera la captura
+de la ficha entera. Es exactamente el fix F-03.
+
+**F-05 / F-07 — rótulos de hito, con la divergencia de 117 §2(f) DECLARADA, no leída como
+inconsistencia.** 117 cerró F-07 de **dos** formas según la adyacencia real del layout, y ambas
+aparecen en el deploy:
+
+| variante | superficie | forma | HTML real `14309-04` | HTML real `17870-05` |
+|---|---|---|---:|---:|
+| A — separador `{" — "}` (U+2014), cero rótulo nuevo | `capa1/tramitacion-stepper.tsx` | la fecha vive en el MISMO `<p>` que la descripción | ` — ` × 24 (total) | ` — ` × 525 (total) |
+| B — rótulo `Hito del {fecha}` | `timeline-event.tsx:102` (`fechaHechoCorta`) | la fecha vive en el header junto al `CamaraChip` | **85** (`>Hito del <span`) | **355** (`>Hito del <span`) |
+| — rótulo `Votada el {fecha}` | `votacion-card.tsx:48` | tarjeta de votación | **7** (`>Votada el<!-- -->`) | **256** (`>Votada el<!-- -->`) |
+
+**Cuadre exacto contra la base:** `Votada el` en HTML = **7** = `votacion` de `14309-04`; = **256** =
+`votacion` de `17870-05`. `Hito del` en HTML de `17870-05` = **355** = `tramitacion_evento` de
+`17870-05`. Cuadre **1 a 1**, sin sobra ni falta.
+
+**Observación abierta (no se cierra, no se fabrica):** en `14309-04` hay **85** `Hito del` contra
+**99** eventos en `tramitacion_evento`. Se muestran **menos**, nunca más ⇒ no hay relleno ni
+invención; pero este plan **no** audita la regla de selección del timeline (F-03/F-07 sólo gobiernan
+el **rótulo** y el **helper**, no la cardinalidad). Se registra como pendiente de un plan que audite
+la selección de eventos del timeline, en vez de declararlo `cuadra` sin la query que lo demuestre.
+
+**F-09 / gotcha rector "date-only disfrazado de `timestamptz`" — probado con un caso real.** La
+última votación real de `17870-05` (Pitfall 8 de 113: filtrar `fecha <= current_date` porque PROD
+tiene fechas corruptas en el futuro):
+
+```sql
+select max(fecha)::text from public.votacion where boletin='17870-05' and fecha <= current_date;
+-- 2025-11-26 20:32:50+00
+```
+
+y el DOM rinde:
+
+```html
+t-sm text-muted-foreground leading-none">Votada el<!-- --> <span class="font-mono">26 nov 2025</span></span>
+```
+
+**`26`, no `25`.** Si el render aplicara una conversión de zona global sobre una fecha que ya es el
+día chileno, habría mostrado `25 nov 2025`. El helper de hecho (`fechaHechoCorta`) preserva el día.
+Es el gotcha rector de v12.0 (una tz global fabricaría ~45k días equivocados) y aquí **no muerde**.
+
+**Rótulo de hito de `17870-05`, verbatim:**
+
+```html
+-2"><span class="text-sm text-muted-foreground leading-none">Hito del <span class="font-mono">05 ene 2026</span></span></div><p class="text-sm font-semibold mt-1 capitalize">tramite</p><p class="text-base leading-relaxed mt-1">Cuenta, Ofici…
+```
+
+**Controles de fecha prohibida — `grep -o … | wc -l`:**
+
+| marcador | `14309-04` | `17870-05` | criterio | veredicto |
+|---|---:|---:|---|:---:|
+| `según fuente al ` | **32** | **527** | presente | ✓ idiom LOCKED F-01 |
+| `recalculado por el Observatorio al ` | **288** | **0** | presente donde aplica | ✓ |
+| `Actualizado hace` | **0** | **0** | **0** | ✓ (control INERTE, §0) |
+| `Actualizado` (idiom viejo) | **0** | **0** | **0** | ✓ discriminante real: 318→0 |
+| `corte al` | **0** | **0** | **0** | ✓ |
+| `captura` pelado (117 §3) | **0** | **0** | **0** | ✓ |
+
+**[RULE-1] Falso negativo propio, corregido y declarado.** La primera pasada midió `Votada el ` **con
+espacio final** y leyó **0** en ambas rutas — habría reportado "el rótulo de votación no llega al
+deploy", que es **falso**. La causa es la misma familia de gotcha que el plan advierte: el fuente es
+`Votada el{" "}` (`votacion-card.tsx:48`), que React rinde como `Votada el<!-- --> <span…`, así que el
+espacio **nunca** sigue al literal. Valor correcto: **7** y **256**. Se deja constancia del error y su
+corrección en vez de publicar sólo el número bueno.
+
+### §3.4 Zona solo-Senado (`17870-05`) — degradación honesta, copy verbatim
+
+**El discriminante duro: cero links construidos a la Cámara.**
+
+```bash
+grep -o 'href="https://[a-z0-9.-]*' $f.html | sort -u
+# p14309 → creativecommons.org  opendata.camara.cl  tramitacion.senado.cl  www.camara.cl
+# p17870 → creativecommons.org  opendata.camara.cl  tramitacion.senado.cl
+```
+
+| host | `14309-04` | `17870-05` | lectura |
+|---|---:|---:|---|
+| `www.camara.cl` (**construido** por `buildCamaraUrl` desde `prm_id_camara`) | **146** | **0** | ✓ la rama sin `prm_id_camara` **no** se ejecuta |
+| `opendata.camara.cl` (**columna** `votacion.enlace`, no builder) | 12 | 220 | ✓ dato de columna, ajeno a `prm_id_camara` |
+| `tramitacion.senado.cl` | 9 | 279 | ✓ |
+
+Es exactamente la expectativa declarada en 113 §1.4. Y **no** se emite un link roto ni un
+`href="#"`: el nodo simplemente **no existe**.
+
+**Copy verbatim de la degradación en «Valida este dato en la fuente»** — misma sección, `<ul>` con
+**un solo** `<li>` en lugar de dos:
+
+```html
+hidden id="S:c"><div class="rounded-lg border border-border bg-card p-6 space-y-4"><h2 class="text-xl font-semibold">Valida este dato en la fuente</h2><p class="text-xs text-muted-foreground">según fuente al<!-- --> <span class="font-mono">10 de julio de 2026</span></p><ul class="space-y-3"><li><a href="https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=17870-05" target="_blank" rel="noopener noreferrer" aria-label="Ver en el Senado (abre en nueva pestaña)" …><span class="text-sm font-normal">Ver en el Senado ↗</span><span class="text-xs text-muted-foreground no-underline">Ficha de tramitación oficial</span></a></li></ul><div class="pt-2 border-t border-border space-y-1"><p class="text-xs text-muted-foreground">Respaldo del<!-- --> <span class="font-mono">10-07-2026</span> · <!-- -->hash<!-- --> <span class="font-mono">ed19eb5942c2<!-- -->…</span></p><p class="text-xs text-muted-foreground">Esto decía la fuente ese día.</p></div></div>
+```
+
+**Contraste bicameral de `14309-04`** (mismo bloque, **dos** `<li>`; el `prmID=14891` del href es
+exactamente el `prm_id_camara` leído de la base):
+
+```html
+…<li><a href="https://tramitacion.senado.cl/…?boletin_ini=14309-04" … aria-label="Ver en el Senado (abre en nueva pestaña)">…</a></li><li><a href="https://www.camara.cl/legislacion/ProyectosDeLey/tramitacion.aspx?prmID=14891&amp;prmBOLETIN=14309-04" … aria-label="Ver en la Cámara (abre en nueva pestaña)">…
+```
+
+⇒ **Cero relleno.** La ausencia es un nodo ausente, no un placeholder, no un "no disponible", no un
+link a ninguna parte. `<ul>` con 1 `<li>` vs `<ul>` con 2 `<li>`.
+
+**Cruces de `17870-05`, cero declarado, verbatim** (del `div hidden` resuelto, no del placeholder):
+
+```html
+hidden id="S:8"><div class="rounded-lg border-[1.5px] border-accent-product bg-card p-4 space-y-3"><h2 class="flex items-center gap-2 text-lg font-semibold text-accent-product"><span>Cruces con el sector del proyecto</span><span class="ml-auto font-mono text-sm font-normal tabular-nums text-muted-foreground">sin registros</span></h2>…
+```
+
+`sin registros` (estado `vacio`) con la sección **presente** — no se oculta, no se rellena, no se
+declara falsamente "no ingerido". Mismo contrato que `S1338` en §2.5.
+
+### §3.5 Fila 5.5 (vigilancia) — la rama truncada de lobby sigue sin caso real
+
+`Q-71` re-ejecutada **verbatim** (prefijo de `Q-68` hasta la CTE `bol`):
+
+```
+max_total_n | boletines_evaluados
+         13 | 82
+```
+
+| esperado (122) | observado (125-02) | techo de la RPC | veredicto |
+|---|---|---|:---:|
+| `max(total_n) = 13` sobre **82** boletines | `13` sobre **82** | `LIMIT 50` | **sin cambio** |
+
+`13` está a **37** del límite ⇒ la rama `mostradas < total_n` (`Se muestran las N … de M`) **sigue
+sin caso real en PROD** y por tanto **no es observable**. `grep -o "Se muestran las"` → **0** en las
+rutas medidas, coherente. **No se verifica una rama inalcanzable**; se registra que el techo no se
+movió. `Q-69` de los sujetos confirma la rama neutra: `14309-04 → 1|1`, `16849-12 → 13|13`,
+`17870-05 → 0|0`.
+
+### §3.6 `not-found` de proyecto
+
+`/proyecto/00000-00` → **HTTP 404** ✓. El copy de **E-023** es byte-idéntico al fuente y viaja en el
+payload de RSC (mismo HALLAZGO-125-02-01 de §2.6, aquí re-confirmado para la ruta de proyecto):
+`Proyecto no encontrado` · *"No encontramos el proyecto solicitado. Es posible que aún no haya sido
+ingresado. Puedes buscarlo directamente en las fuentes oficiales:"* + `Senado ↗` + `Cámara ↗` +
+`Volver al inicio`. `grep -o "<main" nf_proy.html | wc -l` → **0** (no está en el HTML SSR).
+
+### §3.7 Estado de las filas `discrepancia-declarada` — TODAS SIGUEN DECLARADAS
+
+Las **8** filas que 122 dejó como `discrepancia-declarada`, re-comprobadas sobre el deploy nuevo:
+
+| fila (122) | superficie | qué exige seguir viendo | observado hoy | estado |
+|---|---|---|---|:---:|
+| **2.1** | `D1165` #votos `Ver detalle (N)` | `1000` (no `3752`) | **1000** | **SIGUE DECLARADA** ✓ |
+| **2.5** | `D1165` #votos asistencia | `973 de 1000` (no `3723 de 3752`) | **`Presente en 973 de 1000 … Ausente en 27`** | **SIGUE DECLARADA** ✓ |
+| **2.6** | `D1165` #votos capa-1 | Σ `1000` (no Σ `3752`) | **`469 / 466 / 22 / 16 / 27`** (Σ 1000) | **SIGUE DECLARADA** ✓ |
+| **3.3** | `/comparar` eje | (fuera de las rutas de este plan) | no medida aquí — **plan 03/04** | fuera de alcance |
+| **3.b-9** | `S1338` empty-state de E-053 | **no emitido** (código muerto) | **no emitido** | **SIGUE DECLARADA** ✓ |
+| **4-14** | panel de actualidad | (fuera de las rutas de este plan) | no medida aquí — **plan 04** | fuera de alcance |
+| **4-15** | panel de actualidad | (fuera de las rutas de este plan) | no medida aquí — **plan 04** | fuera de alcance |
+| **5.5** | rama truncada de lobby (`LIMIT 50`) | sin caso real (`max(total_n)` < 50) | **`13` sobre 82** | **SIGUE DECLARADA** ✓ |
+
+**Ninguna de las 5 filas que viven en estas rutas se cerró sola** ⇒ **cero hallazgo de cierre
+espontáneo, cero escalada.** Las 3 restantes (3.3, 4-14, 4-15) viven en `/comparar` y en el panel de
+actualidad y son territorio de los planes 03/04, que corren en paralelo — este plan **no** las mide y
+**no** afirma nada sobre ellas.
+
+---
+
+## §4 Cierre
+
+| criterio del plan | resultado |
+|---|---|
+| PASO 0 de frescura (uuid + marcador `3,8`) **antes** de medir | ✓ §1.0 — `0ea5d97f…`, `3,8` × 2 |
+| Ítem 1 de 122: `S1338` sin dígito **y** sin frase de ausencia en lobby | ✓ **CERRADO** — 0 y 0, alcance declarado |
+| Ítem 2 de 122: cobertura tras la leyenda y antes del conteo | ✓ **CERRADO** — orden por offsets en 2 boletines × 2 copias del DOM |
+| `D1165` no-regresión `112` | ✓ §1.2 |
+| `Q-74` re-ejecutada | ✓ `5106\|195\|82\|3.82`, **sin cambio** ⇒ cifra horneada vigente |
+| Canario de 124: `Ver detalle` = `1000` | ✓ §2.4 — con el clamp de `0078` verificado en PROD y el call-site explicado |
+| Las 8 filas `discrepancia-declarada` siguen declaradas | ✓ §3.7 — las 5 de estas rutas SIGUEN; 3 fuera de alcance (planes 03/04) |
+| `grep "Actualizado hace"` → 0 en las 4 rutas | ✓ (control declarado INERTE) |
+| `corte al` → 0 · `captura` pelado → 0 | ✓ §2.5 y §3.3 |
+| `17870-05` degradación honesta, copy verbatim | ✓ §3.4 — `www.camara.cl` **0**, `<ul>` de 1 `<li>` vs 2 |
+| `Q-71` re-ejecutada, `max(total_n)` vs 13 | ✓ **`13` sobre 82**, sin cambio |
+| `/parlamentario/NOEXISTE` y `/proyecto/00000-00` → 404 | ✓ ambos **404** |
+| Huérfanos declarados sin fragmento DOM | ✓ §2.6 — E-029, E-053 (empty-state), E-003, E-008 |
+| Régimen: 0 DDL/DML · 0 deploy · 0 flags · 0 fixes · 0 PII | ✓ sólo `SELECT`; `SUPABASE_DB_URL` jamás expandida; cero RUT y cero datos de terceros en los fragmentos |
+
+**Desviaciones RULE-1 registradas:** (1) HALLAZGO-125-02-01 — copy de `not-found` sólo en payload RSC
+(severidad baja, handoff a catálogo 113); (2) corrección de catálogo 113 §4.1 — `S1338` **sí** ofrece
+la entrada `#cruces`; (3) falso negativo propio de medición (`Votada el ` con espacio final) corregido
+y declarado en §3.3; (4) observación abierta `85` `Hito del` vs `99` eventos en `14309-04`, declarada
+sin cerrar por falta de query que gobierne la cardinalidad del timeline.
