@@ -78,7 +78,7 @@ evidencia del número anterior** (corolario de 00 §0.1):
 | # | fragmento y fila origen | discrepancia (nº deploy → nº SQL) | archivo:línea | qué cambió | test de respaldo | estado |
 |---|-------------------------|-----------------------------------|---------------|------------|------------------|--------|
 | 1 | `122-CRUCES-SQL-03-LOBBY.md` §2.4 **fila 5.11** | deploy: **`0 reuniones`** (un HECHO cuantificado) → SQL: **no hay número** — el estado real de `S1338` es `no_ingerido` (`Q-L05`: 0 audiencias **y** 0 filas de marcador `lobby_ingesta_estado`), que por definición **no tiene denominador conocido** | `app/app/parlamentario/[id]/page.tsx:617` (call-site) + `app/components/capa1/lobby-capa1.tsx:18-45` (prop y render) | **Fix de TIPO, no de copy.** `page.tsx` pasaba `total={conteos.lobby.tipo === "dato" ? conteos.lobby.n : 0}`, colapsando `vacio` **y** `no_ingerido` al literal `0`. Ahora `LobbyCapa1` recibe el **`CarrilEstado` completo** y la línea de conteo se emite **sólo** con `tipo === "dato"`; con `vacio`/`no_ingerido`/`pendiente` se **omite** — espejo exacto de `cruces-capa1.tsx:28` (`{sector.nVotos > 0 && …}`). Quien declara el 3-estado sigue siendo `conteoLabel` (`page.tsx:89-100`), su único emisor legítimo | `components/capa1/lobby-capa1.test.tsx` → `describe("5.11 — un estado no-\`dato\` JAMÁS se imprime como el hecho \`0 reuniones\`")`, **5 casos**: `no_ingerido`, `vacio` y `pendiente` omiten el conteo (y **no emiten ningún dígito**); `dato` n=0 **sí** declara su cero; `dato` n=1 usa el singular | **aplicado** |
-| 2 | `122-CRUCES-SQL-03-LOBBY.md` §3.4 **fila 5.12** | deploy: **no emitido** — no existía literal de cobertura en ninguna superficie (`grep` de `cobertura` / `3,8 %` / `5.106` / `5106` en `app/` sin tests → cero) → SQL (`Q-L07`, 2026-07-29): **195 / 5.106 = 3,82 %** sobre **82** boletines distintos | `app/components/lobby-menciones-de-boletin.tsx` — constante `COBERTURA_MENCIONES_LOBBY` (tras `EMPTY_MENCIONES_LOBBY`) + render en `LobbyMencionesView` (tras la leyenda anti-causal, **antes** del conteo) | Línea de **cobertura parcial declarada**, presente en los **tres** caminos de la vista (con filas, empty y truncado). Literal: *«195 de las 5.106 audiencias registradas con parlamentario identificado citan el número de un boletín en su materia (3,8 %), según fuente al 29 jul 2026. Este recuento cubre solo esa parte del registro.»* Cifra **horneada con su fecha** (ver §1.2 la adjudicación). Idiom aprobado **"según fuente al …"**; **"captura" pelado ausente**; cero causalidad, cero intención — describe **el canal**, no a nadie; el parcial **nunca** se presenta como total | `components/lobby-menciones-de-boletin.test.tsx` → `describe("LobbyMencionesView — 5.12: cobertura parcial declarada")`, **5 casos**: presencia en los 3 caminos + orden (leyenda → cobertura → conteo) + la cifra viaja con su fecha y sin "captura" + negative-match anti-causal. Y `lib/anti-insinuacion-guard.test.ts` → `(1e) COBERTURA-122` (Wave-0) | **aplicado** |
+| 2 | `122-CRUCES-SQL-03-LOBBY.md` §3.4 **fila 5.12** | deploy: **no emitido** — no existía literal de cobertura en ninguna superficie (`grep` de `cobertura` / `3,8 %` / `5.106` / `5106` en `app/` sin tests → cero) → SQL (`Q-L07`, 2026-07-29): **195 / 5.106 = 3,82 %** sobre **82** boletines distintos | `app/components/lobby-menciones-de-boletin.tsx` — constante `COBERTURA_MENCIONES_LOBBY` (tras `EMPTY_MENCIONES_LOBBY`) + render en `LobbyMencionesView` (tras la leyenda anti-causal, **antes** del conteo) | Línea de **cobertura parcial declarada**, presente en los **tres** caminos de la vista (con filas, empty y truncado). Literal (**actualizado por W-02**, §7): *«195 de las 5.106 audiencias registradas con parlamentario identificado **y materia publicada** citan el número de un boletín en su materia (3,8 %), según fuente al 29 jul 2026. Este recuento cubre solo esa parte del registro.»* Cifra **horneada con su fecha** (ver §1.2 la adjudicación). Idiom aprobado **"según fuente al …"**; **"captura" pelado ausente**; cero causalidad, cero intención — describe **el canal**, no a nadie; el parcial **nunca** se presenta como total | `components/lobby-menciones-de-boletin.test.tsx` → `describe("LobbyMencionesView — 5.12: cobertura parcial declarada")`, **5 casos**: presencia en los 3 caminos + orden (leyenda → cobertura → conteo) + la cifra viaja con su fecha y sin "captura" + negative-match anti-causal. Y `lib/anti-insinuacion-guard.test.ts` → `(1e) COBERTURA-122` (Wave-0) | **aplicado** |
 
 ### 1.1 Antes / después observable
 
@@ -92,6 +92,12 @@ evidencia del número anterior** (corolario de 00 §0.1):
 Las dos frases ya no se contradicen dentro de la misma sección. La regla LOCKED de
 `lobby-de-parlamentario.tsx:47` (*"Un vacío es un HECHO, no una virtud: 'no ingestado' ≠ 'ingestado,
 cero'"*) queda respetada por la capa-1, que era quien la violaba.
+
+**Corrección posterior (CR-01 del code-review, §7):** el fix de arriba quitó el **dígito** fabricado
+pero dejó en pie, para el mismo `no_ingerido`, la **prosa** fabricada — el fallback «Aún no hay
+materias publicadas *en las fuentes consultadas*» renderizaba sin mirar `estado.tipo` y era el único
+contenido de la capa-1 de `S1338`. Ahora ese fallback está gateado por el mismo discriminante: con
+`vacio`/`no_ingerido`/`pendiente` la capa-1 no emite nada.
 
 **Cero honesto preservado:** un carril con `tipo: "dato", n: 0` **sigue** imprimiendo `0 reuniones`.
 El fix **no rellena ni oculta ningún cero real** — sólo deja de fabricar uno donde no hay
@@ -222,7 +228,7 @@ Corridos al cierre del plan, sobre el árbol con los 3 commits aplicados.
 
 | verificación | comando | resultado |
 |--------------|---------|-----------|
-| suite `app/` | `pnpm vitest run` | **1572 passed / 107 files** (mínimo exigido: ≥1428) ✔ |
+| suite `app/` | `pnpm vitest run` | **1577 passed / 107 files** (1572 al cierre del plan + 5 del code-review §7; mínimo exigido: ≥1428) ✔ |
 | typecheck | `pnpm exec tsc --noEmit` | **exit 0** ✔ |
 | anti-insinuación | `pnpm vitest run lib/anti-insinuacion-guard.test.ts` | 42 ✔ (40 antes + 2 de Wave-0) |
 | lockdown | `lib/lockdown-guard.test.ts` | **22** ✔ |
@@ -256,6 +262,10 @@ Corridos al cierre del plan, sobre el árbol con los 3 commits aplicados.
 | `45cdac4` | Task 1 (Wave-0) | `TERMINOS_COBERTURA` + `(1e) COBERTURA-122` + mutation self-check. **122 insertions, 0 deletions** ⇒ cero renames de constantes preexistentes. Cero archivos de copy tocados |
 | `df6364d` | Task 2 (RED) | Tests de 5.11 y 5.12 — **12 fallando** antes de implementar |
 | `5c8f1a4` | Task 2 (GREEN) | `page.tsx:617` + `capa1/lobby-capa1.tsx` (5.11) y `lobby-menciones-de-boletin.tsx` (5.12) |
+| `8087d67` | code-review §7 | **CR-01** — fallback de capa-1 gateado por `estado.tipo` |
+| `905092e` | code-review §7 | **W-01** — el guard `(1e)` importa `COBERTURA_MENCIONES_LOBBY` |
+| `de8f3c3` | code-review §7 | **W-02** — el denominador del copy nombra el universo de `Q-L07` |
+| `ccfdcab` | code-review §7 | **W-03** — test de cobertura por FORMA + `COBERTURA_OBSERVADA_EL` |
 
 ---
 
@@ -264,11 +274,38 @@ Corridos al cierre del plan, sobre el árbol con los 3 commits aplicados.
 1. **Desplegar** — es el único modo de que estos 2 fixes lleguen a producción (LÍMITE A).
 2. **Re-verificar contra el DOM desplegado**, con el patrón tolerante a los separadores `<!-- -->` de
    React (HALLAZGO B de 00 §2.3):
-   - `/parlamentario/S1338` → la capa-1 de `<section id="lobby">` **no** debe emitir ningún dígito, y
-     el encabezado debe seguir en `—`.
+   - `/parlamentario/S1338` → la capa-1 de `<section id="lobby">` **no** debe emitir ningún dígito
+     **ni la frase «en las fuentes consultadas»** (CR-01: no consultamos ⇒ no afirmamos), y el
+     encabezado debe seguir en `—`.
    - `/parlamentario/D1165` → **sigue** mostrando `112 reuniones` (control de no-regresión: es un
      `dato`, el fix no debe tocarlo).
    - `/proyecto/14309-04` y `/proyecto/16849-12` → la línea de cobertura debe aparecer **antes** del
      conteo, con `3,8 %` y `29 jul 2026`.
 3. **Re-ejecutar `Q-L07`** para confirmar que la cifra horneada sigue vigente; si cambió, actualizar
-   **cifra y fecha juntas** en `COBERTURA_MENCIONES_LOBBY`.
+   **cifra y fecha juntas** en `COBERTURA_MENCIONES_LOBBY` **y** en `COBERTURA_OBSERVADA_EL` (W-03:
+   el test exige que ambas coincidan, así que ninguna puede quedarse atrás en silencio). El test ya
+   **no** congela los dígitos: una cifra nueva y coherente pasa sin tocar el test.
+
+---
+
+## 7. Cierre del code-review de la fase (`122-REVIEW.md`)
+
+El review confirmó los 2 fixes, y encontró **1 Critical + 3 Warning** sobre ellos. Los 4 se cerraron
+en el sitio, cada uno con su test RED-antes-de-GREEN. Los **4 Info** quedan registrados en
+`122-REVIEW.md` y **no** se aplicaron (fuera de alcance declarado).
+
+| # | qué afirmaba el review | qué se hizo | evidencia RED | commit |
+|---|------------------------|-------------|---------------|--------|
+| **CR-01** | `lobby-capa1.tsx` renderizaba el fallback «Aún no hay materias publicadas **en las fuentes consultadas**» sin mirar `estado.tipo`: con `no_ingerido` afirmaba una ausencia **en la fuente** que nunca se observó, y era el único contenido de la capa-1 de `S1338` | El fallback se gatea por el mismo discriminante que el conteo: sólo `tipo === "dato"` (la fuente SÍ se consultó) declara la ausencia de materias; `vacio`/`no_ingerido`/`pendiente` **no emiten nada**. Se descartó el copy alternativo del review para `vacio` («No hay reuniones registradas en las fuentes consultadas») porque re-introducía la palabra `reuniones` que el propio test de 5.11 prohíbe en estados no-`dato`: el 3-estado lo declara `conteoLabel`, no la capa-1 | 3 tests nuevos fallando contra HEAD (`expected 'Aún no hay materias publicadas en las…' not to match /fuentes consultadas/i`) | `8087d67` |
+| **W-01** | el guard `(1e)` **re-tipeaba** el literal en vez de importarlo — la regresión del `WR-02` que ese mismo archivo documenta | Importa `COBERTURA_MENCIONES_LOBBY` del componente; se borró la copia por concatenación | **Blind-spot demostrado, no argumentado:** inyectando «punta del iceberg de un subregistro» en la constante REAL, `(1e)` seguía **verde** con la copia; con el import, **falla** | `905092e` |
+| **W-02** | el copy publicaba el 3,8 % contra «audiencias con parlamentario identificado», universo **más ancho** que el medido por `Q-L07` (que filtra además `materia is not null`) | Copy corregido a «…con parlamentario identificado **y materia publicada**…». Se corrigió el **copy**, no la bitácora: `Q-L07` §3.1 es la autoridad y su `base` sí filtra `materia is not null` | test estructural nuevo (la cláusula del denominador debe nombrar **ambas** restricciones) fallando contra HEAD | `de8f3c3` |
+| **W-03** | el test congelaba `195`/`5.106`/`3,8 %`/`29 jul 2026` ⇒ al re-correr `Q-L07` la suite se pondría roja por la razón equivocada | El test asserta la **forma** LOCKED + **coherencia interna** (`n < N`, `pct ≈ n/N`) + que la fecha en prosa **es** `COBERTURA_OBSERVADA_EL` (constante ISO nueva, para guards de antigüedad). Los dígitos vuelven a ser responsabilidad de `Q-L07` | 3 mutaciones: (A) actualización legítima `210/5.402/3,9 %/12 ago 2026` → test **viejo falla** (`to match /29 jul 2026/`), test **nuevo pasa**; (B) ratio incoherente `31,0 %` → **falla**; (C) fecha desincronizada de la constante → **falla** | `ccfdcab` |
+
+**Régimen intacto:** cero deploy, cero `supabase db push`, cero migración, cero flag `*_PUBLIC_ENABLED`,
+cero PII. **Cero honesto intacto** (`dato` n=0 sigue imprimiendo `0 reuniones`, anclado por su test).
+**"captura" pelado ausente del copy renderizado.** Vocabulario nuevo introducido: sólo «y materia
+publicada» — no requiere extender el linter (verificado: los 42 tests de `anti-insinuacion-guard`
+verdes, y ahora `(1e)` escanea el literal REAL, no una copia).
+
+**Verificación de cierre:** suite `app/` **1577 passed / 107 files** · `tsc --noEmit` **exit 0** ·
+**guards de régimen 11/11** verdes.
