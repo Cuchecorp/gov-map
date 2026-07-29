@@ -555,6 +555,40 @@ const TERMINOS_LINK_EXT: string[] = [
 ];
 
 /**
+ * Términos COBERTURA (122-05, fila 5.12 de `122-CRUCES-SQL-03-LOBBY.md`) — Wave-0.
+ *
+ * POR QUÉ EXISTE: la fila 5.12 obliga a DECLARAR en la superficie que el canal
+ * lobby↔proyecto-de-ley es parcial (195 de 5.106 audiencias confirmadas citan un
+ * número de boletín ⇒ 3,8 %, observado 2026-07-29). Escribir una cifra de cobertura
+ * parcial abre un vector de insinuación NUEVO que ningún carril previo cubría: el de
+ * editorializar el HUECO. Decir "3,8 %" es un HECHO; decir que ese 3,8 % es "la punta
+ * del iceberg", una "cifra negra", un "subregistro" o que las audiencias reales "en
+ * realidad son" más, afirma un número que NO se observó y atribuye ocultamiento a la
+ * fuente. Es exactamente el riesgo #1 del proyecto (una ausencia falsa con atribución
+ * de fuente), aplicado a la declaración de cobertura.
+ *
+ * Estos términos se declaran ANTES de que el copy de 5.12 exista (patrón Wave-0
+ * LOCKED, lección BLOCKER 91) y se escanean sobre TODAS las superficies vía el spread
+ * en `TERMINOS_PROHIBIDOS`.
+ *
+ * DEDUPE (Pitfall 4): "oculta"/"esconde"/"censura" ya viven en `TERMINOS_LINK_EXT` y
+ * "captura" en el carril MONEY → NO se re-agregan. Verificado por grep sobre
+ * `app/{components,app,lib}` (sin tests): CERO ocurrencias de los 6 términos en el
+ * árbol actual ⇒ no introducen falso positivo. TILDES EXACTAS (buildTermRegex NO es
+ * accent-insensitive) y CERO tokens genéricos que colisionen con identificadores
+ * (lección del `top` pelado rechazado en 100-01): los 6 son multi-palabra o
+ * sustantivos que ningún identificador del repo usa.
+ */
+const TERMINOS_COBERTURA: string[] = [
+  "punta del iceberg",
+  "subregistro",
+  "cifra negra",
+  "zona oscura",
+  "en realidad son",
+  "muy por debajo",
+];
+
+/**
  * Términos prohibidos (lista dura VERBATIM de 68-UI-SPEC §Linter). Se buscan en el
  * texto RENDERIZADO (post-strip de comentarios), con límite de palabra en español
  * para no cazar identificadores snake_case: `rebeldias_de_parlamentario` (nombre de
@@ -693,6 +727,10 @@ const TERMINOS_PROHIBIDOS: string[] = [
   //     se verifica POR CÓDIGO sobre TODAS las superficies de todos los carriles —no por
   //     grep manual sobre 4— en el test "(1b) WR-03".
   ...TERMINOS_LINK_EXT,
+  // --- Carril COBERTURA (122-05, fila 5.12) — editorialización del HUECO de una
+  //     cobertura parcial declarada. La lista vive en `TERMINOS_COBERTURA` (arriba,
+  //     con su JSDoc) y entra al scan de TODAS las superficies por este spread.
+  ...TERMINOS_COBERTURA,
 ];
 
 /**
@@ -1009,6 +1047,58 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
         `"según fuente al {fecha}".`,
     ).toHaveLength(0);
   });
+
+  /**
+   * (1e) COBERTURA-122 (122-05, fila 5.12) — el idiom de cobertura parcial está limpio
+   * ANTES de aterrizar en la superficie (Wave-0 LOCKED).
+   *
+   * Mismo contrato que (1d): fixture EN MEMORIA con el string VERBATIM que
+   * `lobby-menciones-de-boletin.tsx` renderiza, pasado por el detector REAL. No tiene
+   * propiedad de detección sobre el repo (eso lo da el test (1) sobre
+   * `SUPERFICIES_LOBBY`, donde el componente ya vive): aporta la verificación previa y
+   * deja el idiom escrito en un solo lugar legible.
+   *
+   * Recordatorios que este test ancla: "captura" (pelada) está PROHIBIDA — el idiom
+   * LOCKED es "según fuente al {fecha}"; y la cifra parcial viaja SIEMPRE con su fecha,
+   * nunca sola, y nunca se presenta como total.
+   */
+  it("(1e) COBERTURA-122: el idiom de cobertura parcial de lobby↔PL está limpio", () => {
+    // VERBATIM del literal que la fila 5.12 hornea. Se declara aquí como string EN
+    // MEMORIA (precedente (1d)) para que Wave-0 corra ANTES de que el copy exista en
+    // `lobby-menciones-de-boletin.tsx` — esta tarea NO toca archivos de copy.
+    const COBERTURA_MENCIONES_LOBBY =
+      "195 de las 5.106 audiencias registradas con parlamentario identificado citan " +
+      "el número de un boletín en su materia (3,8 %), según fuente al 29 jul 2026. " +
+      "Este recuento cubre solo esa parte del registro.";
+    const IDIOMS_COBERTURA_122: string[] = [
+      COBERTURA_MENCIONES_LOBBY,
+      "195 de 5.106 audiencias (3,8 %), según fuente al 29 jul 2026",
+    ];
+
+    const offenders: string[] = [];
+    const verificados: string[] = [];
+    for (const idiom of IDIOMS_COBERTURA_122) {
+      const fixture = `export const F = <span>${idiom}</span>;`;
+      for (const term of detectarInsinuaciones(fixture)) {
+        offenders.push(`"${idiom}" → "${term}"`);
+      }
+      verificados.push(idiom);
+    }
+    expect(
+      verificados,
+      "Algún idiom de cobertura no llegó al detector (¿un `continue`/filtro colado?).",
+    ).toEqual(IDIOMS_COBERTURA_122);
+    expect(
+      offenders,
+      `El idiom de cobertura parcial contiene vocabulario prohibido: ` +
+        `[${offenders.join("; ")}]. NO relajes el linter: cambia el idiom.`,
+    ).toHaveLength(0);
+
+    // La cifra NUNCA viaja sola: el literal LOCKED debe traer su fecha con el idiom
+    // aprobado, y JAMÁS la palabra "captura" pelada.
+    expect(COBERTURA_MENCIONES_LOBBY).toContain("según fuente al");
+    expect(COBERTURA_MENCIONES_LOBBY).not.toMatch(/captura/i);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1312,6 +1402,38 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
       "El detector NO cazó insinuación de intención de la fuente inyectada → el guard LINK-EXT sería un no-op",
     ).toEqual(
       expect.arrayContaining(["oculta", "se niega a", "esconde", "censura"]),
+    );
+  });
+
+  it("COBERTURA (122-05): caza editorialización del HUECO inyectada (punta del iceberg / cifra negra / subregistro / en realidad son) sobre lo NUEVO", () => {
+    // Fixture EN MEMORIA que simula el copy de cobertura parcial de 5.12 escrito MAL:
+    // declarar "3,8 %" es un HECHO, pero afirmar que es "la punta del iceberg" o que las
+    // audiencias "en realidad son" más inventa un número NO observado y atribuye
+    // ocultamiento a la fuente. Cero disco: el fixture no toca ningún archivo del repo.
+    const fixtureMutado = `
+      export function CoberturaMala() {
+        return (
+          <p>
+            Solo el 3,8 % cita un boletín: es la punta del iceberg de un subregistro,
+            una cifra negra en la zona oscura del registro. En realidad son muchas más,
+            muy por debajo de lo que la fuente publica.
+          </p>
+        );
+      }
+    `;
+    const hits = detectarInsinuaciones(fixtureMutado);
+    expect(
+      hits,
+      "El detector NO cazó editorialización de cobertura inyectada → el guard COBERTURA sería un no-op",
+    ).toEqual(
+      expect.arrayContaining([
+        "punta del iceberg",
+        "subregistro",
+        "cifra negra",
+        "zona oscura",
+        "en realidad son",
+        "muy por debajo",
+      ]),
     );
   });
 
