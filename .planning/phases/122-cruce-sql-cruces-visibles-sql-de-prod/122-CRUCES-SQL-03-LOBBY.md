@@ -667,3 +667,21 @@ y export a `NEGACIONES_LOCKED` si introduce vocabulario negado).
 **La cobertura declarada ~3,8 % sigue vigente**: 195/5.106 = **3,82 %** sobre **82** boletines
 distintos, observado el **2026-07-29** — idéntica a la cifra de 92-04. Lo que falta no es actualizar
 el número: es **decirlo en la superficie**.
+
+---
+
+> **CERRADAS POR 122-05** (`122-CRUCES-SQL-04-FIXES.md` §1, commits `df6364d` RED → `5c8f1a4` GREEN;
+> Wave-0 del linter en `45cdac4`). **Ambas** filas `discrepancia-corregida` de este fragmento tienen
+> ya su cambio de código con test de respaldo; **cero** filas degradadas:
+>
+> - **5.11** → `LobbyCapa1` recibe el `CarrilEstado` completo y **omite** la línea de conteo salvo
+>   `tipo === "dato"` (`page.tsx:617` + `capa1/lobby-capa1.tsx`). El cero honesto (`dato` n=0) se
+>   conserva. Fix de tipo, cero SQL — tal como este fragmento lo propuso.
+> - **5.12** → `COBERTURA_MENCIONES_LOBBY` en `lobby-menciones-de-boletin.tsx`, tras la leyenda y
+>   **antes** del conteo, en los **tres** caminos de la vista. Cifra **horneada con su fecha**
+>   (adjudicación pendiente de §3.4, resuelta a favor de hornear). Sin entrada en
+>   `NEGACIONES_LOCKED`: el literal no contiene término prohibido ni para negarlo.
+>
+> **El veredicto de ambas filas NO cambia** (`discrepancia-corregida` es su valor definitivo; el
+> número erróneo queda registrado arriba, no se borra). **LÍMITE A sigue vigente:** el fix no está
+> desplegado — `S1338` seguirá mostrando `0 reuniones` en PROD hasta la **Phase 125**.
