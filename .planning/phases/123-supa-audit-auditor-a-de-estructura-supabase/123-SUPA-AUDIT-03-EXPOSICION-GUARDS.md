@@ -455,15 +455,166 @@ El comando del plan (`pnpm --filter ./app test -- lockdown-guard`) **no es el qu
 Resolviendo contra `package.json` de la raíz y de `app/` (RULE-1, ver `123-04-SUMMARY.md`), el
 comando REAL es `pnpm exec vitest run <archivo>` con `cwd = app/`. Transcrito tal cual se ejecutó:
 
-<!-- CORRIDA-GUARDS -->
+```bash
+# cwd = app/   (app/package.json → "test": "vitest run"; la raíz delega con
+#               "test": "pnpm -r --filter \"./packages/*\" test && pnpm --filter ./app test")
+pnpm exec vitest run \
+  lib/lockdown-guard.test.ts lib/anti-insinuacion-guard.test.ts \
+  lib/money-antiflip-guard.test.ts lib/vsim-antiflip-guard.test.ts \
+  lib/notif-antiflip-guard.test.ts lib/name-match-rut-guard.test.ts \
+  lib/env-example-guard.test.ts lib/bento-guards.test.ts \
+  lib/bento-coherencia-guard.test.ts
+```
+
+Salida real:
+
+```
+ RUN  v3.2.6 C:/Users/Carlo/OneDrive - pjud.cl/Documentos/GitHub/Observatorio/app
+
+ ✓ lib/bento-coherencia-guard.test.ts (8 tests) 9ms
+ ✓ lib/env-example-guard.test.ts (16 tests) 11ms
+ ✓ lib/name-match-rut-guard.test.ts (15 tests) 46ms
+ ✓ lib/bento-guards.test.ts (114 tests) 64ms
+ ✓ lib/notif-antiflip-guard.test.ts (20 tests) 114ms
+ ✓ lib/vsim-antiflip-guard.test.ts (20 tests) 105ms
+ ✓ lib/money-antiflip-guard.test.ts (20 tests) 108ms
+ ✓ lib/lockdown-guard.test.ts (22 tests) 190ms
+ ✓ lib/anti-insinuacion-guard.test.ts (42 tests) 87ms
+
+ Test Files  9 passed (9)
+      Tests  277 passed (277)
+   Duration  3.64s
+```
+
+Los guards de `packages/` que `ci.yml` corre en jobs separados (`provider-guard`,
+`integ-scope-guard`, `tiered-scope-guard`, golden de clasificación):
+
+```bash
+pnpm --filter @obs/llm exec vitest run
+pnpm --filter @obs/cruces exec vitest run
+```
+
+```
+# @obs/llm
+ Test Files  17 passed | 1 skipped (18)
+      Tests  158 passed | 3 skipped (161)
+
+# @obs/cruces
+ Test Files  7 passed | 1 skipped (8)
+      Tests  42 passed | 3 skipped (45)
+```
+
+**Conteo de aserciones por suite (verde todas):**
+
+| suite | archivo | tests | resultado |
+|---|---|---|---|
+| lockdown (Block A, B, D, E, Direction-B, Direction-A3) | `app/lib/lockdown-guard.test.ts` | **22** | ✅ verde (coincide con el baseline 22/22 del fragmento 01) |
+| anti-insinuación | `app/lib/anti-insinuacion-guard.test.ts` | **42** | ✅ verde |
+| anti-flip MONEY | `app/lib/money-antiflip-guard.test.ts` | **20** | ✅ verde |
+| anti-flip VSIM | `app/lib/vsim-antiflip-guard.test.ts` | **20** | ✅ verde |
+| anti-flip NOTIF | `app/lib/notif-antiflip-guard.test.ts` | **20** | ✅ verde |
+| name-match-rut | `app/lib/name-match-rut-guard.test.ts` | **15** | ✅ verde |
+| env-example | `app/lib/env-example-guard.test.ts` | **16** | ✅ verde |
+| bento | `app/lib/bento-guards.test.ts` | **114** | ✅ verde |
+| bento-coherencia | `app/lib/bento-coherencia-guard.test.ts` | **8** | ✅ verde |
+| provider-guard + integ/tiered-scope-guard | `packages/llm` (`@obs/llm`) | **158** (+3 skip LIVE-gated) | ✅ verde |
+| golden clasificación + wiring | `packages/cruces` (`@obs/cruces`) | **42** (+3 skip LIVE-gated) | ✅ verde |
+| **TOTAL** | | **477** (+6 skip) | **0 rojos** |
+
+**Los 3+3 `skipped` son LIVE-gated por diseño** (`CRUCES_GOLDEN_LIVE` y equivalentes ausentes) y
+`ci.yml:55-58` lo declara explícitamente: los guards corren **OFFLINE, sin secrets**, con
+`MockClasificadorProvider`. No son fallos ocultos; se registran para que 123-06 no los lea como
+cobertura.
 
 ### Paso 3 — Escáner de secretos (read-only)
 
-<!-- ESCANER -->
+```bash
+bash "$HOME/.claude/skills/supabase-ops/scripts/security_scan.sh" . .supabase-ops.yaml
+bash "$HOME/.claude/skills/supabase-ops/scripts/check_drift.sh"  . .supabase-ops.yaml
+```
+
+#### `security_scan.sh` — salida **saneada** (`archivo:línea` + clase, **jamás el valor**)
+
+Veredicto crudo del escáner: `RESULTADO: findings HIGH — bloquea el Gate 2 hasta resolver.`
+**53 líneas de hallazgo.** Clasificadas una por una:
+
+| # hallazgos | ubicación | clase del hallazgo | ¿real? |
+|---|---|---|---|
+| **51** | `./.pnpm-store/v11/files/**` (caché de contenido de pnpm) | heurística **prefijo-JWT** disparada por un comentario `sourceMappingURL=data:application/json;charset=utf-8;base64,…` — un **source map** en base64, cuyo prefijo coincide con el de un JWT porque ambos codifican un objeto JSON que empieza por `{"` | **FALSO POSITIVO** |
+| **1** | `app/lib/env-example-guard.test.ts:208` | heurística **prefijo-JWT** sobre la **fixture negativa del propio guard**: el test `MUERDE: JWT prefix (anon key real)` alimenta una cadena sintética de cabecera JWT **sin payload ni firma** (termina en `.xxx`) para comprobar que el guard la detecta. **El valor no se transcribe aquí**, solo su clase | **FALSO POSITIVO** — y es el guard funcionando |
+| **1** | `pnpm-lock.yaml:4110` | heurística de blob base64 sobre un `integrity: sha512-…` (hash de integridad del registro npm) | **FALSO POSITIVO** |
+| **0** | — | credencial real | — |
+
+**Cero secretos reales.** Controles independientes que lo confirman: `.env` **no está versionado**
+(`git ls-files --error-unmatch .env` → `pathspec did not match`), está en `.gitignore:2`, y
+`.pnpm-store/` está en `.gitignore:9` con **0 archivos versionados** (`git ls-files .pnpm-store` →
+`0`), luego los 51 falsos positivos **ni siquiera están en el repositorio**.
+
+**Ningún valor de credencial se transcribe en este artefacto**, incluidos los falsos positivos: se
+registró `archivo:línea` y la clase. El grep anti-secreto del `<verify>` de este plan —que cubre
+esquemas de conexión Postgres, prefijos de key de Supabase, prefijos JWT, claves AWS y
+`SERVICE_ROLE_KEY`— **sale 0 sobre este archivo**.
+
+> **Desviación RULE-1 registrada.** La primera redacción de esta tabla transcribía el valor literal
+> de la fixture de `env-example-guard.test.ts:208` para explicar el falso positivo, y **el propio
+> `<verify>` del plan la mordió**. Se reescribió a clase-sin-valor. El control funcionó sobre el
+> auditor, que es exactamente el punto de la mitigación T-123-17: *el artefacto de auditoría es
+> también superficie*. Detalle en `123-04-SUMMARY.md`.
+
+**Punto ciego del escáner, declarado (offender del propio método, no del repo):** recorre
+`.pnpm-store/` y `node_modules`, que están gitignorados. **51 de sus 53 hallazgos son ruido de
+directorios que no son el repositorio.** Un `RESULTADO: findings HIGH` con 100 % de falsos positivos
+entrena al operador a ignorar el escáner — que es la peor propiedad posible en un control de
+secretos. Se registra como observación de método para 123-06; **no** se corrige aquí (el script vive
+en la skill, fuera del repo).
+
+**Nota esperada por el plan, confirmada:** el escáner tiene además una heurística de
+`SECURITY DEFINER sin search_path` **por ARCHIVO**, que da falso positivo en migraciones con varias
+funciones. **La verdad del eje 5 es `Q-17` del fragmento 02** — `(0 filas)` sobre 28 secdef reales,
+cero **fuerte** — no el escáner.
+
+#### `check_drift.sh` — salida saneada
+
+Veredicto crudo: `DRIFT detectado.` **714 líneas** sobre 4 patrones del manifiesto. Clasificadas:
+
+| patrón | hallazgos | dónde | clase | ¿real? |
+|---|---|---|---|---|
+| `supabase db push` | 139 | `.planning/**` (roadmaps, planes, summaries) y **26 cabeceras de `supabase/migrations/*.sql`** | **inversión de polaridad**: el grep busca la cadena literal, y el repo la contiene precisamente en la frase **`NUNCA \`supabase db push\``** — es la convención LOCKED de CLAUDE.md escrita en cada cabecera de migración | **FALSO POSITIVO** (la convención se cumple; su enunciado es lo que matchea) |
+| `web_reader` | 392 | `0043_lockdown_web_reader.sql` (94), `supabase/tests/0043_web_reader.test.sql` (50), `0044_revoke_anon.test.sql` (48), `0046_drop_web_reader.sql` (22), `docs/RUNBOOK-lockdown-cutover.md` (24), resto `.planning/**` | **historia congelada**: son las migraciones que **crearon y luego dropearon** el rol, más sus pgTAP. Comprobado contra la DB viva: `select count(*) from pg_roles where rolname='web_reader'` → **`0`** | **FALSO POSITIVO** — el rol no existe |
+| `Vercel\|VERCEL_TOKEN` | 175 | `.pnpm-store/**` (no versionado), `app/README.md:34` (boilerplate de `create-next-app`), `.planning/**` (research de v10.0) | ruido de plantilla e historia. El deploy real es **Cloudflare Workers** (OpenNext) | **FALSO POSITIVO** |
+| `obtenerinfoley` | 8 | `.planning/**` | endpoint BCN obsoleto, citado como **prohibición** (CLAUDE.md: usar `obtxml?opt=7&idNorma=`) | **FALSO POSITIVO** |
+
+**Cero drift real.** Ningún patrón apunta a un **target vivo** (write / retrieval / deploy); todos
+son historia congelada o el enunciado de la propia prohibición — exactamente el caso que el pie del
+script anticipa: *"en historia congelada es esperable; como target VIVO es un bug"*.
 
 ### Paso 4 — Tabla de controles
 
-<!-- CONTROLES -->
+| control | ¿verde? | evidencia |
+|---|---|---|
+| **lockdown Block A** (grants a `anon` en migraciones >0044) | **✅ sí** | `lockdown-guard.test.ts:310`, 22/22 verde. **Corroborado por la DB viva:** `Q-09b` (`aclexplode`, autoritativa) → `(0 filas)`. Guard y catálogo coinciden. |
+| **lockdown Block B** (árbol público sin `PII_TABLES` ni `.rpc` fuera de allowlist) | **✅ sí** | `lockdown-guard.test.ts:718` + `:142` + `:183`, verde. Es el único control real sobre la superficie del sitio (`Q-23`: `service_role.rolbypassrls = t`). |
+| **lockdown Block D** (`to authenticated` ⊆ `USER_OWNED_TABLES`) | **✅ sí** | `lockdown-guard.test.ts:437` + `:162`, verde. **Corroborado:** `Q-08b` → 5 grants, todos a `authenticated`, todos sobre `{suscripcion, consentimiento}`, con policy own-row 1:1 en `Q-04`. |
+| **lockdown Block E** (`notificacion_envio` service_role-only) | **✅ sí** | `lockdown-guard.test.ts:532`, verde. **Corroborado:** `Q-01` da RLS `t` para la tabla y `Q-04` demuestra que no tiene ninguna policy ⇒ deny-by-default. |
+| **Direction-B** (allowlist ⊆ funciones definidas) | **✅ sí** | `lockdown-guard.test.ts:609`, verde. **Corroborado por otra vía:** sentido C del fragmento 02 (`comm -23` allowlist vs `Q-15bis`) → `(0 filas)`: las 29 entradas existen en `pg_proc`. |
+| **Direction-A3** (`crossLinkReader` ⊆ allowlist) | **✅ sí** | `lockdown-guard.test.ts:679` + `:169`, verde. |
+| **anti-insinuación** | **✅ sí** | `app/lib/anti-insinuacion-guard.test.ts`, **42/42**. |
+| **anti-flip MONEY / VSIM / NOTIF** | **✅ sí** | `money-antiflip-guard.test.ts` **20/20**, `vsim-antiflip-guard.test.ts` **20/20**, `notif-antiflip-guard.test.ts` **20/20**. Ningún flag se tocó en esta fase (§0.0). |
+| **name-match-rut** | **✅ sí** | `app/lib/name-match-rut-guard.test.ts`, **15/15**. |
+| **env-example** | **✅ sí** | `app/lib/env-example-guard.test.ts`, **16/16**. Sostiene el `conforme` de "keys y secrets": los 37 nombres de `.env.example` sin un solo valor. |
+| **bento** | **✅ sí** | `bento-guards.test.ts` **114/114** + `bento-coherencia-guard.test.ts` **8/8**. |
+| **integ-scope / tiered-scope** | **✅ sí** | `pnpm --filter @obs/llm exec vitest run` → **158 passed / 3 skipped** (skips LIVE-gated por diseño, `ci.yml:55-58`). |
+| **provider-guard** | **✅ sí** | misma corrida `@obs/llm`; `ci.yml:59` la nombra explícitamente. |
+| **golden clasificación (`@obs/cruces`)** | **✅ sí** | `pnpm --filter @obs/cruces exec vitest run` → **42 passed / 3 skipped**. |
+
+**Cero controles rojos ⇒ ningún offender bloqueante de la fase por esta vía.**
+
+**Lo que esta tabla NO dice, y hay que decirlo.** Los 14 controles están verdes **dentro de su
+alcance**, y su alcance es **el texto del repositorio**. Ninguno de los cinco offenders de este
+fragmento (`OFF-6-01`..`OFF-6-05`) produciría un test rojo: las 1.079 funciones `pgtap` exec-`anon`
+(`Q-24b`), el `USAGE` de `anon` sobre `net` (`Q-22b`), el default ACL de `storage` (`Q-10`) y el de
+`supabase_admin` sobre `public` (`OFF-01`) **no están escritos en ninguna migración**. Verde no
+significa cerrado; significa *sin regresión detectable por el método del guard*.
 
 ---
 
@@ -486,6 +637,94 @@ comando REAL es `pnpm exec vitest run <archivo>` con `cwd = app/`. Transcrito ta
 
 ---
 
+## "0 offenders" demostrados en este fragmento
+
+| afirmación | query / comando que la demuestra | salida | ¿cero fuerte o vacuo? |
+|---|---|---|---|
+| Ningún bucket de Supabase Storage (⇒ ninguno `public`, Splinter 0025) | `Q-20` + `select count(*)` | `(0 filas)` / `0` | **VACUO** — 0 objetos inspeccionados. El crudo vive en R2. |
+| Ninguna policy en el esquema `storage` | `Q-21` | `(0 filas)` | **VACUO** — sin buckets no hay objetos que gobernar |
+| Ningún rol público con `rolsuper` o `rolbypassrls` | `Q-23` | `anon`/`authenticated`/`authenticator` → `f|f` | **FUERTE** — 5 roles inspeccionados |
+| Ningún rol público con `CREATE` sobre `public` | `Q-22b` (`anon=U`, no `anon=UC`) | ACL crudo transcrito | **FUERTE** |
+| Ningún secreto real en el repo | `security_scan.sh` + `git ls-files .env` + `.gitignore` | 53 hallazgos, **53 falsos positivos clasificados uno a uno**; `.env` no versionado | **FUERTE** |
+| Ningún drift real contra el manifiesto | `check_drift.sh` + `select count(*) from pg_roles where rolname='web_reader'` → `0` | 714 hallazgos, **todos historia congelada o el enunciado de la prohibición** | **FUERTE** |
+| Ningún control de CI en rojo | corrida de 14 guards | **477 tests verdes, 0 rojos** (+6 skip LIVE-gated declarados) | **FUERTE** |
+
+**Nota anti-"todo bien" (heredada de `Q-17`/`Q-18` del fragmento 02):** los dos primeros ceros son
+**vacuos** y se dicen así. Un fragmento que reportara "Splinter 0025: 0 offenders" sin decir que hay
+**0 buckets** estaría ocultando que la superficie no está *cerrada*, sino *ausente* — y `OFF-6-04`
+demuestra que el día que exista un bucket nacerá abierto a `anon` si nadie cierra antes el default.
+
+---
+
 ## Qué hereda 123-05 / 123-06
 
-<!-- HERENCIA -->
+### 123-05 (extensión de guards — la única corrección que esta fase autoriza)
+
+`OFF-6-05` es su entrada por parte de este plan, y se suma a `OFF-02` (fragmento 01) y `OFF-4-05`
+(fragmento 02). Los tres son el **mismo** defecto estructural visto desde tres ejes: *el guard mira
+el texto del repo y la superficie se abre por fuera del repo.* Requisitos concretos, en orden de
+decidibilidad estática:
+
+1. **`alter default privileges … grant … to anon|public|authenticated` en migraciones > 0044** →
+   offender (`OFF-02`). Mismo idiom por-`;` de `anonGrantOffenders`, sobre SQL stripeado y en
+   minúscula. Baseline: **verde hoy** — ninguna migración existente usa ese idiom.
+2. **Toda `create function` en `public` debe llevar su `revoke execute … from public`** en la misma
+   migración (`OFF-4-05`). Es el defecto exacto que dejó las 8 funciones de `Q-15` con
+   `=X/postgres`.
+3. **Allowlist de extensiones permitidas en `public`** (aporte de este plan, `OFF-6-05c`): un test
+   que falle si una migración instala una extensión en `public` fuera de `{vector, unaccent}`.
+   Baseline: **verde hoy** contra el repo — `pgtap`, `pg_net`, `vector` y `unaccent` no se instalan
+   desde ninguna migración del proyecto (son bootstrap de plataforma / acto de operador), que es
+   precisamente por qué el guard actual no las ve.
+
+**Límite que 123-05 debe respetar y escribir:** el guard corre en **CI sin acceso a la DB**
+(`ci.yml:48`: *"Sin secrets de DB: los guards son estáticos"*). Por tanto **no puede** verificar el
+ACL vivo: ni el default de `supabase_admin` (`Q-10`), ni el `USAGE TO PUBLIC` (`Q-22b`), ni las 1.209
+funciones de extensión exec-`anon` (`Q-24b`). Esa mitad la cierra la **Phase 124**. Extender el guard
+**no** cierra los offenders existentes; **impide la regresión futura**. Los dos son necesarios y
+ninguno sustituye al otro. Y una comparación ingenua de `grant execute … to anon` contra la allowlist
+**fallaría hoy con 9 falsos positivos** (los grants de `0011`–`0024` revocados después por
+`0044`/`0045`) — hay que plegar grant/revoke en orden de migración o no hacerlo.
+
+Baseline de partida a preservar: **477 tests verdes / 0 rojos**, `lockdown-guard` **22/22**.
+
+### 123-06 (consolidación y veredicto de `supabase-reviewer`)
+
+**Veredicto del eje 6: `offender` — 5 filas + 2 `limite-declarado`.**
+
+| destino | offenders |
+|---|---|
+| `supabase-architect+checkpoint` | `OFF-6-01` (`pgtap` en `public`), `OFF-6-02` (`vector`, `unaccent` en `public`) — **primeras filas de toda la fase con este destino**: los fragmentos 01 y 02 cerraron con cero |
+| `124-aditivo` | `OFF-6-03` (revoke de `net` a roles públicos), `OFF-6-04` (default ACL de `storage`) |
+| `guard` (123-05) | `OFF-6-05` |
+| `deuda-operador` | creación del bucket `crudo-servel` si alguna vez se decide usar Supabase Storage — **jamás acto de agente**, y **solo después** de cerrar `OFF-6-04` |
+
+**Cinco cosas que 123-06 no debe suavizar:**
+
+1. **El hallazgo mayor de la fase puede ser `OFF-6-01`.** Los ejes 1–5 declararon un boundary
+   `anon` esencialmente cerrado (`Q-05`, `Q-09b`, `Q-12`). El eje 6 demuestra —con una **ejecución**,
+   `Q-24c`, no con una inferencia— que `anon` puede correr **1.079 funciones de una extensión de
+   testing** en el esquema que PostgREST expone. La superficie `anon` real de `public` no es 8
+   funciones: es **1.209**. El filtro `deptype='e'` del §0.0 es correcto como regla y **ocultó esto**;
+   §0.6 E existe exactamente para este caso y aquí se invocó.
+2. **`Q-23` convierte el §0.5 en hecho de catálogo:** `service_role.rolbypassrls = t`. Ya no es una
+   afirmación de arquitectura heredada de v4.0; está en `pg_roles`.
+3. **`anon` tiene `statement_timeout = 3s` de rol; `service_role` no tiene ninguno.** Eso **refuerza**
+   `OFF-4-03` (17 RPCs sin timeout) en vez de mitigarlo: la ruta que el sitio usa es precisamente la
+   que no tiene techo.
+4. **Los dos escáneres dieron veredicto crudo ROJO (`findings HIGH`, `DRIFT detectado`) y los 767
+   hallazgos son falsos positivos**, clasificados uno a uno en §Eje 6b paso 3. Un control que grita
+   siempre deja de ser un control; anotar como observación de método, no como offender del repo.
+5. **Los 14 controles verdes no cierran ninguno de los 5 offenders de este fragmento.** Verde
+   significa *sin regresión detectable por el método del guard*, no *cerrado*.
+
+**Splinter reclamados por este fragmento:** **0014** (extensiones en `public`) → **4 hallazgos**,
+`OFF-6-01`/`OFF-6-02`/`OFF-6-03`. **0025** (bucket público que lista) → **0 hallazgos, cero VACUO**
+(`Q-20`: 0 buckets). Los Splinter que exigen los Advisors del dashboard siguen siendo
+`limite-declarado` de la fase (§0.6 B), y el propio escáner lo recuerda en su pie.
+
+**Herencia hacia la Phase 124 (orden que importa):** cerrar `OFF-6-04` (default ACL de `storage`)
+**antes** de que se cree ningún bucket, y cerrar `OFF-02` (default ACL de `supabase_admin` en
+`public`) **antes** de que ningún flujo cree objetos bajo ese rol. Ambos tienen el mismo escape
+declarado: si el `alter default privileges` falla por membresía, se reclasifica a `deuda-operador`
+— **jamás se escala privilegio para aplicarlo**.
