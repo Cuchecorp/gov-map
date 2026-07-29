@@ -1093,23 +1093,36 @@ function missingRevokeFromPublicOffenders(
 /**
  * BASELINE CONGELADA — deuda REAL, visible en CI, NO una exencion muda.
  *
- * `f_unaccent` (0055_busqueda_hibrida.sql) es la unica funcion de `public`
- * invocable por anon via POST /rest/v1/rpc/f_unaccent (Q-15: ACL `=X/postgres`).
- * Es OFF-4-01 / OFF-5-01 de la auditoria, con `destino: 124-aditivo`. Este plan
- * tiene PROHIBIDO tocar `supabase/` — asi que la deuda se congela aqui, a la
- * vista, en vez de silenciarse dentro del detector.
+ * ── VACIA PORQUE LA DEUDA SE PAGO, no porque nunca hubiera habido deuda. ──
  *
- * El assert de abajo compara por IGUALDAD, no por subconjunto, asi que muerde
- * en AMBAS direcciones:
- *   - migracion futura que cree una fn de public sin revoke  => ROJO (regresion)
- *   - Phase 124 anade `revoke execute on function public.f_unaccent(text)
- *     from public`                                            => ROJO tambien,
- *     obligando a BORRAR esta entrada y dejando constancia de que se pago.
- * Una baseline que se limpia sola es una baseline que se olvida.
+ * Historia (no borrar: una baseline vacia sin historia es una baseline que se
+ * olvida, y este comentario ES el registro del pago):
+ *
+ *   La unica entrada fue `"0055_busqueda_hibrida.sql: f_unaccent"`. `f_unaccent`
+ *   era la unica funcion de `public` invocable por anon via
+ *   POST /rest/v1/rpc/f_unaccent (Q-15 de 123-SUPA-AUDIT.md: ACL `=X/postgres`,
+ *   el `EXECUTE TO PUBLIC` que Postgres concede por default y al que nunca se le
+ *   aplico el revoke). Era OFF-4-01 / OFF-5-01, con `destino: 124-aditivo`. La
+ *   Phase 123 tenia PROHIBIDO tocar `supabase/`, asi que la deuda se congelo
+ *   aqui, a la vista, en vez de silenciarse dentro del detector.
+ *
+ *   PAGADA en la Phase 124 (wave 3) por `0076_revoke_execute_public_residual.sql`,
+ *   aplicada a PROD: `revoke execute on function public.f_unaccent(text) from
+ *   public` (+ `from anon, authenticated`, + `set search_path = ''`, + el mismo
+ *   doble-revoke sobre las 7 funciones `RETURNS trigger` de OFF-4-02). Evidencia:
+ *   Q-12 paso de 8/42 a 0/42 exec-anon; pgTAP post-apply 5 ok / 0 not ok.
+ *   Al aparecer ese revoke, el detector dejo de reportar el offender y ESTE
+ *   assert se puso ROJO — obligando a borrar la entrada. Eso fue el diseno.
+ *
+ * El assert de abajo sigue comparando por IGUALDAD, no por subconjunto, asi que
+ * sigue mordiendo en AMBAS direcciones:
+ *   - migracion futura que cree una fn de public sin su revoke => ROJO (regresion)
+ *   - un revoke que cubra una entrada listada aqui             => ROJO tambien,
+ *     obligando a borrarla y a dejar constancia de que se pago.
+ * Vacia es el estado CORRECTO, no el estado por defecto: si algun dia vuelve a
+ * tener entradas, es deuda nueva y debe llevar su propia historia escrita.
  */
-const KNOWN_MISSING_REVOKE_FROM_PUBLIC = [
-  "0055_busqueda_hibrida.sql: f_unaccent",
-];
+const KNOWN_MISSING_REVOKE_FROM_PUBLIC: string[] = [];
 
 describe("(A5) Guard — toda `create function` en public lleva su `revoke execute … from public` (OFF-4-05, Phase 123)", () => {
   const futureMigrations = readFutureMigrations();
