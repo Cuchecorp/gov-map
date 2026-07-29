@@ -76,7 +76,7 @@ Notas de secuencia: el inventario 113 es load-bearing — sin él las fases de l
 - [x] **Phase 121: ESCALERA-DOC — Extensión solo con benchmark** — estado por tarea (extendida/no) con su evidencia; adjudicación INTOCABLE por decisión
  (completed 2026-07-28)
 
-- [ ] **Phase 122: CRUCE-SQL — Cruces visibles × SQL de PROD** — conteos, denominadores honestos y cobertura declarada cuadran; discrepancias corregidas o declaradas
+- [x] **Phase 122: CRUCE-SQL — Cruces visibles × SQL de PROD** — conteos, denominadores honestos y cobertura declarada cuadran; discrepancias corregidas o declaradas (completed 2026-07-29)
 - [ ] **Phase 123: SUPA-AUDIT — Auditoría de estructura Supabase** — schema/RLS/grants/RPCs bounded/allowlist/secdef contra la DB viva, supabase-reviewer como gate
 - [ ] **Phase 124: SUPA-FIX — Migraciones aditivas a PROD** — fixes por `psql --single-transaction` + pgTAP contra schema aplicado + re-audit 0 offenders
 - [ ] **Phase 125: E2E — Pasada final producto-a-producto sobre el deploy real** — BrowserOS por superficie post-deploy; links, fechas y cruces re-verificados; flags no autorizados OFF
@@ -371,7 +371,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 122-06-PLAN.md — (w4) Consolidacion en 122-CRUCES-SQL.md + cobertura x inventario 113 + veredicto de fase
+- [x] 122-06-PLAN.md — (w4) Consolidacion en 122-CRUCES-SQL.md + cobertura x inventario 113 + veredicto de fase
 
 ### Phase 123: SUPA-AUDIT — Auditoría de estructura Supabase
 
@@ -433,7 +433,7 @@ Plans:
 | 119. CRON-FIX | 7/7 | Complete    | 2026-07-28 |
 | 120. ESCALERA-ON | 2/2 | Complete    | 2026-07-28 |
 | 121. ESCALERA-DOC | 1/1 | Complete    | 2026-07-28 |
-| 122. CRUCE-SQL | 5/6 | In Progress|  |
+| 122. CRUCE-SQL | 6/6 | Complete   | 2026-07-29 |
 | 123. SUPA-AUDIT | 0/? | Not started | - |
 | 124. SUPA-FIX | 0/? | Not started | - |
 | 125. E2E | 0/? | Not started | - |

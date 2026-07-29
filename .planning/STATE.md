@@ -4,14 +4,14 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: executing
 stopped_at: Completed 122-05-PLAN.md
-last_updated: "2026-07-29T14:36:11.954Z"
+last_updated: "2026-07-29T15:00:11.189Z"
 last_activity: 2026-07-29
 progress:
   total_phases: 13
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 39
-  completed_plans: 38
-  percent: 69
+  completed_plans: 39
+  percent: 77
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 122
-Plan: 5 of 6 complete — next 122-06 (consolidación)
-Status: In Progress — 122-05 (fixes) cerrado; falta solo la consolidación
+Plan: 6 of 6 complete — next 122-06 (consolidación)
+Status: Ready to execute
 Last activity: 2026-07-29
 
 ### Roadmap v12.0 (Phases 113-125)
@@ -279,6 +279,7 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 119-05: replay de agenda sobre crudos legacy exige --semana explicita; la fecha de corrida no determina la semana del contenido
 - [Phase ?]: Flip CLASIFICACION_ESCALERA=1 tras gates verdes; rollback ON-OFF-ON probado en vivo
 - [Phase ?]: 121-01: INTOCABLE reservado a lo NO candidato a benchmark (solo adjudicacion, SEED-001); extraccion = NO EXTENDIDA porque SI es candidata. EXTENDIDA de clasificacion es CONDICIONAL al drift canary (mismatch invalida el veredicto; rollback = quitar CLASIFICACION_ESCALERA=1 de .env). GOTCHA: bracket-expression con vocal acentuada no casa bajo LC_ALL=C -> falso FAIL; usar 'qu.{1,2} evidencia'.
+- [Phase ?]: 122-06: 6 huecos de cobertura cerrados con SQL+DOM; artefacto final = 82 filas (72 cuadra / 2 corregida / 8 declarada)
 
 ### Pending Todos
 
@@ -340,7 +341,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-29T14:45:00.000Z
+Last session: 2026-07-29T15:00:00.247Z
 Stopped at: Completed 122-05-PLAN.md
 Resume file: None
 

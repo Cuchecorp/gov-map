@@ -26,7 +26,7 @@
 
 ### Cruces
 
-- [ ] **CRUCE-01**: Cada cruce visible en el sitio cuadra contra SQL de PROD (conteos, denominadores, cobertura declarada) — discrepancias corregidas
+- [x] **CRUCE-01**: Cada cruce visible en el sitio cuadra contra SQL de PROD (conteos, denominadores, cobertura declarada) — discrepancias corregidas
 
 ### Supabase
 
@@ -67,7 +67,7 @@ Mapeado por el roadmap v12.0 (Phases 113-125). Coverage 13/13 — cero huérfano
 | CRON-02 | Phase 119 — CRON-FIX robustez de ingesta | Complete |
 | CRON-03 | Phase 120 — ESCALERA-ON flip `CLASIFICACION_ESCALERA=1` | Complete |
 | CRON-04 | Phase 121 — ESCALERA-DOC extensión solo con benchmark | Complete |
-| CRUCE-01 | Phase 122 — CRUCE-SQL cruces visibles × SQL de PROD | Pending |
+| CRUCE-01 | Phase 122 — CRUCE-SQL cruces visibles × SQL de PROD | Complete |
 | SUPA-01 | Phase 123 — SUPA-AUDIT auditoría de estructura Supabase | Pending |
 | SUPA-02 | Phase 124 — SUPA-FIX migraciones aditivas a PROD | Pending |
 | E2E-01 | Phase 125 — E2E pasada final sobre el deploy real | Pending |
