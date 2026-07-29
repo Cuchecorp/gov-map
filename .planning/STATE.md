@@ -4,13 +4,13 @@ milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: verifying
 stopped_at: Completed 122-05-PLAN.md
-last_updated: "2026-07-29T16:58:46.527Z"
+last_updated: "2026-07-29T17:43:14.397Z"
 last_activity: 2026-07-29
 progress:
   total_phases: 13
   completed_phases: 11
-  total_plans: 45
-  completed_plans: 45
+  total_plans: 52
+  completed_plans: 46
   percent: 85
 ---
 
@@ -317,6 +317,7 @@ ode_modules (lock Linux-container, sin secrets — borrar tras reboot).
 - MONEY (Phase 73) gated OFF pendiente de 3 actos de operador exclusivos (deuda F13): (1) cold-read BrowserOS comprensible en gated-preview; (2) sign-off legal 21.719 -> signoff: approved en docs/legal/13-LEGAL-DOSSIER.md; (3) flip MONEY_PUBLIC_ENABLED=true en prod SOLO tras approved. El agente no firma ni flipea.
 - Operador: rotar DB password Supabase (B26) en Dashboard; re-cargar SUPABASE_DB_URL en .env local + revisar *_DB_URL en Cuchecorp/gov-map; confirmar url-vieja-falla + url-nueva-funciona + CI/sitio verdes. Checkpoint BLOCKING plan 75-02 (agente NO rota).
 - 107-03 PENDIENTE operador (checkpoint:human-action, VEREDICTO PENDING-EVIDENCE): agregar 3 keys de CANDIDATO a .env (NUNCA .env.example) - WORKERS_AI_API_TOKEN + CLOUDFLARE_ACCOUNT_ID (Granite Workers AI) O OPENROUTER_API_KEY (Granite fallback + Phi juez); DEEPSEEK_API_KEY ya presente (incumbente same-run). Correr: LLM_BENCH_LIVE=1 pnpm --filter @obs/llm-bench exec vitest run src/candidatos.live.test.ts. Sin provision = pending-evidence (outcome VALIDO). Ver 107-OPERATOR-HANDOFF.md. Resume: corrido con veredicto o diferido.
+- OFF-01 (default ACL supabase_admin en public) NO cerrable desde postgres: SQLSTATE 42501. DEUDA-OPERADOR - ver 124-OFF-01-RESULTADO.md
 
 ### Quick Tasks Completed
 
@@ -345,7 +346,7 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-29T16:58:39.294Z
+Last session: 2026-07-29T17:43:07.979Z
 Stopped at: Completed 122-05-PLAN.md
 Resume file: None
 
