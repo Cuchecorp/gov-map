@@ -25,6 +25,14 @@ import type {
  * declara el 3-estado es el rótulo del carril (`conteoLabel`), su único emisor
  * legítimo. Un `dato` con n=0 SÍ imprime "0 reuniones": cero honesto, jamás se rellena
  * ni se oculta.
+ *
+ * CR-01 (code-review de 122): la MISMA regla gobierna el fallback de "sin materias".
+ * La frase "Aún no hay materias publicadas EN LAS FUENTES CONSULTADAS" es una
+ * afirmación sobre la FUENTE, y sólo es cierta si la fuente se consultó — es decir,
+ * sólo con `tipo === "dato"`. Con `no_ingerido` esa frase era el único contenido de
+ * la capa-1 de `/parlamentario/S1338` y afirmaba una ausencia jamás observada
+ * (riesgo #1: ausencia falsa con atribución de fuente). Ahora el fallback también
+ * está gateado por el discriminante: no consultamos ⇒ no afirmamos.
  */
 
 // Máximo de barras en capa-1 (chunking ≤7 por regla de escaneo).
@@ -80,12 +88,15 @@ export function LobbyCapa1({
             </li>
           ))}
         </ul>
-      ) : (
-        // Degradación honesta: sin materias publicadas, solo el conteo total.
+      ) : estado.tipo === "dato" ? (
+        // Degradación honesta: SÍ se consultó la fuente (hay reuniones ingeridas) y
+        // ninguna trae materia publicada → la ausencia se observó y se puede declarar.
         <p className="text-xs text-muted-foreground">
           Aún no hay materias publicadas en las fuentes consultadas.
         </p>
-      )}
+      ) : null /* CR-01: `vacio`/`no_ingerido`/`pendiente` → no consultamos (o no hay
+                  nada que resumir), así que NO se afirma nada sobre la fuente. El
+                  3-estado lo declara `conteoLabel`, su único emisor legítimo. */}
     </div>
   );
 }

@@ -101,6 +101,40 @@ describe("LobbyCapa1 — resumen preatentivo de lobby (55-02)", () => {
     });
   });
 
+  /**
+   * CR-01 del code-review de 122 — el fix de 5.11 quitó el dígito fabricado y dejó
+   * en pie, para el MISMO estado `no_ingerido`, una afirmación de ausencia atribuida
+   * a la fuente: «Aún no hay materias publicadas EN LAS FUENTES CONSULTADAS.»
+   *
+   * El fallback `top.length === 0` renderizaba incondicionalmente, sin mirar
+   * `estado.tipo`. Con `no_ingerido` (el caso de `/parlamentario/S1338`: 0 audiencias
+   * y 0 filas de marcador) esa frase era el ÚNICO contenido de la capa-1 y afirmaba
+   * un hecho sobre una fuente que NUNCA se consultó — misma clase de defecto (riesgo
+   * #1: ausencia falsa con atribución de fuente) que la fila 5.11 existía para cerrar.
+   *
+   * Regla: la ausencia sólo se declara cuando SÍ se observó. Un estado no-`dato` no
+   * emite prosa de ausencia; el 3-estado lo declara `conteoLabel`, su único emisor.
+   */
+  describe("CR-01 — un estado no-`dato` JAMÁS afirma una ausencia EN LA FUENTE", () => {
+    for (const tipo of ["no_ingerido", "vacio", "pendiente"] as const) {
+      it(`\`${tipo}\`: no atribuye la ausencia a la fuente`, () => {
+        const { container } = render(
+          <LobbyCapa1 topMaterias={[]} estado={{ tipo }} />,
+        );
+        const texto = container.textContent ?? "";
+        expect(texto).not.toMatch(/fuentes consultadas/i);
+        expect(texto).not.toMatch(/a[úu]n no hay/i);
+      });
+    }
+
+    it("`dato` sin materias SÍ declara la ausencia observada (no se oculta)", () => {
+      const { container } = render(
+        <LobbyCapa1 topMaterias={[]} estado={{ tipo: "dato", n: 4 }} />,
+      );
+      expect(container.textContent ?? "").toMatch(/fuentes consultadas/i);
+    });
+  });
+
   it("CERO vocabulario causal/insinuante (negative-match §9.1)", () => {
     const { container } = render(<LobbyCapa1 topMaterias={fixture()} estado={{ tipo: "dato", n: 10 }} />);
     expect(container.textContent ?? "").not.toMatch(PROHIBIDO);
