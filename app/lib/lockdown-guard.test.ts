@@ -139,6 +139,14 @@ function walkSourceFiles(dir: string): string[] {
 // Tablas PII catalogadas en _FACTS-live-prod.md §"PII tables" + la tabla maestra
 // `parlamentario` (rut + datos crudos). Acceso directo via `.from()` prohibido en
 // el arbol publico; permitido SOLO en la superficie admin gateada (ver allowlist).
+//
+// (Phase 123, gate del `supabase-reviewer`) Las cuatro ultimas se anadieron al
+// cerrar el hueco de cobertura que el gate declaro BLOQUEANTE: tienen columnas
+// de clase RUT en el catalogo vivo de `public` y NO estaban en esta lista, asi
+// que un `.from("pii_contraparte_declaracion")` en el arbol publico habria
+// pasado el guard en VERDE exponiendo RUTs (service_role bypassa RLS, Q-23).
+// Ninguna se referencia hoy desde `app/` (verificado). La aserción de
+// completitud (A7) impide que el hueco se reabra.
 const PII_TABLES = [
   "parlamentario",
   "donante",
@@ -150,6 +158,10 @@ const PII_TABLES = [
   "parlamentario_alias",
   "entidad_tercero",
   "revision_entidad",
+  "pii_contraparte_declaracion", // ← Phase 123 (rut_contraparte)
+  "contratista", // ← Phase 123 (rut_proveedor)
+  "contrato", // ← Phase 123 (rut_proveedor)
+  "declaracion_accion_derecho", // ← Phase 123 (rut_juridica)
 ];
 
 // (Block D/E, Phase 103) Tablas de-usuario allowlisted para el rol `authenticated`.
@@ -1329,5 +1341,156 @@ describe("(A6) Guard — ninguna extension nueva se instala en `public` fuera de
         A,
       ),
     ).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (A7) COMPLETITUD de PII_TABLES contra el catalogo de `public` (Phase 123)
+//
+// Exigencia nº1 del gate del subagente `supabase-reviewer` (veredicto
+// "PASS CON RESERVAS", 2026-07-29), su unica reserva BLOQUEANTE:
+//
+//   "La fase demuestra que el guard es la unica capa (Q-23: service_role
+//    .rolbypassrls = t) y luego audita sus puntos ciegos de plataforma, pero
+//    nunca audita la cobertura de su propia lista de PII contra las 57 tablas."
+//
+// Block B es el UNICO control efectivo sobre la superficie del sitio, y su
+// universo es `PII_TABLES`. Una tabla con columna de clase RUT/email fuera de
+// esa lista es una fuga con el guard en verde. Este bloque lo impide.
+//
+// CORPUS CONGELADO, no consultado en runtime: el guard corre en CI SIN acceso
+// a la DB (`ci.yml`: "Sin secrets de DB: los guards son estaticos"). La query
+// que produjo el corpus esta documentada abajo y debe re-ejecutarse cuando el
+// schema cambie; si el corpus queda stale, la deuda es visible aqui y no en
+// un `.from()` silencioso.
+// ---------------------------------------------------------------------------
+
+/**
+ * Clase de columna considerada PII de contacto/identificacion.
+ * Deliberadamente la MISMA que exigio el gate: `(rut|email|telefono|direccion)`.
+ */
+const PII_COLUMN_CLASS = /(rut|email|telefono|direccion)/i;
+
+/**
+ * Corpus CONGELADO de columnas de clase PII en `public`, ancla 2026-07-29
+ * (PostgreSQL 17.6). Producido por esta query read-only contra PROD:
+ *
+ *   select c.relname, a.attname
+ *   from pg_class c
+ *   join pg_namespace n on n.oid = c.relnamespace
+ *   join pg_attribute a on a.attrelid = c.oid
+ *        and a.attnum > 0 and not a.attisdropped
+ *   where n.nspname = 'public' and c.relkind = 'r'
+ *     and a.attname ~* '(rut|email|telefono|direccion)'
+ *     and not exists (select 1 from pg_depend d
+ *                      where d.objid = c.oid and d.deptype = 'e')
+ *   order by 1, 2;
+ *
+ * Salida real (8 filas) — solo NOMBRES de tabla y columna, cero valores.
+ */
+const PUBLIC_PII_COLUMN_CATALOG: ReadonlyArray<{
+  table: string;
+  column: string;
+}> = [
+  { table: "contratista", column: "rut_proveedor" },
+  { table: "contrato", column: "rut_proveedor" },
+  { table: "declaracion_accion_derecho", column: "rut_juridica" },
+  { table: "donante", column: "rut_donante" },
+  { table: "entidad_tercero", column: "rut" },
+  { table: "parlamentario", column: "email" },
+  { table: "parlamentario", column: "rut" },
+  { table: "pii_contraparte_declaracion", column: "rut_contraparte" },
+];
+
+/**
+ * ADJUDICACION EXPLICITA — `declaracion_bien_inmueble :: es_su_domicilio`.
+ *
+ * El gate la listo como quinta candidata "por matchear direccion". Contra el
+ * catalogo vivo NO matchea `PII_COLUMN_CLASS` (contiene "domicilio", no
+ * "direccion") y ademas es un BOOLEANO de la declaracion de patrimonio, no un
+ * dato de contacto: no porta domicilio alguno, solo si el inmueble declarado
+ * es el domicilio del declarante. Se EXCLUYE con razon escrita (RULE-1: manda
+ * la realidad del catalogo), no por inercia ni en silencio. Si alguna vez se
+ * anade una columna con la direccion literal, entrara por el corpus congelado.
+ */
+const PII_ADJUDICACION_EXCLUIDA = "declaracion_bien_inmueble.es_su_domicilio";
+
+/**
+ * Detector puro: tablas del corpus que NO estan cubiertas por `PII_TABLES`.
+ */
+function uncoveredPiiTables(
+  catalog: ReadonlyArray<{ table: string; column: string }>,
+  piiTables: readonly string[],
+): string[] {
+  const covered = new Set(piiTables);
+  const out = new Set<string>();
+  for (const { table, column } of catalog) {
+    if (!covered.has(table)) out.add(`${table} (${column})`);
+  }
+  return [...out].sort();
+}
+
+describe("(A7) Guard — PII_TABLES cubre TODA tabla de `public` con columna de clase PII (gate Phase 123)", () => {
+  it("el corpus congelado es coherente: toda fila matchea PII_COLUMN_CLASS", () => {
+    const malas = PUBLIC_PII_COLUMN_CATALOG.filter(
+      (r) => !PII_COLUMN_CLASS.test(r.column),
+    ).map((r) => `${r.table}.${r.column}`);
+    expect(
+      malas,
+      `Fila del corpus congelado que no pertenece a la clase PII declarada: [${malas.join(", ")}]`,
+    ).toHaveLength(0);
+    // La adjudicacion excluida NO esta en el corpus: se documenta, no se cuela.
+    expect(
+      PUBLIC_PII_COLUMN_CATALOG.some(
+        (r) => `${r.table}.${r.column}` === PII_ADJUDICACION_EXCLUIDA,
+      ),
+    ).toBe(false);
+  });
+
+  it("ninguna tabla del corpus PII queda fuera de PII_TABLES", () => {
+    const offenders = uncoveredPiiTables(
+      PUBLIC_PII_COLUMN_CATALOG,
+      PII_TABLES,
+    );
+    expect(
+      offenders,
+      `Tabla de \`public\` con columna de clase PII que NO esta en PII_TABLES: ` +
+        `[${offenders.join(", ")}]. Block B es la UNICA capa sobre la superficie del ` +
+        `sitio (service_role bypassa RLS, Q-23): fuera de PII_TABLES un \`.from()\` ` +
+        `en el arbol publico pasa el guard en VERDE y expone el dato. ` +
+        `Anadela a PII_TABLES, o justifica por escrito por que su columna no es PII.`,
+    ).toHaveLength(0);
+  });
+
+  it("las cuatro tablas que el gate destapo estan cubiertas", () => {
+    for (const t of [
+      "pii_contraparte_declaracion",
+      "contratista",
+      "contrato",
+      "declaracion_accion_derecho",
+    ]) {
+      expect(PII_TABLES, `${t} debe estar en PII_TABLES`).toContain(t);
+    }
+  });
+
+  it("mutation self-check (A7): el detector MUERDE con una tabla PII ficticia y vuelve a verde al restaurar", () => {
+    // (a) POSITIVO — corpus + una tabla PII ficticia SIN entrada en PII_TABLES.
+    const corpusMutado = [
+      ...PUBLIC_PII_COLUMN_CATALOG,
+      { table: "tabla_probe_ficticia", column: "rut_probe" },
+    ];
+    expect(uncoveredPiiTables(corpusMutado, PII_TABLES)).toEqual([
+      "tabla_probe_ficticia (rut_probe)",
+    ]);
+
+    // (b) RESTAURADO — el corpus real vuelve a 0 offenders.
+    expect(uncoveredPiiTables(PUBLIC_PII_COLUMN_CATALOG, PII_TABLES)).toHaveLength(0);
+
+    // (c) INVERSO — quitar una cobertura existente tambien muerde: la lista no
+    //     puede encogerse en silencio.
+    const sinParlamentario = PII_TABLES.filter((t) => t !== "parlamentario");
+    expect(
+      uncoveredPiiTables(PUBLIC_PII_COLUMN_CATALOG, sinParlamentario),
+    ).toEqual(["parlamentario (email)", "parlamentario (rut)"]);
   });
 });
