@@ -386,7 +386,15 @@ Plans:
   3. Cada offender queda listado con su riesgo y su fix propuesto; "0 offenders" se demuestra con la consulta, no se afirma
   4. Los guards existentes (lockdown Block A-E, Direction-B allowlist) siguen verdes y se EXTIENDEN si el audit encontró un punto ciego
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 123-01-PLAN.md — (w1) Preflight supabase-ops (.supabase-ops.yaml) + fragmento rector de metodo + gotcha schema_migrations demostrado
+- [ ] 123-02-PLAN.md — (w2) Ejes 1-3: schema, RLS (superficie to anon) y grants (cero-grant + ALTER DEFAULT PRIVILEGES) contra la DB viva
+- [ ] 123-03-PLAN.md — (w2) Ejes 4-5: RPCs publicas bounded + PUBLIC_RPC_ALLOWLIST en ambos sentidos + SECURITY DEFINER/search_path
+- [ ] 123-04-PLAN.md — (w2) Eje 6: buckets/keys/secrets/Data API + el guard CI auditado como parte del boundary
+- [ ] 123-05-PLAN.md — (w3) Guard primero: extension estatica del punto ciego (o su ausencia demostrada) + mutation self-check + suite verde
+- [ ] 123-06-PLAN.md — (w4) Gate supabase-reviewer + consolidacion 123-SUPA-AUDIT.md + backlog de estructura para la Phase 124
 
 ### Phase 124: SUPA-FIX — Migraciones aditivas a PROD
 
