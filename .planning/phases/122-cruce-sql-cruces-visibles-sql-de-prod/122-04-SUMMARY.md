@@ -168,7 +168,7 @@ enumeradas en el mensaje. Mismo criterio que 122-01.
 | restricción | cumplimiento |
 |-------------|--------------|
 | psql read-only | 12 queries, **todas `select`**. Cero DDL/DML, cero `supabase db push` |
-| `SUPABASE_DB_URL` | nunca ecoado/expandido/escrito. **Cero `postgres://` / `postgresql://`** en el artefacto |
+| `SUPABASE_DB_URL` | nunca ecoado/expandido/escrito; aparece sólo como **nombre** de variable. **Cero cadenas de conexión** (ambos esquemas de URI de Postgres verificados por grep → 0) en el artefacto |
 | conteos por `-tA`, nunca REST | cumplido (el cap de 1.000 de PostgREST no tocó ningún número) |
 | cero PII | verificado por grep: `contraparte_id` aparece **1 vez, en la frase que lo prohíbe**; `rut`/`rut_proveedor` aparecen sólo como **nombres de columna** dentro de la explicación causal de 0052. Cero valores, cero nombres de contrapartes, cero materias verbatim |
 | cero fuentes gubernamentales | ningún request a leylobby/camara/senado/BCN. Sólo `curl` al Worker propio (4 páginas) |
