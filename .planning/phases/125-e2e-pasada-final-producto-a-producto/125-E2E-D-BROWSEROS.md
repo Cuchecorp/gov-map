@@ -496,7 +496,16 @@ condición de huérfano predice.
 | island de filtros de `/buscar` con sus interactivos | ✓ §1.2-A5 (4 grupos de facetas, 16 botones, searchbox) — por enumeración DOM, ver M-3 |
 | cero superficies con veredicto vacío | ✓ 18/18 con veredicto |
 
-**Veredictos:** 17 `ok` + **1 `hallazgo` (H-01, `/comparar`, transitorio, escalado)**.
+**Veredictos — los dos denominadores, para que no se confundan:**
+
+| denominador | conteo |
+|---|---|
+| por **fila de la Tabla D** (18, el denominador de cobertura del SC2) | **17 `ok` + 1 `hallazgo`** (la fila 7, `/comparar`) |
+| por **URL recorrida** (21; 3 filas se instanciaron con 2 sujetos) | **20 `ok` + 1 `hallazgo`** |
+
+Las filas con dos URLs son la 1 (`D1165`+`S1338`), la 2 (`14309-04`+`17870-05`) y la 9
+(`red` con semilla poblada + semilla vacía). El `hallazgo` es **un incidente observado**, no el estado
+actual de la ruta: el estado canónico de `/comparar` tras el re-test es `ok` (§1.6).
 
 ---
 
