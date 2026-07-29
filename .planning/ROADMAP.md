@@ -77,7 +77,7 @@ Notas de secuencia: el inventario 113 es load-bearing — sin él las fases de l
  (completed 2026-07-28)
 
 - [x] **Phase 122: CRUCE-SQL — Cruces visibles × SQL de PROD** — conteos, denominadores honestos y cobertura declarada cuadran; discrepancias corregidas o declaradas (completed 2026-07-29)
-- [ ] **Phase 123: SUPA-AUDIT — Auditoría de estructura Supabase** — schema/RLS/grants/RPCs bounded/allowlist/secdef contra la DB viva, supabase-reviewer como gate
+- [x] **Phase 123: SUPA-AUDIT — Auditoría de estructura Supabase** — schema/RLS/grants/RPCs bounded/allowlist/secdef contra la DB viva, supabase-reviewer como gate (completed 2026-07-29)
 - [ ] **Phase 124: SUPA-FIX — Migraciones aditivas a PROD** — fixes por `psql --single-transaction` + pgTAP contra schema aplicado + re-audit 0 offenders
 - [ ] **Phase 125: E2E — Pasada final producto-a-producto sobre el deploy real** — BrowserOS por superficie post-deploy; links, fechas y cruces re-verificados; flags no autorizados OFF
 
@@ -395,7 +395,7 @@ Plans:
 - [x] 123-03-PLAN.md — (w2) Ejes 4-5: RPCs publicas bounded + PUBLIC_RPC_ALLOWLIST en ambos sentidos + SECURITY DEFINER/search_path
 - [x] 123-04-PLAN.md — (w3) Eje 6: buckets/keys/secrets/Data API + el guard CI auditado como parte del boundary
 - [x] 123-05-PLAN.md — (w4) Guard primero: extension estatica del punto ciego (o su ausencia demostrada) + mutation self-check + suite verde
-- [ ] 123-06-PLAN.md — (w5) Gate supabase-reviewer + consolidacion 123-SUPA-AUDIT.md + backlog de estructura para la Phase 124
+- [x] 123-06-PLAN.md — (w5) Gate supabase-reviewer + consolidacion 123-SUPA-AUDIT.md + backlog de estructura para la Phase 124
 
 ### Phase 124: SUPA-FIX — Migraciones aditivas a PROD
 
@@ -443,7 +443,7 @@ Plans:
 | 120. ESCALERA-ON | 2/2 | Complete    | 2026-07-28 |
 | 121. ESCALERA-DOC | 1/1 | Complete    | 2026-07-28 |
 | 122. CRUCE-SQL | 6/6 | Complete   | 2026-07-29 |
-| 123. SUPA-AUDIT | 5/6 | In Progress|  |
+| 123. SUPA-AUDIT | 6/6 | Complete   | 2026-07-29 |
 | 124. SUPA-FIX | 0/? | Not started | - |
 | 125. E2E | 0/? | Not started | - |
 
