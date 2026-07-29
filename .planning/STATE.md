@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: verifying
-stopped_at: Completado 125-06-PLAN.md (gate humano CERRADO — APROBADO)
-last_updated: "2026-07-29T23:04:41.519Z"
+stopped_at: Completed 125-07-PLAN.md · fase 125 lista para verificación
+last_updated: "2026-07-29T23:35:45.405Z"
 last_activity: 2026-07-29
 progress:
   total_phases: 13
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 59
-  completed_plans: 58
-  percent: 92
+  completed_plans: 59
+  percent: 100
 ---
 
 # Project State
@@ -159,6 +159,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 123 P06 | 1 sesion | 4 tasks | 3 files |
 | Phase 124 P07 | 45m | 3 tasks | 3 files |
 | Phase 125 P01 | 50m | 3 tasks | 1 files |
+| Phase 125 P07 | 50m | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -293,6 +294,9 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 125-01: sobre el HTML del Worker usar 'grep -o | wc -l' (es una sola linea, grep -c miente); 'Actualizado hace' es control INERTE, el discriminante real es 'Actualizado' 318->0
 - [Phase ?]: 125-06: 4.9-A1 declarado NO OBSERVADO en el DOM; no se fabrica la revelacion de Suspense via $RC
 - [Phase ?]: 125-06: los fragmentos verbatim del DOM se leen de document.body.textContent (innerText y get_page_content son ciegos al contenido de Suspense)
+- [Phase ?]: 125-07: cobertura E2E declarada por lista con dos denominadores (19 filas Tabla D / 60 emisores); denominador recorrido = 18 porque /admin es EXCLUIDA
+- [Phase ?]: 125-07: quinto valor de veredicto de emisor declarado por RULE-1 en vez de inflar la cobertura (45/60 verificados, no 49/60)
+- [Phase ?]: 125-07: las 8 discrepancia-declarada de 122 SIGUEN DECLARADAS; el gate humano aprobado era de COPY y no convierte H-01 ni 4.9-A1
 
 ### Pending Todos
 
@@ -359,8 +363,8 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-29T23:04:27.283Z
-Stopped at: Completado 125-06-PLAN.md (gate humano CERRADO — APROBADO)
+Last session: 2026-07-29T23:35:45.386Z
+Stopped at: Completed 125-07-PLAN.md · fase 125 lista para verificación
 Resume file: None
 
 ## Operator Next Steps

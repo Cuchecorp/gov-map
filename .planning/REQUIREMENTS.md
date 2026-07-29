@@ -35,7 +35,7 @@
 
 ### Cierre
 
-- [ ] **E2E-01**: Pasada final producto-a-producto sobre el deploy real (BrowserOS) confirmando que todo lo validado sigue verde post-fixes
+- [x] **E2E-01**: Pasada final producto-a-producto sobre el deploy real (BrowserOS) confirmando que todo lo validado sigue verde post-fixes
 
 ## Future Requirements
 
@@ -70,7 +70,7 @@ Mapeado por el roadmap v12.0 (Phases 113-125). Coverage 13/13 — cero huérfano
 | CRUCE-01 | Phase 122 — CRUCE-SQL cruces visibles × SQL de PROD | Complete |
 | SUPA-01 | Phase 123 — SUPA-AUDIT auditoría de estructura Supabase | Complete |
 | SUPA-02 | Phase 124 — SUPA-FIX migraciones aditivas a PROD | Complete |
-| E2E-01 | Phase 125 — E2E pasada final sobre el deploy real | Pending |
+| E2E-01 | Phase 125 — E2E pasada final sobre el deploy real | Complete |
 
 ---
 *Requirements defined: 2026-07-27*

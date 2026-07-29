@@ -79,7 +79,7 @@ Notas de secuencia: el inventario 113 es load-bearing — sin él las fases de l
 - [x] **Phase 122: CRUCE-SQL — Cruces visibles × SQL de PROD** — conteos, denominadores honestos y cobertura declarada cuadran; discrepancias corregidas o declaradas (completed 2026-07-29)
 - [x] **Phase 123: SUPA-AUDIT — Auditoría de estructura Supabase** — schema/RLS/grants/RPCs bounded/allowlist/secdef contra la DB viva, supabase-reviewer como gate (completed 2026-07-29)
 - [x] **Phase 124: SUPA-FIX — Migraciones aditivas a PROD** — fixes por `psql --single-transaction` + pgTAP contra schema aplicado + re-audit 0 offenders (completed 2026-07-29)
-- [ ] **Phase 125: E2E — Pasada final producto-a-producto sobre el deploy real** — BrowserOS por superficie post-deploy; links, fechas y cruces re-verificados; flags no autorizados OFF
+- [x] **Phase 125: E2E — Pasada final producto-a-producto sobre el deploy real** — BrowserOS por superficie post-deploy; links, fechas y cruces re-verificados; flags no autorizados OFF (completed 2026-07-29)
 
 ## Phase Details
 
@@ -457,7 +457,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 125-07-PLAN.md — (w4) Consolidación 125-E2E.md (cobertura 19 rutas × 60 emisores) + handoff humano + gate de cierre
+- [x] 125-07-PLAN.md — (w4) Consolidación 125-E2E.md (cobertura 19 rutas × 60 emisores) + handoff humano + gate de cierre
 
 ## Progress
 
@@ -475,7 +475,7 @@ Plans:
 | 122. CRUCE-SQL | 6/6 | Complete   | 2026-07-29 |
 | 123. SUPA-AUDIT | 6/6 | Complete   | 2026-07-29 |
 | 124. SUPA-FIX | 7/7 | Complete   | 2026-07-29 |
-| 125. E2E | 6/7 | In Progress|  |
+| 125. E2E | 7/7 | Complete   | 2026-07-29 |
 
 ### Requirement coverage map (v12.0)
 
