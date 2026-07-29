@@ -389,7 +389,8 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 123-01-PLAN.md — (w1) Preflight supabase-ops (.supabase-ops.yaml) + fragmento rector de metodo + gotcha schema_migrations demostrado
+
+- [x] 123-01-PLAN.md — (w1) Preflight supabase-ops (.supabase-ops.yaml) + fragmento rector de metodo + gotcha schema_migrations demostrado
 - [ ] 123-02-PLAN.md — (w2) Ejes 1-3: schema, RLS (superficie to anon) y grants (cero-grant + ALTER DEFAULT PRIVILEGES) contra la DB viva
 - [ ] 123-03-PLAN.md — (w2) Ejes 4-5: RPCs publicas bounded + PUBLIC_RPC_ALLOWLIST en ambos sentidos + SECURITY DEFINER/search_path
 - [ ] 123-04-PLAN.md — (w3) Eje 6: buckets/keys/secrets/Data API + el guard CI auditado como parte del boundary
@@ -442,7 +443,7 @@ Plans:
 | 120. ESCALERA-ON | 2/2 | Complete    | 2026-07-28 |
 | 121. ESCALERA-DOC | 1/1 | Complete    | 2026-07-28 |
 | 122. CRUCE-SQL | 6/6 | Complete   | 2026-07-29 |
-| 123. SUPA-AUDIT | 0/? | Not started | - |
+| 123. SUPA-AUDIT | 1/6 | In Progress|  |
 | 124. SUPA-FIX | 0/? | Not started | - |
 | 125. E2E | 0/? | Not started | - |
 
