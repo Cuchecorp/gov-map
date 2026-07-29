@@ -410,7 +410,16 @@ Plans:
   3. pgTAP corre contra el schema APLICADO y pasa, cubriendo específicamente el defecto que la migración arregla
   4. La re-corrida del audit de 123 sobre la DB viva da 0 offenders en lo corregido
 
-**Plans**: TBD
+**Plans:** 7 plans (7 waves — la fase es estrictamente secuencial: cada plan aplica a PROD y el orden LOCKED del gate de 123 es load-bearing)
+
+Plans:
+- [ ] 124-01-PLAN.md — OFF-01: default ACL de `supabase_admin` en `public` (paso 1 LOCKED) + rama deuda-operador
+- [ ] 124-02-PLAN.md — OFF-6-04 (default ACL `storage`) + OFF-6-03 (revoke de `net`, 12 fn) — pasos 2 y 3 LOCKED
+- [ ] 124-03-PLAN.md — OFF-4-01/OFF-4-02/OFF-5-01: revoke de las 8 exec-`anon` + `search_path` de `f_unaccent` + pago de la baseline del guard
+- [ ] 124-04-PLAN.md — OFF-4-03/OFF-4-04 (configuracion): `statement_timeout` a las 18
+- [ ] 124-05-PLAN.md — OFF-4-03/OFF-4-04 (cuerpo): cotas duras de parametro + fan-out de `subgrafo_red`
+- [ ] 124-06-PLAN.md — OFF-4-03 (cuerpo): `LIMIT` explicito en las 12, con cardinalidad medida
+- [ ] 124-07-PLAN.md — Re-audit verbatim (0 offenders) + veredicto de los 13 + handoff de B-01/B-02/B-03
 
 ### Phase 125: E2E — Pasada final producto-a-producto sobre el deploy real
 
