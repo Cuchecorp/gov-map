@@ -1,0 +1,11 @@
+# probar-links-externos.mjs — modo robots
+# fecha: 2026-07-29T21:41:20.335Z
+# USER_AGENT = "ObservatorioCongreso360/1.0 (+https://observatorio-congreso.thevalis.workers.dev; contacto: https://github.com/Cuchecorp/gov-map/issues)"
+# DELAY_MS = 2500
+# registros: 6
+ROBOTS-opendata.camara.cl 200  OK              opendata.camara.cl       https://opendata.camara.cl/robots.txt
+ROBOTS-tramitacion.senado.cl 206  REDIR-GENERICA  tramitacion.senado.cl    https://tramitacion.senado.cl/robots.txt
+ROBOTS-www.senado.cl 206  OK              www.senado.cl            https://www.senado.cl/robots.txt
+ROBOTS-web-back.senado.cl 206  OK              web-back.senado.cl       https://web-back.senado.cl/robots.txt
+ROBOTS-www.leylobby.gob.cl 403  WAF-403         www.leylobby.gob.cl      https://www.leylobby.gob.cl/robots.txt
+ROBOTS-datos.cplt.cl 403  WAF-403         datos.cplt.cl            https://datos.cplt.cl/robots.txt

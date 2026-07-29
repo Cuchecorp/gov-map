@@ -1,0 +1,24 @@
+# probar-links-externos.mjs — modo muestra
+# fecha: 2026-07-29T21:42:57.861Z
+# USER_AGENT = "ObservatorioCongreso360/1.0 (+https://observatorio-congreso.thevalis.workers.dev; contacto: https://github.com/Cuchecorp/gov-map/issues)"
+# DELAY_MS = 2500
+# registros: 19
+P-03-c02   500  NO-DISPONIBLE   opendata.camara.cl       https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin
+P-15-c01   200  XML-CRUDO       opendata.camara.cl       https://opendata.camara.cl/camaradiputados/WServices/WSDiputado.asmx/retornarDiputadosPeriodoActual
+P-18-c01   500  NO-DISPONIBLE   opendata.camara.cl       https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin
+P-23-c01   500  NO-DISPONIBLE   opendata.camara.cl       https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin
+P-25-c01   500  NO-DISPONIBLE   opendata.camara.cl       https://opendata.camara.cl/wscamaradiputados.asmx/getVotaciones_Boletin
+P-01-c01   206  OK              tramitacion.senado.cl    https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=10986-24
+P-03-c01   206  OK              tramitacion.senado.cl    https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=14309-04
+P-16-c01   206  XML-CRUDO       tramitacion.senado.cl    https://tramitacion.senado.cl/wspublico/senadores_vigentes.php
+P-17-c01   206  OK              tramitacion.senado.cl    https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=9301-14
+P-19-c01   206  OK              tramitacion.senado.cl    https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=10986-24
+P-24-c01   206  XML-CRUDO       tramitacion.senado.cl    https://tramitacion.senado.cl/wspublico/votaciones.php
+P-26-c01   206  OK              tramitacion.senado.cl    https://tramitacion.senado.cl/appsenado/templates/tramitacion/index.php?boletin_ini=18384-08
+P-27-c01   206  XML-CRUDO       tramitacion.senado.cl    https://tramitacion.senado.cl/wspublico/tramitacion.php
+P-22-c01   520  NO-DISPONIBLE   www.senado.cl            http://www.senado.cl/appsenado/index.php?mo=tramitacion&ac=getDocto&iddocto=11240&tipodoc=ofic
+P-07-c01   200  OK              web-back.senado.cl       https://web-back.senado.cl/api/commissions_citations?limit=100
+P-20-c01   200  OK              web-back.senado.cl       https://web-back.senado.cl/api/weekly_table?limit=100
+P-13-c01   200  OK              www.leylobby.gob.cl      https://www.leylobby.gob.cl/instituciones/AA001/audiencias/2024/663021
+P-14-c01   200  OK              www.leylobby.gob.cl      https://www.leylobby.gob.cl/instituciones/AA001/audiencias/2024/663021/728817
+P-11-c01   400  NO-DISPONIBLE   datos.cplt.cl            https://datos.cplt.cl/sparql?query=alessandri%20vergara
