@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
 status: verifying
-stopped_at: Completed 122-05-PLAN.md
-last_updated: "2026-07-29T21:34:01.060Z"
+stopped_at: Completado 125-06-PLAN.md (gate humano ABIERTO)
+last_updated: "2026-07-29T23:04:41.519Z"
 last_activity: 2026-07-29
 progress:
   total_phases: 13
   completed_phases: 12
   total_plans: 59
-  completed_plans: 53
-  percent: 90
+  completed_plans: 58
+  percent: 92
 ---
 
 # Project State
@@ -291,6 +291,8 @@ Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 - [Phase ?]: 124-07 precedente LOCKED: los numeros de un audit son hipotesis a verificar contra PROD, no hechos (4 transcripciones falladas en 124)
 - [Phase ?]: 125-01: deploy v12.0 = 0ea5d97f-a172-436e-aad0-add95940ee0e; los 3 fixes (114/117/122) probados por DOM, no por disponibilidad
 - [Phase ?]: 125-01: sobre el HTML del Worker usar 'grep -o | wc -l' (es una sola linea, grep -c miente); 'Actualizado hace' es control INERTE, el discriminante real es 'Actualizado' 318->0
+- [Phase ?]: 125-06: 4.9-A1 declarado NO OBSERVADO en el DOM; no se fabrica la revelacion de Suspense via $RC
+- [Phase ?]: 125-06: los fragmentos verbatim del DOM se leen de document.body.textContent (innerText y get_page_content son ciegos al contenido de Suspense)
 
 ### Pending Todos
 
@@ -326,6 +328,9 @@ ode_modules (lock Linux-container, sin secrets — borrar tras reboot).
 - 107-03 PENDIENTE operador (checkpoint:human-action, VEREDICTO PENDING-EVIDENCE): agregar 3 keys de CANDIDATO a .env (NUNCA .env.example) - WORKERS_AI_API_TOKEN + CLOUDFLARE_ACCOUNT_ID (Granite Workers AI) O OPENROUTER_API_KEY (Granite fallback + Phi juez); DEEPSEEK_API_KEY ya presente (incumbente same-run). Correr: LLM_BENCH_LIVE=1 pnpm --filter @obs/llm-bench exec vitest run src/candidatos.live.test.ts. Sin provision = pending-evidence (outcome VALIDO). Ver 107-OPERATOR-HANDOFF.md. Resume: corrido con veredicto o diferido.
 - OFF-01 (default ACL supabase_admin en public) NO cerrable desde postgres: SQLSTATE 42501. DEUDA-OPERADOR - ver 124-OFF-01-RESULTADO.md
 - DEUDA OPERADOR: OFF-01 + OFF-6-03 en UN ticket a soporte Supabase (7 sentencias como supabase_admin, zero-credential-value). Cadena SSRF de net ABIERTA; OP-1 y OP-4 urgencia ELEVADA. Ver 124-SUPA-FIX.md
+- 125-06 H-01: error transitorio hidratado en /comparar (No pudimos cargar la portada), no reproducible, solo visible tras hidratacion — escalado
+- 125-06: gate humano ABIERTO (juicio de copy sobre 2 capturas) — sin respuesta del operador; va a 125-HANDOFF-HUMANO.md (Plan 07)
+- 125-06: 4.9-A1 (href /red?seed= de red-graph.tsx:210) NO OBSERVADO en el DOM; requiere verificacion manual
 
 ### Quick Tasks Completed
 
@@ -354,8 +359,8 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-29T21:33:45.376Z
-Stopped at: Completed 122-05-PLAN.md
+Last session: 2026-07-29T23:04:27.283Z
+Stopped at: Completado 125-06-PLAN.md (gate humano ABIERTO)
 Resume file: None
 
 ## Operator Next Steps

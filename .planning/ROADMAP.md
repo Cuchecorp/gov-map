@@ -446,14 +446,14 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 125-02-PLAN.md — (w2) E2E-A: fichas densas (D1165/S1338/14309-04/17870-05) + cierre de los 2 ítems post-deploy de 122
-- [ ] 125-03-PLAN.md — (w2) E2E-B: chrome + / + /parlamentarios + /agenda + /buscar + /comparar + /red + estáticas + 4 not-found
-- [ ] 125-04-PLAN.md — (w2) E2E-C: MONEY y NOTIF OFF y ausentes del DOM + tabla de los 5 gates + guards sobre el deploy
-- [ ] 125-05-PLAN.md — (w2) RE-VERIFICACIÓN: links internos (runner 114) + muestra externa con rate-limit (runner 115) + fechas sobre el DOM
+- [x] 125-02-PLAN.md — (w2) E2E-A: fichas densas (D1165/S1338/14309-04/17870-05) + cierre de los 2 ítems post-deploy de 122
+- [x] 125-03-PLAN.md — (w2) E2E-B: chrome + / + /parlamentarios + /agenda + /buscar + /comparar + /red + estáticas + 4 not-found
+- [x] 125-04-PLAN.md — (w2) E2E-C: MONEY y NOTIF OFF y ausentes del DOM + tabla de los 5 gates + guards sobre el deploy
+- [x] 125-05-PLAN.md — (w2) RE-VERIFICACIÓN: links internos (runner 114) + muestra externa con rate-limit (runner 115) + fechas sobre el DOM
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 125-06-PLAN.md — (w3) E2E-D: pasada BrowserOS de las superficies hidratación-dependientes + gate humano de copy
+- [x] 125-06-PLAN.md — (w3) E2E-D: pasada BrowserOS de las superficies hidratación-dependientes + gate humano de copy
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -475,7 +475,7 @@ Plans:
 | 122. CRUCE-SQL | 6/6 | Complete   | 2026-07-29 |
 | 123. SUPA-AUDIT | 6/6 | Complete   | 2026-07-29 |
 | 124. SUPA-FIX | 7/7 | Complete   | 2026-07-29 |
-| 125. E2E | 1/7 | In Progress|  |
+| 125. E2E | 6/7 | In Progress|  |
 
 ### Requirement coverage map (v12.0)
 
