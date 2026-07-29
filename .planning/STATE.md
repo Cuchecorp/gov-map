@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
-status: verifying
-stopped_at: Completed 115-01-PLAN.md
-last_updated: "2026-07-28T21:01:58.015Z"
-last_activity: 2026-07-28
+status: executing
+stopped_at: Completed 122-05-PLAN.md
+last_updated: "2026-07-29T14:36:11.954Z"
+last_activity: 2026-07-29
 progress:
   total_phases: 13
   completed_phases: 9
-  total_plans: 33
-  completed_plans: 33
+  total_plans: 39
+  completed_plans: 38
   percent: 69
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 122
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-28
+Plan: 5 of 6 complete — next 122-06 (consolidación)
+Status: In Progress — 122-05 (fixes) cerrado; falta solo la consolidación
+Last activity: 2026-07-29
 
 ### Roadmap v12.0 (Phases 113-125)
 
@@ -154,6 +154,7 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 | Phase 119 P05 | 1h | 3 tasks | 13 files |
 | Phase 119 P07 | ~55min | 4 tasks | 3 files |
 | Phase 120 P02 | 5 min | 3 tasks | 2 files |
+| Phase 122 P05 | ~35 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -161,6 +162,11 @@ Roadmap anterior (detalle v7.0/v11.0) archivado en `milestones/PRE-v12.0-ROADMAP
 
 - 114-03: el status HTTP se decide ANTES de abrir cualquier `<Suspense>` — un `notFound()` bajo un boundary de streaming pinta la UI de not-found pero deja el status en 200 (las cabeceras ya salieron). Aplicado a `/proyecto/[boletin]`; patrón a revisar en cualquier ruta con guard de existencia bajo Suspense.
 - 114-03: SC#3 de la Phase 114 cierra como **PASS con limitación declarada** — el fix está en código con evidencia antes/después y test de respaldo, pero su observación contra el deploy real ocurre en la Phase 125 (deploy diferido, decisión LOCKED v12.0). Nunca se declara verificado sobre el deploy lo que no lo está.
+- 122-05: las **2** filas `discrepancia-corregida` de la Phase 122 (5.11 vacío honesto en la capa-1 de lobby, 5.12 cobertura parcial declarada) quedaron cerradas en código con test de respaldo. Identidad aritmética del acceptance: `2 (tabla de fixes) + 0 (Fixes NO aplicados) == 2` — cero filas huérfanas, cero degradadas. Los fragmentos 01 y 02 produjeron **cero** filas corregibles.
+- 122-05: la cifra de cobertura lobby↔PL se **HORNEA con su fecha** (3,8 %, 29 jul 2026) en vez de derivarse en runtime — derivarla exigía una RPC pública nueva = aguja completa (secdef PII-safe, `search_path`, bounded, doble-revoke, `PUBLIC_RPC_ALLOWLIST`), coste desproporcionado para una línea de copy. Re-verificar con `Q-L07` cada milestone y actualizar **cifra y fecha juntas**.
+- 122-05: **declarar una cobertura parcial es un vector de insinuación propio.** Wave-0 añadió `TERMINOS_COBERTURA` (punta del iceberg / subregistro / cifra negra / zona oscura / en realidad son / muy por debajo) al linter ANTES del copy: decir "3,8 %" es un HECHO, pero editorializar el HUECO afirma un número no observado y atribuye ocultamiento a la fuente. Mutation self-check demuestra que el detector muerde.
+- 122-05: un `CarrilEstado` **jamás se colapsa a un `number`** antes de renderizar. `page.tsx` pasaba `total={… ? n : 0}` y la capa-1 imprimía `no_ingerido` como el hecho `0 reuniones` bajo un encabezado que decía `—`. Patrón correcto = omisión honesta por estado (espejo de `cruces-capa1.tsx:28`); el cero honesto (`dato` n=0) se preserva.
+- 122-05: **sin migración `0073`** — ninguna fila exigió SQL. Las que sí (cap `p_limit: 1000` en votos, tile *Por materia* 4-14, dos grafías de cámara 4-15, co-autoría fail-closed 3.3) **nacieron declaradas** por sus fragmentos y su diseño pertenece a la **Phase 124**; escribir una `0073` especulativa dejaría una migración huérfana contra un contrato no adjudicado.
 
 Decisiones en PROJECT.md Key Decisions. Rectoras para v7.0:
 
@@ -334,8 +340,8 @@ Items acknowledged and deferred at v9.0 milestone close on 2026-07-23 (todos pre
 
 ## Session Continuity
 
-Last session: 2026-07-28T20:55:44.086Z
-Stopped at: Completed 115-01-PLAN.md
+Last session: 2026-07-29T14:45:00.000Z
+Stopped at: Completed 122-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
