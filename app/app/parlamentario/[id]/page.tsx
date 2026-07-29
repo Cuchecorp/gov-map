@@ -612,9 +612,16 @@ export async function CarrilesSection({
           titulo="Reuniones de lobby"
           conteo={conteoLabel(conteos.lobby)}
         />
+        {/*
+          122-05 (fila 5.11): se pasa el `CarrilEstado` COMPLETO. Antes esta línea
+          decía `total={conteos.lobby.tipo === "dato" ? conteos.lobby.n : 0}`, que
+          colapsaba `vacio` y `no_ingerido` al literal `0` y hacía que capa-1
+          imprimiera "0 reuniones" bajo un encabezado que decía "—". El 3-estado no
+          se colapsa: lo declara `conteoLabel` arriba, y capa-1 omite el conteo.
+        */}
         <LobbyCapa1
           topMaterias={conteos.lobbyTopMaterias}
-          total={conteos.lobby.tipo === "dato" ? conteos.lobby.n : 0}
+          estado={conteos.lobby}
         />
         {conteos.lobby.tipo === "dato" && (
           <div className="mt-4">

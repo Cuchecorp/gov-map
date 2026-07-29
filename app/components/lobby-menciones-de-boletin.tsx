@@ -94,6 +94,31 @@ export const LEYENDA_MENCIONES_LOBBY = "La materia de estas audiencias menciona 
 // eslint-disable-next-line
 export const EMPTY_MENCIONES_LOBBY = "Ninguna audiencia de lobby registrada menciona el número de este boletín en su materia, según las fuentes consultadas. Esto no describe la actividad de lobby en torno al proyecto; solo cuenta las materias que citan explícitamente este número de boletín.";
 
+// ── Cobertura parcial DECLARADA (122-05, fila 5.12) ────────────────────────────
+// La leyenda y el empty de arriba declaran el CRITERIO (la mención debe ser
+// explícita) pero NUNCA cuantificaban cuán parcial es el canal: un lector de
+// /proyecto/14309-04 veía "1 audiencia registrada menciona este boletín" sin saber
+// que sólo el 3,8 % de las audiencias confirmadas entra siquiera en este canal.
+//
+// CIFRA HORNEADA CON SU FECHA. Recalculada contra PROD con la query verbatim de
+// 92-04 (`Q-L07` de `122-CRUCES-SQL-03-LOBBY.md` §3.1) el 2026-07-29:
+//   195 audiencias con mención válida / 5.106 confirmadas con parlamentario y
+//   materia = 3,82 %, sobre 82 boletines distintos — idéntica a la cifra de 92-04.
+// Se hornea en vez de derivarse en runtime porque derivarla exigiría una RPC
+// pública nueva (aguja completa: secdef PII-safe, `search_path`, bounded,
+// doble-revoke, `PUBLIC_RPC_ALLOWLIST`), coste desproporcionado para una línea de
+// copy. RE-VERIFICAR con `Q-L07` en cada milestone y actualizar cifra Y fecha juntas.
+//
+// RÉGIMEN DEL COPY: idiom aprobado "según fuente al …" ("captura" pelado PROHIBIDO,
+// `fecha_captura` jamás se presenta como el hecho); la cifra viaja SIEMPRE con su
+// fecha; el parcial NUNCA se presenta como total; cero causalidad, cero intención —
+// la línea describe EL CANAL, no a nadie. NO requiere entrada en NEGACIONES_LOCKED:
+// no contiene ningún término prohibido, ni siquiera para negarlo (verificado por el
+// test (1e) COBERTURA-122 del linter, Wave-0, ANTES de que este literal existiera).
+// prettier-ignore — SOLO string literal en una línea (misma razón que las de arriba).
+// eslint-disable-next-line
+export const COBERTURA_MENCIONES_LOBBY = "195 de las 5.106 audiencias registradas con parlamentario identificado citan el número de un boletín en su materia (3,8 %), según fuente al 29 jul 2026. Este recuento cubre solo esa parte del registro.";
+
 // ── Fecha ISO parseable → Date válida, o null (nunca "Invalid Date") ────────────
 function fechaValida(raw: string | null | undefined): Date | null {
   if (!raw) return null;
@@ -185,6 +210,16 @@ export function LobbyMencionesView({ rows }: { rows: LobbyMencionRow[] }) {
     </p>
   );
 
+  // Cobertura parcial DECLARADA (5.12) — va DESPUÉS de la leyenda y ANTES del
+  // conteo, de modo que la parcialidad se lea antes que el número. Presente en los
+  // TRES caminos de la vista (con filas, empty y truncado): en el empty es donde más
+  // se puede leer un "0" como "no hubo lobby".
+  const cobertura = (
+    <p className="text-sm text-muted-foreground mb-4">
+      {COBERTURA_MENCIONES_LOBBY}
+    </p>
+  );
+
   // El h2 vive DENTRO del componente (no en la page) para que el degrade honesto
   // path-1 (Section → null) NO deje un heading huérfano sin banda: nodo ausente.
   const heading = (
@@ -200,6 +235,7 @@ export function LobbyMencionesView({ rows }: { rows: LobbyMencionRow[] }) {
       <>
         {heading}
         {leyenda}
+        {cobertura}
         <p className="text-sm text-muted-foreground">{EMPTY_MENCIONES_LOBBY}</p>
       </>
     );
@@ -231,6 +267,7 @@ export function LobbyMencionesView({ rows }: { rows: LobbyMencionRow[] }) {
     <div className="space-y-6">
       {heading}
       {leyenda}
+      {cobertura}
       {conteo}
       <ul>
         {rows.map((r, idx) => (
