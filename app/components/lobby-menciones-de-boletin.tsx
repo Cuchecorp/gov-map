@@ -123,6 +123,13 @@ export const EMPTY_MENCIONES_LOBBY = "Ninguna audiencia de lobby registrada menc
 // la línea describe EL CANAL, no a nadie. NO requiere entrada en NEGACIONES_LOCKED:
 // no contiene ningún término prohibido, ni siquiera para negarlo (verificado por el
 // test (1e) COBERTURA-122 del linter, Wave-0, ANTES de que este literal existiera).
+// W-03 (code-review de 122): fecha de observación de la cifra, NOMBRADA y en ISO, para
+// que un guard de milestone pueda medir su antigüedad sin parsear el copy. Es la misma
+// fecha que el literal muestra en prosa ("según fuente al 29 jul 2026") — el test ancla
+// esa correspondencia, así que ambas se actualizan JUNTAS o la suite se pone roja. No
+// es la `fecha_captura` de ninguna fila: es cuándo se corrió `Q-L07`.
+export const COBERTURA_OBSERVADA_EL = "2026-07-29";
+
 // prettier-ignore — SOLO string literal en una línea (misma razón que las de arriba).
 // eslint-disable-next-line
 export const COBERTURA_MENCIONES_LOBBY = "195 de las 5.106 audiencias registradas con parlamentario identificado y materia publicada citan el número de un boletín en su materia (3,8 %), según fuente al 29 jul 2026. Este recuento cubre solo esa parte del registro.";

@@ -6,6 +6,7 @@ import {
   LEYENDA_MENCIONES_LOBBY,
   EMPTY_MENCIONES_LOBBY,
   COBERTURA_MENCIONES_LOBBY,
+  COBERTURA_OBSERVADA_EL,
   type LobbyMencionRow,
 } from "./lobby-menciones-de-boletin";
 
@@ -213,14 +214,54 @@ describe("LobbyMencionesView — 5.12: cobertura parcial declarada", () => {
     expect(texto).toContain("Se muestran");
   });
 
-  it("la cifra viaja SIEMPRE con su fecha y con el idiom aprobado, nunca con 'captura' pelada", () => {
+  /**
+   * W-03 del code-review de 122 — este test CONGELABA los dígitos (`toContain("195")`,
+   * `"5.106"`, `"3,8 %"`, `/29 jul 2026/`). Con la cifra horneada, la única defensa
+   * contra que envejezca es re-correr `Q-L07`; un test que exige los números VIEJOS
+   * invierte el incentivo: cuando el operador actualice la cifra, la suite se pone roja
+   * por la razón equivocada y la salida barata es editar el test para que calce.
+   *
+   * Ahora se asserta la FORMA y la COHERENCIA INTERNA —que es la regla real— y los
+   * números concretos quedan como responsabilidad de `Q-L07`:
+   *   · forma LOCKED: "<n> de las <N> … (<pct> %), según fuente al <d mmm aaaa>."
+   *   · el parcial NUNCA se presenta como total: n < N.
+   *   · el porcentaje NO puede divergir de n/N (una cifra y su ratio no se contradicen).
+   *   · la fecha en prosa ES `COBERTURA_OBSERVADA_EL` ⇒ cifra y fecha se actualizan
+   *     JUNTAS, que es lo que el comentario de procedencia ordena.
+   *   · idiom aprobado "según fuente al"; "captura" pelada PROHIBIDA.
+   * Actualizar la cifra tras un `Q-L07` nuevo NO rompe este test; degradar la forma,
+   * romper el ratio o soltar la fecha, SÍ.
+   */
+  const MESES_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+  it("la cifra viaja en la FORMA locked, con su fecha y coherente con su propio ratio", () => {
     expect(COBERTURA_MENCIONES_LOBBY).toContain("según fuente al");
-    expect(COBERTURA_MENCIONES_LOBBY).toMatch(/29 jul 2026/);
     expect(COBERTURA_MENCIONES_LOBBY).not.toMatch(/captura/i);
-    // Ambos números presentes: el parcial NUNCA se presenta como total.
-    expect(COBERTURA_MENCIONES_LOBBY).toContain("195");
-    expect(COBERTURA_MENCIONES_LOBBY).toContain("5.106");
-    expect(COBERTURA_MENCIONES_LOBBY).toContain("3,8 %");
+
+    const m = COBERTURA_MENCIONES_LOBBY.match(
+      /^([\d.]+) de las ([\d.]+) .+ \(([\d,]+) %\), según fuente al (\d{1,2}) (\w{3}) (\d{4})\./,
+    );
+    expect(
+      m,
+      "La forma LOCKED se rompió: '<n> de las <N> … (<pct> %), según fuente al <d mmm aaaa>.'",
+    ).not.toBeNull();
+    if (!m) return;
+
+    const n = Number(m[1].replace(/\./g, ""));
+    const total = Number(m[2].replace(/\./g, ""));
+    const pct = Number(m[3].replace(",", "."));
+
+    // El parcial NUNCA se presenta como total.
+    expect(n).toBeGreaterThan(0);
+    expect(n).toBeLessThan(total);
+    // El porcentaje publicado no puede divergir de su propio numerador/denominador.
+    expect(pct).toBeCloseTo((n / total) * 100, 1);
+
+    // La fecha en prosa es EXACTAMENTE la observación declarada (se actualizan juntas).
+    const [anno, mes, dia] = COBERTURA_OBSERVADA_EL.split("-");
+    expect(Number(m[4])).toBe(Number(dia));
+    expect(m[5]).toBe(MESES_ES[Number(mes) - 1]);
+    expect(m[6]).toBe(anno);
   });
 
   /**
