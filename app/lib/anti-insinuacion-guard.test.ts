@@ -56,6 +56,7 @@ import {
 } from "@/components/lobby-menciones-de-boletin";
 import { LEYENDA_SIMILITUD_VOTO } from "@/components/similitud-votacion-comparar";
 import { LEYENDA_RECURSO_NO_HUMANO } from "@/lib/recurso-no-humano";
+import { IDIOMS_APROBADOS } from "@/lib/idioms-panel";
 
 // ---------------------------------------------------------------------------
 // Helpers (espejo verbatim de lockdown-guard.test.ts)
@@ -756,19 +757,15 @@ const TERMINOS_PROHIBIDOS: string[] = [
 ];
 
 /**
- * IDIOMS_APROBADOS (126, PANEL-08, D-09/D-11) — single-source de los 4 stems FIJOS
- * aprobados para el copy de fecha/procedencia del rediseño del panel (Phase 128).
- * Registrados SIN las partes variables (fechas/grados) — literales fijos exactos.
- * `Phase 128 debe importar este array verbatim` en vez de re-tipear los stems.
+ * IDIOMS_APROBADOS (126, PANEL-08, D-09/D-11) — single-source REAL de los 5 stems
+ * FIJOS aprobados para el copy de fecha/procedencia del rediseño del panel
+ * (Phase 128). Vive en `@/lib/idioms-panel` (FIX B-4: dirección prod→test, mismo
+ * patrón que las LEYENDA_* de arriba) — este archivo IMPORTA el array, no lo
+ * re-tipea, así un stem mal escrito rompe el import en vez de divergir en
+ * silencio entre dos copias.
  *
  * idiom aprobado v13.0 — no niega término prohibido; registrado por mandato PANEL-08
  */
-export const IDIOMS_APROBADOS: string[] = [
-  "Citado el",
-  "vigente desde",
-  "En tabla de sala de la Cámara del",
-  "según fuente al",
-];
 
 /**
  * Fragmentos LOCKED que contienen un término prohibido en un contexto que lo NIEGA
