@@ -18,8 +18,18 @@
  * género/número/cámara que el copy de los tiles emite — el alta precede al
  * copy (Wave-0 LOCKED); una variante usada y no registrada erosiona el
  * single-source aunque el linter no la muerda.
+ *
+ * WR-05 (128-REVIEW): el array es `as const` y el tipo `Idiom` es la unión de sus
+ * literales. El invariante "el stem existe en el single-source" es 100% estático
+ * (array literal del mismo repo) ⇒ lo verifica el COMPILADOR (`const X: Idiom =
+ * "…"`), no un `throw` en tiempo de import. Los `idiomaOMuere()` de sala y
+ * comisiones quedaron borrados: eran fail-fragile (un stem mal escrito tumbaba
+ * `/` entera con un 500, porque el módulo lo importa `panel-actualidad.tsx`).
+ *
+ * WR-06 (128-REVIEW): se dan de alta "Trámite del" e "Ingresado el" — el copy de
+ * movimiento/ingresos los emitía inline, fuera del single-source.
  */
-export const IDIOMS_APROBADOS: string[] = [
+export const IDIOMS_APROBADOS = [
   "Citado el",
   "vigente desde",
   "En tabla de sala de la Cámara del",
@@ -32,4 +42,14 @@ export const IDIOMS_APROBADOS: string[] = [
   // resta lo partiría; se corta el stem ANTES de la preposición, el copy sigue legal).
   "sin votaciones fechadas",
   "En tabla de sala del", // Senado (sin "de la Cámara"): "En tabla de sala del {d}" (tile sala)
-];
+  // WR-06 — stems que el copy ya emitía inline y ahora se consumen desde aquí:
+  "Trámite del", // tile movimiento (velocity): "Trámite del {d} · {cámara}"
+  "Ingresado el", // tile ingresos: "Ingresado el {d}"
+] as const;
+
+/**
+ * Unión de los stems aprobados. Un stem inexistente en un tile es un ERROR DE
+ * COMPILACIÓN (`const S: Idiom = "fechada le"` no tipa) — reemplaza al chequeo
+ * en runtime que WR-05 mandó matar.
+ */
+export type Idiom = (typeof IDIOMS_APROBADOS)[number];
