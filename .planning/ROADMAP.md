@@ -141,7 +141,12 @@ Plans:
   3. B-02 cerrado: el tile con denominador ausente ya no existe (la muerte del tile materia verificada en el DOM del deploy — cero "(sin materia)", cero tombstone).
   4. H-01 cerrado: `/comparar` re-verificado tras el re-deploy — sin error boundary transitorio post-hidratación; si reaparece, causa raíz documentada con evidencia (jamás "no reproducible" a secas).
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 129-01-PLAN.md — Deploy a Cloudflare + capturas BrowserOS + cierre de B-02 y H-01 sobre el DOM real
+- [ ] 129-02-PLAN.md — Crítica vs baselines v13, fix de plural (D-06), densidad 390px, higiene B26, re-deploy
+- [ ] 129-03-PLAN.md — SUMMARY con evidencia + CHECKPOINT DE OPERADOR (veredicto verbatim, D-07)
 **UI hint**: yes
 
 ### Phase 130: VOTOS-REAL — B-01: el número falso muere
