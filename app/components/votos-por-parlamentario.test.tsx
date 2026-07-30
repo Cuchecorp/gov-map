@@ -1152,6 +1152,111 @@ describe("VotosView — rótulos honestos de recorte (Phase 130 Plan 02, D-04/fa
     // El copy honesto SÍ declara el alcance sobre lo cargado.
     expect(texto).toMatch(/sobre las votaciones cargadas en este detalle/i);
   });
+
+  // ── CR-01 (code-review 130): la rama DOMINANTE — ausentes > 0 ────────────────
+  it('fable_blocker_1 con AUSENTES>0 (el caso real de los testigos): el DOM NO contiene "de 1000 votaciones" pelado', () => {
+    // D1165/D1170 tienen ausentes>0 ⇒ el render entra en la rama "Presente en X de Y",
+    // que ANTES ignoraba `conteoGlobalDisponible` y presentaba el total capado como
+    // el real. `mostrarRecorte` tampoco cubre este camino: sin agregado,
+    // filasCargadas === totalConteos.
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          totalVotos: 1000,
+          conteos: { si: 469, no: 466, abstencion: 22, pareo: 14, ausente: 29 },
+          filasCargadas: 1000,
+          conteoGlobalDisponible: false,
+        })}
+      />,
+    );
+    // Control positivo: la sección renderizó y la rama de asistencia es la activa.
+    expect(screen.getByText("Cómo votó")).toBeInTheDocument();
+    const texto = (container.textContent ?? "").replace(/\s+/g, " ");
+    expect(texto).toMatch(/Presente en 971 de 1000/);
+    // El copy pelado (B-01 resucitado) JAMÁS aparece.
+    expect(texto).not.toMatch(/de 1000 votaciones ·/);
+    // El alcance SÍ queda declarado en la misma frase.
+    expect(texto).toMatch(/de 1000 votaciones cargadas en este detalle/);
+  });
+
+  it("control negativo apareado de CR-01: CON agregado global disponible el copy de asistencia queda PELADO (sin calificación de alcance)", () => {
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          totalVotos: 3752,
+          conteos: { si: 1764, no: 1772, abstencion: 171, pareo: 16, ausente: 29 },
+          filasCargadas: 3752,
+          conteoGlobalDisponible: true,
+        })}
+      />,
+    );
+    const texto = (container.textContent ?? "").replace(/\s+/g, " ");
+    expect(texto).toMatch(/Presente en 3723 de 3752 votaciones ·/);
+    expect(texto).not.toMatch(/cargadas en este detalle ·/);
+  });
+
+  // ── WR-04 (code-review 130): rótulo de alcance CON faceta de tema activa ─────
+  it("con tema activo y listado recortado -> se DECLARA que el desglose del tema sale de las filas cargadas", () => {
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          materiaActiva: "salud",
+          totalVotos: 40,
+          conteos: { si: 20, no: 15, abstencion: 3, pareo: 1, ausente: 1 },
+          filasCargadas: 1000,
+          conteoGlobalDisponible: false,
+          listadoRecortado: true,
+        })}
+      />,
+    );
+    expect(
+      (container.textContent ?? "").replace(/\s+/g, " "),
+    ).toMatch(/Este desglose por tema se calcula sobre las 1000 votaciones más recientes/);
+  });
+
+  it("control de ausencia apareado (WR-04): con tema activo y listado COMPLETO no se afirma ningún recorte", () => {
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          materiaActiva: "salud",
+          totalVotos: 40,
+          conteos: { si: 20, no: 15, abstencion: 3, pareo: 1, ausente: 1 },
+          filasCargadas: 120,
+          conteoGlobalDisponible: false,
+          listadoRecortado: false,
+        })}
+      />,
+    );
+    expect(container.textContent ?? "").not.toMatch(/Este desglose por tema/);
+  });
+
+  it("derivarVotosViewData computa listadoRecortado contra el agregado global, HAYA o no tema activo (WR-04)", () => {
+    const votos = Array.from({ length: 3 }, (_, i) =>
+      makeVoto({ votacion_id: `w4:${i}`, boletin: `${700 + i}-07`, materia: "Salud" }),
+    );
+    const globales = { si: 1764, no: 1772, abstencion: 171, pareo: 16, ausente: 29 };
+    expect(
+      derivarVotosViewData({
+        todasConMateria: votos,
+        materiaActiva: "salud",
+        page: 1,
+        conteosGlobales: globales,
+      }).listadoRecortado,
+    ).toBe(true);
+    // Sin agregado con qué comparar NUNCA se afirma un recorte.
+    expect(
+      derivarVotosViewData({
+        todasConMateria: votos,
+        materiaActiva: "salud",
+        page: 1,
+        conteosGlobales: null,
+      }).listadoRecortado,
+    ).toBe(false);
+  });
 });
 
 // ── VIZ-02: agregador puro agruparVotosPorTrimestre (F47, chart "Cuándo votó") ──

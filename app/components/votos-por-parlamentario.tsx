@@ -138,6 +138,16 @@ export interface VotosViewData {
    * `totalVotos` como el total real: debe declarar que es sobre lo cargado.
    */
   conteoGlobalDisponible: boolean;
+  /**
+   * WR-04 (code-review 130): `true` cuando el agregado GLOBAL está disponible y es
+   * MAYOR que las filas cargadas — es decir, el listado (`p_limit: 1000`, ordenado
+   * por `fecha desc`) es un subconjunto recortado del universo real. Es independiente
+   * de la faceta de tema: con un tema activo el desglose se computa sobre esas mismas
+   * ≤1000 filas y por tanto está sesgado al último tramo temporal; la vista lo
+   * DECLARA en vez de presentarlo como la composición del tema. `false`/`undefined`
+   * cuando no hay agregado con qué comparar (nunca se afirma un recorte que no consta).
+   */
+  listadoRecortado?: boolean;
   /** materia activa del facet (slug) o null. */
   materiaActiva: string | null;
   /** materias disponibles (label + slug) derivadas de los votos. */
@@ -615,6 +625,7 @@ export function VotosView({
     conteos,
     filasCargadas,
     conteoGlobalDisponible,
+    listadoRecortado,
     materiaActiva,
     materias,
     page,
@@ -757,12 +768,20 @@ export function VotosView({
             </p>
             {/* Asistencia REAL como métrica propia, separada del sentido. */}
             {ausentes > 0 ? (
+              /* CR-01 (code-review 130): `totalEsSoloLoCargado` gobierna TAMBIÉN
+                 esta rama. Es la rama DOMINANTE en producción (los dos testigos de
+                 la fase, D1165 con 29 ausentes y D1170, caen aquí): sin la
+                 calificación de alcance, "Presente en 971 de 1000 votaciones" se
+                 lee como el total del registro — B-01 verbatim. Y el rótulo de
+                 recorte tampoco cubre este camino, porque sin agregado
+                 `filasCargadas === totalConteos` y `mostrarRecorte` es false. */
               <p className="text-sm text-muted-foreground mt-1">
                 Presente en{" "}
                 <span className="font-mono">
                   {presentes} de {totalConteos}
                 </span>{" "}
-                votaciones · Ausente en <span className="font-mono">{ausentes}</span>.
+                votaciones{totalEsSoloLoCargado ? " cargadas en este detalle" : ""} ·
+                Ausente en <span className="font-mono">{ausentes}</span>.
               </p>
             ) : totalEsSoloLoCargado ? (
               <p className="text-sm text-muted-foreground mt-1">
@@ -781,6 +800,19 @@ export function VotosView({
               <p className="text-sm text-muted-foreground mt-1">
                 El listado de abajo muestra las {filasCargadas} votaciones más
                 recientes de {totalConteos}.
+              </p>
+            )}
+            {/* WR-04 (code-review 130): con un tema activo, `mostrarRecorte` y
+                `totalEsSoloLoCargado` se apagan LOS DOS por su guarda
+                `materiaActiva === null`, y el desglose del tema quedaba sin
+                declarar su alcance — pese a computarse sobre las ≤1000 filas más
+                recientes del listado. Misma clase de dato distorsionado que B-01,
+                un nivel más abajo. Aquí se declara. */}
+            {materiaActiva !== null && listadoRecortado && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Este desglose por tema se calcula sobre las {filasCargadas}{" "}
+                votaciones más recientes cargadas en este detalle, no sobre el
+                total del registro.
               </p>
             )}
           </>
@@ -1034,6 +1066,12 @@ export function derivarVotosViewData({
     conteos,
     filasCargadas: todasConMateria.length,
     conteoGlobalDisponible: materiaActiva === null && conteosGlobales !== null,
+    // WR-04: se compara SIEMPRE contra el agregado global (haya tema o no) — con
+    // tema activo es justamente cuando ningún otro rótulo declara el recorte.
+    listadoRecortado:
+      conteosGlobales !== null &&
+      todasConMateria.length <
+        SELECCION_ORDEN.reduce((s, k) => s + conteosGlobales[k], 0),
     materiaActiva,
     materias,
     page: pageClamped,
