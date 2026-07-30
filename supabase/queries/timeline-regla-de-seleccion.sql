@@ -20,7 +20,12 @@
 --   es una renovación — corta el run y siempre se muestra como hito normal, nunca se
 --   cuenta como parte de un período colapsado (espejo de `esRetiroUrgencia`).
 --
--- ORDEN TOTAL DECLARADO: (fecha asc, id asc).
+-- ORDEN TOTAL DECLARADO: (plausibilidad de fecha desc, fecha asc, id asc).
+--   La PRIMERA clave (WR-01, ver comentario en el `row_number()` abajo) espeja
+--   `fechaValida()`/`fechaPlausible` del builder: las fechas nulas, no parseables o
+--   fuera del rango [1990-01-01, now+5 años] van AL FINAL en ambos lados. Sin ella,
+--   un typo de siglo bajo iba primero en SQL y último en el render. Las otras dos
+--   claves son el desempate cronológico:
 --   Sin desempate por `id` el resultado del `row_number()` NO es determinista: el
 --   plan/heap/orden físico que Postgres entregue dentro de un mismo valor de `fecha`
 --   puede variar entre corridas/vacuums, y como el colapso de urgencias exige
@@ -54,6 +59,20 @@
 --   (boletin, orden, medido_en, eventos_totales, eventos_absorbidos, periodos, hitos_del).
 --   PROHIBIDO repetir el número literal en cualquier otro archivo (Pitfall 2 del research).
 --
+-- QUÉ CUENTA `hitos_del` — PRECONDICIONES (WR-02, para que Phase 138 no lea un
+--   mismatch como regresión). `hitos_del` = ítems `kind:"evento"` que emite
+--   `construirItems` (= eventos_totales − eventos_absorbidos). Eso IGUALA el conteo
+--   DOM de `Hito del` en el HTML renderizado SÓLO bajo dos precondiciones:
+--     1. SIN `?urgencias=uN` en la URL. Ese parámetro EXPANDE un período colapsado y
+--        renderiza sus eventos como `TimelineEvent` (timeline-view.tsx:305-310) ⇒ el
+--        DOM pasa a `hitos_del + n(uN)`. El default de la ficha es colapsado.
+--     2. TODOS los eventos con fecha PLAUSIBLE. `TimelineEvent` sólo emite el
+--        `<span>Hito del …</span>` si `fecha && fechaPlausible(fecha)`
+--        (timeline-event.tsx:101) ⇒ un ítem `kind:"evento"` con fecha nula o
+--        implausible SÍ cuenta en `hitos_del` pero NO aparece en el HTML.
+--   Ambas VERIFICADAS para el testigo 14309-04 (cero fechas nulas/implausibles). Para
+--   CUALQUIER otro boletín hay que re-verificarlas antes de comparar contra el DOM.
+--
 -- Uso (patrón obligatorio del repo, boletín parametrizado por variable psql — JAMÁS
 -- interpolación de string):
 --   set -a && . ./.env && set +a && export PGCLIENTENCODING=UTF8
@@ -81,7 +100,33 @@ with e as (
       else coalesce((regexp_match(coalesce(descripcion,''), 'urgencia\s+([^.,;]+)', 'i'))[1],
                     'urgencia')
     end)) as ukey,
-    row_number() over (order by fecha asc, id asc) as rn
+    -- WR-01 (131-REVIEW): el orden total NO es `(fecha asc, id asc)` a secas — el
+    -- builder TS re-ordena con `fechaValida()` (timeline-view.tsx:64-69), que devuelve
+    -- `null` para fecha ausente, no parseable, o FUERA DEL RANGO PLAUSIBLE
+    -- (`fechaPlausible`, lib/format.ts:170-177 — piso `1990-01-01` UTC, techo
+    -- `now + 5 años`) y las manda AL FINAL, en orden de entrada (sort estable ES2019).
+    -- Postgres, en cambio, ordena por el valor CRUDO: un typo de siglo BAJO
+    -- (`0202-05-25`, `1907-…`) quedaba PRIMERO en la query y ÚLTIMO en el render ⇒
+    -- runs distintos ⇒ `eventos_absorbidos`/`hitos_del` distintos. El typo real
+    -- conocido de PROD (`2626-05-25`, boletín 18232-25 — 2 filas por encima del techo
+    -- [VERIFIED PROD 2026-07-30]) convergía sólo porque es el máximo: por accidente.
+    -- Aquí se espeja la plausibilidad como PRIMERA clave del orden total. Dentro del
+    -- grupo implausible se conserva `(fecha, id)`, que es exactamente el orden de
+    -- entrada que el sort estable de TS preserva (la lectura de page.tsx entrega
+    -- (fecha asc, id asc)) ⇒ paridad también en la cola.
+    --
+    -- LÍMITE DECLARADO (deuda conocida, NO cerrable aquí): el techo de plausibilidad
+    -- es MÓVIL (`now + 5 años`) en ambos lados ⇒ el orden depende del RELOJ. Un evento
+    -- fechado a >5 años vista hoy entra al orden cronológico dentro de 5 años y cambia
+    -- H sin que cambie un solo dato — el mismo no-determinismo que D-03 vino a cerrar,
+    -- en otro eje. Se deja espejado (query y builder se mueven JUNTOS, que es lo que
+    -- la paridad exige) y declarado; congelar el techo exigiría rediseñar
+    -- `fechaPlausible`, que es transversal a toda la app.
+    row_number() over (
+      order by (fecha is not null
+                and fecha >= timestamptz '1990-01-01'
+                and fecha <= now() + interval '5 years') desc,
+               fecha asc, id asc) as rn
   from public.tramitacion_evento
   where boletin = :'boletin'
 ), f as (
