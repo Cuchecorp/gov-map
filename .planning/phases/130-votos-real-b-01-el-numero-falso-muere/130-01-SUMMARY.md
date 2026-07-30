@@ -106,9 +106,20 @@ confirmada byte a byte contra `pg_get_functiondef` en vivo).
 durante la exploración inicial un `grep` de diagnóstico sobre `.env` fue ejecutado sin el
 pipe de redacción y su salida completa (incluyendo la URL con credenciales) apareció en la
 transcripción de esta sesión de ejecución — no en ningún archivo del repo ni en el SUMMARY.
-El operador debe considerar si esa credencial (`postgres.bctyygbmqcvizyplktuw` /
-`aws-1-sa-east-1.pooler.supabase.com`) amerita rotación, dado que quedó expuesta en el log
+El operador debe considerar si esa credencial (usuario/host del pooler:
+`[REDACTADO — ver nota de rotación B26]`) amerita rotación, dado que quedó expuesta en el log
 de la conversación aunque no en artefactos persistentes del repositorio.
+
+**CR-03 (code-review 130) — redacción aplicada:** el usuario y el host del pooler que estaban
+escritos verbatim en este párrafo fueron reemplazados por el marcador de arriba. NO se
+reescribió la historia de git (el valor sigue en los commits locales previos de esta rama);
+la **rotación B26 del operador** es la que sanea definitivamente esa exposición — la redacción
+del artefacto solo evita seguir publicando el medio-secreto hacia adelante.
+
+**`app/.env.local` (decisión documentada):** existe en el árbol de trabajo con
+`SUPABASE_SECRET_KEY` y está cubierto por `.gitignore` (verificado con `git check-ignore`).
+NO se borra: la fase 138 lo necesita para las verificaciones locales contra PROD. Queda
+declarado aquí como copia local del secreto, dentro del alcance de la misma rotación B26.
 
 ## Deviations from Plan
 
