@@ -17,6 +17,7 @@ import type {
   Seleccion,
   VotoFichaRow as VotoFichaRowData,
 } from "@/lib/types";
+import type { VotosBreakdown } from "@/lib/parlamentario-resumen-conteos";
 
 /**
  * Sección VOTE de la ficha del parlamentario (68-UI-SPEC §Composición).
@@ -122,6 +123,21 @@ export interface VotosViewData {
    * mismo conjunto que `totalVotos` (filtrado si hay tema activo, global si no).
    */
   conteos: Record<Seleccion, number>;
+  /**
+   * Nº de votaciones CARGADAS en este detalle (`todasConMateria.length`, sin filtrar
+   * por tema) — Phase 130: permite declarar el recorte cuando el listado paginado
+   * (`votos_de_parlamentario`, `p_limit: 1000`) trae MENOS filas que el conteo real
+   * agregado (`totalVotos`/`conteos`, cuando salen de `conteosGlobales`).
+   */
+  filasCargadas: number;
+  /**
+   * `true` SOLO cuando `totalVotos`/`conteos` salen del agregado GLOBAL real
+   * (`conteosGlobales`, sin tema activo) — es decir, cuando el total mostrado es
+   * la cifra verdadera del universo completo, no un artefacto del listado capado.
+   * Cuando es `false` sin tema activo (fable_blocker_1), el render NUNCA debe leer
+   * `totalVotos` como el total real: debe declarar que es sobre lo cargado.
+   */
+  conteoGlobalDisponible: boolean;
   /** materia activa del facet (slug) o null. */
   materiaActiva: string | null;
   /** materias disponibles (label + slug) derivadas de los votos. */
@@ -593,8 +609,20 @@ export function VotosView({
   id: string;
   data: VotosViewData;
 }) {
-  const { votos, totalVotos, conteos, materiaActiva, materias, page, totalPages, noIngestado, votosVer, totalProyectos: totalProyectosProp } =
-    data;
+  const {
+    votos,
+    totalVotos,
+    conteos,
+    filasCargadas,
+    conteoGlobalDisponible,
+    materiaActiva,
+    materias,
+    page,
+    totalPages,
+    noIngestado,
+    votosVer,
+    totalProyectos: totalProyectosProp,
+  } = data;
   // Cobertura: nº de proyectos distintos. Si el server no lo pasó, se deriva de
   // los boletines distintos en la página (conservador, nunca aparenta más).
   const totalProyectos =
@@ -641,6 +669,18 @@ export function VotosView({
   const ausentes = conteos.ausente;
   const presentes = totalConteos - ausentes;
 
+  // Phase 130 (D-04 rótulos honestos): sin tema activo, si el listado cargado
+  // muestra MENOS votaciones de las que existen en el total real, la sección lo
+  // DECLARA ("N de M"). Solo aplica sin tema (con tema el subconjunto filtrado
+  // es exactamente lo mostrado — WR-01).
+  const mostrarRecorte =
+    materiaActiva === null && filasCargadas < totalConteos;
+  // fable_blocker_1 (b): sin tema activo pero SIN agregado global disponible
+  // (RPC de conteo falló), `totalConteos` es SOLO lo cargado — el copy jamás
+  // puede leerse como el total real del registro.
+  const totalEsSoloLoCargado =
+    materiaActiva === null && !conteoGlobalDisponible;
+
   // Arcos por proyecto (una sola pasada, reusada por la lista y la nota de sección).
   const arcos = agruparPorProyecto(votos);
   // Honest-state de idea matriz: si AL MENOS un arco no la tiene, se dice UNA vez
@@ -670,7 +710,9 @@ export function VotosView({
             <VotosChart periodos={data.periodos} />
             <p className="text-sm text-muted-foreground mt-4">
               Cada barra agrupa las votaciones de un trimestre por sentido del
-              voto. No representa una tendencia.
+              voto. No representa una tendencia. El gráfico cubre las
+              votaciones cargadas en este detalle, no necesariamente el
+              período completo del registro.
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               Fuente: Cámara de Diputadas y Diputados / Senado de Chile ·
@@ -722,9 +764,23 @@ export function VotosView({
                 </span>{" "}
                 votaciones · Ausente en <span className="font-mono">{ausentes}</span>.
               </p>
+            ) : totalEsSoloLoCargado ? (
+              <p className="text-sm text-muted-foreground mt-1">
+                Emitió {totalConteos} votos sobre las votaciones cargadas en
+                este detalle.
+              </p>
             ) : (
               <p className="text-sm text-muted-foreground mt-1">
                 Emitió {totalConteos} votos registrados.
+              </p>
+            )}
+            {/* Recorte del listado (D-04 rótulo honesto): el desglose de arriba es
+                sobre el total real, pero la lista de abajo muestra solo las
+                votaciones cargadas más recientes. */}
+            {mostrarRecorte && (
+              <p className="text-sm text-muted-foreground mt-1">
+                El listado de abajo muestra las {filasCargadas} votaciones más
+                recientes de {totalConteos}.
               </p>
             )}
           </>
@@ -812,8 +868,9 @@ export function VotosView({
         {votos.length > 0 && (
           <p className="text-sm text-muted-foreground mt-4">
             Se registran votaciones de {totalProyectos}{" "}
-            {totalProyectos === 1 ? "proyecto" : "proyectos"} en las fuentes
-            consultadas; la cobertura se está ampliando.
+            {totalProyectos === 1 ? "proyecto" : "proyectos"} presentes en las
+            votaciones cargadas en este detalle; la cobertura se está
+            ampliando.
           </p>
         )}
 
@@ -893,11 +950,19 @@ export function derivarVotosViewData({
   materiaActiva,
   page,
   votosVer = null,
+  conteosGlobales = null,
 }: {
   todasConMateria: VotoFichaConMateria[];
   materiaActiva: string | null;
   page: number;
   votosVer?: string | null;
+  /**
+   * Desglose GLOBAL sobre el universo completo (Phase 130, RPC
+   * `votos_conteo_de_parlamentario` vía `contarCarrilesSeguro`), o `null` cuando no
+   * está disponible (fallback honesto — el error-path JAMÁS resucita el número
+   * capado como si fuera el total real, fable_blocker_1).
+   */
+  conteosGlobales?: VotosBreakdown | null;
 }): VotosViewData {
   // Materias disponibles (faceta) — derivadas, deduplicadas, ordenadas. WR-03: el
   // mapa slug→materia desambigua colisiones de slug para que dos materias distintas
@@ -926,14 +991,21 @@ export function derivarVotosViewData({
   // — de lo contrario el ciudadano vería un desglose global bajo una etiqueta de tema.
   // Sin tema activo, `filtradas === todasConMateria` (agregado global). SOLO confirmados.
   const conteoSet = materiaActiva ? filtradas : todasConMateria;
-  const conteos: Record<Seleccion, number> = {
-    si: 0,
-    no: 0,
-    abstencion: 0,
-    pareo: 0,
-    ausente: 0,
-  };
-  for (const v of conteoSet) conteos[v.seleccion] += 1;
+  // Phase 130 (D-04): sin tema activo Y con el agregado global disponible, el
+  // desglose/total salen de `conteosGlobales` (universo COMPLETO, no el listado
+  // capado a `p_limit: 1000`). Con tema activo o sin agregado disponible, se
+  // conserva el cálculo previo sobre `conteoSet` (WR-01 intacto).
+  let conteos: Record<Seleccion, number>;
+  let totalVotos: number;
+  if (materiaActiva === null && conteosGlobales) {
+    conteos = { ...conteosGlobales };
+    totalVotos = SELECCION_ORDEN.reduce((s, k) => s + conteosGlobales[k], 0);
+  } else {
+    conteos = { si: 0, no: 0, abstencion: 0, pareo: 0, ausente: 0 };
+    for (const v of conteoSet) conteos[v.seleccion] += 1;
+    // total para "Cómo votó"/asistencia = tamaño del conjunto agregado (WR-01 coherente).
+    totalVotos = conteoSet.length;
+  }
 
   // WR-02: agrupar POR PROYECTO antes de paginar, luego paginar sobre los ARCOS. Si se
   // paginara la lista plana primero, un proyecto cuyas etapas cruzan el borde de página
@@ -946,8 +1018,6 @@ export function derivarVotosViewData({
   // La vista re-agrupa por boletín, así que pasamos las etapas (planas) de los arcos
   // de esta página: misma agrupación reconstruida, ningún proyecto partido.
   const votos = arcos.slice(start, start + PAGE_SIZE).flatMap((a) => a.etapas);
-  // total para "Cómo votó"/asistencia = tamaño del conjunto agregado (WR-01 coherente).
-  const totalVotos = conteoSet.length;
 
   // Cobertura: nº de proyectos DISTINTOS con votaciones confirmadas (sobre TODO el
   // conjunto, no la página) — alimenta la nota honesta. Cero exhaustividad fingida.
@@ -962,6 +1032,8 @@ export function derivarVotosViewData({
     votos,
     totalVotos,
     conteos,
+    filasCargadas: todasConMateria.length,
+    conteoGlobalDisponible: materiaActiva === null && conteosGlobales !== null,
     materiaActiva,
     materias,
     page: pageClamped,
@@ -977,9 +1049,17 @@ export function derivarVotosViewData({
 export async function VotosSection({
   id,
   searchParams,
+  conteosGlobales,
 }: {
   id: string;
   searchParams: { [key: string]: string | string[] | undefined };
+  /**
+   * Desglose global (universo COMPLETO) de `contarCarrilesSeguro` — Phase 130
+   * (D-04): la sección ya NO recalcula el conteo/desglose del listado capado,
+   * los recibe por prop del único productor (`contarCarriles`). `null` cuando
+   * el conteo agregado no está disponible (fallback honesto).
+   */
+  conteosGlobales: VotosBreakdown | null;
 }) {
   const sb = createServerSupabase();
 
@@ -1003,9 +1083,11 @@ export async function VotosSection({
 
   const page = normalizarPagina(rawPage);
 
-  // Conteos de asistencia + total: sobre TODAS las confirmadas (no solo la
-  // página). Se piden hasta un techo alto en una sola llamada; el orden ya viene
-  // por fecha DESC del RPC. (Para volúmenes grandes, mover a un RPC de conteo.)
+  // Listado paginado + faceta por materia + chart: SOLO el detalle (D-03). Ya NO
+  // produce el conteo/desglose global — esos llegan por prop `conteosGlobales`
+  // desde `contarCarriles` (Phase 130, único productor). Este RPC sigue capado a
+  // `p_limit: 1000` (cero clamp, criterio 4); el listado/faceta/chart declaran su
+  // propio alcance cuando el universo real excede lo cargado.
   const { data: todasData, error: todasError } = await sb.rpc(
     "votos_de_parlamentario",
     { p_id: id, p_limit: 1000, p_offset: 0 },
@@ -1057,6 +1139,7 @@ export async function VotosSection({
     materiaActiva,
     page,
     votosVer,
+    conteosGlobales,
   });
 
   return <VotosView id={id} data={data} />;
