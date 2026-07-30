@@ -756,6 +756,21 @@ const TERMINOS_PROHIBIDOS: string[] = [
 ];
 
 /**
+ * IDIOMS_APROBADOS (126, PANEL-08, D-09/D-11) — single-source de los 4 stems FIJOS
+ * aprobados para el copy de fecha/procedencia del rediseño del panel (Phase 128).
+ * Registrados SIN las partes variables (fechas/grados) — literales fijos exactos.
+ * `Phase 128 debe importar este array verbatim` en vez de re-tipear los stems.
+ *
+ * idiom aprobado v13.0 — no niega término prohibido; registrado por mandato PANEL-08
+ */
+export const IDIOMS_APROBADOS: string[] = [
+  "Citado el",
+  "vigente desde",
+  "En tabla de sala de la Cámara del",
+  "según fuente al",
+];
+
+/**
  * Fragmentos LOCKED que contienen un término prohibido en un contexto que lo NIEGA
  * (la propia leyenda anti-insinuación). Se restan del contenido ANTES de matchear —
  * patrón idéntico a los tests de componente ("la leyenda NIEGA 'disciplina' → se
@@ -808,6 +823,8 @@ const NEGACIONES_LOCKED: string[] = [
   // El detector normaliza whitespace antes de restar, así que el JSX line-wrapped de
   // ambos archivos calza con este string de espacios simples.
   "Cada señal es un conteo de hechos públicos fechados: reuniones de lobby registradas bajo la Ley 20.730, agrupadas por sector de la contraparte.",
+  // idiom aprobado v13.0 — no niega término prohibido; registrado por mandato PANEL-08
+  ...IDIOMS_APROBADOS,
 ];
 
 /**
@@ -1360,6 +1377,25 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
     );
   });
 
+  it("PANEL (126): el trío del criterio 1 (exprés / señal / los más) muerde en un fixture representativo de superficie panel", () => {
+    // D-12 (126, PANEL-08 criterio 1): el trío EXPLÍCITO del criterio, ya presente en
+    // TERMINOS_PROHIBIDOS (carriles VSIM/PANEL) — este self-check prueba que MUERDEN
+    // sobre una superficie panel, no los re-agrega. Tildes exactas.
+    const fixture = `
+      export function PanelTileSala() {
+        return (
+          <p>Sesión exprés: hay una señal clara de que son los más activos.</p>
+        );
+      }
+    `;
+    const hits = detectarInsinuaciones(fixture);
+    expect(
+      hits,
+      "El detector NO cazó el trío exprés/señal/los más en la superficie panel → " +
+        "el carril PANEL sería un no-op",
+    ).toEqual(expect.arrayContaining(["exprés", "señal", "los más"]));
+  });
+
   it("RELACIONES (101-02): caza vocabulario de bancada/coalición inyectado (aliado / bloque de / coordina con) sobre lo NUEVO", () => {
     // Términos de afinidad/coalición FRESCOS inyectados en un fixture EN MEMORIA que
     // simula la sección de relaciones o una fila de /comparar. Prueba que el guard
@@ -1508,6 +1544,51 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
     expect(hits).toEqual(
       expect.arrayContaining(["no quiere", "bloquea a propósito"]),
     );
+  });
+
+  /**
+   * D-10(i) (126, PANEL-08 criterio 2) — self-check de no-hueco: ningún stem de
+   * IDIOMS_APROBADOS contiene un término de TERMINOS_PROHIBIDOS.
+   *
+   * BUG auto-fixado durante la ejecución (Rule 1): `detectarTerminos`/
+   * `detectarInsinuaciones` restan NEGACIONES_LOCKED ANTES de matchear, y
+   * NEGACIONES_LOCKED incluye `IDIOMS_APROBADOS` por spread — así que pasar el
+   * propio stem por `detectarTerminos` es circular: el stem se resta A SÍ MISMO
+   * antes del match y el self-check queda ciego (verificado: con el stem
+   * contaminado `"señal en tabla"` inyectado, `detectarTerminos` no reportaba
+   * nada — falso verde). Se usa en cambio `buildTermRegex` DIRECTO sobre el stem
+   * (pieza existente, sin detector nuevo), que no pasa por la resta de negaciones.
+   */
+  it.each(IDIOMS_APROBADOS)(
+    "D-10(i) no-hueco: el idiom aprobado %s NO contiene término prohibido",
+    (stem) => {
+      const hits = TERMINOS_PROHIBIDOS.filter((t) => buildTermRegex(t).test(stem));
+      expect(
+        hits,
+        `El idiom aprobado "${stem}" contiene término(s) prohibido(s) [${hits.join("; ")}] ` +
+          `— si un idiom futuro los contuviera, decide explícitamente antes de sumarlo a ` +
+          `IDIOMS_APROBADOS/NEGACIONES_LOCKED (la resta amplia enmascararía el término).`,
+      ).toHaveLength(0);
+    },
+  );
+
+  /**
+   * D-10(ii) (126, PANEL-08 criterio 2) — self-check de mutación: un término
+   * prohibido inyectado ADYACENTE a un idiom aprobado (verbatim, dentro de
+   * NEGACIONES_LOCKED) SIGUE siendo reportado por `detectarInsinuaciones` — la
+   * resta del stem del idiom no enmascara el término vecino.
+   */
+  it("D-10(ii) no-hueco: un término prohibido adyacente a un idiom aprobado sigue siendo reportado", () => {
+    const fixtureMutado = `
+      <p>En tabla de sala de la Cámara del 12 de agosto se registró una señal de bancada.</p>
+    `;
+    const hits = detectarInsinuaciones(fixtureMutado);
+    expect(
+      hits,
+      "El detector NO cazó 'señal' inyectada adyacente al idiom aprobado 'En tabla de " +
+        "sala de la Cámara del' → la resta del stem estaría enmascarando un término " +
+        "prohibido vecino (hueco en NEGACIONES_LOCKED)",
+    ).toContain("señal");
   });
 });
 
