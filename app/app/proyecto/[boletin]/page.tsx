@@ -461,7 +461,15 @@ export async function TramitacionSection({
       .from("tramitacion_evento")
       .select("*")
       .eq("boletin", boletin)
-      .order("fecha", { ascending: true }),
+      // H-06/D-03: orden total (fecha, id). Sin el desempate por `id`, 99 eventos
+      // sobre 48 fechas distintas dejan el orden dentro del empate en manos de
+      // Postgres (plan/heap/vacuum) y, como el colapso de urgencias en
+      // `construirItems` exige CONTIGÜIDAD, el número de líneas "Hito del"
+      // cambiaba entre corridas sin que cambiara un solo dato (medido en PROD:
+      // 14/12/12/16 eventos absorbidos según el desempate). El sort de
+      // `construirItems` es estable ⇒ HEREDA este orden total declarado.
+      .order("fecha", { ascending: true })
+      .order("id", { ascending: true }),
     // Etapa/estado para elevar el "¿Dónde está hoy?" en el stepper (dedup cache).
     leerProyecto(boletin),
   ]);

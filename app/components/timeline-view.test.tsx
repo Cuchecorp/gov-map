@@ -9,6 +9,7 @@ import {
   esEventoUrgencia,
   fechaValida,
   paresDeUrgencia,
+  type PeriodoUrgencia,
 } from "./timeline-view";
 import { TimelineEvent } from "./timeline-event";
 import { TramitacionStepper } from "./capa1/tramitacion-stepper";
@@ -599,5 +600,88 @@ describe("F-07 en TramitacionStepper", () => {
     expect(container.textContent).toContain(
       "Ingreso de proyecto \u2014 14 may 2026",
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (H-06/D-03) orden total determinista en la lectura de tramitacion_evento.
+//
+// El detector es un helper PURO, ejercitado tanto contra el archivo real
+// (readFileSync de page.tsx) como contra fixtures en memoria para el control
+// positivo apareado \u2014 un solo detector, cero copia del regex que pueda derivar
+// de la fuente que en verdad protege.
+// ---------------------------------------------------------------------------
+function ordenTotalDeclarado(src: string): boolean {
+  const bloque = src.split('.from("tramitacion_evento")')[1] ?? "";
+  return /\.order\("fecha"[\s\S]{0,120}\.order\("id"/.test(bloque);
+}
+
+describe("(H-06/D-03) orden total determinista en la lectura de tramitacion_evento", () => {
+  const APP_ROOT = process.cwd(); // app/
+  const PAGE_TSX = path.join(APP_ROOT, "app", "proyecto", "[boletin]", "page.tsx");
+  const PAGE_SRC = readFileSync(PAGE_TSX, "utf8");
+
+  it("la lectura real de tramitacion_evento en page.tsx encadena .order(fecha).order(id)", () => {
+    expect(ordenTotalDeclarado(PAGE_SRC)).toBe(true);
+  });
+
+  it("control positivo apareado: el MISMO detector falla si s\u00f3lo hay .order(fecha) (cero vacuo)", () => {
+    const soloFecha = `
+      sb.from("tramitacion_evento").select("*").eq("boletin", boletin)
+        .order("fecha", { ascending: true }),
+    `;
+    expect(ordenTotalDeclarado(soloFecha)).toBe(false);
+  });
+
+  it("no se satisface con un .order(id) que viva en OTRA query del archivo (match acotado al bloque tras .from)", () => {
+    const otraQueryConId = `
+      sb.from("otra_tabla").select("*").order("id", { ascending: true }),
+      sb.from("tramitacion_evento").select("*").eq("boletin", boletin)
+        .order("fecha", { ascending: true }),
+    `;
+    expect(ordenTotalDeclarado(otraQueryConId)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (H-06/D-02) paridad regla escrita ↔ construirItems sobre el testigo 14309-04.
+//
+// Ata el builder TS a la regla escrita medida contra PROD (supabase/queries/
+// timeline-regla-de-seleccion.sql): si construirItems deriva de la regla, este
+// test se pone rojo. NO prueba paridad DOM contra un deploy real — esa
+// verificación (grep -o 'Hito del' … | wc -l sobre el HTML del Worker, jamás
+// grep -c: el HTML es de una línea) queda delegada a Phase 138 con el número
+// YA congelado aquí en *.esperado.json.
+// ---------------------------------------------------------------------------
+import fixtureEventos from "./__fixtures__/timeline-14309-04.json";
+import esperado from "./__fixtures__/timeline-14309-04.esperado.json";
+
+describe("(H-06/D-02) paridad regla escrita ↔ construirItems sobre el testigo 14309-04", () => {
+  // El fixture viene TAL CUAL en orden (fecha asc, id asc) — no se re-ordena
+  // aquí, o se estaría probando otra cosa que lo que la producción entrega
+  // tras Task 2.
+  const items = construirItems(fixtureEventos as unknown as TramitacionEventoRow[]);
+
+  it("produce exactamente esperado.periodos ítems de kind === 'periodo'", () => {
+    const periodos = items.filter((it) => it.kind === "periodo");
+    expect(periodos.length).toBe(esperado.periodos);
+  });
+
+  it("la suma de eventos absorbidos en los períodos es exactamente esperado.eventos_absorbidos", () => {
+    const periodos = items.filter(
+      (it): it is { kind: "periodo"; periodo: PeriodoUrgencia } => it.kind === "periodo",
+    );
+    const absorbidos = periodos.reduce((n, it) => n + it.periodo.eventos.length, 0);
+    expect(absorbidos).toBe(esperado.eventos_absorbidos);
+  });
+
+  it("el número de ítems kind === 'evento' es exactamente esperado.hitos_del", () => {
+    const hitos = items.filter((it) => it.kind === "evento");
+    expect(hitos.length).toBe(esperado.hitos_del);
+  });
+
+  it("cierra sin residuo: hitos_del + eventos_absorbidos === eventos_totales === fixture.length", () => {
+    expect(esperado.hitos_del + esperado.eventos_absorbidos).toBe(esperado.eventos_totales);
+    expect(esperado.eventos_totales).toBe(fixtureEventos.length);
   });
 });
