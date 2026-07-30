@@ -1,10 +1,11 @@
 ---
 gsd_state_version: 1.0
 milestone: v13.0
-milestone_name: Portada accionable + noticias vinculadas + cierre de deuda
-status: roadmap_ready
-last_updated: "2026-07-30"
-last_activity: 2026-07-30
+milestone_name: milestone
+status: completed
+stopped_at: Phase 126 context gathered
+last_updated: "2026-07-30T13:18:37.141Z"
+last_activity: 2026-07-30 — ROADMAP.md v13.0 escrito; STATE.md inicializado
 progress:
   total_phases: 13
   completed_phases: 0
@@ -53,7 +54,9 @@ falso 1000 vs 3.752) y **131** (H-06 + 3.3). Carril noticias: **132** (RSS dos-e
 **138** (deploy agrupado + BrowserOS final).
 
 **Régimen por fase (LOCKED):** discuss granular → research → plan → premortem → plan-checker Opus
+
 + revisor `model:"fable"` para temas difíciles → executor Sonnet → verifier/code-review Opus.
+
 Spike ante toda decisión no obvia. Criterios visuales = fragmento DOM + captura BrowserOS, jamás
 subjetivos. `use_worktrees: true` (gotcha #11: amend inseguro en waves; precondiciones
 `core.longpaths` + `allowBuilds` aplicadas en `8f37c7e`).
@@ -88,19 +91,24 @@ la memoria del proyecto (`v12-gotchas-metodo`, `v13-milestone-preparado`). Recto
 - **Opción A LOCKED** (spike `v13.0-spike-panel-arquitectura.md`): poblar `evidencia` en el
   materializador; la RPC 0066 no cambia de firma; cero allowlist nueva para el panel. Cap por
   recencia PROHIBIDO (reproduce B-01); si algún día se cappea, por grado + `total` declarado.
+
 - **La unidad de la evidencia = la unidad del conteo** (regla de coherencia del spike E2):
   urgencias/velocity/archivados = eventos; agenda_citacion = citaciones (puntos anidados);
   agenda_sala = ítems de tabla por cámara. Left join + null, jamás inner-join que divergiría.
+
 - **Fechas**: `citacion.fecha`/`sesion_sala.fecha` son date-only medianoche UTC = día chileno —
   comparar `fecha::date >= current_date` SIN `at time zone`. `fecha_captura` JAMÁS es el hecho
   (44.847 eventos comparten `2026-07-10` por backfill). El footer del panel = frescura de fuente,
   nunca `fecha_max` de hechos futuros.
+
 - **Votaciones L4**: Senado `resultado` NULL → "resultado no informado por la fuente", jamás
   fabricar; una línea por votación; confirmados = 283.550 (jamás 549k). VSIM ON no exige flip.
+
 - **NEWS hereda el contrato de Is Chile Safe, no su código**: lista cerrada → resolver
   determinista (`extraerBoletines` REUSADO, no reescrito) → dead-letter con `rejection_stage`.
   Los 4 huecos de régimen (robots, delay, crudo, hash) NO se heredan. Golden set se arregla
   ANTES de medir; thresholds congelados ANTES de la primera medición.
+
 - **RPC nueva = aguja completa** (B-01 en 130, co-autoría v2 en 131, cualquier RPC de noticias):
   cero-grant, secdef `search_path=''`, `statement_timeout`, LIMIT piso 1.000, doble-revoke,
   `PUBLIC_RPC_ALLOWLIST`, pgTAP contra schema aplicado. Firma viva jamás se altera (`42P13`) —
@@ -122,8 +130,10 @@ la memoria del proyecto (`v12-gotchas-metodo`, `v13-milestone-preparado`). Recto
   gatea severidad de `OFF-6-01`) · 🔴 `OFF-6-03` cadena SSRF `net`→`anon`/`PUBLIC` (`0075` escrita,
   no aplicada) · `OFF-01` default ACL `supabase_admin` (`0073` escrita, no aplicada). Un ticket a
   soporte Supabase con las 7 sentencias zero-credential-value: ver `124-SUPA-FIX.md` (archivado).
+
 - **H-03 sigue NOT OBSERVED** (límite de instrumento v12.0) y **P-1 no ejercido** (lectura fría de
   las 82 filas de la Phase 122) — no bloquean v13.0, se registran para no perderse.
+
 - **Estado de flags en PROD**: verificado por comportamiento 2026-07-30 (spike flags-y-datos):
   NET ON · CRUCES ON · VSIM ON · MONEY OFF · NOTIF OFF. Ningún flag se flipea por agente.
 
@@ -151,9 +161,9 @@ la memoria del proyecto (`v12-gotchas-metodo`, `v13-milestone-preparado`). Recto
 
 ## Session Continuity
 
-Last session: 2026-07-30
-Stopped at: ROADMAP.md v13.0 escrito (Phases 126-138); REQUIREMENTS.md trazabilidad firmada; STATE.md inicializado
-Resume file: None
+Last session: 2026-07-30T13:18:37.134Z
+Stopped at: Phase 126 context gathered
+Resume file: .planning/phases/126-panel-guards-wave-0-de-guards/126-CONTEXT.md
 
 ## Operator Next Steps
 
