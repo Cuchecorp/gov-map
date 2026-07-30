@@ -514,7 +514,9 @@ export async function UltimaActualizacion() {
 }
 
 // ── Lookup de títulos de proyecto por boletín (tabla NO-PII) ────────────────────
-async function leerTitulos(
+// Reusada por `panel-tile-votaciones.tsx` (128-05, L4) — lookup NO-PII sobre
+// `proyecto`; jamás toca `parlamentario`.
+export async function leerTitulos(
   sb: ReturnType<typeof createServerSupabase>,
   boletines: string[],
 ): Promise<Map<string, string>> {
