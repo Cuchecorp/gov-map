@@ -1,8 +1,13 @@
 import { fechaCivilCorta } from "@/lib/dia-calendario";
 import { claseCamara } from "@/lib/panel-camara";
 import { hrefAgenda, semanaIsoDeFecha } from "@/lib/links-internos";
-import { IDIOMS_APROBADOS } from "@/lib/idioms-panel";
-import { parseEvidenciaSala, type ItemSesionSala } from "@/lib/panel-evidencia";
+import Link from "next/link";
+import { type Idiom } from "@/lib/idioms-panel";
+import {
+  etiquetaFuente,
+  parseEvidenciaSala,
+  type ItemSesionSala,
+} from "@/lib/panel-evidencia";
 import { PanelItemProyecto } from "@/components/panel-item-proyecto";
 import { BentoTile } from "@/components/bento/bento-tile";
 
@@ -23,20 +28,13 @@ import { BentoTile } from "@/components/bento/bento-tile";
  * Stems verbatim de `IDIOMS_APROBADOS` (B-4 single-source): PROHIBIDO re-tipear.
  */
 
-const STEM_SALA_SENADO = idiomaOMuere("En tabla de sala del");
-const STEM_SALA_CAMARA = idiomaOMuere("En tabla de sala de la Cámara del");
-const STEM_SEGUN_FUENTE = idiomaOMuere("según fuente al");
-const STEM_FECHADA_EL = idiomaOMuere("fechada el");
-
-/** Verifica en tiempo de módulo que el stem existe en el single-source (B-4). */
-function idiomaOMuere(stem: string): string {
-  if (!IDIOMS_APROBADOS.includes(stem)) {
-    throw new Error(
-      `panel-tile-sala: stem "${stem}" no está en IDIOMS_APROBADOS (single-source B-4).`,
-    );
-  }
-  return stem;
-}
+// WR-05: el invariante del single-source lo hace cumplir el TIPO `Idiom` (unión
+// de literales de IDIOMS_APROBADOS). Un stem mal escrito no compila; ya no
+// existe el `throw` en carga de módulo que tumbaba `/` entera en runtime.
+const STEM_SALA_SENADO: Idiom = "En tabla de sala del";
+const STEM_SALA_CAMARA: Idiom = "En tabla de sala de la Cámara del";
+const STEM_SEGUN_FUENTE: Idiom = "según fuente al";
+const STEM_FECHADA_EL: Idiom = "fechada el";
 
 export interface PanelTileSalaProps {
   filas: { cobertura_camara: string | null; evidencia: unknown }[];
@@ -78,8 +76,17 @@ function EncabezadoSesion({
       ? `${esCam ? STEM_SALA_CAMARA : STEM_SALA_SENADO} ${dia} · tabla semanal`
       : "tabla semanal";
   } else {
+    // WR-03: el segmento de sesión se arma POR PARTES. Antes, `numero` null con
+    // `tipo` presente dejaba un doble espacio interior (`.trim()` no lo toca) y
+    // `tipo` null descartaba el `numero` que la fuente sí informó.
+    const segmentoSesion =
+      item.numero || item.tipo
+        ? ["Sesión", item.numero, item.tipo ? `— ${item.tipo}` : null]
+            .filter(Boolean)
+            .join(" ")
+        : null;
     const partes = [
-      item.tipo ? `Sesión ${item.numero ?? ""} — ${item.tipo}`.trim() : null,
+      segmentoSesion,
       item.hora_inicio ? `a las ${item.hora_inicio}` : null,
       dia ? `${esCam ? STEM_SALA_CAMARA : STEM_SALA_SENADO} ${dia}` : null,
     ].filter(Boolean);
@@ -110,7 +117,10 @@ function ChipUrgencia({
   const u = urgencias.get(boletin);
   if (!u) return null;
   const dia = fechaCivilCorta(u.fecha);
-  if (!dia) return null;
+  // WR-04: sin fecha O sin grado no hay hecho que declarar — el chip se omite
+  // entero. `gradoUrgencia(...) ?? it.descripcion ?? ""` puede dar `""`, que
+  // producía "Urgencia  fechada el 6 jul 2026" (verbo sin complemento).
+  if (!dia || !u.grado.trim()) return null;
   return (
     <span className="mt-1 inline-flex items-center px-[9px] py-0.5 font-mono text-[11px] font-medium text-accent-product bg-accent-product-soft rounded-full">
       {`Urgencia ${u.grado} ${STEM_FECHADA_EL} ${dia}`}
@@ -140,7 +150,9 @@ export function PanelTileSala({
   for (const fila of filas) {
     const ev = parseEvidenciaSala(fila.evidencia);
     if (ev.consultado_al) consultadoAl = ev.consultado_al;
-    if (ev.fuente.dataset) etiquetaFuenteTile = "Agenda del Congreso";
+    // CR-04/D-02: la etiqueta sale DEL DATO (`etiquetaFuente`), jamás de un
+    // literal fijo disparado por la mera presencia de `dataset`.
+    etiquetaFuenteTile = etiquetaFuenteTile ?? etiquetaFuente(ev.fuente);
     for (const item of ev.items) {
       const puntosOrdenados = [...item.tabla].sort(
         (a, b) => (a.posicion ?? 0) - (b.posicion ?? 0),
@@ -154,23 +166,41 @@ export function PanelTileSala({
       }));
       bloques.push({ cobertura: fila.cobertura_camara, item, puntos });
       totalDeclarado += item.tabla_total ?? item.tabla.length;
-      if (!semanaParaHref) {
-        semanaParaHref =
-          item.tabla_total !== null && item.tabla_total > 0
-            ? semanaIsoDeFecha(item.fecha)
-            : semanaParaHref;
-        if (!semanaParaHref) semanaParaHref = semanaIsoDeFecha(item.fecha);
-      }
+      // WR-13: una sola línea. El condicional previo por `tabla_total > 0` era
+      // lógica muerta (la línea siguiente reasignaba con la MISMA expresión).
+      // La semana del "y N más" es, explícitamente, la del PRIMER bloque con
+      // fecha parseable — que puede ser el de cualquiera de las dos cámaras.
+      semanaParaHref ??= semanaIsoDeFecha(item.fecha);
     }
   }
 
   // Presupuesto de 4 (O-7) sobre los puntos aplanados de TODOS los bloques.
+  // WR-02: el recorte se resuelve ANTES del JSX (cero mutación durante el
+  // render, frágil ante re-render/Suspense) y solo se emiten los bloques con al
+  // menos un punto visible — un `EncabezadoSesion` seguido de un `<ul>` vacío se
+  // lee como "esa sesión no tiene puntos", que es falso.
   const puntosAplanadosGlobal = bloques.flatMap((b) => b.puntos);
-  const totalPuntos = totalDeclarado || puntosAplanadosGlobal.length;
-  const mostrarMas = totalPuntos > maxItems;
-  const restantes = totalPuntos - maxItems;
+  let presupuesto = maxItems;
+  const bloquesVisibles: {
+    cobertura: string | null;
+    item: ItemSesionSala;
+    puntos: PuntoAplanado[];
+  }[] = [];
+  for (const b of bloques) {
+    if (presupuesto <= 0) break;
+    const visiblesDelBloque = b.puntos.slice(0, presupuesto);
+    if (visiblesDelBloque.length === 0) continue;
+    presupuesto -= visiblesDelBloque.length;
+    bloquesVisibles.push({ ...b, puntos: visiblesDelBloque });
+  }
+  const mostrados = maxItems - presupuesto;
 
-  let vistos = 0;
+  const totalPuntos = totalDeclarado || puntosAplanadosGlobal.length;
+  const mostrarMas = totalPuntos > mostrados;
+  // WR-01: el remanente honesto es "total − mostrados", no "total − maxItems":
+  // `tabla_total` viene de un `count(*)` independiente (0081) y puede superar la
+  // longitud del array de ítems, con lo que se pintan menos de `maxItems`.
+  const restantes = totalPuntos - mostrados;
 
   return (
     <BentoTile variant="default" span={4} asChild>
@@ -178,13 +208,11 @@ export function PanelTileSala({
         <h2 className="text-lg font-semibold mb-4">
           En tabla de sala esta semana
         </h2>
-        {bloques.map((bloque, i) => (
+        {bloquesVisibles.map((bloque, i) => (
           <div key={i} className="mb-4">
             <EncabezadoSesion cobertura={bloque.cobertura} item={bloque.item} />
             <ul>
               {bloque.puntos.map((p, j) => {
-                if (vistos >= maxItems) return null;
-                vistos += 1;
                 return (
                   <li
                     key={j}
@@ -206,12 +234,14 @@ export function PanelTileSala({
           </div>
         ))}
         {mostrarMas && (
-          <a
+          // WR-11: link INTERNO ⇒ next/link (prefetch + navegación client-side),
+          // como el resto del árbol (citacion-card, search-result-card).
+          <Link
             href={hrefAgenda("tabla-sala", semanaParaHref)}
             className="text-[13px] text-accent-product hover:underline"
           >
             {`y ${restantes} más →`}
-          </a>
+          </Link>
         )}
         <p className="mt-2 font-mono text-[11px] text-muted-foreground">
           {etiquetaFuenteTile ? `Fuente: ${etiquetaFuenteTile} · ` : ""}

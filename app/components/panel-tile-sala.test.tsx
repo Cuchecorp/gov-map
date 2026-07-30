@@ -152,7 +152,11 @@ describe("PanelTileSala", () => {
     const { container, getByText } = render(
       <PanelTileSala filas={[filaCon25]} urgencias={new Map()} maxItems={4} />,
     );
-    const link = getByText("y 21 más →");
+    // WR-01 (128-REVIEW): el remanente es "total − MOSTRADOS", no
+    // "total − maxItems". Esta fixture declara `tabla_total: 25` y trae UN solo
+    // punto: se pinta 1, así que el remanente honesto es 24. El "y 21 más" que
+    // este test exigía antes daba por pintados 4 ítems que no existían.
+    const link = getByText("y 24 más →");
     expect(link).toBeTruthy();
     const href = (link.closest("a") as HTMLAnchorElement).getAttribute("href");
     expect(href).toMatch(/^\/agenda\?semana=.*#tabla-sala$/);
