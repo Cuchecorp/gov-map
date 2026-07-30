@@ -1,15 +1,25 @@
 {
   "model_profile": "quality",
   "model_overrides": {
+    "gsd-executor": "sonnet",
+    "gsd-planner": "opus",
+    "gsd-phase-researcher": "opus",
+    "gsd-pattern-mapper": "opus",
     "gsd-plan-checker": "opus",
     "gsd-verifier": "opus",
+    "gsd-code-reviewer": "opus",
+    "gsd-code-fixer": "opus",
     "gsd-research-synthesizer": "opus",
     "gsd-codebase-mapper": "opus",
     "gsd-integration-checker": "opus",
     "gsd-nyquist-auditor": "opus",
     "gsd-ui-researcher": "opus",
     "gsd-ui-checker": "opus",
-    "gsd-ui-auditor": "opus"
+    "gsd-ui-auditor": "opus",
+    "gsd-debugger": "opus",
+    "gsd-security-auditor": "opus",
+    "gsd-advisor-researcher": "opus",
+    "gsd-assumptions-analyzer": "opus"
   },
   "commit_docs": true,
   "parallelization": true,
