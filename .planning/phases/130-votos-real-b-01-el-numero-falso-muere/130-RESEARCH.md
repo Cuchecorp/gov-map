@@ -777,7 +777,7 @@ exit-0 vacío.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED — adjudicadas en los planes: OQ-1 rotulo+deuda escrita, OQ-2 agregarConteoVotos, OQ-3 migracion 0082 [0081 la tomo el fix post-review de 127])
 
 1. **OQ-1 — ¿`totalProyectos` y el chart por trimestre entran en alcance?**
    - Qué sabemos: ambos derivan de las mismas 1.000 filas (`votos-por-parlamentario.tsx` L953,
