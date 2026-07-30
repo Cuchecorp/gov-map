@@ -38,7 +38,7 @@
 
 **Orden de construcción:** 126 (Wave-0, rector) → carril panel 127→128→129; deuda 130 y 131 intercaladas (independientes del panel tras 126, paralelizables con worktrees); carril noticias 132→133→134→135→136→137; cierre 138 (deploy agrupado + BrowserOS final) depende de todo.
 
-- [ ] **Phase 126: PANEL-GUARDS** — Wave-0: guards ANTES de cualquier copy o vista (SUPERFICIES_PANEL, NEGACIONES_LOCKED, guard create view B-03)
+- [x] **Phase 126: PANEL-GUARDS** — Wave-0: guards ANTES de cualquier copy o vista (SUPERFICIES_PANEL, NEGACIONES_LOCKED, guard create view B-03) (completed 2026-07-30)
 - [ ] **Phase 127: PANEL-MAT** — Materializador 0080: los 6 bloques pueblan `evidencia` con sujetos reales + guard 404 + grafía única (4-15)
 - [ ] **Phase 128: PANEL-UI** — Contrato RPC/UI: tiles editoriales con sujetos nombrados, links con helper central, votaciones L4, semántica de fechas, cobertura declarada
 - [ ] **Phase 129: PANEL-DISEÑO** — Loop de diseño BrowserOS con Opus hasta que quede bien; cierre por fragmento DOM + captura; entierra B-02 y H-01
@@ -256,7 +256,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 126. PANEL-GUARDS | 2/2 | Complete   | 2026-07-30 |
+| 126. PANEL-GUARDS | 2/2 | Complete    | 2026-07-30 |
 | 127. PANEL-MAT | 0/? | Not started | - |
 | 128. PANEL-UI | 0/? | Not started | - |
 | 129. PANEL-DISEÑO | 0/? | Not started | - |
