@@ -59,7 +59,21 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 - **🔴 Riesgo latente de deriva:** `0073` y `0075` **escritas y NO aplicadas** (bloqueo demostrado: `42501` / 24 × `WARNING 01006`, no alegado). **Jamás se editan.** Un fix futuro va como migración **nueva** (`0080`). Sin esa disciplina, un `supabase db push` o un ledger reconciliado a ciegas produce deriva.
 - **No ejercido:** `P-1` (lectura fría de las 82 filas de 122) y `H-03` sigue `NOT OBSERVED` (límite de instrumento, caso mal instanciado).
 
-## Next Milestone Goals: v13.0 — Portada accionable + noticias vinculadas + cierre de deuda
+## Current Milestone: v13.0 — Portada accionable + noticias vinculadas + cierre de deuda
+
+**Goal:** La portada anuncia hechos legislativos con sujeto, fecha y link a la ficha (no contadores mudos); un cron de noticias vincula prensa a proyectos y parlamentarios con contrato anti-alucinación; y la deuda de v12.0 que daña al lector queda cerrada.
+
+**Target features:**
+- Panel de actualidad accionable: sujetos reales (boletín+título+fecha+enlace) en `evidencia` jsonb vía materializador (Opción A adjudicada por spike), 6 tiles editoriales con links guarded, votaciones L4 (VSIM ON + sign-off legal dado 2026-07-30), fix transversal de fechas ("datos al" muere), loop de diseño BrowserOS.
+- Crons de noticias RSS → R2 crudo → Supabase con contrato anti-alucinación de tres piezas (lista cerrada → resolver determinista → dead-letter), cerrando los 4 huecos de régimen de Is Chile Safe (robots.txt, delay 2-3s, RSS crudo a R2, content-addressing por hash); golden set arreglado ANTES de medir; vínculo a fichas.
+- Deuda v12.0: B-01 (número falso 1000 vs 3.752) 🔴, 4-15 + B-02 (convergen con panel), B-03 (guard pre-vista), H-01, H-06, 3.3.
+
+**Decisiones adjudicadas por spike (2026-07-30, `.planning/spikes/v13.0-*`):**
+- **Arquitectura panel: Opción A** — poblar `evidencia` en `materializar_senales()` (migración 0080 aditiva). Payload medido 39,7 KB; B violaba SEN-02 y costaba 4 archivos + 2 guards. Guard 404 en el `left join proyecto` del materializador (`en_corpus:false`, nunca inner-join).
+- **Flags PROD verificados por comportamiento:** VSIM/NET/CRUCES **ON**, MONEY/NOTIF **OFF**. L4 votaciones NO necesita flip; el sign-off legal VSIM fue dado **verbatim** por el operador el 2026-07-30.
+- **`use_worktrees: true`** — gotcha #11 reproducido al 100% (el amend destruye commits hermanos; `index.lock` falla, no serializa); precondiciones aplicadas: `core.longpaths=true` repo-local + fix `allowBuilds` (`8f37c7e`). El gotcha rmdir de v8.0 NO reprodujo.
+- **Tile materia MUERE** — `sector_id` cubre 65/3.657 (1,8%), no se rescata sin backfill. `proyecto_autor`: 20.067 filas, ~90% boletines, 49,9% vinculadas `confirmado` (carril PII, usable con copy honesto). `sesion_sala` Cámara es fila sintética semanal (`camara:sesion:2026-W31`, numero/tipo/hora NULL) ⇒ copy "tabla semanal", jamás "sesión N.º a las HH:MM".
+- **Editorial de portada:** propuesta de 6 tiles con sujetos reales en `.planning/spikes/v13.0-editorial-portada.md` (baseline BrowserOS capturado); decisiones O-1..O-7 con recomendación, a ratificar por el operador en el loop de diseño.
 
 Definido por el operador el 2026-07-30. **Régimen de trabajo LOCKED**: discusión granular (nada de auto-aceptar en bloque) → research → plan → **premortem** → revisión de plan doble (`gsd-plan-checker` Opus **y** revisor `model: "fable"` para los temas difíciles) → implementación → validación. **Ante cualquier decisión no obvia: SPIKE** — código que corre, no razonamiento. Validación empírica en código **y BrowserOS**; ningún criterio visual puede ser subjetivo (se cierra con fragmento DOM + captura). Política de modelos ya aplicada en `config.json` (commit `dd27099`): **`gsd-executor` → `sonnet`** es el único downgrade; todo lo demás **Opus**; **Fable** reservado para revisión difícil de plan y para dirimir.
 

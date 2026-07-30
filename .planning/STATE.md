@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.0
-milestone_name: — Validación general producto-a-producto
-status: archived
-stopped_at: v12.0 ARCHIVADO 2026-07-29 CON la deuda (decisión del operador) · fases en milestones/v12.0-phases/ · listo para /gsd:new-milestone
-last_updated: "2026-07-29T23:59:00.000Z"
-last_activity: 2026-07-29
+milestone: v13.0
+milestone_name: — Portada accionable + noticias vinculadas + cierre de deuda
+status: planning
+last_updated: "2026-07-30T12:53:48.876Z"
+last_activity: 2026-07-30
 progress:
-  total_phases: 13
-  completed_phases: 13
-  total_plans: 59
-  completed_plans: 59
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 ## Current Position
 
-Phase: 125 — E2E pasada final producto-a-producto — **COMPLETA**
-Plan: 7 of 7 complete
-Status: Milestone v12.0 **ARCHIVADO 2026-07-29 CON la deuda** · audit en `milestones/v12.0-MILESTONE-AUDIT.md` (**status `tech_debt`**) · roadmap/requisitos en `milestones/v12.0-{ROADMAP,REQUIREMENTS}.md` · fases en `milestones/v12.0-phases/` · `REQUIREMENTS.md` borrado (el próximo milestone crea uno fresco)
-Last activity: 2026-07-29
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-07-30 — Milestone v13.0 started
 
 ### Riesgo latente de archivado — migraciones escritas y NO aplicadas
 
