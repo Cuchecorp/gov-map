@@ -116,7 +116,21 @@ select is(
   true, 'D2: la cobertura_camara de velocity es la grafía ciudadana única "Cámara de Diputados" (PANEL-06/4-15, fijada por actualidad.grafia_camara)');
 
 -- ── (D3) supresión-como-fila cuando la fuente está stale ──────────────────────
--- La fuente de sala (sesion_sala) NO tiene filas futuras (0 sembradas) → el proc DEBE
+-- WR-01 (code-review 127) — ESTE ASSERT ERA NO DETERMINISTA Y ESTABA ROJO EN PROD.
+-- El test sembraba CERO sesiones de sala y asumía que PROD tampoco tenía ninguna FUTURA. Falso:
+-- PROD tiene agenda de sala futura (agenda_sala|Cámara de Diputados|1, agenda_sala|Senado|2) ⇒ el
+-- `if exists (select 1 from public.sesion_sala where fecha::date >= current_date)` del proc tomaba
+-- la rama POSITIVA ⇒ jamás se emitía fila con supresion_causa ⇒ `count = 0 >= 1` fallaba. Era
+-- determinísticamente ROJO mientras PROD tuviera sala agendada y determinísticamente VERDE el fin
+-- de semana legislativo — peor que un rojo estable.
+-- FIX (misma medicina que 0080_actualidad_evidencia.test.sql): hacer la ausencia GARANTIZADA
+-- DENTRO de la transacción. El delete cascadea a sesion_tabla_item y se rollbackea al final, así
+-- que PROD no se toca. Va DESPUÉS de D1/D2 (que no dependen de sala) y ANTES del bloque WR-01 de
+-- tramitación de más abajo.
+delete from public.sesion_sala where fecha::date >= current_date;
+select actualidad.materializar_senales();
+
+-- Recién ahora la ausencia de sesiones futuras es un HECHO de la transacción: el proc DEBE
 -- emitir una FILA de supresión (agenda_sala) con supresion_causa NOT NULL, nunca ausencia.
 select cmp_ok(
   (select count(*)::int from actualidad_senal
@@ -124,10 +138,15 @@ select cmp_ok(
   '>=', 1,
   'D3: agenda_sala sin futuras emite fila con supresion_causa (supresión-como-fila, no ausencia)');
 -- y esa fila NUNCA afirma un conteo positivo como hecho (0-como-hecho prohibido).
+-- WR-02 (code-review 127) — este assert PASABA VACUAMENTE: `coalesce(sum(conteo), 0) = 0` da 0
+-- cuando NO EXISTE NINGUNA fila de supresión, que era justamente el estado en que el assert de
+-- arriba fallaba. Salía `ok` con CERO filas evaluadas — el gotcha "cero fuerte vs cero vacuo" de
+-- v12.0 — y su verde amortiguaba la lectura del rojo de arriba. `bool_and` devuelve NULL sobre
+-- cero filas, y `is(NULL, true)` FALLA ⇒ el assert ya no puede pasar sin denominador.
 select is(
-  (select coalesce(sum(conteo), 0)::int from actualidad_senal
+  (select bool_and(conteo = 0) from actualidad_senal
      where tipo_senal = 'agenda_sala' and supresion_causa is not null),
-  0, 'D3: la fila de supresión no afirma conteo positivo (0-como-hecho prohibido)');
+  true, 'D3: la fila de supresión no afirma conteo positivo (0-como-hecho prohibido; bool_and mata el cero vacuo)');
 
 -- ── (WR-02) nuevos_ingresos declara la VENTANA REAL, no el piso de corpus ─────
 -- La fuente está fresca (eventos recientes sembrados arriba) → nuevos_ingresos emite fila(s)
@@ -145,14 +164,24 @@ select cmp_ok(
   'WR-02: nuevos_ingresos etiqueta ventana=7d (la ventana de conteo real)');
 
 -- ── (WR-01) fuente de tramitación STALE → supresión-como-fila, NUNCA 0-como-hecho ─
--- Reescenario: la frescura la decide el max(fecha) GLOBAL de tramitacion_evento, así que para
--- simular una fuente stale hay que VACIAR TODA la tabla (no solo el boletín seed — PROD tiene
--- miles de eventos frescos que dejarían la fuente fresca). Esta transacción se ROLLBACKea al
--- final (finish), por lo que el borrado NUNCA toca PROD. Sembramos un único evento VIEJO
--- (> umbral 7d) para que max(fecha) sea stale-no-nulo. Con la fuente stale,
--- velocity/nuevos_ingresos/urgencias/archivados DEBEN emitir una FILA con supresion_causa
--- NOT NULL — jamás una fila conteo=0 con causa NULL (ausencia ≠ hecho, contrato §4/§SUPRESIÓN).
-delete from tramitacion_evento;
+-- Reescenario: la frescura la decide el max(fecha) SANEADO (fecha <= current_date) de
+-- tramitacion_evento, así que para simular una fuente stale hay que sacar de en medio los eventos
+-- RECIENTES (no basta el boletín seed — PROD tiene eventos frescos que dejarían la fuente fresca).
+-- Esta transacción se ROLLBACKea al final (finish), por lo que el borrado NUNCA toca PROD.
+--
+-- WR-07 (code-review 127) — el borrado está ACOTADO A LA VENTANA DE FRESCURA. La versión anterior
+-- hacía `delete from tramitacion_evento;` a secas: 48.409 filas en la corrida de 127-03. Se
+-- rollbackeaba, sí, pero mientras la transacción vivía la tabla quedaba con RowExclusiveLock sobre
+-- 48k filas — un upsert del ingestor o del cron de novedades corriendo en paralelo (11/14/17/20
+-- UTC) SE BLOQUEABA hasta el rollback, y cada corrida dejaba ~48k tuplas muertas para el
+-- autovacuum. Borrando sólo `fecha >= current_date - 7 days` (y <= current_date) se consigue
+-- EXACTAMENTE el mismo escenario —max(fecha saneada) queda por debajo del umbral— tocando dos
+-- órdenes de magnitud menos filas. Las filas FUTURAS (typo 2626) no se tocan: el cálculo de
+-- frescura ya las filtra con `fecha <= current_date`, y así el assert D1 de más arriba conserva
+-- su sujeto.
+delete from tramitacion_evento
+ where fecha >= current_date - interval '7 days'   -- `>=`: si quedara un evento EXACTAMENTE en el
+   and fecha <= current_date;                      -- umbral, `max >= current_date - 7` daría FRESCA
 insert into tramitacion_evento
   (boletin, fecha, camara, tipo, descripcion, origen)
 values
