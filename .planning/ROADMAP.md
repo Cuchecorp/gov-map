@@ -145,7 +145,7 @@ Plans:
 
 Plans:
 - [ ] 129-01-PLAN.md — Baseline pre-deploy + deploy NUEVO (runbook 104-02) + B-02 + capturas con escalera 390px
-- [ ] 129-02-PLAN.md — H-01: tasa de flakiness, causa raiz por codigo, fix defensivo + test de regresion
+- [ ] 129-02-PLAN.md — H-01 (SC4): tasa de flakiness N>=20 + causa raiz por codigo; fix de resiliencia DIFERIDO (contrato #34)
 - [ ] 129-03-PLAN.md — Critica vs baselines v13 + fix de plural (D-06) en 4 moldes + higiene B26
 - [ ] 129-04-PLAN.md — Fixes de diseno + re-deploy INCONDICIONAL + capturas finales + densidad 390px
 - [ ] 129-05-PLAN.md — 129-EVIDENCIA-LOOP.md + CHECKPOINT DE OPERADOR (veredicto verbatim, D-07)
