@@ -3,6 +3,7 @@ import { VOTO_PRESENTACION } from "@/lib/voto-presentacion";
 import type {
   VotosBreakdown,
   Asistencia,
+  CarrilEstado,
 } from "@/lib/parlamentario-resumen-conteos";
 
 /**
@@ -64,10 +65,26 @@ const pctFormatter = new Intl.NumberFormat("es-CL", {
 export function VotosCapa1({
   breakdown,
   asistencia,
+  estado,
 }: {
   breakdown: VotosBreakdown;
   asistencia: Asistencia | null;
+  /**
+   * CR-02 (code-review 130) — espejo byte-a-byte de `LobbyCapa1` (122-05, fila 5.11):
+   * capa-1 recibe el `CarrilEstado` COMPLETO, no cifras ya colapsadas. Con
+   * `vacio`/`no_ingerido`/`pendiente` NO hay conteo confiable que imprimir:
+   * `conteosDesconocidos()` (el fallback de `contarCarrilesSeguro` cuando el RPC de
+   * conteo falla) emite `{si:0,no:0,abstencion:0,pareo:0,ausente:0}`, y sin esta
+   * guarda capa-1 pintaba cuatro KPIs `0` a 24px bajo un encabezado que decía "—":
+   * el ciudadano leía "votó 0 veces" cuando el hecho es "no pudimos leer el conteo".
+   * Quién declara el 3-estado es el rótulo del carril (`conteoLabel`), su único
+   * emisor legítimo.
+   */
+  estado: CarrilEstado;
 }) {
+  // Omisión honesta: sin `dato` no se emite NINGUNA cifra ni barra (cero fabricado).
+  if (estado.tipo !== "dato") return null;
+
   const totalBarra = ORDEN_BARRA.reduce((s, k) => s + breakdown[k], 0);
   // Asistencia %: presente / total. Se OMITE si no es derivable (jamás un % fabricado).
   const asistPct =

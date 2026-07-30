@@ -5,6 +5,11 @@ import { cache } from "react";
 import { createServerSupabase } from "@/lib/supabase";
 import { crucesPublicEnabled } from "@/lib/cruces-gate";
 import { moneyPublicEnabled } from "@/lib/money-gate";
+// WR-06 (code-review 130): el contrato del RPC de conteo tiene UN tipo canónico
+// (`VotoConteoRow`, types.ts). Antes se redeclaraba inline en dos puntos — dos
+// definiciones del mismo contrato = deriva silenciosa el día que el RPC gane una
+// columna. Es un `import type`: cero runtime, no toca el module graph del bundle.
+import type { VotoConteoRow } from "@/lib/types";
 
 /**
  * Conteos server-only para el resumen + índice above-fold de la ficha del
@@ -104,9 +109,7 @@ export interface RangoAnios {
  * (no rompe, no fabrica); una selección desconocida se IGNORA (nunca fabrica una
  * categoría). Exportado para test.
  */
-export function agregarConteoVotos(
-  rows: { seleccion: string; n: number }[],
-): VotosBreakdown {
+export function agregarConteoVotos(rows: VotoConteoRow[]): VotosBreakdown {
   const b: VotosBreakdown = { si: 0, no: 0, abstencion: 0, pareo: 0, ausente: 0 };
   for (const v of rows) {
     if (Object.prototype.hasOwnProperty.call(b, v.seleccion)) {
@@ -289,7 +292,7 @@ export const contarCarriles = cache(
       );
     }
     const votosConteoRows =
-      (votosConteoData as { seleccion: string; n: number }[] | null) ?? [];
+      (votosConteoData as VotoConteoRow[] | null) ?? [];
     // Desglose por selección desde el agregado (fuente única de "Cómo votó";
     // capa-1/chip/sección nunca desincronizan).
     const votosBreakdown = agregarConteoVotos(votosConteoRows);

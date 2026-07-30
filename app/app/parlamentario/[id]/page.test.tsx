@@ -165,6 +165,10 @@ const fromMock = vi.fn((_tabla: string) => ({
     eq: () => ({
       maybeSingle: () => Promise.resolve({ data: null, error: null }),
     }),
+    // WR-07 (130): `VotosSection` hidrata la materia con
+    // `.from('proyecto').select(...).in('boletin', …)`. Sin este brazo el mock
+    // reventaba al renderizar la SECCIÓN directamente (no sólo el carril).
+    in: () => Promise.resolve({ data: [], error: null }),
   }),
 }));
 const createServerSupabaseMock = vi.fn(() => ({ rpc: rpcMock, from: fromMock }));
@@ -180,6 +184,9 @@ import ParlamentarioPage, {
   RelacionesConDatos,
 } from "./page";
 import { CrucesSection } from "@/components/cruces-de-parlamentario";
+// WR-07 (130): la sección de votos se renderiza DIRECTAMENTE (awaited) porque
+// `renderToStaticMarkup` no atraviesa el <Suspense> async del carril.
+import { VotosSection } from "@/components/votos-por-parlamentario";
 import { LEYENDA_CROSS_LINK } from "@/components/cross-links-parlamentario";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -484,10 +491,72 @@ describe("/parlamentario/[id] — capa-1 visible + detalle default-cerrado", () 
       // `.length` del listado capado (Fable M1: conteoLabel = String(n), sin
       // separador de miles — page.tsx L89-99).
       expect(html).toContain("Ver detalle (3752)");
+      // WR-07 (code-review 130): el centinela también debe morder sobre el DESGLOSE
+      // de la SECCIÓN, no sólo sobre el label del trigger. Si alguien revierte el
+      // prop `conteosGlobales` (dejando VotosSection calculando del listado capado),
+      // el trigger seguiría diciendo 3752 mientras "Cómo votó" vuelve a mentir.
+      // WR-07 (code-review 130) — LÍMITE DE ESTE CENTINELA, medido al mutar:
+      // `renderToStaticMarkup` es síncrono, así que el subárbol async de
+      // `VotosSection` NO se renderiza aquí: sale el skeleton del <Suspense>.
+      // Todo lo que este test ve del desglose lo emite `VotosCapa1`. Asertar el
+      // `aria-label` de la barra (como sugería el review) NO muerde: al revertir
+      // el prop `conteosGlobales` a `null` el test seguía VERDE. La cobertura de
+      // la SECCIÓN vive en los dos tests de abajo (wiring por source-scan +
+      // comportamiento renderizando `VotosSection` directamente).
+      expect(html).toContain("data-state=\"closed\"");
       // Negativo: el render con sus delimitadores del número del listado capado
       // NUNCA aparece — si alguien revierte al `.length`, este assert cae junto
       // con el positivo de arriba (muerde por los dos lados).
       expect(html).not.toContain("Ver detalle (3)");
+    } finally {
+      rpcMock.mockImplementation(orig);
+    }
+  });
+
+  // ── WR-07 (130): el centinela que SÍ muerde sobre el DESGLOSE de la sección ───
+  it("VotosSection renderizada: el desglose de 'Cómo votó' sale de conteosGlobales, NUNCA del listado capado", async () => {
+    const orig = rpcMock.getMockImplementation()!;
+    try {
+      rpcMock.mockImplementation(((name: string) => {
+        if (name === "votos_de_parlamentario") {
+          // Listado capado a 3 filas, con boletín/fecha reales para que el arco arme.
+          return Promise.resolve({
+            data: [
+              { votacion_id: "v1", boletin: "1-07", seleccion: "si", fecha: "2024-02-01T00:00:00Z", origen: "camara", titulo: null, idea_matriz: null, etapa: null, resultado: null, total_si: null, total_no: null, enlace: null, fecha_captura: "2026-01-15T00:00:00Z" },
+              { votacion_id: "v2", boletin: "2-07", seleccion: "no", fecha: "2024-02-02T00:00:00Z", origen: "camara", titulo: null, idea_matriz: null, etapa: null, resultado: null, total_si: null, total_no: null, enlace: null, fecha_captura: "2026-01-15T00:00:00Z" },
+              { votacion_id: "v3", boletin: "3-07", seleccion: "ausente", fecha: "2024-02-03T00:00:00Z", origen: "camara", titulo: null, idea_matriz: null, etapa: null, resultado: null, total_si: null, total_no: null, enlace: null, fecha_captura: "2026-01-15T00:00:00Z" },
+            ],
+            error: null,
+          });
+        }
+        return orig(name);
+      }) as never);
+
+      // (a) CON agregado global: la composición mostrada es la del universo real.
+      const conAgregado = renderToStaticMarkup(
+        await VotosSection({
+          id: "P00001",
+          searchParams: {},
+          conteosGlobales: { si: 1764, no: 1772, abstencion: 171, pareo: 16, ausente: 29 },
+        }),
+      );
+      expect(conAgregado).toContain(
+        "A favor 1764 · En contra 1772 · Abstención 171 · Pareo 16 · Ausente 29",
+      );
+      // Negativo apareado: la composición del listado capado (1/1/0/0/1) NO aparece.
+      expect(conAgregado).not.toContain("A favor 1 · En contra 1");
+      // Y el recorte del listado queda DECLARADO (3 de 3752).
+      expect(conAgregado).toContain("3 votaciones más");
+
+      // (b) SIN agregado (WR-01: camino hoy ALCANZABLE desde la página, con el
+      // detalle montado bajo `no_ingerido`): el total sale del listado, y por eso
+      // el copy declara su alcance en vez de leerse como el total del registro.
+      const sinAgregado = renderToStaticMarkup(
+        await VotosSection({ id: "P00001", searchParams: {}, conteosGlobales: null }),
+      );
+      expect(sinAgregado).toContain("A favor 1 · En contra 1");
+      // CR-01: la rama con ausentes>0 (ésta: 1 ausente) declara el alcance.
+      expect(sinAgregado).toContain("votaciones cargadas en este detalle");
     } finally {
       rpcMock.mockImplementation(orig);
     }
@@ -500,6 +569,22 @@ describe("/parlamentario/[id] — invariantes de fuente (UXCOG 55-03)", () => {
     path.join(process.cwd(), "app", "parlamentario", "[id]", "page.tsx"),
     "utf8",
   );
+
+  // ── WR-01/WR-07 (130): el WIRING del prop, que el render del carril no ve ─────
+  it("VotosSection recibe conteosGlobales={conteos.votosBreakdown} (sin ternario muerto) y el fallback null SÓLO en la rama no_ingerido", () => {
+    // El wiring del camino con dato: sin ternario redundante (era código muerto por
+    // narrowing — TypeScript ya estrechó el tipo en la guarda de la sección).
+    expect(PAGE_SRC).toContain("conteosGlobales={conteos.votosBreakdown}");
+    expect(PAGE_SRC).not.toContain(
+      'conteos.votos.tipo === "dato" ? conteos.votosBreakdown : null',
+    );
+    // WR-01: el fallback existe y es ALCANZABLE — el detalle se monta también en
+    // `no_ingerido` (único origen: el RPC de conteo caído) con conteosGlobales={null}.
+    expect(countOccurrences(PAGE_SRC, "conteosGlobales={null}")).toBe(1);
+    expect(PAGE_SRC).toContain('conteos.votos.tipo === "no_ingerido"');
+    // Y capa-1 recibe el 3-estado completo (CR-02).
+    expect(PAGE_SRC).toContain("estado={conteos.votos}");
+  });
 
   it("cada capa-1 se monta FUERA del DetalleColapsable (VotosCapa1 antes del primer disclosure)", () => {
     const idxCapa1 = PAGE_SRC.indexOf("<VotosCapa1");

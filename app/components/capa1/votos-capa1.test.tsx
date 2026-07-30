@@ -2,7 +2,10 @@ import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 
 import { VotosCapa1 } from "./votos-capa1";
-import type { VotosBreakdown } from "@/lib/parlamentario-resumen-conteos";
+import type {
+  VotosBreakdown,
+  CarrilEstado,
+} from "@/lib/parlamentario-resumen-conteos";
 
 afterEach(cleanup);
 
@@ -10,10 +13,17 @@ function breakdown(over: Partial<VotosBreakdown> = {}): VotosBreakdown {
   return { si: 72, no: 66, abstencion: 2, pareo: 1, ausente: 1, ...over };
 }
 
+// CR-02 (130): estado `dato` por defecto en los fixtures de render normal.
+const DATO: CarrilEstado = { tipo: "dato", n: 142 };
+
 describe("VotosCapa1 — resumen preatentivo de votos (55-02)", () => {
   it("muestra 5 cifras Mono grandes (4 sentidos + asistencia %)", () => {
     const { container } = render(
-      <VotosCapa1 breakdown={breakdown()} asistencia={{ presentes: 141, total: 142 }} />,
+      <VotosCapa1
+        breakdown={breakdown()}
+        asistencia={{ presentes: 141, total: 142 }}
+        estado={DATO}
+      />,
     );
     // 4 facts de sentido + 1 de asistencia = 5 cifras, todas Mono + text-2xl.
     const cifras = container.querySelectorAll(".font-mono.text-2xl");
@@ -26,7 +36,7 @@ describe("VotosCapa1 — resumen preatentivo de votos (55-02)", () => {
 
   it("omite la cifra de asistencia cuando no es derivable (nunca fabrica un %)", () => {
     const { container } = render(
-      <VotosCapa1 breakdown={breakdown()} asistencia={null} />,
+      <VotosCapa1 breakdown={breakdown()} asistencia={null} estado={DATO} />,
     );
     expect(screen.queryByText(/asistencia/)).not.toBeInTheDocument();
     expect(container.textContent).not.toMatch(/%/);
@@ -36,7 +46,11 @@ describe("VotosCapa1 — resumen preatentivo de votos (55-02)", () => {
 
   it("la barra apilada 'Cómo votó' usa colores semánticos, NUNCA petróleo", () => {
     const { container } = render(
-      <VotosCapa1 breakdown={breakdown()} asistencia={{ presentes: 141, total: 142 }} />,
+      <VotosCapa1
+        breakdown={breakdown()}
+        asistencia={{ presentes: 141, total: 142 }}
+        estado={DATO}
+      />,
     );
     const html = container.innerHTML;
     // colores semánticos (verde/rojo/ámbar/slate) presentes, petróleo ausente.
@@ -53,8 +67,36 @@ describe("VotosCapa1 — resumen preatentivo de votos (55-02)", () => {
       <VotosCapa1
         breakdown={{ si: 0, no: 0, abstencion: 0, pareo: 0, ausente: 0 }}
         asistencia={null}
+        estado={DATO}
       />,
     );
     expect(container).toBeTruthy();
+  });
+
+  // ── CR-02 (code-review 130): el error-path NO pinta ceros fabricados ──────────
+  it("con estado no_ingerido (RPC de conteo caído) NO pinta ninguna cifra — control positivo/negativo apareado", () => {
+    // Positivo apareado: el MISMO breakdown en estado `dato` SÍ pinta las cifras.
+    const { container: conDato } = render(
+      <VotosCapa1
+        breakdown={breakdown()}
+        asistencia={{ presentes: 141, total: 142 }}
+        estado={DATO}
+      />,
+    );
+    expect(conDato.querySelectorAll(".font-mono.text-2xl").length).toBe(5);
+    cleanup();
+
+    // Negativo: `conteosDesconocidos()` emite el breakdown TODO-CEROS + no_ingerido.
+    // Sin la guarda, esto rendía "0 a favor · 0 en contra · 0 abstención · 0 ausente"
+    // a 24px bajo un encabezado que decía "—".
+    const { container } = render(
+      <VotosCapa1
+        breakdown={{ si: 0, no: 0, abstencion: 0, pareo: 0, ausente: 0 }}
+        asistencia={null}
+        estado={{ tipo: "no_ingerido" }}
+      />,
+    );
+    expect(container.querySelectorAll(".font-mono.text-2xl").length).toBe(0);
+    expect(container.textContent ?? "").not.toMatch(/a favor|en contra|0/);
   });
 });

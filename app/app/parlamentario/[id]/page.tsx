@@ -584,28 +584,57 @@ export async function CarrilesSection({
       */}
       <section id="votos" className="mt-12">
         <CarrilHeader titulo="Votaciones" conteo={conteoLabel(conteos.votos)} />
+        {/*
+          CR-02 (code-review 130): se pasa el `CarrilEstado` COMPLETO, espejo exacto
+          de `LobbyCapa1` abajo. Sin él, el fallback `conteosDesconocidos()` (RPC de
+          conteo caído) hacía que capa-1 pintara cuatro `0` a 24px bajo un
+          encabezado que decía "—".
+        */}
         <VotosCapa1
           breakdown={conteos.votosBreakdown}
           asistencia={conteos.asistencia}
+          estado={conteos.votos}
         />
-        {conteos.votos.tipo === "dato" && (
+        {conteos.votos.tipo === "dato" ? (
           <div className="mt-4">
             <DetalleColapsable n={conteos.votos.n}>
               <Suspense fallback={<VotosSkeleton />}>
                 {/* Paginación server existente (?votosPage/?materia) intacta DENTRO
                     del disclosure — se conserva, no se duplica con un paginador
-                    cliente en conflicto. */}
+                    cliente en conflicto.
+
+                    WR-01 (code-review 130): el ternario que había aquí
+                    (`tipo === "dato" ? … : null`) era código muerto por narrowing —
+                    TypeScript ya estrechó el tipo en la guarda de arriba. */}
                 <VotosSection
                   id={id}
                   searchParams={sp}
-                  conteosGlobales={
-                    conteos.votos.tipo === "dato" ? conteos.votosBreakdown : null
-                  }
+                  conteosGlobales={conteos.votosBreakdown}
                 />
               </Suspense>
             </DetalleColapsable>
           </div>
-        )}
+        ) : conteos.votos.tipo === "no_ingerido" ? (
+          <div className="mt-4">
+            {/*
+              WR-01 (code-review 130) — el fallback DEBE ser alcanzable. Para votos,
+              `derivarEstado({ingestado: true})` sólo produce `dato`/`vacio`: el único
+              origen de `no_ingerido` es `conteosDesconocidos()`, es decir el conteo
+              agregado (`votos_conteo_de_parlamentario`) caído. Antes la sección
+              entera DESAPARECÍA en ese caso y el fix de fable_blocker_1 jamás se
+              ejecutaba desde la página (era verdadero por vacuidad). Ahora el detalle
+              sigue navegable sin agregado global: el listado
+              (`votos_de_parlamentario`, RPC independiente) declara su alcance sobre
+              lo CARGADO en vez de leerse como el total real. El trigger NO fabrica
+              número (`triggerLabel` sin N) — el conteo es justo lo que no sabemos.
+            */}
+            <DetalleColapsable n={0} triggerLabel="Ver detalle">
+              <Suspense fallback={<VotosSkeleton />}>
+                <VotosSection id={id} searchParams={sp} conteosGlobales={null} />
+              </Suspense>
+            </DetalleColapsable>
+          </div>
+        ) : null}
       </section>
 
       {/*
