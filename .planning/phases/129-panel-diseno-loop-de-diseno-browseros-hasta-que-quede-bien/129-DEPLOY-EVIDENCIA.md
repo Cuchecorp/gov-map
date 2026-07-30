@@ -341,3 +341,188 @@ $ git status --porcelain .env                  → (vacío)
 $ git diff --name-only -- app/next.config.ts app/public/_headers app/middleware.ts app/wrangler.jsonc → (vacío)
 ```
 Cero DDL/DML, cero flips de flags, cero `secret put`, cero cambios a la CSP.
+
+---
+
+## B-02 sobre el DOM del deploy nuevo
+
+HTML bajado a archivo (nunca pipeado a grep); el HTML del Worker viene en UNA línea
+(`wc -l` = 1, 72.734 bytes) ⇒ `grep -c` toparía en 1 ⇒ se usa `grep -oF … | wc -l`.
+
+```
+$ curl -s https://observatorio-congreso.thevalis.workers.dev/ > /tmp/p129.html
+$ wc -l < /tmp/p129.html
+1
+$ grep -oF '(sin materia)' /tmp/p129.html | wc -l
+0
+$ grep -oF 'Por materia' /tmp/p129.html | wc -l
+0
+$ grep -oF 'Comisiones citadas esta semana' /tmp/p129.html | wc -l
+2
+```
+
+| literal | conteo | lectura |
+|---|---:|---|
+| `(sin materia)` | **0** | negativo CON carne — el literal existiría si el tile de materia se montara |
+| `Por materia` | **0** | **cero ESTRUCTURAL, no medido**: el tile no se monta (`app/components/panel-actualidad.tsx:51`, bloque `I. agrupacion_materia MUERE sin tombstone (O-3)`) |
+| `Comisiones citadas esta semana` | **2** | **control positivo apareado** ≥ 1 ⇒ los ceros de arriba son ceros FUERTES, no vacuos. El `2` es HTML + payload RSC, no duplicación |
+
+**Contraste con el baseline:** idéntico al PRE-deploy (0 / 0 / 2). Como advierte §Baseline,
+el baseline pre-deploy YA pasaba estos conteos; el cero de B-02 NO se acredita como logro del deploy nuevo.
+
+---
+
+## Capturas
+
+Las 3 capturas se acreditan por CONTENIDO (`textContent`, jamás `innerText`), no solo por `test -s`
+— `bros-cli` sale 0 tras `CDP request timeout` y un PNG en blanco pesa >0 —. El timeout se observó en
+esta corrida en la captura de landing y en la de `/comparar`: ambas necesitaron reintento.
+
+### Hecho que contradice al plan: el DPR de esta máquina es 1,25, no 1
+
+El plan afirmaba que "las capturas BrowserOS de este repo son DPR 1 — 965×840, 1620×917 — así que el
+ancho sale exacto". **Es falso**: medido en vivo, `window.devicePixelRatio` = **1,25** y un viewport
+de 1296 CSS px produce un PNG de **1620** px (1296 × 1,25 = 1620). El propio ejemplo `1620×917` que
+el plan citaba como "DPR 1" es en realidad un viewport de 1296 CSS px a DPR 1,25.
+
+```
+$ evaluate_script → JSON.stringify({dpr:window.devicePixelRatio,w:window.innerWidth,h:window.innerHeight})
+{"dpr":1.25,"w":1296,"h":734}
+```
+
+Consecuencia: una captura a 390 CSS px sale de 487 px de dispositivo. Ver el tratamiento en la
+captura 390 más abajo.
+
+### 1. `129-deploy-landing-desktop.png` — `/` en desktop (deploy REAL)
+
+- `test -s` ✔ · `file` → **1620 x 917** (viewport 1296 CSS px × DPR 1,25).
+- Viewport y href VERBATIM, tomados en la misma página antes del shot:
+```
+{"w":1296,"h":734,"href":"https://observatorio-congreso.thevalis.workers.dev/"}
+```
+- `textContent` del tile renderizado (elemento real, NO el payload RSC):
+```
+{"heads":1,"tag":"H2","head":"Comisiones citadas esta semana","card":"Comisiones citadas esta semanaRecibir al Alcalde de la comuna de Concepción, señor Héctor Múñoz y a dirigentes del Humedal Paicaví, Región del…Ver fuente ↗Citado el 03 ago 2026 · Comisión de Medio Ambiente, Cambio Climát"}
+```
+> Nota de método: `document.body.textContent` incluye el contenido de los `<script>`, así que su
+> primera ocurrencia de `Comisiones citadas esta semana` cae dentro del payload RSC y NO probaría
+> render. Se consultó `querySelectorAll("h1,h2,h3,h4")` para exigir un H2 REALMENTE renderizado.
+
+### 2. `129-deploy-panel-390.png` — escalón (b), con salvedad obligatoria
+
+**La captura 390px NO es del deploy real.** Se sirvió el contenido del deploy a través de un harness
+LOCAL y efímero, por lo que el `href` es `127.0.0.1`. Salvedad obligatoria del escalón (b) del plan.
+
+**Escalones (a) intentados y por qué fallaron — todos medidos, ninguno narrado:**
+
+| intento | resultado medido |
+|---|---|
+| `create_window` + `window.resizeTo(406,900)` | ventana creada **maximizada** ⇒ `resizeTo` es no-op: `{"w":1296,"ow":1536}` sin cambio tras el resize |
+| `window.open(...,"width=406")` desde la página | **bloqueado** por el pop-up blocker (sin gesto de usuario): `{"opened":false}` |
+| control de viewport por tool MCP | **no existe**: ningún tool de BrowserOS expone viewport/emulate/deviceMetrics |
+| CDP crudo (`Emulation.setDeviceMetricsOverride`) | **no accesible**: no hay puerto DevTools abierto (9222/9223/etc. cerrados; sólo el MCP en 9200) |
+| redimensionar la ventana por Win32 `MoveWindow` | **tope duro de Chromium**: pedir 530 px devuelve `OS_RECT width=910`; el `innerWidth` mínimo alcanzable es **770**, nunca 390 |
+
+El iframe same-origin contra el deploy está muerto por CSP (`frame-ancestors 'none'` +
+`x-frame-options: DENY`, verificados en los headers en vivo) y **está PROHIBIDO tocar la CSP**.
+
+**Escalón (b) tal como se ejecutó:** un proxy local efímero en `127.0.0.1:4390`
+(`scratchpad/p129-harness.mjs`, fuera del repo) reenvía el contenido del deploy REAL y elimina de la
+RESPUESTA únicamente `content-security-policy` y `x-frame-options`, permitiendo enmarcarlo. La página
+harness contiene un `<iframe width:390px>`. **Cero archivos del repo tocados; cero cambios a la CSP
+del deploy** (el `git diff` de los 4 archivos de CSP sale vacío, ver más abajo). El contenido servido
+es el del Worker desplegado (control: `grep -oF 'Comisiones citadas esta semana'` sobre el proxy = 2,
+igual que contra el deploy).
+
+Esto **no** es el caso PROHIBIDO (c): no es un `<div style="width:390px">` del top-level. Las media
+queries de Tailwind evalúan el viewport del **iframe**, que es un viewport real de 390 CSS px — y la
+captura lo confirma: layout de una sola columna, nav apilada, tiles a ancho completo.
+
+**Salida VERBATIM del `JSON.stringify({w,h,href})`, tomada en la MISMA página justo antes del shot:**
+```
+{"w":390,"h":1400,"href":"http://127.0.0.1:4390/"}
+```
+`"w":390` exacto. El `href` es `127.0.0.1` ⇒ **escalón (b)**, y por eso la captura 390px
+**NO es del deploy real**.
+
+- `textContent` del tile renderizado DENTRO del iframe a 390:
+```
+{"heads":1,"head":"Comisiones citadas esta semana","card":"Comisiones citadas esta semanaRecibir al Alcalde de la comuna de Concepción, señor Héctor Múñoz y a dirigentes del Humedal Paicaví, Región del…Ver fuente ↗Citado el 03 ago 2026 · C","rect":{"x":0,"y":0,"w":390,"h":1400},"dpr":1.25,"bodyH":6440}
+```
+
+**Cómo el PNG mide 390 px pese al DPR 1,25 (declarado, no disimulado):** el screenshot crudo del tab
+salió **943 x 1750**; se recortó el rect exacto del iframe en px de dispositivo
+(390 × 1,25 = **488** de ancho, 1400 × 1,25 = **1750** de alto) y se reescaló ×0,8 a la grilla de px
+CSS, dando **390 x 1400** — exactamente lo que mostraría un dispositivo de 390 px a DPR 1. Ningún
+píxel proviene de un viewport distinto de 390 CSS px.
+```
+CROP src=943x1750 cropped=488x1750 out=390x1400
+$ file 129-deploy-panel-390.png
+PNG image data, 390 x 1400, 8-bit/color RGBA, non-interlaced
+```
+
+### 3. `129-deploy-comparar.png` — `/comparar?a=D1178&b=D1099` (deploy REAL)
+
+- `test -s` ✔ · `file` → **1620 x 847**.
+- Ambos parlamentarios resueltos, leídos de los `<select>` de la página:
+```
+{"sels":[{"val":"D1099","txt":"Jaime Araya Guerrero · Cámara"},{"val":"D1178","txt":"Héctor Ulloa Aguilera · Cámara"}]}
+```
+Apellidos: **Araya Guerrero** (D1099) y **Ulloa Aguilera** (D1178).
+- Encabezados renderizados y ausencia del boundary raíz en la captura acreditada:
+```
+{"heads":["Comparar dos parlamentarios","Militancia (histórica)","Comisiones","Co-autoría de proyectos","Zona electoral","Similitud de votación"],"err":false,"hasD1178":true,"len":80175}
+```
+`err:false` ⇒ el `textContent` NO contiene `No pudimos cargar la portada`.
+
+---
+
+## H-01 — REPRODUCIDO en vivo (hallazgo, no "no reproducible")
+
+En el **primer** load de `/comparar?a=D1178&b=D1099` (página abierta con `new_hidden_page`), el DOM
+post-hidratación mostró el **error boundary raíz**:
+
+```
+{"heads":["No pudimos cargar la portada"],"errPortada":true,"errTecnica":true,"len":59524}
+```
+
+**Localización de la causa — el fallo es de CLIENTE, no de servidor.** Medido en la misma ventana:
+
+```
+$ curl -s -o /tmp/p129-comp.html -w '%{http_code}' ".../comparar?a=D1178&b=D1099"
+200
+$ wc -c < /tmp/p129-comp.html
+109384
+$ grep -oF 'No pudimos cargar la portada' /tmp/p129-comp.html | wc -l
+0
+$ grep -oE 'D1178|D1099' /tmp/p129-comp.html | sort | uniq -c
+     10 D1099
+     10 D1178
+```
+
+⇒ El HTML SSR llega **200, íntegro y SIN boundary**, con ambos IDs presentes 10 veces cada uno. El
+boundary aparece **sólo tras la hidratación en el navegador**. Es un fallo **post-hidratación de
+cliente**, no un 500 ni un fallo de datos.
+
+**Transitoriedad acotada:** una re-navegación a la MISMA URL en la MISMA página renderizó correcto
+(`err:false`, 6 encabezados reales, 80.175 chars vs 59.524 del estado en error). Es decir: se
+reproduce en el primer load y desaparece al re-navegar — consistente con el H-01 descrito en D-05.
+
+**Lo que NO se pudo capturar:** `get_console_logs` devolvió `{"entries":[],"totalCount":0}` en los
+tres intentos (el buffer de consola de BrowserOS no retuvo el error de la carga previa), así que
+**no hay stack trace del error de hidratación**. La causa raíz exacta (qué componente lanza) queda
+SIN determinar y es trabajo de la ola que cierre H-01; lo que aquí queda probado y fechado es:
+(1) se reproduce, (2) es de cliente post-hidratación, (3) el SSR está sano.
+
+---
+
+## Guards finales
+
+```
+$ git diff --name-only -- app/next.config.ts app/public/_headers app/middleware.ts app/wrangler.jsonc
+(vacío)
+$ git status --porcelain supabase/migrations
+(vacío)
+$ git status --porcelain .env
+(vacío)
+```
