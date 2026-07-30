@@ -110,10 +110,18 @@ const fromMock = vi.fn((tabla: string) => {
     };
   }
   if (tabla === "tramitacion_evento") {
+    // La lectura real encadena DOS .order() — orden total (fecha, id) declarado por
+    // H-06/D-03 (131-01): el mock devuelve un thenable RE-ENCADENABLE para que un
+    // tercer .order() futuro tampoco rompa el mock en silencio.
+    const chain = () => {
+      const p: any = Promise.resolve({ data: eventos, error: null });
+      p.order = chain;
+      return p;
+    };
     return {
       select: () => ({
         eq: () => ({
-          order: () => Promise.resolve({ data: eventos, error: null }),
+          order: chain,
         }),
       }),
     };
