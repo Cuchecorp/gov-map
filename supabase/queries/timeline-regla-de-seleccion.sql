@@ -60,8 +60,22 @@
 --   psql "$SUPABASE_DB_URL" -tA -F'|' -v boletin=14309-04 -f supabase/queries/timeline-regla-de-seleccion.sql | tr -d '\r'
 with e as (
   select *,
-    (tipo = 'urgencia' or (tipo = 'tramite' and descripcion ~* 'urgencia')) as es_urg,
-    (descripcion ~* 'retira')                                              as es_retiro,
+    -- CR-01 (131-REVIEW): `coalesce(descripcion,'')` OBLIGATORIO antes de comparar.
+    -- `descripcion` es NULLABLE (0008_tramitacion.sql:75) y en lógica trivaluada
+    -- `NULL ~* 'retira'` = NULL ⇒ `colapsable = es_urg and not es_retiro` = NULL, que
+    -- el `where colapsable` de la CTE `runs` DESCARTA. El espejo TS
+    -- (`esRetiroUrgencia`) hace `/retira/i.test(e.descripcion ?? "")` → `false`, o sea
+    -- el evento de urgencia sin descripción SÍ es colapsable (con `ukey = ""`). Sin el
+    -- coalesce la query mide `eventos_absorbidos` MENOR que el builder y además rompe
+    -- la contigüidad de los runs vecinos (el evento sale de su partición y une dos
+    -- islas que en TS están cortadas). El testigo 14309-04 tiene CERO descripciones
+    -- nulas ⇒ el defecto era invisible en el número congelado (99|14|5|85 idéntico
+    -- antes y después de este fix, re-medido contra PROD), pero la query se declaraba
+    -- "espejo" y no lo era para CUALQUIER OTRO boletín. El mismo riesgo era simétrico
+    -- y latente en `es_urg` (`tipo='tramite' and NULL` = NULL): convergía con TS por
+    -- accidente del `where colapsable`, no por diseño. Ahora ambos son por diseño.
+    (tipo = 'urgencia' or (tipo = 'tramite' and coalesce(descripcion, '') ~* 'urgencia')) as es_urg,
+    (coalesce(descripcion, '') ~* 'retira')                                              as es_retiro,
     lower(trim(case
       when tipo = 'urgencia' then coalesce(descripcion, '')
       else coalesce((regexp_match(coalesce(descripcion,''), 'urgencia\s+([^.,;]+)', 'i'))[1],
