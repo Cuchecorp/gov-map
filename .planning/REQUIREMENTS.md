@@ -47,7 +47,7 @@
 
 ## Out of Scope
 
-- **Deuda de operador** (§8.1 audit v12.0): `OFF-01`, `OFF-6-03` (exigen `supabase_admin`; `0073`/`0075` escritas y NO aplicadas, JAMÁS editarlas — futuro fix = `0080`+), `OP-1` (probe REST, gatea severidad OFF-6-01), `OP-4` (`pgtap` en `public`, destructivo), CF secrets + GEMINI, identidad local, RUT-01, flip MONEY (legal), provisión NOTIF, rotación B26.
+- **Deuda de operador** (§8.1 audit v12.0): `OFF-01`, `OFF-6-03` (exigen `supabase_admin`; `0073`/`0075` escritas y NO aplicadas, JAMÁS editarlas — futuro fix = migración nueva), `OP-1` (probe REST, gatea severidad OFF-6-01), `OP-4` (`pgtap` en `public`, destructivo), CF secrets + GEMINI, identidad local, RUT-01, flip MONEY (legal), provisión NOTIF, rotación B26.
 - **Flips de flags por agente** — prohibido siempre; MONEY/NOTIF siguen OFF y gated.
 - **Invitados a citaciones futuras** — `citacion_invitado` da 0 filas para futuras.
 - **Scraping HTML de medios** — el objetivo 2 es 100% RSS.
@@ -55,7 +55,29 @@
 
 ## Traceability
 
-(la llena el roadmap)
+(firmada por el roadmap 2026-07-30 — mapeo 20/20, cero huérfanos, cero duplicados; **no es evidencia de cumplimiento**)
 
 | REQ | Phase |
 |---|---|
+| PANEL-01 | 127 — PANEL-MAT |
+| PANEL-02 | 128 — PANEL-UI |
+| PANEL-03 | 128 — PANEL-UI |
+| PANEL-04 | 128 — PANEL-UI |
+| PANEL-05 | 128 — PANEL-UI |
+| PANEL-06 | 127 — PANEL-MAT |
+| PANEL-07 | 128 — PANEL-UI |
+| PANEL-08 | 126 — PANEL-GUARDS |
+| PANEL-09 | 129 — PANEL-DISEÑO |
+| NEWS-01 | 132 — NEWS-RSS |
+| NEWS-02 | 132 — NEWS-RSS |
+| NEWS-03 | 133 — NEWS-TAXO |
+| NEWS-04 | 134 — NEWS-RESOLVER |
+| NEWS-05 | 135 — NEWS-CLASIF |
+| NEWS-06 | 136 — NEWS-CRON |
+| NEWS-07 | 137 — NEWS-FICHAS |
+| DEBT-01 | 130 — VOTOS-REAL |
+| DEBT-02 | 126 — PANEL-GUARDS |
+| DEBT-03 | 131 — DEBT-FICHA |
+| DEBT-04 | 131 — DEBT-FICHA |
+
+*Phase 138 (E2E) es integrativa: verifica todos los requirements sobre el deploy real; no posee requirements propios.*
