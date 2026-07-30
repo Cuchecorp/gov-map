@@ -122,9 +122,9 @@ Plans:
 
 - [x] 128-01-PLAN.md — Wave 0 de régimen: alta del idiom `fechada el` + helper `lib/links-internos.ts` + `panel-item-proyecto.tsx`
 - [x] 128-02-PLAN.md — Contrato TS del jsonb (`lib/panel-evidencia.ts`) + derivaciones puras + cruce L5
-- [ ] 128-03-PLAN.md — Tile 1 sala-semana + Tile 2 comisiones (chips L5, cobertura L7)
-- [ ] 128-04-PLAN.md — Tile 3 urgencias por grado + Tile 4 movimiento + Tile 6 ingresos/archivos
-- [ ] 128-05-PLAN.md — Tile 5 votaciones L4 (lectura directa de `votacion`, resultado NULL honesto)
+- [x] 128-03-PLAN.md — Tile 1 sala-semana + Tile 2 comisiones (chips L5, cobertura L7)
+- [x] 128-04-PLAN.md — Tile 3 urgencias por grado + Tile 4 movimiento + Tile 6 ingresos/archivos
+- [x] 128-05-PLAN.md — Tile 5 votaciones L4 (lectura directa de `votacion`, resultado NULL honesto)
 - [ ] 128-06-PLAN.md — Integración del panel: orden D-01, muerte de `datos al`/tile materia, evidencia DOM
 
 **UI hint**: yes
@@ -280,7 +280,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 126. PANEL-GUARDS | 2/2 | Complete    | 2026-07-30 |
 | 127. PANEL-MAT | 3/3 | Complete    | 2026-07-30 |
-| 128. PANEL-UI | 2/6 | In Progress|  |
+| 128. PANEL-UI | 5/6 | In Progress|  |
 | 129. PANEL-DISEÑO | 0/? | Not started | - |
 | 130. VOTOS-REAL | 3/3 | Complete   | 2026-07-30 |
 | 131. DEBT-FICHA | 3/3 | Complete    | 2026-07-30 |
