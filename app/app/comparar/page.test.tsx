@@ -74,7 +74,7 @@ function setDefaultRpc() {
           ],
           error: null,
         };
-      case "coautores_de_parlamentario":
+      case "coautores_de_parlamentario_v2":
         // D1002 co-firmó 3 proyectos con D1001.
         return {
           data: [{ id: "D1002", nombre: "Beto Prueba", camara: "diputados", n_proyectos: 3, total_n: 1 }],
@@ -223,7 +223,7 @@ describe("(6) error de RPC LANZA (#34, jamás 'sin relaciones')", () => {
         return { data: null, error: { message: "boom" } };
       }
       if (name === "militancia_historica_compartida") return { data: [], error: null };
-      if (name === "coautores_de_parlamentario") return { data: [], error: null };
+      if (name === "coautores_de_parlamentario_v2") return { data: [], error: null };
       return { data: [], error: null };
     });
     await expect(renderEjes("D1001", "D1002")).rejects.toThrow(/comisiones_de_parlamentario/);
@@ -302,7 +302,7 @@ describe("(8) CR-01 — intersección de par honesta ante truncamiento", () => {
       switch (name) {
         case "parlamentarios_publico_v2":
           return { data: ROSTER_DEFAULT, error: null };
-        case "coautores_de_parlamentario":
+        case "coautores_de_parlamentario_v2":
           if (args?.p_id === "D1002") {
             // La lista de B SÍ contiene a A (n_proyectos simétrico = 2).
             return {
@@ -321,6 +321,115 @@ describe("(8) CR-01 — intersección de par honesta ante truncamiento", () => {
     const html = await renderEjes("D1001", "D1002");
     expect(html).toContain("Comparten 2");
     expect(html).not.toContain("no comparten proyectos co-firmados");
+  });
+});
+
+// ── (3.3/DEBT-04) membresía de par completa — testigo D1178 × D1099 ─────────────
+// La v2 (coautores_de_parlamentario_v2, 0083) lleva CAP_RPC_COAUTORES=1000: la
+// membresía de par deja de truncar en silencio a 20. El testigo real D1178 (Héctor
+// Ulloa Aguilera) × D1099 (Jaime Araya Guerrero) co-firma 92 boletines — hoy con la
+// vieja (limit 20) esto se declara indeterminado; con la v2, se declara el hecho.
+describe("(3.3/DEBT-04) membresía de par completa — testigo D1178 × D1099", () => {
+  /** Lista larga programática con la fila real del par insertada. */
+  function listaLarga(
+    length: number,
+    filaPar: { id: string; nombre: string; n_proyectos: number },
+  ) {
+    const relleno = Array.from({ length: length - 1 }, (_, i) => ({
+      id: `R${String(i + 1).padStart(4, "0")}`,
+      nombre: `Relleno ${String(i + 1).padStart(3, "0")}`,
+      camara: "diputados",
+      n_proyectos: 1,
+      total_n: length,
+    }));
+    const fila = {
+      id: filaPar.id,
+      nombre: filaPar.nombre,
+      camara: "diputados",
+      n_proyectos: filaPar.n_proyectos,
+      total_n: length,
+    };
+    return [...relleno, fila];
+  }
+
+  it("D1178 × D1099: la v2 declara el hecho 'Comparten 92 proyectos co-firmados' (no indeterminado)", async () => {
+    // 91 co-autores de D1178 (incluye D1099 con n_proyectos=92); 82 de D1099
+    // (incluye D1178 con n_proyectos=92, simétrico).
+    const listaD1178 = listaLarga(91, { id: "D1099", nombre: "Jaime Araya Guerrero", n_proyectos: 92 });
+    const listaD1099 = listaLarga(82, { id: "D1178", nombre: "Héctor Ulloa Aguilera", n_proyectos: 92 });
+    rpcImpl.mockImplementation((name: string, args?: Record<string, unknown>) => {
+      switch (name) {
+        case "parlamentarios_publico_v2":
+          return { data: ROSTER_DEFAULT, error: null };
+        case "coautores_de_parlamentario_v2":
+          return {
+            data: args?.p_id === "D1099" ? listaD1099 : listaD1178,
+            error: null,
+          };
+        default:
+          return { data: [], error: null };
+      }
+    });
+    const html = await renderEjes("D1178", "D1099");
+    // Extracción numérica (no literal con dígitos pegados a markup — React
+    // intercala `<!-- -->` entre texto y `<span>`, gotcha v6.1).
+    const plano = html.replace(/<!--\s*-->/g, "");
+    expect(plano).toContain("Comparten");
+    expect(plano).toContain("92");
+    expect(plano).toContain("proyectos co-firmados");
+    expect(html).not.toContain("no permiten determinar si comparten proyectos co-firmados");
+  });
+
+  it("regresión del defecto: listas truncadas al cap de 1000 sin match y total_n>1000 → indeterminado citando 1000, no 20", async () => {
+    // El cap de co-autoría es 1000 (CAP_RPC_COAUTORES), no 20 — la lista debe
+    // alcanzar ESE cap para contar como truncada bajo la nueva disciplina.
+    const filasTruncadasAlCap = Array.from({ length: 1000 }, (_, i) => ({
+      id: `X${String(i + 1).padStart(4, "0")}`,
+      nombre: `Relleno ${String(i + 1).padStart(4, "0")}`,
+      camara: "diputados",
+      n_proyectos: 1,
+      total_n: 1005,
+    }));
+    rpcImpl.mockImplementation((name: string) => {
+      switch (name) {
+        case "parlamentarios_publico_v2":
+          return { data: ROSTER_DEFAULT, error: null };
+        case "coautores_de_parlamentario_v2":
+          return { data: filasTruncadasAlCap, error: null };
+        default:
+          return { data: [], error: null };
+      }
+    });
+    const html = await renderEjes("D1001", "D1002");
+    expect(html).toContain("no permiten determinar si comparten proyectos co-firmados");
+    // El copy cita el cap de la RPC v2 (1000), NUNCA el de militancia (20) — prueba
+    // que el copy consume CAP_RPC_COAUTORES.
+    expect(html).toContain("más de 1000 registros por parlamentario");
+    expect(html).not.toContain("más de 20 registros por parlamentario");
+  });
+
+  it("control apareado anti-Pitfall-1: militancia con listas de 20 y total_n=40 sin match sigue INDETERMINADA (no ausente)", async () => {
+    const militanciaTruncada20 = Array.from({ length: 20 }, (_, i) => ({
+      id: `Y${String(i + 1).padStart(4, "0")}`,
+      nombre: `Relleno ${String(i + 1).padStart(2, "0")}`,
+      camara: "diputados",
+      total_n: 40,
+    }));
+    rpcImpl.mockImplementation((name: string) => {
+      switch (name) {
+        case "parlamentarios_publico_v2":
+          return { data: ROSTER_DEFAULT, error: null };
+        case "militancia_historica_compartida":
+          return { data: militanciaTruncada20, error: null };
+        default:
+          return { data: [], error: null };
+      }
+    });
+    const html = await renderEjes("D1001", "D1002");
+    // Si alguien subiera CAP_RPC a 1000, este test se pondría rojo (guard vivo
+    // contra la ausencia falsa, T-131-10).
+    expect(html).toContain("no permiten determinar");
+    expect(html).not.toContain("no registran militancia histórica compartida");
   });
 });
 
@@ -483,7 +592,7 @@ describe("(12) VSIM — 5º eje gated (similitud de votación)", () => {
           return { data: [], error: null };
         case "comisiones_de_parlamentario":
           return { data: [], error: null };
-        case "coautores_de_parlamentario":
+        case "coautores_de_parlamentario_v2":
           return { data: [], error: null };
         case "coincidencia_votos_par":
           return { data: [vsim], error: null };

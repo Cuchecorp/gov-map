@@ -114,15 +114,18 @@ const getComisiones = cache(async (id: string): Promise<ComisionRow[]> => {
   return (data ?? []) as ComisionRow[];
 });
 
-/** Co-autores (0061). El par se decide vía `interseccionPar` (CR-01: se leen AMBAS
- *  direcciones y la ausencia solo se declara con una lista completa). */
+/** Co-autores (0083, firma v2 paralela a 0064/0060). El par se decide vía
+ *  `interseccionPar` (CR-01: se leen AMBAS direcciones y la ausencia solo se
+ *  declara con una lista completa). Canal migrado de `coautores_de_parlamentario`
+ *  (limit 20, aún consumida por /parlamentario/[id]) a `_v2` (limit 1000) para que
+ *  la membresía de par no trunque en silencio (DEBT-04). */
 const getCoautores = cache(async (id: string): Promise<CrossLinkRow[]> => {
   const sb = createServerSupabase();
-  const { data, error } = await sb.rpc("coautores_de_parlamentario", {
+  const { data, error } = await sb.rpc("coautores_de_parlamentario_v2", {
     p_id: id,
   });
   if (error) {
-    throw new Error(`coautores_de_parlamentario falló para ${id}: ${error.message}`);
+    throw new Error(`coautores_de_parlamentario_v2 falló para ${id}: ${error.message}`);
   }
   return (data ?? []) as CrossLinkRow[];
 });
@@ -398,7 +401,7 @@ export async function CompararEjes({
   // pasada). CR-01: el par se decide vía `interseccionPar` (dos direcciones +
   // completitud); las columnas muestran el `total_n` honesto, jamás el .length
   // cap-eado. `n_proyectos` es simétrico (mismo valor en ambas direcciones).
-  const coautPar = interseccionPar(coautA, b, coautB, a);
+  const coautPar = interseccionPar(coautA, b, coautB, a, CAP_RPC_COAUTORES);
   const nCoproyectos =
     coautPar.estado === "presente" ? (coautPar.fila.n_proyectos ?? 0) : 0;
   const totalCoautA = totalHonesto(coautA);
@@ -429,7 +432,7 @@ export async function CompararEjes({
       />
     ) : (
       <InterseccionIndeterminada
-        frase={`Las listas consultadas al ${fechaConsulta} están truncadas (más de ${CAP_RPC} registros por parlamentario) y no permiten determinar si comparten proyectos co-firmados. Ver el detalle en cada ficha.`}
+        frase={`Las listas consultadas al ${fechaConsulta} están truncadas (más de ${CAP_RPC_COAUTORES} registros por parlamentario) y no permiten determinar si comparten proyectos co-firmados. Ver el detalle en cada ficha.`}
       />
     );
   const ejeCoautoria = (
@@ -561,9 +564,12 @@ interface CoincidenciaVotosPar {
 // ── CR-01: intersección de PAR sobre listas cap-eadas ─────────────────────────────
 // Las RPCs cross-link de PAR (0061/0067, bounded en 0064) devuelven a lo más CAP_RPC
 // filas (`limit 20`, orden alfabético por nombre) + `total_n` (conteo completo ANTES
-// del cap, molde WR-01 de la ficha). `comisiones_de_parlamentario` (0060, bounded en
-// 0064) tiene OTRO cap (`limit 50` = CAP_RPC_COMISIONES) y NO emite `total_n` — su
-// disciplina de completitud vive junto al eje 2 (WR-02). Decidir el par por membresía
+// del cap, molde WR-01 de la ficha). El eje de co-autoría (0083, firma v2 paralela a
+// 0064/0060) migró a un canal SEPARADO con `limit 1000` = CAP_RPC_COAUTORES (DEBT-04:
+// el cap de 20 truncaba en silencio al 85% de los pares — ver comentario junto a la
+// constante). `comisiones_de_parlamentario` (0060, bounded en 0064) tiene OTRO cap
+// (`limit 50` = CAP_RPC_COMISIONES) y NO emite `total_n` — su disciplina de
+// completitud vive junto al eje de comisiones (WR-02). Decidir el par por membresía
 // en una lista truncada produce ausencias FALSAS con atribución de fuente — el riesgo
 // #1 del proyecto. Reglas:
 //   * PRESENTE: B está en lista(A) o A está en lista(B) — un match es un hecho.
@@ -572,19 +578,37 @@ interface CoincidenciaVotosPar {
 //   * INDETERMINADO: sin match y ambas listas truncadas → se declara la limitación,
 //     JAMÁS se afirma ausencia.
 //   * Conteos: SIEMPRE `total_n` (totalHonesto), jamás el .length cap-eado.
+//
+// TRES caps distintos, deliberadamente NO unificados:
+//   CAP_RPC (20)            — eje de militancia histórica (RPC 0067, sigue en 20;
+//                              NO se toca en esta fase — subirlo produciría ausencia
+//                              FALSA con atribución de fuente, riesgo #1 del proyecto).
+//   CAP_RPC_COAUTORES (1000) — eje de co-autoría (RPC v2 0083; DEBT-04, esta fase).
+//   CAP_RPC_COMISIONES (50)  — eje de comisiones (RPC 0060/0064, sin total_n).
 
-/** Cap del canal de datos de las RPCs cross-link de PAR (`limit 20` en 0061/0067,
- *  re-emitidas bounded en 0064). */
+/** Cap del canal de datos de la RPC cross-link de PAR de militancia histórica
+ *  (`limit 20` en 0067, re-emitida bounded en 0064). NO SE TOCA: es COMPARTIDO
+ *  solo por el eje de militancia — subirlo contaminaría ese eje con ausencias
+ *  falsas (ver control apareado anti-Pitfall-1 en page.test.tsx). */
 const CAP_RPC = 20;
+
+/** Cap del canal de co-autoría (`limit 1000` en `coautores_de_parlamentario_v2`,
+ *  0083) — techo derivado de medición (máximo real 101 sobre el dominio completo
+ *  de 180 parlamentarios ⇒ margen 9.9x). Separado de CAP_RPC a propósito: NO se
+ *  reutiliza CAP_RPC porque eso rompería la disciplina del eje de militancia
+ *  (que sigue leyendo con `limit 20` de la RPC 0067, intacta en esta fase). */
+const CAP_RPC_COAUTORES = 1000;
 
 /** Cap del canal de comisiones (`limit 50` en `comisiones_de_parlamentario`,
  *  0060 bounded en 0064) — SIN `total_n`: la completitud solo es afirmable con
  *  length < cap (WR-02). */
 const CAP_RPC_COMISIONES = 50;
 
-/** true si la lista NO está truncada (largo bajo el cap, o `total_n` ≤ largo). */
-function listaCompleta(filas: CrossLinkRow[]): boolean {
-  if (filas.length < CAP_RPC) return true;
+/** true si la lista NO está truncada (largo bajo el cap, o `total_n` ≤ largo).
+ *  `cap` por defecto es CAP_RPC (eje de militancia); el eje de co-autoría pasa
+ *  CAP_RPC_COAUTORES explícitamente. */
+function listaCompleta(filas: CrossLinkRow[], cap: number = CAP_RPC): boolean {
+  if (filas.length < cap) return true;
   const total = filas[0]?.total_n;
   return typeof total === "number" && total <= filas.length;
 }
@@ -601,17 +625,21 @@ type InterseccionPar =
   | { estado: "ausente" }
   | { estado: "indeterminado" };
 
-/** Decide la intersección del par (A,B) desde las DOS direcciones cap-eadas. */
+/** Decide la intersección del par (A,B) desde las DOS direcciones cap-eadas.
+ *  `cap` por defecto es CAP_RPC (eje de militancia, byte-equivalente en
+ *  comportamiento a antes de esta fase); el eje de co-autoría pasa
+ *  CAP_RPC_COAUTORES explícitamente. */
 function interseccionPar(
   listaA: CrossLinkRow[],
   idB: string,
   listaB: CrossLinkRow[],
   idA: string,
+  cap: number = CAP_RPC,
 ): InterseccionPar {
   const fila =
     listaA.find((r) => r.id === idB) ?? listaB.find((r) => r.id === idA);
   if (fila) return { estado: "presente", fila };
-  if (listaCompleta(listaA) || listaCompleta(listaB)) {
+  if (listaCompleta(listaA, cap) || listaCompleta(listaB, cap)) {
     return { estado: "ausente" };
   }
   return { estado: "indeterminado" };
