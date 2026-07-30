@@ -32,15 +32,18 @@
 --   `app/app/proyecto/[boletin]/page.tsx` (Task 2 de este plan): la lectura encadena
 --   `.order("fecha", { ascending: true }).order("id", { ascending: true })`.
 --
--- RECONCILIACIÓN (fix W-2, plan-checker): el número "85" citado en
---   ROADMAP.md/REQUIREMENTS.md para el testigo 14309-04 fue medido bajo el orden
---   VIEJO (`fecha` sola, NO determinista, resultado dependiente del desempate físico
---   de Postgres). El número "H" que esta query mide y que congela
+-- RECONCILIACIÓN (fix W-2, plan-checker): el número de "Hito del" citado en
+--   ROADMAP.md §131 para el testigo 14309-04 fue medido bajo el orden VIEJO
+--   (`fecha` sola, NO determinista, resultado dependiente del desempate físico de
+--   Postgres). El número "H" que esta query mide y que congela
 --   `app/components/__fixtures__/timeline-14309-04.esperado.json` es el resultado
---   BAJO EL ORDEN TOTAL DECLARADO `(fecha asc, id asc)`. Una diferencia entre 85 y H
---   NO es una regresión: es la CORRECCIÓN del defecto de determinismo (D-03). Repetir
---   esta misma nota en 131-01-SUMMARY.md para que el audit no lea la diferencia como
---   regresión.
+--   BAJO EL ORDEN TOTAL DECLARADO `(fecha asc, id asc)`. Que ambos coincidan
+--   numéricamente (ver *.esperado.json para el valor) es COINCIDENCIA de esta
+--   corrida, NO garantía: el punto de D-03 es que H queda FIJO por el orden total,
+--   ya no a merced del desempate físico que citó ROADMAP. Una diferencia entre el
+--   número viejo y H NO sería una regresión: sería la CORRECCIÓN del defecto de
+--   determinismo. Repetir esta misma nota en 131-01-SUMMARY.md para que el audit
+--   no lea una eventual diferencia futura como regresión.
 --
 -- FECHA: `tramitacion_evento.fecha` es `timestamptz` **date-only disfrazado**
 --   (medianoche UTC = día chileno publicado). PROHIBIDO `at time zone

@@ -642,3 +642,46 @@ describe("(H-06/D-03) orden total determinista en la lectura de tramitacion_even
     expect(ordenTotalDeclarado(otraQueryConId)).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// (H-06/D-02) paridad regla escrita ↔ construirItems sobre el testigo 14309-04.
+//
+// Ata el builder TS a la regla escrita medida contra PROD (supabase/queries/
+// timeline-regla-de-seleccion.sql): si construirItems deriva de la regla, este
+// test se pone rojo. NO prueba paridad DOM contra un deploy real — esa
+// verificación (grep -o 'Hito del' … | wc -l sobre el HTML del Worker, jamás
+// grep -c: el HTML es de una línea) queda delegada a Phase 138 con el número
+// YA congelado aquí en *.esperado.json.
+// ---------------------------------------------------------------------------
+import fixtureEventos from "./__fixtures__/timeline-14309-04.json";
+import esperado from "./__fixtures__/timeline-14309-04.esperado.json";
+
+describe("(H-06/D-02) paridad regla escrita ↔ construirItems sobre el testigo 14309-04", () => {
+  // El fixture viene TAL CUAL en orden (fecha asc, id asc) — no se re-ordena
+  // aquí, o se estaría probando otra cosa que lo que la producción entrega
+  // tras Task 2.
+  const items = construirItems(fixtureEventos as unknown as TramitacionEventoRow[]);
+
+  it("produce exactamente esperado.periodos ítems de kind === 'periodo'", () => {
+    const periodos = items.filter((it) => it.kind === "periodo");
+    expect(periodos.length).toBe(esperado.periodos);
+  });
+
+  it("la suma de eventos absorbidos en los períodos es exactamente esperado.eventos_absorbidos", () => {
+    const periodos = items.filter(
+      (it): it is { kind: "periodo"; periodo: PeriodoUrgencia } => it.kind === "periodo",
+    );
+    const absorbidos = periodos.reduce((n, it) => n + it.periodo.eventos.length, 0);
+    expect(absorbidos).toBe(esperado.eventos_absorbidos);
+  });
+
+  it("el número de ítems kind === 'evento' es exactamente esperado.hitos_del", () => {
+    const hitos = items.filter((it) => it.kind === "evento");
+    expect(hitos.length).toBe(esperado.hitos_del);
+  });
+
+  it("cierra sin residuo: hitos_del + eventos_absorbidos === eventos_totales === fixture.length", () => {
+    expect(esperado.hitos_del + esperado.eventos_absorbidos).toBe(esperado.eventos_totales);
+    expect(esperado.eventos_totales).toBe(fixtureEventos.length);
+  });
+});
