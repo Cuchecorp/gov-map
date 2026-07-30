@@ -98,9 +98,21 @@ const rpcMock = vi.fn((name: string) => {
   ) {
     return Promise.resolve({ data: [], error: null });
   }
+  if (name === "votos_conteo_de_parlamentario") {
+    // Phase 130: el chip/capa-1/"Ver detalle" leen el AGREGADO, no el listado.
+    // 3 filas agregadas (si:1, no:1, ausente:1) → votos=dato(3), coherente con
+    // el listado paginado (3 filas) para que el HTML siga leyéndose "Ver detalle (3)".
+    return Promise.resolve({
+      data: [
+        { seleccion: "si", n: 1 },
+        { seleccion: "no", n: 1 },
+        { seleccion: "ausente", n: 1 },
+      ],
+      error: null,
+    });
+  }
   if (name === "votos_de_parlamentario") {
-    // 3 filas confirmadas → votos=dato(3): la capa-1 muestra cifras reales y la
-    // sección renderiza su DetalleColapsable "Ver detalle (3)" (default cerrado).
+    // 3 filas confirmadas → listado paginado de la sección (default cerrado).
     return Promise.resolve({
       data: [
         { seleccion: "si" },
@@ -429,6 +441,56 @@ describe("/parlamentario/[id] — capa-1 visible + detalle default-cerrado", () 
     // CERRADO (data-state=closed) — el disclosure inverso de 55-01.
     expect(html).toContain("Ver detalle (3)");
     expect(html).toContain('data-state="closed"');
+  });
+
+  // ── TEST CENTINELA (D-05/SC4, Phase 130 Plan 02) — MUERDE por los dos lados ────
+  it("el numero visible sale del AGREGADO (3752), NUNCA del length del listado capado (3)", async () => {
+    crucesEnabledMock.mockReturnValue(false);
+    const orig = rpcMock.getMockImplementation()!;
+    try {
+      rpcMock.mockImplementation(((name: string) => {
+        if (name === "votos_conteo_de_parlamentario") {
+          // El desglose real (testigo D1165, migración 0082) suma 3752.
+          return Promise.resolve({
+            data: [
+              { seleccion: "si", n: 1764 },
+              { seleccion: "no", n: 1772 },
+              { seleccion: "abstencion", n: 171 },
+              { seleccion: "pareo", n: 16 },
+              { seleccion: "ausente", n: 29 },
+            ],
+            error: null,
+          });
+        }
+        if (name === "votos_de_parlamentario") {
+          // El listado paginado sigue capado — SOLO 3 filas, a propósito.
+          return Promise.resolve({
+            data: [
+              { seleccion: "si" },
+              { seleccion: "no" },
+              { seleccion: "ausente" },
+            ],
+            error: null,
+          });
+        }
+        return orig(name);
+      }) as never);
+
+      const html = renderToStaticMarkup(
+        await CarrilesSection({ id: "P00001", searchParams: {} }),
+      );
+
+      // Positivo: el chip/"Ver detalle" muestran el agregado real 3752, NO el
+      // `.length` del listado capado (Fable M1: conteoLabel = String(n), sin
+      // separador de miles — page.tsx L89-99).
+      expect(html).toContain("Ver detalle (3752)");
+      // Negativo: el render con sus delimitadores del número del listado capado
+      // NUNCA aparece — si alguien revierte al `.length`, este assert cae junto
+      // con el positivo de arriba (muerde por los dos lados).
+      expect(html).not.toContain("Ver detalle (3)");
+    } finally {
+      rpcMock.mockImplementation(orig);
+    }
   });
 });
 
