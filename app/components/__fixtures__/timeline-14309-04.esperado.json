@@ -1,0 +1,10 @@
+{
+  "boletin": "14309-04",
+  "orden": "fecha asc, id asc",
+  "medido_en": "2026-07-30T17:36:51Z",
+  "eventos_totales": 99,
+  "eventos_absorbidos": 14,
+  "periodos": 5,
+  "hitos_del": 85,
+  "nota_reconciliacion": "H=85 bajo el orden total (fecha asc, id asc) — coincide numéricamente con el 85 citado en ROADMAP/REQUIREMENTS (medido bajo el orden VIEJO, fecha sola, no determinista), pero por razones distintas: aquí el valor está FIJADO por un orden total declarado, no por el orden físico que Postgres entregue ese día. Ver cabecera de supabase/queries/timeline-regla-de-seleccion.sql para la reconciliación completa (fix W-2 checker)."
+}
