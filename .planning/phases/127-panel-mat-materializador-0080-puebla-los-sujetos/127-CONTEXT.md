@@ -88,6 +88,15 @@ tocar `agrupacion_materia` (tipo ajeno al proc, k-means CLI).
 - **D-07b grafía = TRES sitios** (L233, L261 y velocity L130/135) y la normalización va DENTRO del
   `group by` (si no, `23505` contra la unique key).
 
+### Gate de Fable — FIRMADO 2026-07-30 (cierra B-1 del plan-checker)
+Las 6 adjudicaciones quedan firmadas por el revisor Fable: (1) función `actualidad.grafia_camara`
+inmutable sobre CASE ×3; (2) `agenda_sala` = sesiones con ítems anidados bajo `tabla`; (3) sin
+`urgencia` en ítems de sala; (4) doble enlace `enlace`+`enlace_evento`; (5) `fuente:{dataset,origen}`
++ `consultado_al` dentro del jsonb; (6) **D-01b**: orden ASCENDENTE en los dos bloques de agenda
+(hechos futuros = "lo más próximo primero") como desviación documentada del `desc` de D-01 — firmada,
+no unilateral (cierra W-2). Sus 3 blockers (supresión determinista, `left join == 6`, clave
+`descripcion` no `grado`) + menores M1-M5 están aplicados a los planes.
+
 ### Claude's Discretion
 - Forma exacta del CASE de grafía (expresión inline repetida vs función) — la adjudica el revisor
   Fable en el gate de plan.

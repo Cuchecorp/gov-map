@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v13.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 126 context gathered
-last_updated: "2026-07-30T14:15:48.721Z"
-last_activity: 2026-07-30
+stopped_at: Phase 127 context gathered
+last_updated: "2026-07-30T14:47:20.139Z"
+last_activity: 2026-07-30 -- Phase 127 planning complete
 progress:
   total_phases: 13
   completed_phases: 1
-  total_plans: 2
+  total_plans: 5
   completed_plans: 2
   percent: 8
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (§ Current Milestone: v13.0, updated 2026-07-30)
 
 Phase: 127
 Plan: Not started
-Status: Executing Phase 126
-Last activity: 2026-07-30
+Status: Ready to execute
+Last activity: 2026-07-30 -- Phase 127 planning complete
 
 Progress: [░░░░░░░░░░░░░] 0/13 phases
 
@@ -161,9 +161,9 @@ la memoria del proyecto (`v12-gotchas-metodo`, `v13-milestone-preparado`). Recto
 
 ## Session Continuity
 
-Last session: 2026-07-30T13:18:37.134Z
-Stopped at: Phase 126 context gathered
-Resume file: .planning/phases/126-panel-guards-wave-0-de-guards/126-CONTEXT.md
+Last session: 2026-07-30T14:17:49.108Z
+Stopped at: Phase 127 context gathered
+Resume file: .planning/phases/127-panel-mat-materializador-0080-puebla-los-sujetos/127-CONTEXT.md
 
 ## Operator Next Steps
 

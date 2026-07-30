@@ -595,7 +595,16 @@ positivos. Ídem la query 6: sin el `total`, un `fuera_corpus=0` podría signifi
 | A2 | El dominio de `tramitacion_evento.camara` en PROD se limita a `C.Diputados` / `C. Diputados` / `Senado` / NULL (de `0065:23-26`) | §Grafía única | Un valor no previsto cae al `else` del CASE y se emite normalizado-pero-crudo. **Mitigado por diseño** (nunca descartar). Verificar con `select distinct camara from tramitacion_evento;` antes de escribir el CASE |
 | A3 | `pnpm test` de `app/` sigue verde sin cambios (esta fase no toca `app/`) | §Validation | Bajo — correrla igual como control |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> **Cierre B-1 del plan-checker (2026-07-30):** las 5 preguntas fueron adjudicadas y FIRMADAS por
+> el revisor Fable (gate obligatorio del roadmap; veredicto registrado en 127-CONTEXT.md §"Gate de
+> Fable — FIRMADO"): (1) agenda_sala = sesiones con ítems anidados bajo `tabla` — FIRMADO;
+> (2) sin `urgencia` en ítems de sala — FIRMADO; (3) doble enlace `enlace`+`enlace_evento` —
+> FIRMADO (+M1: enlace también en anidados); (4) `fuente:{dataset,origen}`+`consultado_al` en el
+> jsonb — FIRMADO (única vía con firma 0066 intocable); (5) función `grafia_camara` inmutable —
+> FIRMADO. Blockers de Fable aplicados a los planes: supresión determinista (127-02 asserts 15-16),
+> `left join public.proyecto == 6` (127-01), clave `descripcion` no `grado` (127-01).
 
 1. **`agenda_sala`: la unidad del conteo contradice la unidad de D-02 — BLOQUEANTE de diseño**
    - Lo que sabemos: `conteo` = `count(*) from sesion_sala` futuras (0065:260-265) = **sesiones**. D-02 dice que los
