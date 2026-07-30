@@ -106,12 +106,14 @@ select is(
      where tipo_senal = 'velocity'
        and cobertura_camara ~ '[Dd]iputados'),
   1, 'D2: las dos grafías de camara colapsan a un solo bucket tras regexp_replace');
--- y el bucket normalizado NO contiene espacios internos (grafía saneada).
+-- El régimen viejo pedía "sin espacios" (grafía cruda tipo `C.Diputados`); desde 0080 la
+-- grafía es CIUDADANA y SÍ tiene espacios ('Cámara de Diputados') — el assert de abajo es
+-- más fuerte que el anterior, no más débil: exige la grafía exacta, no solo "sin \s".
 select is(
-  (select bool_and(cobertura_camara !~ '\s')
+  (select bool_and(cobertura_camara = 'Cámara de Diputados')
      from actualidad_senal
     where tipo_senal = 'velocity' and cobertura_camara ~ '[Dd]iputados'),
-  true, 'D2: la cobertura_camara de velocity no contiene espacios internos (normalizada)');
+  true, 'D2: la cobertura_camara de velocity es la grafía ciudadana única "Cámara de Diputados" (PANEL-06/4-15, fijada por actualidad.grafia_camara)');
 
 -- ── (D3) supresión-como-fila cuando la fuente está stale ──────────────────────
 -- La fuente de sala (sesion_sala) NO tiene filas futuras (0 sembradas) → el proc DEBE
