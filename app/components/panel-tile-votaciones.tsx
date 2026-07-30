@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase";
+import { BentoTile } from "@/components/bento/bento-tile";
 import { fechaCorta } from "@/lib/format";
 import { hrefProyecto } from "@/lib/links-internos";
 import { LEYENDA_ANTI_INSINUACION } from "@/lib/voto-presentacion";
@@ -40,6 +42,8 @@ export interface VotacionPanelItem {
   si: number;
   no: number;
   abstencion: number;
+  /** WR-14: `total_pareo` existe en la tabla; omitirlo presentaba un conteo parcial como el conteo de la votación. */
+  pareo: number;
 }
 
 /**
@@ -57,20 +61,34 @@ export function grafiaCamaraCiudadana(raw: string): string {
 
 function detalleVotacion(item: VotacionPanelItem): string {
   const resultado = item.resultado?.trim() || "resultado no informado por la fuente";
-  return `Votación en ${item.camara} el ${fechaCorta(item.fecha)}: ${resultado} — ${item.si} a favor, ${item.no} en contra, ${item.abstencion} abstenciones`;
+  return `Votación en ${item.camara} el ${fechaCorta(item.fecha)}: ${resultado} — ${item.si} a favor, ${item.no} en contra, ${item.abstencion} abstenciones, ${item.pareo} pareos`;
 }
 
 export function PanelTileVotacionesView({
   items,
   fechaFuente,
+  errorLectura = false,
 }: {
   items: VotacionPanelItem[];
   fechaFuente: Date | null;
+  /**
+   * WR-12: la lectura de `votacion` falló. Estado DECLARADO — jamás se confunde
+   * con "no hay votaciones" (regla D: un error de lectura ≠ ausencia de hecho).
+   */
+  errorLectura?: boolean;
 }) {
+  // CR-02: el tile va DENTRO del sistema bento como los otros 5. Como hijo
+  // directo de `<BentoGrid>` (md:grid-cols-6) sin `span` caía a 1 de 6 columnas
+  // y sin `BentoTile` perdía `bg-card`, `border`, el radio y el focus ring.
   return (
+    <BentoTile variant="default" span={4} asChild>
     <section className="p-6">
       <h2 className="text-lg font-semibold mb-4">Votaciones recientes</h2>
-      {items.length === 0 ? (
+      {errorLectura ? (
+        <p className="text-sm text-muted-foreground">
+          No se pudo leer la fuente de votaciones.
+        </p>
+      ) : items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           {fechaFuente
             ? `Sin votaciones fechadas en las fuentes consultadas al ${fechaCorta(fechaFuente)}.`
@@ -84,12 +102,13 @@ export function PanelTileVotacionesView({
               className="border-t border-border pt-3 first:border-t-0 first:pt-0"
             >
               <div className="flex flex-col gap-[14px]">
-                <a
+                {/* WR-11: link interno ⇒ next/link (prefetch, sin full reload). */}
+                <Link
                   href={hrefProyecto(it.boletin, "votaciones")}
                   className="text-[15px] font-medium leading-snug hover:underline"
                 >
                   {it.titulo ? `${it.boletin} — ${it.titulo}` : it.boletin}
-                </a>
+                </Link>
                 <div className="text-[13px] text-muted-foreground">
                   {detalleVotacion(it)}
                 </div>
@@ -105,6 +124,7 @@ export function PanelTileVotacionesView({
         </p>
       ) : null}
     </section>
+    </BentoTile>
   );
 }
 
@@ -118,22 +138,31 @@ export async function PanelTileVotaciones({
 }: { maxItems?: number } = {}) {
   const sb = createServerSupabase();
 
+  // CR-01: el hecho fechado se exige en la QUERY, no en TS después del `limit`.
+  // `votacion.fecha` es nullable (research §L4) y `order by ... desc` es NULLS
+  // FIRST por defecto en Postgres (PostgREST respeta ese default): las filas sin
+  // fecha ocupaban las primeras posiciones del `.limit(4)`, el bucle de abajo
+  // las descartaba y el tile declaraba "Sin votaciones fechadas" con miles de
+  // votaciones vivas en la tabla.
   const { data, error } = await sb
     .from("votacion")
-    .select("id, boletin, fecha, resultado, total_si, total_no, total_abstencion, camara")
-    .order("fecha", { ascending: false })
+    .select("id, boletin, fecha, resultado, total_si, total_no, total_abstencion, total_pareo, camara")
+    .not("fecha", "is", null)
+    .order("fecha", { ascending: false, nullsFirst: false })
     .order("id", { ascending: false })
     .limit(maxItems);
 
-  // #34: un error real de lectura ≠ "sin votaciones". Se lanza (nunca `?? []`).
+  // #34: un error real de lectura ≠ "sin votaciones". WR-12: el `throw` borraba
+  // la portada entera (6 tiles) por una tabla secundaria — este tile es un
+  // hermano async sin boundary propio. Ahora degrada a un estado DECLARADO.
   if (error) {
-    throw new Error(`PanelTileVotaciones: no se pudo leer votacion: ${error.message}`);
+    return <PanelTileVotacionesView items={[]} fechaFuente={null} errorLectura />;
   }
 
   const filas =
     (data as Pick<
       VotacionRow,
-      "id" | "boletin" | "fecha" | "resultado" | "total_si" | "total_no" | "total_abstencion" | "camara"
+      "id" | "boletin" | "fecha" | "resultado" | "total_si" | "total_no" | "total_abstencion" | "total_pareo" | "camara"
     >[] | null) ?? [];
 
   const titulos = await leerTitulos(
@@ -160,6 +189,7 @@ export async function PanelTileVotaciones({
       si: f.total_si,
       no: f.total_no,
       abstencion: f.total_abstencion,
+      pareo: f.total_pareo,
     });
   }
 

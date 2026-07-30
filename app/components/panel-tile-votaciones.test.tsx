@@ -20,6 +20,7 @@ function makeItem(overrides: Partial<VotacionPanelItem> = {}): VotacionPanelItem
     si: 80,
     no: 48,
     abstencion: 2,
+    pareo: 0,
     ...overrides,
   };
 }
@@ -46,7 +47,9 @@ describe("PanelTileVotacionesView", () => {
     render(<PanelTileVotacionesView items={[item]} fechaFuente={item.fecha} />);
     expect(
       screen.getByText(
-        "Votación en Cámara de Diputados el 22 jul 2026: Aprobado — 80 a favor, 48 en contra, 2 abstenciones",
+        // WR-14 (128-REVIEW): `total_pareo` existe en la tabla y se omitía —
+        // el detalle presentaba un conteo PARCIAL como el conteo de la votación.
+        "Votación en Cámara de Diputados el 22 jul 2026: Aprobado — 80 a favor, 48 en contra, 2 abstenciones, 0 pareos",
       ),
     ).toBeInTheDocument();
   });

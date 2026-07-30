@@ -88,6 +88,7 @@ function construirPanel(filas: SenalRow[]) {
     si: 80,
     no: 48,
     abstencion: 2,
+    pareo: 0,
   };
 
   return (
