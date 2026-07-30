@@ -22,7 +22,20 @@
 -- pgTAP es la ÚNICA prueba válida del DDL (Pitfall 6): typecheck no prueba que Postgres corrió el DDL.
 
 begin;
-select plan(11);
+-- ── NOTA WR-08 (code-review 130): `limit 1000` SIN `order by` en el agregado ─────
+-- La migración 0082 (L74) cierra el `group by v.seleccion` con `limit 1000` y sin
+-- `order by`: sobre un agregado, un `limit` sin orden recorta filas ARBITRARIAS.
+-- Hoy es inofensivo porque el dominio de `voto.seleccion` está CERRADO por
+-- `voto_seleccion_check` (0008 L61 + 0019 L36-37) ⇒ como mucho 5 grupos, muy por
+-- debajo del piso LOCKED de 1000. La migración 0082 está APLICADA en PROD y es
+-- INTOCABLE (nunca se edita una migración aplicada), así que el `order by
+-- v.seleccion` determinista tendrá que entrar por una migración futura si alguna
+-- vez se abre el dominio. Mientras tanto el RIESGO REAL —que el día que entre un 6º
+-- valor el truncamiento sea silencioso y el total baje sin aviso (clase B-01)— muere
+-- por otro lado: el assert 10 de abajo verifica que el CHECK que cierra el dominio
+-- sigue vivo, y el 11 cuenta las filas fuera de dominio incluyendo NULL. Si el
+-- dominio se abriera, el rojo aparece aquí ANTES de que el limit pueda truncar.
+select plan(12);
 
 -- ── 1. La RPC existe con su firma de entrada 1-arg (text) ────────────────────────────────
 select has_function('public', 'votos_conteo_de_parlamentario', ARRAY['text'], 'votos_conteo_de_parlamentario(text) existe');
@@ -73,26 +86,49 @@ select ok(
   'control positivo: el universo confirmado de D1165 es > 1000 (la paridad no es vacua)');
 
 -- ── 9. EQUIVALENCIA con-left-join vs sin-left-join (centinela de no-fan-out) ─────────────
-select is(
+--     WR-03 (code-review 130): el control positivo va ENCADENADO DENTRO del assert, no
+--     heredado del 8. Son asserts independientes: si D1165 desapareciera o cambiara de
+--     ID, ambos lados de la igualdad darían 0 y el centinela quedaría VERDE Y VACÍO
+--     (el mismo falso-verde que el assert 8 sí neutraliza con su propio `> 1000`).
+--     Con el `and … > 1000` adentro, la existencia del testigo se prueba ANTES del 0=0.
+select ok(
   (select count(*) from public.voto v join public.votacion vo on vo.id = v.votacion_id
-    where v.parlamentario_id = 'D1165' and v.estado_vinculo = 'confirmado'),
+    where v.parlamentario_id = 'D1165' and v.estado_vinculo = 'confirmado')
+  =
   (select count(*) from public.voto v
     join public.votacion vo on vo.id = v.votacion_id
     left join public.proyecto pr on pr.boletin = vo.boletin
     left join public.proyecto_ficha pf on pf.boletin = vo.boletin
-    where v.parlamentario_id = 'D1165' and v.estado_vinculo = 'confirmado'),
-  'centinela: con-left-join a proyecto/proyecto_ficha da el MISMO count(*) que sin ellos (cero fan-out)');
+    where v.parlamentario_id = 'D1165' and v.estado_vinculo = 'confirmado')
+  and
+  (select count(*) from public.voto v join public.votacion vo on vo.id = v.votacion_id
+    where v.parlamentario_id = 'D1165' and v.estado_vinculo = 'confirmado') > 1000,
+  'centinela: con-left-join a proyecto/proyecto_ficha da el MISMO count(*) que sin ellos (cero fan-out), con el testigo D1165 probado no-vacío (>1000) DENTRO del mismo assert');
 
--- ── 10. CIERRE DE DOMINIO GLOBAL de `seleccion` (Fable blocker 2) ────────────────────────
+-- ── 10-11. CIERRE DE DOMINIO GLOBAL de `seleccion` (Fable blocker 2 + WR-02) ─────────────
 --     Si un 6º valor entrara por ingesta, la paridad seguiria verde mientras el chip JS
 --     (que suma las 5 claves LOCKED) mostraria MENOS que el listado: divergencia silenciosa
 --     clase B-01. Este assert la caza a nivel GLOBAL, no solo sobre el testigo.
+--     WR-02 (code-review 130): se mide la GARANTÍA, no su consecuencia. El conteo de
+--     filas fuera de dominio era vacuo por construcción (el motor ya lo impide) y,
+--     peor, NULL-ciego: `seleccion not in (…)` con `seleccion IS NULL` evalúa a NULL,
+--     no a true ⇒ una fila NULL no se contaba. Es decir, el único modo de fallo nuevo
+--     que la caída del constraint dejaría entrar era justamente el que el assert no
+--     veía. Ahora: (10) el CHECK sigue vivo — PRIMERA LÍNEA de defensa —, y (11) el
+--     conteo cierra el hueco NULL explícitamente.
+select ok(
+  exists(select 1 from pg_constraint
+    where conrelid = 'public.voto'::regclass
+      and conname = 'voto_seleccion_check'),
+  'el CHECK de dominio de voto.seleccion (voto_seleccion_check, 0008/0019) sigue vivo');
+
 select is(
   (select count(*) from public.voto v
     where v.estado_vinculo = 'confirmado'
-      and v.seleccion not in ('si','no','abstencion','pareo','ausente')),
+      and (v.seleccion is null
+           or v.seleccion not in ('si','no','abstencion','pareo','ausente'))),
   0::bigint,
-  'cierre de dominio GLOBAL: cero filas confirmadas fuera de si/no/abstencion/pareo/ausente');
+  'cierre de dominio GLOBAL: cero filas confirmadas NULL o fuera de si/no/abstencion/pareo/ausente');
 
 select * from finish();
 rollback;
