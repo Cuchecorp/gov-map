@@ -1,5 +1,23 @@
+import Link from "next/link";
 import { extractoIdea } from "@/lib/format";
 import { hrefProyecto, type AnclaProyecto } from "@/lib/links-internos";
+
+/**
+ * WR-10: `enlaceFuente` viene del jsonb (`proyecto.enlace` / `citacion.enlace`),
+ * campo de ORIGEN SCRAPEADO. React solo ADVIERTE ante `href="javascript:…"`, no
+ * lo bloquea, y `rel="noopener noreferrer"` no cubre el esquema. Solo http/https
+ * llegan al DOM; cualquier otro esquema (o URL no parseable) degrada a `null` y
+ * el enlace no se emite.
+ */
+export function hrefExternoSeguro(u: string | null | undefined): string | null {
+  if (!u) return null;
+  try {
+    const p = new URL(u);
+    return p.protocol === "https:" || p.protocol === "http:" ? u : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * PanelItemProyecto — ítem nombrado reusable con guard `en_corpus` (Phase 128,
@@ -49,12 +67,13 @@ export function PanelItemProyecto({
   if (enCorpus && boletin) {
     return (
       <div className="flex flex-col gap-[14px]">
-        <a
+        {/* WR-11: link interno ⇒ next/link (prefetch, sin full reload). */}
+        <Link
           href={hrefProyecto(boletin, ancla)}
           className="text-[15px] font-medium leading-snug hover:underline"
         >
           {titulo ? `${boletin} — ${titulo}` : boletin}
-        </a>
+        </Link>
         {detalle ? (
           <div className="text-[13px] text-muted-foreground">{detalle}</div>
         ) : null}
@@ -63,19 +82,30 @@ export function PanelItemProyecto({
   }
 
   // en_corpus:false (o sin boletín): CERO href /proyecto interno. Si hay
-  // enlaceFuente, se ofrece como enlace externo trazable a la fuente.
+  // enlaceFuente, se ofrece como enlace externo trazable a la fuente — validado
+  // por esquema (WR-10).
+  const hrefExterno = hrefExternoSeguro(enlaceFuente);
+
   return (
     <div className="flex flex-col gap-[14px]">
-      {etiqueta ? (
-        <span className="text-[15px] font-medium leading-snug">{etiqueta}</span>
+      {titulo ? (
+        <span className="text-[15px] font-medium leading-snug">{titulo}</span>
       ) : textoAlterno ? (
+        // WR-16: sin `titulo`, la `materia` es el texto descriptivo — antes
+        // `etiqueta = titulo ?? boletin` ganaba y el punto no-corpus se
+        // renderizaba como "18258-07" pelado, descartando la materia que la
+        // fuente sí informó. El boletín pasa a complemento cuando existe.
         <span className="text-[15px] leading-snug">
-          {extractoIdea(textoAlterno, MAX_TEXTO_ALTERNO)}
+          {boletin
+            ? `${boletin} — ${extractoIdea(textoAlterno, MAX_TEXTO_ALTERNO)}`
+            : extractoIdea(textoAlterno, MAX_TEXTO_ALTERNO)}
         </span>
+      ) : etiqueta ? (
+        <span className="text-[15px] font-medium leading-snug">{etiqueta}</span>
       ) : null}
-      {enlaceFuente ? (
+      {hrefExterno ? (
         <a
-          href={enlaceFuente}
+          href={hrefExterno}
           target="_blank"
           rel="noopener noreferrer"
           className="text-[11px] text-muted-foreground hover:underline"
