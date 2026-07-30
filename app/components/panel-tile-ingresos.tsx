@@ -6,6 +6,14 @@ import {
   type ItemProyecto,
 } from "@/lib/panel-evidencia";
 import { fechaCivilCorta } from "@/lib/dia-calendario";
+import { type Idiom } from "@/lib/idioms-panel";
+
+// WR-06: stems desde el single-source (`Idiom`), no inline.
+const STEM_INGRESADO_EL: Idiom = "Ingresado el";
+const STEM_FECHADO_EL: Idiom = "fechado el";
+
+/** WR-08: vacío CON causa declarada — Regla C prohíbe la lista muda. */
+const VACIO_SIN_FILAS = "sin filas para esta ventana en las fuentes consultadas";
 
 /**
  * PanelTileIngresos — Tile 6, ingresos + archivos/retiros fusionados
@@ -102,7 +110,9 @@ function seccionSubtitulo(
     const ev = parseEvidenciaProyectos(f.evidencia);
     items.push(...ev.items);
     fuente = fuente ?? etiquetaFuente(ev.fuente);
-    consultadoAl = consultadoAl ?? ev.consultado_al ?? f.fecha_max;
+    // WR-15: ingresos/archivados son carril de HECHOS PASADOS ⇒ D-05 asigna
+    // `fecha_max` (fecha del último hecho), no `consultado_al` (agenda futura).
+    consultadoAl = consultadoAl ?? f.fecha_max ?? ev.consultado_al;
   }
   return { items, supresionCausa, consultadoAl, fuente };
 }
@@ -155,6 +165,11 @@ export function PanelTileIngresos({
               </>
             )}
           </p>
+        ) : seccionIngresos.items.length === 0 ? (
+          // WR-08: sin causa de supresión Y sin ítems (la señal no vino en la
+          // RPC) se emitía un `<ul>` mudo bajo el `<h3>`. Regla C: nunca lista
+          // vacía — la ausencia se declara con su causa.
+          <p className="text-sm text-muted-foreground mb-4">{VACIO_SIN_FILAS}</p>
         ) : (
           <ul className="mb-4">
             {seccionIngresos.items.slice(0, maxItems).map((it, idx) => (
@@ -168,7 +183,15 @@ export function PanelTileIngresos({
                   enCorpus={it.en_corpus}
                   ancla="estado"
                   enlaceFuente={it.enlace}
-                  detalle={<>Ingresado el {fechaCivilCorta(it.fecha)}</>}
+                  detalle={(() => {
+                    // WR-04: sin día parseable, cero "Ingresado el " colgado.
+                    const dia = fechaCivilCorta(it.fecha);
+                    return dia ? (
+                      <>
+                        {STEM_INGRESADO_EL} {dia}
+                      </>
+                    ) : null;
+                  })()}
                 />
               </li>
             ))}
@@ -189,6 +212,9 @@ export function PanelTileIngresos({
               </>
             )}
           </p>
+        ) : listaArchivados.length === 0 ? (
+          // WR-08: mismo criterio que la subsección de ingresos.
+          <p className="text-sm text-muted-foreground">{VACIO_SIN_FILAS}</p>
         ) : (
           <>
             {totalEventosArchivados > 0 && (
@@ -211,12 +237,16 @@ export function PanelTileIngresos({
                     enCorpus={b.enCorpus}
                     ancla="timeline"
                     enlaceFuente={b.enlaceFuente}
-                    detalle={
-                      <>
-                        {b.descripcion ?? "Archivo o retiro"} fechado el{" "}
-                        {fechaCivilCorta(b.fecha)}
-                      </>
-                    }
+                    detalle={(() => {
+                      // WR-04: sin día parseable, cero "…fechado el " colgado.
+                      const dia = fechaCivilCorta(b.fecha);
+                      return dia ? (
+                        <>
+                          {b.descripcion ?? "Archivo o retiro"}{" "}
+                          {STEM_FECHADO_EL} {dia}
+                        </>
+                      ) : null;
+                    })()}
                   />
                 </li>
               ))}
@@ -229,9 +259,14 @@ export function PanelTileIngresos({
           </>
         )}
 
+        {/* WR-09: sin `fuente` en el dato, cero procedencia fabricada. */}
         <p className="mt-3 font-mono text-[11px] text-muted-foreground">
-          Fuente: {fuenteFooter ?? "Tramitación"}
-          {rotuloFooter && <> · según fuente al {rotuloFooter}</>}
+          {fuenteFooter ? `Fuente: ${fuenteFooter}` : null}
+          {rotuloFooter && (
+            <>
+              {fuenteFooter ? " · " : ""}según fuente al {rotuloFooter}
+            </>
+          )}
         </p>
       </section>
     </BentoTile>

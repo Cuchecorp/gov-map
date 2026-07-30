@@ -234,7 +234,10 @@ describe("PanelTileUrgencias", () => {
     ];
     const { container } = render(<PanelTileUrgencias filas={filas} />);
     expect(container.textContent).toContain(
-      "Fuente: Tramitación · según fuente al 21 jul 2026",
+      // WR-15 (128-REVIEW): urgencias es carril de HECHOS PASADOS ⇒ D-05 asigna
+      // `fecha_max` (20 jul, el último hecho de la fuente), no `consultado_al`
+      // (21 jul). La precedencia anterior mezclaba las dos semánticas.
+      "Fuente: Tramitación · según fuente al 20 jul 2026",
     );
     expect(container.textContent).not.toContain("datos al");
   });

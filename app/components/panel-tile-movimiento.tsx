@@ -3,6 +3,10 @@ import { PanelItemProyecto } from "@/components/panel-item-proyecto";
 import { parseEvidenciaProyectos, etiquetaFuente } from "@/lib/panel-evidencia";
 import { fechaCivilCorta } from "@/lib/dia-calendario";
 import { claseCamara } from "@/lib/panel-camara";
+import { type Idiom } from "@/lib/idioms-panel";
+
+// WR-06: stem desde el single-source (`Idiom`), no inline.
+const STEM_TRAMITE_DEL: Idiom = "Trámite del";
 
 /**
  * PanelTileMovimiento — Tile 4, movimiento reciente nombrado (velocity)
@@ -53,6 +57,7 @@ export function PanelTileMovimiento({
   let fuente: string | null = null;
   let consultadoAl: string | null = null;
   let supresionCausa: string | null = null;
+  let totalDeclarado = 0;
 
   // Preserva el orden de llegada de las FILAS; dentro de cada fila, el orden
   // que trae el jsonb (T-52-13: jamás reordenar por conteo cross-cámara).
@@ -64,7 +69,12 @@ export function PanelTileMovimiento({
     }
     const ev = parseEvidenciaProyectos(f.evidencia);
     fuente = fuente ?? etiquetaFuente(ev.fuente);
-    consultadoAl = consultadoAl ?? ev.consultado_al ?? f.fecha_max;
+    // WR-15: `velocity` es carril de HECHOS PASADOS ⇒ D-05 asigna `fecha_max`.
+    consultadoAl = consultadoAl ?? f.fecha_max ?? ev.consultado_al;
+    // WR-07: el total declarado de la señal (`count(*)`) manda sobre el largo
+    // del array cuando este viene acotado. Aquí la unidad es el ÍTEM (no hay
+    // agrupación por boletín), así que total y lista cuentan lo mismo.
+    totalDeclarado += ev.total ?? ev.items.length;
     for (const it of ev.items) {
       itemsConCamara.push({
         boletin: it.boletin,
@@ -79,7 +89,8 @@ export function PanelTileMovimiento({
 
   const rotulo = fechaCivilCorta(consultadoAl);
   const mostrados = itemsConCamara.slice(0, maxItems);
-  const restante = itemsConCamara.length - mostrados.length;
+  const restante =
+    Math.max(totalDeclarado, itemsConCamara.length) - mostrados.length;
 
   return (
     <BentoTile variant="default" span={4} asChild>
@@ -119,12 +130,18 @@ export function PanelTileMovimiento({
                         enCorpus={it.enCorpus}
                         ancla="timeline"
                         enlaceFuente={it.enlaceFuente}
-                        detalle={
-                          <>
-                            Trámite del {fechaCivilCorta(it.fecha)}
-                            {it.cobertura && <> · {it.cobertura}</>}
-                          </>
-                        }
+                        detalle={(() => {
+                          // WR-04: sin día parseable el detalle se omite entero
+                          // ("Trámite del " colgado es un verbo sin hecho).
+                          const dia = fechaCivilCorta(it.fecha);
+                          if (!dia) return null;
+                          return (
+                            <>
+                              {STEM_TRAMITE_DEL} {dia}
+                              {it.cobertura && <> · {it.cobertura}</>}
+                            </>
+                          );
+                        })()}
                       />
                     </div>
                   </li>
@@ -139,9 +156,14 @@ export function PanelTileMovimiento({
           </>
         )}
 
+        {/* WR-09: sin `fuente` en el dato, cero procedencia fabricada. */}
         <p className="mt-3 font-mono text-[11px] text-muted-foreground">
-          Fuente: {fuente ?? "Tramitación"}
-          {rotulo && <> · según fuente al {rotulo}</>}
+          {fuente ? `Fuente: ${fuente}` : null}
+          {rotulo && (
+            <>
+              {fuente ? " · " : ""}según fuente al {rotulo}
+            </>
+          )}
         </p>
       </section>
     </BentoTile>

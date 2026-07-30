@@ -7,6 +7,10 @@ import {
   type ItemProyecto,
 } from "@/lib/panel-evidencia";
 import { fechaCivilCorta } from "@/lib/dia-calendario";
+import { type Idiom } from "@/lib/idioms-panel";
+
+// WR-06: stem desde el single-source (`Idiom`), no inline.
+const STEM_FECHADA_EL: Idiom = "fechada el";
 
 /**
  * PanelTileUrgencias — Tile 3, urgencias del Ejecutivo por GRADO y por
@@ -98,6 +102,12 @@ export function PanelTileUrgencias({
   let fuente: string | null = null;
   let consultadoAl: string | null = null;
   let supresionCausa: string | null = null;
+  // WR-07 (128-REVIEW) NO se aplica a este tile, y el motivo es duro: aquí la
+  // unidad del listado es el BOLETÍN (`agruparPorBoletin`), mientras que
+  // `evidencia.total` cuenta EVENTOS de urgencia. Mezclarlos produciría "N más"
+  // sobre un universo de eventos junto a ítems que son proyectos — exactamente
+  // el defecto D-01/T-128-11 que el tile existe para matar ("95 urgencias"
+  // cuando son 71 boletines distintos). El remanente se queda en boletines.
 
   for (const f of filas) {
     if (f.supresion_causa) {
@@ -108,7 +118,11 @@ export function PanelTileUrgencias({
     const ev = parseEvidenciaProyectos(f.evidencia);
     items.push(...ev.items);
     fuente = fuente ?? etiquetaFuente(ev.fuente);
-    consultadoAl = consultadoAl ?? ev.consultado_al ?? f.fecha_max;
+    // WR-15: carril de HECHOS PASADOS ⇒ D-05 asigna `fecha_max` (la fecha del
+    // último hecho de la fuente); `consultado_al` es de la agenda futura. La
+    // precedencia invertida hacía decir "según fuente al 30 jul" cuando el
+    // último hecho era del 22 jul.
+    consultadoAl = consultadoAl ?? f.fecha_max ?? ev.consultado_al;
   }
 
   const rotulo = fechaCivilCorta(consultadoAl);
@@ -178,12 +192,19 @@ export function PanelTileUrgencias({
                           enCorpus={b.enCorpus}
                           ancla="estado"
                           enlaceFuente={b.enlaceFuente}
-                          detalle={
-                            <>
-                              Urgencia {b.grado} fechada el{" "}
-                              {fechaCivilCorta(b.fecha)}
-                            </>
-                          }
+                          detalle={(() => {
+                            // WR-04: un verbo sin complemento está prohibido. Sin
+                            // día parseable o sin grado (el fallback puede dar
+                            // ""), el detalle se OMITE entero en vez de emitir
+                            // "Urgencia  fechada el " colgado.
+                            const dia = fechaCivilCorta(b.fecha);
+                            const grado = b.grado.trim();
+                            return dia && grado ? (
+                              <>
+                                Urgencia {grado} {STEM_FECHADA_EL} {dia}
+                              </>
+                            ) : null;
+                          })()}
                         />
                       </li>
                     ))}
@@ -199,9 +220,16 @@ export function PanelTileUrgencias({
           </>
         )}
 
+        {/* WR-09: sin `fuente` en el dato NO se fabrica una procedencia. El
+            fallback "Tramitación" era una atribución no respaldada (misma
+            familia que CR-04): la línea entera se omite y queda solo la fecha. */}
         <p className="mt-3 font-mono text-[11px] text-muted-foreground">
-          Fuente: {fuente ?? "Tramitación"}
-          {rotulo && <> · según fuente al {rotulo}</>}
+          {fuente ? `Fuente: ${fuente}` : null}
+          {rotulo && (
+            <>
+              {fuente ? " · " : ""}según fuente al {rotulo}
+            </>
+          )}
         </p>
       </section>
     </BentoTile>
