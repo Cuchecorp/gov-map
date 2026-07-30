@@ -1155,8 +1155,19 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
    * un `APP_ROOT` mal resuelto no dé verde escaneando cero.
    */
   it("(1f) PANEL-08 anti-drift: todo panel-*.tsx real está declarado en SUPERFICIES_PANEL", () => {
-    const archivosReales = readdirSync(path.join(APP_ROOT, "components"))
-      .filter((f) => /^panel-.+\.tsx$/.test(f))
+    // REVIEW 126 (WR-04): el escaneo es RECURSIVO. Sin `recursive: true`, un
+    // componente en `components/panel/tile-sala.tsx` o `components/panel-tiles/
+    // sala.tsx` no aparecía en el listado y evadía el anti-drift — justo el
+    // hueco que D-07 dice cerrar (la Phase 128 es libre de crear carpetas).
+    // Muerde el prefijo congelado `panel-` en cualquier subdirectorio Y todo
+    // archivo .tsx bajo un directorio cuyo path relativo empiece por `panel`.
+    const archivosReales = readdirSync(path.join(APP_ROOT, "components"), {
+      recursive: true,
+    })
+      .map(String)
+      .map((f) => f.split(path.sep).join("/"))
+      .filter((f) => f.endsWith(".tsx"))
+      .filter((f) => /(^|\/)panel-.+\.tsx$/.test(f) || /^panel[^/]*\/.+\.tsx$/.test(f))
       .filter((f) => !/\.test\.tsx?$/.test(f));
 
     // Anti-cero-vacuo: si APP_ROOT está mal resuelto, readdirSync no lanza pero
@@ -1168,7 +1179,10 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
         "resuelto antes de asumir que el árbol está limpio.",
     ).toBeGreaterThanOrEqual(1);
 
-    const declarados = new Set(SUPERFICIES_PANEL);
+    // WR-04 (2º defecto): comparar contra TODAS_LAS_SUPERFICIES, no solo
+    // SUPERFICIES_PANEL — un `panel-*.tsx` declarado legítimamente en otro
+    // carril se reportaría como huérfano (falso positivo, criterio DEDUPE).
+    const declarados = new Set(TODAS_LAS_SUPERFICIES);
     const huerfanos = archivosReales
       .map((f) => `components/${f}`)
       .filter((rel) => !declarados.has(rel));
@@ -1571,6 +1585,53 @@ describe("(2) Mutation self-check — el guard SÍ muerde", () => {
       ).toHaveLength(0);
     },
   );
+
+  /**
+   * IN-03 (review 126) — el `it.each` de arriba es CERO-VACUO si alguien vacía
+   * `IDIOMS_APROBADOS`: generaría cero tests y la suite seguiría verde, con el
+   * self-check D-10(i) desaparecido sin ruido (patrón pagado en v12 §9).
+   */
+  it("D-10(i) anti-cero-vacuo: IDIOMS_APROBADOS no está vacío", () => {
+    expect(
+      IDIOMS_APROBADOS.length,
+      "IDIOMS_APROBADOS quedó por debajo de los 4 idioms aprobados v13.0 — el " +
+        "it.each del self-check D-10(i) generaría cero tests (cero vacuo).",
+    ).toBeGreaterThanOrEqual(4);
+  });
+
+  /**
+   * WR-03 (review 126) — D-10(i) comprueba UNA dirección ("ningún idiom
+   * contiene término prohibido"). El riesgo que D-10 declara mitigar es el
+   * INVERSO: la resta de negaciones es por SUBSTRING (`texto.split(negNorm)
+   * .join(" ")`), así que un idiom cuya ÚLTIMA palabra sea la PRIMERA palabra
+   * de un término prohibido multi-palabra lo partiría en dos y lo enmascararía.
+   * Hoy no hay solape (verificado); este test impide introducirlo mañana.
+   */
+  it("WR-03 no-hueco (dirección inversa): ningún idiom parte un término prohibido multi-palabra", () => {
+    const rotos: string[] = [];
+    for (const stem of IDIOMS_APROBADOS) {
+      const palabras = stem.trim().split(/\s+/);
+      const ultima = palabras[palabras.length - 1].toLowerCase();
+      for (const termino of TERMINOS_PROHIBIDOS) {
+        const partes = termino.trim().split(/\s+/);
+        // (a) el idiom parte el término por su PRIMERA palabra…
+        if (partes.length > 1 && partes[0].toLowerCase() === ultima) {
+          rotos.push(`restar "${stem}" partiría el término prohibido "${termino}"`);
+        }
+        // (b) …o el idiom completo aparece como SUBSTRING del término (la
+        // resta lo dejaría irreconocible aunque el término lo contenga entero).
+        if (termino.toLowerCase().includes(stem.toLowerCase())) {
+          rotos.push(`el término prohibido "${termino}" CONTIENE el idiom "${stem}"`);
+        }
+      }
+    }
+    expect(
+      rotos,
+      `La resta de un idiom aprobado enmascararía término(s) prohibido(s): ` +
+        `[${rotos.join("; ")}]. NO relajes el detector: cambia el idiom (o el ` +
+        `término) antes de sumarlo a IDIOMS_APROBADOS/NEGACIONES_LOCKED.`,
+    ).toHaveLength(0);
+  });
 
   /**
    * D-10(ii) (126, PANEL-08 criterio 2) — self-check de mutación: un término
