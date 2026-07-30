@@ -31,7 +31,7 @@
 --
 -- D-09b (riesgo de `create or replace`): REPLACE preserva `proowner` y `proacl` del proc
 -- secdef, pero **NO preserva los `SET` de la definición** (search_path). Por eso este archivo
--- restatea LITERALMENTE `security definer set search_path = ''` al re-declarar el proc —
+-- restatea LITERALMENTE la cláusula security-definer + search_path vacío al re-declarar el proc —
 -- omitirlo reabriría el vector de inyección de search_path (V8) contra un proc security
 -- definer. Cero grants/revokes en este archivo: la ACL ya existente se conserva por el propio
 -- REPLACE, y declarar grants/revokes aquí SERÍA el cambio de ACL que D-09 prohíbe.
@@ -76,3 +76,193 @@ returns text language sql immutable as $$
     else regexp_replace(p_camara, '\s+', ' ', 'g')                                 -- nunca descartar
   end;
 $$;
+
+-- ── actualidad.materializar_senales() (proc FULL REBUILD, invocado por pg_cron) ─
+-- security definer: corre como owner para leer tramitacion_evento/citacion/sesion_sala
+-- (público-read pero el proc no depende del rol del caller) y escribir actualidad_senal
+-- (deny-by-default). set search_path = '' (V8): nombres calificados con schema.
+-- El cuerpo lee SOLO tablas no-PII (tramitacion_evento/citacion/sesion_sala/proyecto);
+-- NUNCA referencia partido ni rut (el pgTAP muerde el cuerpo).
+create or replace function actualidad.materializar_senales()
+returns void language plpgsql security definer set search_path = '' as $$
+declare
+  -- Umbral de frescura HARDCODEADO (Open Question A5). SQL no puede leer TypeScript → el valor
+  -- se replica aquí. Si catalog.ts cambia el NÚMERO, actualizar esta constante (deriva
+  -- documentada en el SUMMARY 99-01).
+  --
+  -- WR-03 — PROVENANCE HONESTA (solo el NÚMERO se comparte, NO la semántica):
+  --   * NÚMERO (7): tomado como referencia de packages/freshness/src/catalog.ts, fuentes `leyes`
+  --     y `agenda` (ambas umbralDias:7). Es una referencia del valor, NO un acople verificado en
+  --     runtime (nada enlaza los dos; el pgTAP siembra su propia staleness, no lee catalog.ts).
+  --   * SEMÁNTICA (DISTINTA por diseño): catalog.ts mide frescura contra MAX(fecha_captura) — la
+  --     fecha de SCRAPE. Este proc mide recencia contra MAX(tramitacion_evento.fecha) /
+  --     MAX(citacion.fecha) — la fecha del EVENTO (regla del reloj, §4: fecha_captura JAMÁS es un
+  --     hecho legislativo). El número coincide; la COLUMNA MEDIDA no. NO asumir paridad de medida.
+  c_umbral_stale_dias constant int := 7;
+  -- Frescura real de cada fuente = max(fecha SANEADA) (D1: fecha <= current_date). Ausencia de
+  -- datos frescos → supresión-como-fila, JAMÁS "sin movimiento" (regla del reloj, §4).
+  v_tram_max  date;
+  v_cita_max  date;
+begin
+  -- FULL REBUILD ACOTADO a los tipos temporales (Pitfall 5): el CLI 99-03 posee 'agrupacion_materia'.
+  -- JAMÁS `delete from public.actualidad_senal` global.
+  delete from public.actualidad_senal
+   where tipo_senal in ('velocity','nuevos_ingresos','urgencias',
+                        'agenda_citacion','agenda_sala','archivados');
+
+  -- Frescura de las fuentes (D1: solo fechas <= hoy; la fecha real del evento, NO fecha_captura).
+  select max(fecha::date) into v_tram_max
+    from public.tramitacion_evento where fecha <= current_date;
+  select max(fecha::date) into v_cita_max
+    from public.citacion where fecha::date <= current_date;
+
+  -- ── (1) velocity — "N trámites en 7 días" por cámara NORMALIZADA ─────────────
+  -- Framing conteo, NUNCA "top" (anti-ranking T-52-13). Aplica D1/D2/D3. cobertura_camara
+  -- declara el sesgo por fila (nunca se ordena cross-cámara por conteo).
+  -- Supresión por frescura (§4): si la fuente de tramitación está stale, se emite en su lugar
+  -- una fila de supresión (más abajo) y NO las filas positivas de velocity.
+  -- evidencia (D-01..D-09): unidad = evento de tramitación (mismo conteo que `conteo`); grafía
+  -- vía actualidad.grafia_camara — MISMA expresión en select y group by (Pitfall 1).
+  if v_tram_max is not null and v_tram_max >= current_date - c_umbral_stale_dias then
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, evidencia, dataset, origen, fecha_captura)
+    select 'velocity', '7d', count(*),
+           actualidad.grafia_camara(te.camara),
+           max(te.fecha),
+           jsonb_build_object(
+             'total', count(*),
+             'consultado_al', current_date,
+             'fuente', jsonb_build_object('dataset','tramitacion','origen','plataforma-tramitacion'),
+             'items', coalesce(jsonb_agg(jsonb_build_object(
+                        'boletin', te.boletin,
+                        'titulo', p.titulo,
+                        'fecha', te.fecha::date,
+                        'enlace', p.enlace,
+                        'enlace_evento', te.enlace,
+                        'en_corpus', (p.boletin is not null)
+                      ) order by te.fecha desc), '[]'::jsonb)
+           ),
+           'tramitacion', 'plataforma-tramitacion', now()
+      from public.tramitacion_evento te
+      left join public.proyecto p on p.boletin = te.boletin
+     where te.fecha <= current_date                                   -- D1
+       and te.fecha >= current_date - interval '7 days'
+     group by actualidad.grafia_camara(te.camara);                    -- D2/D3, misma expresión que el select
+  else
+    -- Supresión-como-fila (ausencia ≠ hecho): la fuente está stale o vacía.
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, supresion_causa,
+       dataset, origen, fecha_captura)
+    values ('velocity', '7d', 0, null, v_tram_max, 'sin datos frescos de esta fuente',
+            'tramitacion', 'plataforma-tramitacion', now());
+  end if;
+
+  -- ── (2) nuevos_ingresos — primer-evento por boletín, ventana 7d, corpus 2022-2026 ─
+  -- HONESTA-CONDICIONAL: primer-evento por boletín; EXCLUIR primer-evento pre-2022 (eventos
+  -- históricos de proyectos viejos, no ingresos). JAMÁS fecha_captura (§4). Aplica D1. Sin
+  -- corte por cámara (no aplica sesgo de cámara aquí).
+  -- WR-02 (honestidad del label): la VENTANA REAL de conteo es 7 días (HAVING min(fecha) >=
+  --   current_date - 7). El '2022-2026' es el PISO DE CORPUS (exclusión pre-2022), NO la
+  --   ventana → `ventana='7d'` (la verdad temporal) y el corpus va en `cobertura_camara`.
+  -- WR-01 (supresión ≠ 0-como-hecho): esta señal se ancla a tramitacion_evento; si la fuente
+  --   está stale, emitir supresión-como-fila (NO conteo=0 con causa NULL). Y si la fuente está
+  --   fresca pero no hubo ingresos en la ventana, TAMBIÉN emitir supresión-como-fila (el
+  --   select sin GROUP BY devolvería una fila conteo=0/causa NULL = 0-como-hecho prohibido).
+  -- cobertura_camara sigue siendo el literal '2022-2026 (piso de corpus)' — NO es una cámara,
+  -- NO pasa por grafia_camara.
+  if v_tram_max is not null and v_tram_max >= current_date - c_umbral_stale_dias then
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, evidencia, dataset, origen, fecha_captura)
+    select 'nuevos_ingresos', '7d', count(*), '2022-2026 (piso de corpus)', max(pe.primer),
+           jsonb_build_object(
+             'total', count(*),
+             'consultado_al', current_date,
+             'fuente', jsonb_build_object('dataset','tramitacion','origen','plataforma-tramitacion'),
+             'items', coalesce(jsonb_agg(jsonb_build_object(
+                        'boletin', pe.boletin,
+                        'titulo', p.titulo,
+                        'fecha', pe.primer::date,
+                        'enlace', p.enlace,
+                        'en_corpus', (p.boletin is not null)
+                      ) order by pe.primer desc), '[]'::jsonb)
+           ),
+           'tramitacion', 'plataforma-tramitacion', now()
+      from (
+        select boletin, min(fecha) as primer
+          from public.tramitacion_evento
+         where fecha <= current_date                               -- D1
+         group by boletin
+        having min(fecha) >= date '2022-01-01'                     -- EXCLUIR pre-2022 (piso corpus)
+           and min(fecha) >= current_date - interval '7 days'      -- ingresados en la ventana 7d
+      ) pe
+      left join public.proyecto p on p.boletin = pe.boletin
+     having count(*) > 0;                                          -- no 0-como-hecho
+    if not found then
+      insert into public.actualidad_senal
+        (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, supresion_causa,
+         dataset, origen, fecha_captura)
+      values ('nuevos_ingresos', '7d', 0, '2022-2026 (piso de corpus)', v_tram_max,
+              'sin nuevos ingresos fechados en la ventana',
+              'tramitacion', 'plataforma-tramitacion', now());
+    end if;
+  else
+    -- Supresión-como-fila (ausencia ≠ hecho): la fuente de tramitación está stale o vacía.
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, supresion_causa,
+       dataset, origen, fecha_captura)
+    values ('nuevos_ingresos', '7d', 0, '2022-2026 (piso de corpus)', v_tram_max,
+            'sin datos frescos de esta fuente',
+            'tramitacion', 'plataforma-tramitacion', now());
+  end if;
+
+  -- ── (3) urgencias — evento de urgencia FECHADO (nunca "vigente") ─────────────
+  -- HONESTA: el HECHO fechado, no un juicio. Aplica D1. Ventana 30d. Sin corte de cámara
+  -- por conteo (evita ranking cross-cámara); el conteo agregado es honesto. cobertura_camara
+  -- sigue siendo null (anti-ranking, no tocar).
+  -- WR-01 (supresión ≠ 0-como-hecho): anclada a tramitacion_evento → gate de frescura como
+  --   velocity; si stale, supresión-como-fila. Si fresca pero sin urgencias en la ventana,
+  --   TAMBIÉN supresión-como-fila (el select sin GROUP BY daría conteo=0/causa NULL prohibido).
+  -- Fable blocker 3: la clave del ítem es `descripcion` (NO `grado`) — el valor es la
+  -- descripción completa del evento, verbatim de fuente, que puede no ser un grado tipificado
+  -- del dominio; prometer `grado` y entregar una frase libre sería editorialización-desde-el-
+  -- dato. Coherente con el mismo campo en archivados. Si la Phase 128 necesita un grado
+  -- tipificado, lo deriva ahí — JAMÁS fabricado en 0080. Los ~95 eventos van completos: cero
+  -- `limit`, cero cap (Anti-B-01).
+  if v_tram_max is not null and v_tram_max >= current_date - c_umbral_stale_dias then
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, evidencia, dataset, origen, fecha_captura)
+    select 'urgencias', '30d', count(*), null, max(te.fecha),
+           jsonb_build_object(
+             'total', count(*),
+             'consultado_al', current_date,
+             'fuente', jsonb_build_object('dataset','tramitacion','origen','plataforma-tramitacion'),
+             'items', coalesce(jsonb_agg(jsonb_build_object(
+                        'boletin', te.boletin,
+                        'titulo', p.titulo,
+                        'descripcion', te.descripcion,
+                        'fecha', te.fecha::date,
+                        'enlace', p.enlace,
+                        'enlace_evento', te.enlace,
+                        'en_corpus', (p.boletin is not null)
+                      ) order by te.fecha desc), '[]'::jsonb)
+           ),
+           'tramitacion', 'plataforma-tramitacion', now()
+      from public.tramitacion_evento te
+      left join public.proyecto p on p.boletin = te.boletin
+     where te.tipo = 'urgencia'
+       and te.fecha <= current_date                                   -- D1
+       and te.fecha >= current_date - interval '30 days'
+     having count(*) > 0;                                          -- no 0-como-hecho
+    if not found then
+      insert into public.actualidad_senal
+        (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
+      values ('urgencias', '30d', 0, v_tram_max,
+              'sin urgencias fechadas en la ventana',
+              'tramitacion', 'plataforma-tramitacion', now());
+    end if;
+  else
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
+    values ('urgencias', '30d', 0, v_tram_max, 'sin datos frescos de esta fuente',
+            'tramitacion', 'plataforma-tramitacion', now());
+  end if;
