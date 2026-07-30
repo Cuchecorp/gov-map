@@ -1,10 +1,11 @@
 {
   "boletin": "14309-04",
-  "orden": "fecha asc, id asc",
+  "orden": "plausibilidad de fecha desc, fecha asc, id asc",
   "medido_en": "2026-07-30T17:36:51Z",
   "eventos_totales": 99,
   "eventos_absorbidos": 14,
   "periodos": 5,
   "hitos_del": 85,
+  "precondiciones": "hitos_del cuenta itemes kind:'evento' de construirItems (= eventos_totales - eventos_absorbidos). Iguala el conteo DOM de 'Hito del' SOLO si: (1) la ficha se pide SIN ?urgencias=uN (ese parametro expande un periodo colapsado y renderiza sus eventos como TimelineEvent, timeline-view.tsx:305-310, llevando el DOM a hitos_del + n(uN)); y (2) TODOS los eventos tienen fecha plausible, porque TimelineEvent solo emite el span 'Hito del' si fecha && fechaPlausible(fecha) (timeline-event.tsx:101) — un item kind:'evento' con fecha nula o implausible cuenta aqui pero NO aparece en el HTML. AMBAS verificadas para 14309-04 (cero fechas nulas, cero implausibles). Phase 138 mide contra este numero: un mismatch bajo otras precondiciones NO es regresion.",
   "nota_reconciliacion": "H=85 bajo el orden total (fecha asc, id asc) — coincide numéricamente con el 85 citado en ROADMAP/REQUIREMENTS (medido bajo el orden VIEJO, fecha sola, no determinista), pero por razones distintas: aquí el valor está FIJADO por un orden total declarado, no por el orden físico que Postgres entregue ese día. Ver cabecera de supabase/queries/timeline-regla-de-seleccion.sql para la reconciliación completa (fix W-2 checker)."
 }

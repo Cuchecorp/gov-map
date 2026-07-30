@@ -652,6 +652,19 @@ describe("(H-06/D-03) orden total determinista en la lectura de tramitacion_even
 // verificación (grep -o 'Hito del' … | wc -l sobre el HTML del Worker, jamás
 // grep -c: el HTML es de una línea) queda delegada a Phase 138 con el número
 // YA congelado aquí en *.esperado.json.
+//
+// QUÉ CUENTA `hitos_del` — PRECONDICIONES (WR-02, 131-REVIEW; ver el campo
+// `precondiciones` de *.esperado.json y la cabecera de la query). `hitos_del` = ítems
+// `kind:"evento"` de `construirItems`. Iguala el conteo DOM de "Hito del" SÓLO si:
+//   (1) la ficha se pide SIN `?urgencias=uN` — ese parámetro EXPANDE un período
+//       colapsado y renderiza sus eventos como `TimelineEvent` (timeline-view.tsx:
+//       305-310), llevando el DOM a `hitos_del + n(uN)`; el default es colapsado;
+//   (2) TODOS los eventos tienen fecha PLAUSIBLE — `TimelineEvent` sólo emite el
+//       `<span>Hito del …</span>` si `fecha && fechaPlausible(fecha)`
+//       (timeline-event.tsx:101), así que un ítem `kind:"evento"` con fecha nula o
+//       implausible cuenta AQUÍ pero NO aparece en el HTML.
+// Ambas verificadas para 14309-04. Phase 138 no debe leer un mismatch bajo otras
+// precondiciones como regresión.
 // ---------------------------------------------------------------------------
 import fixtureEventos from "./__fixtures__/timeline-14309-04.json";
 import esperado from "./__fixtures__/timeline-14309-04.esperado.json";
@@ -680,8 +693,24 @@ describe("(H-06/D-02) paridad regla escrita ↔ construirItems sobre el testigo 
     expect(hitos.length).toBe(esperado.hitos_del);
   });
 
-  it("cierra sin residuo: hitos_del + eventos_absorbidos === eventos_totales === fixture.length", () => {
-    expect(esperado.hitos_del + esperado.eventos_absorbidos).toBe(esperado.eventos_totales);
+  // WR-06 (131-REVIEW): el assert anterior comparaba TRES literales del MISMO JSON
+  // entre sí (`hitos_del + eventos_absorbidos === eventos_totales`). Como la query
+  // DEFINE `hitos_del` = `eventos_totales - eventos_absorbidos`, la igualdad no podía
+  // fallar salvo edición manual del JSON: forma de guard, valor cero, y no tocaba una
+  // sola línea de `construirItems`. Ahora el cierre se ejerce sobre los ÍTEMS REALES
+  // del builder: que cubran los 99 eventos del fixture SIN duplicar ni perder ninguno.
+  it("cierra sin residuo: los ítems del builder cubren los eventos del fixture sin duplicar ni perder", () => {
+    const cubiertos = items.flatMap((it) =>
+      it.kind === "evento" ? [it.evento.id] : it.periodo.eventos.map((e) => e.id),
+    );
+    const idsFixture = (fixtureEventos as unknown as TramitacionEventoRow[]).map((e) => e.id);
+    // Sin duplicados: cada evento aparece EXACTAMENTE una vez (o suelto, o absorbido).
+    expect(new Set(cubiertos).size).toBe(cubiertos.length);
+    // Sin pérdidas: el conjunto cubierto es el conjunto del fixture, elemento a elemento.
+    expect([...cubiertos].sort()).toEqual([...idsFixture].sort());
+    // Y recién ahora el número congelado: el conteo REAL de ítems del builder cuadra
+    // con `hitos_del` + los eventos absorbidos, contra el fixture crudo.
+    expect(cubiertos.length).toBe(fixtureEventos.length);
     expect(esperado.eventos_totales).toBe(fixtureEventos.length);
   });
 });
