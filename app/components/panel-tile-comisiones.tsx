@@ -1,7 +1,8 @@
 import { fechaCivilCorta } from "@/lib/dia-calendario";
 import { hrefAgenda, semanaIsoDeFecha } from "@/lib/links-internos";
-import { IDIOMS_APROBADOS } from "@/lib/idioms-panel";
-import { parseEvidenciaCitaciones } from "@/lib/panel-evidencia";
+import Link from "next/link";
+import { type Idiom } from "@/lib/idioms-panel";
+import { etiquetaFuente, parseEvidenciaCitaciones } from "@/lib/panel-evidencia";
 import { PanelItemProyecto } from "@/components/panel-item-proyecto";
 import { BentoTile } from "@/components/bento/bento-tile";
 
@@ -42,19 +43,11 @@ const ORDEN_COBERTURA: Array<{ full: string; corta: string; molde: (n: number, p
   },
 ];
 
-const STEM_CITADO_EL = idiomaOMuere("Citado el");
-const STEM_SEGUN_FUENTE = idiomaOMuere("según fuente al");
-const STEM_FECHADA_EL = idiomaOMuere("fechada el");
-
-/** Verifica en tiempo de módulo que el stem existe en el single-source (B-4). */
-function idiomaOMuere(stem: string): string {
-  if (!IDIOMS_APROBADOS.includes(stem)) {
-    throw new Error(
-      `panel-tile-comisiones: stem "${stem}" no está en IDIOMS_APROBADOS (single-source B-4).`,
-    );
-  }
-  return stem;
-}
+// WR-05: invariante del single-source movido al TIPO (`Idiom`). Cero `throw` en
+// carga de módulo — ese fallo propagaba a los 6 tiles y a `/` (500).
+const STEM_CITADO_EL: Idiom = "Citado el";
+const STEM_SEGUN_FUENTE: Idiom = "según fuente al";
+const STEM_FECHADA_EL: Idiom = "fechada el";
 
 export interface PanelTileComisionesProps {
   filas: { cobertura_camara: string | null; conteo: number; evidencia: unknown }[];
@@ -85,7 +78,8 @@ function ChipUrgencia({
   const u = urgencias.get(boletin);
   if (!u) return null;
   const dia = fechaCivilCorta(u.fecha);
-  if (!dia) return null;
+  // WR-04: sin fecha O sin grado el chip se omite entero (verbo sin complemento).
+  if (!dia || !u.grado.trim()) return null;
   return (
     <span className="mt-1 inline-flex items-center px-[9px] py-0.5 font-mono text-[11px] font-medium text-accent-product bg-accent-product-soft rounded-full">
       {`Urgencia ${u.grado} ${STEM_FECHADA_EL} ${dia}`}
@@ -122,17 +116,40 @@ export function PanelTileComisiones({
   // cualquier tercer origen que aparezca (no desaparece en silencio, W-5).
   const conteoPorCamara = new Map<string, number>();
   for (const c of CAMARAS_CORPUS) conteoPorCamara.set(c, 0);
+  // CR-03: las filas con `cobertura_camara: null` tampoco desaparecen — se
+  // acumulan aparte y se declaran como segmento propio ("sin cámara informada").
+  let conteoSinCamara = 0;
   for (const fila of filas) {
     const clave = fila.cobertura_camara ?? null;
     if (clave) {
       conteoPorCamara.set(clave, (conteoPorCamara.get(clave) ?? 0) + fila.conteo);
+    } else {
+      conteoSinCamara += fila.conteo;
     }
+  }
+
+  // CR-03: el molde renderizado itera TODOS los orígenes acumulados, no solo
+  // ORDEN_COBERTURA. Los 2 canónicos siempre se declaran (con 0 explícito, cero
+  // mudo); cualquier tercer origen se suma VERBATIM al final, sin mapa. Afirmar
+  // "…en las fuentes consultadas" sobre un denominador que descarta orígenes es
+  // exactamente lo que PANEL-07 prohíbe.
+  const segmentosCobertura: string[] = [
+    ...ORDEN_COBERTURA.map((c, i) =>
+      c.molde(conteoPorCamara.get(c.full) ?? 0, i === 0),
+    ),
+    ...[...conteoPorCamara.entries()]
+      .filter(([k]) => !ORDEN_COBERTURA.some((c) => c.full === k))
+      .map(([k, n]) => `${n} de ${k}`),
+  ];
+  if (conteoSinCamara > 0) {
+    segmentosCobertura.push(`${conteoSinCamara} sin cámara informada`);
   }
 
   for (const fila of filas) {
     const ev = parseEvidenciaCitaciones(fila.evidencia);
     if (ev.consultado_al) consultadoAl = ev.consultado_al;
-    if (ev.fuente.dataset) etiquetaFuenteTile = "Agenda del Congreso";
+    // CR-04/D-02: etiqueta DESDE EL DATO, jamás un literal fijo.
+    etiquetaFuenteTile = etiquetaFuenteTile ?? etiquetaFuente(ev.fuente);
     for (const item of ev.items) {
       puntosTotalDeclarado += item.puntos_total ?? item.puntos.length;
       const semana = item.semana_iso ?? semanaIsoDeFecha(item.fecha);
@@ -154,9 +171,11 @@ export function PanelTileComisiones({
   }
 
   const totalPuntos = puntosTotalDeclarado || puntos.length;
-  const mostrarMas = totalPuntos > maxItems;
-  const restantes = totalPuntos - maxItems;
   const puntosVisibles = puntos.slice(0, maxItems);
+  // WR-01: remanente atado a lo REALMENTE mostrado. `puntos_total` es un
+  // `count(*)` independiente (0081) que puede superar el largo del array.
+  const mostrarMas = totalPuntos > puntosVisibles.length;
+  const restantes = totalPuntos - puntosVisibles.length;
 
   return (
     <BentoTile variant="default" span={4} asChild>
@@ -188,16 +207,17 @@ export function PanelTileComisiones({
           ))}
         </ul>
         {mostrarMas && (
-          <a
+          // WR-11: link interno ⇒ next/link (prefetch, sin full reload).
+          <Link
             href={hrefAgenda("citaciones", semanaParaHref)}
             className="text-[13px] text-accent-product hover:underline"
           >
             {`y ${restantes} más →`}
-          </a>
+          </Link>
         )}
         {/* Cobertura L7: denominador obligatorio, cero mudo (T-128-09) */}
         <p className="mt-2 text-[13px]">
-          {`${ORDEN_COBERTURA.map((c) => c.molde(conteoPorCamara.get(c.full) ?? 0, true)).join(" · ")} en las fuentes consultadas`}
+          {`${segmentosCobertura.join(" · ")} en las fuentes consultadas`}
         </p>
         <p className="mt-2 font-mono text-[11px] text-muted-foreground">
           {etiquetaFuenteTile ? `Fuente: ${etiquetaFuenteTile} · ` : ""}
