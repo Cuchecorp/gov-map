@@ -74,7 +74,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 126-02-PLAN.md — Guard B-03 create view sin security_invoker + script `guards` por nombre explícito (DEBT-02, criterio 4)
+- [x] 126-02-PLAN.md — Guard B-03 create view sin security_invoker + script `guards` por nombre explícito (DEBT-02, criterio 4)
 
 ### Phase 127: PANEL-MAT — Materializador 0080 puebla los sujetos
 
@@ -256,7 +256,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 126. PANEL-GUARDS | 1/2 | In Progress|  |
+| 126. PANEL-GUARDS | 2/2 | Complete   | 2026-07-30 |
 | 127. PANEL-MAT | 0/? | Not started | - |
 | 128. PANEL-UI | 0/? | Not started | - |
 | 129. PANEL-DISEÑO | 0/? | Not started | - |
