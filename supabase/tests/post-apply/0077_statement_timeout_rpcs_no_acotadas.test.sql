@@ -138,8 +138,13 @@ select ok(
   'subgrafo_red(...) tiene statement_timeout=5s (OFF-4-04; la cota de fan-out va en 124-05)');
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
--- (19) DENOMINADOR: el corpus propio de public sigue siendo 42, y 31 llevan techo
---      medido con el predicado de Q-13bis VERBATIM (prosrc O proconfig)
+-- (19) DENOMINADOR: recalibrado por Phase 130 Plan 01 (0082 anadio 1 funcion propia de
+--      public con statement_timeout=5s: votos_conteo_de_parlamentario). El corpus propio
+--      de public pasa de 42 a 43, y las con-techo de 31 a 32 (13 previas + 18 de 0077 +
+--      1 de 0082). Este assert NO valida "0077 no creo ni destruyo objetos" en aislado —
+--      valida el estado TOTAL del corpus al momento de la corrida, y por eso se recalibra
+--      cada vez que una migracion posterior anade una funcion propia legitima a public.
+--      Medido con el predicado de Q-13bis VERBATIM (prosrc O proconfig).
 -- ═══════════════════════════════════════════════════════════════════════════════════
 select is(
   (select (count(*) filter (
@@ -149,8 +154,8 @@ select is(
    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public'
      and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')),
-  '31/42',
-  '31 de 42 funciones propias de public con statement_timeout (13 previas + 18 de 0077); las 11 restantes son las acotadas por construccion. El fix no creo ni destruyo objetos.'
+  '32/43',
+  '32 de 43 funciones propias de public con statement_timeout (13 previas + 18 de 0077 + 1 de 0082/votos_conteo_de_parlamentario); las 11 restantes son las acotadas por construccion. Recalibrado por Phase 130-01 (nueva funcion legitima, no una regresion de 0077).'
 );
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
