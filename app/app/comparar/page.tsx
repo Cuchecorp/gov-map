@@ -238,7 +238,9 @@ export async function CompararEjes({
 
   // Lecturas server-side en paralelo (cada una LANZA ante error real, #34).
   // CR-01: los ejes de PAR (militancia / co-autoría) se leen en AMBAS direcciones
-  // (A y B): el canal de datos de las RPCs viene cap-eado (limit 20) y decidir el
+  // (A y B): el canal de datos de las RPCs viene cap-eado (militancia: 20; co-autoría:
+  // 1000 vía la v2 de 0083 — IN-03, ver el bloque de constantes de CAP_RPC/
+  // CAP_RPC_COAUTORES más abajo, que es la sede de estos números) y decidir el
   // par por membresía en UNA lista truncada produciría ausencias FALSAS con
   // atribución de fuente. React.cache deduplica por (rpc, id).
   const [milA, milB, comA, comB, coautA, coautB] = await Promise.all([
