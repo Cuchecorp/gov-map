@@ -63,7 +63,10 @@
   2. `NEGACIONES_LOCKED` está extendido con los idioms nuevos aprobados (`Citado el …`, `Urgencia … vigente desde …`, `En tabla de sala de la Cámara del …`, `según fuente al …`) con self-check que prueba que la extensión no abre huecos.
   3. La aserción de guard para `create view` en `public` sin `security_invoker` existe y muerde: control positivo apareado (fixture de vista sin `security_invoker` → el guard FALLA; con `security_invoker` → verde). El cero deja de ser vacuo ANTES de la primera vista del milestone.
   4. Suite `app/` completa + los 14+ guards de régimen corren verdes (por nombre explícito, jamás por glob) tras la extensión.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 126-01-PLAN.md — SUPERFICIES_PANEL + anti-drift + NEGACIONES_LOCKED/IDIOMS_APROBADOS + mutation self-checks (PANEL-08)
+- [ ] 126-02-PLAN.md — Guard B-03 create view sin security_invoker + script `guards` por nombre explícito (DEBT-02, criterio 4)
 
 ### Phase 127: PANEL-MAT — Materializador 0080 puebla los sujetos
 **Goal**: La DB tiene los sujetos del hecho — cada señal positiva de `actualidad_senal` lleva en `evidencia` los boletines, títulos, fechas y enlaces que la UI va a nombrar. La arquitectura es la Opción A adjudicada por spike (no se re-abre).
