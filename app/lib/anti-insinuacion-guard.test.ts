@@ -44,7 +44,7 @@
  * guard NO sea un no-op verde vacío (T-68-02: tampering del guard mismo).
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { LEYENDA_ANTI_INSINUACION_MONEY } from "@/lib/money-presentacion";
@@ -304,10 +304,31 @@ const SUPERFICIES_DEEPLINK: string[] = [
  * un término prohibido. Si el copy del Plan 02 introduce una leyenda que NIEGA un
  * término prohibido, esa leyenda debe registrarse verbatim en NEGACIONES_LOCKED ANTES
  * de que esta superficie entre al escaneo real (Pitfall 2, lección BLOCKER 91).
+ *
+ * ALTA PREVENTIVA v13.0 (126, PANEL-08): las 7 rutas de abajo son los tiles del
+ * rediseño del panel (Phase 128) — NINGUNA existe todavía. El alta es preventiva
+ * porque el bucle de escaneo del test (1) TOLERA archivos faltantes (try/catch
+ * continue, L905-917): declarar la ruta HOY no rompe nada (guard sigue VERDE) y
+ * MUERDE recién cuando el archivo real aterrice con copy insinuante. Prefijo
+ * CONGELADO para todo componente nuevo del rediseño: `components/panel-*.tsx`
+ * (D-05) — la Phase 128 DEBE nombrar sus archivos con ese prefijo, porque el
+ * assert anti-drift `(1f)` de más abajo hace fallar el guard ante cualquier
+ * `panel-*.tsx` real no declarado aquí.
+ *
+ * NO entra a este array (D-08): el helper central de links internos de la Phase
+ * 128 (PANEL-02) vive en `lib/` y emite hrefs, no copy renderizado — el anti-drift
+ * `(1f)` solo escanea `app/components/`. Si ese helper terminara emitiendo labels
+ * visibles, 128 debe sumarlo explícitamente a SUPERFICIES_PANEL.
  */
 const SUPERFICIES_PANEL: string[] = [
   "components/panel-actualidad.tsx",
-  // + sub-tiles del panel si el componente se divide (Plan 02)
+  "components/panel-tile-sala.tsx",
+  "components/panel-tile-comisiones.tsx",
+  "components/panel-tile-urgencias.tsx",
+  "components/panel-tile-movimiento.tsx",
+  "components/panel-tile-votaciones.tsx",
+  "components/panel-tile-ingresos.tsx",
+  "components/panel-item-proyecto.tsx",
 ];
 
 /**
@@ -1100,6 +1121,47 @@ describe("(1) Guard — ninguna superficie de voto ni MONEY insinúa (texto rend
     // aprobado, y JAMÁS la palabra "captura" pelada.
     expect(COBERTURA_MENCIONES_LOBBY).toContain("según fuente al");
     expect(COBERTURA_MENCIONES_LOBBY).not.toMatch(/captura/i);
+  });
+
+  /**
+   * (1f) PANEL-08 anti-drift (126, D-07) — todo `panel-*.tsx` REAL del filesystem debe
+   * estar declarado en SUPERFICIES_PANEL. Cierra el hueco "archivo nuevo con nombre
+   * imprevisto se salta el scan": si la Phase 128 crea un archivo con el prefijo
+   * CONGELADO `panel-` que no está en la lista de alta preventiva (D-06), este test
+   * FALLA y obliga el alta en el mismo commit que lo crea.
+   *
+   * Excluye `*.test.tsx?` (Pitfall 1): `panel-actualidad.test.tsx` YA existe hoy y no
+   * es una superficie de copy renderizado — sin la exclusión el guard nacería rojo.
+   *
+   * Assert anti-cero-vacuo (precedente L883-897/L368): el listado filtrado de
+   * archivos REALES debe tener longitud >= 1 (hoy: `panel-actualidad.tsx`), para que
+   * un `APP_ROOT` mal resuelto no dé verde escaneando cero.
+   */
+  it("(1f) PANEL-08 anti-drift: todo panel-*.tsx real está declarado en SUPERFICIES_PANEL", () => {
+    const archivosReales = readdirSync(path.join(APP_ROOT, "components"))
+      .filter((f) => /^panel-.+\.tsx$/.test(f))
+      .filter((f) => !/\.test\.tsx?$/.test(f));
+
+    // Anti-cero-vacuo: si APP_ROOT está mal resuelto, readdirSync no lanza pero
+    // devuelve una lista ajena/vacía — este assert lo cazaría explícitamente.
+    expect(
+      archivosReales.length,
+      "El escaneo de app/components/ para panel-*.tsx dio CERO archivos reales " +
+        "(hoy debería incluir al menos panel-actualidad.tsx) — sospechar APP_ROOT mal " +
+        "resuelto antes de asumir que el árbol está limpio.",
+    ).toBeGreaterThanOrEqual(1);
+
+    const declarados = new Set(SUPERFICIES_PANEL);
+    const huerfanos = archivosReales
+      .map((f) => `components/${f}`)
+      .filter((rel) => !declarados.has(rel));
+
+    expect(
+      huerfanos,
+      `Archivo(s) panel-*.tsx real(es) NO declarado(s) en SUPERFICIES_PANEL: ` +
+        `[${huerfanos.join("; ")}]. Declara el archivo en SUPERFICIES_PANEL en el ` +
+        `mismo commit que lo crea (prefijo congelado D-05).`,
+    ).toHaveLength(0);
   });
 });
 
