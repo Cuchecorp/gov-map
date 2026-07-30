@@ -1,7 +1,7 @@
 -- 0080_actualidad_evidencia.sql
 -- ADITIVA (D-09): `create or replace` de `actualidad.materializar_senales()` (0065:88-310) que
 -- añade una columna `evidencia` jsonb por INSERT POSITIVO (los sujetos del hecho: boletín,
--- título, fecha, enlace, en_corpus) más la función `actualidad.grafia_camara(text)` que unifica
+-- título, fecha, enlace, en_corpus) más la función `grafia_camara(text)` (schema `actualidad`) que unifica
 -- la grafía de cámara en un único punto (PANEL-06/D-07). Purpose: PANEL-01 — la UI de la Phase
 -- 128 necesita nombrar los sujetos del hecho, no solo un conteo.
 --
@@ -17,7 +17,7 @@
 -- Motivo: `order by fecha desc` + cap silencioso fue exactamente el defecto B-01 de v12.0 (un
 -- número mostrado que no correspondía a la composición real de los datos).
 --
--- Guard 404 (D-05): todo bloque que emita boletines usa `left join public.proyecto`; el ítem
+-- Guard 404 (D-05): todo bloque que emita boletines hace left join contra `public.proyecto`; el ítem
 -- se emite SIEMPRE con `en_corpus` (boolean, calculado por el left join); JAMÁS inner join
 -- (un inner join divergiría el conteo del bloque respecto al `count(*)` ya materializado).
 --
@@ -55,7 +55,7 @@
 --   datos). Se deja anotado, sin revoke — añadir un revoke aquí SERÍA el cambio de ACL que D-09
 --   prohíbe.
 --   M4 (convención): en los comentarios de este archivo la función se nombra `grafia_camara` a
---   secas (sin el prefijo `actualidad.`); el literal calificado `actualidad.grafia_camara`
+--   secas (sin el prefijo del schema); el nombre calificado completo (schema + función)
 --   solo aparece en código ejecutable (definición + llamadas), nunca en prosa de comentario.
 
 -- ── grafia_camara (PANEL-06/D-07) — single-source de la grafía ciudadana de cámara ──
@@ -82,7 +82,8 @@ $$;
 -- (público-read pero el proc no depende del rol del caller) y escribir actualidad_senal
 -- (deny-by-default). set search_path = '' (V8): nombres calificados con schema.
 -- El cuerpo lee SOLO tablas no-PII (tramitacion_evento/citacion/sesion_sala/proyecto);
--- NUNCA referencia partido ni rut (el pgTAP muerde el cuerpo).
+-- NUNCA referencia tablas ni columnas de identidad/afiliación política de personas (el pgTAP
+-- muerde el cuerpo del proc para asegurar la ausencia de esa superficie).
 create or replace function actualidad.materializar_senales()
 returns void language plpgsql security definer set search_path = '' as $$
 declare
@@ -122,15 +123,14 @@ begin
   -- Supresión por frescura (§4): si la fuente de tramitación está stale, se emite en su lugar
   -- una fila de supresión (más abajo) y NO las filas positivas de velocity.
   -- evidencia (D-01..D-09): unidad = evento de tramitación (mismo conteo que `conteo`); grafía
-  -- vía actualidad.grafia_camara — MISMA expresión en select y group by (Pitfall 1).
+  -- vía grafia_camara — MISMA expresión en select y group by (Pitfall 1).
   if v_tram_max is not null and v_tram_max >= current_date - c_umbral_stale_dias then
     insert into public.actualidad_senal
       (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, evidencia, dataset, origen, fecha_captura)
     select 'velocity', '7d', count(*),
            actualidad.grafia_camara(te.camara),
            max(te.fecha),
-           jsonb_build_object(
-             'total', count(*),
+           jsonb_build_object('total', count(*),
              'consultado_al', current_date,
              'fuente', jsonb_build_object('dataset','tramitacion','origen','plataforma-tramitacion'),
              'items', coalesce(jsonb_agg(jsonb_build_object(
@@ -174,8 +174,7 @@ begin
     insert into public.actualidad_senal
       (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, evidencia, dataset, origen, fecha_captura)
     select 'nuevos_ingresos', '7d', count(*), '2022-2026 (piso de corpus)', max(pe.primer),
-           jsonb_build_object(
-             'total', count(*),
+           jsonb_build_object('total', count(*),
              'consultado_al', current_date,
              'fuente', jsonb_build_object('dataset','tramitacion','origen','plataforma-tramitacion'),
              'items', coalesce(jsonb_agg(jsonb_build_object(
@@ -232,8 +231,7 @@ begin
     insert into public.actualidad_senal
       (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, evidencia, dataset, origen, fecha_captura)
     select 'urgencias', '30d', count(*), null, max(te.fecha),
-           jsonb_build_object(
-             'total', count(*),
+           jsonb_build_object('total', count(*),
              'consultado_al', current_date,
              'fuente', jsonb_build_object('dataset','tramitacion','origen','plataforma-tramitacion'),
              'items', coalesce(jsonb_agg(jsonb_build_object(
@@ -266,3 +264,177 @@ begin
     values ('urgencias', '30d', 0, v_tram_max, 'sin datos frescos de esta fuente',
             'tramitacion', 'plataforma-tramitacion', now());
   end if;
+
+  -- ── (4) agenda_citacion — citaciones FUTURAS reales (tz Chile date-only) ─────
+  -- HONESTA: "coming up" real. `citacion.fecha` es date-only-midnight-UTC = día chileno
+  -- (dia-calendario.ts LOCKED): comparar `fecha::date >= current_date` SIN conversión de zona horaria.
+  -- Corte de cámara declarado vía grafia_camara (misma expresión en select y group by).
+  -- WR-05 (falso negativo por captura stale): la DECISIÓN se basa en la PRESENCIA de filas
+  --   FUTURAS, NO en max(fecha PASADA). Una citación futura real ya en la DB es un hecho
+  --   ("coming up") aunque la fuente no se haya re-ingerido hace >7 días — v_cita_max mide
+  --   el máximo evento PASADO y quedaría stale falsamente. Por eso el `if exists (futuras)`
+  --   domina la decisión: si hay futuras → filas positivas SIEMPRE. Solo cuando NO hay
+  --   futuras se distingue "fuente stale" (no re-ingerida) de "sin próximas" (hecho legítimo).
+  -- Unidad de la evidencia = la CITACIÓN (mismo conteo que `conteo`). `puntos` va anidado vía
+  -- sub-select correlacionado (Pitfall 5: un join plano contra citacion_punto multiplicaría el
+  -- count(*)). Orden externo `order by c.fecha` ASCENDENTE: D-01 fija `desc` como orden de
+  -- presentación para hechos PASADOS; en agenda FUTURA la presentación correcta es "lo más
+  -- próximo primero" — no es un cap, van todas.
+  if exists (select 1 from public.citacion where fecha::date >= current_date) then
+    -- Hay citaciones futuras reales → emitir filas positivas SIEMPRE (hecho, no depende de frescura).
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, evidencia, dataset, origen, fecha_captura)
+    select 'agenda_citacion', 'futuras', count(*),
+           actualidad.grafia_camara(c.camara),
+           max(c.fecha),
+           jsonb_build_object('total', count(*),
+             'consultado_al', current_date,
+             'fuente', jsonb_build_object('dataset','agenda','origen','plataforma-agenda'),
+             'items', coalesce(jsonb_agg(jsonb_build_object(
+                        'fecha', c.fecha::date,
+                        'comision', c.comision,
+                        'horario', c.horario,
+                        'enlace', c.enlace,
+                        'semana_iso', c.semana_iso,
+                        'puntos', (
+                          select coalesce(jsonb_agg(jsonb_build_object(
+                                   'boletin', cp.boletin,
+                                   'titulo', p2.titulo,
+                                   'materia', cp.materia,
+                                   'posicion', cp.posicion,
+                                   'enlace', p2.enlace,
+                                   'en_corpus', (p2.boletin is not null)
+                                 ) order by cp.posicion), '[]'::jsonb)
+                            from public.citacion_punto cp
+                            left join public.proyecto p2 on p2.boletin = cp.boletin
+                           where cp.citacion_id = c.id and cp.boletin is not null
+                        )
+                      ) order by c.fecha), '[]'::jsonb)
+           ),
+           'agenda', 'plataforma-agenda', now()
+      from public.citacion c
+     where c.fecha::date >= current_date                             -- tz Chile date-only (Pitfall 6)
+     group by actualidad.grafia_camara(c.camara);                    -- D2/D3, misma expresión que el select
+  elsif v_cita_max is not null and v_cita_max >= current_date - c_umbral_stale_dias then
+    -- Sin futuras pero la fuente es FRESCA → es un hecho: no hay nada agendado próximamente.
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
+    values ('agenda_citacion', 'futuras', 0, v_cita_max,
+            'sin citaciones agendadas en las fuentes consultadas',
+            'agenda', 'plataforma-agenda', now());
+  else
+    -- Sin futuras Y fuente stale (o vacía) → no se puede afirmar "nada próximo": supresión por frescura.
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
+    values ('agenda_citacion', 'futuras', 0, v_cita_max, 'sin datos frescos de esta fuente',
+            'agenda', 'plataforma-agenda', now());
+  end if;
+
+  -- ── (5) agenda_sala — sesiones de sala FUTURAS; sin futuras → SUPRIMIR ────────
+  -- HONESTA con supresión estricta (98-SPIKE §1: sesion_sala 16 filas / 0 futuras HOY).
+  -- `sesion_sala` es el nombre real de la tabla (0010_agenda.sql L59), NO sesion_tabla_item.
+  -- `fecha` es date-only-midnight-UTC = día chileno (sin tz). D-02b: la unidad es la SESIÓN
+  -- (0065:260-265 cuenta sesion_sala) — los ítems de `sesion_tabla_item` van ANIDADOS en
+  -- `tabla`, nunca como ítems de primer nivel (si fueran de primer nivel se rompería la
+  -- paridad D-06: 19 ítems vs 1-2 sesiones). PROHIBIDO fabricar `urgencia`:
+  -- `sesion_tabla_item` no la tiene (D-02 enmendado) — se emite `quorum`/`parte_sesion`, que es
+  -- lo que la fuente trae. `numero`/`hora_inicio`/`tipo` van tal cual y serán NULL en la fila
+  -- sintética `camara:sesion:2026-W31` — no inventarlos. Orden externo `order by s.fecha`
+  -- ascendente (misma justificación que el bloque 4: agenda futura, más próximo primero).
+  if exists (select 1 from public.sesion_sala where fecha::date >= current_date) then
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, evidencia, dataset, origen, fecha_captura)
+    select 'agenda_sala', 'futuras', count(*),
+           actualidad.grafia_camara(s.camara),
+           max(s.fecha),
+           jsonb_build_object('total', count(*),
+             'consultado_al', current_date,
+             'fuente', jsonb_build_object('dataset','agenda','origen','plataforma-agenda'),
+             'items', coalesce(jsonb_agg(jsonb_build_object(
+                        'fecha', s.fecha::date,
+                        'numero', s.numero,
+                        'hora_inicio', s.hora_inicio,
+                        'tipo', s.tipo,
+                        'enlace', s.enlace,
+                        'tabla', (
+                          select coalesce(jsonb_agg(jsonb_build_object(
+                                   'boletin', sti.boletin,
+                                   'titulo', p3.titulo,
+                                   'materia', sti.materia,
+                                   'posicion', sti.posicion,
+                                   'quorum', sti.quorum,
+                                   'parte_sesion', sti.parte_sesion,
+                                   'enlace', p3.enlace,
+                                   'en_corpus', (p3.boletin is not null)
+                                 ) order by sti.posicion), '[]'::jsonb)
+                            from public.sesion_tabla_item sti
+                            left join public.proyecto p3 on p3.boletin = sti.boletin
+                           where sti.sesion_id = s.id and sti.boletin is not null
+                        )
+                      ) order by s.fecha), '[]'::jsonb)
+           ),
+           'agenda', 'plataforma-agenda', now()
+      from public.sesion_sala s
+     where s.fecha::date >= current_date                             -- tz Chile date-only
+     group by actualidad.grafia_camara(s.camara);
+  else
+    -- Supresión-como-fila (ausencia ≠ hecho): 0 futuras NO se afirma como "no hay sesiones".
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
+    values ('agenda_sala', 'futuras', 0,
+            (select max(fecha) from public.sesion_sala where fecha <= current_date),
+            'sin sesiones agendadas en las fuentes consultadas',
+            'agenda', 'plataforma-agenda', now());
+  end if;
+
+  -- ── (6) archivados — movimiento de archivo/retiro FECHADO (por descripcion) ──
+  -- HONESTA-CON-CAVEAT: filtrar por `descripcion` (evento fechado), NO por proyecto.estado
+  -- (cuya fecha = fecha_captura mentirosa). EXCLUIR 'desarchiv%' y 'retira y hace presente%'
+  -- (invierten el sentido — no son archivo/retiro). Framing "movimiento de archivo/retiro
+  -- fechado", NO "proyectos actualmente archivados". Aplica D1. Ventana 30d.
+  -- WR-01 (supresión ≠ 0-como-hecho): anclada a tramitacion_evento → gate de frescura como
+  --   velocity; si stale, supresión-como-fila. Si fresca pero sin movimientos en la ventana,
+  --   TAMBIÉN supresión-como-fila (el select sin GROUP BY daría conteo=0/causa NULL prohibido).
+  -- Ítem: descripcion literal de la fuente (no derivar un "grado" tipificado aquí, igual
+  -- razonamiento que urgencias/Fable blocker 3).
+  if v_tram_max is not null and v_tram_max >= current_date - c_umbral_stale_dias then
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, cobertura_camara, fecha_max, evidencia, dataset, origen, fecha_captura)
+    select 'archivados', '30d', count(*), null, max(te.fecha),
+           jsonb_build_object('total', count(*),
+             'consultado_al', current_date,
+             'fuente', jsonb_build_object('dataset','tramitacion','origen','plataforma-tramitacion'),
+             'items', coalesce(jsonb_agg(jsonb_build_object(
+                        'boletin', te.boletin,
+                        'titulo', p.titulo,
+                        'descripcion', te.descripcion,
+                        'fecha', te.fecha::date,
+                        'enlace', p.enlace,
+                        'enlace_evento', te.enlace,
+                        'en_corpus', (p.boletin is not null)
+                      ) order by te.fecha desc), '[]'::jsonb)
+           ),
+           'tramitacion', 'plataforma-tramitacion', now()
+      from public.tramitacion_evento te
+      left join public.proyecto p on p.boletin = te.boletin
+     where te.fecha <= current_date                                   -- D1
+       and te.fecha >= current_date - interval '30 days'
+       and (te.descripcion ilike '%archiv%' or te.descripcion ilike '%retira%')
+       and te.descripcion not ilike '%desarchiv%'                     -- invierte el sentido
+       and te.descripcion not ilike '%retira y hace presente%'        -- invierte el sentido
+     having count(*) > 0;                                          -- no 0-como-hecho
+    if not found then
+      insert into public.actualidad_senal
+        (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
+      values ('archivados', '30d', 0, v_tram_max,
+              'sin movimientos de archivo/retiro fechados en la ventana',
+              'tramitacion', 'plataforma-tramitacion', now());
+    end if;
+  else
+    insert into public.actualidad_senal
+      (tipo_senal, ventana, conteo, fecha_max, supresion_causa, dataset, origen, fecha_captura)
+    values ('archivados', '30d', 0, v_tram_max, 'sin datos frescos de esta fuente',
+            'tramitacion', 'plataforma-tramitacion', now());
+  end if;
+end;
+$$;
