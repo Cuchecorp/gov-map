@@ -475,10 +475,10 @@ No aplica en el sentido clásico (no hay rename), pero se verificó lo equivalen
 | A2 | Split ingenuo por `;` sobre cuerpos `$$…$$` no produce falsos positivos para `create view` | Guard B-03 | Bajo — el control positivo/negativo apareado detecta cualquier desvío; además hoy hay 0 views |
 | A3 | La lista de 7 archivos D-06 coincide con los tiles que 128 creará | SUPERFICIES_PANEL | Bajo — el anti-drift D-07 muerde si 128 desvía; el loader tolera rutas que nunca lleguen a existir |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Conteo canónico de "14+ guards"** — Sabemos: 10 en `app/`, 6 en `packages/`, 42 describes en app. No está claro qué contó v12. **Recomendación:** el plan escribe el conteo real (11 tras esta fase en `app/`; 17 en el monorepo) y deja constancia de la discrepancia con el criterio; no bloquea.
-2. **¿El script `guards` debe incluir los 6 de `packages/`?** — Recomendación: NO (viven en otro workspace con su propio runner y CI ya los corre); el script vive en `app/package.json` con los 11 de `app/`. El plan puede añadir un script raíz opcional si se quiere el barrido completo.
+1. **Conteo canónico de "14+ guards"** — RESUELTO (plan-checker 2026-07-30, blocker cerrado): el criterio 4 se satisface EJECUTANDO los 17 guards del monorepo por nombre explícito (11 de `app/` vía `pnpm guards` + 6 de `packages/` vía dos corridas `pnpm --filter @obs/{dinero,llm} exec vitest run <3 nombres>`); 17 > 14 cierra el "14+" sin ambigüedad. El conteo real se documenta en el SUMMARY de 126-02.
+2. **¿El script `guards` debe incluir los 6 de `packages/`?** — RESUELTO: el SCRIPT no los incluye (viven en otro workspace, el filtro de vitest no cruza workspaces), pero la VERIFICACIÓN de la fase SÍ los corre por nombre explícito con los dos comandos `--filter` de arriba (fix del blocker: documentar un conteo no es correrlo verde).
 
 ## Sources
 
