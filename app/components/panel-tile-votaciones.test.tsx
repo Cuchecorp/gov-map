@@ -114,7 +114,11 @@ describe("PanelTileVotacionesView", () => {
   it("cero vocabulario prohibido del carril voto (salvo la leyenda registrada, que los NIEGA)", () => {
     const item = makeItem();
     render(<PanelTileVotacionesView items={[item]} fechaFuente={item.fecha} />);
-    const texto = document.body.textContent ?? "";
+    // La leyenda LOCKED contiene "disciplina" pero lo NIEGA — se resta antes
+    // de matchear (mismo patrón que `anti-insinuacion-guard.test.ts`).
+    const texto = (document.body.textContent ?? "").split(
+      "Un voto es un hecho observable. Ausente o pareo no equivalen a votar en contra. No medimos disciplina ni motivo.",
+    ).join(" ");
     for (const prohibido of [
       "votan juntos",
       "votan igual",
@@ -125,7 +129,7 @@ describe("PanelTileVotacionesView", () => {
       expect(texto).not.toContain(prohibido);
     }
     // La leyenda anti-insinuación registrada SÍ debe estar presente (verbatim).
-    expect(texto).toContain(
+    expect(document.body.textContent ?? "").toContain(
       "Un voto es un hecho observable. Ausente o pareo no equivalen a votar en contra. No medimos disciplina ni motivo.",
     );
   });
