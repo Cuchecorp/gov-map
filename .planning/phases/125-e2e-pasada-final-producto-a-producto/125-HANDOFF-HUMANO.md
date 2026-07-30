@@ -42,6 +42,8 @@ como aprobado si existe **respuesta verbatim del operador**. La ausencia de resp
 | **provisión NOTIF** | deuda de operador | viva | checkpoint de operador | operador |
 | **rotación B26** | deuda de operador | viva | operador | operador |
 | **catálogo 113** | corrección documental | 2 ítems pendientes de anotar | catálogo `113-INVENTARIO.md` | agente, fase futura |
+| **fila `3.3`** (122) | backlog de exactitud — **añadida por la auditoría de cierre 2026-07-29** | viva; destino a 124 **no llegó** | próxima auditoría de régimen | agente |
+| **fila `4-15`** (122) | defecto **D2** del materializador `0065` — **añadida por la auditoría de cierre 2026-07-29** | viva; destino a 124 **no llegó** | próxima fase que toque `0065` | agente |
 
 ---
 
@@ -212,6 +214,22 @@ exactamente el momento en que la deuda se vuelve visible.
 | **flip MONEY** | `MONEY_PUBLIC_ENABLED` tras la revisión legal (Ley 21.719) | `125-E2E-C-GATES.md` §6 ítems 1-2; **secret AUSENTE = OFF** verificado en esta fase. **Gatea F-08 de 117** (su copy no es observable con el bloque sin emitir) y **`D-01` de 124** (los techos de `aportes`/`contratos` se fijaron sobre tablas vacías: `4 × 0 = 0` no es un techo) | revisión legal → `wrangler secret put` → re-medición `M-PARL` + migración si el máximo real supera 5.000 | **checkpoint de operador** | operador → agente |
 | **provisión NOTIF** | `NOTIF_PUBLIC_ENABLED` + los 8 ítems de provisión de v10.0 | `125-E2E-C-GATES.md` §6 ítem 3; secret **AUSENTE = OFF**; `/cuenta` sirve `Las suscripciones no están disponibles en este momento.` (200, no 500) | provisión + flip | **checkpoint de operador** | operador |
 | **rotación B26** | rotación de credenciales pendiente | deuda viva desde v11.0 | rotación en el dashboard | operador | operador |
+
+### Añadidos por la auditoría de cierre del milestone (2026-07-29)
+
+> **Por qué se añaden aquí y no estaban.** La auditoría de cierre de v12.0
+> (`.planning/v12.0-MILESTONE-AUDIT.md` §3) encontró que las filas **`3.3`** y **`4-15`** de la
+> Phase 122 están declaradas en el cuerpo de [`125-E2E.md`](./125-E2E.md) §3 pero **ausentes del
+> índice §0 y de las tablas de este handoff**: salían del milestone **sin dueño**, lo que contradice
+> la regla rectora de este documento (*«un ítem sin destino sería un ítem cerrado en silencio»*). El
+> destino que 122 les escribió era la **Phase 124**, y **no llegó** a ninguna de las dos. Se
+> recuperan aquí con sus cinco campos. **No estaban desde el principio** — esta nota existe para que
+> quede la traza.
+
+| ítem | qué es | evidencia | forma del fix | destino nombrado | quién |
+|---|---|---|---|---|---|
+| **fila `3.3`** (122) | co-autoría de `/comparar` **truncada a 20**: el SQL de PROD dice **0** co-firmados compartidos y el sitio **declara indeterminación** en vez de afirmar el cero. Es el **fail-closed de CR-01, deliberado** — no un bug de render: la RPC no emite membresía de par, así que el sitio no puede distinguir "no comparten" de "no lo sé" y elige no saber | `122-CRUCES-SQL.md` fila `3.3`; declarada también en `125-E2E.md` §3. Destino que 122 le escribió: *«Phase 124 (rediseño de RPC)»* — **no llegó** | **rediseñar la RPC para que emita membresía de par** (no maquillar el cliente); mientras no exista, la indeterminación declarada es la lectura honesta y **se queda** | **próxima auditoría de régimen** (junto a `B-01`/`B-02`/`B-03`) | agente |
+| **fila `4-15`** (122) | **dos grafías de cámara conviviendo en la landing**: `Senado` / `C.Diputados` (normalizadas) junto a `senado` / `camara` (crudas). Es el defecto **D2** del materializador, `0065:233,261` | `122-CRUCES-SQL.md` fila `4-15`; defecto **D2** LOCKED desde 98-01 (*«normalizar camara dos grafias»*), emisor `0065:233,261`. Destino que 122 le escribió: *«Phase 124 (corrección en 0065)»* — **no llegó** | corregir **en el materializador `0065`**, **NO maquillar en el cliente** (adjudicación ya escrita por 122). Migración **aditiva nueva**; `0065` no se edita. **Es la más barata de las dos** | **próxima fase que toque `0065`** | agente |
 
 ---
 

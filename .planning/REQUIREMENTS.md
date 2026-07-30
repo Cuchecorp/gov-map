@@ -67,11 +67,17 @@ Mapeado por el roadmap v12.0 (Phases 113-125). Coverage 13/13 — cero huérfano
 | CRON-02 | Phase 119 — CRON-FIX robustez de ingesta | Complete |
 | CRON-03 | Phase 120 — ESCALERA-ON flip `CLASIFICACION_ESCALERA=1` | Complete |
 | CRON-04 | Phase 121 — ESCALERA-DOC extensión solo con benchmark | Complete |
-| CRUCE-01 | Phase 122 — CRUCE-SQL cruces visibles × SQL de PROD | Complete |
-| SUPA-01 | Phase 123 — SUPA-AUDIT auditoría de estructura Supabase | Complete |
+| CRUCE-01 | Phase 122 — CRUCE-SQL cruces visibles × SQL de PROD | **Complete (parcial — declarado)** — se corrigieron **2 de 10** discrepancias; el requisito dice *"discrepancias corregidas"*. Las 8 restantes quedaron **declaradas con destino**, no corregidas. Puntero: **`B-01`** (`124-HANDOFF-EXACTITUD.md` §1 · cap de 1.000 en votos, `Ver detalle (1000)` vivo en el DOM) |
+| SUPA-01 | Phase 123 — SUPA-AUDIT auditoría de estructura Supabase | **Complete (parcial — declarado)** — quedan **4 offenders vivos de 13**; el requisito dice *"0 offenders o fix aplicado"*. Re-medidos por la auditoría de cierre: `net` con `USAGE` para `anon` **y** `PUBLIC`, y `pgtap` aún en `public` (**1.201** funciones exec-`anon`). Punteros: **`OP-1`** y **`OP-4`** (`125-HANDOFF-HUMANO.md` §5 · checkpoint de operador + `supabase-architect`) |
 | SUPA-02 | Phase 124 — SUPA-FIX migraciones aditivas a PROD | Complete |
 | E2E-01 | Phase 125 — E2E pasada final sobre el deploy real | Complete |
 
+> **Nota de la auditoría de cierre (2026-07-29).** Esta tabla se firmó **al definir el milestone**, no
+> al cumplirlo: las 13 filas ya decían `Complete` con fecha **2026-07-27**, el día de la definición,
+> antes de ejecutar una sola fase (114-125 corrieron el **28** y el **29**). **La tabla no es
+> evidencia de cierre.** La evidencia son los `*-VERIFICATION.md` de cada fase y
+> `.planning/v12.0-MILESTONE-AUDIT.md`.
+
 ---
 *Requirements defined: 2026-07-27*
-*Last updated: 2026-07-27 — traceability mapeada por el roadmap v12.0 (Phases 113-125)*
+*Last updated: 2026-07-29 — auditoría de cierre v12.0: `CRUCE-01` y `SUPA-01` re-marcados como parciales declarados, con punteros; nota de proceso añadida*

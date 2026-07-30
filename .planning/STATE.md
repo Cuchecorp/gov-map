@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
-status: verifying
-stopped_at: Completed 125-07-PLAN.md · fase 125 lista para verificación
-last_updated: "2026-07-29T23:35:45.405Z"
+status: audited
+stopped_at: Phase 125 CERRADA · auditoría de cierre v12.0 persistida (status tech_debt) · listo para archivado
+last_updated: "2026-07-29T23:59:00.000Z"
 last_activity: 2026-07-29
 progress:
   total_phases: 13
@@ -21,14 +21,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 121 — ESCALERA-DOC — Extensión solo con benchmark
+**Current focus:** cierre del milestone v12.0 — auditoría persistida, pendiente archivado
 
 ## Current Position
 
-Phase: 122
-Plan: 6 of 6 complete — next 122-06 (consolidación)
-Status: Phase complete — ready for verification
+Phase: 125 — E2E pasada final producto-a-producto — **COMPLETA**
+Plan: 7 of 7 complete
+Status: Milestone v12.0 **13/13 fases completas** · auditoría de cierre en `.planning/v12.0-MILESTONE-AUDIT.md` (**status `tech_debt`**) · listo para `/gsd:complete-milestone`
 Last activity: 2026-07-29
+
+### Riesgo latente de archivado — migraciones escritas y NO aplicadas
+
+> `0073` (default ACL de `supabase_admin`) y `0075` (revoke de `net`) quedaron **escritas y NO
+> aplicadas** por falta de ownership (`postgres` no es superusuario ni miembro de `supabase_admin`).
+> **Jamás se editan.** Si algún día se pueden aplicar, va una migración **nueva** (`0080`). Sin esa
+> disciplina, un futuro `supabase db push` o un ledger reconciliado a ciegas produciría deriva.
 
 ### Roadmap v12.0 (Phases 113-125)
 
