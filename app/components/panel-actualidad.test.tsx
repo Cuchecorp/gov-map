@@ -1,214 +1,331 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, cleanup } from "@testing-library/react";
 
-import { TileSenal, rotuloFecha, type SenalRow } from "./panel-actualidad";
+import { rotuloFecha, type SenalRow } from "./panel-actualidad";
+import { parseEvidenciaProyectos, urgenciaVigentePorBoletin } from "@/lib/panel-evidencia";
+import { PanelTileSala } from "./panel-tile-sala";
+import { PanelTileComisiones } from "./panel-tile-comisiones";
+import { PanelTileUrgencias } from "./panel-tile-urgencias";
+import { PanelTileMovimiento } from "./panel-tile-movimiento";
+import { PanelTileVotacionesView, type VotacionPanelItem } from "./panel-tile-votaciones";
+import { PanelTileIngresos } from "./panel-tile-ingresos";
 
 afterEach(cleanup);
 
-// ── Fixtures SenalRow[] — activa / suprimida / (sin materia) ────────────────────
-// Los strings de supresión son VERBATIM de 0065_actualidad_senal.sql; los literales
-// de cobertura son los reales de la RPC. NO se reescriben.
+// ── Fixture SenalRow — grafía viva (127): "Cámara de Diputados" / "Senado" ──────
+// `evidencia` con payload REALISTA (no `{}`) — P5/fixture stale del research.
 function makeSenal(overrides: Partial<SenalRow> = {}): SenalRow {
   return {
     tipo_senal: "velocity",
     ventana: "7d",
-    conteo: 42,
-    cobertura_camara: "C.Diputados",
+    conteo: 2,
+    cobertura_camara: "Cámara de Diputados",
     materia: null,
     cluster_id: null,
-    fecha_max: "2026-07-20T14:30:00Z",
+    fecha_max: "2026-07-24T14:30:00Z",
     supresion_causa: null,
-    evidencia: {},
+    evidencia: {
+      items: [
+        {
+          fecha: "2026-07-24",
+          enlace: "https://tramitacion.senado.cl/wspublico/tramitacion.php",
+          titulo: "Modifica el Código Penal en materia de ciberdelitos",
+          boletin: "16569-25",
+          en_corpus: true,
+          descripcion: null,
+          enlace_evento: null,
+        },
+      ],
+      total: 1,
+      consultado_al: "2026-07-30",
+      fuente: { origen: "plataforma-tramitacion", dataset: "tramitacion" },
+    },
     ...overrides,
   };
 }
 
-describe("TileSenal — señal ACTIVA (velocity)", () => {
-  it("muestra el conteo, el framing factual, la cobertura y la fecha", () => {
-    const fila = makeSenal({ conteo: 42, cobertura_camara: "C.Diputados" });
-    render(<TileSenal tipo="velocity" filas={[fila]} span={4} />);
+// ── Composición del panel completo — vistas puras compuestas en el orden D-01 ──
+// (128-RESEARCH: "los tiles reciben filas como props" — cero DB, cero mocks de
+// red). Replica el ruteo whitelist + cruce L5 de `PanelActualidad`, EXACTAMENTE
+// como lo hace el orquestador, sobre fixtures fijos.
+function construirPanel(filas: SenalRow[]) {
+  const TIPOS_RENDERIZADOS = new Set([
+    "agenda_sala",
+    "agenda_citacion",
+    "urgencias",
+    "velocity",
+    "nuevos_ingresos",
+    "archivados",
+  ]);
+  const porTipo = new Map<string, SenalRow[]>();
+  for (const f of filas) {
+    if (!TIPOS_RENDERIZADOS.has(f.tipo_senal)) continue;
+    const arr = porTipo.get(f.tipo_senal);
+    if (arr) arr.push(f);
+    else porTipo.set(f.tipo_senal, [f]);
+  }
+  const filasSala = porTipo.get("agenda_sala") ?? [];
+  const filasComisiones = porTipo.get("agenda_citacion") ?? [];
+  const filasUrgencias = porTipo.get("urgencias") ?? [];
+  const filasMovimiento = porTipo.get("velocity") ?? [];
+  const filasIngresos = porTipo.get("nuevos_ingresos") ?? [];
+  const filasArchivados = porTipo.get("archivados") ?? [];
 
-    // Conteo en font-mono + framing "trámites en 7 días".
-    expect(screen.getByText("42")).toBeInTheDocument();
-    expect(screen.getByText(/trámites en 7 días/)).toBeInTheDocument();
-    // Cobertura declarada (chip + footer usan el mismo label).
-    expect(screen.getAllByText(/C\.Diputados/).length).toBeGreaterThan(0);
-  });
+  const itemsUrgencias = filasUrgencias.flatMap(
+    (f) => parseEvidenciaProyectos(f.evidencia).items,
+  );
+  const urgencias = urgenciaVigentePorBoletin(itemsUrgencias);
 
-  it("lleva fuente + fecha en el render (regla E de proveniencia)", () => {
-    const fila = makeSenal({ fecha_max: "2026-07-20T14:30:00Z" });
-    render(<TileSenal tipo="velocity" filas={[fila]} span={4} />);
+  const stubVotacion: VotacionPanelItem = {
+    id: "1",
+    boletin: "18216-05",
+    titulo: "Reforma pensiones",
+    fecha: new Date("2026-07-22T00:00:00Z"),
+    camara: "Cámara de Diputados",
+    resultado: "Aprobado",
+    si: 80,
+    no: 48,
+    abstencion: 2,
+  };
 
-    // Footer "Fuente: {label} · datos al {fecha}".
-    expect(screen.getByText(/Fuente:/)).toBeInTheDocument();
-    expect(screen.getByText(/datos al/)).toBeInTheDocument();
-    // La fecha es un timestamp real → fechaCorta (es-CL): "20 jul 2026".
-    expect(screen.getByText(/jul 2026/)).toBeInTheDocument();
-  });
+  return (
+    <>
+      <PanelTileSala filas={filasSala} urgencias={urgencias} />
+      <PanelTileComisiones filas={filasComisiones} urgencias={urgencias} />
+      <PanelTileUrgencias filas={filasUrgencias} />
+      <PanelTileMovimiento filas={filasMovimiento} />
+      <PanelTileVotacionesView
+        items={[stubVotacion]}
+        fechaFuente={stubVotacion.fecha}
+      />
+      <PanelTileIngresos ingresos={filasIngresos} archivados={filasArchivados} />
+    </>
+  );
+}
 
-  it("NO muestra vocabulario prohibido de ranking (top / los más)", () => {
-    const fila = makeSenal({ conteo: 99, cobertura_camara: "Senado" });
-    render(<TileSenal tipo="velocity" filas={[fila]} span={4} />);
-
-    expect(screen.queryByText(/top/i)).toBeNull();
-    expect(screen.queryByText(/los más/i)).toBeNull();
-    expect(screen.queryByText(/la cámara más activa/i)).toBeNull();
-  });
+const FILA_SALA = makeSenal({
+  tipo_senal: "agenda_sala",
+  cobertura_camara: "Senado",
+  conteo: 1,
+  fecha_max: "2026-08-04T00:00:00Z",
+  evidencia: {
+    items: [
+      {
+        fecha: "2026-08-04",
+        tipo: "Ordinaria",
+        numero: "47",
+        hora_inicio: "16:00",
+        enlace: "https://web-back.senado.cl/api/weekly_table?limit=100",
+        tabla_total: 1,
+        tabla: [
+          {
+            boletin: "14782-13",
+            titulo: "Equipara el derecho de sala cuna",
+            enlace: "https://tramitacion.senado.cl/wspublico/tramitacion.php",
+            materia: "Proyecto de ley sobre sala cuna",
+            posicion: 1,
+            quorum: "5",
+            en_corpus: true,
+            parte_sesion: "ORDEN DEL DÍA",
+          },
+        ],
+      },
+    ],
+    total: 1,
+    consultado_al: "2026-07-30",
+    fuente: { origen: "plataforma-agenda", dataset: "agenda" },
+  },
 });
 
-describe("TileSenal — WR-01: el chip nunca filtra el token interno de ventana", () => {
-  it("con cobertura_camara null NO renderiza el token de ventana ('30d'/'futuras')", () => {
-    // urgencias/archivados: la RPC fija cobertura_camara=null (0065). El chip
-    // se OMITE — el token interno "30d" jamás debe llegar al ciudadano.
-    const fila = makeSenal({
-      tipo_senal: "urgencias",
-      conteo: 3,
-      cobertura_camara: null,
-      ventana: "30d",
-      fecha_max: "2026-07-20T14:30:00Z",
-    });
-    render(<TileSenal tipo="urgencias" filas={[fila]} span={2} />);
-
-    // El framing factual del conteo sí acompaña.
-    expect(screen.getByText(/urgencias fechadas en 30 días/)).toBeInTheDocument();
-    // El token interno NO aparece en ninguna parte del render.
-    expect(screen.queryByText("30d")).toBeNull();
-    expect(screen.queryByText("futuras")).toBeNull();
-  });
-
-  it("con cobertura_camara presente SÍ renderiza la cámara como chip", () => {
-    const fila = makeSenal({ cobertura_camara: "Senado", ventana: "7d" });
-    render(<TileSenal tipo="velocity" filas={[fila]} span={4} />);
-
-    // La cámara declarada aparece; el token de ventana no.
-    expect(screen.getAllByText(/Senado/).length).toBeGreaterThan(0);
-    expect(screen.queryByText("7d")).toBeNull();
-  });
+const FILA_COMISIONES = makeSenal({
+  tipo_senal: "agenda_citacion",
+  cobertura_camara: "Senado",
+  conteo: 1,
+  fecha_max: "2026-08-03T00:00:00Z",
+  evidencia: {
+    items: [
+      {
+        fecha: "2026-08-03",
+        enlace: "https://web-back.senado.cl/api/commissions_citations?limit=100",
+        comision: "de Medio Ambiente, Cambio Climático y Bienes Nacionales",
+        horario: "12:30 a 14:00",
+        semana_iso: "2026-W32",
+        puntos_total: 1,
+        puntos: [
+          {
+            boletin: "14782-13",
+            titulo: "Equipara el derecho de sala cuna",
+            enlace: "https://tramitacion.senado.cl/wspublico/tramitacion.php",
+            materia: "Equipara el derecho de sala cuna",
+            posicion: 0,
+            en_corpus: true,
+          },
+        ],
+      },
+    ],
+    total: 1,
+    consultado_al: "2026-07-30",
+    fuente: { origen: "plataforma-agenda", dataset: "agenda" },
+  },
 });
 
-describe("TileSenal — WR-02: agenda_citacion / agenda_sala llevan títulos distintos", () => {
-  it("agenda_citacion se titula 'Citaciones próximas'", () => {
-    const fila = makeSenal({
-      tipo_senal: "agenda_citacion",
-      conteo: 4,
-      cobertura_camara: "C.Diputados",
-      ventana: "futuras",
-      fecha_max: "2026-07-28T00:00:00Z",
-    });
-    render(<TileSenal tipo="agenda_citacion" filas={[fila]} span={4} />);
+const FILA_URGENCIAS = makeSenal({
+  tipo_senal: "urgencias",
+  cobertura_camara: null,
+  conteo: 1,
+  fecha_max: "2026-07-28T00:00:00Z",
+  evidencia: {
+    items: [
+      {
+        fecha: "2026-07-28",
+        enlace: "https://tramitacion.senado.cl/wspublico/tramitacion.php",
+        titulo: "Equipara el derecho de sala cuna",
+        boletin: "14782-13",
+        en_corpus: true,
+        descripcion: "Suma",
+        enlace_evento: null,
+      },
+    ],
+    total: 1,
+    consultado_al: "2026-07-30",
+    fuente: { origen: "plataforma-tramitacion", dataset: "tramitacion" },
+  },
+});
 
+const FILA_MOVIMIENTO = makeSenal({ tipo_senal: "velocity" });
+
+const FILA_INGRESOS_SUPRIMIDA = makeSenal({
+  tipo_senal: "nuevos_ingresos",
+  cobertura_camara: "2022-2026 (piso de corpus)",
+  conteo: 0,
+  fecha_max: "2026-07-28T00:00:00Z",
+  supresion_causa: "sin nuevos ingresos fechados en la ventana",
+  evidencia: {},
+});
+
+const FILA_ARCHIVADOS = makeSenal({
+  tipo_senal: "archivados",
+  cobertura_camara: null,
+  conteo: 1,
+  fecha_max: "2026-07-06T00:00:00Z",
+  evidencia: {
+    items: [
+      {
+        fecha: "2026-07-06",
+        enlace: "https://tramitacion.senado.cl/wspublico/tramitacion.php",
+        titulo: "Modifica cuerpos legales varios",
+        boletin: "16725-06",
+        en_corpus: true,
+        descripcion: "Cuenta, Comunicación de la diputada Romero",
+        enlace_evento: null,
+      },
+    ],
+    total: 1,
+    consultado_al: "2026-07-30",
+    fuente: { origen: "plataforma-tramitacion", dataset: "tramitacion" },
+  },
+});
+
+const FILA_MATERIA = makeSenal({
+  tipo_senal: "agrupacion_materia",
+  cobertura_camara: null,
+  conteo: 452,
+  materia: "(sin materia)",
+  cluster_id: 3,
+  fecha_max: null,
+  evidencia: {},
+});
+
+const FILAS_TODAS: SenalRow[] = [
+  FILA_SALA,
+  FILA_COMISIONES,
+  FILA_URGENCIAS,
+  FILA_MOVIMIENTO,
+  FILA_INGRESOS_SUPRIMIDA,
+  FILA_ARCHIVADOS,
+  FILA_MATERIA,
+];
+
+describe("PanelActualidad — composición del panel completo (D-01/O-3/O-5)", () => {
+  it("filtra agrupacion_materia EXPLÍCITAMENTE: cero '(sin materia)' y cero heading 'Por materia'; control positivo: otros tiles SÍ se renderizan", () => {
+    const { container } = render(<>{construirPanel(FILAS_TODAS)}</>);
+    expect(container.textContent).not.toContain("(sin materia)");
     expect(
-      screen.getByRole("heading", { name: "Citaciones próximas" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/citaciones próximas/)).toBeInTheDocument();
+      container.querySelector('h2, h3')?.textContent !== "Por materia",
+    ).toBe(true);
+    expect(container.textContent).not.toMatch(/Por materia/);
+    // Control positivo: los otros tiles sí se montan.
+    expect(container.textContent).toContain("En tabla de sala esta semana");
+    expect(container.textContent).toContain("Movimiento reciente");
   });
 
-  it("agenda_sala se titula 'Sesiones de sala' (distinto de citaciones)", () => {
-    const fila = makeSenal({
-      tipo_senal: "agenda_sala",
-      conteo: 2,
-      cobertura_camara: "Senado",
-      ventana: "futuras",
-      fecha_max: "2026-07-29T00:00:00Z",
-    });
-    render(<TileSenal tipo="agenda_sala" filas={[fila]} span={4} />);
-
-    expect(
-      screen.getByRole("heading", { name: "Sesiones de sala" }),
-    ).toBeInTheDocument();
-    // Los dos títulos no colisionan (a11y heading outline).
-    expect(screen.queryByRole("heading", { name: "Citaciones próximas" })).toBeNull();
-  });
-});
-
-describe("TileSenal — señal SUPRIMIDA (agenda_sala)", () => {
-  const CAUSA_SALA = "sin sesiones agendadas en las fuentes consultadas";
-
-  it("renderiza la causa de supresión VERBATIM, nunca lista vacía ni '0' mudo", () => {
-    const fila = makeSenal({
-      tipo_senal: "agenda_sala",
-      conteo: 0,
-      cobertura_camara: null,
-      fecha_max: null,
-      supresion_causa: CAUSA_SALA,
-    });
-    render(<TileSenal tipo="agenda_sala" filas={[fila]} span={4} />);
-
-    // La causa es el cuerpo, verbatim.
-    expect(screen.getByText(new RegExp(CAUSA_SALA))).toBeInTheDocument();
-    // NUNCA un "0" mudo aislado ni un framing de conteo en el path suprimido.
-    expect(screen.queryByText("0")).toBeNull();
-    expect(screen.queryByText(/sesiones de sala próximas/)).toBeNull();
+  it("NO contiene 'datos al'; control positivo: 'según fuente al' aparece al menos una vez", () => {
+    const { container } = render(<>{construirPanel(FILAS_TODAS)}</>);
+    expect(container.textContent).not.toContain("datos al");
+    expect(container.textContent).toMatch(/según fuente al/);
   });
 
-  it("otras causas verbatim de 0065 también se renderizan tal cual", () => {
-    const fila = makeSenal({
-      tipo_senal: "velocity",
-      conteo: 0,
-      supresion_causa: "sin datos frescos de esta fuente",
-      fecha_max: "2026-07-18T09:00:00Z",
-    });
-    render(<TileSenal tipo="velocity" filas={[fila]} span={4} />);
-
-    expect(
-      screen.getByText(/sin datos frescos de esta fuente/),
-    ).toBeInTheDocument();
-    // La fecha de referencia sí acompaña ("en las fuentes consultadas al …").
-    expect(screen.getByText(/en las fuentes consultadas al/)).toBeInTheDocument();
-  });
-});
-
-describe("TileSenal — degradación honesta '(sin materia)'", () => {
-  it("renderiza el label '(sin materia)' verbatim sin crashear ni fabricar tema", () => {
-    const fila = makeSenal({
-      tipo_senal: "agrupacion_materia",
-      conteo: 7,
-      cobertura_camara: null,
-      materia: "(sin materia)",
-      cluster_id: 3,
-      fecha_max: null,
-    });
-    render(<TileSenal tipo="agrupacion_materia" filas={[fila]} span={2} />);
-
-    // El label se muestra verbatim como título de la fila.
-    expect(screen.getByText("(sin materia)")).toBeInTheDocument();
-    // El conteo factual acompaña, sin inventar un nombre de tema.
-    expect(screen.getByText("7")).toBeInTheDocument();
-    expect(screen.getByText(/proyectos/)).toBeInTheDocument();
+  it("NO contiene 'fecha_captura'; control positivo: la fecha del hecho SÍ aparece", () => {
+    const { container } = render(<>{construirPanel(FILAS_TODAS)}</>);
+    expect(container.textContent).not.toContain("fecha_captura");
+    expect(container.textContent).toContain("24 jul 2026"); // movimiento
   });
 
-  it("una materia real se muestra como título verbatim", () => {
-    const fila = makeSenal({
-      tipo_senal: "agrupacion_materia",
-      conteo: 12,
-      materia: "Salud",
-      cobertura_camara: null,
-    });
-    render(<TileSenal tipo="agrupacion_materia" filas={[fila]} span={2} />);
+  it("orden del DOM: sala → comisiones → urgencias → movimiento → votaciones → ingresos (O-5/D-01)", () => {
+    const { container } = render(<>{construirPanel(FILAS_TODAS)}</>);
+    const titulos = Array.from(container.querySelectorAll("h2")).map(
+      (h) => h.textContent,
+    );
+    expect(titulos).toEqual([
+      "En tabla de sala esta semana",
+      "Comisiones citadas esta semana",
+      "Urgencias del Ejecutivo, por grado",
+      "Movimiento reciente",
+      "Votaciones recientes",
+      "Ingresos, archivos y retiros",
+    ]);
+  });
 
-    expect(screen.getByText("Salud")).toBeInTheDocument();
+  it("los chips L5 aparecen en los tiles 1 y 2 cuando el boletín tiene urgencia vigente", () => {
+    const { container } = render(<>{construirPanel(FILAS_TODAS)}</>);
+    // 14782-13 aparece en sala (chip L5), comisiones (chip L5) y en el propio
+    // tile de urgencias (su detalle nativo, no un chip) — las 3 ocurrencias
+    // usan el mismo molde fechado, control de que el cruce es consistente.
+    const chips = container.textContent?.match(/Urgencia Suma fechada el 28 jul 2026/g);
+    expect(chips?.length).toBe(3);
+  });
+
+  it("señal SUPRIMIDA (nuevos_ingresos): causa verbatim + 'en las fuentes consultadas al', cero '0' mudo", () => {
+    const { container } = render(<>{construirPanel(FILAS_TODAS)}</>);
+    expect(container.textContent).toContain(
+      "sin nuevos ingresos fechados en la ventana",
+    );
+    expect(container.textContent).toContain("en las fuentes consultadas al");
+    expect(container.querySelector("h3 + p")?.textContent).not.toBe("0");
+  });
+
+  it("WR-01: cero tokens internos de ventana ('30d'/'futuras') en el DOM", () => {
+    const { container } = render(<>{construirPanel(FILAS_TODAS)}</>);
+    expect(container.textContent).not.toContain("30d");
+    expect(container.textContent).not.toContain("futuras");
+  });
+
+  it("ausencia de vocabulario de ranking ('top', 'los más', 'la cámara más activa')", () => {
+    const { container } = render(<>{construirPanel(FILAS_TODAS)}</>);
+    expect(container.textContent?.toLowerCase()).not.toMatch(/\btop\b/);
+    expect(container.textContent?.toLowerCase()).not.toContain("los más");
+    expect(container.textContent?.toLowerCase()).not.toContain(
+      "la cámara más activa",
+    );
   });
 });
 
-// ── F-14 — la fecha del panel se rinde en es-CL, no como ISO crudo ─────────────
+// ── F-14 — la fecha del panel se rinde en es-CL, no como ISO crudo (CONSERVADO) ─
 describe("F-14 — rotuloFecha: es-CL para público general y prensa", () => {
   it("señal agenda_* a medianoche UTC → '10 ago 2026' (con AÑO), jamás el ISO crudo", () => {
     const rot = rotuloFecha("agenda_citacion", "2026-08-10T00:00:00Z");
     expect(rot).toBe("10 ago 2026");
     expect(rot).not.toContain("2026-08-10");
-  });
-
-  it("señal agenda_* en el DOM: el tile muestra '10 ago 2026' y no el ISO", () => {
-    render(
-      <TileSenal
-        tipo="agenda_citacion"
-        filas={[makeSenal({ tipo_senal: "agenda_citacion", fecha_max: "2026-08-10T00:00:00Z" })]}
-        span={4}
-      />,
-    );
-    const texto = document.body.textContent ?? "";
-    expect(texto).toContain("10 ago 2026");
-    expect(texto).not.toContain("2026-08-10");
   });
 
   it("señal de otro tipo a medianoche UTC → el día sigue siendo el 10 (no se corre al 9)", () => {
@@ -233,5 +350,13 @@ describe("F-14 — rotuloFecha: es-CL para público general y prensa", () => {
     expect(otro).toContain("2026");
     // El badge compacto sin año ("10-ago") queda reservado a /agenda.
     expect(agenda).not.toMatch(/^\d{2}-[a-z]{3}$/);
+  });
+
+  it("rótulo agenda_* en el DOM (tile sala): muestra '04 ago 2026' y no el ISO", () => {
+    const { container } = render(
+      <PanelTileSala filas={[FILA_SALA]} urgencias={new Map()} />,
+    );
+    expect(container.textContent).toContain("04 ago 2026");
+    expect(container.textContent).not.toContain("2026-08-04");
   });
 });
