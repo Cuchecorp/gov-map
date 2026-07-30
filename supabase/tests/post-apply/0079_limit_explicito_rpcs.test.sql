@@ -202,10 +202,12 @@ select is(
 
 -- ═══════════════════════════════════════════════════════════════════════════════════
 -- (26) DENOMINADOR + NO-REGRESION DE LA RUTA VIVA
--- El corpus propio sigue en 42 (no se creo ni destruyo ningun objeto) Y service_role
--- CONSERVA EXECUTE sobre las 12 — `create or replace` preserva el ACL, pero eso hay que
--- PROBARLO, no suponerlo: el doble-revoke de esta misma migracion toca public/anon/
--- authenticated, y si hubiera rozado service_role tumbaria el Camino A del sitio.
+-- Recalibrado por Phase 130 Plan 01 (0082 anadio 1 funcion propia legitima a public:
+-- votos_conteo_de_parlamentario, doble-revoke propio, no toca las 12 de este conjunto).
+-- El corpus propio pasa de 42 a 43 Y service_role CONSERVA EXECUTE sobre las 12 —
+-- `create or replace` preserva el ACL, pero eso hay que PROBARLO, no suponerlo: el
+-- doble-revoke de esta misma migracion toca public/anon/authenticated, y si hubiera
+-- rozado service_role tumbaria el Camino A del sitio.
 -- ═══════════════════════════════════════════════════════════════════════════════════
 select is(
   (select (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -227,8 +229,8 @@ select is(
              ('public.tasa_ausencia_comparada(text)')
            ) t(f)
            where has_function_privilege('service_role', to_regprocedure(t.f)::oid, 'EXECUTE'))::text),
-  '42/12',
-  'el corpus propio de public sigue siendo 42 (0079 no creo ni destruyo objetos) Y service_role CONSERVA EXECUTE sobre las 12 (la ruta viva del sitio, Camino A, intacta)');
+  '43/12',
+  'el corpus propio de public paso de 42 a 43 (0082/Phase 130-01 anadio 1 funcion legitima; 0079 en si no creo ni destruyo objetos) Y service_role CONSERVA EXECUTE sobre las 12 (la ruta viva del sitio, Camino A, intacta)');
 
 select * from finish();
 rollback;

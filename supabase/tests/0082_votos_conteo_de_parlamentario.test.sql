@@ -22,7 +22,7 @@
 -- pgTAP es la ÚNICA prueba válida del DDL (Pitfall 6): typecheck no prueba que Postgres corrió el DDL.
 
 begin;
-select plan(10);
+select plan(11);
 
 -- ── 1. La RPC existe con su firma de entrada 1-arg (text) ────────────────────────────────
 select has_function('public', 'votos_conteo_de_parlamentario', ARRAY['text'], 'votos_conteo_de_parlamentario(text) existe');
