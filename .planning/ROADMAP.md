@@ -70,7 +70,7 @@
 Plans:
 **Wave 1**
 
-- [ ] 126-01-PLAN.md — SUPERFICIES_PANEL + anti-drift + NEGACIONES_LOCKED/IDIOMS_APROBADOS + mutation self-checks (PANEL-08)
+- [x] 126-01-PLAN.md — SUPERFICIES_PANEL + anti-drift + NEGACIONES_LOCKED/IDIOMS_APROBADOS + mutation self-checks (PANEL-08)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -256,7 +256,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 126. PANEL-GUARDS | 0/? | Not started | - |
+| 126. PANEL-GUARDS | 1/2 | In Progress|  |
 | 127. PANEL-MAT | 0/? | Not started | - |
 | 128. PANEL-UI | 0/? | Not started | - |
 | 129. PANEL-DISEÑO | 0/? | Not started | - |
