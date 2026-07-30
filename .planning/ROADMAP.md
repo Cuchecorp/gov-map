@@ -156,7 +156,7 @@ Plans:
 **Requirements**: DEBT-03, DEBT-04
 **Success Criteria** (what must be TRUE):
 
-  1. La regla de selección del timeline está escrita como query con su criterio declarado, y explica la brecha 85 `Hito del` vs 99 eventos en `14309-04`; el render de la ficha obedece la regla (paridad query↔DOM sobre el sujeto testigo).
+  1. La regla de selección del timeline está escrita como query con su criterio declarado, y explica la brecha 85 `Hito del` vs 99 eventos en `14309-04` (85 = orden viejo no-determinista `fecha` sola; el número canónico se re-mide bajo el orden total `(fecha,id)` y se congela — fix D-03); el render de la ficha obedece la regla (paridad query↔builder por unit en esta fase; **paridad DOM real delegada a Phase 138** sobre el deploy del milestone).
   2. RPC de co-autoría con firma v2 PARALELA (precedente `0060`) — la firma viva jamás se altera (`42P13` re-arma default privileges); v2 emite membresía de par sin truncamiento a 20; aguja completa + pgTAP contra el schema aplicado.
   3. `/comparar` consume la v2: el conteo mostrado == recálculo SQL de PROD; si el render recorta, declara "N de M" con total honesto — cero truncamiento silencioso.
   4. Suite + guards de régimen verdes; la RPC vieja sigue intacta y funcional (paralela, no reemplazada en caliente).

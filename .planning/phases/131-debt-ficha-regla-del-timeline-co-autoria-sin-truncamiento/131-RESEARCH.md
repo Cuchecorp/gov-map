@@ -640,7 +640,14 @@ psql "$SUPABASE_DB_URL" -tA -F'|' -f supabase/queries/timeline-regla-de-seleccio
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> **Cierre B-1 del plan-checker (2026-07-30):** Q1 → RESUELTA: se mide en 131-01 Task 1 con el
+> orden total `(fecha asc, id asc)` y se congela en `timeline-14309-04.esperado.json` (sede única;
+> W-6: si la ingesta hace crecer el boletín, protocolo de re-medición/re-congelado documentado en
+> el verify — jamás re-hornear en silencio). Q2 (paridad DOM) → RESUELTA: unit en 131; DOM real
+> delegado a Phase 138 con el número ya congelado (autorizado por CONTEXT §Discretion; anotado en
+> ROADMAP §131 SC#1).
 
 1. **¿Qué número exacto de `Hito del` produce `(fecha asc, id asc)`?**
    - Qué sabemos: `fecha` sola → 14 absorbidos (85). `fecha, id desc` → 12 (87). `fecha, ctid desc` → 16 (83).
