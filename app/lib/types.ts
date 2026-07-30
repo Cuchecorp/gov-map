@@ -30,6 +30,15 @@ export interface ProyectoRow {
 }
 
 export interface TramitacionEventoRow {
+  /**
+   * PK de `tramitacion_evento` — única columna garantizada única de la tabla
+   * [VERIFIED PROD] y, por eso, la clave de DESEMPATE del orden total declarado en
+   * H-06/D-03 (`.order("fecha").order("id")`, ver `supabase/queries/
+   * timeline-regla-de-seleccion.sql`). Opcional en el tipo porque los fixtures y
+   * tests previos construyen filas sin `id`; la lectura real de PROD siempre lo trae
+   * (`select("*")`).
+   */
+  id?: number;
   boletin: string;
   fecha: string;
   camara: string;

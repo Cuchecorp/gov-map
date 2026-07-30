@@ -99,6 +99,8 @@ const eventos = [
 // WR-03: registro de las columnas/direcciones con que la lectura de
 // `tramitacion_evento` encadena `.order()`. Se limpia en cada test que lo assertea.
 const ordenCalls: unknown[][] = [];
+// WR-04: ventanas `.range(desde, hasta)` pedidas por la lectura paginada.
+const rangeCalls: unknown[][] = [];
 
 // `.from()` mock por tabla. proyecto → maybeSingle; tramitacion_evento → order;
 // votacion (conteo del rail) → thenable con count; resto → vacío honesto.
@@ -124,10 +126,18 @@ const fromMock = vi.fn((tabla: string) => {
     // central de la fase) dejaba la suite verde. Molde de falso-verde ya registrado en
     // los gotchas v12.0. Ahora se GRABAN las llamadas en `ordenCalls` y el test de
     // abajo assertea la cadena EXACTA.
+    //
+    // WR-04: la lectura ahora PAGINA con `.range()` (cap PostgREST de 1.000 filas),
+    // así que el thenable también expone `.range`, y las llamadas se graban en
+    // `rangeCalls` para assertear la ventana pedida.
     const chain = (...args: unknown[]) => {
       ordenCalls.push(args);
       const p: any = Promise.resolve({ data: eventos, error: null });
       p.order = chain;
+      p.range = (...rargs: unknown[]) => {
+        rangeCalls.push(rargs);
+        return Promise.resolve({ data: eventos, error: null });
+      };
       return p;
     };
     return {
@@ -327,11 +337,27 @@ describe("/proyecto/[boletin] — TramitacionSection (stepper capa-1 + timeline 
     ]);
   });
 
+  // WR-04 (131-REVIEW): sin `.range()`, PostgREST corta en 1.000 filas SIN señal y el
+  // timeline mostraría una tramitación incompleta presentada como completa. Máximo
+  // real en PROD (2026-07-30): 733 eventos = 73% del cap.
+  it("pagina la lectura de tramitacion_evento con .range() (cap PostgREST de 1.000)", async () => {
+    rangeCalls.length = 0;
+    renderToStaticMarkup(
+      await TramitacionSection({ boletin: "16284-07", urgenciaExpandida: null }),
+    );
+    // El fixture devuelve menos de una página ⇒ una sola ventana, y es la PRIMERA
+    // página completa de 1.000 (índices inclusivos 0..999).
+    expect(rangeCalls).toEqual([[0, 999]]);
+  });
+
   it("control apareado (cero no vacuo): el MISMO assert falla si la cadena omite el desempate por id", () => {
     // Simula el estado post-regresión (sólo `.order("fecha")`) sobre el MISMO mock:
     // si el assert de arriba pudiera pasar con una sola llamada, sería vacuo.
     ordenCalls.length = 0;
-    fromMock("tramitacion_evento").select().eq().order("fecha", { ascending: true });
+    (fromMock("tramitacion_evento") as any)
+      .select()
+      .eq()
+      .order("fecha", { ascending: true });
     expect(ordenCalls).not.toEqual([
       ["fecha", { ascending: true }],
       ["id", { ascending: true }],

@@ -447,17 +447,31 @@ async function FichaSection({ boletin }: { boletin: string }) {
   return <FichaHeader proyecto={data} />;
 }
 
-// ── Tramitación: stepper capa-1 + timeline completo colapsado ─────────────────
-export async function TramitacionSection({
-  boletin,
-  urgenciaExpandida,
-}: {
-  boletin: string;
-  urgenciaExpandida: string | null;
-}) {
-  const sb = createServerSupabase();
-  const [{ data, error }, proyecto] = await Promise.all([
-    sb
+// ── Lectura paginada de tramitacion_evento ────────────────────────────────────
+//
+// WR-04 (131-REVIEW): la lectura era `.select("*").eq().order().order()` SIN
+// `.range()`. El gotcha rector del repo (memoria v6.1) es que PostgREST corta en
+// 1.000 filas por default y NO lo señala: para un boletín con >1.000 eventos el
+// timeline habría mostrado una tramitación INCOMPLETA presentada como completa
+// (riesgo de producto, no sólo de test), y la "regla escrita" —que cuenta `count(*)`
+// entero— habría dejado de coincidir con el render sin ninguna señal.
+// Máximo real medido en PROD 2026-07-30: 733 eventos (boletín 17142-05), o sea 73%
+// del cap ⇒ no era hipotético, era latente y cercano. Se pagina con `.range()` en
+// bucle (patrón ya usado en el repo) hasta agotar el boletín.
+const PAGINA_EVENTOS = 1000;
+// Cota dura anti-bucle-infinito: 20 páginas = 20.000 eventos, ~27× el máximo real.
+// Si se alcanzara, se devuelve lo leído (nunca un cuelgue) — y el test de techo
+// declara el límite.
+const MAX_PAGINAS_EVENTOS = 20;
+
+async function leerEventosTramitacion(
+  sb: ReturnType<typeof createServerSupabase>,
+  boletin: string,
+): Promise<{ data: TramitacionEventoRow[] | null; error: { message: string } | null }> {
+  const todos: TramitacionEventoRow[] = [];
+  for (let pagina = 0; pagina < MAX_PAGINAS_EVENTOS; pagina += 1) {
+    const desde = pagina * PAGINA_EVENTOS;
+    const { data, error } = await sb
       .from("tramitacion_evento")
       .select("*")
       .eq("boletin", boletin)
@@ -468,8 +482,34 @@ export async function TramitacionSection({
       // cambiaba entre corridas sin que cambiara un solo dato (medido en PROD:
       // 14/12/12/16 eventos absorbidos según el desempate). El sort de
       // `construirItems` es estable ⇒ HEREDA este orden total declarado.
+      // El orden total es ADEMÁS lo que hace correcta la paginación: sin él, dos
+      // páginas consecutivas podrían solapar o saltarse filas.
       .order("fecha", { ascending: true })
-      .order("id", { ascending: true }),
+      .order("id", { ascending: true })
+      .range(desde, desde + PAGINA_EVENTOS - 1);
+
+    if (error) return { data: null, error };
+    const filas = (data as TramitacionEventoRow[]) ?? [];
+    todos.push(...filas);
+    // Página corta ⇒ se agotó el boletín (incluye el caso de 0 filas).
+    if (filas.length < PAGINA_EVENTOS) break;
+  }
+  return { data: todos, error: null };
+}
+
+// ── Tramitación: stepper capa-1 + timeline completo colapsado ─────────────────
+export async function TramitacionSection({
+  boletin,
+  urgenciaExpandida,
+}: {
+  boletin: string;
+  urgenciaExpandida: string | null;
+}) {
+  const sb = createServerSupabase();
+  const [{ data, error }, proyecto] = await Promise.all([
+    // WR-04: lectura PAGINADA (cap PostgREST de 1.000 filas). Ver
+    // `leerEventosTramitacion` arriba para el orden total y la cota anti-bucle.
+    leerEventosTramitacion(sb, boletin),
     // Etapa/estado para elevar el "¿Dónde está hoy?" en el stepper (dedup cache).
     leerProyecto(boletin),
   ]);
