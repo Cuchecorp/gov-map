@@ -96,6 +96,10 @@ const eventos = [
   },
 ];
 
+// WR-03: registro de las columnas/direcciones con que la lectura de
+// `tramitacion_evento` encadena `.order()`. Se limpia en cada test que lo assertea.
+const ordenCalls: unknown[][] = [];
+
 // `.from()` mock por tabla. proyecto → maybeSingle; tramitacion_evento → order;
 // votacion (conteo del rail) → thenable con count; resto → vacío honesto.
 const fromMock = vi.fn((tabla: string) => {
@@ -113,7 +117,15 @@ const fromMock = vi.fn((tabla: string) => {
     // La lectura real encadena DOS .order() — orden total (fecha, id) declarado por
     // H-06/D-03 (131-01): el mock devuelve un thenable RE-ENCADENABLE para que un
     // tercer .order() futuro tampoco rompa el mock en silencio.
-    const chain = () => {
+    //
+    // WR-03 (131-REVIEW): el mock DESCARTABA los argumentos, así que aceptaba
+    // `.order()` con cualquier columna, cualquier dirección y en cualquier cantidad
+    // —incluida NINGUNA—: borrar `.order("id", {ascending:true})` de page.tsx (el fix
+    // central de la fase) dejaba la suite verde. Molde de falso-verde ya registrado en
+    // los gotchas v12.0. Ahora se GRABAN las llamadas en `ordenCalls` y el test de
+    // abajo assertea la cadena EXACTA.
+    const chain = (...args: unknown[]) => {
+      ordenCalls.push(args);
       const p: any = Promise.resolve({ data: eventos, error: null });
       p.order = chain;
       return p;
@@ -298,6 +310,33 @@ describe("/proyecto/[boletin] — TramitacionSection (stepper capa-1 + timeline 
     expect(html).toContain("Ver detalle (4)");
     // TimelineView forceMount → cada hito conserva su enlace de fuente (trazabilidad).
     expect(html).toContain("Ver fuente oficial");
+  });
+
+  // WR-03 (131-REVIEW): guard de COMPORTAMIENTO del fix central de la fase (H-06/D-03).
+  // El detector estático de timeline-view.test.tsx lee el SOURCE; este assertea la
+  // cadena EFECTIVAMENTE invocada contra el cliente. Borrar `.order("id", …)` de
+  // page.tsx pone este test rojo (control apareado abajo).
+  it("lee tramitacion_evento encadenando EXACTAMENTE .order(fecha asc).order(id asc)", async () => {
+    ordenCalls.length = 0;
+    renderToStaticMarkup(
+      await TramitacionSection({ boletin: "16284-07", urgenciaExpandida: null }),
+    );
+    expect(ordenCalls).toEqual([
+      ["fecha", { ascending: true }],
+      ["id", { ascending: true }],
+    ]);
+  });
+
+  it("control apareado (cero no vacuo): el MISMO assert falla si la cadena omite el desempate por id", () => {
+    // Simula el estado post-regresión (sólo `.order("fecha")`) sobre el MISMO mock:
+    // si el assert de arriba pudiera pasar con una sola llamada, sería vacuo.
+    ordenCalls.length = 0;
+    fromMock("tramitacion_evento").select().eq().order("fecha", { ascending: true });
+    expect(ordenCalls).not.toEqual([
+      ["fecha", { ascending: true }],
+      ["id", { ascending: true }],
+    ]);
+    expect(ordenCalls).toEqual([["fecha", { ascending: true }]]);
   });
 
   it("GATE §9.1: el HTML de la sección no contiene banned-vocab causal/de juicio", async () => {
