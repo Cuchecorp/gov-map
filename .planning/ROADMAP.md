@@ -40,7 +40,7 @@
 
 - [x] **Phase 126: PANEL-GUARDS** — Wave-0: guards ANTES de cualquier copy o vista (SUPERFICIES_PANEL, NEGACIONES_LOCKED, guard create view B-03) (completed 2026-07-30)
 - [x] **Phase 127: PANEL-MAT** — Materializador 0080: los 6 bloques pueblan `evidencia` con sujetos reales + guard 404 + grafía única (4-15) (completed 2026-07-30)
-- [ ] **Phase 128: PANEL-UI** — Contrato RPC/UI: tiles editoriales con sujetos nombrados, links con helper central, votaciones L4, semántica de fechas, cobertura declarada
+- [x] **Phase 128: PANEL-UI** — Contrato RPC/UI: tiles editoriales con sujetos nombrados, links con helper central, votaciones L4, semántica de fechas, cobertura declarada (completed 2026-07-30)
 - [ ] **Phase 129: PANEL-DISEÑO** — Loop de diseño BrowserOS con Opus hasta que quede bien; cierre por fragmento DOM + captura; entierra B-02 y H-01
 - [x] **Phase 130: VOTOS-REAL** — B-01: las fichas muestran el conteo REAL de votos (3.752, no 1000) con composición no distorsionada (completed 2026-07-30)
 - [x] **Phase 131: DEBT-FICHA** — H-06 (regla de selección del timeline por query escrita) + 3.3 (co-autoría /comparar sin truncamiento, RPC v2 paralela) (completed 2026-07-30)
@@ -280,7 +280,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 126. PANEL-GUARDS | 2/2 | Complete    | 2026-07-30 |
 | 127. PANEL-MAT | 3/3 | Complete    | 2026-07-30 |
-| 128. PANEL-UI | 6/6 | Complete   | 2026-07-30 |
+| 128. PANEL-UI | 6/6 | Complete    | 2026-07-30 |
 | 129. PANEL-DISEÑO | 0/? | Not started | - |
 | 130. VOTOS-REAL | 3/3 | Complete    | 2026-07-30 |
 | 131. DEBT-FICHA | 3/3 | Complete    | 2026-07-30 |
