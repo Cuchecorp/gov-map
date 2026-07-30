@@ -215,3 +215,129 @@ node_modules__pnpm_1bkub86._.js
 Los hashes son de contenido. `129-04` exigirá que **al menos uno** difiera tras el fix. El fix toca
 `app/components/panel-tile-*.tsx` ⇒ mirar especialmente `app_components_*.js` y `app_app_page_tsx_*`,
 pero SIEMPRE re-listando con el glob, jamás hardcodeando una ruta de chunk.
+
+---
+
+## Deploy nuevo
+
+# VERSIÓN DESPLEGADA: `4c6fdbda-61ae-485e-9a4d-4197db35cf61`
+
+**Distinta de la preexistente `b69f2ec2-37c9-4212-b91c-a9ad97b4aeb7`** ⇒ el deploy SÍ ocurrió.
+Commit del bundle: `62b07c7` (HEAD; el único cambio sobre `fba1298` es `.planning/`, excluido del mirror).
+
+### 1. Purga explícita del mirror (PowerShell, NO git-bash)
+
+`robocopy /MIR` con `/XD` IGNORA los excluidos, no los borra ⇒ purga previa obligatoria.
+
+```powershell
+foreach ($p in @('C:\Temp\obs-build\node_modules','C:\Temp\obs-build\.pnpm-store','C:\Temp\obs-build\app\.open-next')) {
+  if (Test-Path $p) { Remove-Item -Recurse -Force $p -ErrorAction SilentlyContinue }
+  Write-Output "$p exists=$(Test-Path $p)"
+}
+```
+```
+C:\Temp\obs-build\node_modules exists=False
+C:\Temp\obs-build\.pnpm-store exists=False
+C:\Temp\obs-build\app\.open-next exists=False
+```
+
+### 2. Espejo
+
+```powershell
+robocopy 'C:\Users\Carlo\OneDrive - pjud.cl\Documentos\GitHub\Observatorio' 'C:\Temp\obs-build' `
+  /MIR /XD node_modules .open-next .next .git .turbo dist coverage .planning .pnpm-store `
+  /XF *.log /NFL /NDL /NP /R:1 /W:1
+```
+⇒ `ROBOCOPY_EXIT: 3` (< 8 = éxito).
+
+`pnpm-workspace.yaml` estaba LIMPIO en esta corrida (`git status --porcelain` vacío, `allowBuilds`
+con booleanos reales) ⇒ NO hizo falta el fix §1.4 del runbook 125.
+
+### 3. Re-escritura de `C:/Temp/obs-build/docker-deploy.sh` (no está en el repo; `/MIR` lo borra)
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+corepack enable
+corepack prepare pnpm@11 --activate
+pnpm config set dangerouslyAllowAllBuilds true
+export XDG_CONFIG_HOME=/root/.config
+export WRANGLER_HOME=/root/.config/.wrangler
+cd /work
+pnpm install --frozen-lockfile
+cd /work/app
+CI=true pnpm run deploy 2>&1 | tee /work/deploy.log
+echo "DEPLOY EXIT: 0"
+ls -la /work/app/.open-next/worker.js
+```
+
+`pnpm run deploy` = `opennextjs-cloudflare build && opennextjs-cloudflare deploy` ⇒ build y deploy
+ocurren AMBOS dentro del contenedor. El `pnpm install --frozen-lockfile` es obligatorio aquí porque
+el paso 1 purgó `node_modules` (desviación RULE-3 respecto del molde del plan, que no lo mencionaba).
+
+### 4. Stamp de inicio
+
+```
+$ touch /tmp/129-build-start && date +%s && date -u +"%Y-%m-%dT%H:%M:%SZ"
+1785453557
+2026-07-30T23:19:17Z
+```
+
+### 5. Contenedor (build + deploy, OAuth del host montado)
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:\Temp\obs-build:/work" \
+  -v "C:\Users\Carlo\AppData\Roaming\xdg.config\.wrangler:/root/.config/.wrangler" \
+  -w /work node:22-slim \
+  bash -lc "chmod +x /work/docker-deploy.sh && /work/docker-deploy.sh"
+```
+
+Salida verbatim (líneas clave):
+```
+Worker saved in `.open-next/worker.js` 🚀
+OpenNext build complete.
+ ⛅️ wrangler 4.102.0
+✨ Read 62 files from the assets directory /work/app/.open-next/assets
+🌀 Found 1 new or modified static asset to upload. Proceeding with upload...
++ /BUILD_ID
+✨ Success! Uploaded 1 file (55 already uploaded) (0.81 sec)
+Total Upload: 8287.98 KiB / gzip: 1769.61 KiB
+Worker Startup Time: 23 ms
+Uploaded observatorio-congreso (7.58 sec)
+Deployed observatorio-congreso triggers (1.05 sec)
+  https://observatorio-congreso.thevalis.workers.dev
+Current Version ID: 4c6fdbda-61ae-485e-9a4d-4197db35cf61
+DEPLOY EXIT: 0
+-rw-r--r-- 1 root root 2278 Jul 30 23:30 /work/app/.open-next/worker.js
+```
+
+### 6. Gate anti-bundle-viejo — `worker.js` construido en ESTA corrida
+
+```
+$ ls -l C:/Temp/obs-build/app/.open-next/worker.js
+-rw-r--r-- 1 Carlo 197609 2278 Jul 30 19:30 C:/Temp/obs-build/app/.open-next/worker.js
+$ ls -l /tmp/129-build-start
+-rw-r--r-- 1 Carlo 197609 0 Jul 30 19:19 /tmp/129-build-start
+$ test C:/Temp/obs-build/app/.open-next/worker.js -nt /tmp/129-build-start && echo GATE_OK
+GATE_OK: worker.js es POSTERIOR al stamp
+```
+
+19:30 (local) > 19:19 (stamp) ⇒ NO es el bundle del 16:19. ✔
+
+### 7. Status HTTP final
+
+```
+$ curl -s -o /dev/null -w "%{http_code}" https://observatorio-congreso.thevalis.workers.dev/
+intento 1: 200
+```
+Cero 500s: la ventana de propagación pasó limpia (no hizo falta reintentar).
+
+### 8. Guards de archivos prohibidos
+
+```
+$ git status --porcelain supabase/migrations   → (vacío)
+$ git status --porcelain .env                  → (vacío)
+$ git diff --name-only -- app/next.config.ts app/public/_headers app/middleware.ts app/wrangler.jsonc → (vacío)
+```
+Cero DDL/DML, cero flips de flags, cero `secret put`, cero cambios a la CSP.
