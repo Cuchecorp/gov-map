@@ -31,3 +31,6 @@ Thumbs.db
 
 # Claude Code (sesiones, memoria, settings locales) — NUNCA commitear
 .claude/
+
+# Evidencia de test (volcado DOM del panel, Phase 128-06) — artefacto, no se versiona
+app/.artifacts/

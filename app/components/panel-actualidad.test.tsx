@@ -1,5 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { render, cleanup } from "@testing-library/react";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { rotuloFecha, type SenalRow } from "./panel-actualidad";
 import { parseEvidenciaProyectos, urgenciaVigentePorBoletin } from "@/lib/panel-evidencia";
@@ -358,5 +360,35 @@ describe("F-14 — rotuloFecha: es-CL para público general y prensa", () => {
     );
     expect(container.textContent).toContain("04 ago 2026");
     expect(container.textContent).not.toContain("2026-08-04");
+  });
+});
+
+// ── Evidencia de cierre (D-10, Task 3) — volcado DOM del panel completo ────────
+// El HTML resultante es el instrumento de los 5 greps normalizados de la fase.
+// Los mismos 5 controles se assertan EN-PROCESO aquí (para que CI los muerda
+// aunque nadie corra el shell) y se repiten sobre el archivo vía `<verify>`.
+//
+// ⚠ React intercala `<!-- -->` entre expresiones adyacentes: los literales
+// grepeados no cruzan una interpolación (`datos al`, `según fuente al`,
+// `(sin materia)`, `fecha_captura`, `href="/proyecto/`).
+describe("Evidencia de cierre — volcado DOM (D-10)", () => {
+  it("escribe app/.artifacts/panel-render.html y los 5 controles dan verde", () => {
+    const { container } = render(<>{construirPanel(FILAS_TODAS)}</>);
+    const html = container.innerHTML;
+
+    const artifactsDir = join(process.cwd(), ".artifacts");
+    mkdirSync(artifactsDir, { recursive: true });
+    writeFileSync(join(artifactsDir, "panel-render.html"), html, "utf-8");
+
+    // 1. "datos al" = 0 (molde muerto con TileSenal).
+    expect(html).not.toContain("datos al");
+    // 2. "según fuente al" >= 1 (control positivo apareado).
+    expect(html.match(/según fuente al/g)?.length ?? 0).toBeGreaterThanOrEqual(1);
+    // 3. "(sin materia)" = 0 (filtro explícito de agrupacion_materia, O-3).
+    expect(html).not.toContain("(sin materia)");
+    // 4. "fecha_captura" = 0 (jamás visible).
+    expect(html).not.toContain("fecha_captura");
+    // 5. 'href="/proyecto/' >= 1 (links vía helper central, guard en_corpus).
+    expect(html.match(/href="\/proyecto\//g)?.length ?? 0).toBeGreaterThanOrEqual(1);
   });
 });
