@@ -89,7 +89,19 @@ Plans:
   4. Grafía de cámara ÚNICA en las filas de `actualidad_senal` (fix 4-15/D2 en el materializador `0065:233,261`, no en el cliente) y frescura-de-fuente emitida por separado del hecho (habilita el footer `según fuente al …` de la fase UI).
   5. Migración `0080` aditiva aplicada por `PGCLIENTENCODING=UTF8 psql --single-transaction` (jamás `db push`; `0073`/`0075` intactas) + pgTAP contra el schema aplicado: evidencia poblada en positivas, `'{}'` en supresión, boletín fantasma sembrado → `en_corpus:false`.
 
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+**Wave 1**
+
+- [ ] 127-01-PLAN.md — Migración 0080: `actualidad.grafia_camara` + los 6 bloques del proc pueblan `evidencia` con guard 404 (PANEL-01, PANEL-06)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 127-02-PLAN.md — pgTAP 0080 (evidencia/paridad/supresión/boletín fantasma) + fix del assert D2 de `0065_actualidad_senal.test.sql`
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 127-03-PLAN.md — Apply a PROD por `psql --single-transaction` + corrida del proc + las 7 verificaciones + ambos pgTAP + checkpoint de operador
 
 ### Phase 128: PANEL-UI — Contrato RPC/UI con sujetos, links y fechas correctas
 
