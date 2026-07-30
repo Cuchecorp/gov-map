@@ -320,6 +320,29 @@ describe("PanelActualidad — composición del panel completo (D-01/O-3/O-5)", (
       "la cámara más activa",
     );
   });
+
+  it("cada uno de los 6 tiles aparece exactamente una vez (cero duplicados, cero omisiones)", () => {
+    const { container } = render(<>{construirPanel(FILAS_TODAS)}</>);
+    const titulos = Array.from(container.querySelectorAll("h2")).map(
+      (h) => h.textContent,
+    );
+    expect(titulos).toHaveLength(6);
+    expect(new Set(titulos).size).toBe(6);
+  });
+
+  it("boletín SIN urgencia vigente en el Map → sin chip L5 (jamás 'sin urgencia' fabricado)", () => {
+    // 16569-25 (movimiento) no tiene urgencia registrada en FILA_URGENCIAS.
+    const { container } = render(<>{construirPanel(FILAS_TODAS)}</>);
+    expect(container.textContent).not.toContain("sin urgencia");
+  });
+
+  it("agrupacion_materia SOLA (sin otras señales) → panel vacío honesto, jamás crashea", () => {
+    const { container } = render(<>{construirPanel([FILA_MATERIA])}</>);
+    expect(container.textContent).not.toContain("(sin materia)");
+    expect(container.textContent).not.toMatch(/Por materia/);
+    // Los tiles restantes se montan igual (con sus propios vacíos honestos).
+    expect(container.textContent).toContain("En tabla de sala esta semana");
+  });
 });
 
 // ── F-14 — la fecha del panel se rinde en es-CL, no como ISO crudo (CONSERVADO) ─
