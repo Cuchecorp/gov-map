@@ -160,7 +160,54 @@ tras el merge de 131-01/02/03: se reproduce contra PROD tal como quedó congelad
 - La verificación DOM del timeline y el render real de `/comparar` sobre el deploy quedan
   **delegadas a la Phase 138** (según el plan de esta fase, sección `<objective>`).
 
-## Ratificación de los 4 success criteria de la fase (ver Task 3 más abajo para el gate completo)
+## Gate de fase (Task 3) — suite completa, guards, tsc
 
-Ver bloque "Auto-ratificación (precedente 127-03)" al final de este documento, añadido tras correr
-el gate completo de Task 3.
+Comandos y salidas (raíz del repo, `pnpm install --prefer-offline` corrido antes por ausencia de
+`node_modules` en el worktree):
+
+**`pnpm test`** (packages/* + app/):
+```
+Test Files  108 passed (108)
+     Tests  1630 passed (1630)
+  Duration  80.03s
+```
+1630 ≥ 1630 (baseline post-merge 2026-07-30 declarada en el prompt de ejecución) — cumple.
+
+**`pnpm guards`** (17 archivos de guard por nombre explícito, 3 workspaces):
+```
+app:      Test Files  11 passed (11)   Tests  334 passed (334)
+dinero:   Test Files   3 passed (3)    Tests   34 passed (34)
+llm:      Test Files   3 passed (3)    Tests    7 passed (7)
+```
+11+3+3 = 17 archivos de guard, todos verdes.
+
+**`pnpm --filter ./app exec tsc --noEmit`**: sin salida (limpio, exit 0).
+
+## Auto-ratificación (precedente 127-03) — los 4 success criteria del ROADMAP §Phase 131
+
+1. **"DEBT-04 cerrado con prueba de que Postgres ejecutó el DDL, no con la existencia del archivo."**
+   Sostenido por: control previo/posterior `pg_proc` 1→2 (sección "Control previo / posterior"
+   arriba) + salida íntegra del pgTAP (12 `ok`, 0 `not ok`, sección "Salida íntegra del pgTAP") —
+   ambos ejecutados contra PROD real, no contra el archivo en disco.
+
+2. **"DEBT-03 sigue reproduciéndose tras el merge (no derivó al integrar)."**
+   Sostenido por: sección F — `psql ... timeline-regla-de-seleccion.sql` contra PROD da
+   `99|14|5|85`, idéntico al fixture `timeline-14309-04.esperado.json` (`eventos_totales=99,
+   eventos_absorbidos=14, hitos_del=85`). Medido HOY, tras el merge de 131-01/02/03 en este
+   worktree — no es el valor congelado citado de memoria, es la misma query re-ejecutada.
+
+3. **"La RPC vieja intacta y funcional: cero regresión en `/parlamentario/[id]`."**
+   Sostenido por: sección D (`vieja_total=20`, exactamente el cap histórico) + pgTAP assert 7-8
+   (la vieja existe y conserva `limit 20`) + `pnpm test` completo (1630 passed, incluye
+   `app/parlamentario/[id]/page.test.tsx` con 16 tests verdes — el consumidor de la RPC vieja no
+   cambió). **Límite declarado:** esto prueba la RPC en PROD + el contrato unitario de la página;
+   NO prueba el render DOM real de `/parlamentario/[id]` en el deploy — eso es Phase 138.
+
+4. **"Auto-ratificación con evidencia verificable; verificación DOM declarada como delegada a 138."**
+   Sostenido por: este mismo documento (comandos + salidas crudas pegadas, no declaradas) + la
+   sección "Qué NO prueba esta evidencia" arriba, que declara explícitamente el render de
+   `/comparar` y la paridad DOM del timeline como delegados a Phase 138 (el copy exacto
+   "Comparten 92 proyectos co-firmados" está sostenido SOLO por un unit test con mocks de la RPC
+   en `app/app/comparar/page.test.tsx`, no por un navegador real — declarado sin ambigüedad).
+
+Ningún criterio queda sostenido por afirmación sin comando+salida pegada en este documento.
