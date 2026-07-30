@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v12.0
 milestone_name: — Validación general producto-a-producto
-status: audited
-stopped_at: Phase 125 CERRADA · auditoría de cierre v12.0 persistida (status tech_debt) · listo para archivado
+status: archived
+stopped_at: v12.0 ARCHIVADO 2026-07-29 CON la deuda (decisión del operador) · fases en milestones/v12.0-phases/ · listo para /gsd:new-milestone
 last_updated: "2026-07-29T23:59:00.000Z"
 last_activity: 2026-07-29
 progress:
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** cierre del milestone v12.0 — auditoría persistida, pendiente archivado
+**Current focus:** v12.0 archivado con su deuda — próximo paso: /gsd:new-milestone (recibe la deuda de §8 del audit)
 
 ## Current Position
 
 Phase: 125 — E2E pasada final producto-a-producto — **COMPLETA**
 Plan: 7 of 7 complete
-Status: Milestone v12.0 **13/13 fases completas** · auditoría de cierre en `.planning/v12.0-MILESTONE-AUDIT.md` (**status `tech_debt`**) · listo para `/gsd:complete-milestone`
+Status: Milestone v12.0 **ARCHIVADO 2026-07-29 CON la deuda** · audit en `milestones/v12.0-MILESTONE-AUDIT.md` (**status `tech_debt`**) · roadmap/requisitos en `milestones/v12.0-{ROADMAP,REQUIREMENTS}.md` · fases en `milestones/v12.0-phases/` · `REQUIREMENTS.md` borrado (el próximo milestone crea uno fresco)
 Last activity: 2026-07-29
 
 ### Riesgo latente de archivado — migraciones escritas y NO aplicadas

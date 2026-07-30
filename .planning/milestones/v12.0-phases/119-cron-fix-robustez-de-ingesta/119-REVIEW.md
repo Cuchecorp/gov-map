@@ -40,7 +40,7 @@ findings:
   warning: 11
   info: 6
   total: 20
-status: issues_found
+status: clean
 fix_pass:
   fecha: 2026-07-28
   nota: "los hallazgos de arriba NO se reescribieron; la disposicion se agrega al final"
@@ -48,6 +48,18 @@ fix_pass:
   accepted_limitation: 1
   deferred: 4
   suite_post_fix: "packages 1649 passed (+11 skipped) - app 1560 passed - tsc exit 0 - STRICT=1 check-crons 0 falta(s)"
+verify_pass:
+  fecha: 2026-07-28
+  modo: "re-verificacion --auto de los fixes (no re-review completo)"
+  veredicto: "todos los fixes VERIFICADOS en codigo; cero regresiones"
+  suite_verificada: "lobby 106 tests (9 archivos) - agenda 13 archivos - identity 14 - probidad 8 - freshness 2 - todos passed; pnpm typecheck exit 0"
+  cr_01: "VERIFICADO - replay cableado (ingest-cli.ts:289-360): key anclada R2_KEY_LEYLOBBY_RE = la particion que escribe la propia Etapa 1, getObject, sha re-verificado contra la key, conector real NO se instancia y r2Store NO se pasa al run (evita el 412 que saltaria la Etapa 2), cursor ni se consulta ni avanza, fetchDetalle falla LOUD. Test con conector que LANZA 'FETCH A LA FUENTE EN MODO REPLAY' + 5 keys rechazadas (traversal, absoluta, sha truncado, otra fuente, y la key laxa que el test viejo congelaba)."
+  cr_02: "VERIFICADO - ingest-run.ts:305 `if (f.fecha == null) continue` y el bucle de relleno con `hasta` ELIMINADO. `hasta` queda solo como particion de la key de R2. Tests 6 y 7 congelan ambos caminos."
+  cr_03: "VERIFICADO - run-camara-lobby.ts:198-218 deriva la fecha MAXIMA por parlamentario y agrupa por `hasta`; fechaCaptura queda como provenance/particion. El otro llamador del writer COMPARTIDO (leylobby) sigue correcto: misma firma (ids, hasta), solo cambia de donde sale el valor. Los DOS escritores del marcador derivan ya del dato."
+  wr_01: "VERIFICADO - runCamaraLobby expone `sinNovedades`, el CLI lo imprime en la linea-resumen y el guard del YAML distingue skip sano (exit 0 con motivo en el log) de audiencias=0 sin skip declarado (sigue exit 1). Se cierra el camino que fabricaba rojo."
+  spot_check: "WR-04 (`!sinNovedades || opts.promote===true`), WR-05 (`sourceSnapshot?: string` en FuenteConfig + `cfg.sourceSnapshot ?? cfg.fuente` en query-runner:190), WR-06 (`corridaExitosa` en cursor-leylobby + test 403-no-avanza), WR-07 (`status` in_progress/queued/requested -> GH_EN_CURSO -> no averia), WR-08 (fail-closed GITHUB_ACTIONS en run-camara-lobby-cli:193), WR-09 (try/catch que anota en `errores` con fuente lobby_ingesta_estado), WR-10 (array + comillas + if/fi), WR-11 (Number.isInteger && >0, fail-loud), IN-01 (comentario alineado a `7 11,14,17,20`), IN-03 (log movido despues del `existed`), IN-04 (SOURCES_SNAPSHOT_CONOCIDOS, lista cerrada) - todos VERIFICADOS."
+  disposiciones_registradas: "WR-02 deferred y WR-03 accepted-limitation, ambos con pasos y CRITERIO DE CIERRE verificable; IN-02/IN-05/IN-06 deferred con razon declarada. Registrados en la seccion DISPOSICION de este documento y cruzados con G1/G12-119 de 119-GAP-CLOSURES.md."
+  correccion_al_review: "El fixer tiene RAZON en dos puntos contra este review, y se aceptan: (a) el snippet WR-10 `[ cond ] && ARGS+=(...)` ABORTA el job bajo `bash -e` (un AND-list de nivel superior cuya condicion es falsa devuelve 1 y `set -e` sale) - el `if...fi` aplicado es el correcto y NO debe revertirse; (b) la opcion (b) de WR-02 (apuntar la senal a `source_snapshot`) NO resuelve nada, porque esa fila tampoco se escribe en el camino de skip (guarda T-119-12) - el diagnostico de WR-02 sigue en pie, la receta no."
 ---
 
 # Phase 119: Code Review Report

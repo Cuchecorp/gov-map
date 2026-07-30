@@ -1,5 +1,42 @@
 # Milestones
 
+## v12.0 Validación general producto-a-producto (Shipped: 2026-07-29 — **archivado CON la deuda**)
+
+**Phases completed:** 13 phases (113-125), 59 plans, 13/13 con VERIFICATION.md
+**Stats:** 360 commits · 355 archivos (+81.158/−3.580) · rango `027c9b8~1..HEAD` · 2026-07-27 → 2026-07-29 · deploy final `0ea5d97f` · suite `app/` 1577→1590 · guard lockdown 22→35 · guards de régimen 14/14 (172 tests) · 7 migraciones escritas (`0073`–`0079`), **5 aplicadas** (`0074`, `0076`, `0077`, `0078`, `0079`)
+**Audit:** `milestones/v12.0-MILESTONE-AUDIT.md` — status **`tech_debt`** (11 requisitos cerrados literalmente, **2 por declaración honesta**, 2 gaps de cadena asignados por la propia auditoría)
+**Decisión del operador (2026-07-29):** *"Archivar v12.0 con la deuda"* — aceptada, documentada, con dueño y forma de cierre. No se oculta ni se suaviza.
+
+**Key accomplishments:**
+
+- **Inventario rector consumido, no reinventado (113).** Artefacto único de 1.959 líneas: 15 rutas × 60 emisores `E-001…E-060` × cada fecha visible con su columna de origen. Su consumo por 114/115/116/122/125 se verificó **por conteo de referencias**; los mismos 3 sujetos deterministas (`D1165`, `S1338`, `14309-04`) atraviesan el milestone de punta a punta.
+- **Links y fechas verificados y desplegados (114-117).** 95 links internos con cero 404; patrones externos validados por construcción + muestra estratificada con **mesura instrumentada** (2,89 s/request, doble sello) y fuente caída declarada sin reintento; idiom de fecha corregido en producción (`según fuente al` 0→32, `Actualizado` viejo 318→0).
+- **Crons con veredicto observado (118-121).** 20 unidades de ingesta: **10 verde · 1 stale · 0 roto**; 8 de 11 gaps cerrados en código; flip `CLASIFICACION_ESCALERA=1` con rollback probado ON→OFF→ON **y su alcance nulo declarado en 4 lugares** (ningún cron invoca clasificación hoy).
+- **Cruces contra SQL de PROD (122).** **82 números** recalculados verbatim: 72 cuadran, 2 discrepancias corregidas y desplegadas, 8 declaradas con **ambos números y la query**.
+- **Supabase auditado contra la DB viva (123-124).** 6 ejes con `supabase-reviewer` como **gate bloqueante que exigió trabajo real**; **13 offenders** hallados, 9 cerrados (6 por migración aditiva + 3 por guard); lockdown 22→35 con mordida demostrada por mutación.
+- **E2E sobre el deploy real (125).** Deploy agrupado + pasada por 18 de 19 filas de la Tabla D con evidencia DOM, cerrando 4 de los 5 límites que el HTML servido no podía ver.
+- **El logro más valioso, dicho tal cual:** el milestone **encontró y documentó que el sitio muestra un número falso** (`Ver detalle (1000)` donde son **3.752**, en 71 de 186 fichas, con la composición distorsionada por `order by fecha desc`) y **dos offenders de seguridad vivos** (cadena **SSRF** `net`→`anon`/`PUBLIC`; **`pgtap` en `public`** con 1.201 funciones ejecutables por `anon`). **No los arregló todos, pero ninguno quedó oculto** — el auditor re-midió las 5 afirmaciones más caras contra PROD y el deploy vivo, y las 5 se sostienen al dígito.
+
+### Known Gaps
+
+- **`CRUCE-01` cerrado por declaración, no por corrección:** el requisito dice *"discrepancias corregidas"*; se corrigieron **2 de 10**. Puntero: `B-01`.
+- **`SUPA-01` cerrado por declaración:** el requisito dice *"0 offenders o fix aplicado"*; quedan **4 vivos**, 2 verificados contra PROD. Punteros: `OP-1`, `OP-4`.
+- **`CRON-03` sin efecto operativo hoy:** la escalera está ON en el `.env` local; ningún cron la invoca. Declarado, pero el requisito suena a más de lo que es.
+- **`P-1` no ejercido** (lectura fría de las 82 filas de 122) y **`H-03` `NOT OBSERVED`** (límite de instrumento, caso mal instanciado).
+
+### Deuda viva al cierre (aceptada)
+
+- **Operador — 9:** 🔴 `OP-4` (destino de `pgtap` en `public` + las 7 suites pgTAP que dependen de ella) · 🔴 `OP-1` (probe REST, 3 requests — **gatea la severidad de `OFF-6-01`**) · 🔴 `OFF-6-03` (cadena SSRF; `0075` escrita, no aplicada) · `OFF-01` (default ACL de `supabase_admin`; `0073` escrita, no aplicada) · CF secrets + `GEMINI` · identidad local · flip MONEY (gatea `F-08`/`D-01`) · provisión NOTIF · rotación B26.
+- **Técnica — 7:** 🔴 `B-01` (el número falso) · `B-02` (denominador del tile *Por materia*) · `B-03` (guard de `create view` sin `security_invoker`, hoy cero vacuo — **debe existir ANTES de la primera vista**) · `H-01` · `H-06` · 🆕 `3.3` · 🆕 `4-15` (las dos últimas **asignadas por la auditoría de cierre**: salían del milestone sin dueño).
+- **🔴 Riesgo latente de deriva:** `0073` y `0075` **escritas y NO aplicadas** (bloqueo **demostrado**: `42501` / 24 × `WARNING 01006`). **Jamás se editan** — un fix futuro va como `0080`.
+
+### Gotchas pagados (activo de método — §9 del audit)
+
+`REVOKE` puede no-opear con `WARNING 01006` y devolver éxito · `vitest run lib/*guard*.test.ts` sale 0 **sin correr nada** (guards por nombre, jamás por glob) · React intercala `<!-- -->` (medir por offset, no por literal) · `bros-cli` sale 0 tras CDP timeout; `grep -i`+`-F` = falso cero; `pipefail`+`grep -q` = exit 141 · un **clamp de seguridad no es un fix de exactitud** (el techo 200 habría empeorado `B-01`) · cambiar `returns table` exige `drop` y re-arma default privileges ⇒ **firma v2 paralela** · una migración escrita y no aplicada **jamás se edita** · un cero necesita denominador (**fuerte vs vacuo**) · **cero aprobados por silencio** · la tabla de trazabilidad de `REQUIREMENTS.md` **no es evidencia** · `git commit --amend` es inseguro en waves paralelas.
+
+---
+
+
 ## v11.0 Capa LLM escalonada + cierre de deuda viva (Shipped: 2026-07-27)
 
 **Phases completed:** 8 phases, 16 plans, 18 tasks

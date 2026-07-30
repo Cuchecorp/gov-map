@@ -8,7 +8,7 @@ Plataforma web ciudadana para consultar y cruzar datos públicos del Congreso de
 
 La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato mostrado lleva fuente, fecha y enlace original, sin afirmar nunca intención ni causalidad.
 
-## Current Milestone: v12.0 — Validación general producto-a-producto
+## Current Milestone (history): v12.0 — Validación general producto-a-producto (shipped 2026-07-29)
 
 **Goal:** Todo el sitio queda validado empíricamente producto por producto (cada página × dato real × fuente), con links y fechas verificados, crons robustos con la escalera LLM encendida donde el benchmark aprobó, y cruces + estructura Supabase auditados — corrida autónoma granular (Sonnet ejecuta, validadores Opus validan, Fable decide), en modo validar-y-arreglar.
 
@@ -47,11 +47,26 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 **Método (LOCKED por el operador):** TODO con base empírica — spikes, iteraciones BrowserOS, revisión, diseño, crítica, loop. Primero QUÉ (señales con evidencia), después CÓMO (frontend). Corrida en contexto limpio con prompt listo (`.planning/PROMPT-v10.0-build-autonomo.md`).
 
-## Current State: v12.0 en curso — Phases 113-114 completas (2026-07-28)
+## Current State: v12.0 shipped (2026-07-29) — archivado CON la deuda
+
+**Shipped v12.0 — Validación general producto-a-producto** (Phases 113-125, 59 planes, 360 commits, 2026-07-27 → 2026-07-29; deploy final `0ea5d97f`). v12.0 **no construyó features**: validó producto-a-producto que lo que el sitio muestra es cierto, y arregló o **declaró** lo que no. Inventario rector de 1.959 líneas (15 rutas × 60 emisores × cada fecha con su columna de origen) **consumido de verdad** por 114/115/116/122/125 —los mismos 3 sujetos deterministas `D1165`/`S1338`/`14309-04` atraviesan el milestone de punta a punta—; 95 links internos con cero 404 y patrones externos validados con mesura instrumentada (2,89 s/request, doble sello); idiom de fecha corregido **y desplegado** (`según fuente al` 0→32, `Actualizado` viejo 318→0); 20 unidades de ingesta con veredicto observado (10 verde · 1 stale · **0 roto**) y 8 de 11 gaps cerrados; flip `CLASIFICACION_ESCALERA=1` con rollback probado **y su alcance nulo declarado** (ningún cron invoca clasificación hoy); **82 números de cruce** recalculados con SQL verbatim contra PROD (72 cuadran, 2 corregidos y desplegados, 8 declarados con ambos números y la query); auditoría Supabase de 6 ejes contra la **DB viva** con `supabase-reviewer` como gate bloqueante (13 offenders, 9 cerrados: 6 por migración aditiva + 3 por guard; lockdown 22→35 con mordida probada por mutación); y pasada E2E por 18 de 19 filas de la Tabla D con evidencia DOM. Suite `app/` 1577→1590; guards de régimen 14/14 (172 tests). 7 migraciones escritas (`0073`–`0079`), **5 aplicadas** (`0074`, `0076`, `0077`, `0078`, `0079`).
+
+**Su mayor logro es incómodo, y se dice tal cual:** el milestone **encontró y documentó que el sitio muestra un número falso** — `Ver detalle (1000)` donde son **3.752 votos**, en **71 de 186 fichas**, con la composición distorsionada por `order by fecha desc` — y **dos offenders de seguridad vivos**: la cadena **SSRF** (`net` con `USAGE` para `anon` **y** `PUBLIC`) y **`pgtap` en `public`** con **1.201** funciones ejecutables por `anon`. No los arregló todos; **ninguno quedó oculto**. Audit `tech_debt`: 11 de 13 requisitos cerrados literalmente, **2 por declaración honesta** (`CRUCE-01` — 2 de 10 discrepancias corregidas; `SUPA-01` — 4 offenders vivos de 13). Detalle: `milestones/v12.0-*.md`.
+
+**Deuda que viaja (aceptada por el operador 2026-07-29 — "archivar v12.0 con la deuda"):**
+- **Operador (9):** 🔴 `OP-4` destino de `pgtap` en `public` (+ las 7 suites pgTAP que dependen de ella) · 🔴 `OP-1` probe REST con la anon key (3 requests, **gatea la severidad de `OFF-6-01`**) · 🔴 `OFF-6-03` cadena SSRF (`0075` escrita, no aplicada) · `OFF-01` default ACL de `supabase_admin` (`0073` escrita, no aplicada) · CF secrets + `GEMINI` · identidad local · flip MONEY (gatea `F-08`/`D-01`: techos fijados sobre tablas vacías) · provisión NOTIF · rotación B26.
+- **Técnica (7):** 🔴 `B-01` el número falso (RPC de conteo aditiva con la aguja completa + chip y `VotosSection` **simultáneos**) · `B-02` denominador del tile *Por materia* (firma v2 paralela) · `B-03` guard de `create view` sin `security_invoker` (**debe existir ANTES de la primera vista**, hoy es cero vacuo) · `H-01` error boundary de `/comparar` · `H-06` regla de selección del timeline · 🆕 `3.3` co-autoría de `/comparar` truncada a 20 · 🆕 `4-15` dos grafías de cámara en la landing (defecto D2 de `0065:233,261`) — las dos últimas **asignadas por la auditoría de cierre**, salían del milestone sin dueño.
+- **🔴 Riesgo latente de deriva:** `0073` y `0075` **escritas y NO aplicadas** (bloqueo demostrado: `42501` / 24 × `WARNING 01006`, no alegado). **Jamás se editan.** Un fix futuro va como migración **nueva** (`0080`). Sin esa disciplina, un `supabase db push` o un ledger reconciliado a ciegas produce deriva.
+- **No ejercido:** `P-1` (lectura fría de las 82 filas de 122) y `H-03` sigue `NOT OBSERVED` (límite de instrumento, caso mal instanciado).
+
+<details>
+<summary>Current State (history): v12.0 en curso — Phases 113-114 (2026-07-28)</summary>
 
 **Phase 114 completa (2026-07-28):** links internos verificados exhaustivos sobre el deploy real — cobertura 77/77 refs del inventario, 95 entradas: 94 PASS + 1 FAIL único (H-01: `/proyecto/<inexistente>` daba 200 por notFound() dentro del boundary de streaming) FIXEADO en código (404 antes del primer Suspense, 3 tests con mordida probada); 20/20 anclas existen por SSR. Runner reproducible `scripts/verificar-links-internos.mjs` endurecido por review (9 findings fixed: integridad de emisión CR-02, WARN-STREAM para secciones bajo Suspense, timeout+retry, selfcheck 28 fixtures). Verification passed 4/4; re-verify en 125: 404 real post-deploy + WARN-STREAM por DOM (expectativa anclada: "cero FAIL", no "95/95 PASS").
 
 **Phase 113 completa (2026-07-28):** inventario rector `113-INVENTARIO.md` `estado: validado` (validador Opus independiente PASS 7/7; verificación 21/21): 15 rutas + 4 not-found, 60 emisores E-NNN, chokepoint DUAL ProvenanceBadge (16 call-sites `sourceUrl` trazados), 4 builders verbatim, 34 columnas URL/8 hosts vía information_schema, 5 sujetos SQL deterministas, gates observados en vivo (NET/CRUCES/VSIM ON, MONEY/NOTIF OFF). Alimenta 114/115/116/122/125. Candidatos ya detectados: `/buscar` pasa `proyecto.enlace` crudo a wspublico XML (115), `estado-actual-block.tsx:429` y `partido-chip.tsx:65-70` muestran `fecha_captura` (116).
+
+</details>
 
 ## Current State (history): v10.0 shipped (2026-07-26)
 
@@ -178,6 +193,18 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 <!-- v1.0 MVP — Proyectos de Ley + Fundaciones de Identidad (shipped 2026-06-18). Detalle: .planning/milestones/v1.0-*.md -->
 
+**Validación general producto-a-producto (v12.0) — shipped 2026-07-29 (audit `tech_debt`, archivado CON la deuda)**
+- ✓ Inventario rector de superficies (1.959 líneas: 15 rutas × 60 emisores × cada fecha con su columna de origen), consumido por 114/115/116/122/125 (LINK-01) — v12.0
+- ✓ Links internos exhaustivos sobre el deploy real: 95 links, cero 404, cero anclas rotas (LINK-02) — v12.0
+- ✓ Patrones de link externo validados por construcción + muestra estratificada con mesura instrumentada 2,89 s/request; fuente caída declarada, cero reintento (LINK-03) — v12.0
+- ✓ Semántica de cada fecha visible auditada (63 ocurrencias de `fecha_captura` marcadas) y corregida **y desplegada** (`según fuente al` 0→32, `Actualizado` viejo 318→0) (FECHA-01, FECHA-02) — v12.0
+- ✓ 20 unidades de ingesta con veredicto **observado** (10 verde · 1 stale · **0 roto**) + 8 de 11 gaps de robustez cerrados; degrade honesto, cero fabricación (CRON-01, CRON-02) — v12.0
+- ✓ Escalera LLM encendida en clasificación con rollback probado ON→OFF→ON, y su **alcance nulo declarado** (ningún cron invoca clasificación hoy); extensión a otras tareas documentada como NO por falta de benchmark (CRON-03, CRON-04) — v12.0
+- ⚠️ 82 números de cruce recalculados con SQL verbatim contra PROD: 72 cuadran, 2 corregidos y desplegados, **8 declarados sin corregir** — `CRUCE-01` **cerrado por declaración, no por corrección** (puntero `B-01`: el sitio muestra 1.000 donde son 3.752) — v12.0
+- ⚠️ Auditoría Supabase de 6 ejes contra la **DB viva** con `supabase-reviewer` como gate bloqueante: 13 offenders, 9 cerrados, **4 vivos** — `SUPA-01` **cerrado por declaración** (punteros `OP-1`/`OP-4`: SSRF `net`→`anon`/`PUBLIC` y `pgtap` en `public` con 1.201 funciones exec-`anon`) — v12.0
+- ✓ 5 migraciones aditivas aplicadas a PROD con pgTAP contra el schema aplicado (`0074`, `0076`, `0077`, `0078`, `0079`); `0073`/`0075` escritas y NO aplicadas por ownership, **jamás se editan** (SUPA-02) — v12.0
+- ✓ Pasada E2E producto-a-producto sobre el deploy real: 18 de 19 filas de la Tabla D con evidencia DOM, flags no autorizados ausentes con control positivo apareado (E2E-01) — v12.0
+
 **Panel de actualidad + notificaciones + relaciones (v10.0) — shipped 2026-07-26**
 - ✓ Auth-on-Workers de-riskeado: middleware Edge + @supabase/ssr sobreviven OpenNext; patrón LOCKED para dato de usuario (AUTH-01) — v10.0
 - ✓ Señales honestas con gate empírico previo (spike 98) + materializador `actualidad_senal` + RPCs bounded + cron intradía (SEN-01..06) — v10.0
@@ -228,7 +255,8 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 
 ### Active
 
-- [ ] **v12.0 — validación general producto-a-producto** (en curso): links + fechas por producto (internos exhaustivos, externos patrón+muestra) · crons robustos + flip escalera clasificación autorizado · cruces × SQL PROD + auditoría estructura Supabase · validar-y-arreglar.
+- [ ] **Deuda que viaja desde v12.0 (próximo milestone la recibe):** 🔴 `B-01` el número falso (`Ver detalle (1000)` vs 3.752 en 71/186 fichas) · 🔴 `OP-1` probe REST (gatea `OFF-6-01`) · 🔴 `OP-4` `pgtap` en `public` · 🔴 `OFF-6-03` cadena SSRF · `OFF-01` default ACL · `B-02`/`B-03`/`H-01`/`H-06` · 🆕 `3.3` y `4-15` (asignadas por la auditoría de cierre) · `0073`/`0075` escritas-no-aplicadas (**jamás editarlas: un fix va como `0080`**) · `P-1` lectura fría no ejercida. Detalle: `milestones/v12.0-MILESTONE-AUDIT.md` §8.
+- [x] **v12.0 — validación general producto-a-producto** (shipped 2026-07-29, archivado CON la deuda): inventario rector consumido · links + fechas verificados y desplegados · 20 crons con veredicto observado (0 roto) + flip escalera con alcance nulo declarado · 82 números de cruce contra SQL de PROD · auditoría Supabase contra la DB viva (13 offenders, 9 cerrados) · E2E sobre el deploy real. Audit `tech_debt`: 11/13 literales, 2 por declaración.
 - [x] **v11.0 — capa LLM escalonada + cierre de deuda viva** (shipped 2026-07-27): benchmark por tarea (Granite APPROVED solo clasificación) · TieredProvider respond→validate→escalate default-OFF · parser BCN en origen · 0052 a PROD + quick tasks cerradas. Audit 20/24 (4 deferred operator-debt).
 - [x] **v10.0 — panel de actualidad + notificaciones + relaciones** (shipped 2026-07-26): panel señales honestas · relaciones + /comparar + VSIM ON (dossier firmado) · primer dato de usuario (auth+RLS, digest EGRESO, inerte hasta provisión) · E2E final deploy e89b79af. Audit PASSED 25/25.
 - [x] **v9.0 — robustez de productos estrella + seguridad final** (shipped 2026-07-23): búsqueda híbrida RRF + ranking/filtros + deep-links de validación · bio oficial + partido directo + cross-links · lobby legible audiencia→PL · /agenda por día con cobertura declarada · seguridad final (bounded RPCs, guards, gitleaks, audit DB viva, CSP enforced). Audit PASSED 29/29.
@@ -305,6 +333,11 @@ La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario,
 | Cada RPC pública nueva enhebra la misma aguja: migración >0044 cero-grant + security-definer PII-safe + PUBLIC_RPC_ALLOWLIST + bounded (LIMIT + statement_timeout + cap match_count) | Bajo Camino A service_role bypassa RLS → cada RPC ES el boundary; DoS barato en repo público con sujetos hostiles (Pitfall 12) | ✓ v9.0 (0064 + guards que muerden) |
 | CSP enforced pragmático (script-src 'self' 'unsafe-inline') > Report-Only perfecto | Report-Only-forever = cero protección; nonce exige dynamic rendering no disponible en OpenNext estático; validación empírica BrowserOS en deploy real | ✓ v9.0 (ambas superficies, deploy 09f1d5c2) |
 | Audiencia lobby→PL SOLO por mención explícita de boletín (regex context-gated, jamás keywords/tema) | Riesgo #1: un enlace temático inventado fabrica una relación; fail-closed doble TS↔SQL con fixture compartido | ✓ v9.0 (cobertura declarada ~3.8%, honesta) |
+| Un clamp de seguridad **no** es un fix de exactitud: se rechazó el techo 200 que el audit prescribía y se adjudicó 4000 | 200 habría **empeorado** `B-01`; ante un audit que contradice a la DB viva se **para y se adjudica**, no se obedece | ✓ v12.0 (documentado en `124-HANDOFF-EXACTITUD.md` §1) |
+| Un requisito que no se cumplió como está escrito se cierra **por declaración honesta con puntero y dueño**, jamás marcándolo verde | `CRUCE-01` ("discrepancias corregidas": 2 de 10) y `SUPA-01` ("0 offenders": 4 vivos). Ocultarlo violaría el principio rector del proyecto | ⚠️ v12.0 (archivado CON la deuda por decisión del operador) |
+| La tabla de trazabilidad de `REQUIREMENTS.md` **no es evidencia** de cierre | Se firma al **definir** el milestone, no al cumplirlo (las 13 filas decían `Complete` antes de ejecutar una fase). La evidencia son los `*-VERIFICATION.md` y el audit | ✓ v12.0 (defecto de proceso registrado) |
+| Cero aprobados por silencio: un ítem de juicio humano sólo se aprueba con respuesta **verbatim** del operador | La ausencia produce handoff, jamás PASS; y el alcance de lo aprobado se escribe para que nadie lo sobre-lea | ✓ v12.0 (`aprobados_por_silencio: 0`) |
+| Una migración escrita y no aplicada **jamás se edita**: si algún día se puede aplicar, va como `0080` nueva | `0073`/`0075` quedaron bloqueadas por ownership demostrado; editarlas produciría deriva ante un `db push` o un ledger reconciliado a ciegas | ✓ v12.0 (anotado en el archivo del milestone) |
 
 ## Evolution
 
@@ -324,4 +357,6 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-27 — milestone v12.0 iniciado (validación general producto-a-producto: links+fechas, crons+escalera clasificación flip autorizado, cruces+Supabase). Deuda operador viva: CF secrets + rotación B26 (110), RUT-01 + backfills LIVE (111), flip MONEY (112), provisión NOTIF (103-HUMAN-UAT).*
+*Last updated: 2026-07-29 — **v12.0 SHIPPED y ARCHIVADO CON LA DEUDA** (decisión del operador). Audit `tech_debt` en `milestones/v12.0-MILESTONE-AUDIT.md`; deuda viva: 9 ítems de operador (`OP-1`/`OP-4`/`OFF-6-03`/`OFF-01` en rojo) + 7 técnicos (`B-01` el número falso, `B-02`, `B-03`, `H-01`, `H-06`, `3.3`, `4-15`); `0073`/`0075` escritas-no-aplicadas (jamás editarlas). `REQUIREMENTS.md` archivado y borrado — el próximo milestone crea uno fresco.*
+
+<!-- histórico: 2026-07-27 — milestone v12.0 iniciado (validación general producto-a-producto: links+fechas, crons+escalera clasificación flip autorizado, cruces+Supabase). Deuda operador viva: CF secrets + rotación B26 (110), RUT-01 + backfills LIVE (111), flip MONEY (112), provisión NOTIF (103-HUMAN-UAT).* -->
