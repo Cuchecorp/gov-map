@@ -10,6 +10,8 @@
     "test": "pnpm -r --filter \"./packages/*\" test && pnpm --filter ./app test",
     "typecheck": "tsc -b",
     "lint": "echo \"(lint placeholder — configurar en fase posterior)\"",
+    "//guards": "126 (review WR-06): entrypoint reproducible de los 17 guards de régimen = 11 (app) + 3 (@obs/dinero) + 3 (@obs/llm). El script `guards` de app/ cubre SOLO los 11 de app/ y tiene guard-of-the-guards contra el filesystem (create-view-guard.test.ts §4); los 6 de packages/ se listan aquí por NOMBRE (D-13: jamás glob — `vitest run src/*guard*.test.ts` sale 0 sin correr nada).",
+    "guards": "pnpm --filter ./app guards && pnpm --filter @obs/dinero exec vitest run src/name-match-rut-guard.behavior.test.ts src/reconciler-frozen-guard.test.ts src/servel-frozen-guard.test.ts && pnpm --filter @obs/llm exec vitest run src/integ-scope-guard.test.ts src/provider-guard.test.ts src/tiered-scope-guard.test.ts",
     "freshness": "tsx packages/freshness/src/cli.ts"
   },
   "devDependencies": {
