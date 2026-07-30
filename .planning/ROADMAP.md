@@ -116,7 +116,15 @@ Plans:
   4. Semántica de fechas de tres carriles: el hecho (pasado o futuro) vive en el cuerpo con verbo explícito (idioms aprobados); el footer lleva SOLO `Fuente: … · según fuente al …`; `"datos al"` = 0 ocurrencias en el HTML del panel (medido por `grep -o | wc -l`); `fecha_captura` jamás visible.
   5. Cobertura y asimetrías declaradas con denominador: "23 citaciones del Senado · 0 de la Cámara en las fuentes consultadas"; la tabla de Cámara presentada como "tabla semanal" (fila sintética `camara:sesion:2026-W31` — jamás fabricar "sesión N.º a las HH:MM"); vacío honesto con causa. Linter carril PANEL + suite verdes sobre el copy nuevo.
 
-**Plans**: TBD
+**Plans**: 6 plans (3 waves)
+
+Plans:
+- [ ] 128-01-PLAN.md — Wave 0 de régimen: alta del idiom `fechada el` + helper `lib/links-internos.ts` + `panel-item-proyecto.tsx`
+- [ ] 128-02-PLAN.md — Contrato TS del jsonb (`lib/panel-evidencia.ts`) + derivaciones puras + cruce L5
+- [ ] 128-03-PLAN.md — Tile 1 sala-semana + Tile 2 comisiones (chips L5, cobertura L7)
+- [ ] 128-04-PLAN.md — Tile 3 urgencias por grado + Tile 4 movimiento + Tile 6 ingresos/archivos
+- [ ] 128-05-PLAN.md — Tile 5 votaciones L4 (lectura directa de `votacion`, resultado NULL honesto)
+- [ ] 128-06-PLAN.md — Integración del panel: orden D-01, muerte de `datos al`/tile materia, evidencia DOM
 **UI hint**: yes
 
 ### Phase 129: PANEL-DISEÑO — Loop de diseño BrowserOS hasta que quede bien
@@ -273,7 +281,7 @@ Plans:
 | 128. PANEL-UI | 0/? | Not started | - |
 | 129. PANEL-DISEÑO | 0/? | Not started | - |
 | 130. VOTOS-REAL | 1/3 | In Progress|  |
-| 131. DEBT-FICHA | 3/3 | Complete    | 2026-07-30 |
+| 131. DEBT-FICHA | 3/3 | Complete   | 2026-07-30 |
 | 132. NEWS-RSS | 0/? | Not started | - |
 | 133. NEWS-TAXO | 0/? | Not started | - |
 | 134. NEWS-RESOLVER | 0/? | Not started | - |
