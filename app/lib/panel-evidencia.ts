@@ -278,7 +278,12 @@ export function gradoUrgencia(descripcion: string | null): string | null {
   for (const { prefijo, grado } of GRADOS_CONOCIDOS) {
     if (normalizado.startsWith(prefijo)) return grado;
   }
-  return descripcion; // fallback honesto — literal completo, jamás null
+  // WR-17: el fallback devolvía `descripcion` COMPLETO, es decir CON el
+  // paréntesis que R7 declara de semántica no verificada — un literal no
+  // reconocido ("URGENCIA X (04.08.2026)") llegaba al chip incluyendo esa fecha.
+  // El fallback honesto es el literal SIN el paréntesis; si el literal era solo
+  // un paréntesis (queda ""), se devuelve el original antes que un vacío.
+  return sinParentesis || descripcion;
 }
 
 /**
