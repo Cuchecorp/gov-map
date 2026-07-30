@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "guards": "vitest run lib/anti-insinuacion-guard.test.ts lib/lockdown-guard.test.ts lib/bento-guards.test.ts lib/vsim-antiflip-guard.test.ts lib/money-antiflip-guard.test.ts lib/notif-antiflip-guard.test.ts lib/env-example-guard.test.ts lib/name-match-rut-guard.test.ts lib/bento-coherencia-guard.test.ts components/co-votacion-red-guard.test.ts lib/create-view-guard.test.ts",
     "typecheck": "tsc --noEmit",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
