@@ -11,9 +11,13 @@
  * en silencio como pasaría con dos copias que divergen.
  *
  * v13.0 (Phase 128, mandato O-4): se suma `"fechada el"` — el molde ratificado
- * por el operador es "Urgencia {grado} fechada el {d} · Citado el {d}". Son 5
- * stems en total (4 previos de 126 + 1 nuevo de 128). El molde `vigente desde`
- * sigue registrado y sigue siendo legal donde aplique.
+ * por el operador es "Urgencia {grado} fechada el {d} · Citado el {d}". El
+ * molde `vigente desde` sigue registrado y sigue siendo legal donde aplique.
+ *
+ * W-3 (plan-checker 128): el inventario incluye TODAS las variantes de
+ * género/número/cámara que el copy de los tiles emite — el alta precede al
+ * copy (Wave-0 LOCKED); una variante usada y no registrada erosiona el
+ * single-source aunque el linter no la muerda.
  */
 export const IDIOMS_APROBADOS: string[] = [
   "Citado el",
@@ -21,4 +25,11 @@ export const IDIOMS_APROBADOS: string[] = [
   "En tabla de sala de la Cámara del",
   "según fuente al",
   "fechada el",
+  // W-3 — variantes de los tiles 03/04/05 (registradas ANTES de su copy):
+  "fechado el", // masculino: "Archivo o retiro fechado el {d}" (tile ingresos)
+  // Plural del tile votaciones: el stem registrado es "sin votaciones fechadas" (NO "fechadas en"
+  // — el guard WR-03 mordió: "en" abre el término prohibido multi-palabra "en realidad son" y la
+  // resta lo partiría; se corta el stem ANTES de la preposición, el copy sigue legal).
+  "sin votaciones fechadas",
+  "En tabla de sala del", // Senado (sin "de la Cámara"): "En tabla de sala del {d}" (tile sala)
 ];
