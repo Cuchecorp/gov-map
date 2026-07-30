@@ -68,6 +68,26 @@ tocar `agrupacion_materia` (tipo ajeno al proc, k-means CLI).
 - **D-12:** El cron `actualidad-materializar` (7 11,14,17,20 * * 1-5) NO se toca — invoca el proc
   por nombre, el replace es transparente.
 
+### Enmiendas post-research (2026-07-30 — 127-RESEARCH.md, 4 hallazgos verificados)
+- **D-02 corregido a campos REALES:** `tramitacion_evento` NO tiene `titulo` (viene de `p.titulo`);
+  `sesion_tabla_item` NO tiene `urgencia` (tiene `quorum`/`parte_sesion`/`alias` — emitir lo que
+  hay, no fabricar); `citacion_punto` NO tiene `titulo` (tiene `materia`; el título de ficha viene
+  de `p2.titulo` vía left join). Bonus para 128: `citacion.semana_iso` existe — incluirla en items
+  de agenda.
+- **D-02b agenda_sala:** su `conteo` cuenta SESIONES (0065:260-265), no ítems ⇒ items = sesiones
+  con `sesion_tabla_item` ANIDADOS (mismo patrón sub-select que agenda_citacion). Preserva paridad
+  D-06 y entrega los ítems.
+- **D-04b fuente-desde-dato:** la RPC 0066 NO re-emite `origen`/`dataset`/`fecha_captura` (solo 9
+  columnas) ⇒ clave `fuente: {dataset, origen}` DENTRO del jsonb junto a `consultado_al` — única
+  vía técnica con firma intocable.
+- **D-11b pgTAP 0065 ROMPE con D-07:** `supabase/tests/0065_actualidad_senal.test.sql:110-114`
+  asserta `cobertura_camara !~ '\s'` para velocity — `Cámara de Diputados` tiene espacios ⇒ tarea
+  explícita de actualizar ESE assert del test (el test es editable; la migración 0065 JAMÁS).
+- **D-09b secdef SET:** `create or replace` preserva owner/ACL pero NO los `SET` ⇒ 0080 restatea
+  literal `security definer set search_path = ''` (vector de search-path hijacking si se omite).
+- **D-07b grafía = TRES sitios** (L233, L261 y velocity L130/135) y la normalización va DENTRO del
+  `group by` (si no, `23505` contra la unique key).
+
 ### Claude's Discretion
 - Forma exacta del CASE de grafía (expresión inline repetida vs función) — la adjudica el revisor
   Fable en el gate de plan.
