@@ -93,15 +93,15 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 127-01-PLAN.md — Migración 0080: `actualidad.grafia_camara` + los 6 bloques del proc pueblan `evidencia` con guard 404 (PANEL-01, PANEL-06)
+- [x] 127-01-PLAN.md — Migración 0080: `actualidad.grafia_camara` + los 6 bloques del proc pueblan `evidencia` con guard 404 (PANEL-01, PANEL-06)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 127-02-PLAN.md — pgTAP 0080 (evidencia/paridad/supresión/boletín fantasma) + fix del assert D2 de `0065_actualidad_senal.test.sql`
+- [x] 127-02-PLAN.md — pgTAP 0080 (evidencia/paridad/supresión/boletín fantasma) + fix del assert D2 de `0065_actualidad_senal.test.sql`
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 127-03-PLAN.md — Apply a PROD por `psql --single-transaction` + corrida del proc + las 7 verificaciones + ambos pgTAP + checkpoint de operador
+- [x] 127-03-PLAN.md — Apply a PROD por `psql --single-transaction` + corrida del proc + las 7 verificaciones + ambos pgTAP + checkpoint de operador
 
 ### Phase 128: PANEL-UI — Contrato RPC/UI con sujetos, links y fechas correctas
 
@@ -269,7 +269,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 126. PANEL-GUARDS | 2/2 | Complete    | 2026-07-30 |
-| 127. PANEL-MAT | 0/? | Not started | - |
+| 127. PANEL-MAT | 3/3 | Complete   | 2026-07-30 |
 | 128. PANEL-UI | 0/? | Not started | - |
 | 129. PANEL-DISEÑO | 0/? | Not started | - |
 | 130. VOTOS-REAL | 0/? | Not started | - |
