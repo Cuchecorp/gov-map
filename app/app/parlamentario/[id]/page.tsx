@@ -595,7 +595,13 @@ export async function CarrilesSection({
                 {/* Paginación server existente (?votosPage/?materia) intacta DENTRO
                     del disclosure — se conserva, no se duplica con un paginador
                     cliente en conflicto. */}
-                <VotosSection id={id} searchParams={sp} />
+                <VotosSection
+                  id={id}
+                  searchParams={sp}
+                  conteosGlobales={
+                    conteos.votos.tipo === "dato" ? conteos.votosBreakdown : null
+                  }
+                />
               </Suspense>
             </DetalleColapsable>
           </div>

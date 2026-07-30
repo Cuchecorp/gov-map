@@ -36,11 +36,12 @@ vi.mock("@/lib/supabase", () => ({
 import {
   derivarEstado,
   conteosDesconocidos,
-  resumirVotos,
+  agregarConteoVotos,
   rankearMaterias,
   agruparSectores,
   mapearPatrimonio,
   contarCarriles,
+  contarCarrilesSeguro,
   type CarrilEstado,
 } from "./parlamentario-resumen-conteos";
 
@@ -169,28 +170,26 @@ describe("conteosDesconocidos — fallback honesto del shell (WR-02)", () => {
  * PRODUCTORES capa-1 (55-02) — funciones PURAS que derivan cada mini-visual de
  * las MISMAS filas que el módulo ya lee (sin RPC nueva, sin montos).
  */
-describe("resumirVotos — desglose por selección (fuente única de 'Cómo votó')", () => {
-  it("acumula por seleccion las MISMAS cifras que VotosView", () => {
+describe("agregarConteoVotos — desglose por selección desde el AGREGADO SQL (Phase 130, RPC 0082)", () => {
+  it("acumula el n por selección de las filas del agregado", () => {
     const rows = [
-      { seleccion: "si" },
-      { seleccion: "si" },
-      { seleccion: "no" },
-      { seleccion: "abstencion" },
-      { seleccion: "pareo" },
-      { seleccion: "ausente" },
-      { seleccion: "ausente" },
+      { seleccion: "si", n: 1764 },
+      { seleccion: "no", n: 1772 },
+      { seleccion: "abstencion", n: 171 },
+      { seleccion: "pareo", n: 16 },
+      { seleccion: "ausente", n: 29 },
     ];
-    expect(resumirVotos(rows)).toEqual({
-      si: 2,
-      no: 1,
-      abstencion: 1,
-      pareo: 1,
-      ausente: 2,
+    expect(agregarConteoVotos(rows)).toEqual({
+      si: 1764,
+      no: 1772,
+      abstencion: 171,
+      pareo: 16,
+      ausente: 29,
     });
   });
 
   it("sin filas → todo en cero (nunca fabrica)", () => {
-    expect(resumirVotos([])).toEqual({
+    expect(agregarConteoVotos([])).toEqual({
       si: 0,
       no: 0,
       abstencion: 0,
@@ -199,8 +198,24 @@ describe("resumirVotos — desglose por selección (fuente única de 'Cómo vot�
     });
   });
 
-  it("una selección desconocida se ignora (no crea una categoría)", () => {
-    expect(resumirVotos([{ seleccion: "otra_cosa" }, { seleccion: "si" }])).toEqual({
+  it("una selección AUSENTE de la respuesta cuenta 0 (no rompe, no fabrica)", () => {
+    // Solo 2 de las 5 selecciones vienen en la respuesta.
+    expect(agregarConteoVotos([{ seleccion: "si", n: 10 }])).toEqual({
+      si: 10,
+      no: 0,
+      abstencion: 0,
+      pareo: 0,
+      ausente: 0,
+    });
+  });
+
+  it("una selección DESCONOCIDA se ignora (nunca fabrica una categoría)", () => {
+    expect(
+      agregarConteoVotos([
+        { seleccion: "otra_cosa", n: 999 },
+        { seleccion: "si", n: 1 },
+      ]),
+    ).toEqual({
       si: 1,
       no: 0,
       abstencion: 0,
@@ -308,12 +323,11 @@ describe("mapearPatrimonio — declaraciones por año (sin montos) + rango", () 
 describe("contarCarriles — productores capa-1 desde las filas ya leídas (sb.rpc mock)", () => {
   it("expone votosBreakdown + lobbyTopMaterias + crucesSectores + patrimonio + rango", async () => {
     rpcResponses = {
-      votos_de_parlamentario: {
+      votos_conteo_de_parlamentario: {
         data: [
-          { seleccion: "si" },
-          { seleccion: "si" },
-          { seleccion: "no" },
-          { seleccion: "ausente" },
+          { seleccion: "si", n: 2 },
+          { seleccion: "no", n: 1 },
+          { seleccion: "ausente", n: 1 },
         ],
         error: null,
       },
@@ -374,8 +388,64 @@ describe("contarCarriles — productores capa-1 desde las filas ya leídas (sb.r
 
   it("un error real de RPC hace throw (#34) — nunca degrada a vacío", async () => {
     rpcResponses = {
-      votos_de_parlamentario: { data: null, error: { message: "boom" } },
+      votos_conteo_de_parlamentario: { data: null, error: { message: "boom" } },
     };
-    await expect(contarCarriles("P1")).rejects.toThrow(/votos_de_parlamentario/);
+    await expect(contarCarriles("P1")).rejects.toThrow(
+      /votos_conteo_de_parlamentario/,
+    );
+  });
+
+  it("contarCarrilesSeguro devuelve el fallback honesto (breakdown en ceros, asistencia null) cuando el conteo de votos falla", async () => {
+    rpcResponses = {
+      votos_conteo_de_parlamentario: { data: null, error: { message: "boom" } },
+    };
+    const c = await contarCarrilesSeguro("P1");
+    expect(c.votos).toEqual({ tipo: "no_ingerido" });
+    expect(c.votosBreakdown).toEqual({
+      si: 0,
+      no: 0,
+      abstencion: 0,
+      pareo: 0,
+      ausente: 0,
+    });
+    expect(c.asistencia).toBeNull();
+  });
+
+  it("el total NO depende del listado paginado: conteo agregado suma 3752 aunque el listado capado traiga solo 3 filas", async () => {
+    // El agregado (RPC 0082) suma 3752 sobre el universo completo; el listado
+    // capado a p_limit:1000 (VotosSection, no ejercido aquí) es irrelevante para
+    // este productor — es el fix estructural de B-01.
+    rpcResponses = {
+      votos_conteo_de_parlamentario: {
+        data: [
+          { seleccion: "si", n: 1764 },
+          { seleccion: "no", n: 1772 },
+          { seleccion: "abstencion", n: 171 },
+          { seleccion: "pareo", n: 16 },
+          { seleccion: "ausente", n: 29 },
+        ],
+        error: null,
+      },
+    };
+    const c = await contarCarriles("P1");
+    expect(c.votos).toEqual({ tipo: "dato", n: 3752 });
+    expect(c.votosBreakdown).toEqual({
+      si: 1764,
+      no: 1772,
+      abstencion: 171,
+      pareo: 16,
+      ausente: 29,
+    });
+    // Asistencia real: presentes = total − ausentes (no 973 de la versión capada).
+    expect(c.asistencia).toEqual({ total: 3752, presentes: 3723 });
+  });
+
+  it("sin filas de conteo → asistencia null (jamás un '0 de 0' fabricado)", async () => {
+    rpcResponses = {
+      votos_conteo_de_parlamentario: { data: [], error: null },
+    };
+    const c = await contarCarriles("P1");
+    expect(c.votos).toEqual({ tipo: "vacio" });
+    expect(c.asistencia).toBeNull();
   });
 });

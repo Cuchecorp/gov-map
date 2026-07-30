@@ -97,15 +97,20 @@ export interface RangoAnios {
 }
 
 /**
- * Desglose PURO de votos por selección (fuente única de "Cómo votó"). Acumula las
- * MISMAS filas que el conteo de votos ya leyó; una selección desconocida se ignora
- * (nunca fabrica una categoría). Exportado para test.
+ * Desglose PURO de votos por selección (fuente única de "Cómo votó"). Acumula el
+ * agregado SQL sobre el UNIVERSO COMPLETO de votos confirmados (RPC
+ * `votos_conteo_de_parlamentario`, migración 0082, Phase 130): una fila por
+ * `seleccion` PRESENTE con su `n`; una selección ausente de la respuesta cuenta 0
+ * (no rompe, no fabrica); una selección desconocida se IGNORA (nunca fabrica una
+ * categoría). Exportado para test.
  */
-export function resumirVotos(rows: { seleccion: string }[]): VotosBreakdown {
+export function agregarConteoVotos(
+  rows: { seleccion: string; n: number }[],
+): VotosBreakdown {
   const b: VotosBreakdown = { si: 0, no: 0, abstencion: 0, pareo: 0, ausente: 0 };
   for (const v of rows) {
     if (Object.prototype.hasOwnProperty.call(b, v.seleccion)) {
-      b[v.seleccion as keyof VotosBreakdown] += 1;
+      b[v.seleccion as keyof VotosBreakdown] += v.n;
     }
   }
   return b;
@@ -264,44 +269,48 @@ export const contarCarriles = cache(
     const sb = createServerSupabase();
 
     // ── VOTOS ─────────────────────────────────────────────────────────────────
-    // El RPC devuelve una fila por votación confirmada (orden fecha DESC). No
-    // existe `votos_ingesta_estado`: los votos son un dataset poblado a nivel
-    // global, así que un parlamentario con 0 votos es "ingestado, sin registros"
+    // El conteo/desglose/asistencia salen del AGREGADO SQL sobre TODAS las filas
+    // confirmadas (`votos_conteo_de_parlamentario`, migración 0082, Phase 130):
+    // este módulo es el ÚNICO productor de verdad numérica del carril de votos
+    // (chip, capa-1, "Ver detalle (N)" y "Cómo votó" comparten esta misma lectura
+    // vía prop — D-04, cero desincronización). `votos_de_parlamentario` queda
+    // como carril EXCLUSIVO del listado paginado (D-03) — sigue viva con su
+    // `p_limit: 1000`, pero deja de ser fuente de conteo. No existe
+    // `votos_ingesta_estado`: los votos son un dataset poblado a nivel global,
+    // así que un parlamentario con 0 votos es "ingestado, sin registros"
     // (`vacio`), NUNCA "no ingerido" (no podemos afirmar honestamente lo segundo).
-    // WR-03 (conocido, dormante ~10 votaciones): el conteo es `length` con
-    // `p_limit: 1000`. Para >1000 votos confirmados mostraría "1000" como si
-    // fuera el total exacto. Se DEJA ASÍ A PROPÓSITO: es el espejo BYTE-A-BYTE
-    // del mismo cap en `VotosSection` (mismo RPC, mismo p_limit), así chip y
-    // sección SIEMPRE coinciden. Una presentación honesta "1000+" exigiría
-    // cambiarlo en AMBOS lados a la vez (chip + "Emitió N votos" de VotosView)
-    // para no desincronizarlos; el fix real es un RPC de conteo dedicado (F46+),
-    // NO introducir aquí un RPC nuevo (queda fuera del allowlist/alcance F45).
-    const { data: votosData, error: votosError } = await sb.rpc(
-      "votos_de_parlamentario",
-      { p_id: id, p_limit: 1000, p_offset: 0 },
+    const { data: votosConteoData, error: votosError } = await sb.rpc(
+      "votos_conteo_de_parlamentario",
+      { p_id: id },
     );
     if (votosError) {
       throw new Error(
-        `votos_de_parlamentario falló para ${id}: ${votosError.message}`,
+        `votos_conteo_de_parlamentario falló para ${id}: ${votosError.message}`,
       );
     }
-    const votosRows =
-      (votosData as { seleccion: string }[] | null) ?? [];
-    const votosTotal = votosRows.length;
+    const votosConteoRows =
+      (votosConteoData as { seleccion: string; n: number }[] | null) ?? [];
+    // Desglose por selección desde el agregado (fuente única de "Cómo votó";
+    // capa-1/chip/sección nunca desincronizan).
+    const votosBreakdown = agregarConteoVotos(votosConteoRows);
+    // Total = suma de las 5 claves en el orden LOCKED (no `Object.values`, para
+    // que el total y la barra usen exactamente el mismo dominio).
+    const votosTotal =
+      votosBreakdown.si +
+      votosBreakdown.no +
+      votosBreakdown.abstencion +
+      votosBreakdown.pareo +
+      votosBreakdown.ausente;
     const votos = derivarEstado({ total: votosTotal, ingestado: true });
-    // Desglose por selección desde las MISMAS filas (fuente única de "Cómo votó";
-    // capa-1/chip/sección nunca desincronizan). Sin segundo fetch.
-    const votosBreakdown = resumirVotos(votosRows);
 
-    // Asistencia derivada de las MISMAS filas (no un segundo fetch): presente =
-    // seleccion !== 'ausente' (regla idéntica a VotosView). Sin filas → null:
-    // no se fabrica un "0 de 0" (T-51-22, honesto).
+    // Asistencia derivada del breakdown (presentes = total − ausentes), no de un
+    // `filter` sobre filas. Sin votos → null: no se fabrica un "0 de 0"
+    // (T-51-22, honesto).
     const asistencia =
       votosTotal > 0
         ? {
             total: votosTotal,
-            presentes: votosRows.filter((v) => v.seleccion !== "ausente")
-              .length,
+            presentes: votosTotal - votosBreakdown.ausente,
           }
         : null;
 

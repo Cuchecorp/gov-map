@@ -335,6 +335,21 @@ export interface VotoFichaRow {
 }
 
 /**
+ * Fila del RPC agregado `votos_conteo_de_parlamentario` (migración 0082, Phase 130
+ * Plan 01/02). Una fila por `seleccion` PRESENTE en el universo COMPLETO de votos
+ * confirmados del parlamentario (una selección sin votos simplemente no viene — el
+ * agregador parte de ceros y suma, jamás asume las 5 filas). `count(*)` es `bigint`
+ * en Postgres pero llega como `number` vía supabase-js (valores < 4.000, sin riesgo
+ * de precisión). Reemplaza el `.length` de `votos_de_parlamentario` como fuente del
+ * conteo/desglose real (el 1000 falso de B-01); `votos_de_parlamentario` sigue
+ * sirviendo el listado paginado (D-03).
+ */
+export interface VotoConteoRow {
+  seleccion: string;
+  n: number;
+}
+
+/**
  * Fila CRUDA orientada a la guarda de identidad de la ficha (estado (b),
  * UI-SPEC §3.6). El RPC confirmado no la emite (no hay menciones no verificadas
  * confirmadas), pero el componente `VotoFichaRow` la soporta para que una

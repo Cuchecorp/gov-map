@@ -222,6 +222,7 @@ const PUBLIC_RPC_ALLOWLIST = new Set([
   "parlamentarios_publico",
   "parlamentarios_publico_v2",
   "subgrafo_red",
+  "votos_conteo_de_parlamentario", // ← NEW (debe existir en supabase/migrations/0082_*.sql — conteo agregado sobre el universo completo, Phase 130 Plan 02)
   "votos_de_parlamentario",
 ]);
 

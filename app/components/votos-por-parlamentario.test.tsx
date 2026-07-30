@@ -109,6 +109,8 @@ function makeViewData(overrides: Partial<VotosViewData> = {}): VotosViewData {
     votos: [makeVoto()],
     totalVotos: 1,
     conteos: { si: 1, no: 0, abstencion: 0, pareo: 0, ausente: 0 },
+    filasCargadas: 1,
+    conteoGlobalDisponible: true,
     materiaActiva: null,
     materias: [],
     page: 1,
@@ -732,7 +734,9 @@ describe("VotosView — leyenda anti-insinuación + cobertura honesta (68-03, VO
       />,
     );
     expect(
-      screen.getByText(/Se registran votaciones de 2 proyectos en las fuentes consultadas/i),
+      screen.getByText(
+        /Se registran votaciones de 2 proyectos presentes en las votaciones cargadas en este detalle/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -1037,6 +1041,117 @@ describe("derivarVotosViewData — invariantes de filtro/paginación (WR-01, WR-
     expect(data.page).toBe(1); // clamp: 99999 → 1
     expect(data.votos.length).toBe(5);
   });
+
+  // ── Phase 130 (D-04): conteosGlobales gobierna el desglose sin tema activo ─────
+  it("sin tema activo + conteosGlobales presente -> conteos/totalVotos son los GLOBALES, no el `.length` del listado cargado", () => {
+    // Solo 3 filas cargadas, pero el agregado real dice 3752 (testigo D1165).
+    const votos = Array.from({ length: 3 }, (_, i) =>
+      makeVoto({ votacion_id: `g:${i}`, boletin: `${900 + i}-07`, materia: null }),
+    );
+    const data = derivarVotosViewData({
+      todasConMateria: votos,
+      materiaActiva: null,
+      page: 1,
+      conteosGlobales: { si: 1764, no: 1772, abstencion: 171, pareo: 16, ausente: 29 },
+    });
+    expect(data.totalVotos).toBe(3752);
+    expect(data.conteos).toEqual({
+      si: 1764,
+      no: 1772,
+      abstencion: 171,
+      pareo: 16,
+      ausente: 29,
+    });
+    expect(data.filasCargadas).toBe(3);
+    expect(data.conteoGlobalDisponible).toBe(true);
+  });
+
+  it("con tema activo, conteosGlobales se IGNORA: el desglose sigue siendo el del subconjunto filtrado (no-regresión WR-01)", () => {
+    const data = derivarVotosViewData({
+      todasConMateria: fixtureMultiTema(),
+      materiaActiva: "salud",
+      page: 1,
+      conteosGlobales: { si: 1764, no: 1772, abstencion: 171, pareo: 16, ausente: 29 },
+    });
+    // Idéntico al caso WR-01 sin conteosGlobales: 5 de Salud (1 ausente, 4 sí).
+    expect(data.totalVotos).toBe(5);
+    expect(data.conteos.si).toBe(4);
+    expect(data.conteos.ausente).toBe(1);
+    expect(data.conteoGlobalDisponible).toBe(false);
+  });
+
+  it("conteosGlobales null -> comportamiento previo (cálculo sobre conteoSet, cero cambio de conducta)", () => {
+    const votos = Array.from({ length: 4 }, (_, i) =>
+      makeVoto({ votacion_id: `n:${i}`, boletin: `${800 + i}-07`, materia: null }),
+    );
+    const data = derivarVotosViewData({
+      todasConMateria: votos,
+      materiaActiva: null,
+      page: 1,
+      conteosGlobales: null,
+    });
+    expect(data.totalVotos).toBe(4);
+    expect(data.filasCargadas).toBe(4);
+    expect(data.conteoGlobalDisponible).toBe(false);
+  });
+});
+
+// ── Phase 130 (D-04): rótulos honestos sobre lo capado en el render ─────────────
+describe("VotosView — rótulos honestos de recorte (Phase 130 Plan 02, D-04/fable_blocker_1)", () => {
+  it('filasCargadas < totalVotos -> aparece el rótulo "N de M" (recorte del listado)', () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          totalVotos: 3752,
+          conteos: { si: 1764, no: 1772, abstencion: 171, pareo: 16, ausente: 29 },
+          filasCargadas: 3,
+          conteoGlobalDisponible: true,
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(/muestra las 3 votaciones más recientes de 3752/i),
+    ).toBeInTheDocument();
+  });
+
+  it("filasCargadas === totalVotos -> el rótulo de recorte NO aparece (control de ausencia apareado)", () => {
+    render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          totalVotos: 3,
+          conteos: { si: 3, no: 0, abstencion: 0, pareo: 0, ausente: 0 },
+          filasCargadas: 3,
+          conteoGlobalDisponible: true,
+        })}
+      />,
+    );
+    expect(screen.queryByText(/votaciones más recientes de/i)).not.toBeInTheDocument();
+  });
+
+  it('fable_blocker_1: sin conteo global disponible (RPC en error) + listado con filas + CERO ausentes -> el DOM NO contiene "Emitió 1000 votos registrados." pelado, con control positivo de que la sección renderizó', () => {
+    // ausente:0 fuerza la rama "Emitió N votos" (la rama "Presente en X de Y" solo
+    // aplica con ausentes>0) — es exactamente el camino donde B-01 resucitaría.
+    const { container } = render(
+      <VotosView
+        id="P00001"
+        data={makeViewData({
+          totalVotos: 1000,
+          conteos: { si: 469, no: 466, abstencion: 22, pareo: 16, ausente: 0 },
+          filasCargadas: 1000,
+          conteoGlobalDisponible: false,
+        })}
+      />,
+    );
+    // Control positivo: la sección SÍ renderizó (heading presente).
+    expect(screen.getByText("Cómo votó")).toBeInTheDocument();
+    const texto = container.textContent ?? "";
+    // El copy pelado (B-01 resucitado) JAMÁS aparece.
+    expect(texto).not.toContain("Emitió 1000 votos registrados.");
+    // El copy honesto SÍ declara el alcance sobre lo cargado.
+    expect(texto).toMatch(/sobre las votaciones cargadas en este detalle/i);
+  });
 });
 
 // ── VIZ-02: agregador puro agruparVotosPorTrimestre (F47, chart "Cuándo votó") ──
@@ -1185,7 +1300,7 @@ describe("agruparVotosPorTrimestre — bucketing puro por trimestre (VIZ-02)", (
 // ── VIZ-02: sub-bloque "Cuándo votó" al tope del detalle (Task 3, F47) ──────────
 describe('VotosView — sub-bloque "Cuándo votó" (chart/empty/orden, VIZ-02)', () => {
   const CAPTION =
-    "Cada barra agrupa las votaciones de un trimestre por sentido del voto. No representa una tendencia.";
+    "Cada barra agrupa las votaciones de un trimestre por sentido del voto. No representa una tendencia. El gráfico cubre las votaciones cargadas en este detalle, no necesariamente el período completo del registro.";
   const EMPTY =
     "Las fechas de estas votaciones aún no permiten agruparlas por período.";
 
