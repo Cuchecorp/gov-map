@@ -2,7 +2,7 @@ import { cache } from "react";
 
 import { createServerSupabase } from "@/lib/supabase";
 import { PARLAMENTARIO_ID_RE } from "@/lib/buscar";
-import { formatNombre } from "@/lib/format";
+import { formatNombre, fechaHechoCortaSegura } from "@/lib/format";
 import { fechaCivilCorta } from "@/lib/dia-calendario";
 import { vsimPublicEnabled } from "@/lib/vsim-gate";
 import { CompararSelector } from "@/components/comparar-selector";
@@ -539,10 +539,25 @@ export async function CompararEjes({
       filaA?.camara != null &&
       filaB?.camara != null &&
       filaA.camara !== filaB.camara;
-    // C-03: mismo DÍA que antes (la parte fecha del `fecha_captura_max` que ya
-    // se venía mostrando), re-formateado al civil chileno. Cero cambio de hecho.
+    // C-03 + WR-01/WR-02/IN-03 (129-REVIEW): `fecha_captura_max` es un TIMESTAMP
+    // REAL CON HORA, no un date-only. `dia-calendario.ts` se documenta a sí mismo
+    // como el único punto que codifica la distinción y nombra `fecha_captura`
+    // entre los timestamps reales: enrutarlo por `fechaCivilCorta` (helper
+    // date-only) tomaba su parte fecha UTC y cementaba el día equivocado — una
+    // captura a `2026-01-01T02:00:00Z` es el 31-dic-2025 en Chile y se rendía
+    // "01 ene 2026". El `slice(0, 10)` previo era justamente lo que fijaba el día
+    // en UTC (IN-03), así que se elimina: `fechaHechoCortaSegura` parsea el raw
+    // COMPLETO y ramifica por presencia de hora (medianoche UTC ⇒ date-only
+    // disfrazada, sin conversión de zona — gotcha rector respetado; hora real ⇒
+    // se convierte a America/Santiago, que es el calendario del ciudadano).
+    //
+    // WR-01: además NUNCA devuelve `null`. `fechaCivilCorta` sí, y como
+    // `SimilitudVotacionComparar` rinde `{fechaCaptura ? … : null}`, un valor no
+    // parseable BORRABA la línea "según fuente al …" entera — un dato mostrado
+    // sin fuente trazable es exactamente lo que el proyecto prohíbe. El helper
+    // seguro degrada a copy honesto ("fecha no informada"), jamás a la nada.
     const fechaCaptura = fila?.fecha_captura_max
-      ? fechaCivilCorta(String(fila.fecha_captura_max).slice(0, 10))
+      ? fechaHechoCortaSegura(String(fila.fecha_captura_max))
       : null;
     ejeSimilitud = (
       <SimilitudVotacionComparar

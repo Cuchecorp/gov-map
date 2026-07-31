@@ -684,6 +684,42 @@ describe("(12) VSIM — 5º eje gated (similitud de votación)", () => {
     expect(html).not.toMatch(/20\d{2}-\d{2}-\d{2}/);
   });
 
+  it("WR-02: `fecha_captura_max` es timestamp REAL → se convierte a tz Chile (02:00Z del 1-ene = 31-dic en Chile)", async () => {
+    // El helper date-only (`fechaCivilCorta`) tomaba la parte fecha UTC y rendía
+    // "01 ene 2026" sobre una captura que en Chile ocurrió el 31 de diciembre.
+    // `fecha_captura` está nombrado explícitamente entre los TIMESTAMPS REALES en
+    // `lib/dia-calendario.ts`, que es el único punto que codifica la distinción.
+    vi.stubEnv("VSIM_PUBLIC_ENABLED", "true");
+    setRpcConVsim({
+      n_coinciden: 3,
+      m_compartidas: 4,
+      fecha_captura_max: "2026-01-01T02:00:00Z",
+    });
+    const html = await renderEjes("D1001", "D1002");
+    expect(html).toContain("Similitud de votación");
+    expect(html).toContain(">31 dic 2025<");
+    // El día UTC (el que fabricaba el helper date-only) NO debe aparecer.
+    expect(html).not.toContain(">01 ene 2026<");
+  });
+
+  it("WR-01: `fecha_captura_max` no parseable degrada a copy honesto y JAMÁS borra la línea de procedencia", async () => {
+    // `fechaCivilCorta` devuelve `string | null`, y `SimilitudVotacionComparar`
+    // rinde `{fechaCaptura ? … : null}` ⇒ un valor no parseable hacía DESAPARECER
+    // el "según fuente al …" entero. Un dato sin fuente trazable está prohibido.
+    vi.stubEnv("VSIM_PUBLIC_ENABLED", "true");
+    setRpcConVsim({
+      n_coinciden: 3,
+      m_compartidas: 4,
+      fecha_captura_max: "no-es-una-fecha",
+    });
+    const html = await renderEjes("D1001", "D1002");
+    // Control positivo apareado: la figura SÍ está (el eje se montó con datos)…
+    expect(html).toContain("Coinciden en 3 de 4");
+    // …y la procedencia sobrevive, degradada con honestidad.
+    expect(html).toContain("según fuente al ");
+    expect(html).toContain("fecha no informada");
+  });
+
   it("flag ON + m=0 → copy degradado honesto, JAMÁS '0%'", async () => {
     vi.stubEnv("VSIM_PUBLIC_ENABLED", "true");
     setRpcConVsim({ n_coinciden: 0, m_compartidas: 0, fecha_captura_max: null });
