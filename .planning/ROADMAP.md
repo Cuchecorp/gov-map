@@ -148,7 +148,7 @@ Plans:
 - [x] 129-01-PLAN.md — Baseline pre-deploy + deploy NUEVO (runbook 104-02) + B-02 + capturas con escalera 390px
 - [x] 129-02-PLAN.md — H-01 (SC4): tasa de flakiness N>=20 + causa raiz por codigo; fix de resiliencia DIFERIDO (contrato #34)
 - [x] 129-03-PLAN.md — Critica vs baselines v13 + fix de plural (D-06) en 4 moldes + higiene B26
-- [ ] 129-04-PLAN.md — Fixes de diseno + re-deploy INCONDICIONAL + capturas finales + densidad 390px
+- [x] 129-04-PLAN.md — Fixes de diseno + re-deploy INCONDICIONAL + capturas finales + densidad 390px
 - [ ] 129-05-PLAN.md — 129-EVIDENCIA-LOOP.md + CHECKPOINT DE OPERADOR (veredicto verbatim, D-07)
 
 **UI hint**: yes
@@ -290,7 +290,7 @@ Plans:
 | 126. PANEL-GUARDS | 2/2 | Complete    | 2026-07-30 |
 | 127. PANEL-MAT | 3/3 | Complete    | 2026-07-30 |
 | 128. PANEL-UI | 6/6 | Complete    | 2026-07-30 |
-| 129. PANEL-DISEÑO | 3/5 | In Progress|  |
+| 129. PANEL-DISEÑO | 4/5 | In Progress|  |
 | 130. VOTOS-REAL | 3/3 | Complete    | 2026-07-30 |
 | 131. DEBT-FICHA | 3/3 | Complete    | 2026-07-30 |
 | 132. NEWS-RSS | 0/? | Not started | - |

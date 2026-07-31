@@ -19,7 +19,7 @@
 - [x] **PANEL-06**: Grafía de cámara única en todo el panel — fix **4-15/D2** en el materializador (`0065:233,261`), no en el cliente.
 - [x] **PANEL-07**: Cobertura y asimetrías declaradas: citaciones "23 Senado · 0 Cámara"; tabla de Cámara presentada como "tabla semanal" (fila sintética `camara:sesion:2026-W31`, numero/tipo/hora NULL — jamás fabricar "sesión N.º a las HH:MM"); ceros con denominador; vacío honesto con causa.
 - [x] **PANEL-08** (Wave-0): guards ANTES del copy — todo archivo nuevo del rediseño alta en `SUPERFICIES_PANEL` antes de escribir copy; `NEGACIONES_LOCKED` extendido con los idioms nuevos; carril PANEL del linter verde (prohibidos `señal`, `exprés`, `los más`, …).
-- [ ] **PANEL-09**: Loop de diseño BrowserOS con Opus mirando el deploy hasta que quede bien; cierre por fragmento DOM + captura (baseline ya capturado en `spikes/assets/`); densidad validada a 390px; ningún criterio visual subjetivo. Cierra también **B-02** (el tile con denominador ausente muere con el tile materia) y **H-01** (re-deploy + verificación `/comparar`).
+- [x] **PANEL-09**: Loop de diseño BrowserOS con Opus mirando el deploy hasta que quede bien; cierre por fragmento DOM + captura (baseline ya capturado en `spikes/assets/`); densidad validada a 390px; ningún criterio visual subjetivo. Cierra también **B-02** (el tile con denominador ausente muere con el tile materia) y **H-01** (re-deploy + verificación `/comparar`).
 
 ### NEWS — Crons de noticias vinculadas (objetivo 2)
 
