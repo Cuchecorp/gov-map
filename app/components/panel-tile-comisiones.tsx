@@ -2,6 +2,7 @@ import { fechaCivilCorta } from "@/lib/dia-calendario";
 import { hrefAgenda, semanaIsoDeFecha } from "@/lib/links-internos";
 import Link from "next/link";
 import { type Idiom } from "@/lib/idioms-panel";
+import { plural } from "@/lib/plural";
 import { etiquetaFuente, parseEvidenciaCitaciones } from "@/lib/panel-evidencia";
 import { PanelItemProyecto } from "@/components/panel-item-proyecto";
 import { BentoTile } from "@/components/bento/bento-tile";
@@ -34,7 +35,8 @@ const ORDEN_COBERTURA: Array<{ full: string; corta: string; molde: (n: number, p
   {
     full: "Senado",
     corta: "Senado",
-    molde: (n) => `${n} citaciones del Senado`,
+    // D-06 (Phase 129): concordancia de número — `1 citación del Senado`.
+    molde: (n) => `${n} ${plural(n, "citación", "citaciones")} del Senado`,
   },
   {
     full: "Cámara de Diputados",

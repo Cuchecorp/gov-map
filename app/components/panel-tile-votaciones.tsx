@@ -4,6 +4,7 @@ import { BentoTile } from "@/components/bento/bento-tile";
 import { fechaCorta } from "@/lib/format";
 import { hrefProyecto } from "@/lib/links-internos";
 import { LEYENDA_ANTI_INSINUACION } from "@/lib/voto-presentacion";
+import { plural } from "@/lib/plural";
 import { leerTitulos } from "@/components/actualidad-module";
 import type { VotacionRow } from "@/lib/types";
 
@@ -61,7 +62,11 @@ export function grafiaCamaraCiudadana(raw: string): string {
 
 function detalleVotacion(item: VotacionPanelItem): string {
   const resultado = item.resultado?.trim() || "resultado no informado por la fuente";
-  return `Votación en ${item.camara} el ${fechaCorta(item.fecha)}: ${resultado} — ${item.si} a favor, ${item.no} en contra, ${item.abstencion} abstenciones, ${item.pareo} pareos`;
+  // D-06 (Phase 129): concordancia de número en los sustantivos contados.
+  // "a favor" y "en contra" son locuciones adverbiales, no sustantivos: no varían.
+  const abstenciones = plural(item.abstencion, "abstención", "abstenciones");
+  const pareos = plural(item.pareo, "pareo", "pareos");
+  return `Votación en ${item.camara} el ${fechaCorta(item.fecha)}: ${resultado} — ${item.si} a favor, ${item.no} en contra, ${item.abstencion} ${abstenciones}, ${item.pareo} ${pareos}`;
 }
 
 export function PanelTileVotacionesView({

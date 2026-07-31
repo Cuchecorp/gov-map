@@ -88,6 +88,51 @@ describe("PanelTileUrgencias", () => {
     expect(container.textContent).not.toContain("95");
   });
 
+  // D-06 (Phase 129): concordancia de número en el segmento cabecera del
+  // primer grado (i===0 en ORDEN_GRADOS = "Discusión inmediata"), que es el
+  // único que lleva el sustantivo contado.
+  it("un solo boletín en el primer grado → '1 proyecto con ' (singular)", () => {
+    const filas: FilaPanel[] = [
+      {
+        cobertura_camara: null,
+        conteo: 1,
+        fecha_max: "2026-07-20",
+        supresion_causa: null,
+        evidencia: {
+          items: [itemUrgencia("B-UNO", "Discusión inmediata", "2026-07-20")],
+          total: 1,
+          consultado_al: "2026-07-21",
+          fuente: { origen: "camara", dataset: "tramitacion" },
+        },
+      },
+    ];
+    const { container } = render(<PanelTileUrgencias filas={filas} />);
+    expect(container.textContent).toContain("1 proyecto con ");
+    expect(container.textContent).not.toContain("1 proyectos");
+  });
+
+  it("dos boletines en el primer grado → '2 proyectos con ' (plural, no-regresión)", () => {
+    const filas: FilaPanel[] = [
+      {
+        cobertura_camara: null,
+        conteo: 2,
+        fecha_max: "2026-07-20",
+        supresion_causa: null,
+        evidencia: {
+          items: [
+            itemUrgencia("B-UNO", "Discusión inmediata", "2026-07-20"),
+            itemUrgencia("B-DOS", "Discusión inmediata", "2026-07-20"),
+          ],
+          total: 2,
+          consultado_al: "2026-07-21",
+          fuente: { origen: "camara", dataset: "tramitacion" },
+        },
+      },
+    ];
+    const { container } = render(<PanelTileUrgencias filas={filas} />);
+    expect(container.textContent).toContain("2 proyectos con ");
+  });
+
   it("un mismo boletín con 3 urgencias cuenta UNA vez en el encabezado y UNA vez en la lista (la más reciente)", () => {
     const filas: FilaPanel[] = [
       {

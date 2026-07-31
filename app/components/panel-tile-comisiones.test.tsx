@@ -150,6 +150,22 @@ describe("PanelTileComisiones", () => {
     );
   });
 
+  // D-06 (Phase 129): concordancia de número. Aserción NUEVA con n=1; el test
+  // de conteo:23 de arriba queda intacto como no-regresión del plural.
+  it("cobertura L7 con conteo:1 → '1 citación del Senado' (singular), resto del molde intacto", () => {
+    const { container } = render(
+      <PanelTileComisiones
+        filas={[{ ...filaSenado, conteo: 1 }]}
+        urgencias={new Map()}
+      />,
+    );
+    expect(container.textContent).toContain(
+      "1 citación del Senado · 0 de la Cámara en las fuentes consultadas",
+    );
+    // Control apareado: el plural erróneo NO sobrevive en ninguna parte del DOM.
+    expect(container.textContent).not.toContain("1 citaciones");
+  });
+
   it("el cero de Cámara nunca aparece mudo: siempre con 'en las fuentes consultadas'", () => {
     const { container } = render(
       <PanelTileComisiones filas={[filaSenado]} urgencias={new Map()} />,

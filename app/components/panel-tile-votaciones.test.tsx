@@ -71,6 +71,27 @@ describe("PanelTileVotacionesView", () => {
     expect(li.textContent).not.toMatch(/Aprobado|Rechazado/);
   });
 
+  // D-06 (Phase 129): concordancia de número en los dos sustantivos contados
+  // del detalle. "a favor"/"en contra" son locuciones adverbiales: NO varían.
+  it("abstencion:1 y pareo:1 → '1 abstención, 1 pareo' (singular)", () => {
+    const item = makeItem({ abstencion: 1, pareo: 1 });
+    render(<PanelTileVotacionesView items={[item]} fechaFuente={item.fecha} />);
+    const li = screen.getByRole("listitem");
+    expect(li.textContent).toContain("1 abstención, 1 pareo");
+    expect(li.textContent).not.toContain("1 abstenciones");
+    expect(li.textContent).not.toContain("1 pareos");
+    // Control positivo apareado: el resto del molde sigue intacto.
+    expect(li.textContent).toContain("80 a favor, 48 en contra");
+  });
+
+  it("abstencion:2 y pareo:2 → '2 abstenciones, 2 pareos' (plural, no-regresión)", () => {
+    const item = makeItem({ abstencion: 2, pareo: 2 });
+    render(<PanelTileVotacionesView items={[item]} fechaFuente={item.fecha} />);
+    expect(screen.getByRole("listitem").textContent).toContain(
+      "2 abstenciones, 2 pareos",
+    );
+  });
+
   it("camara ya normalizada ('Cámara de Diputados'/'Senado') — el DOM no contiene 'diputados' en minúscula suelta", () => {
     const item = makeItem({ camara: "Cámara de Diputados" });
     render(<PanelTileVotacionesView items={[item]} fechaFuente={item.fecha} />);

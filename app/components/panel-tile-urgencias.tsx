@@ -8,6 +8,7 @@ import {
 } from "@/lib/panel-evidencia";
 import { fechaCivilCorta } from "@/lib/dia-calendario";
 import { type Idiom } from "@/lib/idioms-panel";
+import { plural } from "@/lib/plural";
 
 // WR-06: stem desde el single-source (`Idiom`), no inline.
 const STEM_FECHADA_EL: Idiom = "fechada el";
@@ -157,7 +158,8 @@ export function PanelTileUrgencias({
                 if (!set || set.size === 0) continue;
                 segmentos.push(
                   i === 0
-                    ? `${set.size} proyectos con ${grado}`
+                    // D-06 (Phase 129): concordancia — `1 proyecto con Suma`.
+                    ? `${set.size} ${plural(set.size, "proyecto", "proyectos")} con ${grado}`
                     : `${set.size} con ${grado}`,
                 );
               }
