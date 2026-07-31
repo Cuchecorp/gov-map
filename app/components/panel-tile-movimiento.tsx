@@ -92,8 +92,10 @@ export function PanelTileMovimiento({
   const restante =
     Math.max(totalDeclarado, itemsConCamara.length) - mostrados.length;
 
+  // C-01: span 6 (antes 4) — mismo motivo que en sala: votaciones (span 4) no
+  // cabía en el remanente de 2 y la fila quedaba con hueco interior.
   return (
-    <BentoTile variant="default" span={4} asChild>
+    <BentoTile variant="default" span={6} asChild>
       <section className="p-6">
         <h2 className="text-lg font-semibold mb-4">Movimiento reciente</h2>
 

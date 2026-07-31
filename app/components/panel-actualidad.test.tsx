@@ -331,6 +331,43 @@ describe("PanelActualidad — composición del panel completo (D-01/O-3/O-5)", (
     expect(new Set(titulos).size).toBe(6);
   });
 
+  it("C-01: los spans de los 6 tiles cierran filas de 6 sin remanente (cero huecos interiores en la grilla bento)", () => {
+    const { container } = render(<>{construirPanel(FILAS_TODAS)}</>);
+
+    // Control positivo APAREADO: los 6 tiles siguen presentes. Sin esto, una
+    // secuencia vacía de spans "cerraría filas" de forma vacua.
+    const titulos = Array.from(container.querySelectorAll("h2")).map(
+      (h) => h.textContent,
+    );
+    expect(titulos).toHaveLength(6);
+
+    // Los spans se leen de las clases REALES emitidas por BentoTile, en orden DOM.
+    const spans = Array.from(
+      container.querySelectorAll<HTMLElement>('[class*="md:col-span-"]'),
+    ).map((el) => {
+      const m = el.className.match(/md:col-span-(\d+)/);
+      return Number(m![1]);
+    });
+    expect(spans).toHaveLength(6);
+    expect(spans).toEqual([6, 4, 2, 6, 4, 2]);
+
+    // Auto-placement de una grilla de 6 columnas: la suma acumulada de spans debe
+    // cerrar en múltiplos de 6 en cada corte de fila, y ningún tile puede exceder 6.
+    let acumulado = 0;
+    for (const s of spans) {
+      expect(s).toBeLessThanOrEqual(6);
+      if (acumulado + s > 6) {
+        // El tile no cabe en el remanente ⇒ salta de fila ⇒ hueco interior.
+        throw new Error(
+          `hueco interior: acumulado ${acumulado} + span ${s} > 6 en la secuencia ${spans.join("·")}`,
+        );
+      }
+      acumulado = (acumulado + s) % 6;
+    }
+    // La última fila también cierra: cero remanente al final.
+    expect(acumulado).toBe(0);
+  });
+
   it("boletín SIN urgencia vigente en el Map → sin chip L5 (jamás 'sin urgencia' fabricado)", () => {
     // 16569-25 (movimiento) no tiene urgencia registrada en FILA_URGENCIAS.
     const { container } = render(<>{construirPanel(FILAS_TODAS)}</>);

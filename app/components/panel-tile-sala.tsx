@@ -202,8 +202,11 @@ export function PanelTileSala({
   // longitud del array de ítems, con lo que se pintan menos de `maxItems`.
   const restantes = totalPuntos - mostrados;
 
+  // C-01: span 6 (antes 4). La grilla es de 6 columnas y el orden D-01/O-5 es
+  // LOCKED; con span 4 esta fila dejaba un hueco interior de 2 columnas porque
+  // el tile siguiente (comisiones, span 4) no cabía en el remanente.
   return (
-    <BentoTile variant="default" span={4} asChild>
+    <BentoTile variant="default" span={6} asChild>
       <section className="p-6">
         <h2 className="text-lg font-semibold mb-4">
           En tabla de sala esta semana
