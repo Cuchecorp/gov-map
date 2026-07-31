@@ -31,7 +31,10 @@ export const CAMARAS_CORPUS = ["Cámara de Diputados", "Senado"] as const;
 // despliegue es independiente del orden de CAMARAS_CORPUS (que solo declara
 // el universo consultado, FIX W-5) — la etiqueta corta ("Cámara") evita
 // repetir "de Diputados" en la segunda cláusula del molde.
-const ORDEN_COBERTURA: Array<{ full: string; corta: string; molde: (n: number, primero: boolean) => string }> = [
+// IN-01 (129-REVIEW): la firma llevaba un 2º parámetro `primero: boolean` que
+// NINGUNO de los dos moldes usaba — ruido que sugería una variación de copy
+// inexistente. Eliminado de la firma y del call-site.
+const ORDEN_COBERTURA: Array<{ full: string; corta: string; molde: (n: number) => string }> = [
   {
     full: "Senado",
     corta: "Senado",
@@ -136,9 +139,7 @@ export function PanelTileComisiones({
   // "…en las fuentes consultadas" sobre un denominador que descarta orígenes es
   // exactamente lo que PANEL-07 prohíbe.
   const segmentosCobertura: string[] = [
-    ...ORDEN_COBERTURA.map((c, i) =>
-      c.molde(conteoPorCamara.get(c.full) ?? 0, i === 0),
-    ),
+    ...ORDEN_COBERTURA.map((c) => c.molde(conteoPorCamara.get(c.full) ?? 0)),
     ...[...conteoPorCamara.entries()]
       .filter(([k]) => !ORDEN_COBERTURA.some((c) => c.full === k))
       .map(([k, n]) => `${n} de ${k}`),
