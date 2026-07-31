@@ -196,21 +196,33 @@ describe("PanelTileIngresos", () => {
     // La unidad de la subsección "Archivos y retiros" es el PROYECTO agrupado
     // por boletín (no el evento), así que el remanente se cuenta sobre la lista
     // agrupada: 7 boletines distintos − 4 mostrados = 3.
+    // WR-05 (129-REVIEW): el fixture ponía `total = items.length`, de modo que el
+    // N derivado de la lista (7−4=3) y el derivado del `total` coincidían y el
+    // test NO podía distinguir la fuente del número — el comentario afirmaba una
+    // discriminación que la fixture no permitía. Aquí `total` = 12 DIVERGE a
+    // propósito: si el N saliera del `total` del jsonb daría "8 más".
+    //
+    // Archivados es la EXCEPCIÓN documentada a la invariante H (ver WR-06 en
+    // `panel-tile-ingresos.tsx`): su `total` cuenta EVENTOS y la lista agrupa por
+    // BOLETÍN, así que el remanente correcto es el de la lista agrupada, no el del
+    // total. Este test fija justamente eso.
     const items = ["B-1", "B-2", "B-3", "B-4", "B-5", "B-6", "B-7"].map((b, i) =>
       itemProyecto(b, `2026-07-${String(10 + i).padStart(2, "0")}`),
     );
     const { container } = render(
       <PanelTileIngresos
         ingresos={[]}
-        archivados={[filaEvidencia(items, "Cámara de Diputados")]}
+        archivados={[filaEvidencia(items, "Cámara de Diputados", "2026-07-24", 12)]}
         maxItems={4}
       />,
     );
     // Densidad: la subsección de archivados muestra a lo más 4 <li>.
     expect(container.querySelectorAll("ul > li")).toHaveLength(4);
-    // Honestidad del N: 7 − 4 = 3, literal exacto (texto, sin flecha ni link).
+    // Honestidad del N: 7 boletines − 4 mostrados = 3, literal exacto.
     expect(container.textContent).toContain("3 más");
-    // Ni el largo del array ni maxItems se cuelan como N.
+    // El N NO sale del `total` de eventos (12 − 4 = 8) …
+    expect(container.textContent).not.toContain("8 más");
+    // … ni del largo del array crudo, ni de maxItems.
     expect(container.textContent).not.toContain("7 más");
     expect(container.textContent).not.toContain("4 más");
   });
