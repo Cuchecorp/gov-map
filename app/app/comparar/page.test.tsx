@@ -536,7 +536,13 @@ describe("(10) WR-01 — provenance con fecha honesta", () => {
     expect(html).toContain("consultado al ");
   });
 
-  it("C-03: CERO fechas ISO en el DOM de los ejes; control positivo apareado en el mismo render", async () => {
+  it("C-03: CERO fechas ISO en el DOM de los 4 ejes NO gated; control positivo apareado en el mismo render", async () => {
+    // ALCANCE HONESTO (CR-01, 129-REVIEW): sin `vi.stubEnv("VSIM_PUBLIC_ENABLED")`
+    // el 5º eje NO se monta (`page.tsx`: `if (vsimPublicEnabled(process.env))`),
+    // así que este test cubre SOLO los 4 ejes no gated. La provenance del eje
+    // VSIM —la única que en PROD (flag ON) podía traer el ISO— se cubre en el
+    // describe (12), NO aquí. El nombre lo declara para que nadie lea de este
+    // cero una cobertura que no tiene.
     const html = await renderEjes("D1001", "D1002");
     // Control positivo PRIMERO: este render SÍ contiene fechas civiles…
     expect(html).toMatch(/\b\d{2} (ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic) 20\d{2}\b/);
@@ -658,6 +664,24 @@ describe("(12) VSIM — 5º eje gated (similitud de votación)", () => {
     expect(parrafoFigura).toContain("Coinciden en 3 de 4");
     expect(parrafoFigura).not.toContain("text-accent-product");
     expect(parrafoFigura).not.toContain("font-semibold");
+  });
+
+  it("C-03: flag ON → la provenance del 5º eje va en fecha civil, JAMÁS ISO (la ruta que PROD sirve)", async () => {
+    // CR-01 (129-REVIEW): el fix C-03 de `page.tsx` vivía SIN una sola aserción
+    // que lo respaldara — revertirlo a `String(...).slice(0,10)` dejaba la suite
+    // en 34/34 verde. Con VSIM ON en PROD, ésta es la ruta servida.
+    vi.stubEnv("VSIM_PUBLIC_ENABLED", "true");
+    setRpcConVsim({ n_coinciden: 3, m_compartidas: 4, fecha_captura_max: "2026-07-24" });
+    const html = await renderEjes("D1001", "D1002");
+    // Control positivo APAREADO: el eje SÍ se montó y SÍ trae la provenance…
+    expect(html).toContain("Similitud de votación");
+    // El valor va envuelto en <span class="font-mono">, así que se asierta el
+    // literal RENDERIZADO (no "según fuente al 24 jul 2026" a secas, que el tag
+    // intermedio parte en dos).
+    expect(html).toContain("según fuente al ");
+    expect(html).toContain(">24 jul 2026<");
+    // …por lo que el cero de abajo es FUERTE, no vacuo.
+    expect(html).not.toMatch(/20\d{2}-\d{2}-\d{2}/);
   });
 
   it("flag ON + m=0 → copy degradado honesto, JAMÁS '0%'", async () => {
