@@ -134,7 +134,13 @@ export default function Home() {
           {/* tipo_senal (orden DOM = orden de colapso ≤md, UI-SPEC §Panel Layout);  */}
           {/* CERO agregación on-read (lee la RPC bounded actualidad_senales_panel). */}
           {/* Un solo Suspense boundary: la RPC lenta nunca bloquea el hero.         */}
-          <Suspense fallback={<BloqueSkeleton span={4} />}>
+          {/* WR-03 (129-REVIEW): el fallback ocupa el lugar del PANEL COMPLETO   */}
+          {/* (6 tiles = 3 filas de 6). Con span 4 la fila de carga era            */}
+          {/* skeleton(4)+entry(2) y al resolver saltaba a sala(6): reflow de toda  */}
+          {/* la mitad inferior de la portada (CLS), y los 3 entry tiles cerraban   */}
+          {/* 4+2 | 2+2 dejando remanente de 2. Con span 6: hero(4)+accent(2) |     */}
+          {/* skeleton(6) | entry(2)x3 — cero huecos TAMBIÉN durante la carga.      */}
+          <Suspense fallback={<BloqueSkeleton span={6} />}>
             <PanelActualidad />
           </Suspense>
 
