@@ -6,6 +6,7 @@ import {
   type ItemProyecto,
 } from "@/lib/panel-evidencia";
 import { fechaCivilCorta } from "@/lib/dia-calendario";
+import { plural } from "@/lib/plural";
 import { type Idiom } from "@/lib/idioms-panel";
 
 // WR-06: stems desde el single-source (`Idiom`), no inline.
@@ -159,6 +160,18 @@ export function PanelTileIngresos({
     0,
   );
   const totalProyectosArchivados = listaArchivados.length;
+  // WR-06 (129-REVIEW): EXCEPCIÓN DOCUMENTADA a la invariante H — aquí el
+  // remanente NO se respalda con `seccionArchivados.total`, y es deliberado:
+  // ese total cuenta EVENTOS (archivo, retiro…) mientras la lista de esta
+  // subsección agrupa por BOLETÍN (`agruparPorBoletin`). Son unidades distintas,
+  // así que el swap NO es directo: 12 eventos de 3 boletines con maxItems=4
+  // daría "8 más" sobre una lista que ya muestra los 3 proyectos completos —
+  // mentiría al alza. La unidad del "N más" tiene que ser la de la lista que
+  // trunca, y aquí esa unidad es el proyecto.
+  //
+  // Riesgo asumido y declarado: si algún día la RPC capea `items` en el
+  // `jsonb_agg`, esta cuenta subdeclarará en silencio. La corrección entonces NO
+  // es usar `total`, sino que la RPC emita un total POR BOLETÍN.
   const mostradosArchivados = listaArchivados.slice(0, maxItems);
   const restanteArchivados = listaArchivados.length - mostradosArchivados.length;
 
@@ -245,9 +258,9 @@ export function PanelTileIngresos({
             {totalEventosArchivados > 0 && (
               <p className="text-[13px] text-muted-foreground mb-3">
                 {totalEventosArchivados}{" "}
-                {totalEventosArchivados === 1 ? "evento" : "eventos"} de{" "}
+                {plural(totalEventosArchivados, "evento", "eventos")} de{" "}
                 {totalProyectosArchivados}{" "}
-                {totalProyectosArchivados === 1 ? "proyecto" : "proyectos"}
+                {plural(totalProyectosArchivados, "proyecto", "proyectos")}
               </p>
             )}
             <ul>
