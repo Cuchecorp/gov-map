@@ -36,9 +36,9 @@ reescalado ×0,8 impide juzgar nitidez tipográfica o hairlines de 1 px en esa s
 
 | id | superficie | delta observado vs baseline | archivo del componente responsable | veredicto | criterio de cierre | estado |
 |---|---|---|---|---|---|---|
-| **C-01** | landing desktop (`it1-landing-full.png`) vs `v13-baseline-landing.png` + `-panel-mid.png` | La grilla bento deja **dos huecos interiores de 2 columnas**: la fila de `En tabla de sala esta semana` y la fila de `Movimiento reciente` ocupan cols 1-4 y dejan cols 5-6 VACÍAS, mientras las otras dos filas sí van pareadas (`Comisiones`+`Urgencias`, `Votaciones`+`Ingresos`). El baseline no exhibía huecos interiores. Derivación mecánica: la grilla es de 6 columnas (`bento-grid.tsx:25`, `md:grid-cols-6`) y el orden de montaje es sala(4)·comisiones(4)·urgencias(2)·movimiento(4)·votaciones(4)·ingresos(2) (`panel-actualidad.tsx:182-187`) ⇒ auto-placement produce `[4|hueco2] [4+2] [4|hueco2] [4+2]` | `app/components/panel-actualidad.tsx` (orden, `:182-187`) + `app/components/panel-tile-movimiento.tsx:96` y `app/components/panel-tile-votaciones.tsx:89` (`span`) | **FIX** | Test de composición sobre `panel-actualidad`: la secuencia de `span` de los 6 tiles se particiona en filas de 6 sin remanente — es decir, `grep -oF 'md:col-span-' ` sobre el DOM renderizado del panel arroja spans cuya suma acumulada cierra en múltiplos de 6 en cada corte de fila. Implementación mínima propuesta: reordenar a sala(4)+urgencias(2) · comisiones(4)+ingresos(2) · movimiento(6) · votaciones(6). Control positivo apareado obligatorio: los 6 tiles siguen presentes (6 `<h2>` de tile en el DOM) | |
-| **C-02** | `/comparar` desktop (`129-deploy-comparar.png`) vs el botón `Buscar` de la landing en ambos baselines | El CTA primario `Comparar` se pinta **casi negro** (`bg-foreground`), mientras el CTA primario homólogo de toda la app (`Buscar` del hero) es **teal** (`bg-accent-product`). Evidencia de que es un outlier y no un sistema de dos CTAs: `bg-accent-product` aparece en **17** archivos de `components/`, `bg-foreground` en **2**, y el otro (`capa1/tramitacion-stepper.tsx:86`) no es un botón sino un marcador de paso ⇒ `/comparar` es el ÚNICO CTA primario de la app fuera del token | `app/components/comparar-selector.tsx:79` | **FIX** | `grep -oF 'bg-foreground' app/components/comparar-selector.tsx \| wc -l` == 0 **y** `grep -oF 'bg-accent-product' app/components/comparar-selector.tsx \| wc -l` >= 1 (control positivo apareado sobre el mismo archivo, para que el cero no sea vacuo) | |
-| **C-03** | `/comparar` desktop (`129-deploy-comparar.png`) vs todos los tiles del panel en `v13-baseline-panel-mid.png` | Las fechas de `/comparar` se emiten en **ISO** (`En las fuentes consultadas al 2026-07-30…`, `Fuente: BCN · consultado al 2026-07-30`), mientras TODO el panel y los baselines usan el formato civil chileno (`datos al 24 jul 2026`, `Citado el 03 ago 2026`). La causa es `fechaConsultaHoy()`, que formatea con `Intl.DateTimeFormat("en-CA", …)` — locale que produce `YYYY-MM-DD` | `app/app/comparar/page.tsx:54-61` (y sus dos sitios de uso, `:54` y `:237`) | **FIX** | El DOM renderizado de `/comparar` contiene `jul 2026` (o el mes civil que corresponda) y **cero** ocurrencias del patrón ISO: `grep -oE '20[0-9]{2}-[0-9]{2}-[0-9]{2}'` sobre el HTML servido == 0, apareado con control positivo `grep -oF ' 2026' \| wc -l` >= 1. **Guardarraíl**: usar `fechaCivilCorta` (`lib/dia-calendario`), que es el helper date-only del repo — JAMÁS convertir zona horaria sobre estos valores (gotcha rector v12.0: `date-only disfrazado de timestamptz`) | |
+| **C-01** | landing desktop (`it1-landing-full.png`) vs `v13-baseline-landing.png` + `-panel-mid.png` | La grilla bento deja **dos huecos interiores de 2 columnas**: la fila de `En tabla de sala esta semana` y la fila de `Movimiento reciente` ocupan cols 1-4 y dejan cols 5-6 VACÍAS, mientras las otras dos filas sí van pareadas (`Comisiones`+`Urgencias`, `Votaciones`+`Ingresos`). El baseline no exhibía huecos interiores. Derivación mecánica: la grilla es de 6 columnas (`bento-grid.tsx:25`, `md:grid-cols-6`) y el orden de montaje es sala(4)·comisiones(4)·urgencias(2)·movimiento(4)·votaciones(4)·ingresos(2) (`panel-actualidad.tsx:182-187`) ⇒ auto-placement produce `[4|hueco2] [4+2] [4|hueco2] [4+2]` | `app/components/panel-actualidad.tsx` (orden, `:182-187`) + `app/components/panel-tile-movimiento.tsx:96` y `app/components/panel-tile-votaciones.tsx:89` (`span`) | **FIX** | Test de composición sobre `panel-actualidad`: la secuencia de `span` de los 6 tiles se particiona en filas de 6 sin remanente — es decir, `grep -oF 'md:col-span-' ` sobre el DOM renderizado del panel arroja spans cuya suma acumulada cierra en múltiplos de 6 en cada corte de fila. Implementación mínima propuesta: reordenar a sala(4)+urgencias(2) · comisiones(4)+ingresos(2) · movimiento(6) · votaciones(6). Control positivo apareado obligatorio: los 6 tiles siguen presentes (6 `<h2>` de tile en el DOM) | **CERRADO en 129-04** (iteración 2) — ver §Iteraciones C-01 |
+| **C-02** | `/comparar` desktop (`129-deploy-comparar.png`) vs el botón `Buscar` de la landing en ambos baselines | El CTA primario `Comparar` se pinta **casi negro** (`bg-foreground`), mientras el CTA primario homólogo de toda la app (`Buscar` del hero) es **teal** (`bg-accent-product`). Evidencia de que es un outlier y no un sistema de dos CTAs: `bg-accent-product` aparece en **17** archivos de `components/`, `bg-foreground` en **2**, y el otro (`capa1/tramitacion-stepper.tsx:86`) no es un botón sino un marcador de paso ⇒ `/comparar` es el ÚNICO CTA primario de la app fuera del token | `app/components/comparar-selector.tsx:79` | **FIX** | `grep -oF 'bg-foreground' app/components/comparar-selector.tsx \| wc -l` == 0 **y** `grep -oF 'bg-accent-product' app/components/comparar-selector.tsx \| wc -l` >= 1 (control positivo apareado sobre el mismo archivo, para que el cero no sea vacuo) | **CERRADO en 129-04** (iteración 3) — ver §Iteraciones C-02 |
+| **C-03** | `/comparar` desktop (`129-deploy-comparar.png`) vs todos los tiles del panel en `v13-baseline-panel-mid.png` | Las fechas de `/comparar` se emiten en **ISO** (`En las fuentes consultadas al 2026-07-30…`, `Fuente: BCN · consultado al 2026-07-30`), mientras TODO el panel y los baselines usan el formato civil chileno (`datos al 24 jul 2026`, `Citado el 03 ago 2026`). La causa es `fechaConsultaHoy()`, que formatea con `Intl.DateTimeFormat("en-CA", …)` — locale que produce `YYYY-MM-DD` | `app/app/comparar/page.tsx:54-61` (y sus dos sitios de uso, `:54` y `:237`) | **FIX** | El DOM renderizado de `/comparar` contiene `jul 2026` (o el mes civil que corresponda) y **cero** ocurrencias del patrón ISO: `grep -oE '20[0-9]{2}-[0-9]{2}-[0-9]{2}'` sobre el HTML servido == 0, apareado con control positivo `grep -oF ' 2026' \| wc -l` >= 1. **Guardarraíl**: usar `fechaCivilCorta` (`lib/dia-calendario`), que es el helper date-only del repo — JAMÁS convertir zona horaria sobre estos valores (gotcha rector v12.0: `date-only disfrazado de timestamptz`) | **CERRADO en 129-04** (iteración 3) — ver §Iteraciones C-03 |
 | **C-04** | panel 390 (con salvedad) y landing desktop | **D-06, concordancia de plural**: los moldes emitían `1 citaciones del Senado`, `1 proyectos con {grado}`, `1 abstenciones`, `1 pareos`. El baseline lo exhibe literalmente: `v13-baseline-panel-mid.png` muestra **`1 sesiones de sala próximas`** | `app/components/panel-tile-comisiones.tsx:37`, `panel-tile-urgencias.tsx:160`, `panel-tile-votaciones.tsx:64` | **FIX** | `pnpm --filter ./app exec vitest run lib/plural.test.ts components/panel-tile-comisiones.test.tsx components/panel-tile-urgencias.test.tsx components/panel-tile-votaciones.test.tsx` sale 0 con más tests que el conteo base | **CERRADO en 129-03** (ver §Plural) |
 | **C-05** | landing desktop vs `v13-baseline-panel.png` | El tile `Por materia`, que en el baseline llenaba una columna entera con **seis** filas idénticas `(sin materia)` seguidas de un número, **ya no se monta**. Es una mejora respecto del baseline, no una regresión | `app/components/panel-actualidad.tsx:51` (bloque `I. agrupacion_materia MUERE sin tombstone (O-3)`) | **ACEPTAR** | Ya verificado en `129-DEPLOY-EVIDENCIA.md` §B-02: `(sin materia)`=0 y `Por materia`=0 sobre el DOM del deploy, con control positivo apareado `Comisiones citadas esta semana`=2 ⇒ ceros fuertes | n/a |
 | **C-06** | landing desktop (`it1-landing-full.png`) | El remanente del tile `Urgencias del Ejecutivo` se muestra como **texto plano** (`62 más`), mientras `Comisiones` y `Sala` lo muestran como **link** (`y 27 más →`). Es una asimetría visual REAL, pero es **decisión fijada**, no defecto | `app/components/panel-tile-urgencias.tsx:26-32` | **ACEPTAR** | No procede fix: el comentario del componente lo declara textualmente — *"O-6 elimina el link agregado de tile: … el remanente se declara como TEXTO SIN LINK (fix W-6, FIJADO, cero discreción) — jamás un 'y N más →' con destino"*. No existe destino honesto al que enlazar el remanente de urgencias; enlazarlo fabricaría una promesa de navegación | n/a |
@@ -69,8 +69,94 @@ $ for f in app/components/panel-actualidad.tsx app/components/panel-tile-movimie
 | # | qué entra | dónde se gasta | estado |
 |---|---|---|---|
 | **1** | **C-04** (plural, los 4 moldes) | `129-03` (este plan) | **GASTADA — CERRADA** |
-| **2** | **C-01** (huecos de la grilla bento) — el de mayor impacto visual y el único que se ve a distancia | `129-04` Task 1 | disponible |
-| **3** | **C-02** + **C-03** (los dos deltas de `/comparar`: token del CTA y formato de fecha) — se agrupan en UNA iteración porque son dos ediciones de una línea cada una, en la misma superficie, con criterios independientes | `129-04` Task 1 | disponible |
+| **2** | **C-01** (huecos de la grilla bento) — el de mayor impacto visual y el único que se ve a distancia | `129-04` Task 1 | **GASTADA — CERRADA** (`eb2ff8a`) |
+| **3** | **C-02** + **C-03** (los dos deltas de `/comparar`: token del CTA y formato de fecha) — se agrupan en UNA iteración porque son dos ediciones de una línea cada una, en la misma superficie, con criterios independientes | `129-04` Task 1 | **GASTADA — CERRADA** |
+
+**Iteraciones gastadas en la fase: 3 de 3.** Ninguna fila `FIX` quedó en `AGOTADAS ITERACIONES`:
+los cuatro `FIX` (C-01, C-02, C-03, C-04) están `CERRADO`.
+
+---
+
+## §Iteraciones — evidencia de cierre de los FIX de `129-04`
+
+### C-01 — huecos interiores de la grilla bento (iteración 2, commit `eb2ff8a`)
+
+**Desviación deliberada respecto de la implementación PROPUESTA por esta misma crítica.** La
+propuesta era *reordenar* a sala(4)+urgencias(2) · comisiones(4)+ingresos(2) · movimiento(6) ·
+votaciones(6). Se descartó porque **altera el ORDEN D-01/O-5**, que es una decisión ya arbitrada y
+tiene test propio (`panel-actualidad.test.tsx`, *"orden del DOM: sala → comisiones → urgencias →
+movimiento → votaciones → ingresos (O-5/D-01)"*): cerrar un hallazgo de layout rompiendo un
+invariante de contenido habría sido un mal cambio.
+
+La alternativa aplicada **conserva el orden intacto** y toca solo dos `span`:
+
+| tile (orden DOM, sin cambios) | span antes | span ahora | fila resultante |
+|---|---:|---:|---|
+| sala | 4 | **6** | fila 1 = 6 ✔ |
+| comisiones | 4 | 4 | fila 2 = 4+2 = 6 ✔ |
+| urgencias | 2 | 2 | ↑ |
+| movimiento | 4 | **6** | fila 3 = 6 ✔ |
+| votaciones | 4 | 4 | fila 4 = 4+2 = 6 ✔ |
+| ingresos | 2 | 2 | ↑ |
+
+```
+$ grep -hoE 'span=\{[0-9]\}' app/components/panel-tile-{sala,comisiones,urgencias,movimiento,votaciones,ingresos}.tsx
+span={6} span={4} span={2} span={6} span={4} span={2}
+```
+
+Test de composición añadido en `app/components/panel-actualidad.test.tsx` (*"C-01: los spans de los
+6 tiles cierran filas de 6 sin remanente"*): lee los spans de las **clases realmente emitidas** por
+`BentoTile` en orden DOM (`[class*="md:col-span-"]`), exige `[6,4,2,6,4,2]`, simula el
+auto-placement de la grilla de 6 columnas (si un tile no cabe en el remanente ⇒ hay hueco ⇒ falla) y
+cierra con acumulado `0`. **Control positivo apareado dentro del mismo test:** los 6 `<h2>` de tile
+siguen presentes — sin él, una lista vacía de spans "cerraría filas" de forma vacua.
+
+### C-02 — token del CTA `Comparar` (iteración 3)
+
+`app/components/comparar-selector.tsx`: el botón pasa a las MISMAS clases de color que el CTA
+homólogo de la app (el `Buscar` del hero, `search-box.tsx:129-130`):
+`bg-accent-product text-background hover:bg-accent-product/90`.
+
+```
+$ grep -oF 'bg-foreground' app/components/comparar-selector.tsx | wc -l
+0
+$ grep -oF 'bg-accent-product' app/components/comparar-selector.tsx | wc -l
+4          # control positivo apareado sobre el MISMO archivo ⇒ el cero es FUERTE
+```
+
+> Nota de método: la primera redacción del comentario explicativo **transcribía el token viejo**, y
+> el contador subía a **2** — el propio comentario habría vuelto vacuo el criterio. Se reescribió sin
+> el literal. El valor `0` de arriba es el medido DESPUÉS de esa corrección.
+
+Test nuevo `app/components/comparar-selector.test.tsx` (2 casos): el `button[type=submit]` existe y
+dice `Comparar` (control positivo), lleva `bg-accent-product` y **no** el token viejo; y los dos
+`<select>` NO heredan el relleno petróleo (su petróleo sigue siendo solo `focus-visible`).
+
+El docblock del componente, que declaraba "petróleo SOLO en focus-visible", se **enmendó
+explícitamente** en vez de dejarlo contradiciendo al código: esa regla describía los controles de
+filtro, no el CTA primario.
+
+### C-03 — fecha ISO en `/comparar` (iteración 3)
+
+`app/app/comparar/page.tsx`: `fechaConsultaHoy()` sigue calculando el **mismo día** (`en-CA` +
+`timeZone: America/Santiago` sobre `new Date()` — un instante REAL con hora, que sí debe convertirse
+de zona) y solo re-formatea el resultado con `fechaCivilCorta` (`lib/dia-calendario`), que es
+date-only y **no vuelve a convertir** — respetando el gotcha rector *date-only disfrazado de
+timestamptz*. Segundo sitio corregido: `fechaCaptura`, que se emitía como `…slice(0,10)` crudo en la
+línea de provenance de similitud de votación; ahora pasa por el mismo helper, sobre **exactamente el
+mismo día** que ya se mostraba. **Cambia la presentación, jamás el hecho.**
+
+**Fuera de alcance, intacto por mandato:** el manejo de errores de esta página (contrato LOCKED #34,
+`page.tsx` *"cada lector LANZA; error ≠ vacío"*) NO se tocó — su enmienda es el diferido D-1 y
+requiere pronunciamiento del operador.
+
+La medición del criterio (cero ISO en el DOM servido, apareado con control positivo) se hace contra
+el **deploy final** y vive en `129-DEPLOY-EVIDENCIA.md` §C-03 sobre el DOM desplegado.
+
+### Suite tras las dos iteraciones
+
+`pnpm --filter ./app test` → **1789 passed (120 files)**, exit 0 (base de `129-03`: 1786/119 ⇒
+**+3**: 1 de composición bento + 2 del CTA). `pnpm guards` → exit 0.
 
 **Orden de prioridad si el presupuesto se agota antes:** C-01 > C-02 > C-03. C-01 primero porque es
 el único que altera la composición de la página completa; C-02 antes que C-03 porque un CTA fuera de

@@ -3,6 +3,7 @@ import { cache } from "react";
 import { createServerSupabase } from "@/lib/supabase";
 import { PARLAMENTARIO_ID_RE } from "@/lib/buscar";
 import { formatNombre } from "@/lib/format";
+import { fechaCivilCorta } from "@/lib/dia-calendario";
 import { vsimPublicEnabled } from "@/lib/vsim-gate";
 import { CompararSelector } from "@/components/comparar-selector";
 import { SimilitudVotacionComparar } from "@/components/similitud-votacion-comparar";
@@ -50,14 +51,23 @@ export const dynamic = "force-dynamic";
  * mentía desde el día siguiente). La fecha de la FUENTE (`fecha_captura`) se usa
  * por fila cuando la RPC la emite (comisiones → "según fuente al"); los ejes cuyas
  * filas no la traen declaran "consultado al" (honesto: es la consulta, no la fuente).
+ *
+ * C-03 (129-04): el FORMATO de salida es el civil chileno del resto de la app
+ * ("30 jul 2026"), no el ISO `YYYY-MM-DD` que producía `en-CA`. El DÍA sigue
+ * calculándose igual — `en-CA` + tz America/Santiago sobre `new Date()`, que es un
+ * instante REAL con hora y por tanto SÍ debe convertirse de zona — y solo después
+ * se re-formatea con `fechaCivilCorta`, que es date-only y no vuelve a convertir
+ * (gotcha rector: date-only disfrazado de timestamptz). Cambia la presentación,
+ * jamás el hecho.
  */
 function fechaConsultaHoy(): string {
-  return new Intl.DateTimeFormat("en-CA", {
+  const diaChileno = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Santiago",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+  return fechaCivilCorta(diaChileno) ?? diaChileno;
 }
 
 // Copy LOCKED (101-UI-SPEC §Copywriting → Copy table).
@@ -526,8 +536,10 @@ export async function CompararEjes({
       filaA?.camara != null &&
       filaB?.camara != null &&
       filaA.camara !== filaB.camara;
+    // C-03: mismo DÍA que antes (la parte fecha del `fecha_captura_max` que ya
+    // se venía mostrando), re-formateado al civil chileno. Cero cambio de hecho.
     const fechaCaptura = fila?.fecha_captura_max
-      ? String(fila.fecha_captura_max).slice(0, 10)
+      ? fechaCivilCorta(String(fila.fecha_captura_max).slice(0, 10))
       : null;
     ejeSimilitud = (
       <SimilitudVotacionComparar

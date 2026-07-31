@@ -19,8 +19,17 @@ import type { ParlamentarioListadoRow } from "@/lib/types";
  * opciones van en el orden alfabético que emite el roster (el server lo ordena por
  * nombre). Presentacional PURO server-friendly (sin "use client").
  *
- * CANDADOS DE RÉGIMEN (§Typography/§Color): cero-hex, tokens tipográficos, petróleo SOLO
- * en focus-visible (mismo idiom que DirectoryFilter de /parlamentarios).
+ * CANDADOS DE RÉGIMEN (§Typography/§Color): cero-hex, tokens tipográficos, petróleo en
+ * focus-visible de los DOS `<select>` (mismo idiom que DirectoryFilter de
+ * /parlamentarios) y, desde C-02 (129-04), también como RELLENO del CTA primario
+ * `Comparar` — que es el mismo rol y las mismas clases que el botón `Buscar` del hero
+ * (`search-box.tsx:129-130`). La regla "petróleo solo en focus-visible" describía los
+ * controles de filtro, no el CTA primario: dejarlo con el relleno casi-negro anterior
+ * hacía de /comparar el único CTA primario de la app fuera del sistema de color.
+ *
+ * (El literal del token anterior NO se transcribe en este archivo: el criterio de
+ * cierre de C-02 es un contador `grep` sobre él, y repetirlo en un comentario lo
+ * volvería vacuo.)
  */
 
 export interface CompararSelectorProps {
@@ -74,9 +83,13 @@ export function CompararSelector({ roster, a, b }: CompararSelectorProps) {
           <OpcionesRoster roster={roster} />
         </select>
       </label>
+      {/* C-02: token del CTA primario de la app — mismas clases de color que el
+          botón `Buscar` del hero (`bg-accent-product text-background` +
+          `hover:bg-accent-product/90`, search-box.tsx:129-130). El relleno anterior
+          dejaba este botón como el ÚNICO CTA primario fuera del sistema. */}
       <button
         type="submit"
-        className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="rounded-lg bg-accent-product px-4 py-2 text-sm font-medium text-background hover:bg-accent-product/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         Comparar
       </button>
