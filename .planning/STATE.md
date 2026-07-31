@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v13.0
 milestone_name: milestone
 status: executing
-stopped_at: "Pasada 1: 126/127/128/130/131 COMPLETAS; falta 129 (loop BrowserOS)"
-last_updated: "2026-07-30T22:21:26.331Z"
+stopped_at: 129-03 COMPLETA (critica + plural + B26); siguen 129-04 (fixes + re-deploy) y 129-05
+last_updated: "2026-07-31T00:19:36.688Z"
 last_activity: 2026-07-30
 progress:
   total_phases: 13
   completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 22
+  completed_plans: 20
   percent: 38
 ---
 
@@ -114,6 +114,10 @@ la memoria del proyecto (`v12-gotchas-metodo`, `v13-milestone-preparado`). Recto
   `PUBLIC_RPC_ALLOWLIST`, pgTAP contra schema aplicado. Firma viva jamás se altera (`42P13`) —
   firma v2 paralela, precedente `0060`.
 
+- [Phase ?]: 129-03: plural() con ambas formas explicitas (sin heuristica morfologica); idioms-panel.ts intacto
+- [Phase ?]: 129-03: el project-ref restante se publica como 49 archivos tracked (git grep), no el ~96 del plan (grep recursivo agota timeout bajo OneDrive)
+- [Phase ?]: 129-03 critica: 4 FIX (C-01 huecos bento, C-02 token CTA /comparar, C-03 fecha ISO, C-04 plural CERRADO); 2 de 3 iteraciones quedan para 129-04
+
 ### Pending Todos
 
 - [DEUDA OPERADOR — blocking-human diferido, hereda de v11.0/v12.0]: CF secrets
@@ -161,8 +165,8 @@ la memoria del proyecto (`v12-gotchas-metodo`, `v13-milestone-preparado`). Recto
 
 ## Session Continuity
 
-Last session: 2026-07-30T22:21:26.321Z
-Stopped at: Pasada 1: 126/127/128/130/131 COMPLETAS; falta 129 (loop BrowserOS)
+Last session: 2026-07-31T00:18:30.789Z
+Stopped at: 129-03 COMPLETA (critica + plural + B26); siguen 129-04 (fixes + re-deploy) y 129-05
 Resume file: .planning/phases/129-panel-diseno-loop-de-diseno-browseros-hasta-que-quede-bien/.continue-here.md
 
 ## Operator Next Steps
