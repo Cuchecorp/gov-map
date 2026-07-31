@@ -92,6 +92,20 @@ describe("AgendaFiltros — renderiza el listado por día", () => {
     expect(screen.getByText("Jueves 25 de junio")).toBeInTheDocument();
   });
 
+  it("WR-07: el conteo del acordeón concuerda en número — '1 citación' vs '2 citaciones'", () => {
+    // El molde pasó a `plural()` (helper único de concordancia, D-06) en vez de
+    // repetir el ternario inline. El fixture ya discrimina solo: el día 22 trae 1
+    // citación (singular) y el 23 trae 2 (plural), así que ninguna de las dos
+    // formas puede pasar por descuido.
+    render(<AgendaFiltros slice={FIXTURE} />);
+    // Días 22, 24 y 25 traen 1 citación cada uno; el 23 trae 2.
+    expect(screen.getAllByText("1 citación")).toHaveLength(3);
+    expect(screen.getAllByText("2 citaciones")).toHaveLength(1);
+    // La forma incorrecta NO aparece para ninguno de los dos conteos.
+    expect(screen.queryByText("1 citaciones")).not.toBeInTheDocument();
+    expect(screen.queryByText("2 citación")).not.toBeInTheDocument();
+  });
+
   it("el estado de cancelación (Suspendida) es visible en la card", () => {
     render(<AgendaFiltros slice={FIXTURE} />);
     expect(screen.getByText(/Suspendida/)).toBeInTheDocument();

@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { CitacionCard } from "@/components/citacion-card";
 import { CarrilAccordion } from "@/components/carril-accordion";
 import { detectarBoletin } from "@/lib/boletin-detector";
+import { plural } from "@/lib/plural";
 import type { CitacionSliceRow } from "@/lib/agenda-types";
 
 // ---------------------------------------------------------------------------
@@ -347,7 +348,7 @@ export function AgendaFiltros({ slice }: AgendaFiltrosProps) {
             <CarrilAccordion
               key={dayKey}
               titulo={dayLabel}
-              conteo={`${rows.length} ${rows.length === 1 ? "citación" : "citaciones"}`}
+              conteo={`${rows.length} ${plural(rows.length, "citación", "citaciones")}`}
               defaultOpen={index === 0}
               headingLevel="h3"
               headingClassName="text-base font-semibold"
