@@ -116,6 +116,34 @@ describe("PanelTileMovimiento", () => {
     expect(container.textContent).not.toMatch(/más/);
   });
 
+  it("129-04 densidad: total del jsonb (9) > maxItems (4) → 4 ítems visibles y el remanente HONESTO '5 más'", () => {
+    // El `total` del jsonb manda sobre el largo del array (WR-07): la fixture
+    // declara 9 con 6 ítems en el array ⇒ el remanente es 9 − 4 = 5, no 6 − 4.
+    const items = [
+      itemVelocity("B-1", "2026-07-20"),
+      itemVelocity("B-2", "2026-07-21"),
+      itemVelocity("B-3", "2026-07-22"),
+      itemVelocity("B-4", "2026-07-23"),
+      itemVelocity("B-5", "2026-07-24"),
+      itemVelocity("B-6", "2026-07-25"),
+    ];
+    const fila = filaVelocity(items, "Senado");
+    (fila.evidencia as { total?: number }).total = 9;
+
+    const { container } = render(
+      <PanelTileMovimiento filas={[fila]} maxItems={4} />,
+    );
+
+    // Densidad: como mucho 4 ítems visibles.
+    expect(container.querySelectorAll("ul > li")).toHaveLength(4);
+    // Honestidad del N: 9 − 4 = 5, literal exacto (el tile de movimiento
+    // declara el remanente como TEXTO, sin flecha ni link — asimetría FIJADA).
+    expect(container.textContent).toContain("5 más");
+    // El N no es ni el del array (6−4=2) ni el de maxItems.
+    expect(container.textContent).not.toContain("2 más");
+    expect(container.textContent).not.toContain("6 más");
+  });
+
   it("filas de dos cámaras → ambas se listan, en el orden de llegada de las filas (T-52-13)", () => {
     const filas = [
       filaVelocity([itemVelocity("B-CAM", "2026-07-20")], "Cámara de Diputados"),

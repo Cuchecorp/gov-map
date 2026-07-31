@@ -529,9 +529,19 @@ describe("(10) WR-01 — provenance con fecha honesta", () => {
   it("comisiones usa la fecha_captura de la FUENTE por fila; los ejes sin fecha_captura declaran la consulta", async () => {
     const html = await renderEjes("D1001", "D1002");
     // fecha_captura del fixture de comisiones → "según fuente al".
-    expect(html).toContain("según fuente al 2026-01-01");
+    // C-03 (129-04): el DÍA es el mismo del fixture (2026-01-01); cambia solo el
+    // formato, del ISO al civil chileno del resto de la app.
+    expect(html).toContain("según fuente al 01 ene 2026");
     // Militancia/co-autoría/zona no traen fecha_captura → "consultado al" (request-time).
     expect(html).toContain("consultado al ");
+  });
+
+  it("C-03: CERO fechas ISO en el DOM de los ejes; control positivo apareado en el mismo render", async () => {
+    const html = await renderEjes("D1001", "D1002");
+    // Control positivo PRIMERO: este render SÍ contiene fechas civiles…
+    expect(html).toMatch(/\b\d{2} (ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic) 20\d{2}\b/);
+    // …y por tanto el cero de abajo es FUERTE, no vacuo.
+    expect(html).not.toMatch(/20\d{2}-\d{2}-\d{2}/);
   });
 
   it("page.tsx NO hornea una constante de fecha de cobertura", () => {

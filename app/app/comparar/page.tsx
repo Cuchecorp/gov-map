@@ -335,8 +335,11 @@ export async function CompararEjes({
     .filter((f) => /^\d{4}-\d{2}-\d{2}$/.test(f))
     .sort()
     .at(-1);
+  // C-03: el DÍA es el mismo que ya se elegía (máxima `fecha_captura` de las filas,
+  // seleccionada sobre el ISO para que el `.sort()` lexicográfico siga siendo el
+  // orden cronológico correcto); solo el FORMATO pasa al civil chileno.
   const provenanceComisiones = fechaFuenteComisiones
-    ? `Fuente: Cámara/Senado · según fuente al ${fechaFuenteComisiones}`
+    ? `Fuente: Cámara/Senado · según fuente al ${fechaCivilCorta(fechaFuenteComisiones) ?? fechaFuenteComisiones}`
     : `Fuente: Cámara/Senado · consultado al ${fechaConsulta}`;
   const nombresComA = comA.map((c) => c.nombre);
   const nombresComB = comB.map((c) => c.nombre);

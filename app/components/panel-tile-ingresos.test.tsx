@@ -187,6 +187,50 @@ describe("PanelTileIngresos", () => {
     expect(container.querySelectorAll('[aria-hidden="true"]').length).toBe(0);
   });
 
+  it("129-04 densidad (archivos y retiros): 7 proyectos > maxItems 4 → 4 visibles y remanente HONESTO '3 más'", () => {
+    // La unidad de la subsección "Archivos y retiros" es el PROYECTO agrupado
+    // por boletín (no el evento), así que el remanente se cuenta sobre la lista
+    // agrupada: 7 boletines distintos − 4 mostrados = 3.
+    const items = ["B-1", "B-2", "B-3", "B-4", "B-5", "B-6", "B-7"].map((b, i) =>
+      itemProyecto(b, `2026-07-${String(10 + i).padStart(2, "0")}`),
+    );
+    const { container } = render(
+      <PanelTileIngresos
+        ingresos={[]}
+        archivados={[filaEvidencia(items, "Cámara de Diputados")]}
+        maxItems={4}
+      />,
+    );
+    // Densidad: la subsección de archivados muestra a lo más 4 <li>.
+    expect(container.querySelectorAll("ul > li")).toHaveLength(4);
+    // Honestidad del N: 7 − 4 = 3, literal exacto (texto, sin flecha ni link).
+    expect(container.textContent).toContain("3 más");
+    // Ni el largo del array ni maxItems se cuelan como N.
+    expect(container.textContent).not.toContain("7 más");
+    expect(container.textContent).not.toContain("4 más");
+  });
+
+  it("129-04 densidad (nuevos ingresos): 6 ítems > maxItems 4 → 4 visibles; el tile NO declara remanente en esta subsección", () => {
+    // Control HONESTO del hueco: la subsección "Nuevos ingresos" corta a
+    // maxItems y NO emite "N más" (a diferencia de archivados). Este test fija
+    // el comportamiento REAL para que la tabla de densidad no lo invente.
+    const items = ["I-1", "I-2", "I-3", "I-4", "I-5", "I-6"].map((b, i) =>
+      itemProyecto(b, `2026-07-${String(10 + i).padStart(2, "0")}`),
+    );
+    const { container } = render(
+      <PanelTileIngresos
+        ingresos={[filaEvidencia(items, "2022-2026 (piso de corpus)")]}
+        archivados={[]}
+        maxItems={4}
+      />,
+    );
+    expect(container.querySelectorAll("ul > li")).toHaveLength(4);
+    // Control positivo apareado: los 4 ítems SÍ se pintaron…
+    expect(container.textContent).toContain("Proyecto I-1");
+    // …y aun así no hay literal de remanente en esta subsección.
+    expect(container.textContent).not.toMatch(/\d+ más/);
+  });
+
   it("footer: 'Fuente: Tramitación · según fuente al {d}'; cero 'datos al'", () => {
     const { container } = render(
       <PanelTileIngresos
