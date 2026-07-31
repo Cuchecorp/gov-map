@@ -31,6 +31,11 @@ function filaEvidencia(
   items: ReturnType<typeof itemProyecto>[],
   cobertura: string | null,
   consultadoAl = "2026-07-24",
+  // WR-05/CR-02 (129-REVIEW): `total` OVERRIDEABLE. Con `total === items.length`
+  // (default) un test de remanente es INDECIDIBLE: no puede distinguir si el N
+  // salió del `total` del jsonb o del largo del array. Los tests de densidad lo
+  // fuerzan a divergir para que el N sea discriminante.
+  total: number = items.length,
 ): FilaPanel {
   return {
     cobertura_camara: cobertura,
@@ -39,7 +44,7 @@ function filaEvidencia(
     supresion_causa: null,
     evidencia: {
       items,
-      total: items.length,
+      total,
       consultado_al: consultadoAl,
       fuente: { origen: "camara", dataset: "tramitacion" },
     },
@@ -210,16 +215,20 @@ describe("PanelTileIngresos", () => {
     expect(container.textContent).not.toContain("4 más");
   });
 
-  it("129-04 densidad (nuevos ingresos): 6 ítems > maxItems 4 → 4 visibles; el tile NO declara remanente en esta subsección", () => {
-    // Control HONESTO del hueco: la subsección "Nuevos ingresos" corta a
-    // maxItems y NO emite "N más" (a diferencia de archivados). Este test fija
-    // el comportamiento REAL para que la tabla de densidad no lo invente.
+  it("129-04 densidad (nuevos ingresos): 9 de total > maxItems 4 → 4 visibles y remanente HONESTO '5 más', derivado del total del jsonb", () => {
+    // CR-02 (129-REVIEW): esta subsección cortaba a maxItems SIN declarar el
+    // remanente, y el test previo CERTIFICABA la omisión
+    // (`not.toMatch(/\d+ más/)`). Documentar un defecto no lo vuelve contrato:
+    // la invariante H (`panel-actualidad.tsx:49-50`) exige remanente declarado.
+    //
+    // El `total` (9) DIVERGE del largo del array (6) a propósito: así el N es
+    // discriminante y prueba que sale del jsonb, no de `items.length`.
     const items = ["I-1", "I-2", "I-3", "I-4", "I-5", "I-6"].map((b, i) =>
       itemProyecto(b, `2026-07-${String(10 + i).padStart(2, "0")}`),
     );
     const { container } = render(
       <PanelTileIngresos
-        ingresos={[filaEvidencia(items, "2022-2026 (piso de corpus)")]}
+        ingresos={[filaEvidencia(items, "2022-2026 (piso de corpus)", "2026-07-24", 9)]}
         archivados={[]}
         maxItems={4}
       />,
@@ -227,8 +236,11 @@ describe("PanelTileIngresos", () => {
     expect(container.querySelectorAll("ul > li")).toHaveLength(4);
     // Control positivo apareado: los 4 ítems SÍ se pintaron…
     expect(container.textContent).toContain("Proyecto I-1");
-    // …y aun así no hay literal de remanente en esta subsección.
-    expect(container.textContent).not.toMatch(/\d+ más/);
+    // …y el remanente se respalda con el total real: 9 − 4 = 5.
+    expect(container.textContent).toContain("5 más");
+    // Ni el largo del array (6 − 4 = 2) ni maxItems se cuelan como N.
+    expect(container.textContent).not.toContain("2 más");
+    expect(container.textContent).not.toContain("4 más");
   });
 
   it("footer: 'Fuente: Tramitación · según fuente al {d}'; cero 'datos al'", () => {

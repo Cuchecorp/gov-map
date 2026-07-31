@@ -93,11 +93,16 @@ function seccionSubtitulo(
   filas: FilaPanel[],
 ): {
   items: ItemProyecto[];
+  total: number;
   supresionCausa: string | null;
   consultadoAl: string | null;
   fuente: string | null;
 } {
   const items: ItemProyecto[] = [];
+  // Invariante H (`panel-actualidad.tsx:49-50`): el remanente se respalda con el
+  // TOTAL REAL del jsonb, jamás con `items.length` a secas — el día que la RPC
+  // capee `items` en el `jsonb_agg`, el largo del array subdeclara en silencio.
+  let total = 0;
   let supresionCausa: string | null = null;
   let consultadoAl: string | null = null;
   let fuente: string | null = null;
@@ -109,12 +114,13 @@ function seccionSubtitulo(
     }
     const ev = parseEvidenciaProyectos(f.evidencia);
     items.push(...ev.items);
+    total += ev.total ?? ev.items.length;
     fuente = fuente ?? etiquetaFuente(ev.fuente);
     // WR-15: ingresos/archivados son carril de HECHOS PASADOS ⇒ D-05 asigna
     // `fecha_max` (fecha del último hecho), no `consultado_al` (agenda futura).
     consultadoAl = consultadoAl ?? f.fecha_max ?? ev.consultado_al;
   }
-  return { items, supresionCausa, consultadoAl, fuente };
+  return { items, total, supresionCausa, consultadoAl, fuente };
 }
 
 export function PanelTileIngresos({
@@ -133,6 +139,18 @@ export function PanelTileIngresos({
   const rotuloArchivados = fechaCivilCorta(seccionArchivados.consultadoAl);
   const rotuloFooter = rotuloIngresos ?? rotuloArchivados;
   const fuenteFooter = seccionArchivados.fuente ?? seccionIngresos.fuente;
+
+  // CR-02 (129-REVIEW): la subsección de ingresos cortaba a `maxItems` SIN
+  // declarar el remanente — la RPC emite los ingresos de la ventana 7d sin cap
+  // (`0081` §2), así que el ciudadano veía 4 de N y NADA en el DOM se lo decía.
+  // Violaba la invariante H del orquestador. Mismo idiom que
+  // `panel-tile-movimiento.tsx:92-93`: la unidad de esta lista es el ÍTEM (no hay
+  // agrupación), así que `total` del jsonb y el largo de la lista cuentan lo
+  // mismo y `Math.max` sólo protege de un `total` subdeclarado.
+  const mostradosIngresos = seccionIngresos.items.slice(0, maxItems);
+  const restanteIngresos =
+    Math.max(seccionIngresos.total, seccionIngresos.items.length) -
+    mostradosIngresos.length;
 
   const porBoletinArchivados = agruparPorBoletin(seccionArchivados.items);
   const listaArchivados = Array.from(porBoletinArchivados.values());
@@ -171,8 +189,9 @@ export function PanelTileIngresos({
           // vacía — la ausencia se declara con su causa.
           <p className="text-sm text-muted-foreground mb-4">{VACIO_SIN_FILAS}</p>
         ) : (
+          <>
           <ul className="mb-4">
-            {seccionIngresos.items.slice(0, maxItems).map((it, idx) => (
+            {mostradosIngresos.map((it, idx) => (
               <li
                 key={`${it.boletin ?? "x"}-${idx}`}
                 className="border-t border-border pt-4 first:border-t-0 first:pt-0"
@@ -196,6 +215,12 @@ export function PanelTileIngresos({
               </li>
             ))}
           </ul>
+          {restanteIngresos > 0 && (
+            <p className="-mt-1 mb-4 text-[13px] text-muted-foreground">
+              {restanteIngresos} más
+            </p>
+          )}
+          </>
         )}
 
         {/* ── Subsección: Archivos y retiros ──────────────────────────────── */}
