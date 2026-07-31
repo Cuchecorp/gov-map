@@ -511,3 +511,54 @@ no lo infiere y no lo deriva del silencio.
 - Capturas acreditadas por **contenido** (`textContent`, jamás `innerText`), nunca por `test -s`.
 - Los chunks del bundle se re-listan con glob; **jamás** se hardcodea una ruta de chunk.
 - Este plan **no deploya, no instala paquetes y no toca `supabase/migrations/`, `.env` ni la CSP.**
+
+---
+
+## Addendum ola 5 — re-deploy final tras el code-review
+
+El consolidado de arriba se escribió contra el deploy `9a8acdb0`. Después de él, un code-review
+profundo (`129-REVIEW.md`, 2 críticos + 10 warnings + 3 info) produjo 10 commits de corrección
+(`bd785da` … `ee2b2e5`) que **PROD no tenía**. Se re-deployó por el mismo procedimiento probado.
+
+**Version-id vigente: `8e0f403e-5806-411c-8289-ec416924058c`.** Es el 5.º de la cadena
+(`b69f2ec2` → `4c6fdbda` → `f9c5bf23` → `9a8acdb0` → **`8e0f403e`**). Detalle completo, patas del
+bundle y mediciones DOM en `129-DEPLOY-EVIDENCIA.md` §Re-deploy FINAL post-review (ola 5).
+
+### Qué cambia para el operador
+
+| # | hallazgo del review | qué se hizo | ¿se ve en pantalla? |
+|---|---|---|---|
+| **CR-01** | el fix C-03 del eje VSIM no tenía ni un test que lo respaldara (sobrevivía a la mutación) | test real con `VSIM_PUBLIC_ENABLED=true` y control positivo apareado (`bd785da`) | no — es blindaje de regresión |
+| **CR-02** | "Nuevos ingresos" truncaba a 4 **sin declarar el remanente**, y un test de la fase certificaba la omisión | el tile emite su "N más" con `Math.max(total_jsonb, items.length)`; el test se invirtió (`1c696b6`) | **hoy NO**, y la razón está medida: la ventana de 7 días viene con **cero** ingresos, así que la subsección rinde su ausencia declarada (*"sin nuevos ingresos fechados en la ventana"*) y no hay nada que truncar. El código está en el bundle desplegado (pata 1 del bundle: **0 → 2**) y su honestidad está probada por test (`panel-tile-ingresos.test.tsx:230`, `"5 más"`) |
+| **WR-01/02/IN-03** | `fecha_captura_max` es timestamp real, no date-only; el fix podía **borrar** la línea de provenance | degradación honesta a `"fecha no informada"`, nunca a la nada (`f5d61ae`) | sólo si el dato es impresentable |
+| **WR-03** | el skeleton del Suspense seguía en span 4 tras subir el tile a 6 ⇒ reflow de media portada | fallback a span 6 (`2ebcd9f`) | sí, durante la carga: la fila ya no salta |
+| **WR-04/08** | el test de spans validaba una **réplica** del orquestador, no el orquestador | monta el componente real (`46ae509`) | no |
+| **WR-05** | aserción vacua en densidad de archivados | fixture con `total ≠ items.length` (`ff726ee`) | no |
+| **WR-06/07** | `total` del jsonb descartado; `plural()` sin adoptar en 2 sitios | excepción documentada + adopción (`3e59cf2`, `e150b80`) | no |
+| **IN-01** | parámetro muerto `primero` | eliminado (`3bee95b`) | no |
+| **WR-09** | project-ref en claro dentro de `129-03-PLAN.md` | redactado (`ee2b2e5`) | no |
+
+### Mediciones sobre el deploy `8e0f403e`
+
+- **Densidad 390 px:** `[4, 4, 4, 4, 4, 1]` ítems por sección ⇒ **ninguna** sobre 4. Remanentes vivos
+  en el DOM: `y 30 más →`, `y 27 más →`, `62 más`.
+- **B-02:** `(sin materia)` = 0 · `Por materia` = 0 · control positivo
+  `Comisiones citadas esta semana` = 2 ⇒ ceros **fuertes**. (Sigue siendo cero **estructural**, no
+  acreditable como logro del deploy: el baseline pre-fase ya los pasaba.)
+- **`/comparar`:** `200` al 2.º intento (el 1.º dio `500`, modo M-B ya diferido a D-1), 6 ejes,
+  `err:false`, `iso:0` con `civil:22`, ambos parlamentarios resueltos.
+- **Suite del tile tocado:** `vitest run components/panel-tile-ingresos.test.tsx` → **11/11**.
+
+### Capturas vigentes (sobrescritas, mismos nombres, todas `-nt /tmp/129-deploy-final`)
+
+`129-final-landing-desktop.png` (1620×917) · `129-final-landing-full.png` (1600×4190, **la única
+donde se ve la grilla bento entera**) · `129-final-comparar.png` (1620×847) ·
+`129-final-panel-390.png` (390×1400, **escalón (b): NO es del deploy real**, `href` = `127.0.0.1`).
+
+### Gotcha nuevo, medido en esta ola
+
+**Los nombres de chunk SSR de Turbopack NO son hashes de contenido fiables.** El listado completo de
+`chunks/ssr/*.js` salió **idéntico** entre el bundle viejo y el nuevo (`comm -3` = 0), y sin embargo
+`app_app_page_tsx_0rknh79._.js` — mismo nombre — pasó de **0** a **2** ocurrencias del literal nuevo.
+Un listado de nombres igual **no** prueba que el bundle sea el mismo: la pata que discrimina es el
+conteo de un literal por contenido, con su medición pre-purga como control negativo.

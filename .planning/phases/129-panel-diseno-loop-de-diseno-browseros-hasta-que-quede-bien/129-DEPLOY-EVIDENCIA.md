@@ -756,3 +756,248 @@ $ git diff --name-only -- app/next.config.ts app/public/_headers app/middleware.
                                                → (vacío)
 ```
 Cero DDL/DML, cero flips de flags, cero `secret put`, cero cambios a la CSP.
+
+---
+---
+
+# Re-deploy FINAL post-review (ola 5)
+
+**Motivo:** tras las capturas de la ola 4 (`9a8acdb0-…`), un code-review Opus encontró 2 blockers
+(CR-01, CR-02) y 10 warnings. Se corrigieron en 10 commits (`bd785da` … `ee2b2e5`), pero **PROD
+quedó desactualizado**. Este re-deploy los publica. HEAD del bundle: `ee2b2e5`.
+
+## VERSIÓN DESPLEGADA: `8e0f403e-5806-411c-8289-ec416924058c`
+
+Distinta de las cuatro anteriores:
+
+| # | version-id | de quién |
+|---|---|---|
+| 0 | `b69f2ec2-37c9-4212-b91c-a9ad97b4aeb7` | preexistente |
+| 1 | `4c6fdbda-61ae-485e-9a4d-4197db35cf61` | `129-01` |
+| 2 | `f9c5bf23-c021-4a90-b5f5-ff9dd7abbb82` | `129-04`, primer re-deploy |
+| 3 | `9a8acdb0-0534-4419-a8a3-8a8df3de79f5` | `129-04`, ola 4 (el bundle criticado) |
+| 4 | **`8e0f403e-5806-411c-8289-ec416924058c`** | **ola 5, FINAL — el de los fixes del review** |
+
+## Procedimiento (idéntico al probado, sin atajos)
+
+1. `touch /tmp/129r5-build-start` → `2026-07-30 21:43:13 -0400`.
+2. Purga explícita en **PowerShell** de `node_modules`, `.pnpm-store`, `app/.open-next` del mirror
+   (`robocopy /MIR` con `/XD` IGNORA, no borra) → las tres con `exists=False`.
+3. `robocopy /MIR` con los mismos `/XD` → `ROBOCOPY_EXIT: 3` (< 8 = éxito).
+4. Re-escritura de `C:/Temp/obs-build/docker-deploy.sh` (no está en el repo).
+5. Contenedor `node:22-slim` con `MSYS_NO_PATHCONV=1`, montando `/work` y el OAuth de
+   `%APPDATA%\xdg.config\.wrangler` → **build + deploy DENTRO del contenedor**.
+6. `touch /tmp/129-deploy-final` **inmediatamente** tras extraer el `Current Version ID`.
+
+### Gate anti-bundle-viejo
+
+```
+-rw-r--r-- 0    2026-07-30 21:43:13.640120600 -0400 /tmp/129r5-build-start
+-rw-r--r-- 2278 2026-07-30 21:55:21.760757400 -0400 C:/Temp/obs-build/app/.open-next/worker.js
+-rw-r--r-- 0    2026-07-30 21:57:29.607826700 -0400 /tmp/129-deploy-final
+$ test C:/Temp/obs-build/app/.open-next/worker.js -nt /tmp/129r5-build-start && echo GATE_OK
+GATE_OK
+```
+
+## Patas de que el código nuevo VIAJÓ al bundle
+
+`BUNDLE=C:/Temp/obs-build/app/.open-next/server-functions`. El pre-fix de esta ola es el bundle de
+`9a8acdb0`, medido **antes** de la purga.
+
+| pata | comando | pre (`9a8acdb0`) | post (`8e0f403e`) | criterio | ✓ |
+|---|---|---:|---:|---|---|
+| **1 — POSITIVO CON CARNE** (CR-02: el `<p>` del remanente de ingresos, className único en todo `app/`) | `grep -rhoF -- '-mt-1 mb-4 text-[13px] text-muted-foreground' "$BUNDLE" \| wc -l` | **0** | **2** | >= 1 | ✔ |
+| **2 — CONTROL POSITIVO APAREADO** | `grep -rhoF 'Comisiones citadas esta semana' "$BUNDLE" \| wc -l` | 2 | **2** | >= 1 | ✔ |
+| **3 — el negativo de la ola 4 sigue en cero** | `grep -rhoF 'citaciones del Senado' "$BUNDLE" \| wc -l` | 0 | **0** | == 0 | ✔ |
+
+El pre = **0** y el post = **2** sobre el MISMO comando y el MISMO árbol es lo que le da carne al
+positivo: no es un `grep` que "encuentra algo en algún lado", es un literal que **no existía** en el
+bundle desplegado hasta esta ola. La pata 2 prueba que el `grep` sabe encontrar en ambos bundles.
+
+Los dos archivos que hoy lo contienen (`grep -rlF`):
+```
+default/app/.next/server/chunks/ssr/app_app_page_tsx_0rknh79._.js
+default/app/handler.mjs
+```
+
+### Pata 4 — chunks SSR: **el criterio de la ola 4 NO se cumple, y se reporta como es**
+
+```
+$ ls "$BUNDLE"/default/app/.next/server/chunks/ssr/*.js | xargs -n1 basename | sort > post.txt
+$ wc -l < post.txt
+122
+$ comm -3 pre.txt post.txt | wc -l
+0          # CERO nombres distintos
+```
+
+**Hecho medido que corrige la premisa del plan:** el sufijo de los nombres de chunk de Turbopack
+**no es un hash de contenido estable respecto de estos cambios**. El chunk
+`app_app_page_tsx_0rknh79._.js` conserva su nombre EXACTO entre pre y post y, sin embargo, su
+contenido cambió — es justamente uno de los dos archivos donde aparece el literal nuevo (0 → 2).
+Es decir: **un listado de nombres idéntico NO prueba que el bundle sea el mismo**, y usarlo como
+única pata habría dado un falso ROJO aquí (igual que en la ola 4 habría dado un falso ROJO mirar
+solo `app_components_*`). La pata que discrimina es la 1, medida por contenido.
+
+Pata de artefacto independiente: wrangler reportó **2 assets nuevos o modificados** y subió un CSS
+con hash nuevo, `_next/static/chunks/1vagedrj91us9.css`.
+
+## Prueba de que el deploy nuevo es el que se SIRVE
+
+```
+$ curl -s https://observatorio-congreso.thevalis.workers.dev/BUILD_ID
+YA3344T_PSCYEOsROanLw
+$ cat C:/Temp/obs-build/app/.open-next/assets/BUILD_ID
+YA3344T_PSCYEOsROanLw          # IDÉNTICOS
+$ curl -s ".../?cb=<epoch>" | grep -oF '1vagedrj91us9.css' | wc -l
+4                              # el CSS recién subido va referenciado en el HTML servido
+```
+
+## Status HTTP
+
+```
+$ curl -s -o /tmp/129r5-home.html -w '%{http_code}' .../          → 200   (intento 1)
+$ curl -s -o /tmp/129r5-comp.html -w '%{http_code}' .../comparar?a=D1178&b=D1099
+                                                                  → 500 · 200 (intentos 1 y 2)
+```
+El `500` transitorio del primer intento a `/comparar` se registra, no se oculta: es el modo **M-B**
+ya documentado (`129-CRITICA.md` §Diferidos D-1, `Promise.all` sin aislamiento por eje), **diferido a
+pronunciamiento del operador** y NO tocado en esta ola.
+
+## Verificación DOM del deploy final
+
+### CR-02 — el remanente de "Nuevos ingresos": el fix VIAJÓ, pero HOY NO ES VISIBLE (dato, no diseño)
+
+Medido en el DOM hidratado del deploy real (`evaluate_script`, `textContent`):
+
+```
+{"ing":["P|text-sm text-muted-foreground mb-4|sin nuevos ingresos fechados en la ventana — en las fuentes consultadas al 28 jul 2026", …]}
+```
+
+La subsección "Nuevos ingresos" está **en estado de supresión declarada**: hay **cero** ítems en la
+ventana de 7 días, así que el `<ul>` ni siquiera se monta (`ingItems: "no-ul:P"`) y la rama
+`restanteIngresos > 0` es inalcanzable **por datos**. En consecuencia:
+
+- **NO se puede afirmar** que el operador verá "N más" bajo "Nuevos ingresos" en esta captura. No lo
+  verá, y la razón es que no hay ingresos que truncar — no que el fix falte.
+- Lo que SÍ está probado: (i) el código del remanente está **en el bundle desplegado** (pata 1,
+  0 → 2); (ii) su honestidad está probada por test con `total` del jsonb divergente del largo del
+  array: `app/components/panel-tile-ingresos.test.tsx:230` — *"9 de total > maxItems 4 → 4 visibles
+  y remanente HONESTO '5 más', derivado del total del jsonb"*, con
+  `expect(container.textContent).toContain("5 más")` (:252) y los dos negativos discriminantes
+  `not.toContain("2 más")` / `not.toContain("4 más")` (:254-255).
+  `pnpm --filter ./app exec vitest run components/panel-tile-ingresos.test.tsx` → **11/11 verdes**.
+- El test que la review señalaba como "certifica la omisión" (`not.toMatch(/\d+ más/)`) ya **no
+  existe**: fue invertido en `1c696b6`.
+
+Remanentes que SÍ están vivos en el DOM del deploy (leídos como `textContent` de nodos hoja):
+`["y 30 más →", "y 27 más →", "62 más"]`.
+
+### Densidad — ninguna sección supera 4 ítems (deploy final, 390 px)
+
+```
+{"w":390,"h":1400,"href":"http://127.0.0.1:4390/","dpr":1.25,
+ "rect":{"x":0,"y":0,"width":390,"height":1400},
+ "secs":[{"h2":"En tabla de sala esta semana","items":4},
+         {"h2":"Comisiones citadas esta semana","items":4},
+         {"h2":"Urgencias del Ejecutivo, por grado","items":4},
+         {"h2":"Movimiento reciente","items":4},
+         {"h2":"Votaciones recientes","items":4},
+         {"h2":"Ingresos, archivos y retiros","items":1}],
+ "mas":["y 30 más →","y 27 más →","62 más"],
+ "ingNext":"P|sin nuevos ingresos fechados en la ventana — en las fuentes consultadas al 28 jul 2026",
+ "bodyH":2253}
+```
+`items: 1` en el tile de ingresos = el único `<ul>` montado es el de "Archivos y retiros"
+(1 boletín agrupado). Cero secciones con `items > 4`.
+
+### B-02 sigue en cero, con control positivo apareado
+
+```
+$ grep -oF '(sin materia)' /tmp/129r5-home.html | wc -l                  → 0
+$ grep -oF 'Por materia'   /tmp/129r5-home.html | wc -l                  → 0
+$ grep -oF 'Comisiones citadas esta semana' /tmp/129r5-home.html | wc -l → 2   (control positivo)
+```
+Los dos ceros son **fuertes** (el control positivo ≥ 1 sobre el MISMO archivo). Como en las olas
+previas: `Por materia` es cero **estructural** (el tile no se monta), no un cero medido — y el
+baseline pre-fase ya los pasaba, así que **no** se acredita como logro de este deploy.
+
+### `/comparar` responde 200 con contenido real
+
+```
+{"w":1296,"h":678,"href":".../comparar?a=D1178&b=D1099",
+ "heads":["Comparar dos parlamentarios","Militancia (histórica)","Comisiones",
+          "Co-autoría de proyectos","Zona electoral","Similitud de votación"],
+ "sels":[{"val":"D1099","txt":"Jaime Araya Guerrero · Cámara"},
+         {"val":"D1178","txt":"Héctor Ulloa Aguilera · Cámara"}],
+ "err":false,"iso":0,"civil":22,"len":80228}
+```
+`err:false` (cero `No pudimos cargar la portada`), los 6 ejes montados, ambos parlamentarios
+resueltos (**Araya Guerrero** D1099 · **Ulloa Aguilera** D1178), y `iso:0` con `civil:22` ⇒ C-03
+sigue cerrado sobre el DOM hidratado del bundle nuevo.
+
+## Capturas finales (sobrescritas, mismos nombres)
+
+Stamp: `/tmp/129-deploy-final` = `2026-07-30 21:57:29`.
+
+| archivo | `file` | mtime | `-nt` stamp | superficie |
+|---|---|---|---|---|
+| `129-final-landing-desktop.png` | **1620 x 917** | 22:00:45 | ✔ | `/` deploy REAL |
+| `129-final-landing-full.png` | **1600 x 4190** | 22:00:46 | ✔ | `/` completa — **la grilla bento entera** |
+| `129-final-comparar.png` | **1620 x 847** | 22:01:18 | ✔ | `/comparar` deploy REAL |
+| `129-final-panel-390.png` | **390 x 1400** | 22:04:10 | ✔ | escalón **(b)** — ver salvedad |
+
+```
+$ test "$(file 129-final-panel-390.png | grep -oE '[0-9]+ x [0-9]+' | head -1 | cut -d' ' -f1)" = "390"
+(exit 0)
+```
+
+`129-final-landing-desktop.png` — viewport y href VERBATIM en la MISMA página antes del shot:
+```
+{"w":1296,"h":734,"dpr":1.25,"href":"https://observatorio-congreso.thevalis.workers.dev/", …}
+```
+
+### `129-final-panel-390.png` — **NO es del deploy real** (escalón (b))
+
+El `href` medido es `http://127.0.0.1:4390/` ⇒ **escalón (b)**. Se sirvió el contenido del deploy a
+través de un **proxy local efímero** (`scratchpad/p129-harness.mjs`, fuera del repo) que quita de la
+RESPUESTA solo `content-security-policy` y `x-frame-options`, para poder enmarcarlo en un
+`<iframe width:390px>`. El escalón (a) sigue siendo imposible en este entorno por las cinco razones
+medidas en `129-01`. El escalón (c) está PROHIBIDO y no se usó. **Cero archivos del repo tocados;
+cero cambios a la CSP del deploy.**
+
+Control de que el proxy sirve ESTE deploy y no otro:
+```
+$ curl -s http://127.0.0.1:4390/BUILD_ID
+YA3344T_PSCYEOsROanLw     # idéntico al del bundle recién construido
+$ curl -s http://127.0.0.1:4390/ | grep -oF 'Comisiones citadas esta semana' | wc -l
+2
+$ curl -sI http://127.0.0.1:4390/ | grep -oiF 'content-security-policy' | wc -l
+0                          # el header se quita en la RESPUESTA del proxy, no en el deploy
+```
+
+Cómo el PNG mide 390 px con DPR 1,25 (declarado, no disimulado): el `fullPage` del tab salió
+**1620 x 1750**; se recortó el rect exacto del iframe en px de dispositivo
+(390 × 1,25 = **488** de ancho, 1400 × 1,25 = **1750** de alto) y se reescaló a la grilla CSS:
+```
+SRC=1620x1750
+CROP src=1620x1750 cropped=488x1750 out=390x1400
+$ file 129-final-panel-390.png
+PNG image data, 390 x 1400, 8-bit/color RGB, non-interlaced
+```
+
+## Cadena de version-ids machine-checked
+
+```
+$ grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' 129-DEPLOY-EVIDENCIA.md | sort -u | wc -l
+5
+```
+
+## Guards de archivos prohibidos
+
+```
+$ git status --porcelain supabase/migrations   → (vacío)
+$ git status --porcelain .env                  → (vacío)
+$ git diff --name-only -- app/next.config.ts app/public/_headers app/middleware.ts app/wrangler.jsonc
+                                               → (vacío)
+```
+Cero DDL/DML, cero flips de flags, cero `secret put`, cero cambios a la CSP, cero paquetes nuevos.
