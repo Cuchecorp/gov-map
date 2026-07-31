@@ -324,6 +324,110 @@ redactarlos es deuda de operador, a decidir junto con la rotación del punto 1.
 
 ---
 
+## §Densidad 390px
+
+Medida **DESPUÉS** del re-deploy final y contra ese deploy:
+**version-id `9a8acdb0-0534-4419-a8a3-8a8df3de79f5`** (`129-DEPLOY-EVIDENCIA.md` §Re-deploy final).
+
+**Las dos patas, y por qué son dos.** Los totales del jsonb (`puntos_total`, `tabla_total`,
+`evidencia.total`) **NUNCA llegan al DOM**: los tiles son Server Components y el payload RSC lleva el
+string ya renderizado, no las props. Un agente que "leyera el total" desde el navegador estaría
+FABRICANDO el dato. Por eso el navegador aporta solo lo que sabe —ítems visibles y el literal del
+remanente, verbatim— y la **honestidad del N** se prueba en TEST, donde el total del jsonb sí es
+observable.
+
+### Pata 1 — DOM, sobre la superficie 390 px del deploy final
+
+`expression` usado (BrowserOS `evaluate_script`, parámetro `expression`, ejecutado en el
+`contentDocument` del iframe de 390 px):
+
+```js
+(function(){var d=document.getElementById("f").contentDocument;
+ var out=Array.from(d.querySelectorAll("section"))
+   .filter(s=>s.querySelector(":scope > h2"))
+   .map(function(s){
+     var rem=Array.from(s.querySelectorAll("p,a")).map(e=>e.textContent.trim())
+              .filter(t=>/^(y )?[0-9]+ más( →)?$/.test(t));
+     var cls=s.getAttribute("class")||""; var m=cls.match(/md:col-span-([0-9]+)/);
+     return {h2:s.querySelector(":scope > h2").textContent,
+             items:s.querySelectorAll("ul > li").length,
+             span:m?m[1]:null, remanente:rem};});
+ return JSON.stringify({vw:document.getElementById("f").contentWindow.innerWidth,
+                        tiles:out, maxItems:Math.max.apply(null,out.map(o=>o.items))});})()
+```
+
+Salida VERBATIM (`vw:390` ⇒ se midió en el viewport de 390 CSS px, no en el desktop):
+
+```json
+{"vw":390,"tiles":[
+ {"h2":"En tabla de sala esta semana","items":4,"span":"6","remanente":["y 30 más →"]},
+ {"h2":"Comisiones citadas esta semana","items":4,"span":"4","remanente":["y 27 más →"]},
+ {"h2":"Urgencias del Ejecutivo, por grado","items":4,"span":"2","remanente":["62 más"]},
+ {"h2":"Movimiento reciente","items":4,"span":"6","remanente":[]},
+ {"h2":"Votaciones recientes","items":4,"span":"4","remanente":[]},
+ {"h2":"Ingresos, archivos y retiros","items":1,"span":"2","remanente":[]}],
+ "maxItems":4}
+```
+
+`maxItems:4` es el máximo sobre los 6 tiles ⇒ **ninguna sección supera 4 ítems visibles**. La misma
+salida entrega, de paso, los `span` REALES del deploy: `[6,4,2,6,4,2]` ⇒ **C-01 verificado en
+producción**, no solo en test.
+
+### Tabla
+
+| tile | ítems visibles en el DOM (<=4) | literal `y N más →` en el DOM (verbatim o ninguno) | caso de test que prueba el N honesto (archivo:línea) | version-id medido |
+|---|---:|---|---|---|
+| `panel-tile-sala` | 4 | `y 30 más →` | `app/components/panel-tile-sala.test.tsx:123` (`tabla_total:25`, `maxItems:4` → `y 24 más →`; refuerzo en `:169` con el caso sin remanente) | `9a8acdb0-…` |
+| `panel-tile-comisiones` | 4 | `y 27 más →` | `app/components/panel-tile-comisiones.test.tsx:177` (`puntos_total:31`, `maxItems:4` → `y 27 más →`) | `9a8acdb0-…` |
+| `panel-tile-urgencias` | 4 | **`62 más`** (texto sin link, NO `y N más →`) | `app/components/panel-tile-urgencias.test.tsx:234` (O-6: cero `<a>` de remanente + control positivo `/2 más/`) | `9a8acdb0-…` |
+| `panel-tile-movimiento` | 4 | ninguno (el conteo vivo no supera `maxItems`) | `app/components/panel-tile-movimiento.test.tsx:119` **(NUEVO)** — `total:9` del jsonb con array de 6 y `maxItems:4` → `5 más`, y controles negativos `2 más`/`6 más` | `9a8acdb0-…` |
+| `panel-tile-votaciones` | 4 | ninguno | n/a — el tile **no declara remanente**: su invariante testeada prohíbe agregar votaciones (`panel-tile-votaciones.test.tsx`, "dos votaciones del MISMO boletín producen DOS `<li>`"), y no hay total de jsonb del que restar | `9a8acdb0-…` |
+| `panel-tile-ingresos` | 1 | ninguno | `app/components/panel-tile-ingresos.test.tsx:190` **(NUEVO)** — archivados: 7 proyectos, `maxItems:4` → `3 más`. Y `:213` **(NUEVO)** fija que la subsección `Nuevos ingresos` corta a `maxItems` **sin** declarar remanente | `9a8acdb0-…` |
+
+**Ninguna celda de esta tabla contiene un total de jsonb obtenido del navegador.** Los N honestos
+(24, 27, 5, 3) vienen de los tests; los literales del DOM (`y 30 más →`, `y 27 más →`, `62 más`)
+vienen del `expression` de arriba, verbatim.
+
+### Dos correcciones a premisas del plan, medidas y no silenciadas
+
+1. **`panel-tile-urgencias` SÍ tiene remanente.** El plan lo daba por "sin remanente por diseño" y
+   mandaba ponerlo como `N = n/a`. Lo medido dice otra cosa: el DOM del deploy muestra **`62 más`**,
+   y el componente lo documenta (`panel-tile-urgencias.tsx:26-32`: *"el remanente se declara como
+   TEXTO SIN LINK (fix W-6, FIJADO)"*). Lo que NO tiene es **link** — que es justo el hallazgo
+   `C-06`, aceptado. Poner `n/a` habría escondido un remanente real detrás de una premisa. La fila
+   va con su literal y su test.
+2. **El tile SIN remanente es `panel-tile-votaciones`**, y ahí sí corresponde `n/a` con razón
+   citada: no hay total agregado del que restar, porque agregar votaciones del mismo boletín está
+   prohibido por invariante.
+
+### Pata 2 — delta de tests (ambos números registrados)
+
+Comando de los criterios, con las 4 rutas EXPLÍCITAS (un glob saldría 0 sin correr nada):
+
+```
+$ pnpm --filter ./app exec vitest run components/panel-tile-comisiones.test.tsx \
+    components/panel-tile-sala.test.tsx components/panel-tile-movimiento.test.tsx \
+    components/panel-tile-ingresos.test.tsx
+ ✓ components/panel-tile-movimiento.test.tsx  (8 tests)
+ ✓ components/panel-tile-sala.test.tsx        (13 tests)
+ ✓ components/panel-tile-comisiones.test.tsx  (12 tests)
+ ✓ components/panel-tile-ingresos.test.tsx    (11 tests)
+ Test Files  4 passed (4)
+      Tests  44 passed (44)
+```
+
+**BASE = 41 · POSTERIOR = 44 · DELTA = +3.** La base se midió sin re-ejecutar la suite vieja (que ya
+no existe en el working tree), contando los `it(` de las versiones en `HEAD` — método independiente
+del runner, y que coincide tile a tile con sus totales:
+
+```
+$ for f in comisiones sala movimiento ingresos; do
+    echo "$f HEAD=$(git show HEAD:app/components/panel-tile-$f.test.tsx | grep -oE '^\s+it\(' | wc -l)"; done
+comisiones HEAD=12   sala HEAD=13   movimiento HEAD=7   ingresos HEAD=9      # suma 41
+```
+
+---
+
 ## Método de medición (anti-falso-verde)
 
 - Todos los contadores usan `grep -oF … | wc -l` o `grep -oE … | wc -l`; **nunca `grep -c`** (topa en

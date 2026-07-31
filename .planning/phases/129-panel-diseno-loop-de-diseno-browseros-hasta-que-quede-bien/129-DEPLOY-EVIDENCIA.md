@@ -526,3 +526,233 @@ $ git status --porcelain supabase/migrations
 $ git status --porcelain .env
 (vacío)
 ```
+
+---
+---
+
+# Re-deploy final (plan 129-04)
+
+## Cadena de version-ids
+
+| # | version-id | de quién es | qué contiene |
+|---|---|---|---|
+| 0 | `b69f2ec2-37c9-4212-b91c-a9ad97b4aeb7` | **preexistente**, NO acreditable | estado previo a la fase |
+| 1 | `4c6fdbda-61ae-485e-9a4d-4197db35cf61` | `129-01` | el deploy criticado |
+| 2 | `f9c5bf23-c021-4a90-b5f5-ff9dd7abbb82` | `129-04`, **primer** re-deploy | plural (C-04) + C-01 + C-02 + C-03 **parcial** |
+| 3 | **`9a8acdb0-0534-4419-a8a3-8a8df3de79f5`** | `129-04`, **VERSIÓN FINAL** | + el tercer sitio ISO de C-03 |
+
+**Hubo DOS deploys en este plan, y el segundo no es una repetición cosmética.** El primero
+(`f9c5bf23`) se midió contra el DOM servido y **falló su propio criterio**: quedaban **2** fechas ISO
+en `/comparar`, emitidas por un tercer sitio que la crítica no había localizado (`page.tsx:338`,
+provenance de comisiones, que interpola `fecha_captura` cruda). Se corrigió (`ebb2242`) y se volvió a
+deployar. Se registra la medición fallida en vez de borrarla: sin ella, el `0` final no se distingue
+de un criterio que nunca se midió.
+
+`9a8acdb0` es distinto de `4c6fdbda` (129-01) **y** de `b69f2ec2` (preexistente).
+
+```
+$ grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' 129-DEPLOY-EVIDENCIA.md | sort -u | wc -l
+4          # >= 3 ✔ (preexistente + 129-01 + los dos de 129-04)
+```
+
+## Procedimiento (idéntico al de 129-01, sin atajos)
+
+1. `touch /tmp/129-redeploy-stamp` **antes de nada** → `2026-07-30 20:28:00 -0400`.
+2. Purga explícita en **PowerShell** de `node_modules`, `.pnpm-store` y `app/.open-next` del mirror
+   (`robocopy /MIR` con `/XD` IGNORA, no borra) → las tres rutas con `exists=False`.
+3. `robocopy /MIR` con los mismos `/XD` → `ROBOCOPY_EXIT: 3` (< 8 = éxito).
+4. Re-escritura de `C:/Temp/obs-build/docker-deploy.sh` (no está en el repo; `/MIR` lo borra — se
+   comprobó con `test -f` antes del segundo deploy: **BORRADO**, se re-escribió).
+5. Contenedor `node:22-slim` con `MSYS_NO_PATHCONV=1`, montando `/work` y el OAuth de
+   `C:\Users\Carlo\AppData\Roaming\xdg.config\.wrangler` → **build + deploy DENTRO del contenedor**.
+6. `touch /tmp/129-deploy-done` **inmediatamente** tras extraer el `Current Version ID`.
+
+### Gate anti-bundle-viejo
+
+```
+$ ls -l --time-style=full-iso C:/Temp/obs-build/app/.open-next/worker.js /tmp/129-redeploy-stamp
+-rw-r--r-- 2278 2026-07-30 20:49:33 …/worker.js
+-rw-r--r--    0 2026-07-30 20:28:00 /tmp/129-redeploy-stamp
+$ test C:/Temp/obs-build/app/.open-next/worker.js -nt /tmp/129-redeploy-stamp && echo GATE_OK
+GATE_OK
+```
+
+`/tmp/129-deploy-done` = `2026-07-30 20:51:06`. Es el stamp contra el que se miden las capturas:
+`/tmp/129-redeploy-stamp` se creó ANTES del build, así que una captura tomada DURANTE el build
+pasaría su `-nt` sin ser posterior al deploy.
+
+## Las CUATRO patas del bundle desplegado
+
+`BUNDLE=C:/Temp/obs-build/app/.open-next/server-functions` (el código de la app; `worker.js` pesa
+2.278 bytes y es solo el entrypoint-shim de `@opennextjs/cloudflare`).
+
+| pata | comando | pre-fix (129-01) | medido ahora | criterio | ✓ |
+|---|---|---:|---:|---|---|
+| **1 — negativo CON carne** | `grep -rhoF 'citaciones del Senado' "$BUNDLE" \| wc -l` | **2** | **0** | == 0 | ✔ |
+| **1b — refuerzo** | `grep -rhoF '"citación"' "$BUNDLE" \| wc -l` | **1** | **2** | >= 2 | ✔ |
+| **2 — control positivo apareado** | `grep -rhoF 'Comisiones citadas esta semana' "$BUNDLE" \| wc -l` | 2 | **2** | >= 1 | ✔ |
+| **3 — control negativo previo** | valores pre-fix citados desde `129-01` §Bundle PRE-fix | 2 y 1 | — | existe | ✔ |
+
+Sin la pata 2, el `0` de la pata 1 sería un **cero vacuo** (un `grep` que no encuentra nada en ningún
+sitio también devuelve 0). Sin la pata 3, el `0` no distinguiría "el molde murió" de "el molde nunca
+estuvo": la medición pre-fix de `129-01` (**2**) es la que le da carne. Y `"citación" >= 1` habría
+sido VACUO: el bundle viejo ya lo cumplía con 1 (acordeón de agenda).
+
+### Pata 4 — hashes de chunks SSR (re-listados con glob, nunca hardcodeados)
+
+```
+$ ls "$BUNDLE"/default/app/.next/server/chunks/ssr/*.js | xargs -n1 basename | sort > chunks-final.txt
+$ wc -l < chunks-final.txt
+122        # mismo CONTEO que el pre-fix; lo que cambia son los HASHES
+$ comm -13 chunks-prefix.txt chunks-final.txt     # nuevos
+[root-of-the-server]__0ji2cqm._.js
+[root-of-the-server]__0ocj7qo._.js
+[root-of-the-server]__0s9wj39._.js
+[root-of-the-server]__1gk5n80._.js
+$ comm -23 chunks-prefix.txt chunks-final.txt     # muertos
+[root-of-the-server]__0hu_xmm._.js
+[root-of-the-server]__0wfwga2._.js
+[root-of-the-server]__14dk02w._.js
+[root-of-the-server]__16padhl._.js
+$ comm -3 chunks-prefix.txt chunks-final.txt | wc -l
+8          # >= 1 nombre distinto ✔
+```
+
+> **Hecho que corrige la expectativa del plan:** el plan anticipaba que el fix compilaría a
+> `app_components_*.js`. Medido, **esos nombres NO cambiaron**; los 8 nombres que difieren son todos
+> `[root-of-the-server]__*`. Por eso el criterio se evaluó sobre el listado COMPLETO y no sobre un
+> prefijo: mirar solo `app_components_*` (o solo `app_app_page_tsx_*`) habría dado un falso ROJO.
+
+## Status HTTP y DOM del deploy final
+
+```
+$ curl -s -o /tmp/p129-fin.html -w '%{http_code}' https://observatorio-congreso.thevalis.workers.dev/
+200        # intento 1
+$ curl -s -o /tmp/p129-fin-comp.html -w '%{http_code}' ".../comparar?a=D1178&b=D1099"
+500 · 500 · 200     # intentos 1, 2 y 3
+```
+
+**Los dos 500 de `/comparar` se registran, no se ocultan.** Son la ventana de propagación /
+arranque en frío del Worker: el tercer intento y todas las lecturas posteriores dan 200 con la
+página íntegra (109.466 bytes, 6 encabezados, cero boundary). Es coherente con el modo **M-B** ya
+descrito en `129-CRITICA.md` §Diferidos D-1 (`Promise.all` sin aislamiento por eje ⇒ un fallo
+transitorio de UNA RPC tumba la página entera), cuyo fix está **diferido a pronunciamiento del
+operador** y NO se tocó en este plan.
+
+### §C-03 — cero ISO en el DOM servido de `/comparar` (criterio de la crítica)
+
+```
+$ grep -oE '20[0-9]{2}-[0-9]{2}-[0-9]{2}' /tmp/p129-fin-comp.html | wc -l
+0
+$ grep -oF ' 2026' /tmp/p129-fin-comp.html | wc -l
+22         # control positivo apareado ⇒ el cero es FUERTE
+$ grep -oF 'jul 2026' /tmp/p129-fin-comp.html | wc -l
+22
+```
+
+Medición del deploy INTERMEDIO `f9c5bf23`, conservada como control negativo del propio criterio:
+`ISO = 2`, ambas del molde `Fuente: Cámara/Senado · según fuente al 2026-07-22`.
+
+### §C-02 y §C-01 sobre el DOM servido
+
+```
+$ grep -oF 'bg-foreground'     /tmp/p129-fin-comp.html | wc -l     → 0
+$ grep -oF 'bg-accent-product' /tmp/p129-fin-comp.html | wc -l     → 4    (control positivo)
+$ grep -oF 'No pudimos cargar la portada' /tmp/p129-fin-comp.html | wc -l → 0
+$ grep -oF 'Comisiones citadas esta semana' /tmp/p129-fin.html | wc -l    → 2
+```
+
+Y los `span` REALES de los 6 tiles, leídos del DOM del deploy (no del fuente) — ver
+`129-CRITICA.md` §Densidad 390px: **`[6,4,2,6,4,2]`** ⇒ filas `6 | 4+2 | 6 | 4+2`, cero huecos.
+
+## Capturas finales
+
+Las tres se acreditan por **contenido** (`textContent`), no por `test -s`: `bros-cli` sale 0 tras
+`CDP request timeout` y un PNG en blanco pesa > 0. El timeout se observó en esta corrida en
+`/comparar` y en los intentos de `fullPage` — cada uno resuelto con el reintento único del runbook.
+
+| archivo | `file` | `-nt /tmp/129-deploy-done` | superficie |
+|---|---|---|---|
+| `129-final-landing-desktop.png` | **1620 x 917** | ✔ (20:54:18 > 20:51:06) | `/` deploy REAL |
+| `129-final-panel-390.png` | **390 x 1400** | ✔ | escalón **(b)** — ver salvedad |
+| `129-final-comparar.png` | **1620 x 847** | ✔ | `/comparar` deploy REAL |
+| `129-final-landing-full.png` (bonus) | 1600 x 1603 | ✔ | `/` página completa: es la que hace visible la grilla bento entera |
+
+### 1. `129-final-landing-desktop.png`
+
+Viewport y href VERBATIM, tomados en la MISMA página antes del shot:
+```
+{"w":1296,"h":734,"href":"https://observatorio-congreso.thevalis.workers.dev/","dpr":1.25}
+```
+`textContent` de un H2 REALMENTE renderizado (no del payload RSC, que `document.body.textContent`
+también incluye):
+```
+{"heads":1,"tag":"H2","head":"Comisiones citadas esta semana","card":"Comisiones citadas esta semanaRecibir al Alcalde de la comuna de Concepción, señor Héctor Múñoz y a dirigentes del Humedal Paicaví, Región del…Ver fuente ↗Citado el 03 ago 2026 · Comisión de Medio Amb"}
+```
+
+### 2. `129-final-panel-390.png` — **NO es del deploy real** (escalón (b))
+
+Se sirvió el contenido del deploy a través de un **proxy local efímero** (`127.0.0.1:4390`,
+`scratchpad/p129-harness.mjs`, fuera del repo) que quita de la RESPUESTA solo
+`content-security-policy` y `x-frame-options`, para poder enmarcarlo en un `<iframe width:390px>`.
+El escalón (a) —viewport real de 390 px— sigue siendo IMPOSIBLE en este entorno por las cinco
+razones medidas en `129-01` (ventana maximizada, `resizeTo` no-op, pop-up bloqueado, sin tool de
+viewport, sin puerto CDP, y el mínimo duro de Chromium en `innerWidth` 770). El escalón (c)
+(`<div style="width:390px">`) está PROHIBIDO y no se usó. **Cero archivos del repo tocados; cero
+cambios a la CSP del deploy.**
+
+Control de que el proxy sirve el contenido del deploy y no otra cosa:
+```
+$ curl -s http://127.0.0.1:4390/ | grep -oF 'Comisiones citadas esta semana' | wc -l
+2          # igual que contra el deploy
+$ curl -sI http://127.0.0.1:4390/ | grep -icF 'content-security-policy'
+(vacío)    # el header se quita en la RESPUESTA del proxy, no en el deploy
+```
+
+**Salida VERBATIM del `JSON.stringify({w,h,href})` tomada en la MISMA página justo antes del shot:**
+```
+{"w":390,"h":1400,"href":"http://127.0.0.1:4390/","dpr":1.25,"rect":{"x":0,"y":0,"width":390,"height":1400,"top":0,"right":390,"bottom":1400,"left":0}}
+```
+`"w":390` exacto. El `href` es `127.0.0.1` ⇒ **escalón (b)** ⇒ la captura **NO es del deploy real**.
+
+**Cómo el PNG mide 390 px con DPR 1,25 (declarado, no disimulado):** el screenshot `fullPage` del
+tab salió **1620 x 1750**; se recortó el rect exacto del iframe en px de dispositivo
+(390 × 1,25 = **488** de ancho — se redondea hacia arriba desde 487,5, medio píxel de dispositivo de
+fondo blanco entra en el borde derecho —, 1400 × 1,25 = **1750** de alto) y se reescaló a la grilla
+CSS, dando **390 x 1400**.
+```
+SRC=1620x1750
+CROP src=1620x1750 cropped=488x1750 out=390x1400
+$ file 129-final-panel-390.png
+PNG image data, 390 x 1400, 8-bit/color RGB, non-interlaced
+$ test "$(file 129-final-panel-390.png | grep -oE '[0-9]+ x [0-9]+' | head -1 | cut -d' ' -f1)" = "390"
+(exit 0)
+```
+
+`textContent` medido DENTRO del iframe a 390 (ver la tabla completa en `129-CRITICA.md`
+§Densidad 390px): los 6 tiles presentes, `Comisiones citadas esta semana` entre ellos.
+
+### 3. `129-final-comparar.png` — `/comparar?a=D1178&b=D1099` (deploy REAL)
+
+```
+{"href":"https://observatorio-congreso.thevalis.workers.dev/comparar?a=D1178&b=D1099",
+ "heads":["Comparar dos parlamentarios","Militancia (histórica)","Comisiones","Co-autoría de proyectos","Zona electoral","Similitud de votación"],
+ "err":false,"iso":0,"civil":22,
+ "sels":[{"val":"D1099","txt":"Jaime Araya Guerrero · Cámara"},{"val":"D1178","txt":"Héctor Ulloa Aguilera · Cámara"}],
+ "cta":{"txt":"Comparar","cls":"rounded-lg bg-accent-product px-4 py-2 text-sm font-medium text-background hover:bg-accent-product/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"}}
+```
+
+Apellidos de los dos parlamentarios exigidos: **Araya Guerrero** (D1099) y **Ulloa Aguilera**
+(D1178). `err:false` ⇒ el `textContent` NO contiene `No pudimos cargar la portada`. `iso:0` con
+`civil:22` ⇒ C-03 cerrado también sobre el DOM hidratado, no solo sobre el HTML servido. El `cls`
+del CTA es la prueba de C-02 en producción.
+
+## Guards de archivos prohibidos (deploy final)
+
+```
+$ git status --porcelain supabase/migrations   → (vacío)
+$ git status --porcelain .env                  → (vacío)
+$ git diff --name-only -- app/next.config.ts app/public/_headers app/middleware.ts app/wrangler.jsonc
+                                               → (vacío)
+```
+Cero DDL/DML, cero flips de flags, cero `secret put`, cero cambios a la CSP.
