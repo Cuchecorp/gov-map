@@ -3,14 +3,13 @@ import { render, cleanup } from "@testing-library/react";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { rotuloFecha, type SenalRow } from "./panel-actualidad";
-import { parseEvidenciaProyectos, urgenciaVigentePorBoletin } from "@/lib/panel-evidencia";
+import { rotuloFecha, PanelActualidadView, type SenalRow } from "./panel-actualidad";
+// WR-04: el ruteo/orden/cruce L5 ya NO se reimplementa aquí (lo monta
+// `PanelActualidadView`), así que los imports de los tiles enrutados por él
+// quedaron muertos. Sobrevive `PanelTileSala` (test dedicado, línea ~400) y la
+// vista pura de votaciones, que es la que se inyecta en el slot.
 import { PanelTileSala } from "./panel-tile-sala";
-import { PanelTileComisiones } from "./panel-tile-comisiones";
-import { PanelTileUrgencias } from "./panel-tile-urgencias";
-import { PanelTileMovimiento } from "./panel-tile-movimiento";
 import { PanelTileVotacionesView, type VotacionPanelItem } from "./panel-tile-votaciones";
-import { PanelTileIngresos } from "./panel-tile-ingresos";
 
 afterEach(cleanup);
 
@@ -46,38 +45,16 @@ function makeSenal(overrides: Partial<SenalRow> = {}): SenalRow {
   };
 }
 
-// ── Composición del panel completo — vistas puras compuestas en el orden D-01 ──
-// (128-RESEARCH: "los tiles reciben filas como props" — cero DB, cero mocks de
-// red). Replica el ruteo whitelist + cruce L5 de `PanelActualidad`, EXACTAMENTE
-// como lo hace el orquestador, sobre fixtures fijos.
+// ── Composición del panel completo — el ORQUESTADOR REAL, no una réplica ───────
+// (128-RESEARCH: "los tiles reciben filas como props" — cero DB, cero mocks de red).
+//
+// WR-04 (129-REVIEW): este helper REIMPLEMENTABA a mano el ruteo whitelist, el cruce
+// L5 y el orden D-01 de `PanelActualidad`. Un reordenamiento de los tiles en
+// `panel-actualidad.tsx` dejaba el test verde sobre la copia, y el invariante de spans
+// quedaba sin protección real. Ahora monta `PanelActualidadView` — el MISMO código que
+// corre en PROD — e inyecta únicamente el tile 5 (el único async: lee `public.votacion`
+// en su wrapper), que es exactamente lo que el slot existe para permitir.
 function construirPanel(filas: SenalRow[]) {
-  const TIPOS_RENDERIZADOS = new Set([
-    "agenda_sala",
-    "agenda_citacion",
-    "urgencias",
-    "velocity",
-    "nuevos_ingresos",
-    "archivados",
-  ]);
-  const porTipo = new Map<string, SenalRow[]>();
-  for (const f of filas) {
-    if (!TIPOS_RENDERIZADOS.has(f.tipo_senal)) continue;
-    const arr = porTipo.get(f.tipo_senal);
-    if (arr) arr.push(f);
-    else porTipo.set(f.tipo_senal, [f]);
-  }
-  const filasSala = porTipo.get("agenda_sala") ?? [];
-  const filasComisiones = porTipo.get("agenda_citacion") ?? [];
-  const filasUrgencias = porTipo.get("urgencias") ?? [];
-  const filasMovimiento = porTipo.get("velocity") ?? [];
-  const filasIngresos = porTipo.get("nuevos_ingresos") ?? [];
-  const filasArchivados = porTipo.get("archivados") ?? [];
-
-  const itemsUrgencias = filasUrgencias.flatMap(
-    (f) => parseEvidenciaProyectos(f.evidencia).items,
-  );
-  const urgencias = urgenciaVigentePorBoletin(itemsUrgencias);
-
   const stubVotacion: VotacionPanelItem = {
     id: "1",
     boletin: "18216-05",
@@ -92,17 +69,15 @@ function construirPanel(filas: SenalRow[]) {
   };
 
   return (
-    <>
-      <PanelTileSala filas={filasSala} urgencias={urgencias} />
-      <PanelTileComisiones filas={filasComisiones} urgencias={urgencias} />
-      <PanelTileUrgencias filas={filasUrgencias} />
-      <PanelTileMovimiento filas={filasMovimiento} />
-      <PanelTileVotacionesView
-        items={[stubVotacion]}
-        fechaFuente={stubVotacion.fecha}
-      />
-      <PanelTileIngresos ingresos={filasIngresos} archivados={filasArchivados} />
-    </>
+    <PanelActualidadView
+      filas={filas}
+      slotVotaciones={
+        <PanelTileVotacionesView
+          items={[stubVotacion]}
+          fechaFuente={stubVotacion.fecha}
+        />
+      }
+    />
   );
 }
 
@@ -348,20 +323,24 @@ describe("PanelActualidad — composición del panel completo (D-01/O-3/O-5)", (
       const m = el.className.match(/md:col-span-(\d+)/);
       return Number(m![1]);
     });
+    // WR-08 (129-REVIEW): aquí había un `toEqual([6,4,2,6,4,2])` que fijaba la
+    // secuencia COMPLETA y volvía inalcanzable al bucle de abajo (no podía fallar
+    // sin que el toEqual fallara antes), además de romperse ante cualquier
+    // reordenamiento legítimo que SÍ cerrara filas. El invariante real es el
+    // bucle; del toEqual solo se conserva el cardinal.
     expect(spans).toHaveLength(6);
-    expect(spans).toEqual([6, 4, 2, 6, 4, 2]);
 
     // Auto-placement de una grilla de 6 columnas: la suma acumulada de spans debe
     // cerrar en múltiplos de 6 en cada corte de fila, y ningún tile puede exceder 6.
     let acumulado = 0;
     for (const s of spans) {
       expect(s).toBeLessThanOrEqual(6);
-      if (acumulado + s > 6) {
-        // El tile no cabe en el remanente ⇒ salta de fila ⇒ hueco interior.
-        throw new Error(
-          `hueco interior: acumulado ${acumulado} + span ${s} > 6 en la secuencia ${spans.join("·")}`,
-        );
-      }
+      // El tile no cabe en el remanente ⇒ salta de fila ⇒ hueco interior.
+      // `expect` con mensaje, no `throw` (idiom de esta suite).
+      expect(
+        acumulado + s,
+        `hueco interior: acumulado ${acumulado} + span ${s} > 6 en la secuencia ${spans.join("·")}`,
+      ).toBeLessThanOrEqual(6);
       acumulado = (acumulado + s) % 6;
     }
     // La última fila también cierra: cero remanente al final.

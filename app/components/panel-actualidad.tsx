@@ -131,23 +131,26 @@ const TIPOS_RENDERIZADOS = new Set([
   "archivados",
 ]);
 
-export async function PanelActualidad() {
-  const sb = createServerSupabase();
-
-  const { data, error } = await sb.rpc("actualidad_senales_panel", {
-    p_tipo: null,
-  });
-
-  // #34: un error real de lectura ≠ "sin señales". Se lanza (NUNCA `?? []`).
-  if (error) {
-    throw new Error(
-      `PanelActualidad: no se pudo leer actualidad_senales_panel: ${error.message}`,
-    );
-  }
-
-  // `[]` SOLO representa el path legítimo de 0 filas (regla D).
-  const filas = (data as SenalRow[] | null) ?? [];
-
+/**
+ * Vista PURA del panel: ruteo whitelist + cruce L5 + ORDEN D-01 + spans.
+ *
+ * WR-04 (129-REVIEW): esto vivía inline en `PanelActualidad` (async, lee Supabase),
+ * así que ningún test podía montar el orquestador REAL en jsdom — la suite validaba
+ * una RÉPLICA del ruteo escrita a mano en el propio test, y un reordenamiento de los
+ * tiles aquí dejaba esa réplica (y su verde) intactos. Extraído a un componente SÍNCRONO
+ * para que los tests monten ESTE código y no una copia.
+ *
+ * `slotVotaciones` existe porque el tile 5 es el único async (lee `public.votacion` en
+ * su propio wrapper, D-08): PROD inyecta `<PanelTileVotaciones />` y los tests inyectan
+ * su vista pura. Todo lo demás —qué tiles, en qué orden, con qué props— es el código real.
+ */
+export function PanelActualidadView({
+  filas,
+  slotVotaciones,
+}: {
+  filas: SenalRow[];
+  slotVotaciones: React.ReactNode;
+}) {
   // Agrupa por tipo_senal preservando el orden de llegada (la RPC ya ordena por
   // tipo_senal, cobertura, cluster; NO se reordena por conteo — T-52-13).
   // FILTRO EXPLÍCITO (O-3/P8): fuera de TIPOS_RENDERIZADOS, la fila se ignora.
@@ -183,8 +186,32 @@ export async function PanelActualidad() {
       <PanelTileComisiones filas={filasComisiones} urgencias={urgenciasVigentes} />
       <PanelTileUrgencias filas={filasUrgencias} />
       <PanelTileMovimiento filas={filasMovimiento} />
-      <PanelTileVotaciones />
+      {slotVotaciones}
       <PanelTileIngresos ingresos={filasIngresos} archivados={filasArchivados} />
     </>
+  );
+}
+
+export async function PanelActualidad() {
+  const sb = createServerSupabase();
+
+  const { data, error } = await sb.rpc("actualidad_senales_panel", {
+    p_tipo: null,
+  });
+
+  // #34: un error real de lectura ≠ "sin señales". Se lanza (NUNCA `?? []`).
+  if (error) {
+    throw new Error(
+      `PanelActualidad: no se pudo leer actualidad_senales_panel: ${error.message}`,
+    );
+  }
+
+  // `[]` SOLO representa el path legítimo de 0 filas (regla D).
+  const filas = (data as SenalRow[] | null) ?? [];
+
+  // Todo el ruteo/orden/cruce L5 vive en la vista pura (WR-04): este wrapper solo
+  // hace I/O. El tile 5 (async, lee `public.votacion`) se inyecta como slot.
+  return (
+    <PanelActualidadView filas={filas} slotVotaciones={<PanelTileVotaciones />} />
   );
 }
