@@ -283,6 +283,22 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 139: PANEL-DASH — El panel como dashboard clickeable
+
+**Goal**: El panel de portada deja de ser una lista de texto casi todo muerto y pasa a ser un dashboard navegable: cada tile es una tarjeta clickeable, cada dato interno enlaza a su destino, y los conteos que hoy son prosa se rinden como gráfico trazable a su fuente — sin fotos, sin ranking y sin inventar un solo dato.
+**Depends on**: Phase 129 (parte de su veredicto de operador: `129-VEREDICTO-OPERADOR.md`)
+**Requirements**: PANEL-09 (deuda de diseño transferida desde Phase 129)
+**Success Criteria** (what must be TRUE):
+
+  1. **Tarjeta clickeable**: cada uno de los 6 tiles es navegable como unidad hacia su vista expandida (`BentoTile asChild` + `Link`, patrón ya previsto en `bento/bento-tile.tsx:17-19`), con estado de foco visible y objetivo táctil >= 44px a 390px — verificado por fragmento DOM del deploy, no por inspección visual.
+  2. **Cada dato enlaza**: comisiones, sesiones, parlamentarios nombrados y remanentes emiten destino real. Todo link interno pasa por `lib/links-internos.ts` y el guard `en_corpus:false` sigue impidiendo `/proyecto/{b}` (cero 404s, control positivo apareado). Se incorporan los destinos hoy sin usar: `/parlamentario/[id]` y `/parlamentarios`. **Excepción arbitrada intacta**: el remanente de urgencias sigue siendo texto SIN link (O-6/W-6).
+  3. **Datos hechos visual**: los conteos que hoy son prosa se rinden como gráfico con datos ya existentes (barras de votación a favor/en contra/abstención, distribución por cámara, secuencia de tramitación), reutilizando Recharts y `votacion-bar.tsx`. Cada gráfico conserva su fuente + fecha visibles. **Prohibido** cualquier gráfico que ordene por magnitud cross-cámara o insinúe ranking (regla B anti-ranking, T-52-13), y prohibido componer dinero/lobby con voto.
+  4. **Invariantes intactos, probados por control positivo apareado**: sin foto y sin partido (LOCKED legal), orden de tiles D-01/O-5 sin alterar, `maxItems`=4 con remanente respaldado por el `total` del jsonb, anti-agregación de votaciones, leyenda anti-insinuación presente, tiles RSC sin `"use client"`, `noindex` y MONEY/NOTIF OFF.
+  5. **Veredicto del operador** sobre capturas del deploy real: cierre solo con el verbatim "queda bien". Sin él, handoff documentado — jamás PASS.
+
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -290,7 +306,7 @@ Plans:
 | 126. PANEL-GUARDS | 2/2 | Complete    | 2026-07-30 |
 | 127. PANEL-MAT | 3/3 | Complete    | 2026-07-30 |
 | 128. PANEL-UI | 6/6 | Complete    | 2026-07-30 |
-| 129. PANEL-DISEÑO | 4/5 | In Progress|  |
+| 129. PANEL-DISEÑO | 5/5 | Closed (deuda → 139) | 2026-08-04 |
 | 130. VOTOS-REAL | 3/3 | Complete    | 2026-07-30 |
 | 131. DEBT-FICHA | 3/3 | Complete    | 2026-07-30 |
 | 132. NEWS-RSS | 0/? | Not started | - |
@@ -300,6 +316,7 @@ Plans:
 | 136. NEWS-CRON | 0/? | Not started | - |
 | 137. NEWS-FICHAS | 0/? | Not started | - |
 | 138. E2E | 0/? | Not started | - |
+| 139. PANEL-DASH | 0/? | Not started | - |
 
 ---
 

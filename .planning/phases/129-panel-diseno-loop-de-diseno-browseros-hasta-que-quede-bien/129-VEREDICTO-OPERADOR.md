@@ -5,10 +5,18 @@
 **Capturas presentadas:** `assets/129-final-landing-full.png`, `129-final-landing-desktop.png`,
 `129-final-panel-390.png`, `129-final-comparar.png`
 
-## VEREDICTO: AUSENTE — HANDOFF
+## VEREDICTO: AUSENTE — CIERRE POR DECISIÓN DEL OPERADOR, DEUDA TRANSFERIDA
 
 El operador **NO** emitió el verbatim "queda bien". El veredicto no fue silencio ni ambigüedad:
-fue un **rechazo explícito con dirección de trabajo**. La fase NO se cierra.
+fue un **rechazo explícito con dirección de trabajo**.
+
+En una segunda ronda del mismo checkpoint, el operador decidió **cerrar la Phase 129 tal como está**
+y **transferir el rediseño a una fase propia**, posterior a la Pasada 1.
+
+**SC1 NO se cumplió como está escrito.** El criterio exige "loop iterado hasta veredicto de cierre",
+y el veredicto de cierre fue negativo. La fase se cierra por **decisión de alcance del operador**,
+no por criterio cumplido. Esta distinción es deliberada: registrar esto como PASS sería un falso
+verde, exactamente del tipo que esta fase gastó cuatro rondas de revisión en impedir.
 
 ### Transcripción VERBATIM de la respuesta del operador
 
@@ -16,6 +24,24 @@ Pregunta: *"Sobre las capturas del deploy final: ¿queda bien, o abro una iterac
 de presupuesto?"*
 
 > "más iteraciones. debería quedar como dashboard clickeable con imagenes, facil de navegar y cliquear"
+
+### Transcripción VERBATIM — segunda ronda (alcance del rediseño)
+
+Sobre qué deben ser las "imágenes", dado que los retratos están LOCKED por decisión legal:
+
+> "Datos hechos visual" — mini-gráficos con datos que YA existen: barras de votación, distribución
+> por cámara, línea de tiempo de tramitación. Cada uno trazable a su fuente.
+
+Sobre el alcance de "clickeable":
+
+> "Tarjeta entera + cada dato" — el tile completo lleva a su vista expandida, y además cada elemento
+> interno (proyecto, comisión, sesión, parlamentario) enlaza a su destino.
+
+Sobre dónde ejecutarlo:
+
+> "Fase nueva, después de la Pasada 1"
+
+**Nota:** el operador NO reabrió la decisión legal sobre fotos. Los retratos siguen prohibidos.
 
 ### Qué falta para el cierre
 
