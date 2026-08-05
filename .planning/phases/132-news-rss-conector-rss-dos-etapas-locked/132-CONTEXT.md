@@ -21,6 +21,43 @@ full-text de artículos y vínculo a fichas (137). En 132 NO se llama a ningún 
 <decisions>
 ## Implementation Decisions
 
+### ⚠️ ENMIENDA POST-RESEARCH (2026-08-05) — D-132-A: Google News DESCARTADO
+
+**El research verificó (fetch real + `robots-parser@3.0.1`, la librería exacta de `RobotsGuard`)
+que `news.google.com/robots.txt` prohíbe `/rss/` para todo UA** (`Disallow: /` sin `Allow` que
+cubra `/rss/`; `isAllowed=false` con el `IDENTIFIED_UA` del framework). Ver
+`132-RESEARCH.md` §blocker. Consecuencia: **D-02, D-03 y D-04 quedan SIN OBJETO y se anulan.**
+
+**Adjudicación (Fable, régimen v13.0):** Opción A+B del research —
+- Google News RSS Search **se descarta**: el respeto a robots.txt es regla LOCKED de CLAUDE.md
+  §Ingesta y además el SC1 de esta misma fase; cualquier evasión (UA spoof, saltarse el guard)
+  está prohibida. Construirlo inerte (Opción C) sería un falso verde estructural.
+- Para conservar 5 fuentes, **Ex-Ante entra como 5º medio directo**
+  (`https://www.ex-ante.cl/feed/` — RSS 2.0 verificado vivo HTTP 200, robots allow-all
+  verificado). *Razón:* es el único candidato con RSS verificado; es un outlet de naturaleza
+  política/legislativa (la muestra 0/10 es una ventana puntual de 10 ítems, no un veredicto de
+  densidad); costo marginal ~cero porque research ya verificó feed y robots.
+- **SC4 del ROADMAP y NEWS-02 se re-redactan** a "5 medios directos" (enmienda documentada en
+  ambos archivos citando esta decisión). El fan-out a 40+ outlets vía `<source>` se pierde —
+  es el costo de cumplir el régimen; si el operador quiere recuperar cobertura, la vía es más
+  feeds directos verificados (nunca Google News), como ampliación futura.
+- Esta decisión queda **destacada en el reporte al operador** al cierre de la fase.
+
+### Adjudicaciones de las open questions del research
+- **D-132-B:** El `[skip]` observable del SC2 se deriva **en el CLI/worker de news**, sin tocar
+  `@obs/ingest` (`BaseConnector.run()` hace `continue` silencioso en cache-hit; el CLI reporta
+  el conteo comparando endpoints pedidos vs snapshots nuevos). *Razón:* no se modifica un
+  framework estable y testeado para una necesidad de reporting de un consumidor.
+- **D-132-C:** El `fingerprint` del conector news es **estructural** (p. ej. GUIDs/links de
+  ítems ordenados), jamás los bytes crudos: `<lastBuildDate>` cambia en cada corrida y
+  generaría ruido de drift permanente. Nota honesta para la evidencia del SC2: **el 412 de R2
+  no ocurrirá en re-corridas reales** (el XML cambia por timestamp); la salida temprana la da
+  la **caché diaria** — la evidencia del SC2 se redacta sobre la caché, no sobre el 412.
+- **D-132-D:** La allowlist SSRF (`DEFAULT_ALLOWED_SUFFIXES` es solo gubernamental) se extiende
+  con `extraHosts` **exactos y scoped al conector news** (patrón `connector-servel.ts`), jamás
+  tocando el default. Primera tarea del plan: **probar un feed con el `Fetcher` real de Node**
+  (no curl) — el WAF de camara.cl ya demostró que curl OK ≠ Node OK.
+
 ### Fuentes (NEWS-02)
 - **D-01: Los 4 medios directos parten con las 4 URLs PROBADAS de Is Chile Safe** (BioBioChile,
   Cooperativa, LaTercera, LaCuarta — `feeds.py:65-71` verificadas en producción ajena por meses).
@@ -28,24 +65,18 @@ full-text de artículos y vínculo a fichas (137). En 132 NO se llama a ningún 
   Mostrador, Emol…) entra igual vía Google News `<source>` (40+ medios con 9 feeds en ICS).
   **Research PUEDE sustituir LaCuarta** por un medio de mayor densidad legislativa (Emol / El
   Mostrador / Ex-Ante) **solo si verifica su RSS vivo durante la investigación** (fetch real, no
-  suposición). Si no se verifica, queda el set probado. El total queda en 4 — no se amplía.
-- **D-02: Google News RSS Search con 3–5 queries legislativas**, builder heredado
-  (`hl=es-419&gl=CL&ceid=CL:es-419`, `when:2d` en la query). Vocabulario de queries lo fija el
-  plan (candidatos: `"proyecto de ley"`, `Congreso votación`, `boletín Senado|Cámara`,
-  `urgencia legislativa`); las queries quedan congeladas en código con test.
-  *Razón:* 5 queries fue suficiente en ICS para 40+ outlets; más queries = más carga al host
-  sin señal nueva.
-- **D-03: El outlet real de un ítem de Google News sale SIEMPRE del tag `<source>`** — jamás del
-  título ni de la URL. (Patrón ICS `feeds.py:141-159`.)
+  suposición). Si no se verifica, queda el set probado. ~~El total queda en 4 — no se amplía.~~
+  **Enmendada por D-132-A:** el set final son **5 medios directos** = los 4 de ICS (verificados
+  vivos por research, RSS 2.0, robots OK) + Ex-Ante. LaCuarta NO se sustituye (research:
+  Ex-Ante no la reemplaza, la complementa).
+- ~~**D-02: Google News RSS Search con 3–5 queries legislativas**~~ — **ANULADA por D-132-A**
+  (robots.txt de news.google.com prohíbe `/rss/`; ver enmienda arriba).
+- ~~**D-03: outlet real del tag `<source>`**~~ — **SIN OBJETO por D-132-A** (no hay ítems de
+  Google News).
 
 ### Decoder de URLs de Google News
-- **D-04: Solo decoder OFFLINE (base64url).** Prohibido el fallback por POST a `batchexecute`
-  (endpoint interno no documentado de Google — contradice el régimen de ingesta respetuosa y es
-  frágil por construcción). Si el decode offline falla: se conserva la URL de Google News y se
-  marca `url_decodificada=false`. La URL canónica para dedup es la decodificada cuando existe,
-  la de Google News cuando no.
-  *Razón:* el contrato del sitio exige link a la fuente; un link vía Google News sigue siendo un
-  link válido y trazable — no justifica un endpoint hack.
+- ~~**D-04: Solo decoder OFFLINE (base64url).**~~ — **SIN OBJETO por D-132-A** (no hay URLs de
+  Google News que decodificar). El dedup opera sobre las URLs directas de los medios.
 
 ### Pre-filtro léxico legislativo (NEWS-02, SC4)
 - **D-05: El MECANISMO de ICS se hereda, el vocabulario se bota** (research doc §2): set

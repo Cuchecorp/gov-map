@@ -193,7 +193,7 @@ Plans:
   1. El conector consulta robots.txt ANTES de cada host, respeta rate-limit 2-3 s/host con UA identificatorio, y jamás emite ráfagas — el delay entre feeds es observable en la corrida (los "9 requests en ráfaga" de Is Chile Safe son imposibles por construcción).
   2. El RSS CRUDO se persiste content-addressed en R2 (`fuente/recurso/fecha/sha256.ext`, PUT `If-None-Match: *`, 412 = éxito idempotente) con hash-check ANTES de descargar: una re-corrida sin novedades sale temprano con `[skip]` y cero re-descarga.
   3. El parseo/carga a Supabase lee SIEMPRE desde R2, jamás de la fuente: un replay `--from-r2` reproduce la carga completa sin tocar la red.
-  4. Las 5 fuentes operan: 4 medios directos + Google News RSS Search (`hl=es-419&gl=CL&ceid=CL:es-419`, `when:Nd`) con el outlet real extraído del tag `<source>`; el pre-filtro léxico legislativo determinista descarta antes de gastar LLM, con conteo de descartes observable.
+  4. Las 5 fuentes operan: **5 medios directos** (BioBioChile, Cooperativa, LaTercera, LaCuarta, Ex-Ante); el pre-filtro léxico legislativo determinista descarta antes de gastar LLM, con conteo de descartes observable. *(Re-redactado 2026-08-05 por D-132-A: Google News RSS Search descartado — robots.txt de news.google.com prohíbe `/rss/`; evidencia en 132-RESEARCH.md.)*
 
 **Plans**: TBD
 
