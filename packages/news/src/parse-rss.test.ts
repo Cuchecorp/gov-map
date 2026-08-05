@@ -120,3 +120,79 @@ describe("parseRss — 5 fixtures reales", () => {
   // (2) normalizar pubDate a una tz fija ⇒ cae "cooperativa -0400 preserva el offset"
   // (3) usar guid como identidad en vez de link ⇒ cae "biobiochile: guid difiere del link"
 });
+
+function itemUnico(pubDate: string): string {
+  return `<?xml version="1.0"?>
+<rss version="2.0"><channel><title>Test</title>
+<item>
+  <title>Ítem de prueba pubDate</title>
+  <link>https://example.cl/nota-pubdate</link>
+  <guid>https://example.cl/nota-pubdate</guid>
+  <pubDate>${pubDate}</pubDate>
+  <description>Descripción de prueba</description>
+</item>
+</channel></rss>`;
+}
+
+describe("parseRss — pubDate: variantes RFC 822 (WR-12)", () => {
+  it("hora de 1 dígito sin segundos preserva el offset original", () => {
+    const { items, errores } = parseRss(itemUnico("Wed, 5 Aug 2026 7:41 -0400"), "t");
+    expect(errores).toEqual([]);
+    expect(items[0]!.fechaPub).toBe("2026-08-05T07:41:00-04:00");
+  });
+
+  it("sin día de la semana, con segundos, offset +0000", () => {
+    const { items, errores } = parseRss(itemUnico("05 Aug 2026 00:41:06 +0000"), "t");
+    expect(errores).toEqual([]);
+    expect(items[0]!.fechaPub).toBe("2026-08-05T00:41:06+00:00");
+  });
+
+  it("no-regresión: con día de semana + GMT sigue parseando (ya soportado)", () => {
+    const { items, errores } = parseRss(itemUnico("Wed, 05 Aug 2026 00:41:06 GMT"), "t");
+    expect(errores).toEqual([]);
+    expect(items[0]!.fechaPub).toBe("2026-08-05T00:41:06+00:00");
+  });
+
+  it.each([
+    ["EST", "-05:00"],
+    ["EDT", "-04:00"],
+    ["CST", "-06:00"],
+    ["CDT", "-05:00"],
+    ["MST", "-07:00"],
+    ["MDT", "-06:00"],
+    ["PST", "-08:00"],
+    ["PDT", "-07:00"],
+  ])("zona nombrada %s se mapea a su offset fijo %s", (zona, offsetEsperado) => {
+    const { items, errores } = parseRss(itemUnico(`Wed, 05 Aug 2026 00:41:06 ${zona}`), "t");
+    expect(errores).toEqual([]);
+    expect(items[0]!.fechaPub).toBe(`2026-08-05T00:41:06${offsetEsperado}`);
+  });
+
+  it("ANTI-NORMALIZACIÓN (gotcha rector v9.0/v12.0): el offset -0400 nunca se convierte a Z", () => {
+    const { items } = parseRss(itemUnico("Wed, 5 Aug 2026 7:41 -0400"), "t");
+    expect(items[0]!.fechaPub).not.toMatch(/Z$/);
+    expect(items[0]!.fechaPub).toBe("2026-08-05T07:41:00-04:00");
+  });
+
+  it("pubDate presente pero NO parseable ⇒ fechaPub null Y queda registrado en errores[] con el crudo", () => {
+    const { items, errores } = parseRss(itemUnico("no es una fecha RFC 822"), "t");
+    expect(items[0]!.fechaPub).toBeNull();
+    expect(errores.length).toBeGreaterThanOrEqual(1);
+    expect(errores.some((e) => e.includes("no es una fecha RFC 822"))).toBe(true);
+  });
+
+  it("control apareado: pubDate AUSENTE ⇒ fechaPub null y CERO entradas en errores[] (no es un error)", () => {
+    const xmlSinPubDate = `<?xml version="1.0"?>
+<rss version="2.0"><channel><title>Test</title>
+<item>
+  <title>Ítem sin pubDate</title>
+  <link>https://example.cl/nota-sin-pubdate</link>
+  <guid>https://example.cl/nota-sin-pubdate</guid>
+  <description>Descripción de prueba</description>
+</item>
+</channel></rss>`;
+    const { items, errores } = parseRss(xmlSinPubDate, "t");
+    expect(items[0]!.fechaPub).toBeNull();
+    expect(errores).toEqual([]);
+  });
+});
