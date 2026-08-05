@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { cargar } from "./carga-run";
 import { InMemoryNewsWriter } from "./writer";
 import * as prefiltro from "./prefiltro-lexico";
@@ -248,11 +248,33 @@ describe("cargar — degradación honesta", () => {
   });
 });
 
-describe("cargar — cero red", () => {
-  it("el módulo no importa Fetcher ni hace fetch (verificado también por grep en verify)", () => {
-    // Prueba de humo: el import estático de este archivo no falla por falta de red/env,
-    // lo que confirma que no hay side-effects de conexión al cargar el módulo.
-    expect(typeof cargar).toBe("function");
+describe("cargar — cero red (IN-01: corre bajo un fetch que EXPLOTA, con control positivo)", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", () => {
+      throw new Error("red prohibida en tests");
+    });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("control positivo: el fetch global instalado explota si alguien lo llama (prueba de que el stub está activo)", () => {
+    expect(() => fetch("https://example.com")).toThrow("red prohibida en tests");
+  });
+
+  it("cargar() completa un lote completo (writer in-memory) bajo un fetch que lanza — cero red real", async () => {
+    const writer = new InMemoryNewsWriter();
+    const r = await cargar({
+      items: [item(), itemNoLegislativo()],
+      r2Path: "news/biobiochile/2026-08-05/abc.xml",
+      contenidoHash: "abc",
+      writer,
+      log,
+    });
+
+    expect(r.cargados).toBe(1);
+    expect(r.descartados).toBe(1);
+    expect(r.errores).toEqual([]);
   });
 });
 
