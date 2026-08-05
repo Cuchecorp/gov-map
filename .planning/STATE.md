@@ -4,8 +4,8 @@ milestone: v13.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 132 context gathered (autonomo, Fable adjudico D-01..D-13)
-last_updated: "2026-08-05T12:39:40.315Z"
-last_activity: 2026-08-05 -- Phase 132 planning complete
+last_updated: "2026-08-05T12:40:06.337Z"
+last_activity: 2026-08-05 -- Phase 132 execution started
 progress:
   total_phases: 14
   completed_phases: 5
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (§ Current Milestone: v13.0, updated 2026-07-30)
 
 **Core value:** La ciudadanía puede responder, sobre cualquier proyecto de ley o parlamentario, "qué pasó, cuándo y según qué fuente" — cada dato con fuente, fecha y enlace, sin afirmar intención ni causalidad.
-**Current focus:** Phase 131 — DEBT-FICHA
+**Current focus:** Phase 132 — NEWS-RSS — Conector RSS dos-etapas LOCKED
 
 ## Current Position
 
-Phase: 130
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-08-05 -- Phase 132 planning complete
+Phase: 132 (NEWS-RSS — Conector RSS dos-etapas LOCKED) — EXECUTING
+Plan: 1 of 7
+Status: Executing Phase 132
+Last activity: 2026-08-05 -- Phase 132 execution started
 
 Progress: [░░░░░░░░░░░░░] 0/13 phases
 

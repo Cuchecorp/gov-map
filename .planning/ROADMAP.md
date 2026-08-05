@@ -196,8 +196,9 @@ Plans:
   4. Las fuentes operan: **N medios directos, N = `FEEDS.length`** — nominalmente **5** (BioBioChile, Cooperativa, LaTercera, LaCuarta, Ex-Ante); el pre-filtro léxico legislativo determinista descarta antes de gastar LLM, con conteo de descartes observable. *(Re-redactado 2026-08-05 por D-132-A: Google News RSS Search descartado — robots.txt de news.google.com prohíbe `/rss/`; evidencia en 132-RESEARCH.md.)* *(Cláusula N, 2026-08-05: si el probe de 132-01 retira un host porque su WAF bloquea al `Fetcher` de Node (riesgo A4), la fase opera con **N ≥ 3** y la baja queda documentada con host y status — autorizado por D-132-A / premortem F-7. Piso duro: con N < 3 la fase PARA.)*
 
 **Plans**: 7 plans (5 waves)
-- [ ] 132-01-PLAN.md — Scaffold @obs/news (no CI-DARK) + feeds/allowlist congelados + probe con Fetcher real y captura de los 5 fixtures (riesgo A4)
-- [ ] 132-02-PLAN.md — Migracion 0084 (noticia + noticia_url_vista, RLS deny-all) aplicada a PROD por psql + pgTAP
+
+- [x] 132-01-PLAN.md — Scaffold @obs/news (no CI-DARK) + feeds/allowlist congelados + probe con Fetcher real y captura de los 5 fixtures (riesgo A4)
+- [x] 132-02-PLAN.md — Migracion 0084 (noticia + noticia_url_vista, RLS deny-all) aplicada a PROD por psql + pgTAP
 - [ ] 132-03-PLAN.md — NewsConnector sobre BaseConnector (Etapa 1) + tests estructurales SC1/SC2
 - [ ] 132-04-PLAN.md — Etapa 2 pura: parse-rss, canonicalizar-url (D-13), pre-filtro lexico congelado (D-05/D-06)
 - [ ] 132-05-PLAN.md — Writers + carga-run con orden LOCKED (marcar vista ANTES del reject) e idempotencia
@@ -316,7 +317,7 @@ Plans:
 | 129. PANEL-DISEÑO | 5/5 | Closed (deuda → 139) | 2026-08-04 |
 | 130. VOTOS-REAL | 3/3 | Complete    | 2026-07-30 |
 | 131. DEBT-FICHA | 3/3 | Complete    | 2026-07-30 |
-| 132. NEWS-RSS | 0/? | Not started | - |
+| 132. NEWS-RSS | 2/7 | In Progress|  |
 | 133. NEWS-TAXO | 0/? | Not started | - |
 | 134. NEWS-RESOLVER | 0/? | Not started | - |
 | 135. NEWS-CLASIF | 0/? | Not started | - |
