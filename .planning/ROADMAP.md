@@ -195,7 +195,7 @@ Plans:
   3. El parseo/carga a Supabase lee SIEMPRE desde R2, jamás de la fuente: un replay `--from-r2` reproduce la carga completa sin tocar la red.
   4. Las fuentes operan: **N medios directos, N = `FEEDS.length`** — nominalmente **5** (BioBioChile, Cooperativa, LaTercera, LaCuarta, Ex-Ante); el pre-filtro léxico legislativo determinista descarta antes de gastar LLM, con conteo de descartes observable. *(Re-redactado 2026-08-05 por D-132-A: Google News RSS Search descartado — robots.txt de news.google.com prohíbe `/rss/`; evidencia en 132-RESEARCH.md.)* *(Cláusula N, 2026-08-05: si el probe de 132-01 retira un host porque su WAF bloquea al `Fetcher` de Node (riesgo A4), la fase opera con **N ≥ 3** y la baja queda documentada con host y status — autorizado por D-132-A / premortem F-7. Piso duro: con N < 3 la fase PARA.)*
 
-**Plans**: 7 plans (5 waves)
+**Plans**: 11 plans (7 waves) — 4 de cierre de gaps (132-08..11) tras VERIFICATION (gap SC2) + REVIEW (2 Critical, 17 Warning)
 
 - [x] 132-01-PLAN.md — Scaffold @obs/news (no CI-DARK) + feeds/allowlist congelados + probe con Fetcher real y captura de los 5 fixtures (riesgo A4)
 - [x] 132-02-PLAN.md — Migracion 0084 (noticia + noticia_url_vista, RLS deny-all) aplicada a PROD por psql + pgTAP
@@ -204,6 +204,10 @@ Plans:
 - [x] 132-05-PLAN.md — Writers + carga-run con orden LOCKED (marcar vista ANTES del reject) e idempotencia
 - [x] 132-06-PLAN.md — run-news-cli con --from-r2 (SC3, fetch que lanza) y [skip] derivado (SC2, D-132-B)
 - [x] 132-07-PLAN.md — Corrida LIVE + re-corrida [skip] + replay real + conteos psql + reporte al operador (D-132-A)
+- [ ] 132-08-PLAN.md — [gap] CR-01/SC2: SupabaseSnapshotLookup + DailyCache real cableado + evidencia [skip] x5 con 0 requests
+- [ ] 132-09-PLAN.md — [gap] CR-02: ledger provisional sin causa final (migracion 0085) + contarPorCausa sin cap 1.000 + tests del writer de PROD
+- [ ] 132-10-PLAN.md — [gap] Regimen de red y honestidad del CLI (gate cross-host, assertFeedUrl, --feeds/--dry-run/--etapa2/--from-r2) + contrato outlet=slug corregido en PROD
+- [ ] 132-11-PLAN.md — [gap] parsePubDate RFC 822, truncado en frontera de palabra, tests de cero-red y fixtures verificados
 
 ### Phase 133: NEWS-TAXO — Taxonomía congelada + golden set arreglado ANTES de medir
 
