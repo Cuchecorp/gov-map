@@ -4,12 +4,12 @@ milestone: v13.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 132 context gathered (autonomo, Fable adjudico D-01..D-13)
-last_updated: "2026-08-05T04:32:30.879Z"
-last_activity: 2026-07-30
+last_updated: "2026-08-05T12:39:40.315Z"
+last_activity: 2026-08-05 -- Phase 132 planning complete
 progress:
   total_phases: 14
   completed_phases: 5
-  total_plans: 22
+  total_plans: 29
   completed_plans: 21
   percent: 36
 ---
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (§ Current Milestone: v13.0, updated 2026-07-30)
 Phase: 130
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-07-30
+Last activity: 2026-08-05 -- Phase 132 planning complete
 
 Progress: [░░░░░░░░░░░░░] 0/13 phases
 
