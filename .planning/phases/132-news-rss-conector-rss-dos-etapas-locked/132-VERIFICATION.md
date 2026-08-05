@@ -1,120 +1,124 @@
 ---
 phase: 132-news-rss-conector-rss-dos-etapas-locked
-verified: 2026-08-05T19:05:00Z
-status: gaps_found
-score: 3/4 must-haves verified
+verified: 2026-08-05T22:10:00Z
+status: passed
+score: 4/4 must-haves verified
 overrides_applied: 0
 re_verification:
-  previous_status: none
-gaps:
-  - truth: "SC2 — hash-check ANTES de descargar: una re-corrida sin novedades sale temprano con `[skip]` y cero re-descarga"
-    status: partial
-    reason: "La mitad content-addressing del SC2 está VERIFICADA (5 objetos `news/rss-<slug>/YYYY-MM-DD/<sha256>.xml` en R2, `If-None-Match: *` + 412=existed en `r2-store.ts`). La mitad hash-check/early-exit NO existe en el pipeline real: `buildNewsDeps()` deja `cache.hasToday` como doble no-op (`async () => false`) y NINGÚN caller de la CLI lo sobrescribe, así que `BaseConnector.run()` (línea `if (await this.deps.cache.hasToday(...)) continue;`) jamás toma la rama de cache-hit y el `[skip]` derivado de 132-06 no tiene camino para dispararse. Confirmado por código Y por la corrida LIVE (paso 2: `descargados=5 skips=0`, 5 fetch HTTP reales donde el plan prometía 0)."
-    artifacts:
-      - path: "packages/news/src/connector-news.ts"
-        issue: "línea 115-118: `cache: overrides.cache ?? { dailyKey: async () => \"\", hasToday: async () => false }` — el default de producción es el doble no-op"
-      - path: "packages/news/src/run-news-cli.ts"
-        issue: "`buildNewsDeps({...})` (línea ~314) nunca pasa `cache`; el bucle de `[skip]` (línea ~356-365) deriva de `refs` que siempre trae los N slugs"
-    missing:
-      - "Wire de un `DailyCache`/`SnapshotLookup` real respaldado en `source_snapshot` (consulta por `source='news'` + `resource` + `date_bucket = hoy`) dentro de `packages/news` — NO requiere tocar `@obs/ingest` (D-132-B se respeta: `ConnectorDeps.cache` es un punto de inyección del framework, no una modificación)"
-      - "Pasar ese cache en `buildNewsDeps()` (default de producción) y/o desde `run-news-cli.ts`"
-      - "Test que pruebe el early-exit con el cache REAL (no el doble): segunda corrida ⇒ `descargados=0 skips=N` y `fetcher.get` 0 veces; con mutación que demuestre que el test cae"
-      - "Nota: el 412 de R2 NO es sustituto — el sha256 se calcula sobre el XML crudo con `<lastBuildDate>` volátil (ya anticipado en 132-RESEARCH Pitfall 5)"
+  previous_status: gaps_found
+  previous_score: 3/4
+  gaps_closed:
+    - "SC2 — hash-check ANTES de descargar: una re-corrida sin novedades sale temprano con `[skip]` y cero re-descarga"
+  gaps_remaining: []
+  regressions: []
+gaps: []
 human_verification: []
 ---
 
-# Phase 132: NEWS-RSS — Conector RSS dos-etapas LOCKED — Verification Report
+# Phase 132: NEWS-RSS — Conector RSS dos-etapas LOCKED — Verification Report (RE-VERIFICACIÓN)
 
 **Phase Goal:** El RSS de prensa fluye fuente→R2 crudo→Supabase cerrando los 4 huecos de régimen de Is Chile Safe (robots.txt, delay, crudo no guardado, content-addressing incompleto) — ninguno se hereda.
-**Verified:** 2026-08-05
-**Status:** gaps_found
-**Re-verification:** No — verificación inicial
+**Verified:** 2026-08-05 (ronda 2, tras planes de cierre 132-08..11)
+**Status:** passed
+**Re-verification:** Sí — tras gap closure (previo: `gaps_found` 3/4)
 
 ## Goal Achievement
 
 ### Observable Truths (SC1-SC4 del ROADMAP §Phase 132)
 
-| # | Truth | Status | Evidence |
-|---|-------|--------|----------|
-| 1 | SC1 — robots.txt ANTES de cada host, rate-limit 2-3 s/host, UA identificatorio, sin ráfagas; delay entre feeds observable | ✓ VERIFIED (con warning) | `base-connector.ts:118-140`: orden LOCKED cache→robots→hostThrottle→rateLimiter.wait(host)→fetch, con `host` derivado de `new URL(spec.url).host` (no spoofeable). `buildNewsDeps` inyecta `RobotsGuard` **con la allowlist scoped** (Pitfall 1 cerrado) y `HostRateLimiter({minDelayMs: 2500})`. UA LOCKED en `fetcher.ts:102` y `robots.ts:115`. Corrida LIVE: 1 request por host, gaps 1.858/1.709/1.517/3.105 s. Ver warning abajo. |
-| 2 | SC2 — RSS crudo content-addressed en R2 (`If-None-Match: *`, 412 = éxito) **con hash-check ANTES de descargar; re-corrida sale temprano con `[skip]` y cero re-descarga** | ✗ FAILED (parcial) | Content-addressing VERIFICADO por comando contra PROD: los 5 `r2_path` de `source_snapshot` matchean `news/rss-<slug>/2026-08-05/<64-hex>.xml`; `r2-store.ts:71,76-79` pone `If-None-Match: *` y trata 412 como `existed=true`. **Early-exit NO existe:** `cache.hasToday` es no-op en `buildNewsDeps` y la CLI no lo sobrescribe (grep: las únicas `hasToday` reales son dobles de test). La corrida LIVE lo confirmó empíricamente (`descargados=5 skips=0` en la re-corrida; 5 requests HTTP donde el plan prometía 0). |
-| 3 | SC3 — El parseo/carga lee SIEMPRE desde R2; replay `--from-r2` reproduce la carga sin tocar la red | ✓ VERIFIED | **Re-ejecutado por el verificador, no tomado del SUMMARY:** `tsx src/run-news-cli.ts --dry-run --from-r2 news/rss-exante/...cf0867b1...xml` ⇒ `carga: vistos=10 nuevos=10 duplicados=0 descartados=10 cargados=0 errores=0` — reproduce exactamente los conteos de exante del paso 1, única fuente `r2Store.getObject` (`run-news-cli.ts:272-301`, rama que no invoca `run()`). `replay.test.ts` 4/4 verde. |
-| 4 | SC4 — N medios directos (N=`FEEDS.length`≥3, nominal 5) + pre-filtro léxico determinista con conteo de descartes observable | ✓ VERIFIED | `feeds.ts`: 5 feeds (biobiochile, cooperativa, latercera, lacuarta, exante) + 5 fixtures, congelado por `fixtures.test.ts`. PROD (`psql -tA \| tr -d '\r'`): `noticia_url_vista` 245 filas = `prefiltro_lexico` **220** + `(pasa)` **25**; `noticia` 25 (La Tercera 18, La Cuarta 7); `source_snapshot(source='news')` = 5 = N. Descarte observable y no vacuo. |
+| # | Truth | Status | Evidence (comando ejecutado por el verificador) |
+|---|-------|--------|--------------------------------------------------|
+| 1 | SC1 — robots.txt ANTES de cada host, rate-limit 2-3 s/host, UA identificatorio, sin ráfagas; delay entre feeds observable | ✓ VERIFIED | Orden LOCKED intacto en `base-connector.ts:118-140` (cache→robots→hostThrottle→rateLimiter→fetch, `host` derivado de `new URL(spec.url).host`). El warning cross-host de la ronda 1 quedó **cerrado en código**: `gateRateLimiter()` (`connector-news.ts:150-175`) impone `minIntervalMs` GLOBAL entre requests además del `HostRateLimiter` por host, y `buildNewsDeps` lo envuelve siempre (línea 216-221). Test apareado real: `connector-news.test.ts:321,355` — "5 endpoints de 5 hosts distintos ⇒ `sleepFn` 4 veces con valor ≥2000 y `rateLimiter.wait` sigue por host". |
+| 2 | SC2 — RSS crudo content-addressed en R2 (`If-None-Match: *`, 412 = éxito) **con hash-check ANTES de descargar; re-corrida sale temprano con `[skip]` y cero re-descarga** | ✓ VERIFIED | **Re-ejecutado en vivo por el verificador, no tomado del SUMMARY:** `npx tsx src/run-news-cli.ts --etapa1 --feeds exante,latercera` ⇒ `[skip] rss-latercera (cache-hit del día)` / `[skip] rss-exante (cache-hit del día)` / `news-cli: descargados=0 skips=2` — **0 requests HTTP** contra los medios. Camino de PRODUCCIÓN confirmado por lectura: `buildNewsDeps` ya NO tiene doble no-op; `cache = new DailyCache(new SupabaseSnapshotLookup(supabase))` (`connector-news.ts:223-230`) y **lanza `NewsCacheRequeridaError` si no hay cache ni supabase** (fail-closed, no degrada). `run-news-cli.ts:386-387` pasa `supabase:{url,serviceKey}` desde env. `SupabaseSnapshotLookup.hasSnapshot` (`snapshot-lookup-supabase.ts:51-64`) consulta `source_snapshot` por `(source,resource,date_bucket)` y **lanza ante error de PostgREST** en vez de devolver `false` silencioso. Content-addressing: los 5 `r2_path` de PROD matchean `news/rss-<slug>/2026-08-05/<64-hex>.xml`. |
+| 3 | SC3 — El parseo/carga lee SIEMPRE desde R2; replay `--from-r2` reproduce la carga sin tocar la red | ✓ VERIFIED | **Re-ejecutado por el verificador tras los cambios de 132-10/11:** `--dry-run --from-r2 news/rss-exante/2026-08-05/cf0867b1…57b.xml` ⇒ `carga: vistos=10 nuevos=10 duplicados=0 descartados=10 cargados=0 errores=0`, idéntico a la ronda 1 ⇒ sin regresión. `replay.test.ts` 4/4. Además el CLI ahora **valida el patrón del r2Path** (WR-09): una clave truncada falló ruidosamente en mi primer intento. |
+| 4 | SC4 — N medios directos (N=`FEEDS.length`≥3, nominal 5) + pre-filtro léxico determinista con conteo de descartes observable | ✓ VERIFIED | `feeds.ts`: 5 feeds con `slug` + `display` separados. PROD (`psql -tA \| tr -d '\r'`): `noticia`=25 (`lacuarta` 7 + `latercera` 18, **outlet = slug**, no display); `noticia_url_vista`=245 con partición coherente `descarta/prefiltro_lexico`=220 + `pasa/(null)`=25, **0 filas `pendiente` colgadas**; `outlet` del ledger también en slug (biobiochile 20, cooperativa 15, exante 10, lacuarta 100, latercera 100 = 245); `source_snapshot(source='news')`=5=N. |
 
-**Score:** 3/4 truths verified
+**Score:** 4/4 truths verified
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `packages/news/` (23 .ts, 2977 líneas) | Paquete no CI-DARK | ✓ VERIFIED | `pnpm --filter @obs/news test` ⇒ **123 passed / 10 files** (piso 85). `pnpm typecheck`=0, `pnpm guards`=0 (verificado por el verificador). |
-| `packages/news/src/connector-news.ts` | NewsConnector con 3 hooks + `buildNewsDeps` | ⚠️ HOLLOW (parcial) | Hooks y allowlist correctos; `cache` default es no-op ⇒ el gate pre-descarga del framework queda muerto en producción. |
-| `packages/news/src/run-news-cli.ts` | CLI Etapa1/Etapa2/`--from-r2`, R2 obligatorio | ✓ VERIFIED | Tri-estado `r2Store` (null/undefined/inyectado), fallo duro sin R2 fuera de dry-run; rama `--from-r2` sin red (ejercitada en vivo). |
-| `supabase/migrations/0084_noticia.sql` + `supabase/tests/0084_noticia.test.sql` | Tablas + RLS deny-all, aplicada a PROD | ✓ VERIFIED | pgTAP corrido por el verificador contra PROD: **16/16 ok** (RLS enabled en ambas tablas; anon y authenticated sin select/insert/update). `pg_class.relrowsecurity('noticia')='t'`. |
-| `132-REPORTE-OPERADOR.md` | Handoff con números reales, sin secretos | ✓ VERIFIED | Existe; B26 sin project-ref/credenciales. |
+| `packages/news/` | Paquete no CI-DARK | ✓ VERIFIED | `pnpm --filter @obs/news test` ⇒ **206 passed / 12 files** (era 123/10; piso 85). |
+| `packages/news/src/snapshot-lookup-supabase.ts` | `SnapshotLookup` real contra `source_snapshot` | ✓ VERIFIED | Existe, implementa `hasSnapshot`, sin project-ref hardcodeado, sin degradación a `false`. Suite propia `snapshot-lookup-supabase.test.ts`. |
+| `packages/news/src/connector-news.ts` | `buildNewsDeps` sin doble no-op + gate cross-host | ✓ VERIFIED (era ⚠️ HOLLOW) | `NewsCacheRequeridaError` fail-closed; `gateRateLimiter`; `validateShape` RSS-2.0-only. |
+| `packages/news/src/run-news-cli.ts` | Flags honestos + cache real | ✓ VERIFIED | `--feeds` viaja al constructor del conector (WR-01); `--etapa1`/`--etapa2` mutuamente excluyentes (WR-02); `--dry-run` sin `--from-r2` LANZA (WR-06); argumento inválido lanza (WR-08); `--from-r2` validado (WR-09). |
+| `supabase/migrations/0085_…pendiente.sql` + test pgTAP | Estado `pendiente` aplicado a PROD | ✓ VERIFIED | PROD: `noticia_url_vista_estado_check = estado in ('pasa','descarta','pendiente')`, índice `noticia_url_vista_estado_idx` presente, ledger `supabase_migrations.schema_migrations` con `0085` al tope. **pgTAP corrido por el verificador contra PROD: 9/9 ok** (incluye el control negativo "un estado inventado sigue rechazado" ⇒ el check no quedó vacío, y 3 no-regresiones de RLS deny-all). |
+| `packages/news/src/carga-run.ts` | Ledger sin causa final prematura (CR-02) | ✓ VERIFIED | Marca `estado:'pendiente', causa:null` ANTES de evaluar (línea 113-122); promueve a `descarta/prefiltro_lexico` o a `pasa` SOLO tras resolver el destino (líneas 136-152, 188-194); fallo ⇒ queda `pendiente` re-evaluable + `errores[]`. `urlsYaVistas` filtra a `estado in ('pasa','descarta')` (`writer-supabase.ts:120-133`) ⇒ los `pendiente` sí se re-evalúan. |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|-----|-----|--------|---------|
-| `NewsConnector` | robots.txt del host | `RobotsGuard.isAllowed` en `BaseConnector.run()` paso 2 | ✓ WIRED | Allowlist scoped inyectada en el guard (si no, todo saldría `[skip]` silencioso). |
-| `NewsConnector` | rate-limit por host | `HostRateLimiter.wait(host)` paso 3b, `minIntervalMs=2500` | ✓ WIRED | Por host; ver warning cross-host. |
-| `BaseConnector` | R2 crudo | `r2.putImmutable(source,resource,date,sha,ext,body)` | ✓ WIRED | 5 objetos reales en R2 con path content-addressed. |
-| `BaseConnector` | `source_snapshot` | `snapshot.write(...)` | ✓ WIRED | 5 filas PROD con `r2_path` + `content_hash`. |
-| `run-news-cli` | cache diaria (`hasToday`) | `buildNewsDeps().cache` | ✗ NOT_WIRED | Doble no-op; ningún caller inyecta implementación real ⇒ SC2 falla. |
-| `run-news-cli --from-r2` | Etapa 2 | `r2Store.getObject` únicamente | ✓ WIRED | Verificado en vivo. |
+| `run-news-cli` | cache diaria real | `buildNewsDeps({supabase}) → DailyCache → SupabaseSnapshotLookup → source_snapshot` | ✓ WIRED (era ✗ NOT_WIRED) | Probado en vivo: `descargados=0 skips=2`. |
+| `BaseConnector` | early-exit | `if (await cache.hasToday(...)) continue` | ✓ WIRED | Ahora alcanzable: `date_bucket=2026-08-05` presente para los 5 recursos. |
+| `carga-run` | ledger | `writer.marcarVistas` provisional → promoción | ✓ WIRED | CR-02 cerrado. |
+| Resto de links de la ronda 1 (robots, rate-limit, R2, snapshot, `--from-r2`) | — | — | ✓ WIRED | Sin regresión (re-probados vía suite + corridas). |
 
-### Data-Flow Trace (Level 4)
+### Régimen (D-132-B / B26)
 
-| Artifact | Data | Source | Produces Real Data | Status |
-|----------|------|--------|--------------------|--------|
-| `noticia` (PROD) | 25 filas, 2 outlets | `cargar()` ← parse-rss ← R2 crudo | Sí (datos reales de La Tercera/La Cuarta) | ✓ FLOWING |
-| `noticia_url_vista` | 245 filas, 220 `prefiltro_lexico` | `writer.marcarVistas` antes del reject (orden LOCKED) | Sí | ✓ FLOWING |
-| `[skip]` derivado (CLI) | `skips[]` siempre vacío | `refs` de `run()` con cache no-op | **No** — el array nunca puede poblarse en producción | ✗ DISCONNECTED |
+| Control | Comando | Resultado | Status |
+|---------|---------|-----------|--------|
+| `@obs/ingest` intacto | `git diff --name-only 7b188f3..HEAD -- packages/ingest/` | **0 archivos** | ✓ PASS |
+| Superficie del cierre | `git diff --name-only 7b188f3..HEAD` | solo `.planning/`, `packages/news/src/`, `supabase/migrations|tests/0085` | ✓ PASS |
+| B26 sin secretos | grep de project-ref / `service_role_key` / `eyJhbGciOi` sobre todos los archivos tocados | 0 matches | ✓ PASS |
+| Marcadores de deuda | grep `TBD\|FIXME\|XXX\|HACK\|TODO` en `packages/news/src/*.ts` + `0085.sql` | 0 reales (único match = "TODO" español = "todo") | ✓ PASS |
 
 ### Behavioral Spot-Checks (ejecutados por el verificador)
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Suite del paquete | `pnpm --filter @obs/news test` | 123 passed / 10 files | ✓ PASS |
+| Suite del paquete | `pnpm --filter @obs/news test` | 206 passed / 12 files | ✓ PASS |
 | Typecheck monorepo | `pnpm typecheck` | exit 0 | ✓ PASS |
-| Guards de régimen | `pnpm guards` | exit 0 (7 passed en el último bloque) | ✓ PASS |
-| Replay sin red (SC3) | `tsx run-news-cli.ts --dry-run --from-r2 news/rss-exante/...` | `vistos=10 descartados=10 cargados=0` | ✓ PASS |
-| pgTAP 0084 contra PROD | `psql -tA -f supabase/tests/0084_noticia.test.sql` | 16/16 ok | ✓ PASS |
-| Conteos PROD | `psql -tA \| tr -d '\r'` | noticia=25, vista=245 (220 prefiltro + 25 pasa), snapshot=5 | ✓ PASS |
-| `[skip]` en re-corrida | (no re-ejecutado — presupuesto de red; evidencia de código concluyente) | `hasToday` no-op ⇒ imposible | ✗ FAIL |
+| Guards de régimen | `pnpm guards` | exit 0 (7 passed) | ✓ PASS |
+| **SC2 early-exit LIVE** | `tsx run-news-cli.ts --etapa1 --feeds exante,latercera` | `[skip]` ×2, `descargados=0 skips=2`, 0 requests | ✓ PASS |
+| SC3 replay sin red | `tsx run-news-cli.ts --dry-run --from-r2 <path>` | `vistos=10 descartados=10 cargados=0` | ✓ PASS |
+| pgTAP 0085 contra PROD | `psql -tA -f supabase/tests/0085_…test.sql` | 9/9 ok | ✓ PASS |
+| Conteos PROD | `psql -tA \| tr -d '\r'` | noticia=25 (outlet=slug), vista=245 = 220 + 25, 0 `pendiente`, snapshot=5 | ✓ PASS |
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|-------------|-------------|--------|----------|
-| NEWS-01 | 132-01..07 | Dos etapas LOCKED: robots + rate-limit + UA + crudo content-addressed a R2 → parseo SIEMPRE desde R2. **Hash-check antes de descargar.** | ⚠️ PARCIAL | Todo verificado salvo la cláusula "hash-check antes de descargar" (misma raíz que el gap SC2). |
-| NEWS-02 | 132-01, 04, 07 | 5 medios directos (cláusula N≥3) + pre-filtro léxico determinista antes de gastar LLM | ✓ SATISFIED | N=5 congelado; 220 descartes léxicos observables en PROD; Google News descartado por robots.txt (D-132-A, re-verificado). |
+| NEWS-01 | 132-01..11 | Dos etapas LOCKED: robots + rate-limit + UA + crudo content-addressed a R2 → parseo SIEMPRE desde R2. Hash-check antes de descargar. | ✓ SATISFIED (era ⚠️ PARCIAL) | La cláusula "hash-check antes de descargar" quedó probada en vivo (0 requests en la re-corrida). |
+| NEWS-02 | 132-01, 04, 07, 10 | 5 medios directos (N≥3) + pre-filtro léxico determinista antes de gastar LLM | ✓ SATISFIED | N=5 congelado; 220 descartes léxicos trazables; `outlet` ahora slug estable. |
 
-Sin requisitos huérfanos: REQUIREMENTS.md mapea NEWS-01 y NEWS-02 a la fase 132 y ambos aparecen en los planes.
+Sin requisitos huérfanos.
+
+### Estado de los hallazgos del 132-REVIEW.md
+
+**Cerrados y verificados por comando/código:** CR-01 (132-08), CR-02 + migración 0085 aplicada (132-09), WR-01, WR-02, WR-03, WR-04 (outlet=slug en código y en PROD, 25+245 filas migradas), WR-05 (`contarPorCausa` con count exacto), WR-06, WR-07 (`assertFeedUrl` en el camino real), WR-08, WR-09, WR-10, WR-11, WR-12, WR-13, WR-14 (`validateShape` exige `<rss>`; Atom lanza — test `connector-news.test.ts:410`), WR-15 (suite de `SupabaseNewsWriter`), WR-17 (`despojarHtml` en `descripcion`), IN-01, IN-03, IN-04, IN-06.
+
+**Diferidos CON razón escrita (aceptable):**
+
+| Hallazgo | Razón escrita | Dónde |
+|----------|---------------|-------|
+| WR-16 (2-3 round-trips por ítem; ledger y `noticia` pueden divergir) | "la pérdida de dato la cierra CR-02 en este plan; lo que queda es rendimiento, no corrección" | `132-09-SUMMARY.md:25,131` (§Deferred con razón) |
+| IN-05 (`canonicalizarUrl` elimina `ref`/`source`) | "invalidaría el `url_hash` de las 245 filas ya en el ledger sin un caso real de colisión observado" | `132-09-SUMMARY.md:26,134` |
+
+**Ninguno se difirió en silencio.** Sí hay una **inconsistencia documental menor (ℹ️ Info, no gap):** `132-11-SUMMARY.md:121` afirma "WR-14 queda diferido con razón dura (exige tocar `@obs/ingest`)", pero WR-14 **ya había sido cerrado en `132-10`** y el código lo confirma (`connector-news.ts:95-99` rechaza Atom, con test apareado). La afirmación del SUMMARY es obsoleta, no una omisión real.
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `packages/news/src/connector-news.ts` | 115-118 | Doble no-op (`async () => false`) como default de **producción**, no de test | 🛑 Blocker | Anula el gate de cache-hit del framework ⇒ SC2 falso. |
-| — | — | TODO/FIXME/TBD/XXX/HACK en `packages/news/src/*.ts` | ℹ️ Info | **0 marcadores de deuda** (los matches son la palabra española "TODOS"). |
-
-**Warning (no blocker) — rate-limit cross-host:** con 5 hosts distintos, cada uno es "el primero" de su propio host y no paga `minDelayMs` ⇒ 3 de 4 gaps de la corrida LIVE quedaron bajo 2 s (1.858 / 1.709 / 1.517 s). **SC1 se sostiene literalmente**: el criterio es "rate-limit 2-3 s/**host**" y cada host recibió exactamente 1 request; la ráfaga de "9 requests" de Is Chile Safe sigue siendo imposible por construcción, y el delay entre feeds fue observable y no nulo. Queda como deuda de robustez: si algún día dos feeds comparten host, o si N crece, conviene un sleep cross-host explícito en `NewsConnector` (mismo patrón que `probe-feeds.ts`).
+| — | — | Doble no-op de producción (blocker de la ronda 1) | ✓ ELIMINADO | Reemplazado por fail-closed `NewsCacheRequeridaError`. |
+| `132-11-SUMMARY.md` | 121 | Afirmación obsoleta sobre WR-14 | ℹ️ Info | Documental; el código dice lo contrario y es lo verificado. |
 
 ### Human Verification Required
 
-Ninguna. La corrida LIVE es artefacto de handoff (`132-REPORTE-OPERADOR.md`), no gate; la adjudicación D-132-A del operador es asíncrona por diseño.
+Ninguna. El único item asíncrono es la adjudicación D-132-A del operador (Google News descartado por robots.txt), que es decisión de handoff, no gate técnico.
 
 ### Gaps Summary
 
-La fase entrega de verdad 3 de sus 4 criterios, y lo entregado resiste el spot-check independiente: la migración 0084 está aplicada con RLS deny-all real (16/16 pgTAP contra PROD), los 5 crudos están en R2 con path content-addressed, PROD tiene 25 noticias y 220 descartes léxicos trazables, y el replay `--from-r2` lo re-ejecuté yo mismo con conteos idénticos a los del SUMMARY.
+Sin gaps. El único hueco de la ronda 1 —hueco #4 de Is Chile Safe: hash-check/early-exit antes de descargar— está cerrado en el camino de PRODUCCIÓN, no solo en tests: `buildNewsDeps` construye un `DailyCache` respaldado en `source_snapshot` vía `SupabaseSnapshotLookup`, **lanza en vez de degradar** si le faltan credenciales, y la re-corrida que yo mismo ejecuté salió con `[skip]` ×2 y cero requests HTTP. El régimen quedó intacto (`packages/ingest/` con 0 archivos tocados desde el review) y la superficie del cierre es exactamente `packages/news/src/` + la migración 0085, que está aplicada a PROD y probada con pgTAP 9/9 contra el schema aplicado, incluyendo un control negativo que demuestra que el check no quedó vacío.
 
-El único gap es real y está probado por código, no solo por el log de la corrida: **el hueco #4 de Is Chile Safe (hash-check/early-exit antes de descargar) no se cerró**. `buildNewsDeps()` entrega un `cache.hasToday` no-op como default de producción y ningún caller lo sobrescribe, así que la rama de cache-hit de `BaseConnector.run()` es inalcanzable y el `[skip]` derivado de 132-06 no tiene camino para dispararse. La consecuencia se midió en vivo: la re-corrida gastó 5 requests HTTP contra medios reales donde el plan prometía 0. El SUMMARY lo documenta con honestidad ejemplar y lo clasifica como handoff no bloqueante; desde la verificación goal-backward, sin embargo, ese hueco es exactamente uno de los cuatro que el goal de la fase declara cerrar ("ninguno se hereda"), y la fase 136 (cron diario L-V) depende de él para no re-scrapear los 5 medios cada día. Por eso queda como `gaps_found` y no como deuda diferida.
+## Historial
 
-El fix no requiere tocar `@obs/ingest` ni violar D-132-B: `ConnectorDeps.cache` es un punto de inyección del framework, y basta una implementación respaldada en `source_snapshot` (`source='news'` + `resource` + `date_bucket = hoy`) dentro de `packages/news`, con su test de early-exit y la mutación que demuestre que el test cae.
+**Ronda 1 — 2026-08-05T19:05:00Z — `gaps_found`, score 3/4.**
+Gap único: *"SC2 — hash-check ANTES de descargar"* en estado `partial`. La mitad content-addressing estaba verificada (5 objetos en R2 con `If-None-Match: *` y 412=existed), pero la mitad early-exit no existía en producción: `buildNewsDeps()` entregaba `cache: { dailyKey: async () => "", hasToday: async () => false }` como default de **producción** y ningún caller lo sobrescribía, así que la rama de cache-hit de `BaseConnector.run()` era inalcanzable y el `[skip]` derivado de 132-06 no tenía camino para dispararse. Medido en vivo entonces: la re-corrida gastó **5 requests HTTP** contra medios reales donde el plan prometía 0. Artefactos señalados: `connector-news.ts:115-118` (doble no-op) y `run-news-cli.ts:~314` (`buildNewsDeps` sin `cache`). Warning no bloqueante registrado: rate-limit sin gate cross-host (gaps de 1.858/1.709/1.517 s entre feeds de hosts distintos). Ambos quedaron cerrados por los planes 132-08 (cache real) y 132-10 (gate cross-host).
 
 ---
 
-_Verified: 2026-08-05_
+_Verified: 2026-08-05 (ronda 2)_
 _Verifier: Claude (gsd-verifier)_

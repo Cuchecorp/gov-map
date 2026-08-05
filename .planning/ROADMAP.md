@@ -44,7 +44,7 @@
 - [ ] **Phase 129: PANEL-DISEÑO** — Loop de diseño BrowserOS con Opus hasta que quede bien; cierre por fragmento DOM + captura; entierra B-02 y H-01
 - [x] **Phase 130: VOTOS-REAL** — B-01: las fichas muestran el conteo REAL de votos (3.752, no 1000) con composición no distorsionada (completed 2026-07-30)
 - [x] **Phase 131: DEBT-FICHA** — H-06 (regla de selección del timeline por query escrita) + 3.3 (co-autoría /comparar sin truncamiento, RPC v2 paralela) (completed 2026-07-30)
-- [ ] **Phase 132: NEWS-RSS** — Conector RSS dos-etapas LOCKED (robots + rate-limit + R2 crudo content-addressed) cerrando los 4 huecos de Is Chile Safe
+- [x] **Phase 132: NEWS-RSS** — Conector RSS dos-etapas LOCKED (robots + rate-limit + R2 crudo content-addressed) cerrando los 4 huecos de Is Chile Safe (completed 2026-08-05)
 - [ ] **Phase 133: NEWS-TAXO** — Taxonomía legislativa congelada + golden set con etiquetas revisadas ANTES de medir + thresholds pre-registrados
 - [ ] **Phase 134: NEWS-RESOLVER** — Contrato anti-alucinación de tres piezas: lista cerrada → resolver determinista (reusa extraerBoletines) → dead-letter
 - [ ] **Phase 135: NEWS-CLASIF** — Clasificador con evals como gate CI + elección de modelo por benchmark sobre TieredProvider + presupuesto con ledger
@@ -321,7 +321,7 @@ Plans:
 | 129. PANEL-DISEÑO | 5/5 | Closed (deuda → 139) | 2026-08-04 |
 | 130. VOTOS-REAL | 3/3 | Complete    | 2026-07-30 |
 | 131. DEBT-FICHA | 3/3 | Complete    | 2026-07-30 |
-| 132. NEWS-RSS | 11/11 | Complete   | 2026-08-05 |
+| 132. NEWS-RSS | 11/11 | Complete    | 2026-08-05 |
 | 133. NEWS-TAXO | 0/? | Not started | - |
 | 134. NEWS-RESOLVER | 0/? | Not started | - |
 | 135. NEWS-CLASIF | 0/? | Not started | - |
