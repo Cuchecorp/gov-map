@@ -833,9 +833,24 @@ select util.reserve_host_slot('www.latercera.com', 2000);
 > exactamente este falso verde con camara.cl. **Primera tarea del plan: probar UN feed con el
 > `Fetcher` real antes de escribir el resto del conector.**
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> **ADJUDICADAS el 2026-08-05, ANTES de planificar.** Las 5 preguntas de abajo quedan resueltas por
+> las decisiones **D-132-A … D-132-D** de `132-CONTEXT.md`. El texto original **no se borra** — se
+> conserva como registro de lo que estaba abierto — pero **ninguna de estas preguntas sigue viva**,
+> y donde el texto original discrepa del estado adjudicado, **manda la resolución inline**.
+>
+> Corrección numérica que el texto original no alcanzó a incorporar: el set final es de
+> **5 medios directos** (biobiochile, cooperativa, latercera, lacuarta, ex-ante), **no 4**. La cifra
+> “4 fuentes” de la pregunta 2 es previa a la enmienda de `132-CONTEXT.md` §D-132-A y está **obsoleta**.
 
 1. **¿Google News se descarta (A), se sustituye por más medios directos (B), o se deja inerte (C)?**
+
+   > **RESUELTA — D-132-A: Opción A, Google News DESCARTADO.** `news.google.com/robots.txt` declara
+   > `Disallow: /` para `User-agent: *` con una allowlist que no incluye `/rss/`. El descarte queda
+   > probado por aserción en `feeds.test.ts` (132-01 Task 2), no por inspección visual. El costo
+   > (pérdida del fan-out a 40+ outlets) se reporta al operador en `132-REPORTE-OPERADOR.md` (132-07
+   > Task 3), como handoff asíncrono — no como gate.
    - Sabemos: `/rss/` está prohibido por robots.txt para nuestro UA, confirmado con la librería
      exacta del framework.
    - No está claro: cuánta cobertura de outlets legislativos se pierde con la Opción A.
@@ -844,22 +859,38 @@ select util.reserve_host_slot('www.latercera.com', 2000);
      SC4 y borra D-03/D-04.
 
 2. **¿El SC4 se re-redacta a "4 fuentes operan"?**
+
+   > **RESUELTA — D-132-A.** Sí se re-redactó, pero a **5 medios directos**, no a 4: el set final
+   > son los 4 heredados de ICS **más ex-ante**. El SC4 vigente está en `.planning/ROADMAP.md`
+   > §Phase 132 y los planes lo expresan en función de **N = feeds vivos** (N≥3), no de una constante,
+   > justamente para que no sea inalcanzable si el riesgo A4 se materializa.
    - Consecuencia mecánica de la Opción A. El planner **no debe** escribir un plan cuyo SC sea
      inalcanzable por construcción (sería el patrón de falso verde que la memoria del proyecto
      documenta repetidamente).
 
 3. **¿Se toca `@obs/ingest` para loguear el skip por caché (Pitfall 4)?**
+
+   > **RESUELTA — D-132-B: NO se toca el framework compartido.** El `[skip]` se deriva en el CLI de
+   > news comparando endpoints pedidos vs `refs` (132-06 Task 1), con test de mutación y con un gate
+   > de diff contra el commit base que exige **cero** archivos bajo `packages/ingest/`.
    - Sabemos: `BaseConnector.run()` hace `continue` sin loguear.
    - Recomendación: **no tocar el framework compartido**; que el CLI derive el `[skip]` comparando
      `endpoints().length` vs `refs.length`. Si el planner prefiere tocar el framework, exige test
      que caiga al revertir + revisión de que no rompe conectores existentes.
 
 4. **¿`fingerprint` sobre el XML completo o sobre la forma?**
+
+   > **RESUELTA — D-132-C: fingerprint ESTRUCTURAL**, no sobre el XML completo (`<lastBuildDate>`
+   > volátil dispararía `drift.alert` en cada corrida).
    - `<lastBuildDate>` volátil dispararía `drift.alert` en cada corrida (ruido).
    - Recomendación: fingerprint estructural (set ordenado de tags), como en el ejemplo de §Code
      Examples. Es discreción del planner (D-08 solo fija que el hook existe).
 
 5. **¿Los feeds responden igual al `Fetcher` de Node que a `curl`?**
+
+   > **RESUELTA POR DISEÑO — se responde ejecutando, no investigando.** Es el objeto de 132-01
+   > Task 3 (probe con el `Fetcher` real, una única pasada de 5 requests). Si A4 se materializa,
+   > la rama de fallo retira el host y baja N, con **piso duro de 3 feeds**; bajo 3, la fase PARA.
    - Ver A4. Se resuelve con una tarea de verificación temprana, no con más research.
 
 ## Sources
