@@ -195,7 +195,14 @@ Plans:
   3. El parseo/carga a Supabase lee SIEMPRE desde R2, jamás de la fuente: un replay `--from-r2` reproduce la carga completa sin tocar la red.
   4. Las 5 fuentes operan: **5 medios directos** (BioBioChile, Cooperativa, LaTercera, LaCuarta, Ex-Ante); el pre-filtro léxico legislativo determinista descarta antes de gastar LLM, con conteo de descartes observable. *(Re-redactado 2026-08-05 por D-132-A: Google News RSS Search descartado — robots.txt de news.google.com prohíbe `/rss/`; evidencia en 132-RESEARCH.md.)*
 
-**Plans**: TBD
+**Plans**: 7 plans (5 waves)
+- [ ] 132-01-PLAN.md — Scaffold @obs/news (no CI-DARK) + feeds/allowlist congelados + probe con Fetcher real y captura de los 5 fixtures (riesgo A4)
+- [ ] 132-02-PLAN.md — Migracion 0084 (noticia + noticia_url_vista, RLS deny-all) aplicada a PROD por psql + pgTAP
+- [ ] 132-03-PLAN.md — NewsConnector sobre BaseConnector (Etapa 1) + tests estructurales SC1/SC2
+- [ ] 132-04-PLAN.md — Etapa 2 pura: parse-rss, canonicalizar-url (D-13), pre-filtro lexico congelado (D-05/D-06)
+- [ ] 132-05-PLAN.md — Writers + carga-run con orden LOCKED (marcar vista ANTES del reject) e idempotencia
+- [ ] 132-06-PLAN.md — run-news-cli con --from-r2 (SC3, fetch que lanza) y [skip] derivado (SC2, D-132-B)
+- [ ] 132-07-PLAN.md — Corrida LIVE + re-corrida [skip] + replay real + conteos psql + reporte al operador (D-132-A)
 
 ### Phase 133: NEWS-TAXO — Taxonomía congelada + golden set arreglado ANTES de medir
 
