@@ -99,9 +99,26 @@ export function fold(s: string): string {
     .trim();
 }
 
+/**
+ * Longitud del término más largo del vocabulario (en chars, ya foldeado) — el margen
+ * de corte se DERIVA de esto (WR-13), nunca de un número mágico, para que ampliar el
+ * vocabulario más adelante no reintroduzca el bug de truncado a mitad de palabra.
+ */
+const MARGEN_TRUNCADO = Math.max(...VOCABULARIO_LEGISLATIVO.map((t) => t.length));
+
 function construirTexto(titulo: string, descripcion?: string | null): string {
   const t = fold(despojarHtml(titulo));
-  const d = fold(despojarHtml(descripcion ?? "")).slice(0, LIMITE_DESCRIPCION);
+  // WR-13 (132-11, D-06 recall-first): cortar en seco a LIMITE_DESCRIPCION puede partir
+  // un término del vocabulario a la mitad y fabricar un falso negativo — pérdida
+  // permanente de la noticia. En vez de eso: recortamos con un margen extra igual a la
+  // longitud del término más largo (VOCABULARIO_LEGISLATIVO), y luego limpiamos la cola
+  // parcial (`\S*$`) para no dejar un fragmento de palabra colgando en la frontera real.
+  // Subir/eliminar LIMITE_DESCRIPCION sin más también habría evitado el bug, pero el
+  // techo se mantiene deliberadamente: el matching corre sobre cientos de ítems/corrida.
+  const dFold = fold(despojarHtml(descripcion ?? ""));
+  const d = dFold
+    .slice(0, LIMITE_DESCRIPCION + MARGEN_TRUNCADO)
+    .replace(/\S*$/, "");
   return `${t} ${d}`;
 }
 

@@ -184,6 +184,27 @@ describe("prefiltro-lexico — muestra de términos que matchean (depuración de
   });
 });
 
+describe("prefiltro-lexico — truncado en frontera de palabra (WR-13, D-06 recall-first)", () => {
+  it("un término legislativo que cruza el límite de 600 chars igual matchea (relleno + término partido por el corte en seco)", () => {
+    // Relleno no-legislativo hasta justo antes del char 600, luego el término
+    // "proyecto de ley" arrancando ANTES de 600 y terminando DESPUÉS — el
+    // slice(0, 600) a secas lo parte a mitad de palabra.
+    const relleno = "palabra ".repeat(75); // 600 chars exactos de relleno inocuo
+    const descripcion = relleno.slice(0, 590) + "el proyecto de ley fue votado hoy";
+    expect(esLegislativo("Titular neutro", descripcion)).toBe(true);
+  });
+
+  it("control apareado: misma longitud, relleno NO legislativo después del límite ⇒ sigue descartando", () => {
+    const relleno = "palabra ".repeat(75);
+    const descripcion = relleno.slice(0, 590) + "un gato subio al techo ayer";
+    expect(esLegislativo("Titular neutro", descripcion)).toBe(false);
+  });
+
+  it("VOCABULARIO_LEGISLATIVO no fue podado: sigue teniendo al menos 30 términos", () => {
+    expect(VOCABULARIO_LEGISLATIVO.length).toBeGreaterThanOrEqual(30);
+  });
+});
+
 // ── Mutaciones obligatorias (ejecutadas manualmente y revertidas — ver SUMMARY) ──
 // (1) quitar el fold NFD ⇒ cae el caso "COMISIÓN DE HACIENDA"
 // (2) quitar el despojo de <script> ⇒ cae el caso del script con "senado"
