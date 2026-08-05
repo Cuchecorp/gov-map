@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v13.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 133 DETENIDA en checkpoint de operador (firma golden set) + Fable sin creditos; Phase 132 COMPLETA 4/4
-last_updated: "2026-08-05T22:13:22.003Z"
+stopped_at: 133 re-adjudicacion pendiente (8 blockers); operador ratifico sustitucion Opus y D-133-G etiqueta interna
+last_updated: "2026-08-05T23:37:45.155Z"
 last_activity: 2026-08-05
 progress:
   total_phases: 14
@@ -167,9 +167,9 @@ la memoria del proyecto (`v12-gotchas-metodo`, `v13-milestone-preparado`). Recto
 
 ## Session Continuity
 
-Last session: 2026-08-05T22:13:21.993Z
-Stopped at: Phase 133 DETENIDA en checkpoint de operador (firma golden set) + Fable sin creditos; Phase 132 COMPLETA 4/4
-Resume file: .planning/phases/133-news-taxo-taxonom-a-congelada-golden-set-arreglado-antes-de-medir/.continue-here.md
+Last session: 2026-08-05T23:37:45.147Z
+Stopped at: 133 re-adjudicacion pendiente (8 blockers); operador ratifico sustitucion Opus y D-133-G etiqueta interna
+Resume file: .planning/PROMPT-133-retomar.md
 
 ## Operator Next Steps
 
