@@ -11,7 +11,12 @@
 
 export interface FeedDef {
   readonly slug: string;
-  readonly outlet: string;
+  /**
+   * Nombre DISPLAY del medio ("La Tercera") — SOLO para logs/mensajes humanos. JAMÁS pasarlo a
+   * `noticia.outlet`: `model.ts` y `0084_noticia.sql` declaran esa columna como SLUG (WR-04). El
+   * nombre `display` (no `outlet`) existe para que ningún call-site pueda confundir ambos.
+   */
+  readonly display: string;
   readonly url: string;
 }
 
@@ -19,27 +24,27 @@ export interface FeedDef {
 export const FEEDS: readonly FeedDef[] = Object.freeze([
   Object.freeze({
     slug: "biobiochile",
-    outlet: "BioBioChile",
+    display: "BioBioChile",
     url: "https://www.biobiochile.cl/static/feed-rss",
   }),
   Object.freeze({
     slug: "cooperativa",
-    outlet: "Cooperativa",
+    display: "Cooperativa",
     url: "https://www.cooperativa.cl/noticias/site/tax/port/all/rss_3_158__1.xml",
   }),
   Object.freeze({
     slug: "latercera",
-    outlet: "La Tercera",
+    display: "La Tercera",
     url: "https://www.latercera.com/arc/outboundfeeds/rss/?outputType=xml",
   }),
   Object.freeze({
     slug: "lacuarta",
-    outlet: "La Cuarta",
+    display: "La Cuarta",
     url: "https://www.lacuarta.com/arc/outboundfeeds/rss/?outputType=xml",
   }),
   Object.freeze({
     slug: "exante",
-    outlet: "Ex-Ante",
+    display: "Ex-Ante",
     url: "https://www.ex-ante.cl/feed/",
   }),
 ]);

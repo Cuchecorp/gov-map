@@ -137,7 +137,7 @@ export function parseArgs(argv: string[]): NewsCliOptions {
     const a = argv[i];
     // `--` separador de `pnpm --filter ... exec tsx script -- --flag`: pnpm/npm lo consumen
     // para que TODO lo que sigue llegue intacto al script; si llega hasta acá (invocación
-    // directa de tsx) se ignora silenciosamente — nunca es un flag desconocido.
+    // directa de tsx) se ignora silenciosamente — nunca es un flag no reconocido.
     if (a === "--") continue;
     switch (a) {
       case "--dry-run":
@@ -170,12 +170,12 @@ export function parseArgs(argv: string[]): NewsCliOptions {
         opts.soloEtapa2 = true;
         break;
       default:
-        // WR-08 (fail-closed): cualquier argumento que llegue hasta acá — flag desconocido con
+        // WR-08 (fail-closed): cualquier argumento que llegue hasta acá — flag no reconocido con
         // `--`, o un typo SIN `--` (p.ej. `-dry-run`, `dry-run`) — lanza. El separador `--`
         // literal ya fue consumido arriba (`a === "--"`); jamás cae en este default.
         throw new NewsCliArgsError(
           a != null && a.startsWith("--")
-            ? `flag desconocido: ${a}`
+            ? `flag no reconocido: ${a}`
             : `argumento inválido (se esperaba un flag "--..."): ${a}`,
         );
     }
@@ -317,7 +317,7 @@ export async function main(opts: NewsCliOptions = {}): Promise<NewsCliResult> {
     const encontrados = new Set(feedsPedidos.map((f) => f.slug));
     const faltantes = opts.feeds.filter((s) => !encontrados.has(s));
     if (faltantes.length > 0) {
-      throw new NewsCliArgsError(`--feeds contiene slugs desconocidos: ${faltantes.join(",")}`);
+      throw new NewsCliArgsError(`--feeds contiene slugs no reconocidos: ${faltantes.join(",")}`);
     }
   }
 
@@ -338,15 +338,20 @@ export async function main(opts: NewsCliOptions = {}): Promise<NewsCliResult> {
     if (!r2Store) {
       throw new NewsCliArgsError("--from-r2 requiere R2 configurado (R2_ACCESS_KEY_ID + R2_ENDPOINT_URL)");
     }
+    // R2_PATH_RE ya validó que la clave matchea un slug congelado (WR-09): `feed` SIEMPRE se
+    // resuelve. WR-04: `parseRss` recibe `feed.slug`, NUNCA el nombre display — el viejo
+    // fallback inventado murió, un valor sin respaldo ya no puede llegar a `noticia.outlet`.
     const slug = slugDesdeR2Path(opts.fromR2);
     const feed = slug ? FEEDS.find((f) => f.slug === slug) : undefined;
-    const outlet = feed?.outlet ?? slug ?? "desconocido";
+    if (!feed) {
+      throw new NewsCliArgsError(`--from-r2: no se pudo resolver el feed del slug en la clave: ${opts.fromR2}`);
+    }
     const shaMatch = R2_PATH_RE.exec(opts.fromR2);
     const contenidoHash = shaMatch?.[1] ?? "";
     log(`news-cli: modo --from-r2 → leyendo crudo desde R2 (${opts.fromR2})`);
     const bytes = await r2Store.getObject(opts.fromR2);
     const xml = new TextDecoder().decode(bytes);
-    const { items, errores: erroresParseo } = parseRss(xml, outlet);
+    const { items, errores: erroresParseo } = parseRss(xml, feed.slug);
     for (const e of erroresParseo) log(`news-cli: WARN parseo ${e}`);
 
     const carga = await cargar({
@@ -438,12 +443,17 @@ export async function main(opts: NewsCliOptions = {}): Promise<NewsCliResult> {
       throw new NewsCliArgsError("Etapa 2 requiere R2 configurado para leer los snapshots de Etapa 1");
     }
     for (const ref of refs) {
+      // WR-04: `parseRss` recibe `feed.slug`, NUNCA el nombre display ni un valor inventado.
+      // Un `r2Path` cuyo slug no resuelve contra `FEEDS` es un dato corrupto — lanzar en vez de
+      // fabricar un outlet sin respaldo que ensuciaría `noticia.outlet`.
       const slug = slugDesdeR2Path(ref.r2Path);
       const feed = slug ? FEEDS.find((f) => f.slug === slug) : undefined;
-      const outlet = feed?.outlet ?? slug ?? "desconocido";
+      if (!feed) {
+        throw new NewsCliArgsError(`Etapa 2: r2Path con slug no reconocido en FEEDS: ${ref.r2Path}`);
+      }
       const bytes = await r2Store.getObject(ref.r2Path);
       const xml = new TextDecoder().decode(bytes);
-      const { items, errores: erroresParseo } = parseRss(xml, outlet);
+      const { items, errores: erroresParseo } = parseRss(xml, feed.slug);
       for (const e of erroresParseo) log(`news-cli: WARN parseo ${e}`);
 
       const carga = await cargar({

@@ -377,7 +377,7 @@ describe("buildNewsDeps — gate global cross-host (WR-03)", () => {
 describe("NewsConnector — assertFeedUrl en el camino real (WR-07)", () => {
   it("un FEEDS sustituto con URL http:// hace LANZAR endpoints()", () => {
     const { deps } = makeDeps();
-    const feedHttp = { slug: "inseguro", outlet: "Inseguro", url: "http://inseguro.example/rss" };
+    const feedHttp = { slug: "inseguro", display: "Inseguro", url: "http://inseguro.example/rss" };
     const connector = new NewsConnector(deps, [feedHttp]) as unknown as { endpoints(): RequestSpec[] };
     expect(() => connector.endpoints()).toThrow();
   });

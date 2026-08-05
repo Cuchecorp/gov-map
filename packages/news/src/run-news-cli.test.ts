@@ -547,6 +547,37 @@ describe("[IN-03] el resumen final imprime el conteo por causa cuando Etapa 2 es
   });
 });
 
+describe("[WR-04] outlet = slug — contrato único, con caso negativo", () => {
+  it("para latercera, el valor que llega a NoticiaRow/UrlVistaRow.outlet es feed.slug, NUNCA feed.display", async () => {
+    const feed = FEEDS.find((f) => f.slug === "latercera")!;
+    const writer = new InMemoryNewsWriter();
+    const r2Store = {
+      getObject: vi.fn(async () => new TextEncoder().encode(MIN_RSS)),
+      putImmutable: vi.fn(async () => ({ r2Path: "x", existed: false })),
+    };
+    await main({
+      dryRun: true,
+      fromR2: `news/rss-latercera/2026-08-05/${"e".repeat(64)}.xml`,
+      writer,
+      r2Store: r2Store as unknown as import("@obs/ingest").R2Store,
+      log: () => {},
+    });
+    expect(writer.vistas.size).toBeGreaterThan(0);
+    for (const v of writer.vistas.values()) {
+      expect(v.outlet).toBe(feed.slug);
+      expect(v.outlet).not.toBe(feed.display);
+    }
+  });
+
+  it("caso negativo: FEEDS.map(f => f.slug) y FEEDS.map(f => f.display) no se solapan (ningún slug es igual a un display)", () => {
+    const slugs = new Set(FEEDS.map((f) => f.slug));
+    const displays = new Set(FEEDS.map((f) => f.display));
+    for (const d of displays) {
+      expect(slugs.has(d)).toBe(false);
+    }
+  });
+});
+
 describe("Barrel — packages/news/src/index.ts exporta la superficie del paquete", () => {
   it("≥ 8 símbolos importados, ninguno undefined", () => {
     const simbolos = [
