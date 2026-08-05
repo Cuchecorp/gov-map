@@ -204,10 +204,10 @@ Plans:
 - [x] 132-05-PLAN.md — Writers + carga-run con orden LOCKED (marcar vista ANTES del reject) e idempotencia
 - [x] 132-06-PLAN.md — run-news-cli con --from-r2 (SC3, fetch que lanza) y [skip] derivado (SC2, D-132-B)
 - [x] 132-07-PLAN.md — Corrida LIVE + re-corrida [skip] + replay real + conteos psql + reporte al operador (D-132-A)
-- [ ] 132-08-PLAN.md — [gap] CR-01/SC2: SupabaseSnapshotLookup + DailyCache real cableado + evidencia [skip] x5 con 0 requests
-- [ ] 132-09-PLAN.md — [gap] CR-02: ledger provisional sin causa final (migracion 0085) + contarPorCausa sin cap 1.000 + tests del writer de PROD
-- [ ] 132-10-PLAN.md — [gap] Regimen de red y honestidad del CLI (gate cross-host, assertFeedUrl, --feeds/--dry-run/--etapa2/--from-r2) + contrato outlet=slug corregido en PROD
-- [ ] 132-11-PLAN.md — [gap] parsePubDate RFC 822, truncado en frontera de palabra, tests de cero-red y fixtures verificados
+- [x] 132-08-PLAN.md — [gap] CR-01/SC2: SupabaseSnapshotLookup + DailyCache real cableado + evidencia [skip] x5 con 0 requests
+- [x] 132-09-PLAN.md — [gap] CR-02: ledger provisional sin causa final (migracion 0085) + contarPorCausa sin cap 1.000 + tests del writer de PROD
+- [x] 132-10-PLAN.md — [gap] Regimen de red y honestidad del CLI (gate cross-host, assertFeedUrl, --feeds/--dry-run/--etapa2/--from-r2) + contrato outlet=slug corregido en PROD
+- [x] 132-11-PLAN.md — [gap] parsePubDate RFC 822, truncado en frontera de palabra, tests de cero-red y fixtures verificados
 
 ### Phase 133: NEWS-TAXO — Taxonomía congelada + golden set arreglado ANTES de medir
 
@@ -321,7 +321,7 @@ Plans:
 | 129. PANEL-DISEÑO | 5/5 | Closed (deuda → 139) | 2026-08-04 |
 | 130. VOTOS-REAL | 3/3 | Complete    | 2026-07-30 |
 | 131. DEBT-FICHA | 3/3 | Complete    | 2026-07-30 |
-| 132. NEWS-RSS | 7/7 | Complete   | 2026-08-05 |
+| 132. NEWS-RSS | 11/11 | Complete   | 2026-08-05 |
 | 133. NEWS-TAXO | 0/? | Not started | - |
 | 134. NEWS-RESOLVER | 0/? | Not started | - |
 | 135. NEWS-CLASIF | 0/? | Not started | - |
