@@ -8,8 +8,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import type { ConnectorDeps, RequestSpec } from "@obs/ingest";
-import { NewsConnector, buildNewsDeps } from "./connector-news";
+import { DailyCache, type ConnectorDeps, type RequestSpec } from "@obs/ingest";
+import { NewsConnector, buildNewsDeps, NewsCacheRequeridaError } from "./connector-news";
 import { FEEDS } from "./feeds";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -188,14 +188,18 @@ describe("NewsConnector — SC1 (robots + rate-limit + orden)", () => {
     const feedHost = new URL(feedUrl).host;
 
     // Caso CORRECTO: allowlistNews() (default de buildNewsDeps).
-    const depsOk = buildNewsDeps({ fetchFn });
+    const depsOk = buildNewsDeps({ fetchFn, cache: { dailyKey: async () => "", hasToday: async () => false } });
     const allowedOk = await depsOk.robots.isAllowed(feedUrl);
     expect(allowedOk).toBe(true);
     expect(requestedUrls).toContain(`https://${feedHost}/robots.txt`);
 
     // Caso MUTADO: allowlist vacía ({}) — el bloqueo debe ocurrir ANTES del fetch.
     requestedUrls.length = 0;
-    const depsMutated = buildNewsDeps({ fetchFn, allowlist: {} });
+    const depsMutated = buildNewsDeps({
+      fetchFn,
+      allowlist: {},
+      cache: { dailyKey: async () => "", hasToday: async () => false },
+    });
     const allowedMutated = await depsMutated.robots.isAllowed(feedUrl);
     expect(allowedMutated).toBe(false);
     expect(requestedUrls.length).toBe(0);
@@ -293,6 +297,24 @@ describe("NewsConnector — fingerprint estructural", () => {
     const fpBase = await (connector as any).fingerprint({ xml: base });
     const fpNew = await (connector as any).fingerprint({ xml: withNewTag });
     expect(fpBase).not.toBe(fpNew);
+  });
+});
+
+describe("buildNewsDeps — cache real, no-op muerto (CR-01, 132-08)", () => {
+  it("sin `cache` ni `supabase` ⇒ LANZA NewsCacheRequeridaError (el default de producción ya no es un no-op)", () => {
+    expect(() => buildNewsDeps({})).toThrow(NewsCacheRequeridaError);
+    expect(() => buildNewsDeps({})).toThrow(/cache/i);
+  });
+
+  it("con `supabase: { url, serviceKey }` ⇒ construye un DailyCache real respaldado en SupabaseSnapshotLookup", () => {
+    const deps = buildNewsDeps({ supabase: { url: "http://127.0.0.1:0", serviceKey: "test-key" } });
+    expect(deps.cache).toBeInstanceOf(DailyCache);
+  });
+
+  it("con `cache` override explícito ⇒ se usa tal cual, sin exigir `supabase`", () => {
+    const cacheDoble = { dailyKey: vi.fn(async () => ""), hasToday: vi.fn(async () => false) };
+    const deps = buildNewsDeps({ cache: cacheDoble });
+    expect(deps.cache).toBe(cacheDoble);
   });
 });
 

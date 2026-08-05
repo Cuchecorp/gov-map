@@ -311,7 +311,11 @@ export async function main(opts: NewsCliOptions = {}): Promise<NewsCliResult> {
     if (opts.conector) {
       conector = opts.conector;
     } else {
+      // Cache diaria real (CR-01, 132-08): buildNewsDeps LANZA `NewsCacheRequeridaError` si no
+      // recibe `cache` ni `supabase` — mismas credenciales ya resueltas arriba (líneas 222-223),
+      // ANTES de tocar red (el conector aún no se construyó ni corrió).
       const deps = buildNewsDeps({
+        ...(url && serviceKey ? { supabase: { url, serviceKey } } : {}),
         // r2/snapshot reales cuando hay R2/credenciales; si no (--dry-run sin R2), quedan los
         // dobles no-op de buildNewsDeps (la Etapa 1 igual corre fetch+parse, solo no persiste).
         ...(r2Store

@@ -28,6 +28,7 @@
  */
 import {
   BaseConnector,
+  DailyCache,
   Fetcher,
   HostRateLimiter,
   RobotsGuard,
@@ -38,6 +39,7 @@ import {
 import type { AllowlistOptions } from "@obs/ingest";
 import { FEEDS } from "./feeds";
 import { allowlistNews } from "./allowlist-news";
+import { SupabaseSnapshotLookup } from "./snapshot-lookup-supabase";
 
 /** Forma cruda del RSS: el XML como string (shape-guard SUAVE, sin zod). */
 export type RssRaw = { xml: string };
@@ -96,7 +98,32 @@ export type BuildNewsDepsOptions = Partial<ConnectorDeps> & {
   fetchFn?: typeof fetch;
   /** Intervalo mínimo del rate-limiter en ms. Default 2500 (régimen 2-3s). */
   minIntervalMs?: number;
+  /**
+   * Credenciales para construir el `DailyCache` real de producción (CR-01) cuando no se
+   * inyecta `cache` explícitamente. Ver `SupabaseSnapshotLookup`. `client` es SOLO para tests
+   * que necesitan ejercitar este camino de construcción sin red (doble estructural).
+   */
+  supabase?: { url: string; serviceKey: string; client?: ConstructorParameters<typeof SupabaseSnapshotLookup>[0]["client"] };
 };
+
+/**
+ * GAP-SC2/CR-01 (132-08): sin `cache` ni `supabase` no hay forma de construir un `DailyCache`
+ * real, y el default de producción NO puede volver a ser el doble no-op (`hasToday` siempre
+ * `false`) — ese default garantizaba re-descargar los 5 medios en cada corrida, exactamente el
+ * hueco #4 de Is Chile Safe que esta fase declara cerrado. `buildNewsDeps` LANZA en vez de
+ * degradar silenciosamente.
+ */
+export class NewsCacheRequeridaError extends Error {
+  constructor() {
+    super(
+      "buildNewsDeps: falta `cache` (override) o `supabase: { url, serviceKey }` — sin un " +
+        "DailyCache real respaldado en source_snapshot la Etapa 1 re-descargaría los 5 medios " +
+        "en cada corrida (CR-01). Pasa `overrides.cache` en tests, o `supabase.url` + " +
+        "`supabase.serviceKey` en producción.",
+    );
+    this.name = "NewsCacheRequeridaError";
+  }
+}
 
 /**
  * Fábrica de `ConnectorDeps` para `NewsConnector`. Construye `Fetcher` y
@@ -105,17 +132,29 @@ export type BuildNewsDepsOptions = Partial<ConnectorDeps> & {
  * `{ allowlist: {} }`) solo sería testeable con red real.
  */
 export function buildNewsDeps(opts: BuildNewsDepsOptions = {}): ConnectorDeps {
-  const { allowlist = allowlistNews(), fetchFn, minIntervalMs = 2500, ...overrides } = opts;
+  const {
+    allowlist = allowlistNews(),
+    fetchFn,
+    minIntervalMs = 2500,
+    supabase,
+    ...overrides
+  } = opts;
 
   const fetcher = new Fetcher({ fetchFn, allowlist });
   const robots = new RobotsGuard({ fetchFn, allowlist });
   const rateLimiter = new HostRateLimiter({ minDelayMs: minIntervalMs });
 
+  let cache: ConnectorDeps["cache"];
+  if (overrides.cache) {
+    cache = overrides.cache;
+  } else if (supabase) {
+    cache = new DailyCache(new SupabaseSnapshotLookup(supabase));
+  } else {
+    throw new NewsCacheRequeridaError();
+  }
+
   const base: ConnectorDeps = {
-    cache: overrides.cache ?? {
-      dailyKey: async () => "",
-      hasToday: async () => false,
-    },
+    cache,
     robots: overrides.robots ?? robots,
     rateLimiter: overrides.rateLimiter ?? rateLimiter,
     hostThrottle: overrides.hostThrottle,

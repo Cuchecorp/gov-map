@@ -11,9 +11,11 @@ export { allowlistNews, assertFeedUrl } from "./allowlist-news";
 export {
   NewsConnector,
   buildNewsDeps,
+  NewsCacheRequeridaError,
   type RssRaw,
   type BuildNewsDepsOptions,
 } from "./connector-news";
+export { SupabaseSnapshotLookup, type SupabaseSnapshotLookupOptions } from "./snapshot-lookup-supabase";
 
 // ── Ola 3: modelo + parseo puro + canonicalización + pre-filtro léxico (132-04) ───────────────
 export { RssItemSchema, type RssItem } from "./model";
