@@ -1,11 +1,49 @@
-// index.ts — barrel PLACEHOLDER de scaffolding (132-01 / Task 1).
-//
-// Existe SOLO para que `tsconfig.json` (composite: true, include: ["src/**/*.ts"]) tenga
-// al menos un input: sin ningún .ts bajo src/, `tsc -b` aborta con TS18003 "No inputs were
-// found in config file" (exit 1), rompiendo `pnpm typecheck` de TODA la wave 1 porque el
-// reference "./packages/news" ya está en el tsconfig.json de la raíz.
-//
-// El plan 132-06 (wave 4) REEMPLAZA este archivo por el barrel final (>= 8 símbolos:
-// FEEDS, NEWS_HOSTS, allowlistNews, assertFeedUrl, parser, connector, etc.).
-// NO agregar aquí exports de módulos que todavía no existen — rompería este mismo tsc -b.
-export const NEWS_PACKAGE = "@obs/news";
+// @obs/news — subsistema de NOTICIAS: ingesta de RSS de prensa en DOS ETAPAS
+// (Etapa 1 fuentes→R2 vía NewsConnector/BaseConnector, Etapa 2 R2→Supabase vía cargar()),
+// con dedup por URL canónica, pre-filtro léxico legislativo, y CLI local que ata ambas etapas
+// (132-06, reemplaza el placeholder de scaffolding de 132-01 T1).
+
+// ── Ola 1: feeds congelados + allowlist scoped (132-01) ──────────────────────────────────────
+export { FEEDS, NEWS_HOSTS, type FeedDef } from "./feeds";
+export { allowlistNews, assertFeedUrl } from "./allowlist-news";
+
+// ── Ola 2: NewsConnector Etapa 1 + fábrica de deps (132-03) ───────────────────────────────────
+export {
+  NewsConnector,
+  buildNewsDeps,
+  type RssRaw,
+  type BuildNewsDepsOptions,
+} from "./connector-news";
+
+// ── Ola 3: modelo + parseo puro + canonicalización + pre-filtro léxico (132-04) ───────────────
+export { RssItemSchema, type RssItem } from "./model";
+export { parseRss, ParseRssError } from "./parse-rss";
+export { canonicalizarUrl, urlHash, UrlInvalidaError, PARAMS_TRACKING } from "./canonicalizar-url";
+export {
+  esLegislativo,
+  terminosQueMatchean,
+  despojarHtml,
+  fold,
+  VOCABULARIO_LEGISLATIVO,
+} from "./prefiltro-lexico";
+
+// ── Ola 4: writer idempotente + orquestador de Etapa 2 (132-05) ──────────────────────────────
+export {
+  type NewsWriter,
+  type NoticiaRow,
+  type UrlVistaRow,
+  InMemoryNewsWriter,
+} from "./writer";
+export { SupabaseNewsWriter, type SupabaseNewsWriterOptions } from "./writer-supabase";
+export { cargar, type CargarOpts, type CargarResult } from "./carga-run";
+
+// ── Ola 4: CLI local Etapa1+Etapa2 (132-06) ───────────────────────────────────────────────────
+export {
+  main as runNewsCli,
+  parseArgs,
+  findWorkspaceRoot,
+  NewsCliArgsError,
+  NewsR2RequeridoError,
+  type NewsCliOptions,
+  type NewsCliResult,
+} from "./run-news-cli";
