@@ -37,8 +37,8 @@ import {
   type RequestSpec,
 } from "@obs/ingest";
 import type { AllowlistOptions } from "@obs/ingest";
-import { FEEDS } from "./feeds";
-import { allowlistNews } from "./allowlist-news";
+import { FEEDS, type FeedDef } from "./feeds";
+import { allowlistNews, assertFeedUrl } from "./allowlist-news";
 import { SupabaseSnapshotLookup } from "./snapshot-lookup-supabase";
 
 /** Forma cruda del RSS: el XML como string (shape-guard SUAVE, sin zod). */
@@ -47,28 +47,55 @@ export type RssRaw = { xml: string };
 export class NewsConnector extends BaseConnector<RssRaw> {
   protected sourceId = "news";
 
-  /** Un endpoint por feed, cada uno con `resource` ÚNICO (Pattern 2). */
+  /**
+   * `feeds` inyectable (WR-01): permite `--feeds <slug>` pedir un subconjunto SIN filtrar
+   * después los `refs` resultantes (el subconjunto viaja al conector, no se filtra después).
+   * Default: los 5 feeds congelados (`FEEDS`).
+   */
+  constructor(
+    deps: ConnectorDeps,
+    private readonly feeds: readonly FeedDef[] = FEEDS,
+  ) {
+    super(deps);
+  }
+
+  /**
+   * Un endpoint por feed, cada uno con `resource` ÚNICO (Pattern 2).
+   * `assertFeedUrl` (WR-07) vive en el camino REAL, no solo en su propio test: un feed
+   * `http://` (o fuera de la allowlist scoped) lanza ANTES de que exista un `RequestSpec`.
+   */
   protected endpoints(): RequestSpec[] {
-    return FEEDS.map((f) => ({
-      url: f.url,
-      resource: `rss-${f.slug}`,
-      key: f.slug,
-      ext: "xml",
-    }));
+    return this.feeds.map((f) => {
+      assertFeedUrl(f.url);
+      return {
+        url: f.url,
+        resource: `rss-${f.slug}`,
+        key: f.slug,
+        ext: "xml",
+      };
+    });
   }
 
   /**
    * Shape-guard SUAVE sobre string. `decodeJson` (BaseConnector) entrega un
    * string cuando el body no es JSON — que es siempre el caso para RSS/XML.
    * El zod ESTRICTO vive en Etapa 2 (D-10); aquí solo se descarta lo que
-   * claramente no es un feed RSS/Atom con items.
+   * claramente no es un feed RSS 2.0 con items.
+   *
+   * WR-14: Atom (`<feed>`) YA NO se acepta — el parser de Etapa 2 (`parse-rss.ts`) solo
+   * entiende `rss.channel.item`; aceptar Atom acá era un contrato contradictorio que solo se
+   * descubría más tarde, en el parseo. Alcance acotado (ver cabecera del archivo): un feed que
+   * no valida sigue abortando la corrida completa vía `BaseConnector.run()` — eso exigiría
+   * tocar `@obs/ingest`, prohibido por D-132-B.
    */
   protected validateShape(body: unknown): RssRaw {
     if (typeof body !== "string") {
       throw new Error("news: body no es string (se esperaba XML crudo)");
     }
-    if (!/<rss[\s>]|<feed[\s>]/i.test(body)) {
-      throw new Error("news: no parece RSS/Atom (falta <rss> o <feed>)");
+    if (!/<rss[\s>]/i.test(body)) {
+      throw new Error(
+        "news: no es RSS 2.0 (se esperaba <rss>; Atom y otros formatos no se aceptan)",
+      );
     }
     if (!/<item[\s>]/i.test(body)) {
       throw new Error("news: RSS sin <item> (feed vacío o malformado)");
@@ -99,12 +126,53 @@ export type BuildNewsDepsOptions = Partial<ConnectorDeps> & {
   /** Intervalo mínimo del rate-limiter en ms. Default 2500 (régimen 2-3s). */
   minIntervalMs?: number;
   /**
+   * `sleepFn`/`nowFn` (WR-03, test-only): inyectables para que el test del gate cross-host sea
+   * determinista y rápido (sin esperar `minIntervalMs` real). Default: `setTimeout`/`Date.now`
+   * reales — PROHIBIDO inyectar otra cosa en producción.
+   */
+  sleepFn?: (ms: number) => Promise<void>;
+  nowFn?: () => number;
+  /**
    * Credenciales para construir el `DailyCache` real de producción (CR-01) cuando no se
    * inyecta `cache` explícitamente. Ver `SupabaseSnapshotLookup`. `client` es SOLO para tests
    * que necesitan ejercitar este camino de construcción sin red (doble estructural).
    */
   supabase?: { url: string; serviceKey: string; client?: ConstructorParameters<typeof SupabaseSnapshotLookup>[0]["client"] };
 };
+
+/**
+ * Gate global cross-host (WR-03, D-132-B): envuelve el `rateLimiter` (construido o inyectado
+ * por `overrides`) con un piso de `minIntervalMs` COMPARTIDO entre hosts — `HostRateLimiter`
+ * solo serializa POR host, así que con 5 hosts distintos ninguno paga el delay por sí solo
+ * (ese es justo el hueco que este gate cierra). Vive acá y no en `@obs/ingest` porque el
+ * framework compartido está LOCKED en esta fase (D-132-B): el 2-3 s/host del framework sigue
+ * siendo la autoridad por host, este gate agrega el piso cross-host que pide el SC1. Replica el
+ * patrón `sleep(3000)` explícito de `probe-feeds.ts`, que ya resolvió el mismo problema fuera
+ * del framework.
+ */
+function gateRateLimiter(
+  rl: ConnectorDeps["rateLimiter"],
+  minIntervalMs: number,
+  sleepFn: (ms: number) => Promise<void>,
+  nowFn: () => number,
+): ConnectorDeps["rateLimiter"] {
+  let lastStart: number | null = null;
+  return {
+    wait: async (host: string) => {
+      if (minIntervalMs > 0) {
+        const now = nowFn();
+        if (lastStart !== null) {
+          const remaining = minIntervalMs - (now - lastStart);
+          if (remaining > 0) {
+            await sleepFn(remaining);
+          }
+        }
+        lastStart = nowFn();
+      }
+      await rl.wait(host);
+    },
+  };
+}
 
 /**
  * GAP-SC2/CR-01 (132-08): sin `cache` ni `supabase` no hay forma de construir un `DailyCache`
@@ -136,6 +204,8 @@ export function buildNewsDeps(opts: BuildNewsDepsOptions = {}): ConnectorDeps {
     allowlist = allowlistNews(),
     fetchFn,
     minIntervalMs = 2500,
+    sleepFn = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
+    nowFn = () => Date.now(),
     supabase,
     ...overrides
   } = opts;
@@ -143,6 +213,12 @@ export function buildNewsDeps(opts: BuildNewsDepsOptions = {}): ConnectorDeps {
   const fetcher = new Fetcher({ fetchFn, allowlist });
   const robots = new RobotsGuard({ fetchFn, allowlist });
   const rateLimiter = new HostRateLimiter({ minDelayMs: minIntervalMs });
+  const gatedRateLimiter = gateRateLimiter(
+    overrides.rateLimiter ?? rateLimiter,
+    minIntervalMs,
+    sleepFn,
+    nowFn,
+  );
 
   let cache: ConnectorDeps["cache"];
   if (overrides.cache) {
@@ -156,7 +232,7 @@ export function buildNewsDeps(opts: BuildNewsDepsOptions = {}): ConnectorDeps {
   const base: ConnectorDeps = {
     cache,
     robots: overrides.robots ?? robots,
-    rateLimiter: overrides.rateLimiter ?? rateLimiter,
+    rateLimiter: gatedRateLimiter,
     hostThrottle: overrides.hostThrottle,
     fetcher: overrides.fetcher ?? fetcher,
     drift: overrides.drift ?? {

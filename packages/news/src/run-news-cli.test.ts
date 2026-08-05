@@ -120,6 +120,9 @@ function makeWiredConnector(lookupResult: boolean) {
     supabase: { url: "http://127.0.0.1:0", serviceKey: "test-key", client },
     robots: { isAllowed: vi.fn(async () => true) },
     rateLimiter: { wait: vi.fn(async () => {}) },
+    // Gate cross-host (WR-03, 132-10) inerte: este test mide el wiring de DailyCache, no el
+    // gate — sin esto los 4 delays reales de 2.5s entre los 5 feeds hacen timeout.
+    minIntervalMs: 0,
     fetcher: {
       get: vi.fn(async (spec: RequestSpec) => {
         fetcherCalls.push(spec.resource);

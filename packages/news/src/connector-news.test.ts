@@ -318,6 +318,115 @@ describe("buildNewsDeps — cache real, no-op muerto (CR-01, 132-08)", () => {
   });
 });
 
+describe("buildNewsDeps — gate global cross-host (WR-03)", () => {
+  function makeGatedDeps(minIntervalMs: number, sleepFn: ReturnType<typeof vi.fn>) {
+    const rlWait = vi.fn(async () => {});
+    const fetcherGet = vi.fn(async (spec: RequestSpec) => {
+      const slug = FEEDS.find((f) => spec.resource === `rss-${f.slug}`)?.slug ?? spec.key;
+      return new TextEncoder().encode(fixtureXml(slug));
+    });
+    const deps = buildNewsDeps({
+      cache: { dailyKey: async () => "", hasToday: async () => false },
+      robots: { isAllowed: vi.fn(async () => true) },
+      rateLimiter: { wait: rlWait },
+      fetcher: { get: fetcherGet },
+      drift: {
+        check: async (_s: string, _r: string, fp: string) => ({ changed: false, newFingerprint: fp }),
+        alert: async () => {},
+      },
+      r2: {
+        putImmutable: async (source, resource, date, sha, ext) => ({
+          r2Path: `${source}/${resource}/${date}/${sha}.${ext}`,
+          existed: false,
+        }),
+      },
+      snapshot: {
+        write: async (input) => ({ snapshotId: 1, r2Path: input.r2Path, contentHash: input.contentHash }),
+      },
+      log: { skip: async () => {} },
+      now: NOW,
+      minIntervalMs,
+      sleepFn,
+      nowFn: () => Date.now(),
+    });
+    return { deps, rlWait, fetcherGet };
+  }
+
+  it("con 5 endpoints de 5 hosts distintos, sleepFn se llama 4 veces con un valor >= 2000, y rateLimiter.wait sigue llamándose por host", async () => {
+    const sleepFn = vi.fn(async () => {});
+    const { deps, rlWait, fetcherGet } = makeGatedDeps(2500, sleepFn);
+    await new NewsConnector(deps).run(RUN_CTX);
+    expect(sleepFn).toHaveBeenCalledTimes(4);
+    for (const call of sleepFn.mock.calls) {
+      expect(call[0]).toBeGreaterThanOrEqual(2000);
+    }
+    expect(rlWait).toHaveBeenCalledTimes(5);
+    expect(fetcherGet).toHaveBeenCalledTimes(5);
+  });
+
+  it("control positivo apareado: minIntervalMs=0 ⇒ gate inerte, 0 llamadas a sleepFn, y los 5 requests igual ocurren", async () => {
+    const sleepFn = vi.fn(async () => {});
+    const { deps, rlWait, fetcherGet } = makeGatedDeps(0, sleepFn);
+    await new NewsConnector(deps).run(RUN_CTX);
+    expect(sleepFn).not.toHaveBeenCalled();
+    expect(rlWait).toHaveBeenCalledTimes(5);
+    expect(fetcherGet).toHaveBeenCalledTimes(5);
+  });
+});
+
+describe("NewsConnector — assertFeedUrl en el camino real (WR-07)", () => {
+  it("un FEEDS sustituto con URL http:// hace LANZAR endpoints()", () => {
+    const { deps } = makeDeps();
+    const feedHttp = { slug: "inseguro", outlet: "Inseguro", url: "http://inseguro.example/rss" };
+    const connector = new NewsConnector(deps, [feedHttp]) as unknown as { endpoints(): RequestSpec[] };
+    expect(() => connector.endpoints()).toThrow();
+  });
+
+  it("control positivo: con los 5 feeds https reales, endpoints() devuelve 5 specs", () => {
+    const { deps } = makeDeps();
+    const connector = new NewsConnector(deps) as unknown as { endpoints(): RequestSpec[] };
+    expect(connector.endpoints()).toHaveLength(5);
+  });
+});
+
+describe("NewsConnector — feeds inyectables (WR-01)", () => {
+  it("new NewsConnector(deps, [feedLatercera]) ⇒ endpoints() devuelve 1 spec y fetcher.get se llama 1 vez", async () => {
+    const { deps, fetcherCalls } = makeDeps();
+    const latercera = FEEDS.find((f) => f.slug === "latercera")!;
+    const connector = new NewsConnector(deps, [latercera]);
+    expect((connector as unknown as { endpoints(): RequestSpec[] }).endpoints()).toHaveLength(1);
+    await connector.run(RUN_CTX);
+    expect(fetcherCalls).toHaveLength(1);
+  });
+
+  it("control positivo: sin segundo argumento, endpoints() devuelve los 5", () => {
+    const { deps } = makeDeps();
+    const connector = new NewsConnector(deps) as unknown as { endpoints(): RequestSpec[] };
+    expect(connector.endpoints()).toHaveLength(5);
+  });
+});
+
+describe("NewsConnector — contrato RSS 2.0 único (WR-14)", () => {
+  it("un documento Atom válido hace lanzar validateShape con un mensaje que dice RSS 2.0", () => {
+    const connector = new NewsConnector(makeDeps().deps) as unknown as {
+      validateShape(body: unknown): { xml: string };
+    };
+    const atom =
+      '<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">' +
+      "<entry><title>t</title><item>x</item></entry></feed>";
+    expect(() => connector.validateShape(atom)).toThrow(/RSS 2\.0/);
+  });
+
+  it("control positivo: los fixtures reales (RSS 2.0) siguen aceptándose", () => {
+    const connector = new NewsConnector(makeDeps().deps) as unknown as {
+      validateShape(body: unknown): { xml: string };
+    };
+    for (const f of FEEDS) {
+      expect(() => connector.validateShape(fixtureXml(f.slug))).not.toThrow();
+    }
+  });
+});
+
 describe("buildNewsDeps — doble de fetcher lanza ante host inesperado (control positivo del doble)", () => {
   it("el fetcher doble lanza si se le pide un host distinto del esperado", async () => {
     const { deps } = makeDeps();
