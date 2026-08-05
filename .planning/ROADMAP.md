@@ -203,7 +203,7 @@ Plans:
 - [x] 132-04-PLAN.md — Etapa 2 pura: parse-rss, canonicalizar-url (D-13), pre-filtro lexico congelado (D-05/D-06)
 - [x] 132-05-PLAN.md — Writers + carga-run con orden LOCKED (marcar vista ANTES del reject) e idempotencia
 - [x] 132-06-PLAN.md — run-news-cli con --from-r2 (SC3, fetch que lanza) y [skip] derivado (SC2, D-132-B)
-- [ ] 132-07-PLAN.md — Corrida LIVE + re-corrida [skip] + replay real + conteos psql + reporte al operador (D-132-A)
+- [x] 132-07-PLAN.md — Corrida LIVE + re-corrida [skip] + replay real + conteos psql + reporte al operador (D-132-A)
 
 ### Phase 133: NEWS-TAXO — Taxonomía congelada + golden set arreglado ANTES de medir
 
@@ -317,7 +317,7 @@ Plans:
 | 129. PANEL-DISEÑO | 5/5 | Closed (deuda → 139) | 2026-08-04 |
 | 130. VOTOS-REAL | 3/3 | Complete    | 2026-07-30 |
 | 131. DEBT-FICHA | 3/3 | Complete    | 2026-07-30 |
-| 132. NEWS-RSS | 6/7 | In Progress|  |
+| 132. NEWS-RSS | 7/7 | Complete   | 2026-08-05 |
 | 133. NEWS-TAXO | 0/? | Not started | - |
 | 134. NEWS-RESOLVER | 0/? | Not started | - |
 | 135. NEWS-CLASIF | 0/? | Not started | - |
