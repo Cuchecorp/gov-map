@@ -6,7 +6,7 @@ nyquist_compliant: false
 wave_0_complete: false
 created: 2026-08-05
 revised: 2026-08-05
-revision_round: 3
+revision_round: 4
 ---
 
 # Phase 132 — Validation Strategy
@@ -141,7 +141,7 @@ revision_round: 3
 | **Control positivo mal apareado**: el par variaba `r2Store` **y** `dryRun` ⇒ no aisla la causa (el positivo podía completar por ser dry-run, no por tener R2) | 132-06 T2 | El par difiere **solo** en `r2Store`: `{r2Store: fake, dryRun: false}` completa vs `{r2Store: null, dryRun: false}` falla duro. Además se asserta el **tipo** de error y que el `message` contiene `R2` (no basta “lanzó”: un `TypeError` pasaría) |
 | **Constante 5 cableada** pese a la degradación autorizada N≥3 ⇒ criterio inalcanzable si A4 retira un host, y la única salida sería maquillar | 132-07 (`<name>` T2, `<objective>`, `<threat_model>`, `<success_criteria>` SC4) | Todo reexpresado como **N = `FEEDS.length` ≥ 3**. La cláusula N se añadió además a **ROADMAP §Phase 132 SC4** y a **REQUIREMENTS §NEWS-02**, sin borrar el texto existente |
 | `sed -E 's://.*::'` **destruye `https://` antes del grep** ⇒ la alternativa `https?://` nunca puede matchear (media compuerta muerta) | 132-04 T1 | Despojo **por línea** (`grep -v "^[[:space:]]*//"` + `*` + `/*`) que preserva el resto de la línea, y el criterio movido **dentro** del `<automated>`. Verificado en bash: el `sed` contaba 1, el filtro por línea cuenta 2 |
-| `grep -q "@obs/news"` **pasa con 0 tests** (`pnpm -r` imprime el nombre igual); y el log de `pnpm -r` trae **un `Tests N passed` por paquete** ⇒ `head -1` tomaría otro paquete | 132-07 T1 | El conteo `≥ 45` se toma de una corrida **filtrada** (`pnpm --filter @obs/news test`) con log propio, donde hay una sola línea de conteo |
+| `grep -q "@obs/news"` **pasa con 0 tests** (`pnpm -r` imprime el nombre igual); y el log de `pnpm -r` trae **un `Tests N passed` por paquete** ⇒ `head -1` tomaría otro paquete | 132-07 T1 | El conteo **≥ 85** *(esta celda decía `≥ 45`; residuo obsoleto de la ronda 2 — **corregido en ronda 3**, ver la fila “Umbral agregado obsoleto” de abajo; anotado en ronda 4)* se toma de una corrida **filtrada** (`pnpm --filter @obs/news test`) con log propio, donde hay una sola línea de conteo |
 | `BASE` vía `git rev-list --grep` **se desplaza** con cualquier commit futuro que cite la cadena ⇒ la ventana del diff se encoge hasta vaciarse | 132-06 T1 | SHA **literal** `90580a2`, verificado que resuelve a `docs(132): 7 planes en 5 waves para NEWS-RSS`, con `git cat-file -e` como guarda de existencia |
 | `pnpm` puede **interceptar** el flag inexistente ⇒ el exit 2 mediría el parser de pnpm, no el `parseArgs` del CLI | 132-06 T1 | Separador `--` antes del flag |
 | `N` derivado de contar fixtures vs `FEEDS.length`, **sin verificar que coincidan** ⇒ un fixture huérfano (host retirado por A4) desalineaba todos los asserts del plan 07 | 132-07 T2 | Nuevo `packages/news/src/fixtures.test.ts` (creado en 132-01 T3) asserta `FEEDS.length === nº de *.xml` y un fixture por slug; el `<automated>` del plan 07 lo corre como gate de `N` |
@@ -166,6 +166,27 @@ revision_round: 3
 
 > **Comprobación transversal (ronda 3):** los **17** bloques `<automated>` de los 7 planes se extrajeron
 > y pasaron `bash -n` — los 17 son sintácticamente válidos. B26 se mantiene intacto en 05, 06 y 07.
+
+---
+
+## Nota de lectura del Sign-Off: `if/then/else` vs. el patrón de los gates de vitest (ronda 4)
+
+> El ítem “Todo comando que puede fallar legítimamente se captura como `if CMD …`” (ronda 3) se lee mal
+> como si obligara a envolver **todos** los comandos. No es así. Aclaración normativa:
+
+- El patrón `if CMD > "$L" 2>&1; then rc=0; else rc=$?; fi` es **obligatorio SOLO** para comandos cuyo
+  **fallo es esperado o legítimo** y cuyo código hay que inspeccionar: el flag inexistente del CLI
+  (132-06 T1, debe salir **2** exacto) y, en general, cualquier suite/orden que se corra **esperando que
+  caiga**. A pelo bajo `set -e`, esos casos abortan el script antes de leer `$?` ⇒ **falso rojo /
+  criterio inalcanzable**.
+- Para las **suites vitest** el patrón vigente es el correcto y **NO debe cambiarse**:
+  `CMD > "$L" 2>&1; rc=$?; cat "$L"; test "$rc" -eq 0` — el `rc=$?` inmediato ya captura el código, el
+  `cat "$L"` ya preserva el diagnóstico para el operador, y el `test` posterior es la compuerta real.
+  (Bajo `set -e`, una asignación simple no es un comando que aborte, y la redirección no oculta nada
+  porque el log se vuelca sí o sí.)
+- **Decisión (ronda 4):** envolver los **8** gates de vitest en `if/then/else` queda **DESCARTADO** —
+  cambio innecesario de 8 sitios ya validados y smoke-testeados en rondas 2 y 3, con riesgo de introducir
+  regresiones en compuertas que hoy muerden.
 
 ---
 
@@ -198,6 +219,9 @@ revision_round: 3
       AMBOS casos del par y `vi.stubGlobal("fetch")` que lanza, verificado por grep — ronda 3
 - [ ] Ningún `<automated>` corre una suite vacía como prueba (132-01 T1 es gate de artefactos; el
       anti-CI-DARK va por falla inducida registrada en el SUMMARY) — ronda 3
+- [ ] `packages/news/src/index.ts` (placeholder con ≥ 1 `export`) se crea en **132-01 T1**: sin él el
+      proyecto `composite` no tiene inputs ⇒ **TS18003** y `pnpm typecheck` sale 1 para toda la wave 1
+      (gate inalcanzable). Lo **reemplaza** 132-06 (wave 4) — ronda 4
 - [ ] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
