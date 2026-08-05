@@ -8,7 +8,7 @@
     "gsd-plan-checker": "opus",
     "gsd-verifier": "opus",
     "gsd-code-reviewer": "opus",
-    "gsd-code-fixer": "opus",
+    "gsd-code-fixer": "sonnet",
     "gsd-research-synthesizer": "opus",
     "gsd-codebase-mapper": "opus",
     "gsd-integration-checker": "opus",
@@ -18,8 +18,8 @@
     "gsd-ui-auditor": "opus",
     "gsd-debugger": "opus",
     "gsd-security-auditor": "opus",
-    "gsd-advisor-researcher": "opus",
-    "gsd-assumptions-analyzer": "opus"
+    "gsd-advisor-researcher": "fable",
+    "gsd-assumptions-analyzer": "fable"
   },
   "commit_docs": true,
   "parallelization": true,
