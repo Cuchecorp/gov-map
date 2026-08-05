@@ -2,27 +2,38 @@
 // (132-05). Analog: packages/tramitacion/src/ingest-run.ts (colaboradores por parámetro,
 // conteos + `errores[]` para degradación honesta sin abortar el lote).
 //
-// ── ORDEN LOCKED (D-07/Pitfall 11) — NO REORDENAR ──────────────────────────────────
+// ── ORDEN LOCKED (D-07/Pitfall 11 + CR-02, 132-09) — NO REORDENAR ───────────────────
 // La URL se marca vista (`writer.marcarVistas`) ANTES de cualquier camino de rechazo
-// (`esLegislativo`). Si se invierte, un ítem descartado se re-procesa eternamente en la
-// siguiente corrida (nunca queda en el ledger) y el conteo de descartes por causa queda
-// inflado/incorrecto. Pipeline exacto:
+// (`esLegislativo`), pero con un estado PROVISIONAL NEUTRO (`'pendiente'`, causa=null) — NUNCA
+// con la causa final. CR-02: escribir la causa final (`descarta/prefiltro_lexico`) en el
+// marcado provisional es un veredicto emitido antes de conocer el resultado; si el ítem SÍ pasa
+// el pre-filtro pero la escritura final falla (red, 5xx, timeout), esa causa falsa queda
+// PERMANENTE y el dedup nivel 1 nunca vuelve a evaluar el ítem — pérdida definitiva del dato.
+// Por eso la causa final se promueve en el MISMO paso en que la decisión se toma, nunca antes.
+// Pipeline exacto:
 //   1. canonicalizar URL + urlHash; colapsar duplicados DENTRO del lote (dedup nivel 2).
-//   2. writer.urlsYaVistas(hashes) → ya vistos = duplicados, SIN re-evaluar el pre-filtro
-//      (dedup nivel 1, D-13).
-//   3. writer.marcarVistas(...) para TODOS los ítems nuevos, con estado/causa PROVISORIOS —
-//      ANTES de aplicar esLegislativo.
-//   4. esLegislativo(titulo, descripcion): pasa → fila `noticia` + ledger estado='pasa'; no
-//      pasa → ledger estado='descarta', causa='prefiltro_lexico'.
-//   5. writer.upsertNoticias(filas) para los que pasaron.
-//   6. Log final con los 5 conteos y los errores.
+//   2. writer.urlsYaVistas(hashes) → ya RESUELTOS (pasa/descarta) = duplicados, SIN re-evaluar
+//      el pre-filtro (dedup nivel 1, D-13). Los `pendiente` NO cuentan como vistos: son
+//      re-evaluables (CR-02).
+//   3. writer.marcarVistas(...) para TODOS los ítems nuevos con estado='pendiente', causa=null
+//      — ANTES de aplicar esLegislativo. Si esta escritura falla, el ítem se acumula en
+//      `errores[]` y no se procesa más en esta corrida (queda sin marcar, re-evaluable igual).
+//   4. esLegislativo(titulo, descripcion):
+//      - NO pasa → promoción inmediata a estado='descarta', causa='prefiltro_lexico'
+//        (marcarVistas). Si esa promoción falla, el ítem queda `pendiente` (re-evaluable) y se
+//        acumula en `errores[]` — NUNCA se cuenta como descartado sin que la promoción haya
+//        tenido éxito.
+//      - SÍ pasa → writer.upsertNoticias([fila]); solo si tuvo éxito, promoción a
+//        estado='pasa', causa=null. Cualquier fallo en cualquiera de los dos pasos deja la fila
+//        en `pendiente` (re-evaluable) y se acumula en `errores[]`.
+//   5. Log final con los 5 conteos y los errores.
 //
 // Cero red: este módulo no hace peticiones HTTP ni construye clientes de base de datos — todos
 // los colaboradores (writer, log) entran por parámetro (RunIngestOpts-style), así los tests
 // corren sin red ni DB.
 
 import { canonicalizarUrl, urlHash } from "./canonicalizar-url";
-import { esLegislativo } from "./prefiltro-lexico";
+import { esLegislativo, despojarHtml } from "./prefiltro-lexico";
 import type { NewsWriter, NoticiaRow, UrlVistaRow } from "./writer";
 import type { RssItem } from "./model";
 
@@ -40,7 +51,10 @@ export interface CargarResult {
   duplicados: number;
   descartados: number;
   cargados: number;
-  errores: { urlHash: string; etapa: string; mensaje: string }[];
+  /** `ref` (IN-04): hash resuelto del ítem, o la URL cruda cuando el fallo ocurrió ANTES de
+   *  poder calcular el hash (etapa "canonicalizar") — nunca se llama `urlHash` a algo que no
+   *  siempre es un hash. */
+  errores: { ref: string; etapa: string; mensaje: string }[];
 }
 
 /** Ítem del lote ya canonicalizado, previo a cualquier decisión de descarte. */
@@ -70,7 +84,7 @@ export async function cargar(opts: CargarOpts): Promise<CargarResult> {
       hash = await urlHash(item.link);
     } catch (err) {
       errores.push({
-        urlHash: item.link,
+        ref: item.link,
         etapa: "canonicalizar",
         mensaje: err instanceof Error ? err.message : String(err),
       });
@@ -95,21 +109,20 @@ export async function cargar(opts: CargarOpts): Promise<CargarResult> {
   for (const [hash, canon] of nuevosEntries) {
     const { item, urlCanonica } = canon;
 
-    // 3. ORDEN LOCKED: marcar vista con estado/causa PROVISORIOS ANTES de esLegislativo.
-    //    Si el proceso muere entre este marcado y la carga, se re-procesa un ítem ya marcado
-    //    (aceptable); el orden inverso perdería el registro del descarte.
+    // 3. ORDEN LOCKED (CR-02): marcar vista con estado PROVISIONAL NEUTRO ANTES de
+    //    esLegislativo. Jamás la causa final aquí — ver cabecera del archivo.
     const provisional: UrlVistaRow = {
       url_hash: hash,
       url_canonica: urlCanonica,
       outlet: item.outlet,
-      estado: "descarta",
-      causa: "prefiltro_lexico",
+      estado: "pendiente",
+      causa: null,
     };
     try {
       await writer.marcarVistas([provisional]);
     } catch (err) {
       errores.push({
-        urlHash: hash,
+        ref: hash,
         etapa: "marcarVistas-provisional",
         mensaje: err instanceof Error ? err.message : String(err),
       });
@@ -120,11 +133,33 @@ export async function cargar(opts: CargarOpts): Promise<CargarResult> {
     const pasa = esLegislativo(item.titulo, item.descripcion);
 
     if (!pasa) {
+      // Promoción a causa final en el MISMO paso en que la decisión se toma (CR-02). Si la
+      // promoción falla, el ítem queda `pendiente` (re-evaluable) — NUNCA se cuenta como
+      // descartado sin que el ledger lo confirme.
+      try {
+        await writer.marcarVistas([
+          {
+            url_hash: hash,
+            url_canonica: urlCanonica,
+            outlet: item.outlet,
+            estado: "descarta",
+            causa: "prefiltro_lexico",
+          },
+        ]);
+      } catch (err) {
+        errores.push({
+          ref: hash,
+          etapa: "marcarVistas-descarte",
+          mensaje: err instanceof Error ? err.message : String(err),
+        });
+        continue;
+      }
       descartados += 1;
       continue;
     }
 
-    // 5. Pasa el pre-filtro: fila de `noticia` + actualización final del ledger.
+    // 5. Pasa el pre-filtro: fila de `noticia` (descripción despojada de HTML, WR-17) +
+    //    actualización final del ledger — solo si el upsert tuvo éxito.
     const fila: NoticiaRow = {
       url_hash: hash,
       url: item.link,
@@ -132,7 +167,7 @@ export async function cargar(opts: CargarOpts): Promise<CargarResult> {
       titular: item.titulo,
       outlet: item.outlet,
       fecha_pub: item.fechaPub,
-      descripcion: item.descripcion,
+      descripcion: despojarHtml(item.descripcion ?? "") || null,
       r2_path: r2Path,
       contenido_hash: contenidoHash,
       estado: "pendiente",
@@ -142,7 +177,7 @@ export async function cargar(opts: CargarOpts): Promise<CargarResult> {
       await writer.upsertNoticias([fila]);
     } catch (err) {
       errores.push({
-        urlHash: hash,
+        ref: hash,
         etapa: "upsertNoticias",
         mensaje: err instanceof Error ? err.message : String(err),
       });
@@ -155,7 +190,7 @@ export async function cargar(opts: CargarOpts): Promise<CargarResult> {
       ]);
     } catch (err) {
       errores.push({
-        urlHash: hash,
+        ref: hash,
         etapa: "marcarVistas-final",
         mensaje: err instanceof Error ? err.message : String(err),
       });
@@ -170,7 +205,7 @@ export async function cargar(opts: CargarOpts): Promise<CargarResult> {
       `descartados=${descartados} cargados=${cargados} errores=${errores.length}`,
   );
   for (const e of errores) {
-    log(`carga: ERROR ${e.urlHash} [${e.etapa}]: ${e.mensaje}`);
+    log(`carga: ERROR ${e.ref} [${e.etapa}]: ${e.mensaje}`);
   }
 
   return { vistos, nuevos, duplicados, descartados, cargados, errores };

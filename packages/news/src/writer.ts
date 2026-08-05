@@ -23,12 +23,20 @@ export interface NoticiaRow {
   estado: "pendiente" | "clasificada" | "descartada";
 }
 
-/** Fila de `noticia_url_vista` — seen-ledger de idempotencia + conteo de descartes por causa. */
+/**
+ * Fila de `noticia_url_vista` — seen-ledger de idempotencia + conteo de descartes por causa.
+ *
+ * `estado='pendiente'` (0085, CR-02) es el marcado PROVISIONAL neutro: se escribe ANTES de
+ * evaluar el pre-filtro, con `causa=null` siempre. La causa final (`prefiltro_lexico`) solo se
+ * escribe DESPUÉS de que la decisión se tomó y el destino quedó confirmado — un veredicto
+ * escrito antes de conocer el resultado es una mentira que el dedup convierte en pérdida
+ * permanente del dato.
+ */
 export interface UrlVistaRow {
   url_hash: string;
   url_canonica: string;
   outlet: string;
-  estado: "pasa" | "descarta";
+  estado: "pasa" | "descarta" | "pendiente";
   causa: "prefiltro_lexico" | "duplicado" | null;
 }
 
@@ -38,7 +46,12 @@ export interface NewsWriter {
   marcarVistas(filas: UrlVistaRow[]): Promise<void>;
   /** Conteo de entradas del ledger agrupadas por `causa` (para el reporte del CLI). */
   contarPorCausa(): Promise<Record<string, number>>;
-  /** Dedup nivel 1 (D-13): qué hashes de la lista YA están en `noticia_url_vista`. */
+  /**
+   * Dedup nivel 1 (D-13): qué hashes de la lista YA están RESUELTOS en `noticia_url_vista`
+   * (`estado in ('pasa','descarta')`). Los `pendiente` NO cuentan como vistos (CR-02): deben
+   * re-evaluarse en la corrida siguiente porque un fallo transitorio pudo haberlos dejado sin
+   * causa final.
+   */
   urlsYaVistas(hashes: string[]): Promise<Set<string>>;
 }
 
@@ -68,6 +81,11 @@ export class InMemoryNewsWriter implements NewsWriter {
   }
 
   async urlsYaVistas(hashes: string[]): Promise<Set<string>> {
-    return new Set(hashes.filter((h) => this.vistas.has(h)));
+    return new Set(
+      hashes.filter((h) => {
+        const v = this.vistas.get(h);
+        return v !== undefined && v.estado !== "pendiente";
+      }),
+    );
   }
 }
