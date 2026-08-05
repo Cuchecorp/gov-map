@@ -46,6 +46,13 @@ function dedupePorClave<T>(arr: T[], key: (v: T) => string): T[] {
 /** PostgREST cap 1.000 filas por request (gotcha v6.1): consultar `urlsYaVistas` por chunks. */
 const QUERY_CHUNK = 500;
 
+/**
+ * Causas conocidas de descarte (espeja `UrlVistaRow["causa"]` sin el `null`). Fuente única para
+ * `contarPorCausa`: si el tipo cambia y esta lista no se actualiza, un test de correspondencia
+ * (`writer-supabase.test.ts`) cae.
+ */
+export const CAUSAS_CONOCIDAS = ["prefiltro_lexico", "duplicado"] as const;
+
 export class SupabaseNewsWriter implements NewsWriter {
   private readonly client: SupabaseClient;
 
@@ -79,19 +86,41 @@ export class SupabaseNewsWriter implements NewsWriter {
     }
   }
 
+  /**
+   * Conteo EXACTO por causa (WR-05: el gotcha B-01 de v12.0 — `Ver detalle (1000)` — no puede
+   * renacer aquí). `select("causa")` sin `range()` topa en 1.000 filas y devolvería un número
+   * falso sin ningún aviso a partir de la primera semana de cron; en cambio, cada causa se
+   * cuenta con `select("*", { count: "exact", head: true })` — `head: true` significa que
+   * PostgREST NO transfiere las filas, solo el conteo del servidor, así que el cap de 1.000
+   * nunca aplica. Un `error` de PostgREST LANZA — nunca se devuelve un conteo parcial silencioso.
+   */
   async contarPorCausa(): Promise<Record<string, number>> {
-    const { data, error } = await this.client
-      .from("noticia_url_vista")
-      .select("causa");
-    if (error) throw new Error(`contarPorCausa falló: ${error.message}`);
     const out: Record<string, number> = {};
-    for (const row of (data ?? []) as { causa: string | null }[]) {
-      const key = row.causa ?? "sin_causa";
-      out[key] = (out[key] ?? 0) + 1;
+
+    for (const causa of CAUSAS_CONOCIDAS) {
+      const { count, error } = await this.client
+        .from("noticia_url_vista")
+        .select("*", { count: "exact", head: true })
+        .eq("causa", causa);
+      if (error) throw new Error(`contarPorCausa falló (causa=${causa}): ${error.message}`);
+      out[causa] = count ?? 0;
     }
+
+    const { count: sinCausa, error: errorSinCausa } = await this.client
+      .from("noticia_url_vista")
+      .select("*", { count: "exact", head: true })
+      .is("causa", null);
+    if (errorSinCausa) throw new Error(`contarPorCausa falló (sin_causa): ${errorSinCausa.message}`);
+    out.sin_causa = sinCausa ?? 0;
+
     return out;
   }
 
+  /**
+   * Dedup nivel 1 (D-13). Filtra a `estado in ('pasa','descarta')` (contrato 132-09/CR-02): los
+   * `pendiente` NO cuentan como vistos — deben re-evaluarse en la corrida siguiente porque un
+   * fallo transitorio pudo haberlos dejado sin causa final.
+   */
   async urlsYaVistas(hashes: string[]): Promise<Set<string>> {
     const out = new Set<string>();
     for (const lote of chunk(hashes, QUERY_CHUNK)) {
@@ -99,7 +128,8 @@ export class SupabaseNewsWriter implements NewsWriter {
       const { data, error } = await this.client
         .from("noticia_url_vista")
         .select("url_hash")
-        .in("url_hash", lote);
+        .in("url_hash", lote)
+        .in("estado", ["pasa", "descarta"]);
       if (error) throw new Error(`urlsYaVistas falló: ${error.message}`);
       for (const row of (data ?? []) as { url_hash: string }[]) out.add(row.url_hash);
     }
