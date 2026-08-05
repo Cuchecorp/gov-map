@@ -6,6 +6,7 @@ nyquist_compliant: false
 wave_0_complete: false
 created: 2026-08-05
 revised: 2026-08-05
+revision_round: 2
 ---
 
 # Phase 132 — Validation Strategy
@@ -122,8 +123,29 @@ revised: 2026-08-05
 | Criterio cableado a 5 feeds vs. degradación autorizada a N≥3 | 132-07 T2 | Todo parametrizado por **N**, con N observable en el repo y piso duro 3 |
 | Verify que asserta estado de DB, no la **corrida** (pasa días después sin correr nada) | 132-07 T2 | Los pasos 1 y 2 vuelcan a log; el verify asserta `descargados=N skips=0` en run1 y N líneas `^[skip] rss-` + `descargados=0 skips=N` en run2, **además** del estado de DB |
 | `<automated>` que re-ejecuta red y rompe el presupuesto / pisa fixtures | 132-01 T3 | El probe corre una vez en `<action>`; el verify comprueba artefactos sin red |
-| Criterios con cláusula de juicio no medible | 132-04 T2, 132-05 T1 | Umbral numérico duro sobre el **archivo completo** (`.includes(` == 0; interpolación de credenciales en template strings == 0), con la garantía de fondo delegada a las mutaciones ya existentes |
+| Criterios con cláusula de juicio no medible | 132-04 **T3** (`.includes(` == 0, en `prefiltro-lexico.ts`) y 132-05 T1 (interpolación de credenciales) | Umbral numérico duro sobre el **archivo completo**, con la garantía de fondo delegada a las mutaciones ya existentes. *(Ronda 2: la referencia decía “132-04 T2”; el criterio `.includes(` vive en **T3** — T2 es `canonicalizar-url.ts`. Corregido.)* |
 | §Open Questions sin marca de resuelto (pedía "adjudicación antes de planificar", decía "4 fuentes") | `132-RESEARCH.md` | Renombrada `## Open Questions (RESOLVED)` con resolución inline por pregunta apuntando a D-132-A..D; el texto original se conserva y la cifra "4 fuentes" queda anotada como obsoleta (son **5**) |
+
+---
+
+## Falsos verdes cerrados en la revisión (ronda 2)
+
+> Los 4 blockers de esta ronda son el mismo patrón del milestone: **la compuerta que no muerde**. A cada
+> `<automated>` nuevo se le aplicó la doble pregunta — *¿puede salir 0 sin probar nada?* y *¿puede NO salir 0
+> nunca?* — y las construcciones se smoke-testearon en bash real antes de escribirlas en los planes.
+
+| Patrón | Dónde estaba | Cómo quedó |
+|--------|--------------|------------|
+| **`passWithNoTests` — falso verde sistémico.** Los argumentos de `vitest run` son **filtros de nombre, no rutas**: un archivo inexistente da `No test files found` y **exit 0**. `--passWithNoTests=false` no basta: cubre “cero archivos”, no “cero tests dentro del archivo” | 132-01 T2, 132-03 T2, 132-04 T1/T2/T3, 132-05 T2, 132-06 T2 | Gate de **conteo impreso + exit code capturado por separado** en cada `<automated>`: `vitest run … > "$L" 2>&1; rc=$?; cat "$L"; test "$rc" -eq 0; test "$(grep -Eo "Tests +[0-9]+ passed" "$L" \| grep -Eo "[0-9]+" \| head -1)" -ge <MIN>`. MIN declarado por tarea (01-T2:11 · 01-T3:2 · 03-T2:12 · 04-T1:12 · 04-T2:8 · 04-T3:20 · 05-T2:10 · 06-T2:10 · 07-T1:45). Smoke-testeado: verde⇒pasa, `No test files found`⇒falla, `10 passed \| 2 failed`⇒falla |
+| **CRLF de `psql -tA`** (gotcha v12.0 ya pagado): `test "$v" = "0084"` compara `0084\r` y **falla siempre**; `test "$s" -eq "$N"` sobre `5\r` aborta con `integer expression expected` | 132-02 T2, 132-07 T2 | `\| tr -d "\r"` en **cada** captura de `psql`, y el valor impreso entre corchetes para que un residuo sea visible. Comprobado que el fix no vuelve el criterio vacuo (valor equivocado sigue fallando) |
+| **Control positivo mal apareado**: el par variaba `r2Store` **y** `dryRun` ⇒ no aisla la causa (el positivo podía completar por ser dry-run, no por tener R2) | 132-06 T2 | El par difiere **solo** en `r2Store`: `{r2Store: fake, dryRun: false}` completa vs `{r2Store: null, dryRun: false}` falla duro. Además se asserta el **tipo** de error y que el `message` contiene `R2` (no basta “lanzó”: un `TypeError` pasaría) |
+| **Constante 5 cableada** pese a la degradación autorizada N≥3 ⇒ criterio inalcanzable si A4 retira un host, y la única salida sería maquillar | 132-07 (`<name>` T2, `<objective>`, `<threat_model>`, `<success_criteria>` SC4) | Todo reexpresado como **N = `FEEDS.length` ≥ 3**. La cláusula N se añadió además a **ROADMAP §Phase 132 SC4** y a **REQUIREMENTS §NEWS-02**, sin borrar el texto existente |
+| `sed -E 's://.*::'` **destruye `https://` antes del grep** ⇒ la alternativa `https?://` nunca puede matchear (media compuerta muerta) | 132-04 T1 | Despojo **por línea** (`grep -v "^[[:space:]]*//"` + `*` + `/*`) que preserva el resto de la línea, y el criterio movido **dentro** del `<automated>`. Verificado en bash: el `sed` contaba 1, el filtro por línea cuenta 2 |
+| `grep -q "@obs/news"` **pasa con 0 tests** (`pnpm -r` imprime el nombre igual); y el log de `pnpm -r` trae **un `Tests N passed` por paquete** ⇒ `head -1` tomaría otro paquete | 132-07 T1 | El conteo `≥ 45` se toma de una corrida **filtrada** (`pnpm --filter @obs/news test`) con log propio, donde hay una sola línea de conteo |
+| `BASE` vía `git rev-list --grep` **se desplaza** con cualquier commit futuro que cite la cadena ⇒ la ventana del diff se encoge hasta vaciarse | 132-06 T1 | SHA **literal** `90580a2`, verificado que resuelve a `docs(132): 7 planes en 5 waves para NEWS-RSS`, con `git cat-file -e` como guarda de existencia |
+| `pnpm` puede **interceptar** el flag inexistente ⇒ el exit 2 mediría el parser de pnpm, no el `parseArgs` del CLI | 132-06 T1 | Separador `--` antes del flag |
+| `N` derivado de contar fixtures vs `FEEDS.length`, **sin verificar que coincidan** ⇒ un fixture huérfano (host retirado por A4) desalineaba todos los asserts del plan 07 | 132-07 T2 | Nuevo `packages/news/src/fixtures.test.ts` (creado en 132-01 T3) asserta `FEEDS.length === nº de *.xml` y un fixture por slug; el `<automated>` del plan 07 lo corre como gate de `N` |
+| Trade-off **aceptado**, no cerrado: los fixtures se capturan en `<action>` y el `<verify>` no re-corre el probe ⇒ la **corrida** del probe no queda probada por comando | 132-01 T3 | Escrito en el plan (no solo aquí): el verificador de fase **NO** debe tomar ese `<automated>` como prueba de que el probe corrió — debe leer la salida pegada en el SUMMARY. Se acepta para no reventar el presupuesto de red ni pisar los fixtures congelados |
 
 ---
 
@@ -141,6 +163,11 @@ revised: 2026-08-05
       vuelve imposible) — revisión ronda 1
 - [ ] Ningún `<automated>` de una corrida asserta **solo** estado de DB: debe asertar también la
       evidencia de la corrida (log) — revisión ronda 1
+- [ ] Todo `<automated>` de vitest lleva **gate de conteo** (`Tests N passed` ≥ MIN) **y** exit code
+      capturado por separado — el exit code solo no distingue “verde” de “no corrió nada” — ronda 2
+- [ ] Toda captura de `psql -tA` pasa por `| tr -d "\r"` — ronda 2
+- [ ] Todo control positivo apareado varía **una sola variable** respecto de su negativo — ronda 2
+- [ ] Ningún criterio cableado a la constante 5: la fase se cierra contra **N = `FEEDS.length` ≥ 3** — ronda 2
 - [ ] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
