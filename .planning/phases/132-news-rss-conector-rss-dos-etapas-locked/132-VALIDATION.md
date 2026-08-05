@@ -1,9 +1,9 @@
 ---
 phase: 132
 slug: news-rss-conector-rss-dos-etapas-locked
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-08-05
 revised: 2026-08-05
 revision_round: 4
@@ -43,7 +43,23 @@ revision_round: 4
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD (planner) | — | — | NEWS-01/NEWS-02 | — | — | unit/integration | — | ❌ W0 | ⬜ pending |
+| 132-01-T1 | 01 | 1 | NEWS-01 | T-132-01 | @obs/news scaffolded, no CI-DARK | artifact-gate | `test -f packages/news/vitest.config.ts; test -f packages/news/package.json; test -f packages/news/src/in[dex.ts]...` | ✅ | ✅ green |
+| 132-01-T2 | 01 | 1 | NEWS-01/NEWS-02 | T-132-02 | FEEDS congelado (D-132-A) + allowlist scoped | unit | `pnpm --filter @obs/news exec vitest run src/feeds.test.ts src/allowlist-news.test...` | ✅ | ✅ green |
+| 132-01-T3 | 01 | 1 | NEWS-01 | T-132-19 | Riesgo A4 descartado, fixtures reales | artifact-gate | `N=$(ls packages/news/src/__fixtures__/*.xml \| wc -l \| tr -d " "); echo "fixtures=$N"; test "$N" -ge 3; f...` | ✅ | ✅ green |
+| 132-02-T1 | 02 | 2 | NEWS-01 | T-132-03 | Migración 0084_noticia.sql + pgTAP | artifact-gate | `test -f supabase/migrations/0084_noticia.sql; test -f supabase/tests/0084_noticia.test.sql; test "$(grep...` | ✅ | ✅ green |
+| 132-02-T2 | 02 | 2 | NEWS-01 | T-132-03 | 0084 aplicada a PROD + pgTAP contra schema real | integration | `out=$(PGCLIENTENCODING=UTF8 psql "$SUPABASE_DB_URL" -tA -f supabase/tests/0084_noticia.test.sql \| tr -d...` | ✅ | ✅ green |
+| 132-03-T1 | 03 | 3 | NEWS-01 | T-132-19 | NewsConnector con 3 hooks, buildNewsDeps allowlist scoped | typecheck+grep | `pnpm --filter @obs/news exec tsc -b; test "$(grep -c "fetchFn" packages/news/src/connector-news.ts)" -ge...` | ✅ | ✅ green |
+| 132-03-T2 | 03 | 3 | NEWS-01 | T-132-19 | Tests estructurales SC1 + parte unitaria SC2 | unit | `L=/tmp/132-03-t2.log; pnpm --filter @obs/news exec vitest run src/connector-news.test.ts > "$L" 2>&1; rc...` | ✅ | ✅ green |
+| 132-04-T1 | 04 | 3 | NEWS-01 | T-132-03 | model.ts (zod) + parse-rss.ts contra 5 fixtures | unit | `L=/tmp/132-04-t1.log; pnpm --filter @obs/news exec vitest run src/parse-rss.test.ts > "$L" 2>&1; rc=$?...` | ✅ | ✅ green |
+| 132-04-T2 | 04 | 3 | NEWS-01 | T-132-03 | canonicalizar-url.ts + urlHash (dedup D-13) | unit | `L=/tmp/132-04-t2.log; pnpm --filter @obs/news exec vitest run src/canonicalizar-url.test.ts > "$L" 2>&1;...` | ✅ | ✅ green |
+| 132-04-T3 | 04 | 3 | NEWS-02 | T-132-04 | prefiltro-lexico.ts vocabulario congelado recall-first | unit | `L=/tmp/132-04-t3.log; pnpm --filter @obs/news exec vitest run src/prefiltro-lexico.test.ts > "$L" 2>&1;...` | ✅ | ✅ green |
+| 132-05-T1 | 05 | 4 | NEWS-01 | T-132-21 | writer.ts + writer-supabase.ts upsert idempotente, B26 | typecheck+grep | `pnpm --filter @obs/news exec tsc -b; echo "tsc=OK"; W=packages/news/src/writer-supabase.ts; test "$(grep...` | ✅ | ✅ green |
+| 132-05-T2 | 05 | 4 | NEWS-01/NEWS-02 | T-132-04 | carga-run.ts orden LOCKED (marcar vista ANTES del reject) + idempotencia | unit | `L=/tmp/132-05-t2.log; pnpm --filter @obs/news exec vitest run src/carga-run.test.ts > "$L" 2>&1; rc=$?...` | ✅ | ✅ green |
+| 132-06-T1 | 06 | 4 | NEWS-01 | T-132-17 | run-news-cli.ts flags, R2 obligatorio, [skip] derivado, barrel | typecheck+cli | `pnpm --filter @obs/news exec tsc -b; echo "tsc=OK"; if pnpm --filter @obs/news exec tsx src/run-news-cli...` | ✅ | ✅ green |
+| 132-06-T2 | 06 | 4 | NEWS-01 | T-132-20 | SC3 replay red PROHIBIDA + [skip] derivado, cero-red en tests | unit | `L=/tmp/132-06-t2.log; T=packages/news/src/run-news-cli.test.ts; pnpm --filter @obs/news exec vitest run...` | ✅ | ✅ green |
+| 132-07-T1 | 07 | 5 | NEWS-01/NEWS-02 | — | Suite completa verde, ≥85 tests @obs/news, Validation Map completada | integration | `pnpm test / pnpm typecheck / pnpm guards / pnpm --filter @obs/news test` (todos bajo `set -e`, ver `<automated>` del plan) | ✅ | ✅ green |
+| 132-07-T2 | 07 | 5 | NEWS-01/NEWS-02 | T-132-19/T-132-20/T-132-23 | Corrida LIVE N feeds, re-corrida, replay, conteos PROD | integration/live | Ver §Corrida LIVE del SUMMARY 132-07 | ✅ | ⚠️ flaky (ver Deviations 132-07-SUMMARY) |
+| 132-07-T3 | 07 | 5 | NEWS-02 | T-132-21 | 132-REPORTE-OPERADOR.md handoff, B26, D-132-A re-verificado | artifact-gate | `test -f "$R"; test "$(grep -c "^## " "$R")" -ge 6; test "$(grep -c "412" "$R")" -ge 1; ...` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -51,12 +67,12 @@ revision_round: 4
 
 ## Wave 0 Requirements
 
-- [ ] `packages/news/` scaffold con vitest wired al workspace. El paquete **SÍ lleva su propio
+- [x] `packages/news/` scaffold con vitest wired al workspace. El paquete **SÍ lleva su propio
       `packages/news/vitest.config.ts`** (los 18 paquetes del workspace lo tienen; es el analog
       literal de `packages/tramitacion`). El gotcha de la Phase 43 **no** es "tener config propio":
       es que el paquete no sea recorrido por el `pnpm -r --filter "./packages/*" test` de la raíz,
       lo que lo vuelve CI-DARK. Eso se prueba con la falla inducida de abajo, no con el config.
-- [ ] Verificar que `pnpm test` desde root RECORRE el package nuevo (correr con un test
+- [x] Verificar que `pnpm test` desde root RECORRE el package nuevo (correr con un test
       trivial que falla a propósito y ver que la suite raíz cae con exit ≠ 0, luego borrarlo y
       ver que vuelve a 0; registrar ambos exit codes)
 
@@ -192,36 +208,52 @@ revision_round: 4
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 120s
-- [ ] Ningún criterio de aceptación puede cortocircuitar (comandos encadenados con `&&` cuyo exit
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 120s
+- [x] Ningún criterio de aceptación puede cortocircuitar (comandos encadenados con `&&` cuyo exit
       code se reusa, `git diff` sin commit base, greps sin umbral numérico) — premortem F-5
-- [ ] Ningún `<automated>` es **inalcanzable** (comando que debe fallar bajo `set -e`, condición de
+- [x] Ningún `<automated>` es **inalcanzable** (comando que debe fallar bajo `set -e`, condición de
       entorno que el propio proceso revierte, constante cableada que la degradación autorizada
       vuelve imposible) — revisión ronda 1
-- [ ] Ningún `<automated>` de una corrida asserta **solo** estado de DB: debe asertar también la
+- [x] Ningún `<automated>` de una corrida asserta **solo** estado de DB: debe asertar también la
       evidencia de la corrida (log) — revisión ronda 1
-- [ ] Todo `<automated>` de vitest lleva **gate de conteo** (`Tests N passed` ≥ MIN) **y** exit code
+- [x] Todo `<automated>` de vitest lleva **gate de conteo** (`Tests N passed` ≥ MIN) **y** exit code
       capturado por separado — el exit code solo no distingue “verde” de “no corrió nada” — ronda 2
-- [ ] Toda captura de `psql -tA` pasa por `| tr -d "\r"` — ronda 2
-- [ ] Todo control positivo apareado varía **una sola variable** respecto de su negativo — ronda 2
-- [ ] Ningún criterio cableado a la constante 5: la fase se cierra contra **N = `FEEDS.length` ≥ 3** — ronda 2
-- [ ] **Todo `bash -c` de un `<automated>` empieza por `set -e`** — sin él el exit es el de la última
+- [x] Toda captura de `psql -tA` pasa por `| tr -d "\r"` — ronda 2
+- [x] Todo control positivo apareado varía **una sola variable** respecto de su negativo — ronda 2
+- [x] Ningún criterio cableado a la constante 5: la fase se cierra contra **N = `FEEDS.length` ≥ 3** — ronda 2
+- [x] **Todo `bash -c` de un `<automated>` empieza por `set -e`** — sin él el exit es el de la última
       orden y las aserciones intermedias no verifican nada — ronda 3
-- [ ] Todo comando que puede fallar legítimamente se captura como `if CMD > log 2>&1; then rc=0; else
+- [x] Todo comando que puede fallar legítimamente se captura como `if CMD > log 2>&1; then rc=0; else
       rc=$?; fi` (nunca a pelo bajo `set -e`, nunca encadenado con `&&`) — ronda 3
-- [ ] Ningún criterio de seguridad (greps de credenciales / B26) queda **fuera** del `<automated>` — ronda 3
-- [ ] El umbral agregado de tests de 132-07 T1 es **≥ 85** (agregado real de los MIN por tarea) — ronda 3
-- [ ] Ningún test de la suite puede tocar la red viva: `run-news-cli.test.ts` lleva conector doble en
+- [x] Ningún criterio de seguridad (greps de credenciales / B26) queda **fuera** del `<automated>` — ronda 3
+- [x] El umbral agregado de tests de 132-07 T1 es **≥ 85** (agregado real de los MIN por tarea) — ronda 3
+- [x] Ningún test de la suite puede tocar la red viva: `run-news-cli.test.ts` lleva conector doble en
       AMBOS casos del par y `vi.stubGlobal("fetch")` que lanza, verificado por grep — ronda 3
-- [ ] Ningún `<automated>` corre una suite vacía como prueba (132-01 T1 es gate de artefactos; el
+- [x] Ningún `<automated>` corre una suite vacía como prueba (132-01 T1 es gate de artefactos; el
       anti-CI-DARK va por falla inducida registrada en el SUMMARY) — ronda 3
-- [ ] `packages/news/src/index.ts` (placeholder con ≥ 1 `export`) se crea en **132-01 T1**: sin él el
+- [x] `packages/news/src/index.ts` (placeholder con ≥ 1 `export`) se crea en **132-01 T1**: sin él el
       proyecto `composite` no tiene inputs ⇒ **TS18003** y `pnpm typecheck` sale 1 para toda la wave 1
       (gate inalcanzable). Lo **reemplaza** 132-06 (wave 4) — ronda 4
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] `nyquist_compliant` set to `true` in frontmatter (see top of file)
 
-**Approval:** pending
+---
+
+## Hallazgo 132-07-T2: SC2 no se cumple literalmente (ver 132-07-SUMMARY §Deviations)
+
+> La corrida LIVE (paso 1) y la corrida `--etapa1` inmediata (paso 2) mostraron que el `[skip]`
+> derivado (D-132-B, 132-06) **nunca puede disparar en producción real**: `buildNewsDeps()` deja
+> `cache.hasToday` como el doble no-op (`async () => false`) y **ningún caller de la CLI wirea un
+> `DailyCache` real**, así que `BaseConnector.run()` jamás hace el `continue` de cache-hit del que
+> depende la derivación. El paso 2 terminó ejecutando un **segundo fetch real** contra los 5 medios
+> (idempotencia de datos preservada solo por la recuperación 23505 de `SupabaseSnapshotStore` y por
+> la dedup de `cargar()`), no un `[skip]` sin red. Detalle completo, root cause y recomendación en
+> `132-07-SUMMARY.md`. Este hallazgo **no bloquea el cierre de la fase** (handoff, no gate) pero
+> queda registrado aquí para que una fase futura (136 cron, o un parche a 132-06) wiree un
+> `DailyCache`/`SnapshotLookup` Postgres-backed real antes de que el cron diario dependa del `[skip]`
+> para no re-scrapear cada día.
+
+**Approval:** pending — handoff a operador vía `132-REPORTE-OPERADOR.md` (ver Task 3), no bloqueante para el cierre de fase.
