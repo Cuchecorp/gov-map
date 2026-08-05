@@ -6,7 +6,7 @@ nyquist_compliant: false
 wave_0_complete: false
 created: 2026-08-05
 revised: 2026-08-05
-revision_round: 2
+revision_round: 3
 ---
 
 # Phase 132 — Validation Strategy
@@ -136,7 +136,7 @@ revision_round: 2
 
 | Patrón | Dónde estaba | Cómo quedó |
 |--------|--------------|------------|
-| **`passWithNoTests` — falso verde sistémico.** Los argumentos de `vitest run` son **filtros de nombre, no rutas**: un archivo inexistente da `No test files found` y **exit 0**. `--passWithNoTests=false` no basta: cubre “cero archivos”, no “cero tests dentro del archivo” | 132-01 T2, 132-03 T2, 132-04 T1/T2/T3, 132-05 T2, 132-06 T2 | Gate de **conteo impreso + exit code capturado por separado** en cada `<automated>`: `vitest run … > "$L" 2>&1; rc=$?; cat "$L"; test "$rc" -eq 0; test "$(grep -Eo "Tests +[0-9]+ passed" "$L" \| grep -Eo "[0-9]+" \| head -1)" -ge <MIN>`. MIN declarado por tarea (01-T2:11 · 01-T3:2 · 03-T2:12 · 04-T1:12 · 04-T2:8 · 04-T3:20 · 05-T2:10 · 06-T2:10 · 07-T1:45). Smoke-testeado: verde⇒pasa, `No test files found`⇒falla, `10 passed \| 2 failed`⇒falla |
+| **`passWithNoTests` — falso verde sistémico.** Los argumentos de `vitest run` son **filtros de nombre, no rutas**: un archivo inexistente da `No test files found` y **exit 0**. `--passWithNoTests=false` no basta: cubre “cero archivos”, no “cero tests dentro del archivo” | 132-01 T2, 132-03 T2, 132-04 T1/T2/T3, 132-05 T2, 132-06 T2 | Gate de **conteo impreso + exit code capturado por separado** en cada `<automated>`: `vitest run … > "$L" 2>&1; rc=$?; cat "$L"; test "$rc" -eq 0; test "$(grep -Eo "Tests +[0-9]+ passed" "$L" \| grep -Eo "[0-9]+" \| head -1)" -ge <MIN>`. MIN declarado por tarea (01-T2:11 · 01-T3:2 · 03-T2:12 · 04-T1:12 · 04-T2:8 · 04-T3:20 · 05-T2:10 · 06-T2:10 · 07-T1:**85** *(ronda 3: era 45, obsoleto; 85 = 11+2+12+12+8+20+10+10, el agregado real)*). Smoke-testeado: verde⇒pasa, `No test files found`⇒falla, `10 passed \| 2 failed`⇒falla |
 | **CRLF de `psql -tA`** (gotcha v12.0 ya pagado): `test "$v" = "0084"` compara `0084\r` y **falla siempre**; `test "$s" -eq "$N"` sobre `5\r` aborta con `integer expression expected` | 132-02 T2, 132-07 T2 | `\| tr -d "\r"` en **cada** captura de `psql`, y el valor impreso entre corchetes para que un residuo sea visible. Comprobado que el fix no vuelve el criterio vacuo (valor equivocado sigue fallando) |
 | **Control positivo mal apareado**: el par variaba `r2Store` **y** `dryRun` ⇒ no aisla la causa (el positivo podía completar por ser dry-run, no por tener R2) | 132-06 T2 | El par difiere **solo** en `r2Store`: `{r2Store: fake, dryRun: false}` completa vs `{r2Store: null, dryRun: false}` falla duro. Además se asserta el **tipo** de error y que el `message` contiene `R2` (no basta “lanzó”: un `TypeError` pasaría) |
 | **Constante 5 cableada** pese a la degradación autorizada N≥3 ⇒ criterio inalcanzable si A4 retira un host, y la única salida sería maquillar | 132-07 (`<name>` T2, `<objective>`, `<threat_model>`, `<success_criteria>` SC4) | Todo reexpresado como **N = `FEEDS.length` ≥ 3**. La cláusula N se añadió además a **ROADMAP §Phase 132 SC4** y a **REQUIREMENTS §NEWS-02**, sin borrar el texto existente |
@@ -146,6 +146,26 @@ revision_round: 2
 | `pnpm` puede **interceptar** el flag inexistente ⇒ el exit 2 mediría el parser de pnpm, no el `parseArgs` del CLI | 132-06 T1 | Separador `--` antes del flag |
 | `N` derivado de contar fixtures vs `FEEDS.length`, **sin verificar que coincidan** ⇒ un fixture huérfano (host retirado por A4) desalineaba todos los asserts del plan 07 | 132-07 T2 | Nuevo `packages/news/src/fixtures.test.ts` (creado en 132-01 T3) asserta `FEEDS.length === nº de *.xml` y un fixture por slug; el `<automated>` del plan 07 lo corre como gate de `N` |
 | Trade-off **aceptado**, no cerrado: los fixtures se capturan en `<action>` y el `<verify>` no re-corre el probe ⇒ la **corrida** del probe no queda probada por comando | 132-01 T3 | Escrito en el plan (no solo aquí): el verificador de fase **NO** debe tomar ese `<automated>` como prueba de que el probe corrió — debe leer la salida pegada en el SUMMARY. Se acepta para no reventar el presupuesto de red ni pisar los fixtures congelados |
+
+---
+
+## Falsos verdes cerrados en la revisión (ronda 3)
+
+> El blocker de esta ronda es la variante más barata del patrón del milestone: **el `bash -c` sin
+> `set -e`**. Todas las aserciones estaban escritas, ninguna se ejecutaba como compuerta. A cada fix
+> se le aplicó la doble pregunta en bash real — *¿puede salir 0 sin probar nada?* / *¿puede NO salir
+> 0 nunca?* — antes de escribirlo en el plan.
+
+| Patrón | Dónde estaba | Cómo quedó |
+|--------|--------------|------------|
+| **BLOCKER — `bash -c` SIN `set -e`**: el exit del script es el de la **última** orden, así que los `test "$rc" -eq 0` de `pnpm test`/`typecheck`/`guards`, el gate de conteo y los greps `== 0` eran **no-ops**. La suite podía estar ROJA y el gate salía **0** | 132-07 T1 | `set -e` + patrón `if CMD > log 2>&1; then rc=0; else rc=$?; fi` para los **4** comandos (el mismo ya validado en 132-06 T1). El `if` es obligatorio: a pelo, bajo `set -e`, el script abortaría antes de imprimir qué comando cayó. **Smoke-test:** suite roja ⇒ exit **1** (antes 0) · suite verde pero con 40 tests ⇒ exit **1** · todo verde con 85 ⇒ exit **0** |
+| **Umbral agregado obsoleto**: 45 con MIN reales que suman **85** ⇒ 40 tests de holgura muerta; una suite que perdiera media fase pasaba el gate | 132-07 T1 | Piso **85** = 01-T2 11 + 01-T3 2 + 03-T2 12 + 04-T1 12 + 04-T2 8 + 04-T3 20 + 05-T2 10 + 06-T2 10. Se mantiene la instrucción de ajustar al agregado real de los SUMMARY, con 85 como piso que nunca baja. **Smoke-test:** 40 passed ⇒ falla; 85 passed ⇒ pasa |
+| **Criterios de seguridad FUERA del `<automated>`**: los 4 greps (interpolación de credencial, B26, `onConflict`, `dedupePorClave`/`CHUNK`) eran prosa; el comando era solo `tsc -b` ⇒ una service key interpolada o un project-ref transcrito pasaban sin ser mirados | 132-05 T1 | Los 4 movidos **dentro** del `<automated>`, tras el `tsc -b`, bajo `set -e`. **Smoke-test:** writer limpio ⇒ 0 · con `` `${serviceKey}` `` + project-ref ⇒ 1 · con project-ref en `writer.ts` (el otro archivo del par) ⇒ 1 · con `tsc -b` rojo ⇒ 2 |
+| **Test que golpea la red viva en cada `pnpm test`**: el par apareado de `run-news-cli.test.ts` corre `main()` con `dryRun: false` (camino de Etapa 1); sin conector doble inyectado, construiría las deps reales y scrapearía los N feeds en cada corrida de la suite | 132-06 T2 | `<behavior>` exige **conector doble en AMBOS casos** (la única variable que difiere sigue siendo `r2Store`) + `vi.stubGlobal("fetch", () => { throw new Error("red prohibida en tests") })` a nivel de archivo, y el gate de cero-red **dentro** del `<automated>` (patrón 132-03 T2 **invertido**: allá se exige la ausencia del stub, acá su presencia). **Smoke-test:** archivo con stub + doble ⇒ `stub=1 msg=1 realfetcher=0` pasa; archivo con `new Fetcher(...)` ⇒ `stub=0 msg=0 realfetcher=1`, los tres gates muerden |
+| **`<automated>` sobre un paquete con 0 tests**: al terminar 132-01 T1 no existe ningún `*.test.ts` y `passWithNoTests: true` ⇒ `pnpm --filter @obs/news test` sale **0 sin probar nada** (falso verde estructural) | 132-01 T1 | Reemplazado por un **gate de artefactos** que no depende de tests: `vitest.config.ts`, `package.json` con script `test`, `pnpm-workspace.yaml` recorriendo `packages/*`, reference `./packages/news` en el tsconfig raíz (== 1), `"paths"` == 0, symlink `@obs/ingest`, y `pnpm typecheck` con exit propio. El **anti-CI-DARK lo prueba la falla inducida** registrada en el SUMMARY — declarado explícitamente en el plan, mismo régimen ya aceptado en 01-T3. **Smoke-test:** el gate sale **1** contra el repo actual (no existe `packages/news`) ⇒ no es vacuo; sus análogos sobre `packages/tramitacion` dan `test-script=1 paths=0 reference=1` ⇒ alcanzable |
+
+> **Comprobación transversal (ronda 3):** los **17** bloques `<automated>` de los 7 planes se extrajeron
+> y pasaron `bash -n` — los 17 son sintácticamente válidos. B26 se mantiene intacto en 05, 06 y 07.
 
 ---
 
@@ -168,6 +188,16 @@ revision_round: 2
 - [ ] Toda captura de `psql -tA` pasa por `| tr -d "\r"` — ronda 2
 - [ ] Todo control positivo apareado varía **una sola variable** respecto de su negativo — ronda 2
 - [ ] Ningún criterio cableado a la constante 5: la fase se cierra contra **N = `FEEDS.length` ≥ 3** — ronda 2
+- [ ] **Todo `bash -c` de un `<automated>` empieza por `set -e`** — sin él el exit es el de la última
+      orden y las aserciones intermedias no verifican nada — ronda 3
+- [ ] Todo comando que puede fallar legítimamente se captura como `if CMD > log 2>&1; then rc=0; else
+      rc=$?; fi` (nunca a pelo bajo `set -e`, nunca encadenado con `&&`) — ronda 3
+- [ ] Ningún criterio de seguridad (greps de credenciales / B26) queda **fuera** del `<automated>` — ronda 3
+- [ ] El umbral agregado de tests de 132-07 T1 es **≥ 85** (agregado real de los MIN por tarea) — ronda 3
+- [ ] Ningún test de la suite puede tocar la red viva: `run-news-cli.test.ts` lleva conector doble en
+      AMBOS casos del par y `vi.stubGlobal("fetch")` que lanza, verificado por grep — ronda 3
+- [ ] Ningún `<automated>` corre una suite vacía como prueba (132-01 T1 es gate de artefactos; el
+      anti-CI-DARK va por falla inducida registrada en el SUMMARY) — ronda 3
 - [ ] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
