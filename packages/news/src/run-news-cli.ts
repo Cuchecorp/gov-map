@@ -99,17 +99,36 @@ export class NewsCliArgsError extends Error {
   }
 }
 
-/** Error del fallo duro sin R2 (T-132-17): NUNCA degrada a `[WARN]+continuar`. */
+/** Las 4 variables R2 requeridas para construir un `R2Store` real (WR-10). */
+const R2_ENV_VARS = [
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "R2_ENDPOINT_URL",
+  "R2_BUCKET",
+] as const;
+
+/** Error del fallo duro sin R2 (T-132-17): NUNCA degrada a `[WARN]+continuar`.
+ * WR-10: lista las variables que faltan POR NOMBRE, jamás por valor. */
 export class NewsR2RequeridoError extends Error {
-  constructor() {
+  constructor(faltantes: readonly string[] = []) {
+    const detalle = faltantes.length > 0 ? ` — faltan: ${faltantes.join(", ")}` : "";
     super(
-      "run-news-cli: R2 no configurado (faltan R2_ACCESS_KEY_ID/R2_ENDPOINT_URL) — " +
-        "R2 es obligatorio para news (SC2/SC3); usa --dry-run solo para pruebas locales sin R2, " +
-        "o configura las variables R2_* en .env",
+      `run-news-cli: R2 no configurado${detalle} — R2 es obligatorio para news (SC2/SC3); ` +
+        "usa --dry-run solo para pruebas locales sin R2, o configura las variables R2_* en .env",
     );
     this.name = "NewsR2RequeridoError";
   }
 }
+
+/**
+ * WR-09: patrón de `--from-r2` derivado de `FEEDS` (nunca escrito a mano — se desincroniza al
+ * agregar un feed). Exige `news/rss-<slug-congelado>/<fecha>/<sha256>.xml` exacto; rechaza
+ * cualquier otra fuente del bucket de crudo. El grupo capturado es el sha256, del que se deriva
+ * `contenidoHash` (deja de ser `""`).
+ */
+export const R2_PATH_RE = new RegExp(
+  `^news/rss-(?:${FEEDS.map((f) => f.slug).join("|")})/\\d{4}-\\d{2}-\\d{2}/([0-9a-f]{64})\\.xml$`,
+);
 
 /** Parsea argv → NewsCliOptions, validando los valores ANTES de cualquier red/DB. */
 export function parseArgs(argv: string[]): NewsCliOptions {
@@ -151,9 +170,14 @@ export function parseArgs(argv: string[]): NewsCliOptions {
         opts.soloEtapa2 = true;
         break;
       default:
-        if (a != null && a.startsWith("--")) {
-          throw new NewsCliArgsError(`flag desconocido: ${a}`);
-        }
+        // WR-08 (fail-closed): cualquier argumento que llegue hasta acá — flag desconocido con
+        // `--`, o un typo SIN `--` (p.ej. `-dry-run`, `dry-run`) — lanza. El separador `--`
+        // literal ya fue consumido arriba (`a === "--"`); jamás cae en este default.
+        throw new NewsCliArgsError(
+          a != null && a.startsWith("--")
+            ? `flag desconocido: ${a}`
+            : `argumento inválido (se esperaba un flag "--..."): ${a}`,
+        );
     }
   }
   return opts;
@@ -203,9 +227,12 @@ function loadEnv(root: string): Record<string, string> {
   return out;
 }
 
-/** Slug de feed derivado de un `r2Path` con `resource = rss-<slug>` (Pattern 2, 132-03). */
+/**
+ * Slug de feed derivado de un `r2Path` con `resource = rss-<slug>` (Pattern 2, 132-03).
+ * WR-11: `[a-z0-9-]+` — un slug con guion o dígito ya no se pierde en silencio.
+ */
 function slugDesdeR2Path(r2Path: string): string | null {
-  const m = /\/rss-([a-z]+)\//.exec(r2Path);
+  const m = /\/rss-([a-z0-9-]+)\//.exec(r2Path);
   return m ? m[1]! : null;
 }
 
@@ -222,24 +249,64 @@ export async function main(opts: NewsCliOptions = {}): Promise<NewsCliResult> {
   const url = opts.url ?? env.SUPABASE_API_URL ?? env.SUPABASE_URL ?? "";
   const serviceKey = opts.serviceKey ?? env.SUPABASE_SECRET_KEY ?? "";
 
+  const soloEtapa2 = opts.soloEtapa2 === true;
+  const soloEtapa1 = opts.soloEtapa1 === true;
+  const correrEtapa1 = !soloEtapa2;
+  const correrEtapa2 = !soloEtapa1;
+
+  // ── Validación cruzada de flags — SIEMPRE antes de tocar red/DB (WR-02/WR-06/WR-09) ─────────
+  if (soloEtapa1 && soloEtapa2) {
+    throw new NewsCliArgsError("--etapa1 y --etapa2 son mutuamente excluyentes");
+  }
+  // WR-02: --etapa2 solo (sin Etapa 1) sin --from-r2 nunca tiene nada que cargar — Etapa 1 no
+  // corrió, así que `refs` sería siempre []. Un mensaje explícito y exit != 0 en vez de un éxito
+  // silencioso con descargados=0.
+  if (soloEtapa2 && opts.fromR2 == null) {
+    throw new NewsCliArgsError(
+      "--etapa2 sin --from-r2 no tiene snapshots que cargar (Etapa 1 no corrió); pasa " +
+        "--from-r2 <r2Path> para el replay, o quita --etapa2 para encadenar ambas etapas.",
+    );
+  }
+  // WR-09: --from-r2 solo acepta una clave del bucket de crudo que matchea el patrón derivado
+  // de FEEDS — rechaza `otra-fuente/...` y claves con sha inválido.
+  if (opts.fromR2 != null && !R2_PATH_RE.test(opts.fromR2)) {
+    throw new NewsCliArgsError(
+      `--from-r2 no matchea el patrón esperado (news/rss-<slug>/<fecha>/<sha256>.xml): ${opts.fromR2}`,
+    );
+  }
+  // WR-06: el contrato natural de --dry-run es "no producir efectos". BaseConnector.run() (Etapa
+  // 1 real) escribe source_snapshot INCONDICIONALMENTE — así que --dry-run sin --from-r2 seguiría
+  // golpeando red y R2 igual que una corrida LIVE. Cuando `opts.conector` viene inyectado (tests),
+  // Etapa 1 no corre de verdad (el double controla el efecto) y esta regla no aplica.
+  if (dryRun && opts.fromR2 == null && opts.conector == null && correrEtapa1) {
+    throw new NewsCliArgsError(
+      "--dry-run sin --from-r2 seguiría golpeando red y R2 en Etapa 1 (BaseConnector.run() " +
+        "escribe source_snapshot incondicionalmente); usa --from-r2 <r2Path> para un replay sin " +
+        "efectos, o quita --dry-run.",
+    );
+  }
+
   // R2 Store — tri-estado (T-132-17): null = forzar sin R2; undefined = construir desde env.
   let r2Store: R2Store | null;
+  let r2Faltantes: string[] = [];
   if (opts.r2Store !== undefined) {
     r2Store = opts.r2Store;
   } else {
-    const ak = env.R2_ACCESS_KEY_ID;
-    const sk = env.R2_SECRET_ACCESS_KEY ?? "";
-    const ep = env.R2_ENDPOINT_URL ?? "";
-    const bk = env.R2_BUCKET ?? "";
-    r2Store = ak && ep
-      ? new R2Store({ accessKeyId: ak, secretAccessKey: sk, endpoint: ep, bucket: bk })
+    r2Faltantes = R2_ENV_VARS.filter((k) => !env[k]);
+    r2Store = r2Faltantes.length === 0
+      ? new R2Store({
+          accessKeyId: env.R2_ACCESS_KEY_ID!,
+          secretAccessKey: env.R2_SECRET_ACCESS_KEY!,
+          endpoint: env.R2_ENDPOINT_URL!,
+          bucket: env.R2_BUCKET!,
+        })
       : null;
   }
   // Fallo duro sin R2 (T-132-17): NUNCA una advertencia que deje continuar la corrida. news
   // depende de R2 para SC2 (caché diaria) y SC3 (replay) — sin él, la corrida no puede cumplir
   // su contrato.
   if (!r2Store && !dryRun) {
-    throw new NewsR2RequeridoError();
+    throw new NewsR2RequeridoError(r2Faltantes);
   }
 
   // Feeds a pedir: subconjunto explícito o los 5 congelados.
@@ -264,11 +331,6 @@ export async function main(opts: NewsCliOptions = {}): Promise<NewsCliResult> {
     dbLoaded = true;
   }
 
-  const soloEtapa2 = opts.soloEtapa2 === true;
-  const soloEtapa1 = opts.soloEtapa1 === true;
-  const correrEtapa1 = !soloEtapa2;
-  const correrEtapa2 = !soloEtapa1;
-
   // ── Modo --from-r2: replay SIN pasar por Etapa 1 / BaseConnector.run() (SC3) ────────────────
   // La red está PROHIBIDA en este camino: la única fuente de datos es `r2Store.getObject`.
   // No consume la caché diaria del día (no escribe source_snapshot) — es el único modo repetible.
@@ -279,6 +341,8 @@ export async function main(opts: NewsCliOptions = {}): Promise<NewsCliResult> {
     const slug = slugDesdeR2Path(opts.fromR2);
     const feed = slug ? FEEDS.find((f) => f.slug === slug) : undefined;
     const outlet = feed?.outlet ?? slug ?? "desconocido";
+    const shaMatch = R2_PATH_RE.exec(opts.fromR2);
+    const contenidoHash = shaMatch?.[1] ?? "";
     log(`news-cli: modo --from-r2 → leyendo crudo desde R2 (${opts.fromR2})`);
     const bytes = await r2Store.getObject(opts.fromR2);
     const xml = new TextDecoder().decode(bytes);
@@ -288,7 +352,7 @@ export async function main(opts: NewsCliOptions = {}): Promise<NewsCliResult> {
     const carga = await cargar({
       items,
       r2Path: opts.fromR2,
-      contenidoHash: "",
+      contenidoHash,
       writer,
       log,
     });
@@ -336,10 +400,9 @@ export async function main(opts: NewsCliOptions = {}): Promise<NewsCliResult> {
               }
             : {}),
       });
-      // NewsConnector siempre pide los 5 feeds congelados (FEEDS); `--feeds` filtra la Etapa 1
-      // acotando qué endpoints Etapa 2 procesa después (no hay override de `endpoints()` sin
-      // tocar el conector: se filtran los `refs` resultantes por slug pedido).
-      conector = new NewsConnector(deps);
+      // WR-01: el subconjunto pedido (`feedsPedidos`) VIAJA al constructor del conector — jamás
+      // se filtra después. `endpoints()` de `NewsConnector` ya solo pide los feeds inyectados.
+      conector = new NewsConnector(deps, feedsPedidos);
     }
     // `_ctx` no se usa dentro de `BaseConnector.run()` (base-connector.ts:114) — objeto mínimo
     // para satisfacer el tipo `IngestRun` sin fabricar un `ingest_run` real en DB.
@@ -350,12 +413,9 @@ export async function main(opts: NewsCliOptions = {}): Promise<NewsCliResult> {
       status: "running",
       stats: {},
     };
-    const todosRefs = await conector.run(ctx);
-    const slugsPedidos = new Set(feedsPedidos.map((f) => f.slug));
-    refs = todosRefs.filter((r) => {
-      const slug = slugDesdeR2Path(r.r2Path);
-      return slug != null && slugsPedidos.has(slug);
-    });
+    // `refs` ya viene acotado al subconjunto pedido (WR-01): el conector real solo pide esos
+    // feeds; un `opts.conector` doble de test decide directamente qué refs devuelve.
+    refs = await conector.run(ctx);
 
     // [skip] observable (D-132-B): comparar slugs pedidos vs slugs presentes en `refs` — sin
     // tocar @obs/ingest, que hace `continue` SILENCIOSO en cache-hit (base-connector.ts:124).

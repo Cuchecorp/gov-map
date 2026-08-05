@@ -35,7 +35,9 @@ describe("control positivo del stub de fetch (prueba de que el stub está instal
   });
 });
 
-const R2_PATH = "news/rss-latercera/2026-08-05/deadbeef.xml";
+// 132-10/WR-09: `main()` valida `--from-r2` contra `R2_PATH_RE` (derivado de FEEDS), que exige
+// un sha256 hex de 64 caracteres — "deadbeef" ya no matchea.
+const R2_PATH = `news/rss-latercera/2026-08-05/${"deadbeef".repeat(8)}.xml`;
 
 function fakeR2Store(bytes: Uint8Array) {
   const calls: string[] = [];

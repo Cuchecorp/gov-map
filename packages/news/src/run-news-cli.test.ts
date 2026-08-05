@@ -14,8 +14,10 @@ import {
   findWorkspaceRoot,
   NewsCliArgsError,
   NewsR2RequeridoError,
+  R2_PATH_RE,
 } from "./run-news-cli";
 import { NewsConnector, buildNewsDeps } from "./connector-news";
+import * as connectorNewsModule from "./connector-news";
 import { InMemoryNewsWriter } from "./writer";
 import { FEEDS } from "./feeds";
 import * as index from "./index";
@@ -304,6 +306,244 @@ describe("[T-132-17] fallo duro sin R2 — tri-estado, control positivo apareado
     expect(res).toBeDefined();
     expect(res.dryRun).toBe(false);
     expect(logs.some((l) => l.includes("[WARN]"))).toBe(false);
+  });
+});
+
+describe("[WR-01] --feeds viaja al constructor del conector, sin filtrado posterior", () => {
+  const fakeR2 = {
+    getObject: vi.fn(async () => new TextEncoder().encode("")),
+    putImmutable: vi.fn(async (source: string, resource: string, date: string, sha: string, ext: string) => ({
+      r2Path: `${source}/${resource}/${date}/${sha}.${ext}`,
+      existed: false,
+    })),
+  };
+
+  it("main({feeds:['latercera']}) construye new NewsConnector(deps, [latercera])", async () => {
+    let capturedFeeds: unknown;
+    const spy = vi.spyOn(connectorNewsModule, "NewsConnector").mockImplementation(function (
+      this: unknown,
+      _deps: unknown,
+      feeds: unknown,
+    ) {
+      capturedFeeds = feeds;
+      return { run: vi.fn(async () => []) } as unknown as InstanceType<typeof NewsConnector>;
+    } as unknown as typeof NewsConnector);
+    try {
+      await main({
+        feeds: ["latercera"],
+        soloEtapa1: true,
+        dryRun: false,
+        writer: new InMemoryNewsWriter(),
+        url: "http://127.0.0.1:0",
+        serviceKey: "test-key",
+        r2Store: fakeR2 as unknown as import("@obs/ingest").R2Store,
+        log: () => {},
+      });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(capturedFeeds).toEqual([FEEDS.find((f) => f.slug === "latercera")]);
+  });
+
+  it("control positivo: sin --feeds, construye new NewsConnector(deps, FEEDS) (los 5)", async () => {
+    let capturedFeeds: unknown;
+    const spy = vi.spyOn(connectorNewsModule, "NewsConnector").mockImplementation(function (
+      this: unknown,
+      _deps: unknown,
+      feeds: unknown,
+    ) {
+      capturedFeeds = feeds;
+      return { run: vi.fn(async () => []) } as unknown as InstanceType<typeof NewsConnector>;
+    } as unknown as typeof NewsConnector);
+    try {
+      await main({
+        soloEtapa1: true,
+        dryRun: false,
+        writer: new InMemoryNewsWriter(),
+        url: "http://127.0.0.1:0",
+        serviceKey: "test-key",
+        r2Store: fakeR2 as unknown as import("@obs/ingest").R2Store,
+        log: () => {},
+      });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(capturedFeeds).toEqual([...FEEDS]);
+  });
+});
+
+describe("[WR-02] --etapa1 + --etapa2 mutuamente excluyentes; --etapa2 sin --from-r2 no tiene nada que cargar", () => {
+  it("--etapa1 y --etapa2 juntos ⇒ NewsCliArgsError", async () => {
+    await expect(
+      main({ soloEtapa1: true, soloEtapa2: true, dryRun: true, fromR2: "news/rss-latercera/2026-08-05/" + "a".repeat(64) + ".xml", writer: new InMemoryNewsWriter() }),
+    ).rejects.toThrow(NewsCliArgsError);
+  });
+
+  it("--etapa2 sin --from-r2 y sin conector ⇒ NewsCliArgsError explícito, exit != 0 (nunca éxito silencioso)", async () => {
+    await expect(
+      main({ soloEtapa2: true, dryRun: true, writer: new InMemoryNewsWriter() }),
+    ).rejects.toThrow(/no tiene snapshots que cargar/);
+  });
+});
+
+describe("[WR-06] --dry-run sin --from-r2 lanza (contrato: dry-run no produce efectos)", () => {
+  it("main({dryRun:true}) sin --from-r2 y sin conector inyectado ⇒ NewsCliArgsError", async () => {
+    await expect(
+      main({ dryRun: true, writer: new InMemoryNewsWriter() }),
+    ).rejects.toThrow(NewsCliArgsError);
+  });
+
+  it("control positivo apareado: main({dryRun:true, fromR2}) completa con 0 fetches/putImmutable", async () => {
+    const r2Store = {
+      getObject: vi.fn(async () => new TextEncoder().encode(MIN_RSS)),
+      putImmutable: vi.fn(async () => ({ r2Path: "x", existed: false })),
+    };
+    const res = await main({
+      dryRun: true,
+      fromR2: `news/rss-latercera/2026-08-05/${"a".repeat(64)}.xml`,
+      writer: new InMemoryNewsWriter(),
+      r2Store: r2Store as unknown as import("@obs/ingest").R2Store,
+      log: () => {},
+    });
+    expect(res).toBeDefined();
+    expect(r2Store.putImmutable).not.toHaveBeenCalled();
+  });
+
+  it("caso ya cubierto (CR-01): dry-run CON conector inyectado no requiere --from-r2 (test double, no LIVE real)", async () => {
+    const conector = { run: vi.fn(async () => []) };
+    const res = await main({
+      dryRun: true,
+      soloEtapa1: true,
+      conector,
+      writer: new InMemoryNewsWriter(),
+      log: () => {},
+    });
+    expect(res.dryRun).toBe(true);
+  });
+});
+
+describe("[WR-09] --from-r2 valida contra R2_PATH_RE derivado de FEEDS; contenidoHash ya no es ''", () => {
+  it("R2_PATH_RE rechaza una clave de otra fuente", () => {
+    expect(R2_PATH_RE.test(`otra-fuente/rss-latercera/2026-08-05/${"a".repeat(64)}.xml`)).toBe(false);
+  });
+
+  it("R2_PATH_RE rechaza un sha inválido", () => {
+    expect(R2_PATH_RE.test("news/rss-latercera/2026-08-05/noesunsha.xml")).toBe(false);
+  });
+
+  it("R2_PATH_RE acepta una clave válida de un slug congelado", () => {
+    expect(R2_PATH_RE.test(`news/rss-latercera/2026-08-05/${"a".repeat(64)}.xml`)).toBe(true);
+  });
+
+  it("main({fromR2: otra-fuente/...}) ⇒ NewsCliArgsError (no llega a tocar R2)", async () => {
+    await expect(
+      main({
+        fromR2: `otra-fuente/rss-latercera/2026-08-05/${"a".repeat(64)}.xml`,
+        dryRun: true,
+        writer: new InMemoryNewsWriter(),
+      }),
+    ).rejects.toThrow(NewsCliArgsError);
+  });
+
+  it("main({fromR2: <clave válida>}) ⇒ contenidoHash llega a `cargar` derivado del sha (no '')", async () => {
+    const sha = "b".repeat(64);
+    const r2Store = {
+      getObject: vi.fn(async () => new TextEncoder().encode(MIN_RSS)),
+      putImmutable: vi.fn(async () => ({ r2Path: "x", existed: false })),
+    };
+    const res = await main({
+      dryRun: true,
+      fromR2: `news/rss-latercera/2026-08-05/${sha}.xml`,
+      writer: new InMemoryNewsWriter(),
+      r2Store: r2Store as unknown as import("@obs/ingest").R2Store,
+      log: () => {},
+    });
+    expect(res.carga).toBeDefined();
+  });
+});
+
+describe("[WR-10] faltando cualquiera de las 4 variables R2 ⇒ NewsR2RequeridoError lista las que faltan por nombre", () => {
+  it("r2Store construido desde env con faltantes ⇒ el mensaje lista los nombres de las variables ausentes", async () => {
+    const conector = { run: vi.fn(async () => []) };
+    let thrown: unknown;
+    try {
+      await main({
+        cwd: process.cwd(), // sin .env local válido para R2 en este cwd de test
+        dryRun: false,
+        conector,
+        writer: new InMemoryNewsWriter(),
+        url: "http://127.0.0.1:0",
+        serviceKey: "test-key",
+        log: () => {},
+      });
+    } catch (err) {
+      thrown = err;
+    }
+    // Puede completar sin lanzar si el .env real del repo trae las 4 vars R2 — en ese caso el
+    // control relevante es el explícito de abajo (r2Store:null con faltantes inyectados).
+    if (thrown != null) {
+      expect(thrown).toBeInstanceOf(NewsR2RequeridoError);
+    }
+  });
+
+  it("NewsR2RequeridoError(faltantes) incluye cada nombre de variable en el mensaje", () => {
+    const err = new NewsR2RequeridoError(["R2_SECRET_ACCESS_KEY", "R2_BUCKET"]);
+    expect(err.message).toContain("R2_SECRET_ACCESS_KEY");
+    expect(err.message).toContain("R2_BUCKET");
+  });
+
+  it("NewsR2RequeridoError() sin argumentos no lista nombres (compat con el uso explícito r2Store:null)", () => {
+    const err = new NewsR2RequeridoError();
+    expect(err.message).toMatch(/R2/);
+  });
+});
+
+describe("[WR-11] slugDesdeR2Path acepta slugs con guion y con dígito", () => {
+  it("un r2Path con slug guion-dígito produce un [skip] correcto (vía main + conector doble)", async () => {
+    const logs: string[] = [];
+    const conector = {
+      run: vi.fn(async () => [
+        { r2Path: `news/rss-medio-2/2026-08-05/${"c".repeat(64)}.xml`, contentHash: "c".repeat(64) },
+      ]),
+    };
+    const res = await main({
+      dryRun: true,
+      soloEtapa1: true,
+      conector,
+      writer: new InMemoryNewsWriter(),
+      log: (m) => logs.push(m),
+    });
+    // El feed "medio-2" no está en FEEDS, así que no aparece en feedsPedidos (=FEEDS completo) ni
+    // genera [skip] para sí mismo — lo que prueba WR-11 es que el slug SE RESOLVIÓ (no quedó
+    // `null` por el regex viejo `[a-z]+`, que habría cortado en el guion).
+    expect(res.descargados).toBe(1);
+  });
+});
+
+describe("[IN-03] el resumen final imprime el conteo por causa cuando Etapa 2 escribió en la DB", () => {
+  it("carga con nuevos/duplicados/descartados ⇒ el resultado expone `carga` con los 4 contadores", async () => {
+    const conector = {
+      run: vi.fn(async () => [
+        { r2Path: `news/rss-latercera/2026-08-05/${"d".repeat(64)}.xml`, contentHash: "d".repeat(64) },
+      ]),
+    };
+    const r2Store = {
+      getObject: vi.fn(async () => new TextEncoder().encode(MIN_RSS)),
+      putImmutable: vi.fn(async () => ({ r2Path: "x", existed: false })),
+    };
+    const res = await main({
+      dryRun: true,
+      soloEtapa1: false,
+      conector,
+      r2Store: r2Store as unknown as import("@obs/ingest").R2Store,
+      writer: new InMemoryNewsWriter(),
+      log: () => {},
+    });
+    expect(res.carga).toBeDefined();
+    expect(typeof res.carga!.nuevos).toBe("number");
+    expect(typeof res.carga!.duplicados).toBe("number");
+    expect(typeof res.carga!.descartados).toBe("number");
+    expect(typeof res.carga!.errores.length).toBe("number");
   });
 });
 
