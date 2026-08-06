@@ -133,8 +133,17 @@ Todos los criterios del plan pasaron. No hay criterios fallidos ni escalaciones.
 
 - ✅ Una sola función de truncado, exportada, constantes privadas sin duplicar
   (`grep -c 'export function truncarDescripcion'` = 1; 0 constantes replicadas fuera del módulo).
-- ✅ Diff-cero de comportamiento: la suite preexistente de `prefiltro-lexico.test.ts` sigue en
-  verde (32→35 tests, ninguno de los 32 originales cambió de resultado).
+- ⚠️ **Diff-cero de la SUITE preexistente** (no de comportamiento de producción — corregido
+  en 133-06 tras WR-04 de `133-REVIEW.md`): `prefiltro-lexico.test.ts` sigue en verde
+  (32→35 tests, ninguno de los 32 originales cambió de resultado). El comportamiento de
+  PRODUCCIÓN sí cambió por diseño (es el bug fix mismo): toda descripción bajo el límite de
+  truncado perdía su última palabra antes del fix. **Medido en 133-06, reproducido
+  independientemente sobre los 5 fixtures RSS reales**: `total_items=85`, `bajo_límite=68`
+  (80% de los ítems tenían descripción no vacía bajo el límite y por tanto expuestos al bug),
+  `esLegislativo()` calculado con la función VIEJA (buggy) vs la ACTUAL sobre los 85 ítems →
+  **0 flips de veredicto** (coincide exacto con la cifra que el reviewer citó en
+  `133-REVIEW.md` WR-04). El fix es real, su impacto de comportamiento es innegable por
+  diseño, y su impacto observable sobre el corpus disponible hoy es cero.
 - ✅ `entrada_llm` conserva tildes, mayúsculas, título/descripción separados.
 - ✅ Divergencia de cortes medida (17/80), causa determinada empíricamente y distinta de la
   refutada del premortem, `terminos_perdidos = 0` con mutación que sí muerde.
