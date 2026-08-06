@@ -89,7 +89,47 @@ entero **desde R2, sin volver a tocar la fuente**.
 
 ---
 
-## ⏳ ABIERTO — no se ha visto un run verde de CI, y no depende del repo
+## ✅ CERRADO (2026-08-06, tarde) — run verde de CI observado, y el 522 era transitorio
+
+Ambos pendientes de infraestructura se atacaron tras escribir este documento. Resultado medido:
+
+**1. Run verde de CI — CERRADO por dispatch, no por push.** `ci.yml` no tenía `workflow_dispatch`,
+así que primero se añadió (quick `260806-qal`, commit `987d55f`, 1 archivo / 1 línea, con control
+negativo contra la versión previa). Con el trigger nuevo: run **31129413140**, **success en 2 m 16 s**,
+9 steps verdes. Conteos impresos, ANSI strippeado:
+
+| Step | Tests |
+|---|---|
+| guard PII + bento-guards + anti-insinuación | 1803 passed |
+| `@obs/llm` | 158 passed \| 3 skipped |
+| `@obs/cruces` | 42 passed \| 3 skipped |
+| **`@obs/news`** | **268 passed (268)** |
+
+**268 = 268 congelado en 133-a.** Primera corrida del step en Linux ⇒ la mitigación a ciegas de la
+case-sensitivity de G1/G2 queda **confirmada por ejecución**, no por inferencia.
+
+**Pero el push-trigger sigue roto:** el push de `987d55f` fue el **quinto** desde el 2026-07-30 sin
+generar run de `ci`. Descartados con evidencia: workflow deshabilitado, YAML inválido, BOM/CRLF,
+política de Actions, minutos agotados, ruta/case, `[skip ci]`. Los eventos de push **sí llegan**
+(CodeQL corre). Que el dispatch corra verde sobre el mismo sha prueba que no es el workflow ni el
+repo. **Consecuencia operativa: cada push a master exige `gh workflow run ci.yml` a mano**, o el
+gate de PII —única red, porque service_role bypassea RLS— simplemente no corre. Detalle en
+`.planning/quick/260806-qal-ci-workflow-dispatch/SUMMARY.md`.
+
+**2. `actualidad-refresh` — era un incidente transitorio del gateway, no un bug.** Se reprodujo la
+lectura exacta que fallaba (`proyecto_embedding` + join `proyecto(materia)`, paginado 1000,
+`order=boletin.asc`) contra el REST de PROD: **HTTP 200, 9,66 MB, 2,68 s** por página. Luego se
+disparó el workflow real: run **31129316366**, **success en 49 s**. La causa del 522 estaba en el
+gateway REST de Supabase, coherente con que el Postgres directo respondiera todo el día.
+
+Queda como **higiene, no bloqueante**: el job no tiene `timeout-minutes` y `leerEmbeddings` no
+reintenta, así que un 522 del gateway lo cuelga ~15 min y lo mata sin backoff. Tres fallos hoy
+(13:00, 16:09, 18:35) por esa vía. Si reincide, merece reintento con backoff — no un parche dentro
+de otra fase.
+
+---
+
+## ⏳ ABIERTO (histórico — superado por la sección de arriba) — no se ha visto un run verde de CI
 
 - El push llegó (`origin/master` == local, 282 commits incluidos los de 133-a).
 - **`ci.yml` NO generó run**, pese a tener `on: push: branches: [master]` y estar `active`. Su última

@@ -151,6 +151,7 @@ la memoria del proyecto (`v12-gotchas-metodo`, `v13-milestone-preparado`). Recto
 | 260715-bvd | Parchar 3 alertas Dependabot (postcss/uuid/esbuild) vía pnpm overrides | 2026-07-15 | 72be412 | [260715-bvd](./quick/260715-bvd-parchar-3-alertas-dependabot-bump-transi/) |
 | 260722-eia | Deep-links humanos + token urgencia 3 estados; deploy PROD d99b8fa9 | 2026-07-22 | b1ee8f7 | [260722-eia](./quick/260722-eia-deeplinks-humanos-urgencia-token-ficha/) |
 | 260728-nlb | Descubrimiento de boletines nuevos en el cron de tramitación; corpus 3.659→3.675 | 2026-07-28 | 3aba04a | [260728-nlb](./quick/260728-nlb-descubrimiento-boletines-nuevos-cron-tra/) |
+| 260806-qal | `workflow_dispatch` en `ci.yml`: primer run verde observado (`@obs/news` 268 passed); push-trigger sigue roto | 2026-08-06 | 987d55f | [260806-qal](./quick/260806-qal-ci-workflow-dispatch/) |
 
 ## Deferred Items
 
