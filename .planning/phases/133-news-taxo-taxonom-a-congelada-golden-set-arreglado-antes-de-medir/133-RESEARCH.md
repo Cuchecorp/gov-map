@@ -1019,7 +1019,14 @@ trata como habilitado.)*
 
 ---
 
-## Open Questions
+## Open Questions (RESUELTAS — 2026-08-06)
+
+> **Las cuatro quedaron adjudicadas en `133-ADDENDUM-IMPLEMENTACION.md` y no se re-abren:**
+> Q1 (dónde vive G2) → **D-133-K1** · Q2 (alcance del step de CI) → **D-133-K2** ·
+> Q3 (vía A o B para `TERMINOS_PROHIBIDOS`) → **D-133-J2** (vía B, acotada) ·
+> Q4 (alcance del `.gitattributes`) → **D-133-K4** (solo `*.json`, no se amplía a `.md`).
+> Se conservan abajo con su evidencia porque los planes citan ese razonamiento; **ninguna es
+> una decisión pendiente.**
 
 1. **¿G2 vive en `packages/news` (CI-dark hasta el step) o en `app/` (rompe el desacoplamiento)?**
    - Sé: `app/` no depende de ningún `@obs/*`, por régimen documentado en 3 lugares (§E); CI no
