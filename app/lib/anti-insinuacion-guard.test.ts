@@ -103,8 +103,10 @@ function stripTsComments(content: string): string {
 /**
  * Rutas EXPLÍCITAS a escanear (relativas a app/). Lista dura — el linter cubre
  * exactamente el carril de voto ciudadano + la fuente de verdad de labels + la
- * sección VOTE de la ficha. Si una ruta no existe (p.ej. `ausencias-contexto.tsx`
- * borrado por la poda 68-03), se SALTA sin fallar (su ausencia es correcta).
+ * sección VOTE de la ficha. Actualizado tras G3 (D-133-J3/T-133-04, HONESTIDAD-2 de
+ * 133-REVIEW.md): una ruta que ya no existe (p.ej. un archivo borrado por una poda)
+ * NO se salta en silencio — `leerSuperficie` LANZA, así que si se borra un archivo
+ * declarado aquí, hay que quitar la entrada en el mismo commit.
  */
 const SUPERFICIES_VOTO: string[] = [
   "components/votos-por-parlamentario.tsx",
@@ -148,8 +150,8 @@ const SUPERFICIES_MONEY: string[] = [
  *
  * Nota: `app/page.tsx` es la home (`/`), distinto de
  * `app/parlamentario/[id]/page.tsx` que ya está en SUPERFICIES_VOTO.
- * Si una ruta no existiera, el guard la salta sin fallar (misma tolerancia que las otras
- * superficies ante archivos borrados).
+ * Tras G3 (HONESTIDAD-2 de 133-REVIEW.md): si una ruta no existiera, `leerSuperficie`
+ * LANZA — ya no hay tolerancia silenciosa ante archivos borrados.
  */
 const SUPERFICIES_HOME: string[] = [
   "app/page.tsx",
@@ -163,8 +165,8 @@ const SUPERFICIES_HOME: string[] = [
  * que el copy del island y del server component /buscar sea estrictamente factual.
  *
  * Rutas relativas a app/, mismo formato que los otros arrays.
- * Si una ruta no existe (p.ej. durante despliegue incremental), se salta sin fallar
- * (la tolerancia try/catch del bucle ya lo cubre).
+ * Tras G3 (HONESTIDAD-2 de 133-REVIEW.md): si una ruta no existe, `leerSuperficie` LANZA
+ * en vez de saltarla — ya no hay tolerancia silenciosa vía try/catch en el bucle.
  */
 const SUPERFICIES_BUSQUEDA: string[] = [
   "components/buscar-filtros.tsx",
@@ -187,8 +189,9 @@ const SUPERFICIES_BUSQUEDA: string[] = [
  * leyendas VOTO/MONEY. Sin esa resta, el guard se auto-cazaría sobre la propia
  * superficie que enfuerza la regla.
  *
- * Rutas relativas a app/, mismo formato que los otros arrays. Si una ruta no existe,
- * se salta sin fallar (tolerancia try/catch del bucle).
+ * Rutas relativas a app/, mismo formato que los otros arrays. Tras G3 (HONESTIDAD-2 de
+ * 133-REVIEW.md): si una ruta no existe, `leerSuperficie` LANZA — ya no hay tolerancia
+ * silenciosa vía try/catch en el bucle.
  */
 const SUPERFICIES_PERSONAS: string[] = [
   "components/partido-chip.tsx",
@@ -220,8 +223,9 @@ const SUPERFICIES_PERSONAS: string[] = [
  * estas superficies entren al scan — sin esa resta, el guard se auto-cazaría sobre la
  * propia superficie que enfuerza la regla.
  *
- * Rutas relativas a app/, mismo formato que los otros arrays. Si una ruta no existe,
- * se salta sin fallar (tolerancia try/catch del bucle).
+ * Rutas relativas a app/, mismo formato que los otros arrays. Tras G3 (HONESTIDAD-2 de
+ * 133-REVIEW.md): si una ruta no existe, `leerSuperficie` LANZA — ya no hay tolerancia
+ * silenciosa vía try/catch en el bucle.
  */
 const SUPERFICIES_LOBBY: string[] = [
   "components/lobby-menciones-de-boletin.tsx",
@@ -264,8 +268,9 @@ const SUPERFICIES_LOBBY: string[] = [
  * alguna leyenda futura negara un término prohibido, debe registrarse verbatim
  * ANTES de escanear.
  *
- * Rutas relativas a app/, mismo formato que los otros arrays. Si una ruta no existe,
- * se salta sin fallar (tolerancia try/catch del bucle).
+ * Rutas relativas a app/, mismo formato que los otros arrays. Tras G3 (HONESTIDAD-2 de
+ * 133-REVIEW.md): si una ruta no existe, `leerSuperficie` LANZA — ya no hay tolerancia
+ * silenciosa vía try/catch en el bucle.
  */
 const SUPERFICIES_AGENDA: string[] = [
   "components/agenda-filtros.tsx",
@@ -299,9 +304,11 @@ const SUPERFICIES_DEEPLINK: string[] = [
  * observable (conteo + cobertura declarada + fecha) en un juicio de intención.
  *
  * TRIPWIRE ANTES DEL COPY (Pitfall 6 + 3, lección BLOCKER 91): esta superficie se
- * declara en Wave 0 (guards) ANTES de que el componente exista (Wave 2). El loader del
- * bucle de escaneo TOLERA archivos faltantes (try/catch continue) → la ruta declarada
- * se salta hoy (guard VERDE) y MUERDE recién cuando `panel-actualidad.tsx` exista.
+ * declaró en Wave 0 (guards) ANTES de que el componente existiera (Wave 2), cuando el
+ * loader del bucle de escaneo TOLERABA archivos faltantes (try/catch continue). Tras G3
+ * (HONESTIDAD-2 de 133-REVIEW.md) `leerSuperficie` LANZA ante una ruta ausente — hoy
+ * `panel-actualidad.tsx` ya existe, así que esta nota describe una fase transitoria ya
+ * cerrada, no el comportamiento vigente del guard.
  *
  * Si el panel se divide en sub-tiles (p.ej. `panel-tile-senal.tsx`), esos archivos se
  * SUMAN a este array. Rutas relativas a app/, mismo formato que los otros arrays.
@@ -311,11 +318,12 @@ const SUPERFICIES_DEEPLINK: string[] = [
  * término prohibido, esa leyenda debe registrarse verbatim en NEGACIONES_LOCKED ANTES
  * de que esta superficie entre al escaneo real (Pitfall 2, lección BLOCKER 91).
  *
- * ALTA PREVENTIVA v13.0 (126, PANEL-08): las 7 rutas de abajo son los tiles del
- * rediseño del panel (Phase 128) — NINGUNA existe todavía. El alta es preventiva
- * porque el bucle de escaneo del test (1) TOLERA archivos faltantes (try/catch
- * continue, L905-917): declarar la ruta HOY no rompe nada (guard sigue VERDE) y
- * MUERDE recién cuando el archivo real aterrice con copy insinuante. Prefijo
+ * ALTA PREVENTIVA v13.0 (126, PANEL-08): las 7 rutas de abajo eran los tiles del
+ * rediseño del panel (Phase 128), declarados cuando NINGUNA existía todavía y el bucle
+ * de escaneo del test (1) TOLERABA archivos faltantes (try/catch continue). Tras G3
+ * (HONESTIDAD-2 de 133-REVIEW.md) esa tolerancia ya no existe — `leerSuperficie` LANZA
+ * ante una ruta ausente, y las 8 rutas de `SUPERFICIES_PANEL` ya existen en disco hoy
+ * (verificado por el test `(1g)`). Prefijo
  * CONGELADO para todo componente nuevo del rediseño: `components/panel-*.tsx`
  * (D-05) — la Phase 128 DEBE nombrar sus archivos con ese prefijo, porque el
  * assert anti-drift `(1f)` de más abajo hace fallar el guard ante cualquier
@@ -348,12 +356,12 @@ const SUPERFICIES_PANEL: string[] = [
  * inferida; la comparación muestra hechos con fuente y fecha, jamás ordena ni puntúa.
  *
  * TRIPWIRE ANTES DEL COPY (Pitfall 6 + patrón Wave-0 Phase 100, lección BLOCKER 91):
- * estas 4 superficies se declaran en Wave 0 (guards) ANTES de que el copy nuevo
- * aterrice. `relaciones-section.tsx` existe ya en este plan (Task 2); las otras tres
+ * estas 4 superficies se declararon en Wave 0 (guards) ANTES de que el copy nuevo
+ * aterrizara. `relaciones-section.tsx` existía ya en ese plan (Task 2); las otras tres
  * (`relaciones-eje-comparar.tsx`, `app/comparar/page.tsx`, `comparar-selector.tsx`)
- * las crea Plan 03. El loader del bucle de escaneo TOLERA archivos faltantes
- * (try/catch continue) → las rutas aún ausentes se saltan hoy (guard VERDE) y MUERDEN
- * recién cuando el archivo exista.
+ * las creó Plan 03. El loader del bucle de escaneo TOLERABA archivos faltantes en ese
+ * momento (try/catch continue); tras G3 (HONESTIDAD-2 de 133-REVIEW.md) esa tolerancia
+ * ya no existe y las 4 rutas ya existen en disco hoy (verificado por el test `(1g)`).
  *
  * NOTA NEGACIONES_LOCKED: la sección de relaciones REUSA `LEYENDA_CROSS_LINK` verbatim
  * como leyenda de grupo — ya está en NEGACIONES_LOCKED (NIEGA "afinidad"), así que NO
@@ -363,8 +371,9 @@ const SUPERFICIES_PANEL: string[] = [
  * un término prohibido (p.ej. en `/comparar`), debe registrarla verbatim ANTES de que
  * la superficie entre al escaneo real (Pitfall 6).
  *
- * Rutas relativas a app/, mismo formato que los otros arrays. Si una ruta no existe,
- * se salta sin fallar (tolerancia try/catch del bucle).
+ * Rutas relativas a app/, mismo formato que los otros arrays. Tras G3 (HONESTIDAD-2 de
+ * 133-REVIEW.md): si una ruta no existe, `leerSuperficie` LANZA — ya no hay tolerancia
+ * silenciosa vía try/catch en el bucle.
  */
 const SUPERFICIES_RELACIONES: string[] = [
   "components/relaciones-section.tsx",
@@ -410,9 +419,10 @@ const SUPERFICIES_VSIM: string[] = [
  * enlace; nunca una promesa de tiempo real ni un juicio.
  *
  * TRIPWIRE ANTES DEL COPY (Wave-0, lección BLOCKER 91): estas superficies se
- * declaran ANTES de escribir el copy de `/cuenta`, del botón y de las páginas de
- * confirmar/baja. El loader del bucle TOLERA archivos faltantes (try/catch continue)
- * → las rutas aún ausentes se saltan hoy y MUERDEN recién cuando el archivo exista.
+ * declararon ANTES de escribir el copy de `/cuenta`, del botón y de las páginas de
+ * confirmar/baja, cuando el loader del bucle TOLERABA archivos faltantes (try/catch
+ * continue). Tras G3 (HONESTIDAD-2 de 133-REVIEW.md) esa tolerancia ya no existe y las
+ * rutas ya existen en disco hoy (verificado por el test `(1g)`).
  *
  * NOTA NEGACIONES_LOCKED: el copy NOTIF NIEGA "avisos instantáneos" ("No enviamos
  * avisos instantáneos: los datos se actualizan por procesos programados."), pero
@@ -471,8 +481,9 @@ const SUPERFICIES_NOTIF: string[] = [
  * Si un copy futuro de este carril negara un término PROHIBIDO, debe registrarse
  * verbatim en NEGACIONES_LOCKED ANTES de escribirse (Pitfall 3).
  *
- * Rutas relativas a app/, mismo formato que los otros arrays. Si una ruta no existe,
- * se salta sin fallar (tolerancia try/catch del bucle).
+ * Rutas relativas a app/, mismo formato que los otros arrays. Tras G3 (HONESTIDAD-2 de
+ * 133-REVIEW.md): si una ruta no existe, `leerSuperficie` LANZA — ya no hay tolerancia
+ * silenciosa vía try/catch en el bucle.
  */
 const SUPERFICIES_LINK_EXT: string[] = [
   "components/timeline-event.tsx",
