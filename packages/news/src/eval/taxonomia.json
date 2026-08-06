@@ -1,0 +1,44 @@
+[
+  {
+    "definicion": "El texto informa un hecho ocurrido en la tramitación de una iniciativa en el Congreso.",
+    "enruta_a": "proyecto",
+    "etiqueta": "tramitacion_legislativa",
+    "frontera": "Si el texto no nombra un acto de tramitación, no cae aquí — aunque el lector sepa que el proyecto existe.",
+    "marca_decisoria": "Menciona explícitamente un acto de tramitación: ingreso, comisión, sala, votación, indicación, urgencia, veto, despacho, requerimiento al Tribunal Constitucional, o el número de boletín."
+  },
+  {
+    "definicion": "El texto trata la actuación pública de un parlamentario en ejercicio, nombrado en el texto.",
+    "enruta_a": "persona",
+    "etiqueta": "actividad_parlamentaria",
+    "frontera": "Un parlamentario citado de pasada como fuente sobre otro tema cae en la clase del tema. Candidatos que no ejercen caen en politica_no_legislativa. Si además hay acto de tramitación, gana tramitacion_legislativa.",
+    "marca_decisoria": "Nombra a la persona y un acto suyo: declaración, comisión investigadora, lobby o audiencia, patrimonio e intereses, ética y sanciones, asistencia."
+  },
+  {
+    "definicion": "El texto trata una norma ya promulgada o publicada, su reglamento, su entrada en vigencia o sus efectos.",
+    "enruta_a": "proyecto",
+    "etiqueta": "ley_vigente",
+    "frontera": "Si el mismo texto nombra un acto de tramitación, gana tramitacion_legislativa — y eso también es textual.",
+    "marca_decisoria": "Marca textual: \"ley N.º…\", \"entra en vigencia\", \"publicada en el Diario Oficial\", \"el reglamento de la ley\", \"desde hoy rige\"."
+  },
+  {
+    "definicion": "Política contingente sin acto de tramitación ni actuación parlamentaria: elecciones, partidos, gabinete, encuestas, municipios, tribunales no constitucionales, y los anuncios o compromisos del Ejecutivo que el texto no vincula a un acto de tramitación.",
+    "enruta_a": "ninguna",
+    "etiqueta": "politica_no_legislativa",
+    "frontera": "Si el texto informa el ingreso o cualquier otro acto de tramitación, gana tramitacion_legislativa.",
+    "marca_decisoria": "Contenido político contingente sin marca textual de acto de tramitación."
+  },
+  {
+    "definicion": "Todo lo demás: farándula, deportes, policial, internacional, economía, servicio. Se espera que sea la mayoría.",
+    "enruta_a": "ninguna",
+    "etiqueta": "no_legislativa",
+    "frontera": "Cualquier marca de una clase anterior saca el texto de aquí.",
+    "marca_decisoria": "Ausencia de cualquier marca de las clases anteriores."
+  },
+  {
+    "definicion": "Titular y bajada no alcanzan para decidir entre dos clases. No es 'no sé': es 'la evidencia disponible no basta'.",
+    "enruta_a": "ninguna",
+    "etiqueta": "ambiguo",
+    "frontera": "Si una lectura razonable resuelve entre las clases en competencia, no es ambiguo.",
+    "marca_decisoria": "Dos o más clases compiten sin que el texto resuelva cuál gana."
+  }
+]
