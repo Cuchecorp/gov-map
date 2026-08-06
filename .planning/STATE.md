@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v13.0
 milestone_name: milestone
-status: verifying
+status: 133-04 ejecutado — truncarDescripcion() compartida (con fix Rule 1 del bug de arranque de ultima palabra), entrada-llm.ts (construirEntradaLlm + coberturaTerminos), divergencia de cortes medida (17/80, terminos_perdidos=0, causa determinada empiricamente), y CasoGoldenSchema (zod, 7/7 comportamientos, sin ningun caso). Delta exacto +15 (227->242)
 stopped_at: 133 re-adjudicacion pendiente (8 blockers); operador ratifico sustitucion Opus y D-133-G etiqueta interna
-last_updated: "2026-08-06T18:56:15.803Z"
+last_updated: "2026-08-06T19:10:58.602Z"
 last_activity: 2026-08-06
 progress:
   total_phases: 14
   completed_phases: 6
   total_plans: 39
-  completed_plans: 36
+  completed_plans: 37
   percent: 43
 ---
 
@@ -167,7 +167,7 @@ la memoria del proyecto (`v12-gotchas-metodo`, `v13-milestone-preparado`). Recto
 
 ## Session Continuity
 
-Last session: 2026-08-06T18:34:17.532Z
+Last session: 2026-08-06T19:10:58.594Z
 Stopped at: 133 re-adjudicacion pendiente (8 blockers); operador ratifico sustitucion Opus y D-133-G etiqueta interna
 Resume file: None
 

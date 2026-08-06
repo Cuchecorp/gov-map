@@ -231,9 +231,9 @@ Plans:
 
 - [x] 133-01-PLAN.md — Fundación: `.gitattributes` LOCKED (primera tarea) + `taxonomia.ts` (D-133-A2, precedencia en el orden del array) + canonicalizador determinista
 - [x] 133-02-PLAN.md — G3: los DOS skips silenciosos a fallo duro + extracción de `TERMINOS_PROHIBIDOS` (vía B, D-133-J2) con diff-cero de `app/`
-- [ ] 133-03-PLAN.md — Congelación: `taxonomia.json` + `thresholds.json` (T1..T9 con T9) + `CONGELADO.md` + `congelado.test.ts` + step de CI para `@obs/news` + control positivo del hash en clon limpio
-- [ ] 133-04-PLAN.md — `truncarDescripcion` compartida (D-133-J1) + `entrada_llm` + cobertura de términos + esquema zod del caso golden, SIN ningún caso
-- [ ] 133-05-PLAN.md — G1 (términos prohibidos sobre la taxonomía) + G2 (superficie de `app/`, D-133-G) + los tres guards al script `guards` de la raíz (17 → 20)
+- [x] 133-03-PLAN.md — Congelación: `taxonomia.json` + `thresholds.json` (T1..T9 con T9) + `CONGELADO.md` + `congelado.test.ts` + step de CI para `@obs/news` + control positivo del hash en clon limpio
+- [x] 133-04-PLAN.md — `truncarDescripcion` compartida (D-133-J1) + `entrada_llm` + cobertura de términos + esquema zod del caso golden, SIN ningún caso
+- [x] 133-05-PLAN.md — G1 (términos prohibidos sobre la taxonomía) + G2 (superficie de `app/`, D-133-G) + los tres guards al script `guards` de la raíz (17 → 20)
 
 ### Phase 134: NEWS-RESOLVER — Contrato anti-alucinación de tres piezas
 
@@ -334,7 +334,7 @@ Plans:
 | 130. VOTOS-REAL | 3/3 | Complete    | 2026-07-30 |
 | 131. DEBT-FICHA | 3/3 | Complete    | 2026-07-30 |
 | 132. NEWS-RSS | 11/11 | Complete    | 2026-08-05 |
-| 133. NEWS-TAXO | 2/5 | In Progress|  |
+| 133. NEWS-TAXO | 5/5 | Complete   | 2026-08-06 |
 | 134. NEWS-RESOLVER | 0/? | Not started | - |
 | 135. NEWS-CLASIF | 0/? | Not started | - |
 | 136. NEWS-CRON | 0/? | Not started | - |
