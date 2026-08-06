@@ -234,6 +234,25 @@ Plans:
 - [x] 133-03-PLAN.md — Congelación: `taxonomia.json` + `thresholds.json` (T1..T9 con T9) + `CONGELADO.md` + `congelado.test.ts` + step de CI para `@obs/news` + control positivo del hash en clon limpio
 - [x] 133-04-PLAN.md — `truncarDescripcion` compartida (D-133-J1) + `entrada_llm` + cobertura de términos + esquema zod del caso golden, SIN ningún caso
 - [x] 133-05-PLAN.md — G1 (términos prohibidos sobre la taxonomía) + G2 (superficie de `app/`, D-133-G) + los tres guards al script `guards` de la raíz (17 → 20)
+- [x] 133-06 gap closure — los 3 HIGH del code-review (refinements del caso golden, canonicalizador que LANZA en vez de degradar, `truncarDescripcion` que jamás devuelve `""`) + 2 de honestidad
+
+**Estado 133-a: ✅ COMPLETA Y VERIFICADA (2026-08-06)** — `VERIFICATION` PASSED 11/11 (probado
+mutando: reordenar claves tumba `congelado.test.ts`; los 3 guards caen al mutarlos; los DOS skips
+cerrados), `REVIEW` 0 CRITICAL / 3 HIGH cerrados. Suite `@obs/news` **206 → 268**; guards **17 → 20**;
+step de CI para `@obs/news` añadido (los 206 tests de la 132 **nunca habían corrido en CI**).
+sha256 congelados: `taxonomia.json` `9098188897977…`, `thresholds.json` `e428594463eba…` — estables
+en clon limpio y **sin moverse** tras el fix del canonicalizador.
+
+**Hallazgo de la ejecución:** el `.replace(/\S*$/,"")` del pre-filtro corría **incondicionalmente**,
+arrancando la última palabra de cualquier descripción corta — falso negativo permanente en un
+pre-filtro recall-first. Corregido; impacto medido: **0 flips de veredicto sobre 85 ítems** de los
+5 fixtures reales.
+
+**Pendientes que 133-b hereda:** (1) **nadie ha visto un run verde de CI en Linux** — G1/G2 caminan
+el filesystem y un fallo de case-sensitivity no lo caza la verificación local en Windows; confirmar
+antes de abrir 133-b. (2) **Estampa de versión del pre-filtro**: las 25 filas de `noticia` en PROD se
+filtraron con el bug y hoy son indistinguibles de las re-derivadas desde R2 — decidir antes de
+etiquetar. (3) Deuda de raíz de CI: corre 3 de ~17 workspaces (declarada, no arreglada).
 
 ### Phase 134: NEWS-RESOLVER — Contrato anti-alucinación de tres piezas
 
