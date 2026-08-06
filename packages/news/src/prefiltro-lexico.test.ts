@@ -257,6 +257,27 @@ describe("prefiltro-lexico — truncarDescripcion() extraída (133-04, D-133-J1)
     while (largo.length < limite + 100) largo += "palabra ";
     expect(truncarDescripcion(largo).length).toBeLessThanOrEqual(limite);
   });
+
+  it("WR-03: un blob sin espacios NUNCA devuelve la cadena vacía (recall-first)", () => {
+    // 133-REVIEW.md: truncarDescripcion("a".repeat(700)) devolvía "" — pérdida TOTAL
+    // de la descripción. Un blob de 700 "a" no tiene NINGÚN espacio: el `.replace(/\S*$/,"")`
+    // casaba el slice completo.
+    const resultado = truncarDescripcion("a".repeat(700));
+    expect(resultado.length).toBeGreaterThan(0);
+  });
+
+  it("WR-03: control positivo apareado — un texto con espacios sigue limpiando la cola parcial", () => {
+    // Mismo largo, pero CON espacios: el comportamiento previo (limpiar la palabra
+    // parcial) debe seguir intacto — la mutación de WR-03 no debe reintroducir el bug
+    // de truncado a mitad de palabra que WR-13 ya cerró.
+    const limite = limiteTruncadoParaTests();
+    const conEspacios = "palabra ".repeat(Math.ceil((limite + 50) / 8));
+    const resultado = truncarDescripcion(conEspacios);
+    expect(resultado.length).toBeGreaterThan(0);
+    expect(resultado.length).toBeLessThanOrEqual(limite);
+    // Nunca termina en un fragmento parcial de "palabra".
+    expect(/^(palabra )*p?a?l?a?b?r?a?$/.test(resultado.slice(-8))).toBe(true);
+  });
 });
 
 // ── Mutaciones obligatorias (ejecutadas manualmente y revertidas — ver SUMMARY) ──

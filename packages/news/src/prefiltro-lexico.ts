@@ -127,11 +127,22 @@ const MARGEN_TRUNCADO = Math.max(...VOCABULARIO_LEGISLATIVO.map((t) => t.length)
  * truncó. Diff-cero preservado para el caso de truncado real (el único que la suite
  * preexistente ejercita); el caso corto ahora se devuelve intacto, tal como exige
  * `<behavior>` de 133-04-PLAN.md Task 1.
+ *
+ * WR-03 (133-REVIEW.md, 133-06): si el slice cortó en medio de un blob SIN ningún
+ * espacio (p.ej. un slug/URL largo que `despojarHtml` deja pasar), `\S*$` casa el corte
+ * completo y `.replace` lo vacía entero — pérdida TOTAL de la descripción bajo el
+ * régimen recall-first de este módulo (líneas 4-9), donde un falso negativo pierde la
+ * noticia para siempre. Se guarda: si la limpieza de cola deja el resultado VACÍO
+ * mientras el corte original no lo estaba, se devuelve el corte duro (sin limpiar) en
+ * vez de la cadena vacía — perder el final de una palabra es preferible a perder la
+ * descripción completa.
  */
 export function truncarDescripcion(texto: string): string {
   const limite = LIMITE_DESCRIPCION + MARGEN_TRUNCADO;
   if (texto.length <= limite) return texto;
-  return texto.slice(0, limite).replace(/\S*$/, "");
+  const cortado = texto.slice(0, limite);
+  const limpio = cortado.replace(/\S*$/, "");
+  return limpio.length > 0 ? limpio : cortado;
 }
 
 /**
