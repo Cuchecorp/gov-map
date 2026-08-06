@@ -45,3 +45,37 @@ describe("canonicalizar", () => {
     expect(canonicalizar(valor)).toBe(canonicalizar(valor));
   });
 });
+
+// ── WR-02 (133-REVIEW.md): la canonicalización debe fallar ruidosamente, no degradar ──
+describe("canonicalizar — WR-02: robustez ante entradas no-objeto-literal", () => {
+  it("Object.create(null) con claves desordenadas ⇒ SÍ se reordenan (mismo tratamiento que {})", () => {
+    const sinProto = Object.create(null) as Record<string, unknown>;
+    sinProto.b = 1;
+    sinProto.a = 2;
+    const out = canonicalizar(sinProto);
+    // "a" debe aparecer ANTES que "b" en el string canonicalizado (orden ascendente).
+    expect(out.indexOf('"a"')).toBeLessThan(out.indexOf('"b"'));
+    expect(out).toBe(canonicalizar({ a: 2, b: 1 }));
+  });
+
+  it("undefined dentro de un array ⇒ LANZA (nunca se degrada a null en silencio)", () => {
+    expect(() => canonicalizar({ x: [1, undefined, 3] })).toThrow(/no canonicalizable/);
+  });
+
+  it("un Map ⇒ LANZA (nunca se serializa como {} en silencio)", () => {
+    expect(() => canonicalizar({ m: new Map([["k", "v"]]) })).toThrow(/no canonicalizable/);
+  });
+
+  it("un Date ⇒ LANZA (no es un primitivo JSON ni un objeto plano)", () => {
+    expect(() => canonicalizar({ d: new Date(0) })).toThrow(/no canonicalizable/);
+  });
+
+  it("una función ⇒ LANZA", () => {
+    expect(() => canonicalizar({ f: () => 1 })).toThrow(/no canonicalizable/);
+  });
+
+  it("control positivo apareado: el mismo objeto SIN el campo no-canonicalizable NO lanza", () => {
+    expect(() => canonicalizar({ x: [1, 2, 3] })).not.toThrow();
+    expect(() => canonicalizar({ m: { k: "v" } })).not.toThrow();
+  });
+});
