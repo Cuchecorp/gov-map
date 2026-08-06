@@ -106,19 +106,48 @@ export function fold(s: string): string {
  */
 const MARGEN_TRUNCADO = Math.max(...VOCABULARIO_LEGISLATIVO.map((t) => t.length));
 
+/**
+ * Trunca `texto` a `LIMITE_DESCRIPCION + MARGEN_TRUNCADO` chars y limpia la cola parcial
+ * (`\S*$`) para no dejar un fragmento de palabra colgando en la frontera de corte real
+ * (WR-13, 132-11, D-06 recall-first). Cortar en seco a `LIMITE_DESCRIPCION` puede partir
+ * un término del vocabulario a la mitad y fabricar un falso negativo — pérdida permanente
+ * de la noticia. El margen se deriva de `VOCABULARIO_LEGISLATIVO` (nunca un número mágico),
+ * así que ampliar el vocabulario no reintroduce el bug de truncado a mitad de palabra.
+ * Texto más corto que el límite se devuelve intacto (`slice`/`replace` son no-op).
+ *
+ * D-133-J1: compartida entre este pre-filtro y `eval/entrada-llm.ts` (plan 133-04) — para
+ * que el golden set nunca cite un término que quedó fuera del input real del clasificador,
+ * las dos etapas truncan con la MISMA función, no con una constante replicada.
+ *
+ * 133-04 / Rule 1 (auto-fix): la extracción reveló que el `.replace(/\S*$/, "")` corría
+ * de forma incondicional incluso cuando `texto` no excedía el límite — arrancando la
+ * última palabra de CUALQUIER descripción corta (el input real, ya despojado/foldeado,
+ * nunca termina en espacio, así que el bug afectaba el 100% de las descripciones bajo el
+ * límite en producción). Se guarda: el `.replace` solo corre cuando el `slice` realmente
+ * truncó. Diff-cero preservado para el caso de truncado real (el único que la suite
+ * preexistente ejercita); el caso corto ahora se devuelve intacto, tal como exige
+ * `<behavior>` de 133-04-PLAN.md Task 1.
+ */
+export function truncarDescripcion(texto: string): string {
+  const limite = LIMITE_DESCRIPCION + MARGEN_TRUNCADO;
+  if (texto.length <= limite) return texto;
+  return texto.slice(0, limite).replace(/\S*$/, "");
+}
+
+/**
+ * Helper de solo lectura para tests: el índice de corte real (`LIMITE_DESCRIPCION +
+ * MARGEN_TRUNCADO`), derivado en runtime del vocabulario vigente. Las constantes siguen
+ * privadas del módulo — esto expone únicamente el valor derivado, nunca los nombres, para
+ * que un fixture de test jamás hardcodee 615/23/623.
+ */
+export function limiteTruncadoParaTests(): number {
+  return LIMITE_DESCRIPCION + MARGEN_TRUNCADO;
+}
+
 function construirTexto(titulo: string, descripcion?: string | null): string {
   const t = fold(despojarHtml(titulo));
-  // WR-13 (132-11, D-06 recall-first): cortar en seco a LIMITE_DESCRIPCION puede partir
-  // un término del vocabulario a la mitad y fabricar un falso negativo — pérdida
-  // permanente de la noticia. En vez de eso: recortamos con un margen extra igual a la
-  // longitud del término más largo (VOCABULARIO_LEGISLATIVO), y luego limpiamos la cola
-  // parcial (`\S*$`) para no dejar un fragmento de palabra colgando en la frontera real.
-  // Subir/eliminar LIMITE_DESCRIPCION sin más también habría evitado el bug, pero el
-  // techo se mantiene deliberadamente: el matching corre sobre cientos de ítems/corrida.
   const dFold = fold(despojarHtml(descripcion ?? ""));
-  const d = dFold
-    .slice(0, LIMITE_DESCRIPCION + MARGEN_TRUNCADO)
-    .replace(/\S*$/, "");
+  const d = truncarDescripcion(dFold);
   return `${t} ${d}`;
 }
 
