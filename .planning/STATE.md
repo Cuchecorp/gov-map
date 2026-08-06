@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v13.0
 milestone_name: milestone
-status: completed
+status: verifying
 stopped_at: 133 re-adjudicacion pendiente (8 blockers); operador ratifico sustitucion Opus y D-133-G etiqueta interna
-last_updated: "2026-08-06T18:34:17.540Z"
-last_activity: 2026-08-05
+last_updated: "2026-08-06T18:56:15.803Z"
+last_activity: 2026-08-06
 progress:
   total_phases: 14
   completed_phases: 6
   total_plans: 39
-  completed_plans: 34
+  completed_plans: 36
   percent: 43
 ---
 
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (§ Current Milestone: v13.0, updated 2026-07-30)
 ## Current Position
 
 Phase: 133
-Plan: 02 complete (wave 1) — 133-02-SUMMARY.md
-Status: 133-02 ejecutado — extraccion TERMINOS_PROHIBIDOS + cierre de los DOS skips silenciosos del guard (G3), delta app/ +4 (1799->1803) verificado exacto
+Plan: 04 complete (wave 2) — 133-04-SUMMARY.md
+Status: 133-04 ejecutado — truncarDescripcion() compartida (con fix Rule 1 del bug de arranque de ultima palabra), entrada-llm.ts (construirEntradaLlm + coberturaTerminos), divergencia de cortes medida (17/80, terminos_perdidos=0, causa determinada empiricamente), y CasoGoldenSchema (zod, 7/7 comportamientos, sin ningun caso). Delta exacto +15 (227->242)
 Last activity: 2026-08-06
 
 Progress: [░░░░░░░░░░░░░] 0/13 phases
