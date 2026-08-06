@@ -221,7 +221,18 @@ Plans:
   3. Thresholds pre-registrados y CONGELADOS antes de la primera medición (anti-circularidad: el umbral no se ajusta al resultado).
   4. El input crudo que el LLM verá se guarda re-runnable: cada caso del golden es reproducible desde su crudo (jamás "solo el output procesado", la segunda lección de Is Chile Safe).
 
-**Plans**: TBD
+**Partición (D-133-I, firmada 2026-08-06)**: la fase se ejecuta en dos actos con firma independiente.
+**133-a** (planificada, 5 planes abajo) cubre SC1 y SC3 más el esquema de SC4 — todo lo congelable
+sin muestra. **133-b** (sin planificar) cubre SC2 y la ejecución de SC4; requiere una ventana de
+3 días hábiles de RSS que hoy no existe (el RSS no da histórico) y su propia segunda firma.
+
+**Plans**: 5 plans (133-a) en 3 waves
+Plans:
+- [ ] 133-01-PLAN.md — Fundación: `.gitattributes` LOCKED (primera tarea) + `taxonomia.ts` (D-133-A2, precedencia en el orden del array) + canonicalizador determinista
+- [ ] 133-02-PLAN.md — G3: los DOS skips silenciosos a fallo duro + extracción de `TERMINOS_PROHIBIDOS` (vía B, D-133-J2) con diff-cero de `app/`
+- [ ] 133-03-PLAN.md — Congelación: `taxonomia.json` + `thresholds.json` (T1..T9 con T9) + `CONGELADO.md` + `congelado.test.ts` + step de CI para `@obs/news` + control positivo del hash en clon limpio
+- [ ] 133-04-PLAN.md — `truncarDescripcion` compartida (D-133-J1) + `entrada_llm` + cobertura de términos + esquema zod del caso golden, SIN ningún caso
+- [ ] 133-05-PLAN.md — G1 (términos prohibidos sobre la taxonomía) + G2 (superficie de `app/`, D-133-G) + los tres guards al script `guards` de la raíz (17 → 20)
 
 ### Phase 134: NEWS-RESOLVER — Contrato anti-alucinación de tres piezas
 
