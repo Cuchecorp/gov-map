@@ -8,6 +8,8 @@ import {
   despojarHtml,
   fold,
   terminosQueMatchean,
+  truncarDescripcion,
+  limiteTruncadoParaTests,
 } from "./prefiltro-lexico";
 import { parseRss } from "./parse-rss";
 
@@ -202,6 +204,58 @@ describe("prefiltro-lexico — truncado en frontera de palabra (WR-13, D-06 reca
 
   it("VOCABULARIO_LEGISLATIVO no fue podado: sigue teniendo al menos 30 términos", () => {
     expect(VOCABULARIO_LEGISLATIVO.length).toBeGreaterThanOrEqual(30);
+  });
+});
+
+describe("prefiltro-lexico — truncarDescripcion() extraída (133-04, D-133-J1)", () => {
+  it("truncarDescripcion deja intacto un texto más corto que el límite", () => {
+    const corto = "un texto cualquiera, bastante más corto que el límite de corte";
+    expect(truncarDescripcion(corto)).toBe(corto);
+  });
+
+  it("truncarDescripcion corta en frontera de palabra (fixture de tamaño FIJO, sin números mágicos)", () => {
+    // Construcción derivada en runtime — jamás un número mágico hardcodeado.
+    const limite = limiteTruncadoParaTests();
+    const palabraLarga = "a".repeat(20);
+    // Prefijo de palabras cortas hasta justo antes de (limite - 5), para que la
+    // palabra larga arranque ANTES del corte y termine DESPUÉS: el corte cae
+    // inequívocamente a mitad de palabra si no hay `.replace(/\S*$/, "")`.
+    let prefijo = "";
+    while (prefijo.length < limite - 5) prefijo += "xy ";
+    const sufijo = " zz ww vv uu tt";
+    const texto = prefijo + palabraLarga + sufijo;
+
+    const resultado = truncarDescripcion(texto);
+
+    // La última "palabra" del resultado (separada por espacio) debe aparecer
+    // completa en la entrada — nunca un fragmento partido de `palabraLarga`.
+    const palabras = resultado.trimEnd().split(" ");
+    const ultima = palabras[palabras.length - 1];
+    expect(ultima.length === 0 || texto.includes(ultima)).toBe(true);
+    // Ninguna palabra del resultado es un fragmento PARCIAL de la palabra larga
+    // (más corta que ella pero hecha solo de "a"s — la señal inequívoca de corte
+    // a mitad de palabra si el `.replace` no corriera).
+    for (const p of palabras) {
+      const esFragmentoParcial = p.length > 0 && p.length < 20 && /^a+$/.test(p);
+      expect(esFragmentoParcial).toBe(false);
+    }
+  });
+
+  it("truncarDescripcion respeta el margen derivado del vocabulario (propiedad, no número mágico)", () => {
+    const limite = limiteTruncadoParaTests();
+    // Texto de palabras cortas separadas por espacio, terminado EN un espacio, más
+    // corto que el límite derivado: el slice no llega a cortar nada y el `.replace`
+    // no tiene cola parcial que limpiar ⇒ intacto (no-op).
+    let casiLimite = "";
+    while (casiLimite.length < limite - 1 - 3) casiLimite += "op ";
+    expect(casiLimite.length).toBeLessThan(limite);
+    expect(casiLimite.endsWith(" ")).toBe(true);
+    expect(truncarDescripcion(casiLimite)).toBe(casiLimite);
+
+    // El resultado NUNCA excede el límite derivado, sea cual sea el vocabulario.
+    let largo = "";
+    while (largo.length < limite + 100) largo += "palabra ";
+    expect(truncarDescripcion(largo).length).toBeLessThanOrEqual(limite);
   });
 });
 
