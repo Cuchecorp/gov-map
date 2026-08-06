@@ -63,3 +63,11 @@ jobs:
         # golden-set.test.ts: gate ≥7/10 offline con MockClasificadorProvider.
         # clasificar-fichas-cli.test.ts: wiring default-incumbente (INTEG-03).
         run: pnpm --filter @obs/cruces exec vitest run
+
+      - name: Test @obs/news (taxonomía congelada + guards de superficie)
+        # congelado.test.ts: sha256 de taxonomia.json/thresholds.json + sincronía byte a byte
+        # (D-133-E2). deuda de raíz DECLARADA, no arreglada aquí: CI corre 4 de ~17 workspaces
+        # (./app, @obs/llm, @obs/cruces, @obs/news); los demás paquetes siguen CI-dark.
+        # Convertir a `pnpm test` podría destapar rojos de otros paquetes — riesgo no
+        # presupuestado en 133-a (133-ADDENDUM-IMPLEMENTACION.md D-133-K2).
+        run: pnpm --filter @obs/news exec vitest run
