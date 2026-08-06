@@ -7,8 +7,9 @@ mientras Fable no tenga créditos).
 vigente tal como está escrito allí.
 **Insumos:** `133-ADJUDICACION.md` (D-133-A..F), `133-PREMORTEM.md` (8 blockers), decisiones de
 operador **D-133-RATIF**, **D-133-G**, **D-132-A**.
-**Estado:** ADJUDICADO — entra al checkpoint de operador de 133-a. Nada se congela ni se hashea
-antes de esa firma.
+**Estado:** ✅ **FIRMADO POR EL OPERADOR el 2026-08-06** (*"consideralo firmado."*) — D-133-A2, B2,
+C2, D2, E2, F2, H e I son **LOCKED**. Los artefactos de 133-a pueden congelarse y hashearse. El
+golden set (133-b) conserva su segunda firma, con κ, n por clase e IC a la vista.
 
 ---
 
@@ -475,18 +476,33 @@ Sin cambios respecto de la lista original, menos el punto 6 (que muere con `agen
 
 ## Lo que requiere firma del operador — CHECKPOINT 133-a
 
-En este orden. Los puntos 1 y 2 ya están firmados y se listan para constancia.
+> ### ✅ FIRMADO POR EL OPERADOR — 2026-08-06
+>
+> **Verbatim:** *"consideralo firmado."*
+>
+> Alcance de la firma: **los puntos 2 a 7 de la tabla siguiente**, es decir la totalidad de
+> D-133-A2, D-133-B2, D-133-C2, D-133-D2, D-133-E2, D-133-F2, D-133-H y D-133-I.
+> A partir de esta firma esas decisiones son **LOCKED**: no se re-abren, y los artefactos de 133-a
+> pueden congelarse y hashearse. El golden set (133-b) conserva su **segunda firma**, que ocurre
+> después con κ, n por clase e IC a la vista.
+>
+> Compromisos de operador que la firma activa:
+> - **20 casos etiquetados a ciegas** por el operador antes de ver cualquier etiqueta de máquina
+>   (D-133-C2.1.2) — en 133-b.
+> - **Sesión de arbitraje** de hasta 25 desacuerdos (D-133-C2.3) — en 133-b.
+
+En este orden. Los puntos 0 y 1 ya estaban firmados; 2-7 quedan firmados el 2026-08-06.
 
 | # | Qué firma | Estado |
 |---|---|---|
 | 0 | **D-133-RATIF** — Opus adjudica mientras Fable no tenga créditos | ✅ FIRMADO 2026-08-05 |
 | 1 | **D-133-G** — la etiqueta es interna, jamás se muestra | ✅ FIRMADO 2026-08-05 |
-| 2 | **La taxonomía de D-133-A2** — 5 clases + `ambiguo`, con `agenda_ejecutivo` **fusionada** en `politica_no_legislativa`, `ley_vigente` redefinida en términos textuales, la **regla de decidibilidad textual**, y la regla de qué cuelga de la ficha de una persona (A2.3). | ⬜ pendiente |
-| 3 | **Los umbrales de D-133-D2** — **seis vetos, no cinco**: T1, T2, T3 (macro-promedio), T4 (n≥25), T5, **T9 nuevo**; cada uno con su n mínimo; la regla de intervalos; y la refutación pre-registrada, incluida la **refutación parcial** que deja el carril de personas fuera de producción si T9 no se mide. | ⬜ pendiente |
-| 4 | **El protocolo de D-133-C2** — dos anotadores de **modelos distintos**, y **20 casos que el operador etiqueta a ciegas ANTES** de ver cualquier etiqueta de máquina (~30 min, es el control positivo apareado que hace interpretable el κ). | ⬜ pendiente |
-| 5 | **La ventana de 3 días y sus 15 requests** (D-133-B2), dentro de la corrida normal del conector, con la regla de decisión del día 2 y el **piso 100 como compromiso real** (el 140 deja de ser objetivo firmado). | ⬜ pendiente |
-| 6 | **D-133-H** — que 133 **no** redefine el SC1 de 134; y si quiere la arquitectura más estricta, que se tramite como **enmienda explícita al SC1 de la Phase 134**, aparte. | ⬜ pendiente |
-| 7 | **D-133-I** — partición 133-a / 133-b; se firma **hoy** lo congelable sin muestra, y el golden se firma después con sus números a la vista. | ⬜ pendiente |
+| 2 | **La taxonomía de D-133-A2** — 5 clases + `ambiguo`, con `agenda_ejecutivo` **fusionada** en `politica_no_legislativa`, `ley_vigente` redefinida en términos textuales, la **regla de decidibilidad textual**, y la regla de qué cuelga de la ficha de una persona (A2.3). | ✅ FIRMADO 2026-08-06 |
+| 3 | **Los umbrales de D-133-D2** — **seis vetos, no cinco**: T1, T2, T3 (macro-promedio), T4 (n≥25), T5, **T9 nuevo**; cada uno con su n mínimo; la regla de intervalos; y la refutación pre-registrada, incluida la **refutación parcial** que deja el carril de personas fuera de producción si T9 no se mide. | ✅ FIRMADO 2026-08-06 |
+| 4 | **El protocolo de D-133-C2** — dos anotadores de **modelos distintos**, y **20 casos que el operador etiqueta a ciegas ANTES** de ver cualquier etiqueta de máquina (~30 min, es el control positivo apareado que hace interpretable el κ). | ✅ FIRMADO 2026-08-06 |
+| 5 | **La ventana de 3 días y sus 15 requests** (D-133-B2), dentro de la corrida normal del conector, con la regla de decisión del día 2 y el **piso 100 como compromiso real** (el 140 deja de ser objetivo firmado). | ✅ FIRMADO 2026-08-06 |
+| 6 | **D-133-H** — que 133 **no** redefine el SC1 de 134; y si quiere la arquitectura más estricta, que se tramite como **enmienda explícita al SC1 de la Phase 134**, aparte. | ✅ FIRMADO 2026-08-06 |
+| 7 | **D-133-I** — partición 133-a / 133-b; se firma **hoy** lo congelable sin muestra, y el golden se firma después con sus números a la vista. | ✅ FIRMADO 2026-08-06 |
 
 **Nada se congela ni se hashea antes de esta firma.** Congelar un artefacto que el operador puede
 revocar es fabricar una vara falsa.
