@@ -74,6 +74,12 @@ const RevisionSchema = z
   })
   .strict();
 
+/**
+ * Refinements de coherencia interna (WR-01 de 133-REVIEW.md): sin ellos, el esquema
+ * valida casos golden internamente contradictorios que corromperían en silencio la
+ * métrica de 133-b. Cada regla tiene su `it` de mutación apareado en
+ * `caso-golden.test.ts` (quitar la regla ⇒ el caso contradictorio vuelve a validar).
+ */
 export const CasoGoldenSchema = z
   .object({
     caso_id: z.string().min(1),
@@ -85,6 +91,52 @@ export const CasoGoldenSchema = z
     etiqueta: EtiquetaSchema,
     revision: RevisionSchema,
   })
-  .strict();
+  .strict()
+  .superRefine((caso, ctx) => {
+    const { etiqueta_a, etiqueta_b, acuerdo, resuelto_por, en_calibracion_humana, etiqueta_humana } =
+      caso.revision;
+
+    if (acuerdo !== (etiqueta_a === etiqueta_b)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["revision", "acuerdo"],
+        message: "acuerdo debe ser exactamente (etiqueta_a === etiqueta_b)",
+      });
+    }
+
+    if (acuerdo && resuelto_por !== "acuerdo") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["revision", "resuelto_por"],
+        message: "acuerdo=true exige resuelto_por='acuerdo'",
+      });
+    }
+    if (!acuerdo && resuelto_por === "acuerdo") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["revision", "resuelto_por"],
+        message: "desacuerdo (acuerdo=false) no puede resolverse por 'acuerdo'",
+      });
+    }
+
+    if (en_calibracion_humana && etiqueta_humana === null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["revision", "etiqueta_humana"],
+        message: "en_calibracion_humana=true exige etiqueta_humana no nula",
+      });
+    }
+
+    const candidatas = [etiqueta_a, etiqueta_b, etiqueta_humana].filter(
+      (v): v is string => v !== null,
+    );
+    if (!candidatas.includes(caso.etiqueta)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["etiqueta"],
+        message: "etiqueta debe provenir de etiqueta_a, etiqueta_b o etiqueta_humana",
+      });
+    }
+  });
 
 export type CasoGolden = z.infer<typeof CasoGoldenSchema>;

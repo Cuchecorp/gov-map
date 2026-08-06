@@ -100,4 +100,76 @@ describe("CasoGoldenSchema — D-133-F2 / D-133-C2.5, sin ningún caso etiquetad
     c2.revision.justificacion_b = "x".repeat(201);
     expect(CasoGoldenSchema.safeParse(c2).success).toBe(false);
   });
+
+  // ── WR-01 (133-REVIEW.md): refinements de coherencia interna ──────────────────
+  // Un `it` por regla + su mutación (quitar el refine ⇒ el caso contradictorio vuelve
+  // a validar; verificado manualmente comentando cada bloque del superRefine, ver SUMMARY).
+
+  it("acuerdo:true con etiqueta_a !== etiqueta_b ⇒ falla (desacuerdo declarado como acuerdo)", () => {
+    const caso = casoValido() as any;
+    caso.revision.etiqueta_a = "tramitacion_legislativa";
+    caso.revision.etiqueta_b = "no_legislativa";
+    caso.revision.acuerdo = true;
+    caso.revision.resuelto_por = "acuerdo";
+    expect(CasoGoldenSchema.safeParse(caso).success).toBe(false);
+  });
+
+  it("acuerdo:false con etiqueta_a === etiqueta_b ⇒ falla (acuerdo real declarado como desacuerdo)", () => {
+    const caso = casoValido() as any;
+    caso.revision.etiqueta_a = "tramitacion_legislativa";
+    caso.revision.etiqueta_b = "tramitacion_legislativa";
+    caso.revision.acuerdo = false;
+    caso.revision.resuelto_por = "operador";
+    expect(CasoGoldenSchema.safeParse(caso).success).toBe(false);
+  });
+
+  it("acuerdo:true con resuelto_por !== 'acuerdo' ⇒ falla (D-133-C2.5)", () => {
+    const caso = casoValido() as any;
+    caso.revision.acuerdo = true;
+    caso.revision.resuelto_por = "no_arbitrado";
+    expect(CasoGoldenSchema.safeParse(caso).success).toBe(false);
+  });
+
+  it("acuerdo:false con resuelto_por === 'acuerdo' ⇒ falla (desacuerdo no puede resolverse por acuerdo)", () => {
+    const caso = casoValido() as any;
+    caso.revision.etiqueta_a = "tramitacion_legislativa";
+    caso.revision.etiqueta_b = "no_legislativa";
+    caso.revision.acuerdo = false;
+    caso.revision.resuelto_por = "acuerdo";
+    expect(CasoGoldenSchema.safeParse(caso).success).toBe(false);
+  });
+
+  it("en_calibracion_humana:true con etiqueta_humana:null ⇒ falla (calibración sin etiqueta)", () => {
+    const caso = casoValido() as any;
+    caso.revision.en_calibracion_humana = true;
+    caso.revision.etiqueta_humana = null;
+    expect(CasoGoldenSchema.safeParse(caso).success).toBe(false);
+  });
+
+  it("en_calibracion_humana:true con etiqueta_humana no nula ⇒ pasa (control positivo apareado)", () => {
+    const caso = casoValido() as any;
+    caso.revision.en_calibracion_humana = true;
+    caso.revision.etiqueta_humana = "tramitacion_legislativa";
+    expect(CasoGoldenSchema.safeParse(caso).success).toBe(true);
+  });
+
+  it("etiqueta final que no proviene de etiqueta_a, etiqueta_b ni etiqueta_humana ⇒ falla", () => {
+    const caso = casoValido() as any;
+    caso.revision.etiqueta_a = "tramitacion_legislativa";
+    caso.revision.etiqueta_b = "tramitacion_legislativa";
+    caso.etiqueta = "no_legislativa";
+    expect(CasoGoldenSchema.safeParse(caso).success).toBe(false);
+  });
+
+  it("etiqueta proveniente de etiqueta_humana (aunque distinta de _a/_b) ⇒ pasa", () => {
+    const caso = casoValido() as any;
+    caso.revision.etiqueta_a = "tramitacion_legislativa";
+    caso.revision.etiqueta_b = "no_legislativa";
+    caso.revision.acuerdo = false;
+    caso.revision.resuelto_por = "operador";
+    caso.revision.en_calibracion_humana = true;
+    caso.revision.etiqueta_humana = "ambiguo";
+    caso.etiqueta = "ambiguo";
+    expect(CasoGoldenSchema.safeParse(caso).success).toBe(true);
+  });
 });
