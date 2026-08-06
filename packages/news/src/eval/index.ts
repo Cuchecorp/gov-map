@@ -6,3 +6,4 @@
 // `thresholds.ts` / `caso-golden.ts` / `entrada-llm.ts` todavía: no existen y `tsc -b` fallaría
 // (TS2307).
 export * from "./taxonomia.js";
+export * from "./canonicalizar-json.js";
