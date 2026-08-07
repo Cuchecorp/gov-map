@@ -625,28 +625,34 @@
       "url_hash": "90b47a9bcba405af5579b135042e5ef7d6869ba2bb190500f9031844c1690c95"
     },
     {
-      "caso_id": "latercera:e6dda5562af0",
+      "caso_id": "latercera:dacdc33d401f",
       "estrato": "N-alea",
       "outlet": "latercera",
-      "url_hash": "e6dda5562af09f5df3e88e56b4497b48e5a07107b4e12327aae62e2b65e33428"
+      "url_hash": "dacdc33d401faa9e5d5213d01c91cf556a5c4d79af8699be1828eb01c4704aff"
     },
     {
-      "caso_id": "lacuarta:898e864a9621",
+      "caso_id": "latercera:6070ae7fe579",
+      "estrato": "N-alea",
+      "outlet": "latercera",
+      "url_hash": "6070ae7fe579a6b444be32a4e2219a6e6db09caee882495ae3a3d08ef798a574"
+    },
+    {
+      "caso_id": "lacuarta:f4bf076ff0a6",
       "estrato": "N-alea",
       "outlet": "lacuarta",
-      "url_hash": "898e864a96217cd7f8a415f5ff9c2a223103d482654723a55985d568d4dc3765"
+      "url_hash": "f4bf076ff0a635e35e06c3005b2a665866e99436ba8be6112571e0de1b3fa36f"
     },
     {
-      "caso_id": "latercera:1443581eaf5d",
+      "caso_id": "lacuarta:cc9fd16163a2",
       "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "1443581eaf5d3036e6d5b67559ed6ca36fa3d99dd0dc1b9a249b8f0c1728a97c"
+      "outlet": "lacuarta",
+      "url_hash": "cc9fd16163a28df7d05c3e6cab0969f9920dcaea061f13132d304ed0e6df9409"
     },
     {
-      "caso_id": "latercera:afbe2b27d85f",
+      "caso_id": "latercera:ae9782ac0362",
       "estrato": "N-alea",
       "outlet": "latercera",
-      "url_hash": "afbe2b27d85fcd9b7ecc289e3c79329e33ae88aee9188033e97d11c7974390b6"
+      "url_hash": "ae9782ac0362da5124c81185cf21ff1cbc82a019dab6fdb8a86fa16b414f2b49"
     },
     {
       "caso_id": "lacuarta:846648be5cfe",
@@ -655,28 +661,178 @@
       "url_hash": "846648be5cfe8ce6ed5bc8eb450565512c0d012ebd30eac4681ddb81288ed0f7"
     },
     {
-      "caso_id": "lacuarta:9a84728d58f9",
+      "caso_id": "lacuarta:6c5482c3ef0e",
       "estrato": "N-alea",
       "outlet": "lacuarta",
-      "url_hash": "9a84728d58f906b3d726f0b35152fec7c6f5faaac73f0ff5e14e91f214e5252d"
+      "url_hash": "6c5482c3ef0ec77dbb0ff85691646ec5495ad40ed58fbfad099a35bf8640e923"
     },
     {
-      "caso_id": "latercera:d9bc7c2abf83",
+      "caso_id": "cooperativa:e3fd9a4b8071",
       "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "d9bc7c2abf83b21e63ec08b5556cf19b03a4ed51216eb6e863fd27e31cd7026d"
+      "outlet": "cooperativa",
+      "url_hash": "e3fd9a4b8071b3b18dbd70314e9054ff2c9a1f9f96e29599c57c5dfc3b066247"
     },
     {
-      "caso_id": "lacuarta:0ed2758d0112",
+      "caso_id": "lacuarta:18b6c5f74022",
       "estrato": "N-alea",
       "outlet": "lacuarta",
-      "url_hash": "0ed2758d01122683b542467d6399c22d5d018828a1c4b252a2fa2c9d8b12609a"
+      "url_hash": "18b6c5f74022b0853316983cdb719c0773224cc84b42294651ff08cfb834fd8a"
     },
     {
-      "caso_id": "latercera:5f48df443729",
+      "caso_id": "lacuarta:b241f4c6b2b4",
+      "estrato": "N-alea",
+      "outlet": "lacuarta",
+      "url_hash": "b241f4c6b2b4579781e9dbe71871dadc2d8b8f11b8197b7f1690ccf1c0b72970"
+    },
+    {
+      "caso_id": "latercera:ef214c6bba92",
       "estrato": "N-alea",
       "outlet": "latercera",
-      "url_hash": "5f48df443729cad74e6856776fda76816d780583aa7faf4beafccd010c8b3a7c"
+      "url_hash": "ef214c6bba92340f6cd5b20db6599b9b8b0e5bc528168ac8bd3773a84bc91f1d"
+    },
+    {
+      "caso_id": "cooperativa:c5b2b6d34a85",
+      "estrato": "N-alea",
+      "outlet": "cooperativa",
+      "url_hash": "c5b2b6d34a859263a0f1210b45aa3485a5705caec2ef3994bf5b2c5042ce94c7"
+    },
+    {
+      "caso_id": "lacuarta:e2081a3813b3",
+      "estrato": "N-alea",
+      "outlet": "lacuarta",
+      "url_hash": "e2081a3813b3b14f53374d5367ed42137b2821786121fa6ed0edf3201b6f0784"
+    },
+    {
+      "caso_id": "lacuarta:11d42f052109",
+      "estrato": "N-alea",
+      "outlet": "lacuarta",
+      "url_hash": "11d42f052109c909f519c16e474d3d6142558afcd40100a8b2db628e5cd9a121"
+    },
+    {
+      "caso_id": "lacuarta:a66ada31408e",
+      "estrato": "N-alea",
+      "outlet": "lacuarta",
+      "url_hash": "a66ada31408e6a75c3e690ce009e22b0279449c5a448d3a979db141a11b5f5d2"
+    },
+    {
+      "caso_id": "latercera:f5625358a66f",
+      "estrato": "N-alea",
+      "outlet": "latercera",
+      "url_hash": "f5625358a66fae6cb251514a5c976d8634a3b2dc1d7de9035d08383f939bf509"
+    },
+    {
+      "caso_id": "latercera:e28ba79826df",
+      "estrato": "N-alea",
+      "outlet": "latercera",
+      "url_hash": "e28ba79826dfae2c73fa24b1a9c7fab54aa2df840d56fe82c2d3028b227cd34b"
+    },
+    {
+      "caso_id": "biobiochile:98cd500a1463",
+      "estrato": "N-alea",
+      "outlet": "biobiochile",
+      "url_hash": "98cd500a14634329bc094584d7a424c63fd77636e9297efb4394eae84623691b"
+    },
+    {
+      "caso_id": "lacuarta:d12657e58d1b",
+      "estrato": "N-alea",
+      "outlet": "lacuarta",
+      "url_hash": "d12657e58d1b57defbe0c9c9ec0e1272de5ccd8c0c9dbc0c1519bee88eeababe"
+    },
+    {
+      "caso_id": "latercera:ab44fe44e114",
+      "estrato": "N-alea",
+      "outlet": "latercera",
+      "url_hash": "ab44fe44e114af7e1f4941081d930ab6e60605b936f509efd28b9d022225967f"
+    },
+    {
+      "caso_id": "latercera:977a8ffee5a3",
+      "estrato": "N-alea",
+      "outlet": "latercera",
+      "url_hash": "977a8ffee5a391272240653245830357dfa0c050ed06b5850604ffb6c5b4d63b"
+    },
+    {
+      "caso_id": "lacuarta:028693cf1d35",
+      "estrato": "N-alea",
+      "outlet": "lacuarta",
+      "url_hash": "028693cf1d3553e949fd680ca45d08c5588e352f2d40dcab4b06b4014759673d"
+    },
+    {
+      "caso_id": "latercera:e431f21887e3",
+      "estrato": "N-alea",
+      "outlet": "latercera",
+      "url_hash": "e431f21887e320ff35721083e78da502c4909adcb0b1d3db020da43e5162841b"
+    },
+    {
+      "caso_id": "latercera:c8539ab80665",
+      "estrato": "N-alea",
+      "outlet": "latercera",
+      "url_hash": "c8539ab8066546b1206badb75652afd5d2c8fd76901757ae601e51a72c37c554"
+    },
+    {
+      "caso_id": "biobiochile:db52507de68b",
+      "estrato": "N-alea",
+      "outlet": "biobiochile",
+      "url_hash": "db52507de68bb4acb2478789f78a073254e2afb9da7bf5051ba1c393deedd6ee"
+    },
+    {
+      "caso_id": "lacuarta:6d69247641e7",
+      "estrato": "N-alea",
+      "outlet": "lacuarta",
+      "url_hash": "6d69247641e7298dd9eea626d70ad7586f98c5853259aae81d80e4f85eabd95c"
+    },
+    {
+      "caso_id": "latercera:e9f400446ec6",
+      "estrato": "N-alea",
+      "outlet": "latercera",
+      "url_hash": "e9f400446ec67fdab5038d28e537c0f16ed367d26d28124fe4632fa38e99384e"
+    },
+    {
+      "caso_id": "lacuarta:f36fafddaca5",
+      "estrato": "N-alea",
+      "outlet": "lacuarta",
+      "url_hash": "f36fafddaca5de39ea11f4d466b4a8310b2e85def039b98b750550c5dabf7b4d"
+    },
+    {
+      "caso_id": "cooperativa:8aee1e4aad8b",
+      "estrato": "N-alea",
+      "outlet": "cooperativa",
+      "url_hash": "8aee1e4aad8b7899f2cd8f3db01fe5792f4275a5aec2fdbcb22cca3a8cb8da5e"
+    },
+    {
+      "caso_id": "latercera:04711b1dca1c",
+      "estrato": "N-alea",
+      "outlet": "latercera",
+      "url_hash": "04711b1dca1cad5967eb50b8cb467a6b12c2b29af0c704440ac1e433609b816b"
+    },
+    {
+      "caso_id": "latercera:d23767d92715",
+      "estrato": "N-alea",
+      "outlet": "latercera",
+      "url_hash": "d23767d92715139f0f756e7566fd66543fb7a66f9bb74b231a981ede7697c185"
+    },
+    {
+      "caso_id": "latercera:d49dd57054f3",
+      "estrato": "N-alea",
+      "outlet": "latercera",
+      "url_hash": "d49dd57054f3fefa722e2297843f2c3e9d06afef4b6e0a55174f3bf72ee00c4d"
+    },
+    {
+      "caso_id": "lacuarta:55fae11de5a3",
+      "estrato": "N-alea",
+      "outlet": "lacuarta",
+      "url_hash": "55fae11de5a328b9be8b313314127337021bdcb7c870c75f90d7e67680a275f9"
+    },
+    {
+      "caso_id": "lacuarta:02001282dfd7",
+      "estrato": "N-alea",
+      "outlet": "lacuarta",
+      "url_hash": "02001282dfd74acc09104c95ce42e9745f02c83bb1b44033efd925633da47e42"
+    },
+    {
+      "caso_id": "biobiochile:e8b51e697e25",
+      "estrato": "N-alea",
+      "outlet": "biobiochile",
+      "url_hash": "e8b51e697e254e05f4381ae5a5a853dfca529e6ddf05f09d70cf8e8d1b540a9b"
     },
     {
       "caso_id": "latercera:f0544ba87b9d",
@@ -691,220 +847,22 @@
       "url_hash": "8a98ef58bcca6517ec8ce1e37beab95e0720387e0b4e0c4349adcb93a89f92ba"
     },
     {
-      "caso_id": "latercera:4cdb33dc250a",
+      "caso_id": "latercera:8968b664e826",
       "estrato": "N-alea",
       "outlet": "latercera",
-      "url_hash": "4cdb33dc250a1597eaf7d99b13e700d4c618f546b6d06c0b62e80aa38a189a7b"
+      "url_hash": "8968b664e8262672bd8851bd1d830ea7c7e9bb234ea5ff1cd2e28f49ee1f8668"
     },
     {
-      "caso_id": "latercera:1d2a1f0281c3",
-      "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "1d2a1f0281c3eebeb39216ae96765d16d2c81c86b1d2074208343dd9928b6a78"
-    },
-    {
-      "caso_id": "lacuarta:7c7d11fd148e",
-      "estrato": "N-alea",
-      "outlet": "lacuarta",
-      "url_hash": "7c7d11fd148e262afd30679eda031995e84ab63c7df1eecfb9cd8c20ab940ffa"
-    },
-    {
-      "caso_id": "lacuarta:027f6c0977a2",
-      "estrato": "N-alea",
-      "outlet": "lacuarta",
-      "url_hash": "027f6c0977a29f5c5e70947e970e56d3757954b1fb5373d0c126399db8eb46be"
-    },
-    {
-      "caso_id": "latercera:a252e92790f2",
-      "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "a252e92790f297ba6c3ae002c52a50b98abdae83487e053b134d2309327df70b"
-    },
-    {
-      "caso_id": "latercera:df257f82dcd5",
-      "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "df257f82dcd5831c89a3246b39e27e0a7339e67e9a0bf23e5192e545f544ad21"
-    },
-    {
-      "caso_id": "latercera:2e5be24d39ac",
-      "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "2e5be24d39ac755c1360f027abe647b85e447ec2235e79a8b5236ee5860fd336"
-    },
-    {
-      "caso_id": "latercera:6c4a381f0fee",
-      "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "6c4a381f0feef8aeb2cf0897025fa61c9eafca6c9e2f913aa4e7ae610317ccdd"
-    },
-    {
-      "caso_id": "lacuarta:dabf5214d563",
-      "estrato": "N-alea",
-      "outlet": "lacuarta",
-      "url_hash": "dabf5214d56355bb29cf48a3d1fdd79b04ddeec6b1c73e2793d432cec9b8283a"
-    },
-    {
-      "caso_id": "biobiochile:98cd500a1463",
-      "estrato": "N-alea",
-      "outlet": "biobiochile",
-      "url_hash": "98cd500a14634329bc094584d7a424c63fd77636e9297efb4394eae84623691b"
-    },
-    {
-      "caso_id": "lacuarta:16cf1e5b00e4",
-      "estrato": "N-alea",
-      "outlet": "lacuarta",
-      "url_hash": "16cf1e5b00e403b286f986a9faec2cf254f1b58a2fb7ad3af595c1066922bd07"
-    },
-    {
-      "caso_id": "biobiochile:1c7d63cde587",
-      "estrato": "N-alea",
-      "outlet": "biobiochile",
-      "url_hash": "1c7d63cde587f9deee93b60f446e144376c8dd3831030ea7e1563ec6f9c17c9d"
-    },
-    {
-      "caso_id": "exante:75d57cc0b9cb",
-      "estrato": "N-alea",
-      "outlet": "exante",
-      "url_hash": "75d57cc0b9cb09fbc65c3a3fc774f45c2e9d1730014d0fa78b1ee08e4ae157ae"
-    },
-    {
-      "caso_id": "latercera:8fe71fd6f9c3",
-      "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "8fe71fd6f9c30616c0ee0b6cdbe7408ee881d292758c3fae31ba9f5e349416ab"
-    },
-    {
-      "caso_id": "latercera:6d87a4acf6fb",
-      "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "6d87a4acf6fb301b21386332d1ded6dac9142ca0bc28d8a601d7bfb8f1115169"
-    },
-    {
-      "caso_id": "lacuarta:978d08c5ad61",
-      "estrato": "N-alea",
-      "outlet": "lacuarta",
-      "url_hash": "978d08c5ad614f9302e4f5d2b08473015c44c146f0223c81d1b2bcb227f11f37"
-    },
-    {
-      "caso_id": "lacuarta:66e6f6d3a110",
-      "estrato": "N-alea",
-      "outlet": "lacuarta",
-      "url_hash": "66e6f6d3a1104e827f55cf4260c19c7db3994cfa409220e9c8fcf5ac55e948be"
-    },
-    {
-      "caso_id": "latercera:b8f7934d9faa",
-      "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "b8f7934d9faa848da7e5e28ba7fea1e8a852049ff703667360c1943c4d79a4e6"
-    },
-    {
-      "caso_id": "exante:3fd1a0f67198",
-      "estrato": "N-alea",
-      "outlet": "exante",
-      "url_hash": "3fd1a0f6719848b047660b3ed2be2e4d4967d5f12dfca1165e817b7ad9855130"
-    },
-    {
-      "caso_id": "latercera:9917323cbaa9",
-      "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "9917323cbaa936cdc8058cefda3a958a9534df3d04937eb9b0f2e6f438b0f038"
-    },
-    {
-      "caso_id": "lacuarta:28fddc9fcfb4",
-      "estrato": "N-alea",
-      "outlet": "lacuarta",
-      "url_hash": "28fddc9fcfb4f574744fa83a7d32e8b92b0640eee3707622a75f12e54393ab7f"
-    },
-    {
-      "caso_id": "lacuarta:b241f4c6b2b4",
-      "estrato": "N-alea",
-      "outlet": "lacuarta",
-      "url_hash": "b241f4c6b2b4579781e9dbe71871dadc2d8b8f11b8197b7f1690ccf1c0b72970"
-    },
-    {
-      "caso_id": "cooperativa:502cdc2fded9",
+      "caso_id": "cooperativa:2e567bf1547a",
       "estrato": "N-alea",
       "outlet": "cooperativa",
-      "url_hash": "502cdc2fded97f30a0512eadf98848fdacc96dc1659de0a29bd58690c3a07145"
+      "url_hash": "2e567bf1547a8674b34bc6be9f9eb20c6827b1b14a67349a850ca4446e44b18f"
     },
     {
-      "caso_id": "cooperativa:f83bc366a050",
-      "estrato": "N-alea",
-      "outlet": "cooperativa",
-      "url_hash": "f83bc366a050d997201d748cc1aa534fc78d2ade15780faab17b08a7f8dbb4d1"
-    },
-    {
-      "caso_id": "lacuarta:f7fdf158a78c",
+      "caso_id": "lacuarta:81e1a01c208a",
       "estrato": "N-alea",
       "outlet": "lacuarta",
-      "url_hash": "f7fdf158a78c76b4fa7908f9ac2b01651bc7bc991c2eb7d6ac41a876607c532a"
-    },
-    {
-      "caso_id": "lacuarta:3394787936d0",
-      "estrato": "N-alea",
-      "outlet": "lacuarta",
-      "url_hash": "3394787936d06c54b76805312291e7332c4501169a07182bb59d2506f15333e8"
-    },
-    {
-      "caso_id": "lacuarta:9526d5b71f74",
-      "estrato": "N-alea",
-      "outlet": "lacuarta",
-      "url_hash": "9526d5b71f74e27817194675996986ad9865591e8c19e1f5e9b55d15f9f1f82a"
-    },
-    {
-      "caso_id": "latercera:98b1f6752342",
-      "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "98b1f67523428fdc0c5f43a42898d0f53a6f5c4e12802358c2edfff7e23430b7"
-    },
-    {
-      "caso_id": "exante:809f461a6978",
-      "estrato": "N-alea",
-      "outlet": "exante",
-      "url_hash": "809f461a6978b7691173680ad02bb22793748b37dc2d1740501b7e3096829c4e"
-    },
-    {
-      "caso_id": "cooperativa:1eed022bc4e3",
-      "estrato": "N-alea",
-      "outlet": "cooperativa",
-      "url_hash": "1eed022bc4e3dd482fd6cfafe54975e051a9af91df2628d126341702df756700"
-    },
-    {
-      "caso_id": "exante:ffec633c30ca",
-      "estrato": "N-alea",
-      "outlet": "exante",
-      "url_hash": "ffec633c30ca0e6b07633526df25325e2fb75c14380b2c46368ce4a875ed7545"
-    },
-    {
-      "caso_id": "latercera:16afd5da6ce3",
-      "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "16afd5da6ce36948142953621e9dd895700e55bf574c7eb4385618958a2cb2a4"
-    },
-    {
-      "caso_id": "cooperativa:db0b42b75238",
-      "estrato": "N-alea",
-      "outlet": "cooperativa",
-      "url_hash": "db0b42b752382253ca03d8d14cc5e515afbd562c27426165c5c14fc5c9a7c4ac"
-    },
-    {
-      "caso_id": "latercera:6326fc2aab5e",
-      "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "6326fc2aab5e0e1047073ff872f470d2e59c0b2f30abe05d43d3bfad97a79f7b"
-    },
-    {
-      "caso_id": "lacuarta:f58a3e46b92a",
-      "estrato": "N-alea",
-      "outlet": "lacuarta",
-      "url_hash": "f58a3e46b92abfcaf726750959d3d213f9edb76619ddf200e3fe9152c16cbb72"
-    },
-    {
-      "caso_id": "latercera:4d9b7e9a0f35",
-      "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "4d9b7e9a0f358b47a6f9b06132360bcfa96f7cebc757f7855dab2ac42a2633e8"
+      "url_hash": "81e1a01c208a25e35a2b3df75b6ecac01dea95e6cd0ea7d544f93a6af9576a27"
     },
     {
       "caso_id": "lacuarta:9f845a0e4b03",
@@ -913,19 +871,61 @@
       "url_hash": "9f845a0e4b03b9574581f10bdf200fa3cdce9e46381d47a119ed11eca16efba0"
     },
     {
-      "caso_id": "latercera:d3688aaf3983",
+      "caso_id": "lacuarta:55a57639e307",
       "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "d3688aaf3983c6566a74242373e201d691048d9c7985d3072fe8872620b3dc6f"
+      "outlet": "lacuarta",
+      "url_hash": "55a57639e30701d7c18379cc565e19afe2990d86f5c751fce8b2a4f014f5060a"
     },
     {
-      "caso_id": "latercera:f2d691bbf8ef",
+      "caso_id": "lacuarta:7f9dd650cc91",
       "estrato": "N-alea",
-      "outlet": "latercera",
-      "url_hash": "f2d691bbf8efb9af9b83c572f50f8e1da01abf9f25334765cad561942c9cf7f0"
+      "outlet": "lacuarta",
+      "url_hash": "7f9dd650cc9117e0d32ca0112440ae6b8945a4ac58caf38136832dc0e652e54a"
+    },
+    {
+      "caso_id": "exante:a54c8f0936ec",
+      "estrato": "N-alea",
+      "outlet": "exante",
+      "url_hash": "a54c8f0936ec4c70cdbb68f6ad11328eaf2d6945be5f27f0334f32237d7a4d42"
+    },
+    {
+      "caso_id": "lacuarta:a5d91de0a162",
+      "estrato": "N-alea",
+      "outlet": "lacuarta",
+      "url_hash": "a5d91de0a1626f3935d19e062ab178cb12e2b4c046b64f535a8239bacaa7b050"
+    },
+    {
+      "caso_id": "cooperativa:6cf5571ceca4",
+      "estrato": "N-alea",
+      "outlet": "cooperativa",
+      "url_hash": "6cf5571ceca40737e08c87daa807970baad5130a715e7339dcecc4dbbcaab85d"
+    },
+    {
+      "caso_id": "cooperativa:5e66be4e1e93",
+      "estrato": "N-alea",
+      "outlet": "cooperativa",
+      "url_hash": "5e66be4e1e93b366724380e36dff4e8362024b6c942410b248a1cc0dd0e7ba77"
+    },
+    {
+      "caso_id": "cooperativa:4ad451b43944",
+      "estrato": "N-alea",
+      "outlet": "cooperativa",
+      "url_hash": "4ad451b439444d3c3898cc98c81b68e7af5ca5e8fd916e8b5d2e93efa355056f"
+    },
+    {
+      "caso_id": "biobiochile:7281bff69e91",
+      "estrato": "N-alea",
+      "outlet": "biobiochile",
+      "url_hash": "7281bff69e9164dd0edd959047a2d6973cea4e4c8b468dd8873d2bd33303f9a1"
+    },
+    {
+      "caso_id": "lacuarta:c91e5e777f30",
+      "estrato": "N-alea",
+      "outlet": "lacuarta",
+      "url_hash": "c91e5e777f3044c5e12f6d99270f31fcaebe540399766579026f6a2fb394a1eb"
     }
   ],
-  "hash_composicion": "038e8ac83427852f11dbd5c79979114e3ebabe31a572baa4574634faca4eeb52",
+  "hash_composicion": "28538d9031e434fe3b0b11d06830c230feec683aa1508d3dbf5e8d9bf79dc379",
   "n": {
     "P": 74,
     "alea": 50,
@@ -954,7 +954,7 @@
   "tasa_sin_descripcion": 0.10880829015544041,
   "tasa_sin_descripcion_por_estrato": {
     "P": 0,
-    "alea": 0.14,
+    "alea": 0.1,
     "sonda": 0
   },
   "ventana": "2026-08-05..2026-08-07"

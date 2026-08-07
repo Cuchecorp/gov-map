@@ -7,7 +7,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { muestrear, hashComposicion, SEMILLA } from "./muestreo.js";
+import { muestrear, hashComposicion, contieneTokenPrefijo, TOKENS_INSTITUCIONALES, SEMILLA } from "./muestreo.js";
 import { canonicalizar } from "./canonicalizar-json.js";
 import type { PoolCaso } from "./pool-r2.js";
 
@@ -73,17 +73,27 @@ export function generarMuestra(): {
 
 /** Línea de una sola pieza, gates numéricos incluidos (nombres de campo sin dígitos).
  * `sinDescripcion` es un CONTEO de casos (entero, anti-cero-vacuo `-gt 0` en el gate), no la
- * tasa fraccionaria (que sí queda en el JSON como `tasa_sin_descripcion`). */
+ * tasa fraccionaria (que sí queda en el JSON como `tasa_sin_descripcion`).
+ * `aleaConToken` (hallazgo del coordinador, post-cierre): cuántos casos de `N-alea` llevan un
+ * token institucional — con la exclusión CORRECTA (solo los sorteados como sonda, no el pool
+ * elegible completo) debe ser >=1; un 0 aquí es la señal exacta del bug que corrigió esto. */
 function lineaResumen(resultado: ReturnType<typeof muestrear>, hash: string): string {
   const todos = [...resultado.P, ...resultado.sonda, ...resultado.alea];
   const total = todos.length;
   const sinDescripcionCount = todos.filter((c) => (c.descripcion ?? "").trim().length === 0).length;
   const tokenSubsecretari = resultado.stats.porToken["subsecretari"] ?? 0;
+  const aleaConToken = resultado.alea.filter((c) => {
+    const texto = `${c.titulo} ${c.descripcion ?? ""}`
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase();
+    return TOKENS_INSTITUCIONALES.some((t) => contieneTokenPrefijo(texto, t));
+  }).length;
   return (
     `muestra: P=${resultado.P.length} sonda=${resultado.sonda.length} alea=${resultado.alea.length} ` +
     `total=${total} elegiblesSonda=${resultado.stats.elegiblesSonda} ` +
     `restoTrasSonda=${resultado.stats.restoTrasSonda} sinDescripcion=${sinDescripcionCount} ` +
-    `tokenSubsecretari=${tokenSubsecretari} hash=${hash}`
+    `tokenSubsecretari=${tokenSubsecretari} aleaConToken=${aleaConToken} hash=${hash}`
   );
 }
 
