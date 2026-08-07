@@ -1,6 +1,20 @@
 {
   "casos": [
     {
+      "descripcion": "La Comisión de Vivienda del Senado abordó este jueves las distintas problemáticas en materia habitacional de la región de Ñuble, en una instancia que contó con participación de parlamentarios, alcaldes, representantes de comités y el ministro de Vivienda.",
+      "fecha": "2026-08-06T19:20:13+00:00",
+      "id": "latercera:f5c7bf80d703",
+      "outlet": "latercera",
+      "titulo": "Poduje y viviendas construidas en zonas de inundación: “Nos está costando muy caro como país”"
+    },
+    {
+      "descripcion": "El gobernador por el Biobío cargó contra el gobierno tras la decisión desde el Ministerio de Hacienda de la paralización de los corredores de las rutas 160 y ruta 150-Autopista Concepción Talcahuano. \"Estamos molestos porque nos enteramos por la prensa de una decisión del ministro de Hacienda del 15 de abril\", criticó.",
+      "fecha": "2026-08-05T15:51:36+00:00",
+      "id": "latercera:eab87c37d621",
+      "outlet": "latercera",
+      "titulo": "Giacaman sostendrá reunión con Alvarado tras molestia por freno de dos proyectos viales en Concepción: “Venimos a reclamar”"
+    },
+    {
       "descripcion": "Los jefes comunales de Cerro Navia, Quinta Normal y Lo Espejo acusaron que el mecanismo aprobado por el Senado profundiza las brechas entre municipios, asegurando que una parte importante de los recursos beneficiará a las comunas con mayores ingresos, mientras las de menores recursos recibirán montos significativamente inferiores.",
       "fecha": "2026-08-04T23:57:41+00:00",
       "id": "latercera:130066a75a08",
@@ -8,11 +22,32 @@
       "titulo": "“Es un día negro para los municipios de Chile”: alcaldes de oposición arremeten contra aprobación de la megarreforma y cuestionan compensación a comunas"
     },
     {
-      "descripcion": "La ministra de Educación destacó el \"amplio apoyo\" que tuvo la iniciativa en su votación en la Cámara, e indicó que ya han avanzado en conversaciones con parlamentarios de la comisión de Educación de la Cámara Alta.",
-      "fecha": "2026-08-06T13:00:53+00:00",
-      "id": "latercera:6d01d4162195",
+      "descripcion": "El ídolo albo aplaudió la gestión realizada por Aníbal Mosa para convencer al meta caboverdiano de llegar a Macul.",
+      "fecha": "2026-08-06T14:58:37+00:00",
+      "id": "lacuarta:11d42f052109",
+      "outlet": "lacuarta",
+      "titulo": "Carlos Caszely abraza el fichaje de Vozinha por Colo Colo: “Antes éramos 10 millones, ahora somos 20”"
+    },
+    {
+      "descripcion": "Después de alcanzar casi 100 millones de visualizaciones, a pedido del público, “Enamorada(s)” tendrá nuevos capítulos. La segunda temporada se estrenará el 18 de agosto.",
+      "fecha": "2026-08-06T16:57:59+00:00",
+      "id": "lacuarta:846648be5cfe",
+      "outlet": "lacuarta",
+      "titulo": "La “teleserie vertical más vista de Chile” tendrá segunda temporada: detalles de la historia"
+    },
+    {
+      "descripcion": "El abogado Mauricio Bascur presentará este jueves el requerimiento formal ante la institución policial pidiendo la reincorporación del exteniente coronel. Dicha decisión también tendrá que ser revisada por La Moneda a través del Ministerio de Seguridad.",
+      "fecha": "2026-08-05T17:30:00+00:00",
+      "id": "latercera:f399206baf77",
       "outlet": "latercera",
-      "titulo": "Arzola tras avance al Senado de reforma al SAE: “Existe un diagnóstico transversal de que este sistema requiere mejoras”"
+      "titulo": "La revancha de Claudio Crespo: exteniente inicia gestiones para volver a vestir el uniforme de Carabineros"
+    },
+    {
+      "descripcion": "El Proyecto Centinela I de la Universidad San Sebastián fue reconocido por la Comisión Oceanográfica Intergubernamental de UNESCO como proyecto oficial del Decenio de las Ciencias Oceánicas para el Desarrollo Sostenible 2021-2030, conocido internacionalmente como Ocean Decade.",
+      "fecha": "2026-08-06T20:42:35+00:00",
+      "id": "latercera:a555cce5a9f7",
+      "outlet": "latercera",
+      "titulo": "Proyecto Centinela I USS recibe reconocimiento oficial de UNESCO y se integra a Ocean Decade"
     },
     {
       "descripcion": "El legislador socialista, en una declaración pública, sostuvo que los hechos “tienen que ver con una situación de carácter personal que se produjo en el contexto de una discusión entre dos personas adultas” y negó violencia de alguna de las partes involucradas.",
@@ -29,83 +64,6 @@
       "titulo": "Foro progresista y festival de música: las plataformas de política y arte del nuevo periplo internacional de Boric"
     },
     {
-      "descripcion": "En votaciones emblemáticas, la oposición ha visto cómo el fantasma de las dos almas del gobierno del expresidente Gabriel Boric vuelve a revivir: mientras los partidos del Socialismo Democrático se inclinan por aprobar este tipo de iniciativas -incluso a impulsar algunas-, el Frente Amplio y el Partido Comunista se ha negado permanentemente a visar estos proyectos.",
-      "fecha": "2026-08-05T17:30:00+00:00",
-      "id": "latercera:9d6aae1d0705",
-      "outlet": "latercera",
-      "titulo": "Estados de excepción, ley Nain-Retamal y Escuelas Protegidas: cómo la agenda de seguridad mantiene dividida a la izquierda"
-    },
-    {
-      "descripcion": "El tribunal de alzada estimó que Gendarmería resolvió el cambio de unidad por razones de seguridad y en el marco de la competencia que la ley y su reglamento interno le confieren.",
-      "fecha": "2026-08-06T20:14:17+00:00",
-      "id": "latercera:f626acf20199",
-      "outlet": "latercera",
-      "titulo": "Condenado en caso Nain: Corte de Temuco rechaza recurso de amparo de Luis Tranamil por traslado a penal del Biobío"
-    },
-    {
-      "descripcion": "La Comisión de Vivienda del Senado abordó este jueves las distintas problemáticas en materia habitacional de la región de Ñuble, en una instancia que contó con participación de parlamentarios, alcaldes, representantes de comités y el ministro de Vivienda.",
-      "fecha": "2026-08-06T19:20:13+00:00",
-      "id": "latercera:f5c7bf80d703",
-      "outlet": "latercera",
-      "titulo": "Poduje y viviendas construidas en zonas de inundación: “Nos está costando muy caro como país”"
-    },
-    {
-      "descripcion": "El Proyecto Centinela I de la Universidad San Sebastián fue reconocido por la Comisión Oceanográfica Intergubernamental de UNESCO como proyecto oficial del Decenio de las Ciencias Oceánicas para el Desarrollo Sostenible 2021-2030, conocido internacionalmente como Ocean Decade.",
-      "fecha": "2026-08-06T20:42:35+00:00",
-      "id": "latercera:a555cce5a9f7",
-      "outlet": "latercera",
-      "titulo": "Proyecto Centinela I USS recibe reconocimiento oficial de UNESCO y se integra a Ocean Decade"
-    },
-    {
-      "descripcion": "Periodista se tomó un minuto en vivo para reflexionar en torno al cruce parlamentario. Se indignó con una de las frases que empleó la exdiputada.",
-      "fecha": "2026-08-06T10:59:39+00:00",
-      "id": "lacuarta:3657277861fb",
-      "outlet": "lacuarta",
-      "titulo": "“¡Es una vergüenza!“: Mónica Rincón furia por fallido intento de insulto de Camila Flores en round con Fabiola Campillai"
-    },
-    {
-      "descripcion": "<p>Una , dejando un saldo de más de 12 detenidos y al menos 5 heridos. Bajo la consigna &#8220;la patria no se vende&#8221; y pese a las intensas lluvias registradas este jueves en Buenos Aires, la manifestación convocó a agrupaciones sociales, sindicales, políticas y estudiantiles y a ciudadanos independientes. La concentración frente a la sede &#8230; <a href=\"https://www.biobiochile.cl/noticias/internacional/america-latina/2026/08/06/caos-en-argentina-policias-lanzan-gases-a-manifestantes-frente-al-congreso-y-hay-mas-de-10-detenidos.shtml\" class=\"more-link\">Continua leyendo<span class=\"screen-reader-text\"> \"Caos en Argentina: policías lanzan gases a manifestantes frente al Congreso y hay más de 10 detenidos\"</span></a></p>\n<p>The post <a rel=\"nofollow\" href=\"https://www.biobiochile.cl/noticias/internacional/america-latina/2026/08/06/caos-en-argentina-policias-lanzan-gases-a-manifestantes-frente-al-congreso-y-hay-mas-de-10-detenidos.shtml\">Caos en Argentina: policías lanzan gases a manifestantes frente al Congreso y hay más de 10 detenidos</a> appeared first on <a rel=\"nofollow\" href=\"https://www.biobiochile.cl\">BioBioChile</a>.</p>",
-      "fecha": "2026-08-07T02:11:12+00:00",
-      "id": "biobiochile:a5c39c4feed8",
-      "outlet": "biobiochile",
-      "titulo": "Caos en Argentina: policías lanzan gases a manifestantes frente al Congreso y hay más de 10 detenidos"
-    },
-    {
-      "descripcion": "Ambos serían pareja y rechazaron denunciar lo ocurrido ni constatar lesiones, pese a lo cual la fiscalía resolvió abrir la causa por tratarse de un…",
-      "fecha": "2026-08-06T18:47:08+00:00",
-      "id": "exante:7f557b1edf77",
-      "outlet": "exante",
-      "titulo": "Perfil: lo que hay que saber del senador Espinoza y la investigación contra él y su pareja por violencia intrafamiliar"
-    },
-    {
-      "descripcion": "<p>La Fiscalía confirmó haber recibido antecedentes de Carabineros sobre un <strong>procedimiento de violencia intrafamiliar en el que estuvo involucrado el senador Fidel Espinoza (PS).</strong></p>\n<p>De acuerdo con los antecedentes, Carabineros concurrió cerca de las 20:00 horas de este miércoles a un departamento en el sector Nueva Aurora en Viña del Mar, luego de que<strong> uno de los ocupantes pidiera al conserje llamar a los funcionarios policiales tres haber sufrido una agresión.</strong></p>\n<p>Los efectivos constataron<strong> daños y desorden en el inmueble</strong>, mientras que uno de los involucrados reconoció haberlos causado. Ambos realizaron <strong>acusaciones contradictorias, por lo que hasta el momento no hay atribución de responsabilidad penal.</strong></p>\n<p>El fiscal <strong>Mauricio Díaz</strong>, del turno de flagrancia, detalló que \"ante una <strong>eventual situación de violencia intrafamiliar entre dos personas adultas, y una de aquellas sería el senador Fidel Espinoza</strong>. Según los antecedentes preliminares que se pudieron recopilar hasta ese momento, una de las personas involucradas solicitó al conserje del edificio que llamara a Carabineros, señalando haber sido agredida\".</p>\n<p>\"Al ingresar al departamento, el personal policial observó desorden, daños en distintas especies y las dos personas entregaron versiones contrapuestas, ambas atribuyendo a la otra la realización de actos de agresión y una de ellas habría reconocido haber provocado daños al interior del inmueble. Sin embargo, <strong>las dos manifestaron no querer formular una denuncia formal y se negaron a concurrir a un centro asistencial para constatar lesiones</strong>\", agregó el persecutor.</p>\n<h2><em><span >\"No existe denuncia\"</span></em></h2>\n<p>A través de un comunicado, Espinoza recalcó que \"los hechos señalados tienen que ver con una situación de carácter personal que se produjo en el contexto de una discusión entre dos personas adultas, en un recinto particular y privado, donde <strong>no existió de parte de nadie ningún acto de violencia física ni verbal.</strong> Así lo constató personal de Carabineros, quienes concurrieron al lugar para verificar lo ocurrido y se retiraron sin recibir denuncias de ningún tipo\".</p>\n<p><strong>\"No existe denuncia en mi contra ni he sido formalizado por delito alguno.</strong> Por respeto a la privacidad de las personas involucradas y a la actuación de las instituciones, no realizaré más declaraciones sobre este asunto\", añadió el legislador.</p>\n<p>Producto del incidente, se realizaron otras diligencias como la toma de declaración del conserje, empadronamiento de testigos y la búsqueda de posibles registros de cámaras de seguridad.</p>",
-      "fecha": "2026-08-06T12:00:56-04:00",
-      "id": "cooperativa:8d4bcedade49",
-      "outlet": "cooperativa",
-      "titulo": "Senador Fidel Espinoza protagonizó procedimiento por violencia intrafamiliar"
-    },
-    {
-      "descripcion": "",
-      "fecha": "2026-08-04T18:34:15+00:00",
-      "id": "lacuarta:a5d91de0a162",
-      "outlet": "lacuarta",
-      "titulo": "Un refuerzo positivo: la importancia que los niños escojan sus prendas"
-    },
-    {
-      "descripcion": "Después de alcanzar casi 100 millones de visualizaciones, a pedido del público, “Enamorada(s)” tendrá nuevos capítulos. La segunda temporada se estrenará el 18 de agosto.",
-      "fecha": "2026-08-06T16:57:59+00:00",
-      "id": "lacuarta:846648be5cfe",
-      "outlet": "lacuarta",
-      "titulo": "La “teleserie vertical más vista de Chile” tendrá segunda temporada: detalles de la historia"
-    },
-    {
-      "descripcion": "El ídolo albo aplaudió la gestión realizada por Aníbal Mosa para convencer al meta caboverdiano de llegar a Macul.",
-      "fecha": "2026-08-06T14:58:37+00:00",
-      "id": "lacuarta:11d42f052109",
-      "outlet": "lacuarta",
-      "titulo": "Carlos Caszely abraza el fichaje de Vozinha por Colo Colo: “Antes éramos 10 millones, ahora somos 20”"
-    },
-    {
       "descripcion": "<p>Un hombre de nacionalidad chilena y de aproximadamente 60 años de edad fue hallado muerto este martes, al interior de un automóvil, en la<strong> intersección de Avenida 5 de Abril con El Estero</strong>, en la comuna de <strong>Estación Central</strong>.</p>\n<p>El fallecido registra <strong>antecedentes penales</strong>, pero no tiene causas vigentes abiertas, y Carabineros trabaja para determinar si hubo o no intervención de terceros en su deceso.</p>",
       "fecha": "2026-08-04T22:55:53-04:00",
       "id": "cooperativa:2e567bf1547a",
@@ -120,18 +78,11 @@
       "titulo": "Daniela Ramírez se cansó de las críticas y amenazó con demandar a doctora por video: “Voy a demandar”"
     },
     {
-      "descripcion": "El gobernador por el Biobío cargó contra el gobierno tras la decisión desde el Ministerio de Hacienda de la paralización de los corredores de las rutas 160 y ruta 150-Autopista Concepción Talcahuano. \"Estamos molestos porque nos enteramos por la prensa de una decisión del ministro de Hacienda del 15 de abril\", criticó.",
-      "fecha": "2026-08-05T15:51:36+00:00",
-      "id": "latercera:eab87c37d621",
-      "outlet": "latercera",
-      "titulo": "Giacaman sostendrá reunión con Alvarado tras molestia por freno de dos proyectos viales en Concepción: “Venimos a reclamar”"
-    },
-    {
-      "descripcion": "El abogado Mauricio Bascur presentará este jueves el requerimiento formal ante la institución policial pidiendo la reincorporación del exteniente coronel. Dicha decisión también tendrá que ser revisada por La Moneda a través del Ministerio de Seguridad.",
-      "fecha": "2026-08-05T17:30:00+00:00",
-      "id": "latercera:f399206baf77",
-      "outlet": "latercera",
-      "titulo": "La revancha de Claudio Crespo: exteniente inicia gestiones para volver a vestir el uniforme de Carabineros"
+      "descripcion": "Ambos serían pareja y rechazaron denunciar lo ocurrido ni constatar lesiones, pese a lo cual la fiscalía resolvió abrir la causa por tratarse de un…",
+      "fecha": "2026-08-06T18:47:08+00:00",
+      "id": "exante:7f557b1edf77",
+      "outlet": "exante",
+      "titulo": "Perfil: lo que hay que saber del senador Espinoza y la investigación contra él y su pareja por violencia intrafamiliar"
     },
     {
       "descripcion": "<p>La colectividad lanzará hoy \"Una Renovación para Chile\", un proceso de formación y reflexión que recorrerá distintas regiones del país. La iniciativa busca recoger la visión de los militantes sobre el futuro del partido, <strong>justo cuando Renovación Nacional enfrenta el desafío de consolidar su rol dentro del oficialismo.</strong></p>\n<p>The post <a rel=\"nofollow\" href=\"https://www.biobiochile.cl/noticias/nacional/chile/2026/08/05/rumbo-a-los-40-rn-abre-proceso-para-redefinir-su-identidad-en-el-oficialismo.shtml\">&quot;Rumbo a los 40&quot;: RN abre proceso para redefinir su identidad en el oficialismo</a> appeared first on <a rel=\"nofollow\" href=\"https://www.biobiochile.cl\">BioBioChile</a>.</p>",
@@ -139,6 +90,55 @@
       "id": "biobiochile:42b24be35f0b",
       "outlet": "biobiochile",
       "titulo": "\"Rumbo a los 40\": RN abre proceso para redefinir su identidad en el oficialismo"
+    },
+    {
+      "descripcion": "<p>La Fiscalía confirmó haber recibido antecedentes de Carabineros sobre un <strong>procedimiento de violencia intrafamiliar en el que estuvo involucrado el senador Fidel Espinoza (PS).</strong></p>\n<p>De acuerdo con los antecedentes, Carabineros concurrió cerca de las 20:00 horas de este miércoles a un departamento en el sector Nueva Aurora en Viña del Mar, luego de que<strong> uno de los ocupantes pidiera al conserje llamar a los funcionarios policiales tres haber sufrido una agresión.</strong></p>\n<p>Los efectivos constataron<strong> daños y desorden en el inmueble</strong>, mientras que uno de los involucrados reconoció haberlos causado. Ambos realizaron <strong>acusaciones contradictorias, por lo que hasta el momento no hay atribución de responsabilidad penal.</strong></p>\n<p>El fiscal <strong>Mauricio Díaz</strong>, del turno de flagrancia, detalló que \"ante una <strong>eventual situación de violencia intrafamiliar entre dos personas adultas, y una de aquellas sería el senador Fidel Espinoza</strong>. Según los antecedentes preliminares que se pudieron recopilar hasta ese momento, una de las personas involucradas solicitó al conserje del edificio que llamara a Carabineros, señalando haber sido agredida\".</p>\n<p>\"Al ingresar al departamento, el personal policial observó desorden, daños en distintas especies y las dos personas entregaron versiones contrapuestas, ambas atribuyendo a la otra la realización de actos de agresión y una de ellas habría reconocido haber provocado daños al interior del inmueble. Sin embargo, <strong>las dos manifestaron no querer formular una denuncia formal y se negaron a concurrir a un centro asistencial para constatar lesiones</strong>\", agregó el persecutor.</p>\n<h2><em><span >\"No existe denuncia\"</span></em></h2>\n<p>A través de un comunicado, Espinoza recalcó que \"los hechos señalados tienen que ver con una situación de carácter personal que se produjo en el contexto de una discusión entre dos personas adultas, en un recinto particular y privado, donde <strong>no existió de parte de nadie ningún acto de violencia física ni verbal.</strong> Así lo constató personal de Carabineros, quienes concurrieron al lugar para verificar lo ocurrido y se retiraron sin recibir denuncias de ningún tipo\".</p>\n<p><strong>\"No existe denuncia en mi contra ni he sido formalizado por delito alguno.</strong> Por respeto a la privacidad de las personas involucradas y a la actuación de las instituciones, no realizaré más declaraciones sobre este asunto\", añadió el legislador.</p>\n<p>Producto del incidente, se realizaron otras diligencias como la toma de declaración del conserje, empadronamiento de testigos y la búsqueda de posibles registros de cámaras de seguridad.</p>",
+      "fecha": "2026-08-06T12:00:56-04:00",
+      "id": "cooperativa:8d4bcedade49",
+      "outlet": "cooperativa",
+      "titulo": "Senador Fidel Espinoza protagonizó procedimiento por violencia intrafamiliar"
+    },
+    {
+      "descripcion": "<p>Una , dejando un saldo de más de 12 detenidos y al menos 5 heridos. Bajo la consigna &#8220;la patria no se vende&#8221; y pese a las intensas lluvias registradas este jueves en Buenos Aires, la manifestación convocó a agrupaciones sociales, sindicales, políticas y estudiantiles y a ciudadanos independientes. La concentración frente a la sede &#8230; <a href=\"https://www.biobiochile.cl/noticias/internacional/america-latina/2026/08/06/caos-en-argentina-policias-lanzan-gases-a-manifestantes-frente-al-congreso-y-hay-mas-de-10-detenidos.shtml\" class=\"more-link\">Continua leyendo<span class=\"screen-reader-text\"> \"Caos en Argentina: policías lanzan gases a manifestantes frente al Congreso y hay más de 10 detenidos\"</span></a></p>\n<p>The post <a rel=\"nofollow\" href=\"https://www.biobiochile.cl/noticias/internacional/america-latina/2026/08/06/caos-en-argentina-policias-lanzan-gases-a-manifestantes-frente-al-congreso-y-hay-mas-de-10-detenidos.shtml\">Caos en Argentina: policías lanzan gases a manifestantes frente al Congreso y hay más de 10 detenidos</a> appeared first on <a rel=\"nofollow\" href=\"https://www.biobiochile.cl\">BioBioChile</a>.</p>",
+      "fecha": "2026-08-07T02:11:12+00:00",
+      "id": "biobiochile:a5c39c4feed8",
+      "outlet": "biobiochile",
+      "titulo": "Caos en Argentina: policías lanzan gases a manifestantes frente al Congreso y hay más de 10 detenidos"
+    },
+    {
+      "descripcion": "En votaciones emblemáticas, la oposición ha visto cómo el fantasma de las dos almas del gobierno del expresidente Gabriel Boric vuelve a revivir: mientras los partidos del Socialismo Democrático se inclinan por aprobar este tipo de iniciativas -incluso a impulsar algunas-, el Frente Amplio y el Partido Comunista se ha negado permanentemente a visar estos proyectos.",
+      "fecha": "2026-08-05T17:30:00+00:00",
+      "id": "latercera:9d6aae1d0705",
+      "outlet": "latercera",
+      "titulo": "Estados de excepción, ley Nain-Retamal y Escuelas Protegidas: cómo la agenda de seguridad mantiene dividida a la izquierda"
+    },
+    {
+      "descripcion": "Periodista se tomó un minuto en vivo para reflexionar en torno al cruce parlamentario. Se indignó con una de las frases que empleó la exdiputada.",
+      "fecha": "2026-08-06T10:59:39+00:00",
+      "id": "lacuarta:3657277861fb",
+      "outlet": "lacuarta",
+      "titulo": "“¡Es una vergüenza!“: Mónica Rincón furia por fallido intento de insulto de Camila Flores en round con Fabiola Campillai"
+    },
+    {
+      "descripcion": "El tribunal de alzada estimó que Gendarmería resolvió el cambio de unidad por razones de seguridad y en el marco de la competencia que la ley y su reglamento interno le confieren.",
+      "fecha": "2026-08-06T20:14:17+00:00",
+      "id": "latercera:f626acf20199",
+      "outlet": "latercera",
+      "titulo": "Condenado en caso Nain: Corte de Temuco rechaza recurso de amparo de Luis Tranamil por traslado a penal del Biobío"
+    },
+    {
+      "descripcion": "La ministra de Educación destacó el \"amplio apoyo\" que tuvo la iniciativa en su votación en la Cámara, e indicó que ya han avanzado en conversaciones con parlamentarios de la comisión de Educación de la Cámara Alta.",
+      "fecha": "2026-08-06T13:00:53+00:00",
+      "id": "latercera:6d01d4162195",
+      "outlet": "latercera",
+      "titulo": "Arzola tras avance al Senado de reforma al SAE: “Existe un diagnóstico transversal de que este sistema requiere mejoras”"
+    },
+    {
+      "descripcion": "",
+      "fecha": "2026-08-04T18:34:15+00:00",
+      "id": "lacuarta:a5d91de0a162",
+      "outlet": "lacuarta",
+      "titulo": "Un refuerzo positivo: la importancia que los niños escojan sus prendas"
     }
   ],
   "glosa": [
