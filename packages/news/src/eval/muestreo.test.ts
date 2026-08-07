@@ -9,6 +9,7 @@ import {
   elegiblesSonda,
   muestrear,
   hashComposicion,
+  TOKENS_INSTITUCIONALES,
 } from "./muestreo";
 import type { PoolCaso } from "./pool-r2";
 
@@ -133,6 +134,25 @@ describe("muestreo — Task 2: estratos disjuntos, sonda con prefijo CONGELADO",
       );
     });
     expect(conSubsecretari.length).toBe(4);
+  });
+
+  it("(j) N-alea contiene AL MENOS UN caso con token institucional entre los elegibles-no-sorteados (hallazgo del coordinador)", () => {
+    const poolReal = JSON.parse(readFileSync(join(AQUI, "pool-133b.json"), "utf8")) as PoolCaso[];
+    const r = muestrear({ pool: poolReal, semilla: "133-b-golden-2026", nSonda: 30, nAlea: 50 });
+    // 505 - 30 = 475 disponibles para alea (NO 505 - 60 = 445): la exclusión es de los
+    // sorteados, no del pool elegible completo (D-133b-2).
+    expect(r.stats.restoTrasSonda).toBe(475);
+    const conToken = r.alea.filter((c) => {
+      const texto = `${c.titulo} ${c.descripcion ?? ""}`
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .toLowerCase();
+      return TOKENS_INSTITUCIONALES.some((t) => contieneTokenPrefijo(texto, t));
+    });
+    // Si esto da 0, es un hallazgo real (no un criterio a ajustar): con la exclusión correcta
+    // quedan 30 elegibles-no-sorteados entre los 475 de alea, y una muestra de 50 sobre 475
+    // hace esperable >=1. Un 0 aquí exigiría PARAR y escalar, no relajar el assert.
+    expect(conToken.length).toBeGreaterThanOrEqual(1);
   });
 });
 

@@ -175,15 +175,27 @@ export interface MuestreoResultado<T extends CasoMuestreable> {
  *   2. `P` = TODOS los `pasa`, ordenados por `url_hash` — censo, jamás sorteado.
  *   3. `elegiblesSonda(descartes)` → ordenar por hash → barajar con PRNG re-sembrado
  *      `` `${semilla}:sonda` `` → tomar `nSonda`, PRIMERO.
- *   4. `resto = descartes − elegibles` (el pool COMPLETO de candidatos a sonda, no solo los
- *      `nSonda` efectivamente sorteados — D-133b-2 cláusula de exclusión) → ordenar por hash
- *      → barajar con PRNG re-sembrado `` `${semilla}:alea` `` → tomar `nAlea`.
+ *   4. `resto = descartes − sonda` (SOLO los `nSonda` casos efectivamente sorteados en el paso
+ *      3 — D-133b-2: *"`N-alea` se sortea sobre la población menos los YA TOMADOS"*, y "los ya
+ *      tomados" son los sorteados, no el pool elegible completo) → ordenar por hash → barajar
+ *      con PRNG re-sembrado `` `${semilla}:alea` `` → tomar `nAlea`.
+ *
+ * CORREGIDO (hallazgo del coordinador, post-cierre de 133-b-02): una versión anterior excluía
+ * el pool COMPLETO de 60 elegibles de `alea` (505−60=445), no solo los 30 sorteados. Es
+ * INCORRECTO y no es cosmético: vaciaba `N-alea` de exactamente los casos con mayor
+ * probabilidad de ser falso negativo del pre-filtro (los que llevan token institucional pero
+ * no fueron elegidos como sonda) — el estrato que existe para ESTIMAR esa tasa de falso
+ * negativo quedaba sistemáticamente sesgado hacia casos sin token, dando una tasa optimista
+ * por construcción, sin que ningún test fallara. La cifra correcta es 505−30=475, y `alea`
+ * SÍ puede (y en la práctica debe) contener casos elegibles-no-sorteados con token
+ * institucional — verificado por test: `N-alea` contiene al menos un caso así.
+ *
  * El PRNG se re-siembra POR ESTRATO para que cambiar `nSonda` no desplace la secuencia de
- * `alea` completa. `sonda ∩ alea = ∅` y `P ∩ (sonda ∪ alea) = ∅` por construcción: ningún caso
- * que calificaba como candidato de sonda puede colarse en `alea`, esté o no entre los
- * efectivamente sorteados. LANZA si algún estrato tiene menos elegibles que el `n` pedido —
- * jamás rellena en silencio ni baja el `n`. No filtra por descripción: los casos sin bajada
- * entran como cualquier otro (P-04).
+ * `alea` completa. `sonda ∩ alea = ∅` por construcción (se excluyen los IDs de `sonda`, no los
+ * de `elegibles`) y `P ∩ (sonda ∪ alea) = ∅` porque ambos se sortean solo sobre `descartes`.
+ * LANZA si algún estrato tiene menos elegibles que el `n` pedido — jamás rellena en silencio
+ * ni baja el `n`. No filtra por descripción: los casos sin bajada entran como cualquier otro
+ * (P-04).
  */
 export function muestrear<T extends CasoMuestreable>(opts: MuestreoOpts<T>): MuestreoResultado<T> {
   const { pool, semilla, nSonda, nAlea } = opts;
@@ -202,12 +214,14 @@ export function muestrear<T extends CasoMuestreable>(opts: MuestreoOpts<T>): Mue
   const sondaBarajada = barajar(ordenarPorHash(elegibles), prngDeSemilla(`${semilla}:sonda`));
   const sonda = sondaBarajada.slice(0, nSonda);
 
-  // D-133b-2, cláusula de exclusión: `alea` excluye el pool COMPLETO de elegibles (60), no
-  // solo los `nSonda` efectivamente sorteados — así ningún caso que calificaba como candidato
-  // de sonda puede colarse en el estrato "aleatorio puro", aunque no haya sido elegido. Cifra
-  // congelada: 505 descartes − 60 elegibles = 445 (133-b-PREMORTEM.md §P-03).
-  const idsElegibles = new Set(elegibles.map((c) => c.url_hash));
-  const resto = descartes.filter((c) => !idsElegibles.has(c.url_hash));
+  // D-133b-2: `alea` excluye SOLO los `nSonda` casos efectivamente sorteados como `sonda` —
+  // NUNCA el pool elegible completo. Los elegibles-no-sorteados (30 de los 60) permanecen
+  // disponibles para `alea`: es lo que hace que el estrato "aleatorio puro" pueda seguir
+  // conteniendo casos con token institucional (necesario para estimar el falso negativo del
+  // pre-filtro fuera del criterio de sonda). Cifra congelada: 505 descartes − 30 sorteados =
+  // 475 (133-b-PREMORTEM.md §P-03, corregido).
+  const idsSonda = new Set(sonda.map((c) => c.url_hash));
+  const resto = descartes.filter((c) => !idsSonda.has(c.url_hash));
   if (resto.length < nAlea) {
     throw new Error(`muestrear: resto tras sonda (${resto.length}) < nAlea pedido (${nAlea})`);
   }
