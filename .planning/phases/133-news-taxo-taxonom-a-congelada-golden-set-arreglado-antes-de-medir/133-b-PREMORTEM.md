@@ -123,11 +123,33 @@ frontera izquierda**, y `contieneTerminoConFrontera` **no sirve** para este estr
 | Estrato | Disponible | Necesita | Holgura |
 |---|---|---|---|
 | `N-sonda` | **60** | 30 | 2,0× |
-| `N-alea` (descartes restantes tras excluir sonda) | **445** | 50 | 8,9× |
+| `N-alea` (descartes menos los **30 ya tomados**) | **475** | 50 | 9,5× |
 
 La capacidad se cumple **bajo las tres reglas** (57, 60 y 68 superan 30), así que el blocker nunca
-puso en riesgo el tamaño del golden — solo su reproducibilidad. La regla de disjunción de D-133b-2
-(sonda primero, alea sobre el resto) no compromete el tamaño.
+puso en riesgo el tamaño del golden — solo su reproducibilidad.
+
+### ⚠️ CORREGIDO 2026-08-07 (ronda de ejecución): `N-alea` sale de **475**, no de 445
+
+La primera versión de esta tabla decía *"descartes restantes tras excluir sonda: **445**"* (505 − 60,
+el pool **elegible** completo). **Es un error mío**, y contradecía a la propia adjudicación:
+D-133b-2 dice *"`N-alea` se sortea sobre la población **menos los ya tomados**"* — los **30
+sorteados**, no los 60 elegibles. La cifra correcta es **505 − 30 = 475**.
+
+**No es cosmético.** Con el criterio de 445, `N-alea` se sortea sobre descartes que **no contienen
+ningún token institucional**, y se midió sobre el artefacto generado: **0 de los 50 casos de
+`N-alea` llevaban token institucional**. Es decir, el estrato que existe para ser una muestra
+**aleatoria** de descartes quedaba sistemáticamente vaciado de justo los casos con más probabilidad
+de ser **falso negativo del pre-filtro** — que es lo que el estrato existe para detectar. Habría
+producido una tasa de falso negativo optimista por construcción, y nada habría fallado.
+
+D-133-B2 (LOCKED) define `N-alea` como *"aleatorio, semilla fija sobre `url_hash` ordenado"* sobre la
+población de descartes, **sin** mencionar exclusión alguna. La disjunción de los 30 ya tomados es la
+desviación **mínima** necesaria para que ningún caso cuente dos veces; excluir los 60 es una
+desviación mayor y no justificada.
+
+**Cifra congelada: `restoTrasSonda = 475`.** El muestreo se rehace y el `hash_composicion` cambia.
+El costo es nulo porque **aún no se ha etiquetado un solo caso** — exactamente la razón por la que
+el orden de D-133b-3 pone el muestreo antes del etiquetado.
 
 ## P-04 — 🆕 HALLAZGO: 63 casos (10,9 %) no tienen descripción
 
@@ -193,6 +215,6 @@ reconstrucción R2:  579/579 = 100,00 %  (biyectiva)
 cobertura términos: 100,00 %  (umbral 95 %; a 200 chars caería a 87,84 %)
 sin descripción:    63/579 = 10,9 %
 N-sonda elegibles:  60   (necesita 30)  <- regla: PREFIJO con frontera izquierda
-N-alea disponibles: 445  (necesita 50)
+N-alea disponibles: 475  (necesita 50)  <- descartes MENOS los 30 ya tomados, no menos los 60 elegibles
 golden proyectado:  74 + 50 + 30 = 154 antes de P-dirigido   (piso duro 100 ✅)
 ```
