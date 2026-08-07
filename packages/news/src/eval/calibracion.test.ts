@@ -107,6 +107,32 @@ describe("calibracion — Task 1: selección determinista de los 20", () => {
     expect(ids).toHaveLength(20);
     expect(new Set(ids).size).toBe(20);
   });
+
+  it("(g) el orden de los 20 NO está agrupado por estrato (hallazgo del coordinador: la posición del caso en el artefacto revelaría el veredicto del pre-filtro)", () => {
+    // La ceguera se define por la INFORMACIÓN disponible, no por los campos presentes: si el
+    // orden queda agrupado (12 P, luego 5 N-alea, luego 3 N-sonda — la composición está
+    // escrita en el plan y en la adjudicación), cualquiera que conozca esa composición lee del
+    // ÍNDICE del artefacto qué casos descartó el pre-filtro, un prior fortísimo hacia
+    // `no_legislativa`. El estrato se resuelve SIEMPRE contra `muestra-133b.json` — el
+    // artefacto ciego no lo tiene y no debe tenerlo.
+    const muestra = leerMuestraReal();
+    const ids = seleccionarCalibracion({ muestra, semilla: "133-b-golden-2026" });
+    const porId = new Map(muestra.map((c) => [c.caso_id, c.estrato]));
+    const estratos = ids.map((id) => porId.get(id));
+    // Anti-cero-vacuo del propio join: si el join no resolviera nada, el test debe FALLAR,
+    // no pasar en silencio sobre una lista de `undefined`.
+    expect(estratos.filter((e) => e != null)).toHaveLength(20);
+
+    let transiciones = 0;
+    for (let i = 1; i < estratos.length; i++) {
+      if (estratos[i] !== estratos[i - 1]) transiciones += 1;
+    }
+    // Con orden agrupado (bug original) hay EXACTAMENTE 2 transiciones (P→N-alea,
+    // N-alea→N-sonda). Con el barajado determinista, el valor medido es 10; se congela un piso
+    // conservador de 8 para no acoplar el test a una cifra exacta que un cambio de semilla
+    // moviera sin ser un regreso al bug.
+    expect(transiciones).toBeGreaterThanOrEqual(8);
+  });
 });
 
 describe("calibracion — Task 2 (parte no-guard): esquema estricto y glosa derivada", () => {

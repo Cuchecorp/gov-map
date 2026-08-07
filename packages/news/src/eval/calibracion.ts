@@ -117,9 +117,21 @@ const N_SONDA = 3;
  * Selecciona los 20 `caso_id` de calibración: 12 de `P` (cuota por outlet vía `CUOTA_P`), 5 de
  * `N-alea`, 3 de `N-sonda`. Determinista (misma semilla ⇒ misma lista de 20; semilla distinta
  * ⇒ lista distinta). Los 20 son disjuntos por construcción: cada sub-estrato se sortea sobre
- * su propio conjunto, y los conjuntos de `muestra-133b.json` ya son disjuntos entre sí. El
- * estrato de origen NO viaja al resultado — solo se usa internamente. No filtra por
- * descripción. LANZA si un sub-estrato no tiene elegibles suficientes.
+ * su propio conjunto, y los conjuntos de `muestra-133b.json` ya son disjuntos entre sí. No
+ * filtra por descripción. LANZA si un sub-estrato no tiene elegibles suficientes.
+ *
+ * CORREGIDO (hallazgo del coordinador, post-cierre): el resultado se devolvía CONCATENADO
+ * por estrato (12 P, luego 5 N-alea, luego 3 N-sonda). Aunque el artefacto ciego no incluye
+ * el campo `estrato`, la ceguera se define por la INFORMACIÓN disponible, no por los campos
+ * presentes — y la composición 12+5+3 está escrita en el plan y en la adjudicación. Cualquiera
+ * que la conozca lee directamente del ÍNDICE del artefacto qué casos descartó el pre-filtro
+ * (posiciones 13-20), lo que es un prior fortísimo hacia `no_legislativa` y contamina la
+ * calibración humana exactamente como el bug de `N-alea` vaciado (133-b-02): ningún test caía
+ * y la métrica salía optimista por conocimiento compartido, no por convergencia de criterio.
+ *
+ * Fix: tras seleccionar (y solo después — la SELECCIÓN no cambia), se aplica un barajado
+ * final determinista con un PRNG re-sembrado `` `${semilla}:calib:orden` `` sobre los 20 ya
+ * elegidos. El orden de PRESENTACIÓN deja de correlacionar con el estrato de origen.
  */
 export function seleccionarCalibracion(opts: SeleccionarCalibracionOpts): string[] {
   const { muestra, semilla } = opts;
@@ -132,7 +144,7 @@ export function seleccionarCalibracion(opts: SeleccionarCalibracionOpts): string
   for (const c of casosP) censoPorOutlet[c.outlet] = (censoPorOutlet[c.outlet] ?? 0) + 1;
   const cuota = CUOTA_P(censoPorOutlet, N_P_TOTAL);
 
-  const seleccionP: string[] = [];
+  const seleccionP: CasoMuestraCalib[] = [];
   for (const outlet of Object.keys(cuota)) {
     const candidatos = casosP.filter((c) => c.outlet === outlet);
     const n = cuota[outlet]!;
@@ -142,22 +154,31 @@ export function seleccionarCalibracion(opts: SeleccionarCalibracionOpts): string
       );
     }
     const barajados = barajar(ordenarPorHash(candidatos), prngDeSemilla(`${semilla}:calib:P:${outlet}`));
-    seleccionP.push(...barajados.slice(0, n).map((c) => c.caso_id));
+    seleccionP.push(...barajados.slice(0, n));
   }
 
   if (casosAlea.length < N_ALEA) {
     throw new Error(`seleccionarCalibracion: N-alea tiene ${casosAlea.length} < ${N_ALEA} pedidos`);
   }
   const aleaBarajada = barajar(ordenarPorHash(casosAlea), prngDeSemilla(`${semilla}:calib:alea`));
-  const seleccionAlea = aleaBarajada.slice(0, N_ALEA).map((c) => c.caso_id);
+  const seleccionAlea = aleaBarajada.slice(0, N_ALEA);
 
   if (casosSonda.length < N_SONDA) {
     throw new Error(`seleccionarCalibracion: N-sonda tiene ${casosSonda.length} < ${N_SONDA} pedidos`);
   }
   const sondaBarajada = barajar(ordenarPorHash(casosSonda), prngDeSemilla(`${semilla}:calib:sonda`));
-  const seleccionSonda = sondaBarajada.slice(0, N_SONDA).map((c) => c.caso_id);
+  const seleccionSonda = sondaBarajada.slice(0, N_SONDA);
 
-  return [...seleccionP, ...seleccionAlea, ...seleccionSonda];
+  // Selección completa (composición 12+5+3 sin cambios) — orden aún agrupado por estrato en
+  // este punto. `ordenarPorHash` primero para partir de un orden total reproducible
+  // independiente de cómo se concatenaron los sub-estratos.
+  const seleccionCompleta = [...seleccionP, ...seleccionAlea, ...seleccionSonda];
+  const ordenFinal = barajar(
+    ordenarPorHash(seleccionCompleta),
+    prngDeSemilla(`${semilla}:calib:orden`),
+  );
+
+  return ordenFinal.map((c) => c.caso_id);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────
@@ -263,6 +284,21 @@ export interface VerificarCegueraResultado {
  *
  * `casos: []` (o el artefacto vacío) LANZA — un guard que "pasa" sobre cero casos no probó
  * nada (cero vacuo). Además exige un piso: ≥ 20 objetos escaneados y ≥ 100 claves inspeccionadas.
+ *
+ * ESTE GUARD NO CUBRE (a propósito) la correlación entre el ORDEN/ÍNDICE del array `casos[]`
+ * y el estrato de origen de cada caso (hallazgo del coordinador, post-cierre 133-b-04): la
+ * ceguera se define por la INFORMACIÓN disponible, no solo por los campos presentes — un
+ * artefacto sin ningún campo de máquina pero con los 20 casos ordenados 12+5+3 (P, luego
+ * N-alea, luego N-sonda, la composición exacta que documentan el plan y la adjudicación)
+ * sigue revelando qué casos descartó el pre-filtro con solo mirar la posición, sin que este
+ * guard estructural lo detecte (no hay ninguna CLAVE de máquina que escanear). Por eso el
+ * control de no-correlación de orden vive como un `it` SEPARADO en `calibracion.test.ts`
+ * (comprueba el número de transiciones de estrato en la secuencia final, resuelto contra
+ * `muestra-133b.json`) y la mitigación real vive en `seleccionarCalibracion`: un barajado
+ * final determinista sobre los 20 ya seleccionados. Fusionar ambos controles en un solo guard
+ * sería posible, pero se mantienen separados porque atacan amenazas de naturaleza distinta
+ * (fuga por CAMPO vs. fuga por ÍNDICE) y una mutación que rompiera una no debe poder ocultar
+ * una regresión en la otra.
  */
 export function verificarCeguera(artefacto: unknown): VerificarCegueraResultado {
   const raiz = artefacto as { casos?: unknown[] } | null | undefined;
