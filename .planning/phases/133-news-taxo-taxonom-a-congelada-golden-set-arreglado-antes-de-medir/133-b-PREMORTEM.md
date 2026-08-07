@@ -81,16 +81,53 @@ Gradiente **monótono y fuerte**, con los dos extremos correctos. La métrica mu
 El margen no es cómodo por casualidad — lo sostiene el límite actual. Nadie puede "optimizar" el
 truncado en 134/135 sin invalidar el golden.
 
-## P-03 — ¿Alcanzan los descartes para `N-sonda` (30) y `N-alea` (50)? ✅ SÍ, con holgura
+## P-03 — ¿Alcanzan los descartes para `N-sonda` (30) y `N-alea` (50)? ✅ SÍ bajo las tres reglas
+
+> **⚠️ CORREGIDO 2026-08-07 tras la ronda 1 del checker (blocker B5).** La primera versión de este
+> premortem publicó `elegiblesSonda = 68` **sin declarar la regla de matching**. El probe había usado
+> `String.includes` pelado — que es precisamente lo que el régimen **PROHÍBE**
+> (`prefiltro-lexico.ts:167`, `eval/entrada-llm.ts:41-42`). Un número correcto medido con la regla
+> prohibida es un número inútil: nadie podía reproducirlo desde lo escrito. Re-medido con las tres
+> reglas candidatas.
 
 Medido sobre los 505 descartes reconstruidos, con los 8 tokens institucionales de D-133-B2 foldeados:
 
+| Regla de matching | Elegibles `N-sonda` | ¿Reproducible? |
+|---|---|---|
+| `String.includes` pelado | 68 | ❌ **regla prohibida por régimen** |
+| **prefijo con frontera IZQUIERDA** (`(^\|[^a-z0-9])<token>`) | **60** | ✅ **LA REGLA** |
+| frontera completa (`contieneTerminoConFrontera`) | 57 | ❌ ver abajo |
+
+### Por qué la regla es prefijo, y no frontera completa — el desglose lo decide
+
+| token | completa | prefijo | substring |
+|---|---|---|---|
+| ministro | 7 | 8 | 16 |
+| gobierno | 27 | 28 | 28 |
+| la moneda | 4 | 4 | 4 |
+| contraloria | 2 | 2 | 2 |
+| presidente | 25 | 25 | 26 |
+| **subsecretari** | **0** | **4** | 5 |
+| oficialismo | 2 | 2 | 2 |
+| oposicion | 2 | 2 | 2 |
+
+**`subsecretari` con frontera completa matchea CERO.** No es casualidad: D-133-B2 lo escribió
+**truncado a propósito** como stem, para cubrir `subsecretario`/`subsecretaria`/`subsecretaría`. Con
+frontera derecha ese token **desaparece en silencio** del estrato — el sondeo de falso negativo
+perdería una de sus ocho sondas sin que nada fallara. Por eso la regla correcta es **prefijo con
+frontera izquierda**, y `contieneTerminoConFrontera` **no sirve** para este estrato (sí para
+`coberturaTerminos`, donde los términos son palabras completas).
+
+**Cifra congelada: `elegiblesSonda = 60`** bajo la regla de prefijo con frontera izquierda.
+
 | Estrato | Disponible | Necesita | Holgura |
 |---|---|---|---|
-| `N-sonda` (descartes con token institucional) | **68** | 30 | 2,3× |
-| `N-alea` (descartes restantes tras excluir sonda) | **437** | 50 | 8,7× |
+| `N-sonda` | **60** | 30 | 2,0× |
+| `N-alea` (descartes restantes tras excluir sonda) | **445** | 50 | 8,9× |
 
-La regla de disjunción de D-133b-2 (sonda primero, alea sobre el resto) **no compromete el tamaño**.
+La capacidad se cumple **bajo las tres reglas** (57, 60 y 68 superan 30), así que el blocker nunca
+puso en riesgo el tamaño del golden — solo su reproducibilidad. La regla de disjunción de D-133b-2
+(sonda primero, alea sobre el resto) no compromete el tamaño.
 
 ## P-04 — 🆕 HALLAZGO: 63 casos (10,9 %) no tienen descripción
 
@@ -155,7 +192,7 @@ censo P:            74    latercera 50 · lacuarta 11 · exante 6 · biobiochile
 reconstrucción R2:  579/579 = 100,00 %  (biyectiva)
 cobertura términos: 100,00 %  (umbral 95 %; a 200 chars caería a 87,84 %)
 sin descripción:    63/579 = 10,9 %
-N-sonda elegibles:  68   (necesita 30)
-N-alea disponibles: 437  (necesita 50)
+N-sonda elegibles:  60   (necesita 30)  <- regla: PREFIJO con frontera izquierda
+N-alea disponibles: 445  (necesita 50)
 golden proyectado:  74 + 50 + 30 = 154 antes de P-dirigido   (piso duro 100 ✅)
 ```
