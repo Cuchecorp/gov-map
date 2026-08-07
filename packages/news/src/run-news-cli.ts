@@ -202,7 +202,7 @@ export function findWorkspaceRoot(start: string): string {
 }
 
 /** Carga `.env` BOM-safe con PRECEDENCIA de `process.env` (patrón `run-tramitacion-prod-cli.ts`). */
-function loadEnv(root: string): Record<string, string> {
+export function loadEnv(root: string): Record<string, string> {
   const out: Record<string, string> = {};
   try {
     const raw = readFileSync(join(root, ".env"), "utf8").replace(/^﻿/, "");
@@ -231,7 +231,7 @@ function loadEnv(root: string): Record<string, string> {
  * Slug de feed derivado de un `r2Path` con `resource = rss-<slug>` (Pattern 2, 132-03).
  * WR-11: `[a-z0-9-]+` — un slug con guion o dígito ya no se pierde en silencio.
  */
-function slugDesdeR2Path(r2Path: string): string | null {
+export function slugDesdeR2Path(r2Path: string): string | null {
   const m = /\/rss-([a-z0-9-]+)\//.exec(r2Path);
   return m ? m[1]! : null;
 }
