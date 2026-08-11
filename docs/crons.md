@@ -8,6 +8,7 @@
 | Workflow | Entrada CLI | Fuente(s) | Secrets requeridos | Cadencia | Guard fail-loud | Estado |
 |----------|-------------|-----------|-------------------|----------|-----------------|--------|
 | `leyes-weekly` | `@obs/tramitacion run-tramitacion-prod-cli` | opendata.camara.cl (WS JSON) + Senado XML | `SUPABASE_API_URL`, `SUPABASE_SECRET_KEY`, `R2_*` | `0 20 * * 1-5` — L-V 20:00 UTC | CLI exit(errores>0) | VERDE |
+| `news-daily` | `@obs/news run-news-cli` + `clasificar-noticias-cli` | 5 feeds RSS directos (D-132-A) | `SUPABASE_API_URL`, `SUPABASE_SECRET_KEY`, `R2_*`, `DEEPSEEK_API_KEY` | `30 20 * * 1-5` — L-V 20:30 UTC | CLI exit + degradación honesta sin API key (exit 0 sin fabricar) | ESTRENO (Phase 136) |
 | `agenda-weekly` | `@obs/agenda run-agenda-prod-cli` | Cámara (curl+DeepSeek PDF) + Senado citaciones | `SUPABASE_API_URL`, `SUPABASE_SECRET_KEY`, `DEEPSEEK_API_KEY`, `R2_*` | `0 11 * * 1` — lun 11:00 UTC | CLI exit | VERDE |
 | `probidad-weekly` | `@obs/probidad run-probidad-todos-cli` | datos.cplt.cl/sparql (InfoProbidad/CPLT) | `SUPABASE_API_URL`, `SUPABASE_SECRET_KEY`, `R2_*` | `0 11 * * 4` — jue 11:00 UTC | `grep consultados=[1-9]` \|\| exit 1 | VERDE (Phase 83 fix RC-1) |
 | `lobby-leylobby-weekly` | `@obs/lobby ingest-cli` | leylobby.gob.cl (ejecutivo) | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (nombres DIVERGENTES del resto) | `0 11 * * 3` — mié 11:00 UTC | `grep audiencias\|degradaciones` | VERDE |

@@ -15,7 +15,7 @@
 // - El enrutamiento a fichas NO existe aquí: T4/T9 no-medidos (fail-closed 133-b). La
 //   etiqueta es interna (D-133-G).
 
-import type { LLMProvider } from "@obs/llm";
+import { assertNoRutInLlmInput, RutInLlmInputError, type LLMProvider } from "@obs/llm";
 import { ETIQUETAS } from "../eval/taxonomia.js";
 import { clasificarNoticia } from "./clasificar.js";
 import { procesarLoteAllOrNothing } from "../resolver/gate.js";
@@ -89,6 +89,25 @@ export async function clasificarRun(
   let llamadas = 0;
   try {
     for (const noticia of lote) {
+      // Guard PII PREVIO (hallazgo de la primera corrida real de news-daily): el guard
+      // fail-closed de @obs/llm es deliberadamente AMPLIO; un texto con patrón de RUT es
+      // RECHAZO PERMANENTE con causa propia y CERO llamadas — jamás bloquea la cola entera
+      // y jamás viaja al proveedor "para ver si pasa".
+      try {
+        assertNoRutInLlmInput(`${noticia.titular} ${noticia.descripcion ?? ""}`);
+      } catch (err) {
+        if (err instanceof RutInLlmInputError) {
+          rechazos.push({
+            url_hash: noticia.url_hash,
+            rejection_stage: "pii_rut_en_texto",
+            detalle: "patron de RUT en titular/descripcion (guard amplio, sobre-bloquear es lo seguro)",
+            payload: {},
+            run_id: runId,
+          });
+          continue;
+        }
+        throw err;
+      }
       llamadas += 1; // ANTES del intento: un 401 a mitad tambien consumio la llamada
       const r = await clasificarNoticia(deps.provider, {
         titulo: noticia.titular,

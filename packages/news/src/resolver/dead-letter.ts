@@ -9,7 +9,7 @@
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** Espejo 1:1 del CHECK de `rejection_stage` en 0086 — si divergen, el insert falla LOUD. */
+/** Espejo 1:1 del CHECK de `rejection_stage` en 0086+0088 — si divergen, el insert falla LOUD. */
 export const REJECTION_STAGES = [
   "parse_fallido",
   "confianza_bajo_umbral",
@@ -17,6 +17,7 @@ export const REJECTION_STAGES = [
   "boletin_no_resuelto",
   "parlamentario_no_resuelto",
   "lote_invalido",
+  "pii_rut_en_texto",
 ] as const;
 
 export const RejectionStageSchema = z.enum(REJECTION_STAGES);

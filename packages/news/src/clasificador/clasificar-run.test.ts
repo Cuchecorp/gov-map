@@ -170,4 +170,24 @@ describe("clasificar-run — pipeline 135-04", () => {
   it("(f) el CAP es 500, congelado por LITERAL (H1): moverlo exige tocar este test)", () => {
     expect(CAP_LLAMADAS_POR_CORRIDA).toBe(500);
   });
+
+  it("(g) RUT en el texto ⇒ dead-letter pii_rut_en_texto SIN llamada LLM; la cola sigue", async () => {
+    const pendientes: NoticiaPendiente[] = [
+      { url_hash: "h-rut", titular: "Condenado RUT 12.345.678-9", descripcion: "d" },
+      { url_hash: "h-ok", titular: "Senado aprueba", descripcion: "d" },
+    ];
+    const { deps, estado } = depsCon(
+      pendientes,
+      providerSecuencia([{ etiqueta: "no_legislativa", confianza: 0.9 }]),
+    );
+    const r = await clasificarRun(deps, "run-6");
+    expect(r.rechazadas).toBe(1);
+    expect(r.clasificadas).toBe(1);
+    const dl = estado.deadLetters.flat();
+    expect(dl.length).toBe(1);
+    expect(dl[0]!.rejection_stage).toBe("pii_rut_en_texto");
+    expect(dl[0]!.url_hash).toBe("h-rut");
+    // La llamada del ítem con RUT JAMÁS ocurrió: solo 1 llamada en el ledger.
+    expect(estado.ledger[0]!.llamadas).toBe(1);
+  });
 });
