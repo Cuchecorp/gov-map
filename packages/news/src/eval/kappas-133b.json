@@ -1,0 +1,61 @@
+{
+  "desacuerdos_pendientes_arbitraje": 18,
+  "fecha": "2026-08-10",
+  "kappa_fable_anotador_a": {
+    "acuerdo_bruto": 0.75,
+    "ic95": {
+      "inf": 0.3870715206074377,
+      "sup": 0.9160643678943043
+    },
+    "kappa": 0.6515679442508711,
+    "n": 20
+  },
+  "kappa_fable_anotador_b": {
+    "acuerdo_bruto": 0.7,
+    "ic95": {
+      "inf": 0.32773122817072725,
+      "sup": 0.8668996443124941
+    },
+    "kappa": 0.5973154362416107,
+    "n": 20
+  },
+  "kappa_maquina_maquina": {
+    "acuerdo_bruto": 0.8831168831168831,
+    "ic95": {
+      "inf": 0.7532166108623599,
+      "sup": 0.9026279480798463
+    },
+    "ic95_acuerdo_bruto": {
+      "inf": 0.8228102864619796,
+      "sup": 0.9247746341166257
+    },
+    "kappa": 0.8279222794711031,
+    "n": 154
+  },
+  "n_por_clase_provisional_136_acordados": {
+    "actividad_parlamentaria": 11,
+    "ley_vigente": 2,
+    "no_legislativa": 68,
+    "politica_no_legislativa": 33,
+    "tramitacion_legislativa": 22
+  },
+  "nota_honesta": "k(fable-maquina) por 133-b-ENMIENDA-PROXY.md -- k(humano-maquina) NO MEDIDO en este milestone",
+  "puertas_c23": {
+    "acuerdo_bruto_minimo": 0.8,
+    "acuerdo_bruto_pasa": true,
+    "kappa_minimo": 0.65,
+    "kappa_pasa": true
+  },
+  "regla_interpretabilidad": {
+    "delta": 0.20348058922486223,
+    "gatillada": true,
+    "kappaFable": 0.6244416902462409,
+    "kappaMaquina": 0.8279222794711031,
+    "limitacion": "k(fable-maquina), NO k(humano-maquina): calibracion por proxy Fable (133-b-ENMIENDA-PROXY.md); Fable/Sonnet/Opus comparten linaje Anthropic, el control externo humano queda NO MEDIDO"
+  },
+  "tasa_ambiguo": {
+    "anotador_a": 0,
+    "anotador_b": 0,
+    "fable_calibracion": 0
+  }
+}
