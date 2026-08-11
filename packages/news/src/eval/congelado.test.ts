@@ -25,9 +25,15 @@ const CONGELADO_PATH = join(AQUI, "CONGELADO.md");
 /** Hashes congelados — impresos literalmente por el CLI en la Task 1 de 133-03. */
 const HASH_TAXONOMIA = "90981888979773ec3f483c4bb6f10c26a75f7e248f18a03b662bcb1fcd9f706c";
 const HASH_THRESHOLDS = "e428594463ebae3b6b4b1bce0c0ee2c3fd35516b70d2f7b6e9c73e2583938d1e";
+/** Hash del golden-set.json, emitido UNA vez al cierre de 133-b-07 (golden-cli, doble
+ * corrida byte-idéntica). Segunda firma: proxy Fable bajo 133-b-ENMIENDA-PROXY.md,
+ * ratificación de operador pendiente. */
+const HASH_GOLDEN = "47ace935f85ae921c5ca8e2c11133b3a82278b371ba21ba516f498cada33c03c";
 
+const GOLDEN_PATH = join(AQUI, "golden-set.json");
 const taxonomiaRaw = readFileSync(TAXONOMIA_PATH, "utf8");
 const thresholdsRaw = readFileSync(THRESHOLDS_PATH, "utf8");
+const goldenRaw = readFileSync(GOLDEN_PATH, "utf8");
 
 describe("congelado — hashes vivos", () => {
   it("(a) sha256 vivo de taxonomia.json coincide con HASH_TAXONOMIA", () => {
@@ -36,6 +42,10 @@ describe("congelado — hashes vivos", () => {
 
   it("(b) sha256 vivo de thresholds.json coincide con HASH_THRESHOLDS", () => {
     expect(sha256(thresholdsRaw)).toBe(HASH_THRESHOLDS);
+  });
+
+  it("(a3) sha256 vivo de golden-set.json coincide con HASH_GOLDEN (133-b-07)", () => {
+    expect(sha256(goldenRaw)).toBe(HASH_GOLDEN);
   });
 });
 
@@ -57,18 +67,19 @@ describe("congelado — meta: el hash muerde", () => {
 });
 
 describe("congelado — CONGELADO.md", () => {
-  it("(f) la última entrada de CONGELADO.md contiene los dos hashes vigentes", () => {
+  it("(f) la última entrada de CONGELADO.md contiene los TRES hashes vigentes", () => {
     const md = readFileSync(CONGELADO_PATH, "utf8");
     const entradas = md.split(/^### /m);
     const ultima = entradas[entradas.length - 1]!;
     expect(ultima).toContain(HASH_TAXONOMIA);
     expect(ultima).toContain(HASH_THRESHOLDS);
+    expect(ultima).toContain(HASH_GOLDEN);
   });
 });
 
 describe("congelado — bytes limpios", () => {
-  it("(g) ambos JSON: cero \\r, cero BOM, terminan en newline", () => {
-    for (const raw of [taxonomiaRaw, thresholdsRaw]) {
+  it("(g) los tres JSON: cero \\r, cero BOM, terminan en newline", () => {
+    for (const raw of [taxonomiaRaw, thresholdsRaw, goldenRaw]) {
       expect(raw.includes("\r")).toBe(false);
       expect(raw.charCodeAt(0)).not.toBe(0xfeff);
       expect(raw.endsWith("\n")).toBe(true);

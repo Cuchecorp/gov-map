@@ -1,0 +1,125 @@
+{
+ "origen": "fixtures 132-01 (probe 132-01, commit 1098e40, 2026-08-05), fuera del pool de la ventana",
+ "casos": [
+  {
+   "caso_id": "biobiochile:87b11752ff09",
+   "outlet": "biobiochile",
+   "url_hash": "87b11752ff09526e5f74a2e315c8133d9127c39183364f209895e0b04296a4e4",
+   "url_canonica": "https://www.biobiochile.cl/noticias/nacional/region-de-valparaiso/2026/08/05/gobierno-indolente-alcaldesa-de-valparaiso-tras-aprobacion-de-megarreforma-en-el-senado.shtml",
+   "r2_path": "fixture:packages/news/src/__fixtures__/biobiochile.xml",
+   "fecha_captura": "2026-08-05",
+   "fecha_pub": null,
+   "titulo_crudo": "\"Gobierno indolente\": alcaldesa de Valparaíso, Camila Nieto, tras aprobación de megarreforma",
+   "descripcion_cruda": "<p>La alcaldesa de Valparaíso, Camila Nieto, cuestionó a las autoridades tras la aprobación de la megarreforma impulsada por el ministro de Hacienda, Jorge Quiroz. Desde la tribuna de la sala de la Cámara del Senado, la jefa comunal calificó al gobierno de &#8220;indolente&#8221;, asegurando que &#8220;las personas más pobres del país les pagarán sus privilegios&#8221;. &#8230; <a href=\"https://www.biobiochile.cl/noticias/nacional/region-de-valparaiso/2026/08/05/gobierno-indolente-alcaldesa-de-valparaiso-tras-aprobacion-de-megarreforma-en-el-senado.shtml\" class=\"more-link\">Continua leyendo<span class=\"screen-reader-text\"> \"\"Gobierno indolente\": alcaldesa de Valparaíso, Camila Nieto, tras aprobación de megarreforma\"</span></a></p>\n<p>The post <a rel=\"nofollow\" href=\"https://www.biobiochile.cl/noticias/nacional/region-de-valparaiso/2026/08/05/gobierno-indolente-alcaldesa-de-valparaiso-tras-aprobacion-de-megarreforma-en-el-senado.shtml\">&quot;Gobierno indolente&quot;: alcaldesa de Valparaíso, Camila Nieto, tras aprobación de megarreforma</a> appeared first on <a rel=\"nofollow\" href=\"https://www.biobiochile.cl\">BioBioChile</a>.</p>",
+   "titulo": "\"Gobierno indolente\": alcaldesa de Valparaíso, Camila Nieto, tras aprobación de megarreforma",
+   "descripcion": "La alcaldesa de Valparaíso, Camila Nieto, cuestionó a las autoridades tras la aprobación de la megarreforma impulsada por el ministro de Hacienda, Jorge Quiroz. Desde la tribuna de la sala de la Cámara del Senado, la jefa comunal calificó al gobierno de &#8220;indolente&#8221;, asegurando que &#8220;las personas más pobres del país les pagarán sus privilegios&#8221;. &#8230; Continua leyendo \"\"Gobierno indolente\": alcaldesa de Valparaíso, Camila Nieto, tras aprobación de megarreforma\" The post \"Gobierno indolente\": alcaldesa de Valparaíso, Camila Nieto, tras aprobación de megarreforma appeared first on BioBioChile .",
+   "entrada_llm": {
+    "titulo": "\"Gobierno indolente\": alcaldesa de Valparaíso, Camila Nieto, tras aprobación de megarreforma",
+    "descripcion": "La alcaldesa de Valparaíso, Camila Nieto, cuestionó a las autoridades tras la aprobación de la megarreforma impulsada por el ministro de Hacienda, Jorge Quiroz. Desde la tribuna de la sala de la Cámara del Senado, la jefa comunal calificó al gobierno de &#8220;indolente&#8221;, asegurando que &#8220;las personas más pobres del país les pagarán sus privilegios&#8221;. &#8230; Continua leyendo \"\"Gobierno indolente\": alcaldesa de Valparaíso, Camila Nieto, tras aprobación de megarreforma\" The post \"Gobierno indolente\": alcaldesa de Valparaíso, Camila Nieto, tras aprobación de megarreforma appeared first on BioBioChile ."
+   },
+   "prefiltro": {
+    "paso": true,
+    "terminos": [
+     "sala",
+     "senado"
+    ]
+   }
+  },
+  {
+   "caso_id": "biobiochile:83e5ac2705b0",
+   "outlet": "biobiochile",
+   "url_hash": "83e5ac2705b08f6115bd8712f5105aa4f8af62bc097e6fbff07f492aa6ade316",
+   "url_canonica": "https://www.biobiochile.cl/noticias/nacional/chile/2026/08/05/ejecutivo-repondra-indicaciones-rechazadas-a-sala-cuna-universal-mientras-se-discute-su-financiamiento.shtml",
+   "r2_path": "fixture:packages/news/src/__fixtures__/biobiochile.xml",
+   "fecha_captura": "2026-08-05",
+   "fecha_pub": null,
+   "titulo_crudo": "Ejecutivo repondrá indicaciones rechazadas a Sala Cuna Universal mientras se discute su financiamiento",
+   "descripcion_cruda": "<p>El Ejecutivo confirmó a la Comisión de Hacienda del Senado que repondrán las indicaciones rechazadas en el proyecto de Sala Cuna, en el inicio de la compleja discusión de los mecanismos de financiamiento de la propuesta del gobierno. Con el anuncio de nuevas indicaciones y la presentación del ministro del Trabajo, Tomás Rau, la Comisión &#8230; <a href=\"https://www.biobiochile.cl/noticias/nacional/chile/2026/08/05/ejecutivo-repondra-indicaciones-rechazadas-a-sala-cuna-universal-mientras-se-discute-su-financiamiento.shtml\" class=\"more-link\">Continua leyendo<span class=\"screen-reader-text\"> \"Ejecutivo repondrá indicaciones rechazadas a Sala Cuna Universal mientras se discute su financiamiento\"</span></a></p>\n<p>The post <a rel=\"nofollow\" href=\"https://www.biobiochile.cl/noticias/nacional/chile/2026/08/05/ejecutivo-repondra-indicaciones-rechazadas-a-sala-cuna-universal-mientras-se-discute-su-financiamiento.shtml\">Ejecutivo repondrá indicaciones rechazadas a Sala Cuna Universal mientras se discute su financiamiento</a> appeared first on <a rel=\"nofollow\" href=\"https://www.biobiochile.cl\">BioBioChile</a>.</p>",
+   "titulo": "Ejecutivo repondrá indicaciones rechazadas a Sala Cuna Universal mientras se discute su financiamiento",
+   "descripcion": "El Ejecutivo confirmó a la Comisión de Hacienda del Senado que repondrán las indicaciones rechazadas en el proyecto de Sala Cuna, en el inicio de la compleja discusión de los mecanismos de financiamiento de la propuesta del gobierno. Con el anuncio de nuevas indicaciones y la presentación del ministro del Trabajo, Tomás Rau, la Comisión &#8230; Continua leyendo \"Ejecutivo repondrá indicaciones rechazadas a Sala Cuna Universal mientras se discute su financiamiento\" The post Ejecutivo repondrá indicaciones rechazadas a Sala Cuna Universal mientras se discute su financiamiento appeared first on BioBioChile .",
+   "entrada_llm": {
+    "titulo": "Ejecutivo repondrá indicaciones rechazadas a Sala Cuna Universal mientras se discute su financiamiento",
+    "descripcion": "El Ejecutivo confirmó a la Comisión de Hacienda del Senado que repondrán las indicaciones rechazadas en el proyecto de Sala Cuna, en el inicio de la compleja discusión de los mecanismos de financiamiento de la propuesta del gobierno. Con el anuncio de nuevas indicaciones y la presentación del ministro del Trabajo, Tomás Rau, la Comisión &#8230; Continua leyendo \"Ejecutivo repondrá indicaciones rechazadas a Sala Cuna Universal mientras se discute su financiamiento\" The post Ejecutivo repondrá indicaciones rechazadas a Sala Cuna Universal mientras se discute su financiamiento appeared first on BioBioChile ."
+   },
+   "prefiltro": {
+    "paso": true,
+    "terminos": [
+     "sala",
+     "comision",
+     "senado"
+    ]
+   }
+  },
+  {
+   "caso_id": "biobiochile:8fc34f60473c",
+   "outlet": "biobiochile",
+   "url_hash": "8fc34f60473cd025cfb5b39a989b9abc0a007a63e4878ad0bcb4477fecbe2f40",
+   "url_canonica": "https://www.biobiochile.cl/noticias/deportes/futbol-internacional/notas-futbol-internacional/2026/08/05/partidos-politicos-espana-portugal-piden-borrar-a-marruecos-mundial-2030.shtml",
+   "r2_path": "fixture:packages/news/src/__fixtures__/biobiochile.xml",
+   "fecha_captura": "2026-08-05",
+   "fecha_pub": null,
+   "titulo_crudo": "Partidos políticos de España y Portugal piden borrar a Marruecos como organizador del Mundial 2030",
+   "descripcion_cruda": "<p>El partido ecologista portugués Livre y el grupo parlamentario español Sumar han pedido a sus países que borren de la organización del Mundial 2030 a Marruecos, a raíz de la crisis migratoria en la frontera de Ceuta (España). En el pedido de Sumar, firmado tres diputados de Izquierda Unida y una cuarta parlamentaria del grupo &#8230; <a href=\"https://www.biobiochile.cl/noticias/deportes/futbol-internacional/notas-futbol-internacional/2026/08/05/partidos-politicos-espana-portugal-piden-borrar-a-marruecos-mundial-2030.shtml\" class=\"more-link\">Continua leyendo<span class=\"screen-reader-text\"> \"Partidos políticos de España y Portugal piden borrar a Marruecos como organizador del Mundial 2030\"</span></a></p>\n<p>The post <a rel=\"nofollow\" href=\"https://www.biobiochile.cl/noticias/deportes/futbol-internacional/notas-futbol-internacional/2026/08/05/partidos-politicos-espana-portugal-piden-borrar-a-marruecos-mundial-2030.shtml\">Partidos políticos de España y Portugal piden borrar a Marruecos como organizador del Mundial 2030</a> appeared first on <a rel=\"nofollow\" href=\"https://www.biobiochile.cl\">BioBioChile</a>.</p>",
+   "titulo": "Partidos políticos de España y Portugal piden borrar a Marruecos como organizador del Mundial 2030",
+   "descripcion": "El partido ecologista portugués Livre y el grupo parlamentario español Sumar han pedido a sus países que borren de la organización del Mundial 2030 a Marruecos, a raíz de la crisis migratoria en la frontera de Ceuta (España). En el pedido de Sumar, firmado tres diputados de Izquierda Unida y una cuarta parlamentaria del grupo &#8230; Continua leyendo \"Partidos políticos de España y Portugal piden borrar a Marruecos como organizador del Mundial 2030\" The post Partidos políticos de España y Portugal piden borrar a Marruecos como organizador del Mundial 2030 appeared first on BioBioChile .",
+   "entrada_llm": {
+    "titulo": "Partidos políticos de España y Portugal piden borrar a Marruecos como organizador del Mundial 2030",
+    "descripcion": "El partido ecologista portugués Livre y el grupo parlamentario español Sumar han pedido a sus países que borren de la organización del Mundial 2030 a Marruecos, a raíz de la crisis migratoria en la frontera de Ceuta (España). En el pedido de Sumar, firmado tres diputados de Izquierda Unida y una cuarta parlamentaria del grupo &#8230; Continua leyendo \"Partidos políticos de España y Portugal piden borrar a Marruecos como organizador del Mundial 2030\" The post Partidos políticos de España y Portugal piden borrar a Marruecos como organizador del Mundial 2030 appeared first on BioBioChile ."
+   },
+   "prefiltro": {
+    "paso": true,
+    "terminos": [
+     "parlamentario",
+     "parlamentaria"
+    ]
+   }
+  },
+  {
+   "caso_id": "cooperativa:7497c2acb1e2",
+   "outlet": "cooperativa",
+   "url_hash": "7497c2acb1e2a97c8301cfc3d7fece59fd5fc2fb3137b69862f09e7829c77150",
+   "url_canonica": "https://www.cooperativa.cl/noticias/pais/judicial/gendarmeria/gendarmeria-desvinculo-a-cuatro-funcionarios-por-red-de-ingreso/2026-08-03/234707.html",
+   "r2_path": "fixture:packages/news/src/__fixtures__/cooperativa.xml",
+   "fecha_captura": "2026-08-05",
+   "fecha_pub": null,
+   "titulo_crudo": "Gendarmería desvinculó a cuatro funcionarios por red de ingreso irregular de especies en Santiago 1",
+   "descripcion_cruda": "<p><strong>Gendarmería de Chile</strong> confirmó la <strong>desvinculación de cuatro funcionarios</strong> tras comprobarse su participación en una <strong>red dedicada a la comisión de delitos e ingreso irregular de especies</strong> en el <strong>Centro de Detención Preventiva (CDP) Santiago 1</strong>.</p>\n<p>La situación quedó al descubierto luego de que la jefatura del establecimiento constatara en terreno que los involucrados operaban desde el sector de <strong>recepción y registro de encomiendas.</strong></p>\n<p>Según precisó el organismo público, los exfuncionarios<strong> \"facilitaban el ingreso irregular de alimentos en cantidades superiores a las permitidas por la administración penitenciaria\".</strong></p>\n<p>Tras corroborarse el desapego a las directrices del Alto Mando, \"fueron apercibidos por el artículo 46 del Código Procesal Penal y paralelamente <strong>desvinculados de las filas institucionales</strong>\". </p>\n<p>\"La labor de inteligencia institucional permitió determinar que <strong>las especies ingresadas de manera irregular iban destinadas al mercado ilícito</strong>, es por ello que los antecedentes se pusieron a disposición de la Fiscalía de Foco Investigativo Penitenciario\", informó el servicio a través de un comunicado.</p>\n<p>\"Este operativo demuestra que <strong>Gendarmería de Chile está actuando y utilizando todas sus capacidades institucionales para detectar y combatir hechos de corrupción</strong> al interior de las unidades penales del país, además de fortalecer los principios éticos que orientan la labor institucional\", concluyó.</p>",
+   "titulo": "Gendarmería desvinculó a cuatro funcionarios por red de ingreso irregular de especies en Santiago 1",
+   "descripcion": "Gendarmería de Chile confirmó la desvinculación de cuatro funcionarios tras comprobarse su participación en una red dedicada a la comisión de delitos e ingreso irregular de especies en el Centro de Detención Preventiva (CDP) Santiago 1 . La situación quedó al descubierto luego de que la jefatura del establecimiento constatara en terreno que los involucrados operaban desde el sector de recepción y registro de encomiendas. Según precisó el organismo público, los exfuncionarios \"facilitaban el ingreso irregular de alimentos en cantidades superiores a las permitidas por la administración penitenciaria\". Tras corroborarse el desapego a las directrices del Alto Mando, \"fueron apercibidos por el artículo 46 del Código Procesal Penal y paralelamente desvinculados de las filas institucionales \". \"La labor de inteligencia institucional permitió determinar que las especies ingresadas de manera irregular iban destinadas al mercado ilícito , es por ello que los antecedentes se pusieron a disposición de la Fiscalía de Foco Investigativo Penitenciario\", informó el servicio a través de un comunicado. \"Este operativo demuestra que Gendarmería de Chile está actuando y utilizando todas sus capacidades institucionales para detectar y combatir hechos de corrupción al interior de las unidades penales del país, además de fortalecer los principios éticos que orientan la labor institucional\", concluyó.",
+   "entrada_llm": {
+    "titulo": "Gendarmería desvinculó a cuatro funcionarios por red de ingreso irregular de especies en Santiago 1",
+    "descripcion": "Gendarmería de Chile confirmó la desvinculación de cuatro funcionarios tras comprobarse su participación en una red dedicada a la comisión de delitos e ingreso irregular de especies en el Centro de Detención Preventiva (CDP) Santiago 1 . La situación quedó al descubierto luego de que la jefatura del establecimiento constatara en terreno que los involucrados operaban desde el sector de recepción y registro de encomiendas. Según precisó el organismo público, los exfuncionarios \"facilitaban el ingreso irregular de alimentos en cantidades superiores a las permitidas por la administración penitenciaria\". Tras "
+   },
+   "prefiltro": {
+    "paso": true,
+    "terminos": [
+     "comision"
+    ]
+   }
+  },
+  {
+   "caso_id": "exante:3fbdb9ad6641",
+   "outlet": "exante",
+   "url_hash": "3fbdb9ad664131cf95420cf5119a26c232ddfde3e16fc1aca162bb9885464582",
+   "url_canonica": "https://www.ex-ante.cl/politica/rodriguez-encontron-squella-alvarado",
+   "r2_path": "fixture:packages/news/src/__fixtures__/exante.xml",
+   "fecha_captura": "2026-08-05",
+   "fecha_pub": null,
+   "titulo_crudo": "Caso Rodríguez: El inevitable encontrón de alto calibre que protagonizaron Squella y Alvarado (y por qué está lejos de terminar)",
+   "descripcion_cruda": "El gobierno busca con urgencia un reemplazante del ex subsecretario Rodríguez, tarea a cargo del ministro Quiroz. El senador Squella no retrocedió en sus dichos…",
+   "titulo": "Caso Rodríguez: El inevitable encontrón de alto calibre que protagonizaron Squella y Alvarado (y por qué está lejos de terminar)",
+   "descripcion": "El gobierno busca con urgencia un reemplazante del ex subsecretario Rodríguez, tarea a cargo del ministro Quiroz. El senador Squella no retrocedió en sus dichos…",
+   "entrada_llm": {
+    "titulo": "Caso Rodríguez: El inevitable encontrón de alto calibre que protagonizaron Squella y Alvarado (y por qué está lejos de terminar)",
+    "descripcion": "El gobierno busca con urgencia un reemplazante del ex subsecretario Rodríguez, tarea a cargo del ministro Quiroz. El senador Squella no retrocedió en sus dichos…"
+   },
+   "prefiltro": {
+    "paso": true,
+    "terminos": [
+     "urgencia",
+     "senador"
+    ]
+   }
+  }
+ ]
+}

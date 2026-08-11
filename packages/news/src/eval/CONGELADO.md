@@ -34,3 +34,19 @@ propia firma independiente del operador. Su ausencia aquí es declarada, no un h
 - **`taxonomia.json`:** `hash_anterior: (ninguno)` → `hash_nuevo: 90981888979773ec3f483c4bb6f10c26a75f7e248f18a03b662bcb1fcd9f706c`
 - **`thresholds.json`:** `hash_anterior: (ninguno)` → `hash_nuevo: e428594463ebae3b6b4b1bce0c0ee2c3fd35516b70d2f7b6e9c73e2583938d1e`
 - **`golden-set.json`:** no existe todavía — se congela en 133-b con su segunda firma.
+
+### 2026-08-10 — congelación del golden set (133-b-07)
+
+- **Razón:** cierre de 133-b — golden set de 159 casos (154 de la ventana 2026-08-05..07 +
+  5 `P-dirigido` de fixtures), doble etiquetado Sonnet/Opus ronda 2 (prompt v2 tras la
+  gatillada de C2.1.3 en ronda 1), 18 arbitrajes proxy, κ(m↔m)=0.8293, κ(fable↔m)=0.8149,
+  Δ=0.0144 (C2.1.3 no gatillada). `tramitacion_legislativa` n=22 y `actividad_parlamentaria`
+  n=6 quedan **no-medidas** (fail-closed D-133-D2: T4/T9 no vetan, **ninguna de las dos
+  clases enruta a fichas** hasta medición futura). κ(humano↔máquina) **NO MEDIDO**
+  (calibración por proxy Fable, `133-b-ENMIENDA-PROXY.md`).
+- **Firma:** **PROXY Fable** bajo instrucción verbatim del operador 2026-08-10 —
+  **RATIFICACIÓN DE OPERADOR PENDIENTE** (mismo régimen D-133-RATIF). Si no se ratifica,
+  este hash se revoca con entrada nueva.
+- **`taxonomia.json`:** sin cambios — vigente `90981888979773ec3f483c4bb6f10c26a75f7e248f18a03b662bcb1fcd9f706c`
+- **`thresholds.json`:** sin cambios — vigente `e428594463ebae3b6b4b1bce0c0ee2c3fd35516b70d2f7b6e9c73e2583938d1e`
+- **`golden-set.json`:** `hash_anterior: (ninguno)` → `hash_nuevo: 47ace935f85ae921c5ca8e2c11133b3a82278b371ba21ba516f498cada33c03c`
