@@ -17,6 +17,11 @@ import { clasificarRun, type ClasificarRunDeps, type NoticiaPendiente } from "./
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const VEREDICTO_PATH = join(AQUI, "..", "eval", "veredicto-135.json");
 
+/** Credencial ausente ⇒ DEGRADACIÓN HONESTA (SC2 de 136): el cron sale exit 0 SIN datos
+ * fabricados, con log LOUD. Distinto de veredicto ausente/sin elección, que sigue siendo
+ * fallo duro: un pipeline sin vara aprobada JAMÁS corre. */
+export class CredencialAusenteError extends Error {}
+
 function providerElegido(env: NodeJS.ProcessEnv): LLMProvider {
   const veredicto = JSON.parse(readFileSync(VEREDICTO_PATH, "utf8")) as { eleccion: string | null };
   if (!veredicto.eleccion) {
@@ -24,12 +29,12 @@ function providerElegido(env: NodeJS.ProcessEnv): LLMProvider {
   }
   switch (veredicto.eleccion) {
     case "deepseek": {
-      if (!env.DEEPSEEK_API_KEY) throw new Error("clasificar-cli: DEEPSEEK_API_KEY ausente");
+      if (!env.DEEPSEEK_API_KEY) throw new CredencialAusenteError("DEEPSEEK_API_KEY ausente");
       return new DeepSeekProvider({ apiKey: env.DEEPSEEK_API_KEY });
     }
     case "granite": {
       if (!env.WORKERS_AI_API_TOKEN || !env.CLOUDFLARE_ACCOUNT_ID) {
-        throw new Error("clasificar-cli: credenciales Workers AI ausentes");
+        throw new CredencialAusenteError("credenciales Workers AI ausentes");
       }
       return new GraniteProvider({
         apiKey: env.WORKERS_AI_API_TOKEN,
@@ -37,7 +42,7 @@ function providerElegido(env: NodeJS.ProcessEnv): LLMProvider {
       });
     }
     case "minimax": {
-      if (!env.MINIMAX_API_KEY) throw new Error("clasificar-cli: MINIMAX_API_KEY ausente");
+      if (!env.MINIMAX_API_KEY) throw new CredencialAusenteError("MINIMAX_API_KEY ausente");
       return new MiniMaxProvider({ apiKey: env.MINIMAX_API_KEY });
     }
     default:
@@ -48,12 +53,24 @@ function providerElegido(env: NodeJS.ProcessEnv): LLMProvider {
 export async function main(): Promise<void> {
   const dryRun = process.argv.includes("--dry-run");
   const url = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Nombre canónico del repo: SUPABASE_SECRET_KEY (.env); se acepta el alias estándar.
+  const serviceKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
-    throw new Error("clasificar-cli: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY ausentes");
+    throw new Error("clasificar-cli: SUPABASE_URL / SUPABASE_SECRET_KEY ausentes");
   }
   const client = createClient(url, serviceKey);
-  const provider = providerElegido(process.env);
+  let provider: LLMProvider;
+  try {
+    provider = providerElegido(process.env);
+  } catch (err) {
+    if (err instanceof CredencialAusenteError) {
+      console.log(
+        `clasificar-cli: [degradación honesta] ${err.message} — cero llamadas, cero datos fabricados, exit 0`,
+      );
+      return;
+    }
+    throw err;
+  }
   const runId = `clasif-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "")}`;
 
   const deps: ClasificarRunDeps = {
