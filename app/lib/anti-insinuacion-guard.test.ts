@@ -494,6 +494,10 @@ const SUPERFICIES_LINK_EXT: string[] = [
   // source-scan SC7 prohíbe que `timeline-event.tsx` importe de `provenance-badge`).
   // Es donde vive HOY el copy renderizado → tiene que estar en el escaneo.
   "lib/recurso-no-humano.ts",
+  // Phase 137: carril "Prensa" — el `<a target="_blank">` por titular hacia el medio
+  // original. El vínculo noticia→proyecto es SOLO por mención textual del boletín;
+  // el copy declara eso explícitamente y no debe insinuar relación editorial.
+  "components/noticias-de-proyecto.tsx",
 ];
 
 /**

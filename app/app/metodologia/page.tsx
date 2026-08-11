@@ -111,6 +111,20 @@ export default function MetodologiaPage() {
       </section>
 
       <section className="mt-10">
+        <h2 className="text-xl font-semibold">Cómo clasificamos las noticias</h2>
+        <Separator className="mt-2" />
+        <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          La sección "Prensa" de cada ficha de proyecto muestra noticias monitoreadas.{" "}
+          <Link
+            href="/metodologia/prensa"
+            className="text-accent-product underline-offset-4 hover:underline"
+          >
+            Lee cómo se clasifican y con qué vara se midió esa clasificación →
+          </Link>
+        </p>
+      </section>
+
+      <section className="mt-10">
         <h2 className="text-xl font-semibold">Contacto</h2>
         <Separator className="mt-2" />
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">

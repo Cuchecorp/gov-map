@@ -275,6 +275,21 @@ export default async function ProyectoPage({ params, searchParams }: PageProps) 
               <ValidacionFuenteServerSection boletin={boletin} />
             </Suspense>
           </section>
+
+          {/*
+            Phase 137 — Carril "Prensa": titulares/bajadas de la prensa monitoreada
+            que mencionan TEXTUALMENTE el número de este boletín
+            (`noticia.boletines_detectados`, detección determinista). Carril HERMANO
+            (mt-12), NUNCA anidado ni compuesto con otro dominio. El h2 y la nota de
+            método viven DENTRO de NoticiasDeProyecto (frontier rule): el degrade
+            honesto (0 filas) no deja un heading huérfano. Honest-error #34: un fallo
+            real de DB/red se lanza, nunca se degrada a "sin prensa".
+          */}
+          <section id="prensa" className="mt-12">
+            <Suspense fallback={<PrensaSkeleton />}>
+              <NoticiasDeProyecto boletin={boletin} />
+            </Suspense>
+          </section>
         </div>
       </div>
     </main>
@@ -349,6 +364,10 @@ export async function ProyectoRail({ boletin }: { boletin: string }) {
     { id: "similares", label: "Similares" },
     // TRACE-01/02/03 (Phase 89): entrada de validación de fuente — siempre presente.
     { id: "validacion-fuente", label: "Valida en fuente" },
+    // Phase 137: entrada "Prensa" — siempre presente (la <section id="prensa">
+    // siempre se monta; su contenido degrada honesto a la ausencia declarada
+    // cuando ninguna noticia menciona textualmente el boletín).
+    { id: "prensa", label: "Prensa" },
   ];
 
   const estadoTexto = proyecto.estado?.trim() || proyecto.etapa?.trim() || null;
@@ -762,8 +781,8 @@ async function ValidacionFuenteServerSection({ boletin }: { boletin: string }) {
 // DEBE igualar a `ProyectoRail.navEntries`. Un 6→8 producía un salto CLS visible.
 function RailSkeleton() {
   // Derivado de `ProyectoRail.navEntries` (page.tsx, misma fuente de verdad):
-  //   9 fijas (estado, timeline, votaciones, lobby-tramitacion, lobby-menciones,
-  //   idea-matriz, cuerpos-legales, similares, validacion-fuente)
+  //   10 fijas (estado, timeline, votaciones, lobby-tramitacion, lobby-menciones,
+  //   idea-matriz, cuerpos-legales, similares, validacion-fuente, prensa)
   //   + 1 si hay autores (nAutores > 0)  ← requiere query: no es conocible aquí
   //   + 1 si el Candado B de cruces está ON.
   // WR-01 (review 114): el conteo anterior (10/9) ignoraba la entrada condicional de
@@ -771,8 +790,8 @@ function RailSkeleton() {
   // autores confirmados) — justo el salto que este skeleton dice prevenir. Se usa el
   // extremo ALTO del rango: sobrar una fila de esqueleto colapsa hacia arriba al
   // resolver (salto menor y hacia el flujo ya leído), faltar una empuja el contenido
-  // hacia abajo.
-  const nEntries = 9 + 1 /* autores: caso frecuente */ + (crucesPublicEnabled(process.env) ? 1 : 0);
+  // hacia abajo. Phase 137: +1 fija por la entrada "Prensa".
+  const nEntries = 10 + 1 /* autores: caso frecuente */ + (crucesPublicEnabled(process.env) ? 1 : 0);
   return (
     <div className="space-y-4" aria-hidden="true">
       <div className="space-y-1.5">
@@ -879,6 +898,16 @@ function CrucesSkeleton() {
       <Skeleton className="h-12 w-full" />
       <Skeleton className="h-4 w-1/2" />
       <Skeleton className="h-11 w-48 rounded-lg" />
+    </div>
+  );
+}
+
+function PrensaSkeleton() {
+  return (
+    <div className="space-y-3" aria-hidden="true">
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-11/12" />
+      <Skeleton className="h-4 w-2/3" />
     </div>
   );
 }

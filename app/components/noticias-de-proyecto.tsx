@@ -12,15 +12,17 @@ import { safeExternalHref } from "@/lib/utils";
  * quedan sin medir, y por regla previa al experimento nada se vincula
  * automáticamente mientras eso no se mida (D-133-D2, fail-closed).
  *
- * Honest-error (#34): un fallo real de DB/red se LANZA, nunca se degrada a
- * "sin prensa". `boletines_detectados` está vacía en todas las filas hoy — el
- * empty es el estado normal, no un defecto de la sección.
+ * `NoticiasDeProyectoView` es PURA (props) → RTL la testea con fixtures, sin
+ * runtime Supabase/Next. `NoticiasDeProyecto` es el Server Component que lee
+ * la tabla. Honest-error (#34): un fallo real de DB/red se LANZA, nunca se
+ * degrada a "sin prensa". `boletines_detectados` está vacía en todas las
+ * filas hoy — el empty es el estado normal, no un defecto de la sección.
  *
- * El h2 vive DENTRO del componente (regla de frontera, page.tsx:193-215): el
+ * El h2 vive DENTRO de la vista (regla de frontera, page.tsx:193-215): el
  * degrade honesto nunca deja un heading huérfano.
  */
 
-interface NoticiaDeProyectoRow {
+export interface NoticiaDeProyectoRow {
   url_hash: string;
   titular: string;
   outlet: string | null;
@@ -28,49 +30,42 @@ interface NoticiaDeProyectoRow {
   url: string;
 }
 
-const NOTA_METODO =
-  "Vínculo por mención textual del boletín en titular o bajada (detección determinista). No implica relación entre el medio y el proyecto.";
+// prettier-ignore — SOLO string literal en una línea (el linter anti-insinuación
+// resta esta nota VERBATIM del source si algún día negara un término prohibido;
+// hoy no niega ninguno, así que no requiere entrada en NEGACIONES_LOCKED).
+// eslint-disable-next-line
+export const NOTA_METODO_PRENSA = "Vínculo por mención textual del boletín en titular o bajada (detección determinista). No implica relación entre el medio y el proyecto.";
 
-export async function NoticiasDeProyecto({ boletin }: { boletin: string }) {
-  const sb = createServerSupabase();
-  const { data, error } = await sb
-    .from("noticia")
-    .select("url_hash, titular, outlet, fecha_pub, url")
-    .contains("boletines_detectados", [boletin])
-    .order("fecha_pub", { ascending: false })
-    .limit(20);
+// eslint-disable-next-line
+export const EMPTY_PRENSA = "Ningún titular o bajada de la prensa monitoreada menciona textualmente este boletín.";
 
-  // #34 honest-error: un fallo real de DB/red no es "ninguna noticia menciona este
-  // boletín" — se lanza para la página de error honesta en vez de fabricar un
-  // silencio que se leería como ausencia de cobertura.
-  if (error) {
-    throw new Error(
-      `No se pudo leer la prensa que menciona el boletín ${boletin}: ${error.message}`,
-    );
-  }
-
-  const noticias = (data as NoticiaDeProyectoRow[] | null) ?? [];
+// ── Vista pura (RTL la testea con fixtures) ─────────────────────────────────────
+export function NoticiasDeProyectoView({
+  noticias,
+}: {
+  noticias: NoticiaDeProyectoRow[];
+}) {
+  const heading = (
+    <h2 className="text-xl font-semibold mb-4">
+      Prensa que menciona este boletín
+    </h2>
+  );
 
   if (noticias.length === 0) {
     return (
       <>
-        <h2 className="text-xl font-semibold mb-4">
-          Prensa que menciona este boletín
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Ningún titular o bajada de la prensa monitoreada menciona textualmente
-          este boletín.
+        {heading}
+        <p className="text-sm text-muted-foreground">{EMPTY_PRENSA}</p>
+        <p className="mt-4 text-sm text-muted-foreground">
+          {NOTA_METODO_PRENSA}
         </p>
-        <p className="mt-4 text-sm text-muted-foreground">{NOTA_METODO}</p>
       </>
     );
   }
 
   return (
     <>
-      <h2 className="text-xl font-semibold mb-4">
-        Prensa que menciona este boletín
-      </h2>
+      {heading}
       <ul className="divide-y divide-border">
         {noticias.map((n) => {
           const href = safeExternalHref(n.url);
@@ -100,7 +95,51 @@ export async function NoticiasDeProyecto({ boletin }: { boletin: string }) {
           );
         })}
       </ul>
-      <p className="mt-4 text-sm text-muted-foreground">{NOTA_METODO}</p>
+      <p className="mt-4 text-sm text-muted-foreground">
+        {NOTA_METODO_PRENSA}
+      </p>
     </>
   );
+}
+
+// ── Server Component: lee `noticia` filtrando por mención textual del boletín ──
+//
+// Dos formas canónicas de mención (regla de `extraerBoletines`): con sufijo ("14309-04")
+// y base pelada ("14309", cuando el texto dice "boletín 14309"). La base solo se atribuye
+// a ESTA ficha si es ÚNICA en `proyecto` (misma regla fail-closed del resolver de 134:
+// base compartida por dos sufijos ⇒ ambigua ⇒ no se atribuye a ninguno).
+export async function NoticiasDeProyecto({ boletin }: { boletin: string }) {
+  const sb = createServerSupabase();
+  const base = boletin.split("-")[0] ?? boletin;
+
+  const { count: proyectosConBase, error: errorBase } = await sb
+    .from("proyecto")
+    .select("boletin", { count: "exact", head: true })
+    .eq("boletin_num", base);
+  if (errorBase) {
+    throw new Error(`No se pudo verificar la unicidad del boletín ${boletin}: ${errorBase.message}`);
+  }
+  const baseEsUnica = proyectosConBase === 1;
+
+  const filtro = baseEsUnica
+    ? `boletines_detectados.cs.{${boletin}},boletines_detectados.cs.{${base}}`
+    : `boletines_detectados.cs.{${boletin}}`;
+  const { data, error } = await sb
+    .from("noticia")
+    .select("url_hash, titular, outlet, fecha_pub, url")
+    .or(filtro)
+    .order("fecha_pub", { ascending: false })
+    .limit(20);
+
+  // #34 honest-error: un fallo real de DB/red no es "ninguna noticia menciona este
+  // boletín" — se lanza para la página de error honesta en vez de fabricar un
+  // silencio que se leería como ausencia de cobertura.
+  if (error) {
+    throw new Error(
+      `No se pudo leer la prensa que menciona el boletín ${boletin}: ${error.message}`,
+    );
+  }
+
+  const noticias = (data as NoticiaDeProyectoRow[] | null) ?? [];
+  return <NoticiasDeProyectoView noticias={noticias} />;
 }
