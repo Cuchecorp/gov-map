@@ -41,7 +41,7 @@
 - [x] **Phase 126: PANEL-GUARDS** — Wave-0: guards ANTES de cualquier copy o vista (SUPERFICIES_PANEL, NEGACIONES_LOCKED, guard create view B-03) (completed 2026-07-30)
 - [x] **Phase 127: PANEL-MAT** — Materializador 0080: los 6 bloques pueblan `evidencia` con sujetos reales + guard 404 + grafía única (4-15) (completed 2026-07-30)
 - [x] **Phase 128: PANEL-UI** — Contrato RPC/UI: tiles editoriales con sujetos nombrados, links con helper central, votaciones L4, semántica de fechas, cobertura declarada (completed 2026-07-30)
-- [ ] **Phase 129: PANEL-DISEÑO** — Loop de diseño BrowserOS con Opus hasta que quede bien; cierre por fragmento DOM + captura; entierra B-02 y H-01
+- [x] **Phase 129: PANEL-DISEÑO** — Loop de diseño BrowserOS con Opus hasta que quede bien; cierre por fragmento DOM + captura; entierra B-02 y H-01
 - [x] **Phase 130: VOTOS-REAL** — B-01: las fichas muestran el conteo REAL de votos (3.752, no 1000) con composición no distorsionada (completed 2026-07-30)
 - [x] **Phase 131: DEBT-FICHA** — H-06 (regla de selección del timeline por query escrita) + 3.3 (co-autoría /comparar sin truncamiento, RPC v2 paralela) (completed 2026-07-30)
 - [x] **Phase 132: NEWS-RSS** — Conector RSS dos-etapas LOCKED (robots + rate-limit + R2 crudo content-addressed) cerrando los 4 huecos de Is Chile Safe (completed 2026-08-05)
@@ -50,7 +50,7 @@
 - [x] **Phase 135: NEWS-CLASIF** — Clasificador con evals como gate CI + elección de modelo por benchmark sobre TieredProvider + presupuesto con ledger
 - [x] **Phase 136: NEWS-CRON** — Cron de novedades diario L-V acotado e idempotente; backfill masivo LOCAL
 - [x] **Phase 137: NEWS-FICHAS** — Las fichas de proyecto y parlamentario muestran sus noticias vinculadas (cita pública, texto completo privado, carril PII)
-- [ ] **Phase 138: E2E** — Deploy agrupado + pasada BrowserOS final sobre el deploy real
+- [x] **Phase 138: E2E** — Deploy agrupado + pasada BrowserOS final sobre el deploy real
 
 ## Phase Details
 
@@ -149,7 +149,7 @@ Plans:
 - [x] 129-02-PLAN.md — H-01 (SC4): tasa de flakiness N>=20 + causa raiz por codigo; fix de resiliencia DIFERIDO (contrato #34)
 - [x] 129-03-PLAN.md — Critica vs baselines v13 + fix de plural (D-06) en 4 moldes + higiene B26
 - [x] 129-04-PLAN.md — Fixes de diseno + re-deploy INCONDICIONAL + capturas finales + densidad 390px
-- [ ] 129-05-PLAN.md — 129-EVIDENCIA-LOOP.md + CHECKPOINT DE OPERADOR (veredicto verbatim, D-07)
+- [x] 129-05-PLAN.md — 129-EVIDENCIA-LOOP.md + CHECKPOINT DE OPERADOR (veredicto verbatim, D-07)
 
 **UI hint**: yes
 

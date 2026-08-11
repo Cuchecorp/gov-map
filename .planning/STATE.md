@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v13.0
 milestone_name: milestone
-status: 137 COMPLETA (Prensa determinista + /metodologia/prensa, verificada). Siguiente - 138 E2E (deploy agrupado + BrowserOS) + 129-05 proxy
+status: PASADA 2+3 COMPLETAS EN AUTONOMO: 133-138 + 129-05 cerradas; deploy d8d33ad8 verificado E2E. PENDIENTE: ratificacion en bloque del operador (enmienda proxy) y Phase 139 PANEL-DASH (fase nueva, fuera de este run)
 stopped_at: corriendo autonomo (enmienda proxy 2026-08-10); ratificacion en bloque pendiente al cierre
 last_updated: "2026-08-10T22:00:00.000Z"
 last_activity: 2026-08-10
 progress:
   total_phases: 14
-  completed_phases: 6
+  completed_phases: 13
   total_plans: 39
   completed_plans: 37
   percent: 43
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (§ Current Milestone: v13.0, updated 2026-07-30)
 
 ## Current Position
 
-Phase: 138
+Phase: 139 (siguiente, no arrancada)
 Plan: — (por planificar)
-Status: 138 E2E arrancando
+Status: milestone v13.0 fases 126-138 completas; ratificacion pendiente
 Last activity: 2026-08-06
 
 Progress: [░░░░░░░░░░░░░] 0/13 phases
