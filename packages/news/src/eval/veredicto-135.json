@@ -335,6 +335,7 @@
   "eleccion": "deepseek",
   "fecha": "2026-08-10",
   "golden_sha256": "47ace935f85ae921c5ca8e2c11133b3a82278b371ba21ba516f498cada33c03c",
+  "granite_estado": "no-medido-por-credencial: 159/159 parse_fallido en 53s = 401 de Workers AI (sonda 2026-08-11); sus metricas NO describen calidad del modelo — re-validacion de dominio pendiente de credencial nueva (H3 verificacion 135)",
   "nota": "etiqueta evaluada = la emitida; el umbral de confianza es seguridad de produccion (tasa informativa). T4/T9 no-medidos fail-closed: ninguna clase enruta a fichas.",
   "razon": "empate por solapamiento de IC entre minimax,deepseek ⇒ incumbente"
 }

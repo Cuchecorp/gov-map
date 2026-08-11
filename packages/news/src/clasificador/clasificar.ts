@@ -11,7 +11,7 @@
 // excepción silenciosa). El titular es DATO, jamás instrucción.
 
 import { z } from "zod";
-import type { LLMProvider } from "@obs/llm";
+import { LLMValidationError, type LLMProvider } from "@obs/llm";
 import { TAXONOMIA, ETIQUETAS } from "../eval/taxonomia.js";
 import { UMBRAL_CONFIANZA } from "../resolver/emision.js";
 
@@ -61,8 +61,13 @@ export function derivarPromptClasificador(): string {
 
 /**
  * Clasifica una noticia con el provider dado. El resultado NUNCA lanza por contenido: los
- * fallos de parse/lista/umbral son DATOS del pipeline (T1/T2/dead-letter), no excepciones —
- * solo errores de infraestructura (red, provider) se propagan.
+ * fallos de parse/lista/umbral son DATOS del pipeline (T1/T2/dead-letter), no excepciones.
+ * Los errores de INFRAESTRUCTURA (401, red, 5xx) SE PROPAGAN — hallazgo H2 de la
+ * verificación 135: un catch pelado los convertía en `parse_fallido` y el pipeline los
+ * descartaba PERMANENTEMENTE (una key vencida quemaba hasta 500 noticias con exit 0; es
+ * exactamente lo que hizo invisible el 401 de Granite en el bench). Solo
+ * `LLMValidationError` (la salida del modelo no valida tras el repair loop) y errores de
+ * parse zod cuentan como `parse_fallido`.
  */
 export async function clasificarNoticia(
   provider: LLMProvider,
@@ -83,8 +88,11 @@ export async function clasificarNoticia(
       },
       SalidaClasificadorSchema,
     );
-  } catch {
-    return { etiqueta: null, confianza: null, fuera_de_lista: false, bajo_umbral: false };
+  } catch (err) {
+    if (err instanceof LLMValidationError || err instanceof z.ZodError) {
+      return { etiqueta: null, confianza: null, fuera_de_lista: false, bajo_umbral: false };
+    }
+    throw err; // infraestructura: la corrida ABORTA (las noticias quedan pendientes)
   }
 
   if (!LEGALES.has(salida.etiqueta)) {

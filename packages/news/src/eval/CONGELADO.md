@@ -65,3 +65,15 @@ propia firma independiente del operador. Su ausencia aquí es declarada, no un h
 - **`thresholds.json`:** vigente `e428594463ebae3b6b4b1bce0c0ee2c3fd35516b70d2f7b6e9c73e2583938d1e`
 - **`golden-set.json`:** vigente `47ace935f85ae921c5ca8e2c11133b3a82278b371ba21ba516f498cada33c03c`
 - **`veredicto-135.json`:** `hash_anterior: (ninguno)` → `hash_nuevo: d6fa8c37aa5ca382df4a46618da1c2c4343a2067639f875f1fdc55a8ae374ca1`
+
+### 2026-08-11 — re-congelado de veredicto-135.json (H3 de la verificación 135)
+
+- **Razón:** el artefacto registraba a Granite como vetado (T2=1.0) cuando en realidad quedó
+  **no-medido por credencial** (401 de Workers AI). Se añade el campo computado
+  `granite_estado` para que el artefacto que sobrevive diga lo que pasó — la causa no puede
+  vivir solo en prosa. Ningún número medido cambia; la elección (deepseek) no cambia.
+- **Firma:** PROXY Fable (régimen `133-b-ENMIENDA-PROXY.md`) — ratificación pendiente.
+- **`veredicto-135.json`:** `hash_anterior: d6fa8c37aa5ca382df4a46618da1c2c4343a2067639f875f1fdc55a8ae374ca1` → `hash_nuevo: 8fa3a6908b7eebb93e61d758096c51f1313a389638ad3b531815f6562428edd1`
+- Vigentes sin cambio: `taxonomia.json` `90981888979773ec3f483c4bb6f10c26a75f7e248f18a03b662bcb1fcd9f706c`,
+  `thresholds.json` `e428594463ebae3b6b4b1bce0c0ee2c3fd35516b70d2f7b6e9c73e2583938d1e`,
+  `golden-set.json` `47ace935f85ae921c5ca8e2c11133b3a82278b371ba21ba516f498cada33c03c`

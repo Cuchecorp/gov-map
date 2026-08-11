@@ -46,6 +46,16 @@ export interface VeredictoClasificador {
 
 const LEGALES = new Set<string>(ETIQUETAS);
 
+/** Umbral numérico DESDE los thresholds congelados — jamás un literal duplicado (hallazgo
+ * H5 de la verificación 135: el freeze del JSON protegía el JSON, no su uso). */
+function umbralDe(id: string): number {
+  const u = THRESHOLDS.umbrales.find((x) => x.id === id);
+  if (!u || u.umbral === null || u.efecto !== "veto") {
+    throw new Error(`gate-clasificador: umbral ${id} ausente o no-veto en THRESHOLDS — gate desincronizado`);
+  }
+  return u.umbral;
+}
+
 function metrica(
   id: string,
   nombre: string,
@@ -100,11 +110,11 @@ export function evaluarClasificador(
 
   // T1: etiqueta fuera de lista (sobre las no-null; una emisión null es T2, no T1).
   const fueraDeLista = resultados.filter((r) => r.etiqueta !== null && !LEGALES.has(r.etiqueta)).length;
-  metricas.push(metrica("T1", "tasa_etiqueta_fuera_de_lista", fueraDeLista, n, 0.0, "max"));
+  metricas.push(metrica("T1", "tasa_etiqueta_fuera_de_lista", fueraDeLista, n, umbralDe("T1"), "max"));
 
   // T2: parse fallido.
   const parseFallido = resultados.filter((r) => r.etiqueta === null).length;
-  metricas.push(metrica("T2", "tasa_parse_fallido", parseFallido, n, 0.02, "max"));
+  metricas.push(metrica("T2", "tasa_parse_fallido", parseFallido, n, umbralDe("T2"), "max"));
 
   // Exactitud por clase (excluyendo `ambiguo` dorado del denominador, C2.5).
   const porClase: Record<string, { aciertos: number; n: number }> = {};
@@ -128,6 +138,7 @@ export function evaluarClasificador(
     );
   }
   const macro = elegibles.reduce((s, [, v]) => s + v.exactitud, 0) / elegibles.length;
+  const umbralT3 = umbralDe("T3");
   const nMacro = elegibles.reduce((s, [, v]) => s + v.n, 0);
   const icMacro = ic95Proporcion(Math.round(macro * nMacro), nMacro); // aproximación declarada
   metricas.push({
@@ -135,10 +146,10 @@ export function evaluarClasificador(
     metrica: "exactitud_macro",
     valor: macro,
     n: nMacro,
-    umbral: 0.8,
+    umbral: umbralT3,
     ic95: icMacro,
-    estado: macro >= 0.8 ? "pasa" : "veta",
-    dentro_del_ruido: icMacro.inf <= 0.8 && 0.8 <= icMacro.sup,
+    estado: macro >= umbralT3 ? "pasa" : "veta",
+    dentro_del_ruido: icMacro.inf <= umbralT3 && umbralT3 <= icMacro.sup,
   });
 
   // T4 recall tramitacion / T9 precision actividad: n mínimo 25 (no alcanzado en este
@@ -192,9 +203,9 @@ export function evaluarClasificador(
     metricas.push(metrica(id, nombre, exitos, denominador, umbral, "min"));
   };
 
-  evaluarClaseVeto("T4", "recall_tramitacion_legislativa", "tramitacion_legislativa", "recall", 0.85);
-  evaluarClaseVeto("T5", "precision_no_legislativa", "no_legislativa", "precision", 0.9);
-  evaluarClaseVeto("T9", "precision_actividad_parlamentaria", "actividad_parlamentaria", "precision", 0.9);
+  evaluarClaseVeto("T4", "recall_tramitacion_legislativa", "tramitacion_legislativa", "recall", umbralDe("T4"));
+  evaluarClaseVeto("T5", "precision_no_legislativa", "no_legislativa", "precision", umbralDe("T5"));
+  evaluarClaseVeto("T9", "precision_actividad_parlamentaria", "actividad_parlamentaria", "precision", umbralDe("T9"));
 
   const aprueba = metricas.every((m) => m.estado !== "veta");
   return { n, metricas, exactitud_por_clase: exactitudPorClase, aprueba, clases_no_medidas: [...new Set(clasesNoMedidas)] };

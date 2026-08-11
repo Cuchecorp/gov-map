@@ -31,8 +31,9 @@ const HASH_THRESHOLDS = "e428594463ebae3b6b4b1bce0c0ee2c3fd35516b70d2f7b6e9c73e2
 const HASH_GOLDEN = "47ace935f85ae921c5ca8e2c11133b3a82278b371ba21ba516f498cada33c03c";
 /** Hash del veredicto del benchmark 135-03 (bench-135-cli, corrida live 2026-08-10/11).
  * Elección computada: deepseek (empate por solapamiento de IC con minimax ⇒ incumbente).
+ * Re-congelado 2026-08-11 (H3): +granite_estado no-medido-por-credencial computado en el artefacto.
  * Granite NO-MEDIDO en dominio: 401 de Workers AI (credencial), no calidad. */
-const HASH_VEREDICTO_135 = "d6fa8c37aa5ca382df4a46618da1c2c4343a2067639f875f1fdc55a8ae374ca1";
+const HASH_VEREDICTO_135 = "8fa3a6908b7eebb93e61d758096c51f1313a389638ad3b531815f6562428edd1";
 
 const GOLDEN_PATH = join(AQUI, "golden-set.json");
 const VEREDICTO_PATH = join(AQUI, "veredicto-135.json");

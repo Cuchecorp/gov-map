@@ -36,6 +36,7 @@ interface ResultadoCandidato {
   tasa_bajo_umbral: number;
   parse_fallidos: number;
   duracion_s: number;
+  nota_infra?: string;
 }
 
 function dormir(ms: number): Promise<void> {
@@ -88,6 +89,12 @@ export async function correrBench(): Promise<void> {
       tasa_bajo_umbral: bajoUmbral / golden.length,
       parse_fallidos: parseFallidos,
       duracion_s: Math.round(duracion),
+      ...(parseFallidos === golden.length
+        ? {
+            nota_infra:
+              "100% parse_fallido: casi con certeza fallo de INFRAESTRUCTURA (credencial/endpoint), no calidad — verificar con sonda antes de citar estas metricas (H3, verificacion 135)",
+          }
+        : {}),
     });
     const macro = veredicto.metricas.find((m) => m.id === "T3")!;
     console.log(

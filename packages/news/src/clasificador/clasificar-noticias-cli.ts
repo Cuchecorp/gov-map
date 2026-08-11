@@ -23,9 +23,20 @@ const VEREDICTO_PATH = join(AQUI, "..", "eval", "veredicto-135.json");
 export class CredencialAusenteError extends Error {}
 
 function providerElegido(env: NodeJS.ProcessEnv): LLMProvider {
-  const veredicto = JSON.parse(readFileSync(VEREDICTO_PATH, "utf8")) as { eleccion: string | null };
+  const veredicto = JSON.parse(readFileSync(VEREDICTO_PATH, "utf8")) as {
+    eleccion: string | null;
+    candidatos: Array<{ provider: string; veredicto: { aprueba: boolean } }>;
+  };
   if (!veredicto.eleccion) {
     throw new Error("clasificar-cli: veredicto-135.json sin elección — NEWS-05 no corre sin vara aprobada (LOUD)");
+  }
+  // H4 de la verificación 135: la elección debe estar APROBADA en el propio artefacto — el
+  // freeze de sha protege en CI, pero este CLI corre local/cron donde CI no interviene.
+  const elegido = veredicto.candidatos.find((c) => c.provider === veredicto.eleccion);
+  if (!elegido || elegido.veredicto.aprueba !== true) {
+    throw new Error(
+      `clasificar-cli: la elección "${veredicto.eleccion}" no está aprobada en veredicto-135.json — jamás correr sin vara (LOUD)`,
+    );
   }
   switch (veredicto.eleccion) {
     case "deepseek": {

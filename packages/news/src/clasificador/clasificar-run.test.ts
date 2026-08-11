@@ -103,35 +103,71 @@ describe("clasificar-run — pipeline 135-04", () => {
     expect(estado.ledger[0]!.llamadas).toBe(CAP_LLAMADAS_POR_CORRIDA);
   });
 
-  it("(d) el ledger registra lo consumido AUNQUE la corrida aborte a mitad", async () => {
+  it("(d) INFRAESTRUCTURA rota (401/red) ⇒ la corrida ABORTA, nada se descarta, el ledger registra el intento (H2)", async () => {
     const explosivo: LLMProvider = {
       id: "mock",
       trainsOnInputs: false,
       async complete<T>(): Promise<T> {
-        throw Object.assign(new Error("red caída"), { fatal: true });
+        throw new Error("401 status code (no body)");
       },
     };
-    // clasificarNoticia atrapa errores del provider como parse_fallido — para simular un
-    // aborto de infraestructura, reventamos en marcarDescartadas... no: el ledger va en
-    // finally del LOOP. Simulamos aborto haciendo fallar el dead-letter (post-loop): el
-    // ledger ya debe estar escrito.
     const { deps, estado } = depsCon(N(2), explosivo);
+    await expect(clasificarRun(deps, "run-4")).rejects.toThrow(/401/);
+    // NADA se descartó ni fue a dead-letter: las noticias siguen pendientes y re-evaluables.
+    expect(estado.descartadas).toEqual([]);
+    expect(estado.deadLetters).toEqual([]);
+    expect(estado.clasificaciones).toEqual([]);
+    // El ledger registró el intento consumido AUNQUE la corrida abortara.
+    expect(estado.ledger).toEqual([{ run_id: "run-4", llamadas: 1 }]);
+  });
+
+  it("(d2) el ledger también sobrevive a un fallo POST-loop (dead-letter caído)", async () => {
+    const { deps, estado } = depsCon(
+      N(1),
+      providerSecuencia([{ etiqueta: "deportes", confianza: 0.9 }]), // fuera de lista ⇒ rechazo
+    );
     deps.deadLetter = {
       escribir: async () => {
         throw new Error("dead-letter caído");
       },
     };
-    await expect(clasificarRun(deps, "run-4")).rejects.toThrow(/dead-letter caído/);
-    expect(estado.ledger).toEqual([{ run_id: "run-4", llamadas: 2 }]);
+    await expect(clasificarRun(deps, "run-4b")).rejects.toThrow(/dead-letter caído/);
+    expect(estado.ledger).toEqual([{ run_id: "run-4b", llamadas: 1 }]);
+    expect(estado.descartadas).toEqual([]); // marcarDescartadas jamás corrió: el rechazo NO se perdió en silencio
   });
 
-  it("(e) re-corrida no reprocesa: solo se leen pendientes (contrato de la query, documentado)", async () => {
-    // El contrato vive en leerPendientes (estado='pendiente'); aquí se verifica que el run
-    // no toca nada si la query ya filtró. Con 0 pendientes tras una corrida exitosa, la
-    // segunda corrida es [skip] con 0 llamadas.
-    const { deps, estado } = depsCon([], providerSecuencia([]));
-    await clasificarRun(deps, "run-5a");
-    await clasificarRun(deps, "run-5b");
-    expect(estado.ledger.map((l) => l.llamadas)).toEqual([0, 0]);
+  it("(e) re-corrida NO reprocesa: la segunda corrida sobre el estado resultante es [skip] con 0 llamadas (H8)", async () => {
+    // Estado compartido: leerPendientes devuelve solo lo que sigue 'pendiente' tras la
+    // primera corrida (2 clasificadas + 1 descartada ⇒ 0 pendientes en la segunda).
+    let pendientes = N(3);
+    const { deps, estado } = depsCon([], providerSecuencia([
+      { etiqueta: "no_legislativa", confianza: 0.9 },
+      { etiqueta: "politica_no_legislativa", confianza: 0.9 },
+      { etiqueta: "deportes", confianza: 0.9 }, // rechazo ⇒ descartada
+    ]));
+    deps.leerPendientes = async () => pendientes;
+    const clasificadasODescartadas = new Set<string>();
+    const escribirOriginal = deps.escribirClasificaciones;
+    deps.escribirClasificaciones = async (filas) => {
+      for (const f of filas) clasificadasODescartadas.add(f.url_hash);
+      pendientes = pendientes.filter((p) => !clasificadasODescartadas.has(p.url_hash));
+      await escribirOriginal(filas);
+    };
+    const marcarOriginal = deps.marcarDescartadas;
+    deps.marcarDescartadas = async (hashes) => {
+      for (const h of hashes) clasificadasODescartadas.add(h);
+      pendientes = pendientes.filter((p) => !clasificadasODescartadas.has(p.url_hash));
+      await marcarOriginal(hashes);
+    };
+    const r1 = await clasificarRun(deps, "run-5a");
+    expect(r1.procesadas).toBe(3);
+    const r2 = await clasificarRun(deps, "run-5b");
+    expect(r2.procesadas).toBe(0);
+    expect(estado.ledger.map((l) => l.llamadas)).toEqual([3, 0]);
+    expect(estado.logs.some((l) => l.includes("[skip]"))).toBe(true);
+  });
+
+  it("(f) el CAP es 500, congelado por LITERAL (H1): moverlo exige tocar este test)", () => {
+    expect(CAP_LLAMADAS_POR_CORRIDA).toBe(500);
   });
 });

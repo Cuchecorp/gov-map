@@ -89,11 +89,11 @@ export async function clasificarRun(
   let llamadas = 0;
   try {
     for (const noticia of lote) {
+      llamadas += 1; // ANTES del intento: un 401 a mitad tambien consumio la llamada
       const r = await clasificarNoticia(deps.provider, {
         titulo: noticia.titular,
         descripcion: noticia.descripcion ?? "",
       });
-      llamadas += 1;
       if (r.etiqueta === null) {
         rechazos.push({
           url_hash: noticia.url_hash,
