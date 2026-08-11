@@ -18,7 +18,8 @@
     "@obs/ingest": "workspace:*",
     "@supabase/supabase-js": "^2.108.2",
     "fast-xml-parser": "^5.9.2",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@obs/llm": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
