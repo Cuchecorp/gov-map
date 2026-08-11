@@ -1,43 +1,43 @@
 {
-  "desacuerdos_pendientes_arbitraje": 18,
+  "desacuerdos_pendientes_arbitraje": 17,
   "fecha": "2026-08-10",
   "kappa_fable_anotador_a": {
-    "acuerdo_bruto": 0.75,
+    "acuerdo_bruto": 0.85,
     "ic95": {
-      "inf": 0.3870715206074377,
-      "sup": 0.9160643678943043
+      "inf": 0.5476111434063781,
+      "sup": 1
     },
-    "kappa": 0.6515679442508711,
+    "kappa": 0.7785977859778598,
     "n": 20
   },
   "kappa_fable_anotador_b": {
-    "acuerdo_bruto": 0.7,
+    "acuerdo_bruto": 0.9,
     "ic95": {
-      "inf": 0.32773122817072725,
-      "sup": 0.8668996443124941
+      "inf": 0.6557906363167472,
+      "sup": 1
     },
-    "kappa": 0.5973154362416107,
+    "kappa": 0.8513011152416358,
     "n": 20
   },
   "kappa_maquina_maquina": {
-    "acuerdo_bruto": 0.8831168831168831,
+    "acuerdo_bruto": 0.8896103896103896,
     "ic95": {
-      "inf": 0.7532166108623599,
-      "sup": 0.9026279480798463
+      "inf": 0.7527988062385431,
+      "sup": 0.9058490847582625
     },
     "ic95_acuerdo_bruto": {
-      "inf": 0.8228102864619796,
-      "sup": 0.9247746341166257
+      "inf": 0.8303280093773988,
+      "sup": 0.9299278420584711
     },
-    "kappa": 0.8279222794711031,
+    "kappa": 0.8293239454984028,
     "n": 154
   },
   "n_por_clase_provisional_136_acordados": {
-    "actividad_parlamentaria": 11,
-    "ley_vigente": 2,
-    "no_legislativa": 68,
-    "politica_no_legislativa": 33,
-    "tramitacion_legislativa": 22
+    "actividad_parlamentaria": 5,
+    "ley_vigente": 1,
+    "no_legislativa": 66,
+    "politica_no_legislativa": 46,
+    "tramitacion_legislativa": 19
   },
   "nota_honesta": "k(fable-maquina) por 133-b-ENMIENDA-PROXY.md -- k(humano-maquina) NO MEDIDO en este milestone",
   "puertas_c23": {
@@ -47,10 +47,10 @@
     "kappa_pasa": true
   },
   "regla_interpretabilidad": {
-    "delta": 0.20348058922486223,
-    "gatillada": true,
-    "kappaFable": 0.6244416902462409,
-    "kappaMaquina": 0.8279222794711031,
+    "delta": 0.014374494888655054,
+    "gatillada": false,
+    "kappaFable": 0.8149494506097478,
+    "kappaMaquina": 0.8293239454984028,
     "limitacion": "k(fable-maquina), NO k(humano-maquina): calibracion por proxy Fable (133-b-ENMIENDA-PROXY.md); Fable/Sonnet/Opus comparten linaje Anthropic, el control externo humano queda NO MEDIDO"
   },
   "tasa_ambiguo": {

@@ -66,9 +66,14 @@ export function fusionarYCongelar(dirLotes: string): {
   const idsCalibracion = new Set(calibracion.casos.map((c) => c.id));
 
   const filas = construirRegistro({ salidaA, salidaB, entradas, idsCalibracion, revisadoEn: REVISADO_EN });
+  // Ronda de anotación: 1 = prompt original; 2 = re-instrucción C2.1.3 (133-b-06). El sha
+  // del prompt usado viaja en el artefacto para que el κ sea auditable contra su instrucción.
+  const promptRaw = readFileSync(join(AQUI, "anotacion-prompt.txt"), "utf8");
   const artefacto = {
     semilla: SEMILLA,
     ventana: "2026-08-05..2026-08-07",
+    ronda: 2,
+    sha_prompt: sha256(promptRaw),
     revisado_en: REVISADO_EN,
     filas,
   };

@@ -129,6 +129,31 @@ export function armarArtefactoAnotacion(input: {
  * (D-133-F2.3), y exige `cita` como subcadena EXACTA para que C2.2 sea verificable por
  * código.
  */
+/**
+ * Versión del prompt. v2 = re-instrucción de la ronda 2 (C2.1.3 gatillada en ronda 1,
+ * `133-b-06-SUMMARY.md`): PRECISIONES derivadas del TEXTO de la glosa LOCKED — la taxonomía
+ * no cambia; solo se explicita lo que los anotadores de ronda 1 leyeron laxo.
+ */
+export const PROMPT_VERSION = 2;
+
+const PRECISIONES_RONDA_2: readonly string[] = Object.freeze([
+  "PRECISIONES (ronda 2 — explicitan la glosa, no la cambian):",
+  "- Clase 1 exige que el acto de tramitación recaiga sobre UNA INICIATIVA (proyecto de ley,",
+  "  reforma, boletín). Una sesión de comisión o un voto de sala sobre asuntos que NO son una",
+  "  iniciativa (permisos, homenajes, 'abordar problemáticas') NO es clase 1.",
+  "- Clase 2: la lista de actos de la marca decisoria es CERRADA (declaración, comisión",
+  "  investigadora, lobby/audiencia, patrimonio e intereses, ética y sanciones, asistencia).",
+  "  Una investigación de la fiscalía, una causa judicial, una campaña o una candidatura NO",
+  "  son actos de esa lista. 'En ejercicio' es literal: exdiputados, exsenadores y candidatos",
+  "  que no ejercen JAMÁS dan clase 2 (frontera: van a 4 si el contenido es político).",
+  "- Frontera 4↔5: 'tribunales no-TC' cae en 4 SOLO si el hecho tiene dimensión política",
+  "  (autoridades, políticas públicas, elecciones); un delito común, un amparo privado o una",
+  "  disputa particular ante tribunales es 5. Los anuncios, decisiones o revisiones del",
+  "  Ejecutivo (La Moneda, ministerios) sin acto de tramitación son SIEMPRE 4, no 5.",
+  "- Recorre la precedencia en orden (1, luego 2, luego 3, luego 4) verificando la marca",
+  "  decisoria TEXTUAL de cada clase antes de caer a 5.",
+]);
+
 export function derivarPromptAnotacion(): string {
   const glosa = TAXONOMIA.map(
     (c, i) =>
@@ -157,6 +182,8 @@ export function derivarPromptAnotacion(): string {
     "  decisión — para `ambiguo`, uno de los dos fragmentos en tensión, o el titular completo",
     "  si la evidencia es su insuficiencia).",
     "- No consultes ninguna otra fuente ni archivo: solo el texto del caso.",
+    "",
+    ...PRECISIONES_RONDA_2,
     "",
     "SALIDA: JSON estricto con la forma",
     '{"etiquetas":[{"id":"<id del caso>","etiqueta":"<una de las 6>","justificacion":"<≤200>","cita":"<subcadena exacta>"}]}',
