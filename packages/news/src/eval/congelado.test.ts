@@ -29,11 +29,17 @@ const HASH_THRESHOLDS = "e428594463ebae3b6b4b1bce0c0ee2c3fd35516b70d2f7b6e9c73e2
  * corrida byte-idéntica). Segunda firma: proxy Fable bajo 133-b-ENMIENDA-PROXY.md,
  * ratificación de operador pendiente. */
 const HASH_GOLDEN = "47ace935f85ae921c5ca8e2c11133b3a82278b371ba21ba516f498cada33c03c";
+/** Hash del veredicto del benchmark 135-03 (bench-135-cli, corrida live 2026-08-10/11).
+ * Elección computada: deepseek (empate por solapamiento de IC con minimax ⇒ incumbente).
+ * Granite NO-MEDIDO en dominio: 401 de Workers AI (credencial), no calidad. */
+const HASH_VEREDICTO_135 = "d6fa8c37aa5ca382df4a46618da1c2c4343a2067639f875f1fdc55a8ae374ca1";
 
 const GOLDEN_PATH = join(AQUI, "golden-set.json");
+const VEREDICTO_PATH = join(AQUI, "veredicto-135.json");
 const taxonomiaRaw = readFileSync(TAXONOMIA_PATH, "utf8");
 const thresholdsRaw = readFileSync(THRESHOLDS_PATH, "utf8");
 const goldenRaw = readFileSync(GOLDEN_PATH, "utf8");
+const veredictoRaw = readFileSync(VEREDICTO_PATH, "utf8");
 
 describe("congelado — hashes vivos", () => {
   it("(a) sha256 vivo de taxonomia.json coincide con HASH_TAXONOMIA", () => {
@@ -46,6 +52,16 @@ describe("congelado — hashes vivos", () => {
 
   it("(a3) sha256 vivo de golden-set.json coincide con HASH_GOLDEN (133-b-07)", () => {
     expect(sha256(goldenRaw)).toBe(HASH_GOLDEN);
+  });
+
+  it("(a4) sha256 vivo de veredicto-135.json coincide con HASH_VEREDICTO_135 y su elección es deepseek con aprueba=true", () => {
+    expect(sha256(veredictoRaw)).toBe(HASH_VEREDICTO_135);
+    const v = JSON.parse(veredictoRaw) as {
+      eleccion: string;
+      candidatos: Array<{ provider: string; veredicto: { aprueba: boolean } }>;
+    };
+    expect(v.eleccion).toBe("deepseek");
+    expect(v.candidatos.find((c) => c.provider === "deepseek")!.veredicto.aprueba).toBe(true);
   });
 });
 

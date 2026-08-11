@@ -1,0 +1,340 @@
+{
+  "candidatos": [
+    {
+      "duracion_s": 1128,
+      "modelo": "deepseek",
+      "parse_fallidos": 0,
+      "provider": "deepseek",
+      "tasa_bajo_umbral": 0.006289308176100629,
+      "veredicto": {
+        "aprueba": true,
+        "clases_no_medidas": [
+          "tramitacion_legislativa",
+          "actividad_parlamentaria"
+        ],
+        "exactitud_por_clase": {
+          "actividad_parlamentaria": {
+            "exactitud": 1,
+            "n": 6
+          },
+          "ley_vigente": {
+            "exactitud": 1,
+            "n": 1
+          },
+          "no_legislativa": {
+            "exactitud": 0.9166666666666666,
+            "n": 72
+          },
+          "politica_no_legislativa": {
+            "exactitud": 0.7586206896551724,
+            "n": 58
+          },
+          "tramitacion_legislativa": {
+            "exactitud": 0.9545454545454546,
+            "n": 22
+          }
+        },
+        "metricas": [
+          {
+            "dentro_del_ruido": false,
+            "estado": "pasa",
+            "ic95": {
+              "inf": 0,
+              "sup": 0.023591023423989943
+            },
+            "id": "T1",
+            "metrica": "tasa_etiqueta_fuera_de_lista",
+            "n": 159,
+            "umbral": 0,
+            "valor": 0
+          },
+          {
+            "dentro_del_ruido": true,
+            "estado": "pasa",
+            "ic95": {
+              "inf": 0,
+              "sup": 0.023591023423989943
+            },
+            "id": "T2",
+            "metrica": "tasa_parse_fallido",
+            "n": 159,
+            "umbral": 0.02,
+            "valor": 0
+          },
+          {
+            "dentro_del_ruido": false,
+            "estado": "pasa",
+            "ic95": {
+              "inf": 0.813014945134161,
+              "sup": 0.9184970516625864
+            },
+            "id": "T3",
+            "metrica": "exactitud_macro",
+            "n": 152,
+            "umbral": 0.8,
+            "valor": 0.8766109369557645
+          },
+          {
+            "dentro_del_ruido": false,
+            "estado": "no-medido",
+            "ic95": null,
+            "id": "T4",
+            "metrica": "recall_tramitacion_legislativa",
+            "n": 22,
+            "umbral": 0.85,
+            "valor": null
+          },
+          {
+            "dentro_del_ruido": true,
+            "estado": "pasa",
+            "ic95": {
+              "inf": 0.8455078823270786,
+              "sup": 0.9695468465937355
+            },
+            "id": "T5",
+            "metrica": "precision_no_legislativa",
+            "n": 71,
+            "umbral": 0.9,
+            "valor": 0.9295774647887324
+          },
+          {
+            "dentro_del_ruido": false,
+            "estado": "no-medido",
+            "ic95": null,
+            "id": "T9",
+            "metrica": "precision_actividad_parlamentaria",
+            "n": 6,
+            "umbral": 0.9,
+            "valor": null
+          }
+        ],
+        "n": 159
+      }
+    },
+    {
+      "duracion_s": 53,
+      "modelo": "granite",
+      "parse_fallidos": 159,
+      "provider": "granite",
+      "tasa_bajo_umbral": 0,
+      "veredicto": {
+        "aprueba": false,
+        "clases_no_medidas": [
+          "tramitacion_legislativa",
+          "no_legislativa",
+          "actividad_parlamentaria"
+        ],
+        "exactitud_por_clase": {
+          "actividad_parlamentaria": {
+            "exactitud": 0,
+            "n": 6
+          },
+          "ley_vigente": {
+            "exactitud": 0,
+            "n": 1
+          },
+          "no_legislativa": {
+            "exactitud": 0,
+            "n": 72
+          },
+          "politica_no_legislativa": {
+            "exactitud": 0,
+            "n": 58
+          },
+          "tramitacion_legislativa": {
+            "exactitud": 0,
+            "n": 22
+          }
+        },
+        "metricas": [
+          {
+            "dentro_del_ruido": false,
+            "estado": "pasa",
+            "ic95": {
+              "inf": 0,
+              "sup": 0.023591023423989943
+            },
+            "id": "T1",
+            "metrica": "tasa_etiqueta_fuera_de_lista",
+            "n": 159,
+            "umbral": 0,
+            "valor": 0
+          },
+          {
+            "dentro_del_ruido": false,
+            "estado": "veta",
+            "ic95": {
+              "inf": 0.9764089765760101,
+              "sup": 1
+            },
+            "id": "T2",
+            "metrica": "tasa_parse_fallido",
+            "n": 159,
+            "umbral": 0.02,
+            "valor": 1
+          },
+          {
+            "dentro_del_ruido": false,
+            "estado": "veta",
+            "ic95": {
+              "inf": 0,
+              "sup": 0.024650670937670042
+            },
+            "id": "T3",
+            "metrica": "exactitud_macro",
+            "n": 152,
+            "umbral": 0.8,
+            "valor": 0
+          },
+          {
+            "dentro_del_ruido": false,
+            "estado": "no-medido",
+            "ic95": null,
+            "id": "T4",
+            "metrica": "recall_tramitacion_legislativa",
+            "n": 22,
+            "umbral": 0.85,
+            "valor": null
+          },
+          {
+            "dentro_del_ruido": false,
+            "estado": "no-medido",
+            "ic95": null,
+            "id": "T5",
+            "metrica": "precision_no_legislativa",
+            "n": 0,
+            "umbral": 0.9,
+            "valor": null
+          },
+          {
+            "dentro_del_ruido": false,
+            "estado": "no-medido",
+            "ic95": null,
+            "id": "T9",
+            "metrica": "precision_actividad_parlamentaria",
+            "n": 6,
+            "umbral": 0.9,
+            "valor": null
+          }
+        ],
+        "n": 159
+      }
+    },
+    {
+      "duracion_s": 1066,
+      "modelo": "minimax",
+      "parse_fallidos": 0,
+      "provider": "minimax",
+      "tasa_bajo_umbral": 0.03773584905660377,
+      "veredicto": {
+        "aprueba": true,
+        "clases_no_medidas": [
+          "tramitacion_legislativa",
+          "actividad_parlamentaria"
+        ],
+        "exactitud_por_clase": {
+          "actividad_parlamentaria": {
+            "exactitud": 0.8333333333333334,
+            "n": 6
+          },
+          "ley_vigente": {
+            "exactitud": 1,
+            "n": 1
+          },
+          "no_legislativa": {
+            "exactitud": 0.9861111111111112,
+            "n": 72
+          },
+          "politica_no_legislativa": {
+            "exactitud": 0.8103448275862069,
+            "n": 58
+          },
+          "tramitacion_legislativa": {
+            "exactitud": 0.9090909090909091,
+            "n": 22
+          }
+        },
+        "metricas": [
+          {
+            "dentro_del_ruido": false,
+            "estado": "pasa",
+            "ic95": {
+              "inf": 0,
+              "sup": 0.023591023423989943
+            },
+            "id": "T1",
+            "metrica": "tasa_etiqueta_fuera_de_lista",
+            "n": 159,
+            "umbral": 0,
+            "valor": 0
+          },
+          {
+            "dentro_del_ruido": true,
+            "estado": "pasa",
+            "ic95": {
+              "inf": 0,
+              "sup": 0.023591023423989943
+            },
+            "id": "T2",
+            "metrica": "tasa_parse_fallido",
+            "n": 159,
+            "umbral": 0.02,
+            "valor": 0
+          },
+          {
+            "dentro_del_ruido": false,
+            "estado": "pasa",
+            "ic95": {
+              "inf": 0.8435645944507106,
+              "sup": 0.9392815775598435
+            },
+            "id": "T3",
+            "metrica": "exactitud_macro",
+            "n": 152,
+            "umbral": 0.8,
+            "valor": 0.9018489492627424
+          },
+          {
+            "dentro_del_ruido": false,
+            "estado": "no-medido",
+            "ic95": null,
+            "id": "T4",
+            "metrica": "recall_tramitacion_legislativa",
+            "n": 22,
+            "umbral": 0.85,
+            "valor": null
+          },
+          {
+            "dentro_del_ruido": true,
+            "estado": "pasa",
+            "ic95": {
+              "inf": 0.840241945501405,
+              "sup": 0.9637995380912008
+            },
+            "id": "T5",
+            "metrica": "precision_no_legislativa",
+            "n": 77,
+            "umbral": 0.9,
+            "valor": 0.922077922077922
+          },
+          {
+            "dentro_del_ruido": false,
+            "estado": "no-medido",
+            "ic95": null,
+            "id": "T9",
+            "metrica": "precision_actividad_parlamentaria",
+            "n": 6,
+            "umbral": 0.9,
+            "valor": null
+          }
+        ],
+        "n": 159
+      }
+    }
+  ],
+  "eleccion": "deepseek",
+  "fecha": "2026-08-10",
+  "golden_sha256": "47ace935f85ae921c5ca8e2c11133b3a82278b371ba21ba516f498cada33c03c",
+  "nota": "etiqueta evaluada = la emitida; el umbral de confianza es seguridad de produccion (tasa informativa). T4/T9 no-medidos fail-closed: ninguna clase enruta a fichas.",
+  "razon": "empate por solapamiento de IC entre minimax,deepseek ⇒ incumbente"
+}

@@ -50,3 +50,18 @@ propia firma independiente del operador. Su ausencia aquí es declarada, no un h
 - **`taxonomia.json`:** sin cambios — vigente `90981888979773ec3f483c4bb6f10c26a75f7e248f18a03b662bcb1fcd9f706c`
 - **`thresholds.json`:** sin cambios — vigente `e428594463ebae3b6b4b1bce0c0ee2c3fd35516b70d2f7b6e9c73e2583938d1e`
 - **`golden-set.json`:** `hash_anterior: (ninguno)` → `hash_nuevo: 47ace935f85ae921c5ca8e2c11133b3a82278b371ba21ba516f498cada33c03c`
+
+### 2026-08-11 — veredicto del benchmark 135-03 (elección de modelo COMPUTADA)
+
+- **Razón:** corrida live del bench sobre el golden congelado (159 casos × 3 candidatos).
+  **DeepSeek aprueba** (T3=0.8766 [0.813,0.918], T1=0, T2=0) y **MiniMax aprueba**
+  (T3=0.9018 [0.844,0.939]); empate por solapamiento de IC95 ⇒ **elección: deepseek**
+  (incumbente, regla D-133-D2). **Granite NO-MEDIDO en dominio:** sus 159/159
+  `parse_fallido` en 53 s son un **401 de Workers AI** (credencial vencida, probado con
+  sonda), no calidad del modelo — su re-validación de dominio queda pendiente de credencial
+  nueva y NO afecta la elección. T4/T9 siguen no-medidos (fail-closed 133-b).
+- **Firma:** PROXY Fable (régimen `133-b-ENMIENDA-PROXY.md`) — ratificación pendiente.
+- **`taxonomia.json`:** vigente `90981888979773ec3f483c4bb6f10c26a75f7e248f18a03b662bcb1fcd9f706c`
+- **`thresholds.json`:** vigente `e428594463ebae3b6b4b1bce0c0ee2c3fd35516b70d2f7b6e9c73e2583938d1e`
+- **`golden-set.json`:** vigente `47ace935f85ae921c5ca8e2c11133b3a82278b371ba21ba516f498cada33c03c`
+- **`veredicto-135.json`:** `hash_anterior: (ninguno)` → `hash_nuevo: d6fa8c37aa5ca382df4a46618da1c2c4343a2067639f875f1fdc55a8ae374ca1`
