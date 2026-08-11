@@ -48,7 +48,7 @@
 - [x] **Phase 133: NEWS-TAXO** — Taxonomía legislativa congelada + golden set con etiquetas revisadas ANTES de medir + thresholds pre-registrados
 - [x] **Phase 134: NEWS-RESOLVER** — Contrato anti-alucinación de tres piezas: lista cerrada → resolver determinista (reusa extraerBoletines) → dead-letter
 - [x] **Phase 135: NEWS-CLASIF** — Clasificador con evals como gate CI + elección de modelo por benchmark sobre TieredProvider + presupuesto con ledger
-- [ ] **Phase 136: NEWS-CRON** — Cron de novedades diario L-V acotado e idempotente; backfill masivo LOCAL
+- [x] **Phase 136: NEWS-CRON** — Cron de novedades diario L-V acotado e idempotente; backfill masivo LOCAL
 - [ ] **Phase 137: NEWS-FICHAS** — Las fichas de proyecto y parlamentario muestran sus noticias vinculadas (cita pública, texto completo privado, carril PII)
 - [ ] **Phase 138: E2E** — Deploy agrupado + pasada BrowserOS final sobre el deploy real
 

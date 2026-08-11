@@ -12,6 +12,7 @@ import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { DeepSeekProvider, GraniteProvider, MiniMaxProvider, type LLMProvider } from "@obs/llm";
 import { SupabaseDeadLetterWriter } from "../resolver/dead-letter.js";
+import { extraerBoletines } from "../resolver/boletin-en-materia.js";
 import { clasificarRun, type ClasificarRunDeps, type NoticiaPendiente } from "./clasificar-run.js";
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
@@ -118,6 +119,11 @@ export async function main(): Promise<void> {
           etiqueta_confianza: f.etiqueta_confianza,
           etiqueta_modelo: f.etiqueta_modelo,
           clasificada_en: new Date().toISOString(),
+          // Vínculo determinista 137 (C2.4a): detección de boletín textual en cada corrida
+          // diaria — el backfill de 0089 fue one-shot; esto mantiene la columna al día.
+          boletines_detectados: extraerBoletines(
+            `${(fila.titular as string) ?? ""} ${(fila.descripcion as string | null) ?? ""}`,
+          ),
         };
       });
       const { error } = await client.from("noticia").upsert(completas, { onConflict: "url_hash" });

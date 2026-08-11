@@ -11,6 +11,7 @@ import {
 } from "@/components/estado-actual-block";
 import { LobbyEnTramitacionSection } from "@/components/lobby-en-tramitacion";
 import { LobbyMencionesSection } from "@/components/lobby-menciones-de-boletin";
+import { NoticiasDeProyecto } from "@/components/noticias-de-proyecto";
 import { CrucesSection } from "@/components/cruces-de-proyecto";
 import { crucesPublicEnabled } from "@/lib/cruces-gate";
 import { TimelineView } from "@/components/timeline-view";

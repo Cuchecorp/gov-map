@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v13.0
 milestone_name: milestone
-status: 135 COMPLETA (eleccion deepseek computada, 74/74 clasificadas en PROD, verificacion Opus con hardening H1-H8). Siguiente - 136 NEWS-CRON (workflow escrito, falta corrida verde)
+status: 136 COMPLETA (news-daily verde en Actions, [skip] observado, pii_rut_en_texto). 137 en curso: carril determinista construido (0 menciones hoy), frontend delegado
 stopped_at: corriendo autonomo (enmienda proxy 2026-08-10); ratificacion en bloque pendiente al cierre
 last_updated: "2026-08-10T22:00:00.000Z"
 last_activity: 2026-08-10
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (§ Current Milestone: v13.0, updated 2026-07-30)
 
 ## Current Position
 
-Phase: 136
+Phase: 137
 Plan: — (por planificar)
-Status: 135 completa; 136 con workflow news-daily committeado, pendiente corrida observada
+Status: 137 NEWS-FICHAS en curso (salida honesta C2.4a: vinculo determinista + metodologia publica)
 Last activity: 2026-08-06
 
 Progress: [░░░░░░░░░░░░░] 0/13 phases
