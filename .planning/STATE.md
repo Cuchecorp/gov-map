@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v13.0
 milestone_name: milestone
-status: 133-04 ejecutado — truncarDescripcion() compartida (con fix Rule 1 del bug de arranque de ultima palabra), entrada-llm.ts (construirEntradaLlm + coberturaTerminos), divergencia de cortes medida (17/80, terminos_perdidos=0, causa determinada empiricamente), y CasoGoldenSchema (zod, 7/7 comportamientos, sin ningun caso). Delta exacto +15 (227->242)
-stopped_at: 133 re-adjudicacion pendiente (8 blockers); operador ratifico sustitucion Opus y D-133-G etiqueta interna
-last_updated: "2026-08-06T19:10:58.602Z"
-last_activity: 2026-08-06
+status: 133 COMPLETA (133-b-07 golden congelado sha 47ace935, T4/T9 no-medidos fail-closed; checkpoints por proxy Fable, ratificacion pendiente). Siguiente - Phase 134 NEWS-RESOLVER
+stopped_at: corriendo autonomo (enmienda proxy 2026-08-10); ratificacion en bloque pendiente al cierre
+last_updated: "2026-08-10T22:00:00.000Z"
+last_activity: 2026-08-10
 progress:
   total_phases: 14
   completed_phases: 6
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (§ Current Milestone: v13.0, updated 2026-07-30)
 
 ## Current Position
 
-Phase: 133
-Plan: 04 complete (wave 2) — 133-04-SUMMARY.md
-Status: 133-04 ejecutado — truncarDescripcion() compartida (con fix Rule 1 del bug de arranque de ultima palabra), entrada-llm.ts (construirEntradaLlm + coberturaTerminos), divergencia de cortes medida (17/80, terminos_perdidos=0, causa determinada empiricamente), y CasoGoldenSchema (zod, 7/7 comportamientos, sin ningun caso). Delta exacto +15 (227->242)
+Phase: 134
+Plan: — (por planificar)
+Status: 133 completa; 134 NEWS-RESOLVER arrancando
 Last activity: 2026-08-06
 
 Progress: [░░░░░░░░░░░░░] 0/13 phases
