@@ -49,3 +49,33 @@ export {
   type NewsCliOptions,
   type NewsCliResult,
 } from "./run-news-cli";
+
+// ── Phase 134: contrato anti-alucinación (resolver determinista + dead-letter) ────────────────
+export { extraerBoletines } from "./resolver/boletin-en-materia";
+export {
+  assertAllowlistNoVacia,
+  resolverBoletin,
+  resolverParlamentario,
+  normalizarNombre,
+  type AllowlistResolver,
+} from "./resolver/resolver";
+export { construirAllowlist, cargarAllowlist, type PersonaAllowlist, type AliasAllowlist } from "./resolver/allowlist";
+export {
+  REJECTION_STAGES,
+  RejectionStageSchema,
+  DeadLetterPayloadSchema,
+  DeadLetterRowSchema,
+  SupabaseDeadLetterWriter,
+  type RejectionStage,
+  type DeadLetterRow,
+  type DeadLetterWriter,
+} from "./resolver/dead-letter";
+export {
+  UMBRAL_CONFIANZA,
+  EmisionSchema,
+  construirEmisionRequest,
+  aplicarUmbral,
+  type Emision,
+  type EmisionRequest,
+} from "./resolver/emision";
+export { procesarLoteAllOrNothing, type ResultadoGate } from "./resolver/gate";
