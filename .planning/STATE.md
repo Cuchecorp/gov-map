@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v13.0
 milestone_name: milestone
-status: 136 COMPLETA (news-daily verde en Actions, [skip] observado, pii_rut_en_texto). 137 en curso: carril determinista construido (0 menciones hoy), frontend delegado
+status: 137 COMPLETA (Prensa determinista + /metodologia/prensa, verificada). Siguiente - 138 E2E (deploy agrupado + BrowserOS) + 129-05 proxy
 stopped_at: corriendo autonomo (enmienda proxy 2026-08-10); ratificacion en bloque pendiente al cierre
 last_updated: "2026-08-10T22:00:00.000Z"
 last_activity: 2026-08-10
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (§ Current Milestone: v13.0, updated 2026-07-30)
 
 ## Current Position
 
-Phase: 137
+Phase: 138
 Plan: — (por planificar)
-Status: 137 NEWS-FICHAS en curso (salida honesta C2.4a: vinculo determinista + metodologia publica)
+Status: 138 E2E arrancando
 Last activity: 2026-08-06
 
 Progress: [░░░░░░░░░░░░░] 0/13 phases
