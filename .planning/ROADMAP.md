@@ -46,7 +46,7 @@
 - [x] **Phase 131: DEBT-FICHA** — H-06 (regla de selección del timeline por query escrita) + 3.3 (co-autoría /comparar sin truncamiento, RPC v2 paralela) (completed 2026-07-30)
 - [x] **Phase 132: NEWS-RSS** — Conector RSS dos-etapas LOCKED (robots + rate-limit + R2 crudo content-addressed) cerrando los 4 huecos de Is Chile Safe (completed 2026-08-05)
 - [x] **Phase 133: NEWS-TAXO** — Taxonomía legislativa congelada + golden set con etiquetas revisadas ANTES de medir + thresholds pre-registrados
-- [ ] **Phase 134: NEWS-RESOLVER** — Contrato anti-alucinación de tres piezas: lista cerrada → resolver determinista (reusa extraerBoletines) → dead-letter
+- [x] **Phase 134: NEWS-RESOLVER** — Contrato anti-alucinación de tres piezas: lista cerrada → resolver determinista (reusa extraerBoletines) → dead-letter
 - [ ] **Phase 135: NEWS-CLASIF** — Clasificador con evals como gate CI + elección de modelo por benchmark sobre TieredProvider + presupuesto con ledger
 - [ ] **Phase 136: NEWS-CRON** — Cron de novedades diario L-V acotado e idempotente; backfill masivo LOCAL
 - [ ] **Phase 137: NEWS-FICHAS** — Las fichas de proyecto y parlamentario muestran sus noticias vinculadas (cita pública, texto completo privado, carril PII)

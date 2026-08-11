@@ -16,6 +16,11 @@ export interface ResultadoGate<T> {
  * pasan, corre `aplicar` UNA vez con el lote completo. Si CUALQUIERA falla, `aplicar` no se
  * invoca jamás. Lote vacío ⇒ throw (cero vacuo: un gate que "aplica" cero ítems no probó
  * nada y esconde un pipeline seco).
+ *
+ * PRECONDICIÓN (hallazgo LOW de la verificación 134): la atomicidad DENTRO de `aplicar` es
+ * responsabilidad del llamador — este gate garantiza "no aplicar nada si algo es inválido",
+ * no "rollback si aplicar explota a mitad". El writer de 135 debe aplicar con una operación
+ * atómica (upsert único / transacción); si `aplicar` lanza, la excepción se propaga tal cual.
  */
 export async function procesarLoteAllOrNothing<T>(
   lote: readonly T[],

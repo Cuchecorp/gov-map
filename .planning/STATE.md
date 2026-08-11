@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v13.0
 milestone_name: milestone
-status: 133 COMPLETA (133-b-07 golden congelado sha 47ace935, T4/T9 no-medidos fail-closed; checkpoints por proxy Fable, ratificacion pendiente). Siguiente - Phase 134 NEWS-RESOLVER
+status: 134 COMPLETA (resolver anti-alucinacion + 0086 dead-letter en PROD + verificacion Opus con mutaciones). Siguiente - Phase 135 NEWS-CLASIF
 stopped_at: corriendo autonomo (enmienda proxy 2026-08-10); ratificacion en bloque pendiente al cierre
 last_updated: "2026-08-10T22:00:00.000Z"
 last_activity: 2026-08-10
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (§ Current Milestone: v13.0, updated 2026-07-30)
 
 ## Current Position
 
-Phase: 134
+Phase: 135
 Plan: — (por planificar)
-Status: 133 completa; 134 NEWS-RESOLVER arrancando
+Status: 134 completa; 135 NEWS-CLASIF arrancando (contexto escrito)
 Last activity: 2026-08-06
 
 Progress: [░░░░░░░░░░░░░] 0/13 phases

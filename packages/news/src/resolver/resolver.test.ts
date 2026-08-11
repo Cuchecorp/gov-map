@@ -37,6 +37,31 @@ function allowlistFixture(): AllowlistResolver {
         apellido_paterno: "Espinoza",
         apellido_materno: "Monardes",
       },
+      // Tercer "Espinoza" que ADEMÁS comparte "Sandoval" con P00001: hace que el token-set
+      // "espinoza sandoval" tenga DOS candidatos reales (guardia de la mutación >= 1).
+      {
+        id: "P00005",
+        nombre_normalizado: "maria espinoza sandoval",
+        nombres: "María",
+        apellido_paterno: "Espinoza",
+        apellido_materno: "Sandoval",
+      },
+      // Homónimos EXACTOS (mismo nombre completo, dos personas): la clave exacta debe ser
+      // irresoluble.
+      {
+        id: "P00006",
+        nombre_normalizado: "pedro perez soto",
+        nombres: "Pedro",
+        apellido_paterno: "Pérez",
+        apellido_materno: "Soto",
+      },
+      {
+        id: "P00007",
+        nombre_normalizado: "pedro perez soto",
+        nombres: "Pedro",
+        apellido_paterno: "Pérez",
+        apellido_materno: "Soto",
+      },
     ],
     [{ parlamentario_id: "P00001", alias: "Fidel Espinoza S." }],
   );
@@ -45,15 +70,21 @@ function allowlistFixture(): AllowlistResolver {
 describe("resolver — SC1 allowlist LOUD", () => {
   it("(a) allowlist vacía LANZA antes de procesar (boletines y parlamentarios)", () => {
     expect(() =>
-      assertAllowlistNoVacia({ boletines: new Set(), parlamentarios: new Map([["x", ["1"]]]) }),
+      assertAllowlistNoVacia({
+        boletines: new Set(),
+        parlamentarios: new Map([["x", ["1"]]]),
+        apellidos: new Set(["x"]),
+      }),
     ).toThrow(/VACÍA/);
     expect(() =>
-      assertAllowlistNoVacia({ boletines: new Set(["1-1"]), parlamentarios: new Map() }),
+      assertAllowlistNoVacia({ boletines: new Set(["1-1"]), parlamentarios: new Map(), apellidos: new Set() }),
     ).toThrow(/VACÍA/);
-    expect(() => resolverBoletin("14309-04", { boletines: new Set(), parlamentarios: new Map() })).toThrow();
+    expect(() =>
+      resolverBoletin("14309-04", { boletines: new Set(), parlamentarios: new Map(), apellidos: new Set() }),
+    ).toThrow();
     expect(() =>
       construirEmisionRequest({
-        allowlist: { boletines: new Set(), parlamentarios: new Map() },
+        allowlist: { boletines: new Set(), parlamentarios: new Map(), apellidos: new Set() },
         titulo: "t",
         descripcion: "d",
       }),
@@ -108,10 +139,22 @@ describe("resolver — resolverParlamentario (A2.3 fail-closed)", () => {
     expect(resolverParlamentario("Gatica", al)).toBeNull(); // única, pero suelta ⇒ null igual
   });
 
-  it("(g) parcial repartido entre dos personas ⇒ null (jamás best-guess)", () => {
-    // "espinoza" como token aparece en P00001 y P00003 — un nombre inventado que solo
-    // comparte el apellido no puede resolver.
+  it("(g) token-set con DOS candidatos reales ⇒ null (jamás best-guess; guardia de la mutación >=1)", () => {
+    // "espinoza sandoval" está contenido tanto en "fidel espinoza sandoval" (P00001) como
+    // en "maria espinoza sandoval" (P00005): 2 candidatos ⇒ null. La mutación
+    // `candidatos.size >= 1` devolvería uno de los dos — un vínculo fabricado.
+    expect(resolverParlamentario("Espinoza Sandoval", al)).toBeNull();
+    // Cero candidatos también es null (ausencia, control apareado del mismo camino).
     expect(resolverParlamentario("Juan Espinoza", al)).toBeNull();
+  });
+
+  it("(g2) homónimos EXACTOS: la clave exacta con dos ids ⇒ null (guardia de exactos.length===1)", () => {
+    expect(resolverParlamentario("Pedro Pérez Soto", al)).toBeNull();
+  });
+
+  it("(g3) nombres de pila solos JAMÁS resuelven: el token-set exige un apellido", () => {
+    // "maria jose" son solo nombres de pila de P00002 — sin token de apellido, null.
+    expect(resolverParlamentario("María José", al)).toBeNull();
   });
 
   it("(h) fuera de lista y vacío ⇒ null", () => {

@@ -23,7 +23,10 @@ export const RejectionStageSchema = z.enum(REJECTION_STAGES);
 export type RejectionStage = z.infer<typeof RejectionStageSchema>;
 
 /** Payload técnico permitido — `.strict()`: un campo extra (p.ej. `texto`) NO compila ni
- * valida. `emision` se trunca a 200 chars: basta para auditar qué emitió el LLM. */
+ * valida. `emision` (≤200 chars) es LA EMISIÓN DEL LLM (un boletín o un nombre), JAMÁS el
+ * titular ni la descripción de la noticia — pasar texto del artículo aquí es un mal uso que
+ * el schema no puede distinguir (hallazgo MEDIUM de la verificación 134): la regla es del
+ * llamador y se re-verifica en el code-review de 135. */
 export const DeadLetterPayloadSchema = z
   .object({
     emision: z.string().max(200).optional(),

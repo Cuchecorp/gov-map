@@ -72,7 +72,19 @@ export function construirAllowlist(
     agregar(a.alias, a.parlamentario_id);
   }
 
-  return { boletines: setBoletines, parlamentarios: mapa };
+  const apellidos = new Set<string>();
+  for (const p of personas) {
+    for (const apellido of [p.apellido_paterno, p.apellido_materno]) {
+      const t = normalizarNombre(apellido ?? "");
+      if (t.length > 0) for (const token of t.split(" ")) apellidos.add(token);
+    }
+    // Respaldo cuando paterno/materno vienen NULL (Pitfall 4 del catálogo): el último token
+    // de nombre_normalizado es el mejor proxy de apellido disponible.
+    const tokens = normalizarNombre(p.nombre_normalizado).split(" ").filter(Boolean);
+    if (tokens.length >= 2 && !p.apellido_paterno) apellidos.add(tokens[tokens.length - 1]!);
+  }
+
+  return { boletines: setBoletines, parlamentarios: mapa, apellidos };
 }
 
 async function paginar<T>(

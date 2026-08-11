@@ -20,6 +20,10 @@ export interface AllowlistResolver {
    * la variante irresoluble (fail-closed). El id JAMÁS viaja al LLM (SC1: "jamás un id") —
    * vive solo de este lado del contrato. */
   readonly parlamentarios: ReadonlyMap<string, readonly string[]>;
+  /** Tokens de APELLIDO (paterno/materno, foldeados) de la lista cerrada. El match por
+   * token-set EXIGE al menos uno (hallazgo MEDIUM de la verificación 134): sin esto,
+   * "maría josé" (puros nombres de pila) resolvía a una persona publicable. */
+  readonly apellidos: ReadonlySet<string>;
 }
 
 /**
@@ -111,6 +115,9 @@ export function resolverParlamentario(
 
   const tokensEmitidos = emitido.split(" ").filter(Boolean);
   if (tokensEmitidos.length < 2) return null; // apellido suelto: JAMÁS resuelve (A2.3)
+  // Nombres de pila solos tampoco resuelven: el token-set exige al menos un APELLIDO de la
+  // lista cerrada — el espejo de la regla A2.3 para el otro extremo del nombre.
+  if (!tokensEmitidos.some((t) => allowlist.apellidos.has(t))) return null;
 
   const candidatos = new Set<string>();
   for (const [nombre, ids] of allowlist.parlamentarios) {
