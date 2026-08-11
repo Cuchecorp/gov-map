@@ -1,0 +1,29 @@
+{
+  "anotador": "fable-calibracion-proxy",
+  "modelo": "claude-fable-5",
+  "enmienda": "133-b-ENMIENDA-PROXY.md 2026-08-10 — sustituye la calibracion humana; k(h-m) NO MEDIDO",
+  "ceguera": "agente fresco sin contexto; unico insumo: calibracion-20.json (sha256 8a050c8008e338acfbbb1b769eee80164eae710655498453c752d07fb8f4b4aa)",
+  "fecha": "2026-08-10",
+  "etiquetas": [
+    { "id": "latercera:f5c7bf80d703", "etiqueta": "politica_no_legislativa", "justificacion": "'La Comisión de Vivienda del Senado abordó...problemáticas' con 'el ministro de Vivienda': sesión temática sin iniciativa ni acto de tramitación; política contingente." },
+    { "id": "latercera:eab87c37d621", "etiqueta": "politica_no_legislativa", "justificacion": "'decisión del ministro de Hacienda' que frena 'dos proyectos viales' (obras, no leyes); gobernador reclama al Ejecutivo, sin acto de tramitación ni parlamentario." },
+    { "id": "latercera:130066a75a08", "etiqueta": "tramitacion_legislativa", "justificacion": "'el mecanismo aprobado por el Senado' y 'aprobación de la megarreforma': votación/despacho en el Congreso, acto de tramitación explícito." },
+    { "id": "lacuarta:11d42f052109", "etiqueta": "no_legislativa", "justificacion": "'fichaje de Vozinha por Colo Colo': deportes, ausencia de cualquier marca de las clases anteriores." },
+    { "id": "lacuarta:846648be5cfe", "etiqueta": "no_legislativa", "justificacion": "'teleserie vertical más vista de Chile' tendrá 'segunda temporada': entretención, sin marca política ni legislativa." },
+    { "id": "latercera:f399206baf77", "etiqueta": "politica_no_legislativa", "justificacion": "'revisada por La Moneda a través del Ministerio de Seguridad': decisión del Ejecutivo pendiente; sin acto de tramitación ni parlamentario nombrado." },
+    { "id": "latercera:a555cce5a9f7", "etiqueta": "no_legislativa", "justificacion": "'reconocimiento oficial de UNESCO' a proyecto universitario oceánico: ciencia/internacional, sin marca de clases anteriores." },
+    { "id": "latercera:b3bb2c77cd76", "etiqueta": "actividad_parlamentaria", "justificacion": "'Senador Espinoza (PS) descarta golpes' y 'en una declaración pública, sostuvo': parlamentario en ejercicio nombrado + declaración suya; sin acto de tramitación." },
+    { "id": "latercera:e98368a195c0", "etiqueta": "politica_no_legislativa", "justificacion": "'Los permisos fueron visados con amplia mayoría por la Cámara': voto sobre permisos de viaje del expresidente, no tramitación de una iniciativa; política contingente." },
+    { "id": "cooperativa:2e567bf1547a", "etiqueta": "no_legislativa", "justificacion": "'hallado muerto...al interior de un automóvil' y 'Carabineros trabaja': policial, sin marca de clases anteriores." },
+    { "id": "lacuarta:cc9fd16163a2", "etiqueta": "no_legislativa", "justificacion": "'amenazó con demandar a doctora por video': disputa personal/farandulera; descripción vacía, pero ninguna clase anterior compite." },
+    { "id": "exante:7f557b1edf77", "etiqueta": "politica_no_legislativa", "justificacion": "'senador Espinoza y la investigación contra él'; 'la fiscalía resolvió abrir la causa': figura política sin acto parlamentario listado (declaración, comisión, etc.) ni tramitación." },
+    { "id": "biobiochile:42b24be35f0b", "etiqueta": "politica_no_legislativa", "justificacion": "'RN abre proceso para redefinir su identidad'; 'La colectividad lanzará...proceso de formación': vida interna de partido, sin acto de tramitación." },
+    { "id": "cooperativa:8d4bcedade49", "etiqueta": "actividad_parlamentaria", "justificacion": "'el senador Fidel Espinoza (PS)' y 'A través de un comunicado, Espinoza recalcó': parlamentario nombrado + declaración suya; sin acto de tramitación." },
+    { "id": "biobiochile:a5c39c4feed8", "etiqueta": "no_legislativa", "justificacion": "'Caos en Argentina: policías lanzan gases a manifestantes': internacional; el 'Congreso' es el argentino y no hay acto de tramitación." },
+    { "id": "latercera:9d6aae1d0705", "etiqueta": "tramitacion_legislativa", "justificacion": "'En votaciones emblemáticas...aprobar este tipo de iniciativas' y 'visar estos proyectos': votación de iniciativas en el Congreso, acto de tramitación explícito." },
+    { "id": "lacuarta:3657277861fb", "etiqueta": "politica_no_legislativa", "justificacion": "'reflexionar en torno al cruce parlamentario' con frase de 'la exdiputada': contenido político contingente; quien no ejerce no da actividad_parlamentaria y no hay tramitación." },
+    { "id": "latercera:f626acf20199", "etiqueta": "politica_no_legislativa", "justificacion": "'Corte de Temuco rechaza recurso de amparo'; 'El tribunal de alzada estimó': tribunal no constitucional, sin acto de tramitación ni parlamentario." },
+    { "id": "latercera:6d01d4162195", "etiqueta": "tramitacion_legislativa", "justificacion": "'avance al Senado de reforma al SAE' y 'la iniciativa en su votación en la Cámara': votación y paso entre cámaras, actos de tramitación explícitos." },
+    { "id": "lacuarta:a5d91de0a162", "etiqueta": "no_legislativa", "justificacion": "'la importancia que los niños escojan sus prendas': crianza/servicio; descripción vacía, pero ninguna clase anterior compite." }
+  ]
+}
