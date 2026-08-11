@@ -60,6 +60,31 @@ y κ. **La calibración Fable NO se re-corre** (es la referencia fija del contro
 Si la regla se gatilla por segunda vez ⇒ C2.4: taxonomía NO ETIQUETABLE sobre
 titular+bajada, Phase 133 reporta FRACASO (con las salidas honestas pre-escritas).
 
+## RONDA 2 — resultado (2026-08-10, post re-instrucción)
+
+**La regla C2.1.3 NO se gatilló en ronda 2. El golden puede congelarse.**
+
+| Métrica | Ronda 1 | **Ronda 2** |
+|---|---|---|
+| κ(m↔m) | 0.8279 | **0.8293** [0.753, 0.906] |
+| acuerdo bruto | 0.8831 | **0.8896** (137/154, 17 desacuerdos) |
+| κ(fable↔A) | 0.6516 | **0.7786** |
+| κ(fable↔B) | 0.5973 | **0.8513** |
+| Δ (C2.1.3) | 0.2035 GATILLADA | **0.0144 — NO gatillada** |
+
+Puertas C2.3: acuerdo ≥0.80 **PASA** (0.8896); κ ≥0.65 **PASA** (0.8293). El κ de máquina de
+ronda 2 ES interpretable (con la limitación intra-familia adjunta).
+
+**La compuerta de validación mordió en ronda 2** (falso verde evitado): la primera corrida
+traía 45 salidas inválidas — lote a-07 anotó el RANGO equivocado (11 duplicados + 11 sin
+cubrir), lote b-04 emitió NUMERALES ("4"/"5") en vez de nombres de etiqueta, y 3 citas no
+literales (a-05, a-07, b-06). Los 4 lotes se re-corrieron con la instrucción reforzada;
+registro final 154/154 con 0 problemas. `registro-anotacion.json` (ronda 2)
+sha256=d9ecf47a…, `kappas-133b.json` sha256=55600fa5….
+
+Desacuerdos de ronda 2 (17): el hub sigue siendo la clase 4 (9 son 5↔4), consistente con
+fronteras difusas de política contingente — van todos a arbitraje (b-07).
+
 ## Limitación permanente (enmienda proxy)
 
 Todo κ(fable↔·) es intra-familia Anthropic; κ(humano↔máquina) NO MEDIDO. La gatillada de
