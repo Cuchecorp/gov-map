@@ -109,10 +109,13 @@ export default function MetodologiaPrensaPage() {
         <Separator className="mt-2" />
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
           Antes de medir cualquier clasificador, se construyó un conjunto de referencia
-          (golden set) de 159 casos, etiquetado por doble anotador con arbitraje sobre los
-          desacuerdos. El acuerdo bruto entre anotadores fue 88,96 %; el coeficiente kappa
-          de Cohen —que descuenta el acuerdo esperable por azar— fue 0,83 (intervalo de
-          confianza 95 %: 0,75–0,91).
+          (golden set) de 159 casos, etiquetado por dos anotadores independientes —ambos
+          modelos de inteligencia artificial de la misma familia, un dato relevante para
+          leer las cifras— con arbitraje de un tercer modelo sobre los desacuerdos. Sobre
+          los 154 casos doble-anotados del conjunto (los 5 restantes se incorporaron en un
+          paso posterior de sobre-muestreo dirigido), el acuerdo bruto entre anotadores fue
+          88,96 %; el coeficiente kappa de Cohen —que descuenta el acuerdo esperable por
+          azar— fue 0,83 (intervalo de confianza 95 %: 0,75–0,91, n=154).
         </p>
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
           Limitación declarada, no disimulada: por decisión del operador, la calibración

@@ -498,6 +498,12 @@ const SUPERFICIES_LINK_EXT: string[] = [
   // original. El vínculo noticia→proyecto es SOLO por mención textual del boletín;
   // el copy declara eso explícitamente y no debe insinuar relación editorial.
   "components/noticias-de-proyecto.tsx",
+  // Phase 137 (H-2 de la verificación): las páginas de metodología son prosa pública
+  // extensa sobre el clasificador y sus medios — el vector "el medio oculta / el
+  // Congreso esconde" aplica con más razón aquí que en ningún chip. Sin este registro,
+  // términos prohibidos insertados en la metodología pasaban el guard en verde.
+  "app/metodologia/page.tsx",
+  "app/metodologia/prensa/page.tsx",
 ];
 
 /**

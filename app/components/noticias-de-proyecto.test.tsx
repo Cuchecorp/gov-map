@@ -44,7 +44,11 @@ describe("NoticiasDeProyectoView — carril Prensa (Phase 137)", () => {
   it("con 0 noticias, muestra la ausencia honesta (nunca 0 links, nunca relleno)", () => {
     render(<NoticiasDeProyectoView noticias={[]} />);
     expect(screen.queryAllByRole("link")).toHaveLength(0);
-    expect(screen.getByText(EMPTY_PRENSA)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Ningún titular o bajada de la prensa monitoreada menciona textualmente este boletín.",
+      ),
+    ).toBeInTheDocument(); // literal INLINE (H-1): jamás la constante importada (tautología)
     expect(
       screen.getByRole("heading", { name: "Prensa que menciona este boletín" }),
     ).toBeInTheDocument();
@@ -54,10 +58,18 @@ describe("NoticiasDeProyectoView — carril Prensa (Phase 137)", () => {
     const { unmount } = render(
       <NoticiasDeProyectoView noticias={[makeNoticia()]} />,
     );
-    expect(screen.getByText(NOTA_METODO_PRENSA)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Vínculo por mención textual del boletín en titular o bajada (detección determinista). No implica relación entre el medio y el proyecto.",
+      ),
+    ).toBeInTheDocument(); // literal INLINE (H-1)
     unmount();
     render(<NoticiasDeProyectoView noticias={[]} />);
-    expect(screen.getByText(NOTA_METODO_PRENSA)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Vínculo por mención textual del boletín en titular o bajada (detección determinista). No implica relación entre el medio y el proyecto.",
+      ),
+    ).toBeInTheDocument(); // literal INLINE (H-1)
   });
 
   it("omite el link cuando la url no es http(s) segura (safeExternalHref)", () => {
